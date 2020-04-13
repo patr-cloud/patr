@@ -1,0 +1,314 @@
+# Secrets required
+#===================
+# staging_base_path
+# staging_jwt_secret
+# staging_port
+
+# master_base_path
+# master_jwt_secret
+# master_port
+
+# telegram_group_id
+# telegram_token
+# webserver_ip
+
+# staging_mysql_database
+# staging_mysql_host
+# staging_mysql_host_ip
+# staging_mysql_password
+# staging_mysql_port
+# staging_mysql_user
+
+# master_mysql_database
+# master_mysql_host
+# master_mysql_host_ip
+# master_mysql_password
+# master_mysql_port
+# master_mysql_user
+
+# s3_api_key
+# s3_api_secret
+# s3_bucket
+# s3_endpoint
+
+# smtp_from
+# smtp_host
+# smtp_password
+# smtp_port
+# smtp_secure
+# smtp_username
+
+# ssh_key
+# ssh_userid
+# ssh_username
+
+kind: pipeline
+name: default
+
+concurrency:
+  limit: 1
+
+steps:
+  - name: "Install dependencies"
+    image: node:11.10.0
+    commands:
+      - npm ci
+      - cd src
+      - npm ci
+      - cd ..
+    when:
+      event:
+        - push
+      branch:
+        - master
+        - staging
+
+  - name: "Build for staging"
+    image: node:11.10.0
+    commands:
+      - npm run build
+    environment:
+      NODE_ENV: 'development'
+      MODULE_SECRET_PRIVATE_KEY:
+        from_secret: module_secret_private_key
+      PORT:
+        from_secret: staging_port
+      BASE_PATH:
+        from_secret: staging_base_path
+      JWT_SECRET:
+        from_secret: staging_jwt_secret
+      S3_ENDPOINT:
+        from_secret: s3_endpoint
+      S3_BUCKET:
+        from_secret: s3_bucket
+      S3_API_KEY:
+        from_secret: s3_api_key
+      S3_API_SECRET:
+        from_secret: s3_api_secret
+      MYSQL_HOST:
+        from_secret: staging_mysql_host
+      MYSQL_PORT:
+        from_secret: staging_mysql_port
+      MYSQL_USER:
+        from_secret: staging_mysql_user
+      MYSQL_PASSWORD:
+        from_secret: staging_mysql_password
+      MYSQL_DATABASE:
+        from_secret: staging_mysql_database
+      SMTP_HOST:
+        from_secret: smtp_host
+      SMTP_PORT:
+        from_secret: smtp_port
+      SMTP_SECURE:
+        from_secret: smtp_secure
+      SMTP_USERNAME:
+        from_secret: smtp_username
+      SMTP_FROM:
+        from_secret: smtp_from
+      SMTP_PASSWORD:
+        from_secret: smtp_password
+    when:
+      event:
+        - push
+      branch:
+        - staging
+
+  - name: "Deploy for staging"
+    image: node:11.10.0
+    commands:
+      - mv bin /home/web/api.bytesonus.co/beta.new
+      - chown $SSH_USERID:$SSH_USERID -R /home/web/api.bytesonus.co/beta.new
+    environment:
+      SSH_USERID:
+        from_secret: ssh_userid
+    volumes:
+      - name: web
+        path: /home/web
+    when:
+      event:
+        - push
+      branch:
+        - staging
+  
+  - name: "Replicate database"
+    image: bytesonushq/mysql-client
+    commands:
+      - mysqldump -u $MASTER_MYSQL_USER -h $MASTER_MYSQL_HOST -p$MASTER_MYSQL_PASSWORD $MASTER_MYSQL_DATABASE > db.sql
+      - mysql -u $STAGING_MYSQL_USER -h $STAGING_MYSQL_HOST -p$STAGING_MYSQL_PASSWORD $STAGING_MYSQL_DATABASE < db.sql
+    environment:
+      STAGING_MYSQL_HOST:
+        from_secret: staging_mysql_host_ip
+      STAGING_MYSQL_PORT:
+        from_secret: staging_mysql_port
+      STAGING_MYSQL_USER:
+        from_secret: staging_mysql_user
+      STAGING_MYSQL_PASSWORD:
+        from_secret: staging_mysql_password
+      STAGING_MYSQL_DATABASE:
+        from_secret: staging_mysql_database
+      MASTER_MYSQL_HOST:
+        from_secret: master_mysql_host_ip
+      MASTER_MYSQL_PORT:
+        from_secret: master_mysql_port
+      MASTER_MYSQL_USER:
+        from_secret: master_mysql_user
+      MASTER_MYSQL_PASSWORD:
+        from_secret: master_mysql_password
+      MASTER_MYSQL_DATABASE:
+        from_secret: master_mysql_database
+    when:
+      event:
+        - push
+      branch:
+        - staging
+
+  - name: "Reload for staging"
+    image: appleboy/drone-ssh
+    settings:
+      host:
+        from_secret: webserver_ip
+      port: 22
+      username:
+        from_secret: ssh_username
+      key:
+        from_secret: ssh_key
+      script:
+        - "[ -s ~/.nvm/nvm.sh ] && source ~/.nvm/nvm.sh"
+        - nvm use default
+        - cd /home/web/api.bytesonus.co
+        - mv beta beta.old
+        - mv beta.new beta
+        - cd beta
+        - pm2 startOrReload process.config.json --only "api.bytesonus.co/beta" --update-env
+        - cd ..
+        - rm -rf beta.old
+    when:
+      event:
+        - push
+      branch:
+        - staging
+
+  - name: "Build for master"
+    image: node:11.10.0
+    commands:
+      - npm run build
+    environment:
+      NODE_ENV: 'production'
+      MODULE_SECRET_PRIVATE_KEY:
+        from_secret: module_secret_private_key
+      PORT:
+        from_secret: master_port
+      BASE_PATH:
+        from_secret: master_base_path
+      JWT_SECRET:
+        from_secret: master_jwt_secret
+      S3_ENDPOINT:
+        from_secret: s3_endpoint
+      S3_BUCKET:
+        from_secret: s3_bucket
+      S3_API_KEY:
+        from_secret: s3_api_key
+      S3_API_SECRET:
+        from_secret: s3_api_secret
+      MYSQL_HOST:
+        from_secret: master_mysql_host
+      MYSQL_PORT:
+        from_secret: master_mysql_port
+      MYSQL_USER:
+        from_secret: master_mysql_user
+      MYSQL_PASSWORD:
+        from_secret: master_mysql_password
+      MYSQL_DATABASE:
+        from_secret: master_mysql_database
+      SMTP_HOST:
+        from_secret: smtp_host
+      SMTP_PORT:
+        from_secret: smtp_port
+      SMTP_SECURE:
+        from_secret: smtp_secure
+      SMTP_USERNAME:
+        from_secret: smtp_username
+      SMTP_FROM:
+        from_secret: smtp_from
+      SMTP_PASSWORD:
+        from_secret: smtp_password
+    when:
+      event:
+        - push
+      branch:
+        - master
+
+  - name: "Deploy for master"
+    image: node:11.10.0
+    commands:
+      - mv bin /home/web/api.bytesonus.co/v1.new
+      - chown $SSH_USERID:$SSH_USERID -R /home/web/api.bytesonus.co/v1.new
+    environment:
+      SSH_USERID:
+        from_secret: ssh_userid
+      SSH_KEY:
+        from_secret: ssh_key
+    volumes:
+      - name: web
+        path: /home/web
+    when:
+      event:
+        - push
+      branch:
+        - master
+
+  - name: "Reload for master"
+    image: appleboy/drone-ssh
+    settings:
+      host:
+        from_secret: webserver_ip
+      port: 22
+      username:
+        from_secret: ssh_username
+      key:
+        from_secret: ssh_key
+      script:
+        - "[ -s ~/.nvm/nvm.sh ] && source ~/.nvm/nvm.sh"
+        - nvm use default
+        - cd /home/web/api.bytesonus.co
+        - mv v1 v1.old
+        - mv v1.new v1
+        - cd v1
+        - pm2 startOrReload process.config.json --only "api.bytesonus.co/v1" --update-env
+        - cd ..
+        - rm -rf v1.old
+    when:
+      event:
+        - push
+      branch:
+        - master
+
+  - name: "Telegram notification"
+    image: appleboy/drone-telegram
+    settings:
+      token:
+        from_secret: telegram_token
+      to:
+        from_secret: telegram_group_id
+    when:
+      event:
+        - push
+      branch:
+        - master
+        - staging
+      status:
+        - success
+        - failure
+
+
+volumes:
+  - name: web
+    host:
+      path: /home/web
+
+trigger:
+  event:
+    - push
+  branch:
+    - master
+    - staging
