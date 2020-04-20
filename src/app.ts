@@ -1,4 +1,3 @@
-import * as createError from 'http-errors';
 import * as express from 'express';
 import { join } from 'path';
 import { EOL } from 'os';
@@ -10,9 +9,7 @@ import * as compression from 'compression';
 import * as helmet from 'helmet';
 import { messages, errors } from './config/errors';
 import { basePath } from './config/config';
-import { JsonError } from './models/json-error';
 
-import './models/scheduler';
 import apiRouter from './routes/api.bytesonus.com';
 import assetsRouter from './routes/assets.bytesonus.com';
 

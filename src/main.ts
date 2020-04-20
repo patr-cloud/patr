@@ -5,10 +5,9 @@
  */
 
 import app from './app';
-import './models/interfaces/request';
 import { createServer, Server } from 'http';
 import { port as listenPort } from './config/config';
-import { initialize } from './initialiser';
+import { initialise } from './initialiser';
 
 /**
  * Get port from environment and store in Express.
@@ -23,7 +22,7 @@ app.set('port', port);
 
 let server: Server = null;
 
-initialize().then(() => {
+initialise().then(() => {
 	server = createServer(app);
 
 	/**

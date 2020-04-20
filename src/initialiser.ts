@@ -1,217 +1,148 @@
-import { pool, getDatabaseMajorVersion, getDatabaseMinorVersion, getDatabaseIncrementVersion } from './models/database';
-import { setDatabaseVersion } from './models/database';
-import { mysql } from './config/config';
+import { pool } from './models/database';
 
-export const DatabaseVersion = {
-	major: 1,
-	minor: 0,
-	increment: 2
-};
-
-export async function initialize() {
-	console.log('Initialising database');
-	const rows = await pool.query('SHOW TABLES;');
-
-	// If no tables exist in the database, initialise fresh
-	if (rows.length === 0) {
-		console.log('No tables exist. Creating fresh');
-		// Create all tables
-		await initialiseMeta();
-		await initializeFiles();
-		await initializeUserAccounts();
-		await initializeGroups();
-
-		// Set the database schema version
-		await setDatabaseVersion(DatabaseVersion.major, DatabaseVersion.minor, DatabaseVersion.increment);
-		console.log('Database created fresh');
-		return;
-	}
-
-	console.log('Tables already exist. Performing a migration');
-	// If it already exists, perform a migration with the known version
-	const majorVersion = await getDatabaseMajorVersion();
-	const minorVersion = await getDatabaseMinorVersion();
-	const incrementVersion = await getDatabaseIncrementVersion();
-
-	if (majorVersion === DatabaseVersion.major && minorVersion === DatabaseVersion.minor && incrementVersion === DatabaseVersion.increment) {
-		console.log('Database already in latest version. Migration not required.');
-	} else {
-		console.log(`Migrating from ${majorVersion}.${minorVersion}.${incrementVersion}`);
-		await migrateDatabase(majorVersion, minorVersion, incrementVersion);
-	}
+export async function initialise() {
+    console.log('Initialising database');
+    const rows = await pool.query('SHOW TABLES;');
+    if (rows.length === 0) {
+        console.log('No tables exist. Creating fresh');
+        await createUsers();
+        await createResources();
+        await createGroups();
+        await createPermissions();
+        await createRoles();
+        await createRolePermissions();
+        await createResourceUsers();
+        await createResourceGroups();
+        console.log("All tables created");
+    }
 }
 
-// tslint:disable: no-switch-case-fall-through
-async function migrateDatabase(majorVersion: number, minorVersion: number, increment: number) {
-	// Intentional fall through
-	switch (`${majorVersion}.${minorVersion}.${increment}`) {
-		case '1.0.0':
-			break;
-	}
-	await setDatabaseVersion(DatabaseVersion.major, DatabaseVersion.minor, DatabaseVersion.increment);
-}
-// tslint:enable: no-switch-case-fall-through
 
-async function initialiseMeta() {
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS meta_data (
-			metaId VARCHAR(100) PRIMARY KEY,
-			value TEXT
-		);
-		`
-	);
+async function createUsers() {
+    console.log('Creating users table')
+    await pool.query(
+        `
+        CREATE TABLE users(
+            userId VARCHAR(36) PRIMARY KEY,
+            username VARCHAR(80) UNIQUE NOT NULL,
+            password VARCHAR(64) NOT NULL
+          );
+        `
+    );
 }
 
-async function initializeFiles() {
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS files (
-			fileId VARCHAR(36) PRIMARY KEY,
-			contentType VARCHAR(100),
-			fileName VARCHAR(150),
-			created BIGINT,
-			hash VARCHAR(128),
-			size BIGINT
-		);
-		`
-	);
-
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS access_groups (
-			groupId VARCHAR(100) PRIMARY KEY
-		);
-		`
-	);
-
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS file_acl_groups (
-			fileId VARCHAR(36),
-			groupId VARCHAR(100),
-			permission VARCHAR(20),
-			PRIMARY KEY(fileId, groupId),
-			FOREIGN KEY(fileId) REFERENCES files(fileId),
-			FOREIGN KEY(groupId) REFERENCES access_groups(groupId)
-		);
-		`
-	);
+async function createGroups() {
+    console.log('Creating groups table');
+    await pool.query(
+        `
+        CREATE TABLE groups(
+            name VARCHAR(80) UNIQUE NOT NULL,
+            groupId VARCHAR(36) PRIMARY KEY,
+            FOREIGN KEY(groupId) REFERENCES resources(resourceId) ON DELETE CASCADE
+          );
+        `
+    );
 }
 
-async function initializeUserAccounts() {
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS users (
-			userId VARCHAR(36) PRIMARY KEY,
-			username VARCHAR(80) UNIQUE NOT NULL,
-			email VARCHAR(150) UNIQUE NOT NULL,
-			password VARCHAR(64),
-			phone INT(10),
-			dob BIGINT,
-			bio VARCHAR(150),
-			firstName VARCHAR(50),
-			lastName VARCHAR(50),
-			country VARCHAR(50),
-			streetAddress1 VARCHAR(150),
-			streetAddress2 VARCHAR(150),
-			state VARCHAR(50),
-			city VARCHAR(50),
-			pincode INT(10),
-			created BIGINT
-		);
-		`
-	);
+// async function createUserGroups() {
+//     console.log("Creating user_groups table");
+//     await pool.query(
+//         `
+//         CREATE TABLE user_groups(
+//             userId VARCHAR(36) NOT NULL,
+//             GroupId VARCHAR(36) NOT NULL,
+//             PRIMARY KEY(userId, groupId),
+//             FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
+//             FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE
+//           );
+          
+//         `
+//     )
+// }
 
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS logins (
-			authToken VARCHAR(36) PRIMARY KEY,
-			authExp BIGINT,
-			userId VARCHAR(36),
-			lastLogin BIGINT,
-			lastActivity BIGINT,
-			FOREIGN KEY(userId) REFERENCES users(userId)
-		);
-		`
-	);
-
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS invites (
-			email VARCHAR(150) PRIMARY KEY,
-			username VARCHAR(80) UNIQUE NOT NULL,
-			password VARCHAR(64),
-			token VARCHAR(64),
-			tokenExpiry BIGINT
-		);
-		`
-	);
-
-	await pool.query(
-		`
-		CREATE TABLE IF NOT EXISTS password_reset_requests (
-			userId VARCHAR(36) PRIMARY KEY,
-			token VARCHAR(64) UNIQUE,
-			tokenExpiry BIGINT,
-			FOREIGN KEY(userId) REFERENCES users(userId)
-		);
-		`
-	);
+async function createResources() {
+    console.log("Creating resources table");
+    await pool.query(
+        `
+        CREATE TABLE resources(
+            name VARCHAR(80) NOT NULL,
+            type VARCHAR(80) NOT NULL,
+            resourceId VARCHAR(36) PRIMARY KEY,
+            UNIQUE KEY(name, type)
+          );
+          
+        `
+    )
 }
 
-async function initializeGroups() {
-	await pool.query(
-		`
-		CREATE TABLE groups (
-			groupId VARCHAR(100) PRIMARY KEY,
-			name VARCHAR(1024) UNIQUE NOT NULL,
-		);
-		`
-	);
+async function createPermissions() {
+    console.log("Creating permissions table");
+    await pool.query(
+        `
+        CREATE TABLE permissions(
+            name VARCHAR(80) NOT NULL,
+            permissionId VARCHAR(36) PRIMARY KEY
+          );
+        `
+    )
+}
 
-	await pool.query(
-		`
-		CREATE TABLE user_groups (
-			userId VARCHAR() NOT NULL,groupId VARCHAR() NOT NULL,
-			PRIMARY KEY(userId, groupId),
-			FOREIGN KEY(userId) REFERENCES users(userId),
-			FOREIGN KEY(groupId) REFERENCES groups(groupId)
-		);
-		`
-	);
+async function createRoles() {
+    console.log("Creating roles table");
+    await pool.query(
+        `
+        CREATE TABLE roles(
+            name VARCHAR(80) NOT NULL,
+            roleId VARCHAR(36) PRIMARY KEY,
+            groupId VARCHAR(36) NULL,
+            FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE
+        );
+        `
+    )
+}
 
-	await pool.query(
-		`
-		CREATE TABLE resources (
-			name VARCHAR() NOT NULL,
-			type VARCHAR() NOT NULL,
-			resourceID VARCHAR() PRIMARY KEY,
-			UNIQUE KEY(name, type)
-		);
-		`
-	);
+async function createRolePermissions() {
+    console.log("Creating role_permissions Table");
+    await pool.query(
+        `
+        CREATE TABLE role_permissions (
+            roleId VARCHAR(36) NOT NULL,
+            permissionId VARCHAR(36) NOT NULL,
+            PRIMARY KEY(roleId, permissionId),
+            FOREIGN KEY(roleId) REFERENCES roles(roleId) ON DELETE CASCADE,
+            FOREIGN KEY(permissionId) REFERENCES permissions(permissionId) ON DELETE CASCADE
+        );
+        `
+    )
+}
+async function createResourceGroups(){
+    console.log("Creating resource_groups table");
+    await pool.query(
+        `
+        CREATE TABLE resource_groups (
+            groupId VARCHAR(36) NOT NULL,
+            resourceId VARCHAR(36) NOT NULL,
+            roleId VARCHAR(36) NOT NULL,
+            PRIMARY KEY(groupId, resourceId, roleId),
+            FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE,
+            FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
+          );
+        `
+    )
+}
 
-	await pool.query(
-		`
-		CREATE TABLE permissions (
-			name VARCHAR() NOT NULL,
-			permissionID varchar() PRIMARY KEY,
-			resourceID varchar(),
-			FOREGIN KEY(resourceID) REFERENCES Resources(resourceID)
-		);
-		`
-	);
-
-	await pool.query(
-		`
-		CREATE TABLE group_permissions(
-			groupId VARCHAR() NOT NULL,
-			permissionId VARCHAR() NOT NULL,
-			PRIMARY KEY(groupId, permissionId)
-			FOREIGN KEY(groupId) REFERENCES groups(groupId),
-			FOREIGN KEY(permissionID) REFERENCES permissions(permissionId)
-		);
-		`
-	);
+async function createResourceUsers(){
+    console.log("Creating resource_users table");
+    await pool.query(
+        `
+        CREATE TABLE resource_users (
+            resourceId VARCHAR(36) NOT NULL,
+            userId VARCHAR(36) NOT NULL,
+            roleId VARCHAR(36) NOT NULL,
+            PRIMARY KEY(userId, resourceId, roleId),
+            FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
+            FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
+          );
+        `
+    )
 }

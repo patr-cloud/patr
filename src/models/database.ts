@@ -13,7 +13,3 @@ export let pool = {
 	}
 };
 
-export * from './database-modules/auth';
-export * from './database-modules/file';
-export * from './database-modules/user';
-export * from './database-modules/misc';
