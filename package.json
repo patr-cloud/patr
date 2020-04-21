@@ -24,6 +24,7 @@
 		"gulp-sass": "latest",
 		"gulp-typescript": "^5.0.1",
 		"gulp-uglify-es": "latest",
+		"jose": "^1.26.0",
 		"ts-node": "latest",
 		"tslint": "^6.1.1",
 		"tslint-config-prettier": "^1.18.0",

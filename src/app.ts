@@ -12,6 +12,7 @@ import { basePath } from './config/config';
 
 import apiRouter from './routes/api.bytesonus.com';
 import assetsRouter from './routes/assets.bytesonus.com';
+import authRouter from './routes/auth.bytesonus.com';
 
 const app = express();
 
@@ -59,11 +60,13 @@ app.use((_req, res, next) => {
 });
 
 app.use(basePath, (req, res, next) => {
-	if (req.hostname === 'api.bytesonus.co' || req.hostname === 'localhost') {
+	if (req.hostname === 'api.bytesonus.co') {
 		apiRouter(req, res, next);
 	} else if (req.hostname === 'assets.bytesonus.co') {
 		assetsRouter(req, res, next);
-	} else {
+	} else if (req.hostname === 'auth.bytesonus.co' || req.hostname === 'localhost') {
+        authRouter(req, res, next);
+    } else {
 		next();
 	}
 });
