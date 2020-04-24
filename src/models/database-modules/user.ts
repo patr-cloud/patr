@@ -1,31 +1,31 @@
 import { v4 } from 'uuid';
 
-import { pool } from '../database';
+import pool from '../database';
 import { User } from '../interfaces/user';
 
 export async function createUser(email:string, username: string, password: string): Promise<User> {
-    const userId = v4();
-    await pool.query(
-        `
+	const userId = v4();
+	await pool.query(
+		`
         INSERT INTO
             users (email, userId, username, password)
         VALUES
             (?, ?, ?, ?);
         `,
-        [email, userId, username, password]
-    );
+		[email, userId, username, password],
+	);
 
-    return {
-        email,
-        userId,
-        username,
-        password
-    };
+	return {
+		email,
+		userId,
+		username,
+		password,
+	};
 }
 
 export async function getUserByUsername(username: string): Promise<User> {
-    const users = await pool.query(
-        `
+	const users = await pool.query(
+		`
         SELECT
             *
         FROM
@@ -33,19 +33,18 @@ export async function getUserByUsername(username: string): Promise<User> {
         WHERE
             users.username = ?
         `,
-        [username]
-    );
+		[username],
+	);
 
-    if (users.length === 1) {
-        return users[0];
-    } else {
-        return null;
-    }
+	if (users.length === 1) {
+		return users[0];
+	}
+	return null;
 }
 
 export async function getUserByUserid(userId: string): Promise<User> {
-    const users = await pool.query(
-        `
+	const users = await pool.query(
+		`
         SELECT
             *
         FROM
@@ -53,12 +52,11 @@ export async function getUserByUserid(userId: string): Promise<User> {
         WHERE
             users.userId = ?
         `,
-        [userId]
-    );
+		[userId],
+	);
 
-    if (users.length === 1) {
-        return users[0];
-    } else {
-        return null;
-    }
+	if (users.length === 1) {
+		return users[0];
+	}
+	return null;
 }

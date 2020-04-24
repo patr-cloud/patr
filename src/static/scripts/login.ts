@@ -5,18 +5,18 @@ const form = <HTMLFormElement>document.getElementsByClassName('form-signin')[0];
 const loginFields = new FormFields(form);
 
 async function login() {
-    const result = (await axios.post('/oauth/login', loginFields.toObject())).data;
+	const result = (await axios.post('/oauth/login', loginFields.toObject())).data;
 
-    if (result.success) {
-        window.location = result.redirect;
-    } else {
-        alert(result.message);
-    }
+	if (result.success) {
+		window.location = result.redirect;
+	} else {
+		alert(result.message);
+	}
 }
 
 window.addEventListener('load', () => {
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        login();
-    })
+	form.addEventListener('submit', (e) => {
+		e.preventDefault();
+		login();
+	});
 });

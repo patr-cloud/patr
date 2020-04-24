@@ -1,5 +1,6 @@
-export class JsonError extends Error {
+export default class JsonError extends Error {
 	public error: string;
+
 	public statusCode: number;
 
 	constructor(status: number, error: string) {

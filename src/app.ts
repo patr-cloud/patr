@@ -21,9 +21,9 @@ const app = express();
 app.engine('html', nunjucks.render);
 app.set('view engine', 'html');
 nunjucks.configure(join(__dirname, 'views'), {
-    noCache: true,
-    autoescape: true,
-    express: app,
+	noCache: true,
+	autoescape: true,
+	express: app,
 });
 
 // @if NODE_ENV != 'production'
@@ -45,7 +45,8 @@ if (existsSync(logDirectory) === false) {
 	mkdirpSync(logDirectory);
 }
 
-app.use(logger(logger.compile(':date, :method :req[Host] :url :status :response-time ms - :res[content-length], :req[X-Forwarded-For]'), {
+app.use(logger(logger.compile(`:date, :method :req[Host]
+:url :status :response-time ms - :res[content-length], :req[X-Forwarded-For]`), {
 	stream: createStream(logFileNamer, {
 		size: '200M',
 		path: logDirectory,
@@ -77,8 +78,8 @@ app.use(basePath, (req, res, next) => {
 	} else if (req.hostname === 'assets.bytesonus.co') {
 		assetsRouter(req, res, next);
 	} else if (req.hostname === 'auth.bytesonus.co' || req.hostname === 'localhost') {
-        authRouter(req, res, next);
-    } else {
+		authRouter(req, res, next);
+	} else {
 		next();
 	}
 });
@@ -87,7 +88,7 @@ app.use(basePath, (req, res, next) => {
 app.use((_req, _res, next) => {
 	next({
 		status: 404,
-		statusMessage: errors.notFound
+		statusMessage: errors.notFound,
 	});
 });
 
@@ -98,14 +99,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 		res.status(err.statusCode).json({
 			success: false,
 			error: err.error,
-			message: messages[err.error]
+			message: messages[err.error],
 		});
 	} else {
 		res.status(err.status || 500);
 		res.json({
 			success: false,
 			error: err.statusMessage || errors.serverError,
-			message: messages[err.statusMessage || errors.serverError]
+			message: messages[err.statusMessage || errors.serverError],
 		});
 	}
 
@@ -138,9 +139,8 @@ function logFileNamer(time: Date, index: number) {
 
 	if (index) {
 		return `access - ${year}-${month + 1}-${day}, ${hour}:${minute}:${seconds}.${index}.log`;
-	} else {
-		return `access - ${year}-${month + 1}-${day}, ${hour}:${minute}:${seconds}.log`;
 	}
+	return `access - ${year}-${month + 1}-${day}, ${hour}:${minute}:${seconds}.log`;
 }
 
 export default app;

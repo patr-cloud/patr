@@ -6,96 +6,98 @@ import { redis } from '../../../config/config';
 const client = new Redis(redis);
 
 function grantKeyFor(id: string) {
-    return `oidc:grant:${id}`;
+	return `oidc:grant:${id}`;
 }
 
 function userCodeKeyFor(userCode: string) {
-    return `oidc:userCode:${userCode}`;
+	return `oidc:userCode:${userCode}`;
 }
 
 function uidKeyFor(uid: string) {
-    return `oidc:uid:${uid}`;
+	return `oidc:uid:${uid}`;
 }
 
 class RedisAdapter implements Adapter {
-    private name: string;
-    constructor(name: string) {
-        this.name = name;
-    }
+	private name: string;
 
-    async upsert(id: string, payload: AdapterPayload, expiresIn: number) {
-        const key = this.key(id);
+	constructor(name: string) {
+		this.name = name;
+	}
 
-        const multi = client.multi();
-        multi.call('JSON.SET', key, '.', JSON.stringify(payload));
+	async upsert(id: string, payload: AdapterPayload, expiresIn: number) {
+		const key = this.key(id);
 
-        if (expiresIn) {
-            multi.expire(key, expiresIn);
-        }
+		const multi = client.multi();
+		multi.call('JSON.SET', key, '.', JSON.stringify(payload));
 
-        if (payload.grantId) {
-            const grantKey = grantKeyFor(payload.grantId);
-            multi.rpush(grantKey, key);
-            // if you're seeing grant key lists growing out of acceptable proportions consider using LTRIM
-            // here to trim the list to an appropriate length
-            const ttl = await client.ttl(grantKey);
-            if (expiresIn > ttl) {
-                multi.expire(grantKey, expiresIn);
-            }
-        }
+		if (expiresIn) {
+			multi.expire(key, expiresIn);
+		}
 
-        if (payload.userCode) {
-            const userCodeKey = userCodeKeyFor(payload.userCode);
-            multi.set(userCodeKey, id);
-            multi.expire(userCodeKey, expiresIn);
-        }
+		if (payload.grantId) {
+			const grantKey = grantKeyFor(payload.grantId);
+			multi.rpush(grantKey, key);
+			// if you're seeing grant key lists growing out of acceptable proportions consider using LTRIM
+			// here to trim the list to an appropriate length
+			const ttl = await client.ttl(grantKey);
+			if (expiresIn > ttl) {
+				multi.expire(grantKey, expiresIn);
+			}
+		}
 
-        if (payload.uid) {
-            const uidKey = uidKeyFor(payload.uid);
-            multi.set(uidKey, id);
-            multi.expire(uidKey, expiresIn);
-        }
+		if (payload.userCode) {
+			const userCodeKey = userCodeKeyFor(payload.userCode);
+			multi.set(userCodeKey, id);
+			multi.expire(userCodeKey, expiresIn);
+		}
 
-        await multi.exec();
-    }
+		if (payload.uid) {
+			const uidKey = uidKeyFor(payload.uid);
+			multi.set(uidKey, id);
+			multi.expire(uidKey, expiresIn);
+		}
 
-    async find(id: string) {
-        const key = this.key(id);
-        const data = await client.call('JSON.GET', key);
-        if (!data) return undefined;
-        return JSON.parse(data);
-    }
+		await multi.exec();
+	}
 
-    async findByUid(uid: string) {
-        const id = await client.get(uidKeyFor(uid));
-        return this.find(id);
-    }
+	async find(id: string) {
+		const key = this.key(id);
+		const data = await client.call('JSON.GET', key);
+		if (!data) return undefined;
+		return JSON.parse(data);
+	}
 
-    async findByUserCode(userCode: string) {
-        const id = await client.get(userCodeKeyFor(userCode));
-        return this.find(id);
-    }
+	async findByUid(uid: string) {
+		const id = await client.get(uidKeyFor(uid));
+		return this.find(id);
+	}
 
-    async destroy(id: string) {
-        const key = this.key(id);
-        await client.del(key);
-    }
+	async findByUserCode(userCode: string) {
+		const id = await client.get(userCodeKeyFor(userCode));
+		return this.find(id);
+	}
 
-    async revokeByGrantId(grantId: string) {
-        const multi = client.multi();
-        const tokens = await client.lrange(grantKeyFor(grantId), 0, -1);
-        tokens.forEach((token: string) => multi.del(token));
-        multi.del(grantKeyFor(grantId));
-        await multi.exec();
-    }
+	async destroy(id: string) {
+		const key = this.key(id);
+		await client.del(key);
+	}
 
-    async consume(id: string) {
-        await client.call('JSON.SET', this.key(id), 'consumed', Math.floor(Date.now() / 1000));
-    }
+	// eslint-disable-next-line class-methods-use-this
+	async revokeByGrantId(grantId: string) {
+		const multi = client.multi();
+		const tokens = await client.lrange(grantKeyFor(grantId), 0, -1);
+		tokens.forEach((token: string) => multi.del(token));
+		multi.del(grantKeyFor(grantId));
+		await multi.exec();
+	}
 
-    key(id: string) {
-        return `oidc:${this.name}:${id}`;
-    }
+	async consume(id: string) {
+		await client.call('JSON.SET', this.key(id), 'consumed', Math.floor(Date.now() / 1000));
+	}
+
+	key(id: string) {
+		return `oidc:${this.name}:${id}`;
+	}
 }
 
 export default RedisAdapter;
