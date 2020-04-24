@@ -7,6 +7,8 @@ import * as cookieParser from 'cookie-parser';
 import * as logger from 'morgan';
 import * as compression from 'compression';
 import * as helmet from 'helmet';
+import * as nunjucks from 'nunjucks';
+
 import { messages, errors } from './config/errors';
 import { basePath } from './config/config';
 
@@ -15,6 +17,14 @@ import assetsRouter from './routes/assets.bytesonus.com';
 import authRouter from './routes/auth.bytesonus.com';
 
 const app = express();
+
+app.engine('html', nunjucks.render);
+app.set('view engine', 'html');
+nunjucks.configure(join(__dirname, 'views'), {
+    noCache: true,
+    autoescape: true,
+    express: app,
+});
 
 // @if NODE_ENV != 'production'
 app.locals.pretty = true;
@@ -58,6 +68,8 @@ app.use((_req, res, next) => {
 
 	next();
 });
+
+app.use('/static', express.static(join(__dirname, 'static')));
 
 app.use(basePath, (req, res, next) => {
 	if (req.hostname === 'api.bytesonus.co') {

@@ -3,30 +3,31 @@ import { v4 } from 'uuid';
 import { pool } from '../database';
 import { User } from '../interfaces/user';
 
-export async function createUser(username: string, password: string) {
+export async function createUser(email:string, username: string, password: string): Promise<User> {
     const userId = v4();
     await pool.query(
         `
         INSERT INTO
-            users (userId, username, password)
+            users (email, userId, username, password)
         VALUES
-            (?, ?, ?);
+            (?, ?, ?, ?);
         `,
-        [userId, username, password]
+        [email, userId, username, password]
     );
 
     return {
+        email,
         userId,
         username,
         password
     };
 }
 
-export async function getUserByUsername(username: string) {
+export async function getUserByUsername(username: string): Promise<User> {
     const users = await pool.query(
         `
         SELECT
-            userId, username, password
+            *
         FROM
             users
         WHERE
@@ -46,7 +47,7 @@ export async function getUserByUserid(userId: string): Promise<User> {
     const users = await pool.query(
         `
         SELECT
-            userId, username, password
+            *
         FROM
             users
         WHERE

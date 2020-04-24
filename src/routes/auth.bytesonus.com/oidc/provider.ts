@@ -1,4 +1,4 @@
-import { Configuration } from 'oidc-provider';
+import { Provider, Configuration } from 'oidc-provider';
 import { jwks, cookieKeys } from '../../../config/config';
 import RedisAdapter from './adapter';
 import Account from './account';
@@ -8,16 +8,25 @@ const config: Configuration = {
     adapter: RedisAdapter,
     clients: [{
         client_id: 'foo',
-        redirect_uris: ['https://example.com'],
-        response_types: ['id_token'],
-        grant_types: ['implicit'],
-        token_endpoint_auth_method: 'none',
+        client_secret: 'bar',
+        redirect_uris: ['http://localhost:3000/user/oauth2/bytesonus/callback'],
+        response_types: ['code'],
+        grant_types: ['authorization_code'],
     }],
     jwks,
     formats: {
         AccessToken: 'jwt',
     },
+    claims: {
+        openid: ['sub', 'email']
+    },
+    interactions: {
+        url(ctx, interactions) {
+            return `/oauth`
+        }
+    },
     features: {
+        devInteractions: { enabled: false },
         encryption: { enabled: true },
         introspection: { enabled: true },
         revocation: { enabled: true },
@@ -28,4 +37,7 @@ const config: Configuration = {
     }
 };
 
-export default config;
+const oidc = new Provider(`https://auth.vicara.co`, config);
+oidc.proxy = true;
+
+export default oidc;

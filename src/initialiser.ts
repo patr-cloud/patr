@@ -25,7 +25,8 @@ async function createUsers() {
         CREATE TABLE users(
             userId VARCHAR(36) PRIMARY KEY,
             username VARCHAR(80) UNIQUE NOT NULL,
-            password VARCHAR(64) NOT NULL
+            password VARCHAR(64) NOT NULL,
+            email VARCHAR(64) UNIQUE NOT NULL
           );
         `
     );

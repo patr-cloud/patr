@@ -1,19 +1,16 @@
 {
     "compilerOptions": {
+        "esModuleInterop": true,
         "removeComments": false,
         "noImplicitAny": true,
+        "downlevelIteration": true,
         "lib": [
             "es2018",
             "es5",
-		],
-		"typeRoots": [
-			"src/typings"
-		],
+            "dom"
+        ],
     },
     "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "src/static/scripts/**/*.ts",
+        "src/static/scripts/**/*.ts"
     ]
 }
