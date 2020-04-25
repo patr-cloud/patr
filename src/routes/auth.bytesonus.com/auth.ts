@@ -23,7 +23,7 @@ router.post('/login', sessionCheck, async (req, res, _next) => {
 		const result: InteractionResults = {
 			login: {
 				account: accountId,
-				remember: req.body.remember === true,
+				remember: true,
 			},
 			consent: { // Grant all scopes/claims as only trusted clients use auth.bytesonus.com
 				rejectedScopes: [],
@@ -58,7 +58,7 @@ router.post('/register', sessionCheck, async (req, res, _next) => {
 		// Redirect back to interaction
 		return res.json({
 			success: true,
-			redirect: '/',
+			redirect: '/oauth',
 		});
 	} catch (e) {
 		if (e.message.startsWith('ER_DUP_ENTRY')) {
@@ -75,21 +75,10 @@ router.post('/register', sessionCheck, async (req, res, _next) => {
 	}
 });
 
-router.post('/select_account', sessionCheck, async (req, res, _next) => {
-	const { session } = res.locals.interaction as Interaction;
-	if (!session) {
-		return oidc.interactionFinished(req, res,
-			{ select_account: {} },
-			{ mergeWithLastSubmission: false });
-	}
-
-	const user = await getUserByUsername(session.accountId as string);
-	return res.render('select_account', {
-		title: 'Continue',
-		email: user.email,
-		username: user.username,
-	});
-});
+router.post('/select_account', sessionCheck,
+	async (req, res, _next) => oidc.interactionFinished(req, res,
+		{ select_account: {} },
+		{ mergeWithLastSubmission: false }));
 
 
 router.get('/register', sessionCheck, async (_req, res, _next) => {
@@ -101,6 +90,22 @@ router.get('/register', sessionCheck, async (_req, res, _next) => {
 router.get('/login', sessionCheck, async (_req, res, _next) => {
 	res.render('pages/login', {
 		title: 'Login',
+	});
+});
+
+router.get('/select_account', sessionCheck, async (req, res, next) => {
+	const { session } = res.locals.interaction as Interaction;
+	if (!session) {
+		return oidc.interactionFinished(req, res,
+			{ select_account: {} },
+			{ mergeWithLastSubmission: false });
+	}
+
+	const user = await getUserByUsername(session.accountId as string);
+	return res.render('pages/select_account', {
+		title: 'Continue',
+		email: user.email,
+		username: user.username,
 	});
 });
 

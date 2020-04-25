@@ -1,10 +1,15 @@
-import { Provider, Configuration } from 'oidc-provider';
+import { Provider, Configuration, interactionPolicy } from 'oidc-provider';
 import { jwks, cookieKeys } from '../../../config/config';
 import RedisAdapter from './adapter';
 import Account from './account';
 
-// TODO: Add custom interactions and basic UI for login, register, select account,
-// forgot password, password reset, etc.
+
+const interactions = interactionPolicy.base();
+
+const selectAccount = new interactionPolicy.Prompt({
+	name: 'select_account',
+});
+
 const config: Configuration = {
 	adapter: RedisAdapter,
 	clients: [{
@@ -22,7 +27,8 @@ const config: Configuration = {
 		openid: ['sub', 'email'],
 	},
 	interactions: {
-		url(ctx, interactions) {
+		policy: interactions,
+		url(ctx, _interactions) {
 			return '/oauth';
 		},
 	},
@@ -40,5 +46,19 @@ const config: Configuration = {
 
 const oidc = new Provider('https://auth.vicara.co', config);
 oidc.proxy = true;
+
+selectAccount.checks.push(new interactionPolicy.Check('User session exists, select account', 'Select user account', async (ctx) => {
+	if (ctx.oidc.session.accountId()) {
+		// If there is a session, make sure we haven't already done a login prompt
+		if (ctx.oidc.result && (ctx.oidc.result.login || ctx.oidc.result.select_account)) {
+			return false;
+		}
+	} else {
+		return false;
+	}
+	return true;
+}));
+
+interactions.add(selectAccount, 0);
 
 export default oidc;

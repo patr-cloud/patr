@@ -1,0 +1,21 @@
+{% extends "../base.html" %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="/static/css/login.css">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+	<form action="/oauth/select_account" method="POST" class="form-signin">
+		<img class="mb-4" src="/static/images/logo.webp" alt="" width="72" height="72">
+		<h1 class="h3 mb-3 font-weight-normal">Select an account to continue</h1>
+		<label for="dontSwitch">{{username}} ({{email}})</label>
+		<button class="btn btn-lg btn-primary btn-block" type="submit">Continue</button>
+		<p>or <a href="/oauth/login">login as a different user</a></p>
+	</form>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{% endblock %}
