@@ -130,6 +130,37 @@ async function createResourceUsers() {
 	);
 }
 
+// TODO: Primary key constraints for this
+async function createDeployments() {
+	console.log('Creating deployments table');
+	await pool.query(
+		`
+        CREATE TABLE deployments (
+			repository VARCHAR(36) NOT NULL,
+			tag VARCHAR(36) NOT NULL,
+			configuration JSON,
+			serverId VARCHAR(36) NOT NULL,
+			FOREIGN KEY(serverId) REFERENCES servers(serverId)
+        );
+        `,
+	);
+}
+
+// TODO: Server authentication details needed by deployer would go here (docker tlsverify certs).
+// Also details like the server region (in the future) would go here
+async function createServers() {
+	console.log('Create servers table');
+	await pool.query(
+		`
+		CREATE TABLE servers (
+			serverId VARCHAR(36) NOT NULL,
+			ip VARCHAR(15) UNIQUE NOT NULL,
+			PRIMARY KEY(serverId),
+		);
+		`,
+	);
+}
+
 export default async function initialise() {
 	console.log('Initialising database');
 	const rows = await pool.query('SHOW TABLES;');
@@ -143,6 +174,8 @@ export default async function initialise() {
 		await createRolePermissions();
 		await createResourceUsers();
 		await createResourceGroups();
+		await createServers();
+		await createDeployments();
 		console.log('All tables created');
 	}
 }
