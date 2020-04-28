@@ -2,5 +2,5 @@ export interface Deployment {
 	deploymentId: string;
 	repository: string;
 	tag: string;
-	configuration: object; // Replace with configuration interface
+	configuration: string | object; // Replace with configuration interface
 }

@@ -83,7 +83,7 @@ export async function getRepoDeployments(
 					host: d.ip,
 					port: d.port,
 				}],
-				options: d.configuration,
+				options: JSON.parse(d.configuration as string),
 			};
 		}
 	});
