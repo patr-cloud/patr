@@ -69,3 +69,6 @@ src/config/config.dev.ts
 .DS_Store
 
 *.bundle.js
+
+src/**/*.js
+docker/registry/data

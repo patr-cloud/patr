@@ -18,7 +18,7 @@ async function createGroups() {
 	console.log('Creating groups table');
 	await pool.query(
 		`
-		CREATE TABLE groups(
+		CREATE TABLE user_groups(
 			name VARCHAR(80) UNIQUE NOT NULL,
 			groupId VARCHAR(36) PRIMARY KEY,
 			FOREIGN KEY(groupId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -78,7 +78,7 @@ async function createRoles() {
 			name VARCHAR(80) NOT NULL,
 			roleId VARCHAR(36) PRIMARY KEY,
 			groupId VARCHAR(36) NULL,
-			FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE
+			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE
 		);
 		`,
 	);
@@ -107,7 +107,7 @@ async function createResourceGroups() {
 			resourceId VARCHAR(36) NOT NULL,
 			roleId VARCHAR(36) NOT NULL,
 			PRIMARY KEY(groupId, resourceId, roleId),
-			FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE,
+			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
 		  );
 		`,
@@ -136,12 +136,25 @@ async function createDeployments() {
 	await pool.query(
 		`
         CREATE TABLE deployments (
+			deploymentId VARCHAR(36) PRIMARY KEY,
 			repository VARCHAR(36) NOT NULL,
 			tag VARCHAR(36) NOT NULL,
 			configuration JSON,
-			serverId VARCHAR(36) NOT NULL,
-			FOREIGN KEY(serverId) REFERENCES servers(serverId)
         );
+        `,
+	);
+}
+
+async function createDeploymentServers() {
+	console.log('Creating deployment_servers table');
+	await pool.query(
+		`
+        CREATE TABLE deployment_servers(
+			deploymentId VARCHAR(36),
+			serverId VARCHAR(36), 
+			FOREIGN KEY(serverId) REFERENCES servers(serverId),
+			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId)
+		) 
         `,
 	);
 }
@@ -154,8 +167,9 @@ async function createServers() {
 		`
 		CREATE TABLE servers (
 			serverId VARCHAR(36) NOT NULL,
-			ip VARCHAR(15) UNIQUE NOT NULL,
-			PRIMARY KEY(serverId),
+            ip VARCHAR(15) UNIQUE NOT NULL,
+            port VARCHAR(4) NOT NULL,
+			PRIMARY KEY(serverId)
 		);
 		`,
 	);

@@ -1,4 +1,4 @@
-import * as Redis from 'ioredis';
+import Redis from 'ioredis';
 
 import { Adapter, AdapterPayload } from 'oidc-provider';
 import { redis } from '../../../config/config';

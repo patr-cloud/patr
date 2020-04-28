@@ -3,11 +3,14 @@
 /**
  * Module dependencies.
  */
-
 import { createServer, Server } from 'http';
 import app from './app';
 import { port as listenPort } from './config/config';
 import initialise from './initialiser';
+
+import JunoModule from './module';
+
+const packageJson = require('./package.json');
 
 /**
  * Normalize a port into a number, string, or false.
@@ -80,6 +83,11 @@ function onListening() {
 }
 
 initialise().then(() => {
+	console.log('Initializing Juno Module');
+	return JunoModule.initialize('bytesonus_api', packageJson.version, {
+		deployer: '1.0.0',
+	});
+}).then(() => {
 	server = createServer(app);
 
 	/**

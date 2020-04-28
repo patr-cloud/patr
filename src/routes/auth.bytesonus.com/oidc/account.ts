@@ -1,5 +1,5 @@
 import { FindAccount } from 'oidc-provider';
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 
 import { getUserByUserid, getUserByUsername, createUser } from '../../../models/database-modules/user';
 import { User } from '../../../models/interfaces/user';

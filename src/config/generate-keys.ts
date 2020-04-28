@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as jose from 'jose';
+import fs from 'fs';
+import path from 'path';
+import jose from 'jose';
 
 
 const keystore = new jose.JWKS.KeyStore();

@@ -1,0 +1,36 @@
+version: 0.1
+log:
+    fields:
+        service: registry
+storage:
+    cache:
+        blobdescriptor: inmemory
+    filesystem:
+        rootdirectory: /data
+http:
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+# TODO: Enable auth when routes ported from deployer to bytesonus
+# auth:
+#     token:
+#         realm: http://bytesonus_api/auth/token
+#         service: registry.bytesonus.co
+#         issuer: auth.bytesonus.co
+#         rootcertbundle: /certs/server.crt
+http:
+    tls:
+        certificate: /certs/server.crt
+        key: /certs/server.key
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
+notifications:
+    endpoints:
+      - name: deployerlistener
+        url: http://localhost:5001/registry/event
+        timeout: 1s
+        threshold: 5
+        backoff: 1s

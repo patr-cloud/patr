@@ -1,20 +1,20 @@
-import * as express from 'express';
+import express from 'express';
 import { join } from 'path';
 import { EOL } from 'os';
 import { existsSync, mkdirpSync, appendFile } from 'fs-extra-promise';
 import { createStream } from 'rotating-file-stream';
-import * as cookieParser from 'cookie-parser';
-import * as logger from 'morgan';
-import * as compression from 'compression';
-import * as helmet from 'helmet';
-import * as nunjucks from 'nunjucks';
+import cookieParser from 'cookie-parser';
+import logger from 'morgan';
+import compression from 'compression';
+import helmet from 'helmet';
+import nunjucks from 'nunjucks';
 
 import { messages, errors } from './config/errors';
-import { basePath } from './config/config';
 
 import apiRouter from './routes/api.bytesonus.com';
 import assetsRouter from './routes/assets.bytesonus.com';
 import authRouter from './routes/auth.bytesonus.com';
+import { basePath } from './config/config';
 
 const app = express();
 
@@ -73,11 +73,11 @@ app.use((_req, res, next) => {
 app.use('/static', express.static(join(__dirname, 'static')));
 
 app.use(basePath, (req, res, next) => {
-	if (req.hostname === 'api.bytesonus.co') {
+	if (req.hostname === 'api.bytesonus.co' || req.hostname === 'localhost') {
 		apiRouter(req, res, next);
 	} else if (req.hostname === 'assets.bytesonus.co') {
 		assetsRouter(req, res, next);
-	} else if (req.hostname === 'auth.bytesonus.co' || req.hostname === 'localhost') {
+	} else if (req.hostname === 'auth.bytesonus.co') {
 		authRouter(req, res, next);
 	} else {
 		next();

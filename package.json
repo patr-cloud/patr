@@ -4,13 +4,13 @@
 	"description": "Holder project for bytesonus-api",
 	"private": true,
 	"scripts": {
-		"build": "node build.js",
+		"build": "tsc",
 		"clean": "gulp clean",
 		"rebuild": "gulp clean && npm run build",
 		"postinstall": "cd src && npm install",
 		"start": "cd src && npm start",
 		"watch:client": "webpack --mode development",
-		"watch:server": "ts-node-dev --respawn src/main.ts",
+		"watch:server": "ts-node-dev --respawn --type-check src/main.ts",
 		"watch": "concurrently --kill-others -c \"bgRed.bold,bgBlue.bold\" \"npm:watch:client\" \"npm:watch:server\""
 	},
 	"license": "ISC",
