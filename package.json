@@ -5,7 +5,7 @@
 	"private": true,
 	"scripts": {
 		"build": "node build.js",
-		"build:project": "concurrently -c \"bgRed.bold,bgBlue.bold\" \"npm:build:client\" \"npm:build:server\"",
+		"build:project": "concurrently --kill-others-on-fail -c \"bgRed.bold,bgBlue.bold\" \"npm:build:client\" \"npm:build:server\"",
 		"build:server": "tsc",
 		"build:client": "webpack --mode production",
 		"clean": "gulp clean",
@@ -21,6 +21,7 @@
 		"@typescript-eslint/eslint-plugin": "^2.29.0",
 		"@typescript-eslint/parser": "^2.29.0",
 		"concurrently": "^5.1.0",
+		"copy-webpack-plugin": "^5.1.1",
 		"eslint": "^6.8.0",
 		"eslint-config-airbnb-typescript": "^7.2.1",
 		"eslint-plugin-import": "^2.20.2",
