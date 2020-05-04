@@ -5,7 +5,7 @@ var fs = require('fs');
 console.log('Building application...');
 var env = process.env;
 env.NODE_ENV = 'production';
-childProcess.execSync('gulp', {
+childProcess.execSync('npm run build:project', {
 	env: env,
 	stdio: [0, 1, 2]
 });

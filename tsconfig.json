@@ -11,6 +11,7 @@
 		"typeRoots": [
 			"src/typings"
 		],
+		"outDir": "bin"
     },
     "include": [
         "src/**/*.ts"
