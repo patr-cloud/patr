@@ -139,7 +139,7 @@ async function createDeployments() {
 			deploymentId VARCHAR(36) PRIMARY KEY,
 			repository VARCHAR(36) NOT NULL,
 			tag VARCHAR(36) NOT NULL,
-			configuration JSON,
+			configuration JSON
         );
         `,
 	);
@@ -190,6 +190,7 @@ export default async function initialise() {
 		await createResourceGroups();
 		await createServers();
 		await createDeployments();
+		await createDeploymentServers();
 		console.log('All tables created');
 	}
 }
