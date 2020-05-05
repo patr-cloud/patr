@@ -5,10 +5,10 @@ async function createUsers() {
 	await pool.query(
 		`
 		CREATE TABLE users(
-			userId VARCHAR(36) PRIMARY KEY,
+			userId BINARY(16) PRIMARY KEY,
 			username VARCHAR(80) UNIQUE NOT NULL,
-			password VARCHAR(64) NOT NULL,
-			email VARCHAR(64) UNIQUE NOT NULL
+			password BINARY(60) NOT NULL,
+			email VARCHAR(320) UNIQUE NOT NULL
 		  );
 		`,
 	);
@@ -20,7 +20,7 @@ async function createGroups() {
 		`
 		CREATE TABLE user_groups(
 			name VARCHAR(80) UNIQUE NOT NULL,
-			groupId VARCHAR(36) PRIMARY KEY,
+			groupId BINARY(16) PRIMARY KEY,
 			FOREIGN KEY(groupId) REFERENCES resources(resourceId) ON DELETE CASCADE
 		  );
 		`,
@@ -50,7 +50,7 @@ async function createResources() {
 		CREATE TABLE resources(
 			name VARCHAR(80) NOT NULL,
 			type VARCHAR(80) NOT NULL,
-			resourceId VARCHAR(36) PRIMARY KEY,
+			resourceId BINARY(16) PRIMARY KEY,
 			UNIQUE KEY(name, type)
 		  );
 		  
@@ -64,7 +64,7 @@ async function createPermissions() {
 		`
 		CREATE TABLE permissions(
 			name VARCHAR(80) NOT NULL,
-			permissionId VARCHAR(36) PRIMARY KEY
+			permissionId BINARY(16) PRIMARY KEY
 		  );
 		`,
 	);
@@ -76,8 +76,8 @@ async function createRoles() {
 		`
 		CREATE TABLE roles(
 			name VARCHAR(80) NOT NULL,
-			roleId VARCHAR(36) PRIMARY KEY,
-			groupId VARCHAR(36) NULL,
+			roleId BINARY(16) PRIMARY KEY,
+			groupId BINARY(16) NULL,
 			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE
 		);
 		`,
@@ -89,8 +89,8 @@ async function createRolePermissions() {
 	await pool.query(
 		`
 		CREATE TABLE role_permissions (
-			roleId VARCHAR(36) NOT NULL,
-			permissionId VARCHAR(36) NOT NULL,
+			roleId BINARY(16) NOT NULL,
+			permissionId BINARY(16) NOT NULL,
 			PRIMARY KEY(roleId, permissionId),
 			FOREIGN KEY(roleId) REFERENCES roles(roleId) ON DELETE CASCADE,
 			FOREIGN KEY(permissionId) REFERENCES permissions(permissionId) ON DELETE CASCADE
@@ -103,9 +103,9 @@ async function createResourceGroups() {
 	await pool.query(
 		`
 		CREATE TABLE resource_groups (
-			groupId VARCHAR(36) NOT NULL,
-			resourceId VARCHAR(36) NOT NULL,
-			roleId VARCHAR(36) NOT NULL,
+			groupId BINARY(16) NOT NULL,
+			resourceId BINARY(16) NOT NULL,
+			roleId BINARY(16) NOT NULL,
 			PRIMARY KEY(groupId, resourceId, roleId),
 			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -119,9 +119,9 @@ async function createResourceUsers() {
 	await pool.query(
 		`
 		CREATE TABLE resource_users (
-			resourceId VARCHAR(36) NOT NULL,
-			userId VARCHAR(36) NOT NULL,
-			roleId VARCHAR(36) NOT NULL,
+			resourceId BINARY(16) NOT NULL,
+			userId BINARY(16) NOT NULL,
+			roleId BINARY(16) NOT NULL,
 			PRIMARY KEY(userId, resourceId, roleId),
 			FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -136,8 +136,8 @@ async function createDeployments() {
 	await pool.query(
 		`
         CREATE TABLE deployments (
-			deploymentId VARCHAR(36) PRIMARY KEY,
-			repository VARCHAR(36) NOT NULL,
+			deploymentId BINARY(16) PRIMARY KEY,
+			repository VARCHAR(80) NOT NULL,
 			tag VARCHAR(36) NOT NULL,
 			configuration JSON
         );
@@ -150,10 +150,11 @@ async function createDeploymentServers() {
 	await pool.query(
 		`
         CREATE TABLE deployment_servers(
-			deploymentId VARCHAR(36),
-			serverId VARCHAR(36), 
+			deploymentId BINARY(16),
+			serverId BINARY(16), 
 			FOREIGN KEY(serverId) REFERENCES servers(serverId),
-			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId)
+			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId),
+			UNIQUE(deploymentId, serverId)
 		) 
         `,
 	);
@@ -162,14 +163,14 @@ async function createDeploymentServers() {
 // TODO: Server authentication details needed by deployer would go here (docker tlsverify certs).
 // Also details like the server region (in the future) would go here
 async function createServers() {
-	console.log('Create servers table');
+	console.log('Creating servers table');
 	await pool.query(
 		`
 		CREATE TABLE servers (
-			serverId VARCHAR(36) NOT NULL,
-            ip VARCHAR(15) UNIQUE NOT NULL,
-            port VARCHAR(4) NOT NULL,
-			PRIMARY KEY(serverId)
+			serverId BINARY(16) PRIMARY KEY,
+            ip INTEGER UNIQUE NOT NULL,
+			port SMALLINT UNSIGNED NOT NULL,
+			UNIQUE(IP, PORT)
 		);
 		`,
 	);
