@@ -19,8 +19,8 @@ async function createGroups() {
 	await pool.query(
 		`
 		CREATE TABLE user_groups(
-			name VARCHAR(80) UNIQUE NOT NULL,
 			groupId BINARY(16) PRIMARY KEY,
+			name VARCHAR(80) UNIQUE NOT NULL,
 			FOREIGN KEY(groupId) REFERENCES resources(resourceId) ON DELETE CASCADE
 		  );
 		`,
@@ -48,9 +48,9 @@ async function createResources() {
 	await pool.query(
 		`
 		CREATE TABLE resources(
+			resourceId BINARY(16) PRIMARY KEY,
 			name VARCHAR(80) NOT NULL,
 			type VARCHAR(80) NOT NULL,
-			resourceId BINARY(16) PRIMARY KEY,
 			UNIQUE KEY(name, type)
 		  );
 		  
@@ -63,8 +63,8 @@ async function createPermissions() {
 	await pool.query(
 		`
 		CREATE TABLE permissions(
-			name VARCHAR(80) NOT NULL,
-			permissionId BINARY(16) PRIMARY KEY
+			permissionId BINARY(16) PRIMARY KEY,
+			name VARCHAR(80) NOT NULL
 		  );
 		`,
 	);
@@ -75,8 +75,8 @@ async function createRoles() {
 	await pool.query(
 		`
 		CREATE TABLE roles(
-			name VARCHAR(80) NOT NULL,
 			roleId BINARY(16) PRIMARY KEY,
+			name VARCHAR(80) NOT NULL,
 			groupId BINARY(16) NULL,
 			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE
 		);
@@ -137,8 +137,8 @@ async function createDeployments() {
 		`
         CREATE TABLE deployments (
 			deploymentId BINARY(16) PRIMARY KEY,
-			repository VARCHAR(80) NOT NULL,
-			tag VARCHAR(36) NOT NULL,
+			repository VARCHAR(100) NOT NULL,
+			tag VARCHAR(100) NOT NULL,
 			configuration JSON
         );
         `,
@@ -168,7 +168,7 @@ async function createServers() {
 		`
 		CREATE TABLE servers (
 			serverId BINARY(16) PRIMARY KEY,
-            ip INTEGER UNIQUE NOT NULL,
+            ip CHAR(15) NOT NULL,
 			port SMALLINT UNSIGNED NOT NULL,
 			UNIQUE(IP, PORT)
 		);
