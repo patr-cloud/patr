@@ -37,4 +37,17 @@ router.post('/:id/servers', async (req, res, next) => {
 	});
 });
 
+// Configure a new domain for a deployment
+router.post('/domain', async (req, res, next) => {
+	if (!req.body.domain || (!req.body.redirect && !req.body.deploymentId)) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
+	// TODO:
+	// 1. Check if domain is a valid domain name, with DNS Records pointing to the deployment server
+	// 2. Setup nginx configurations and write to config.NGINX_CONFIGS_PATH
+});
+
 export default router;

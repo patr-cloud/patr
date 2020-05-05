@@ -160,6 +160,22 @@ async function createDeploymentServers() {
 	);
 }
 
+
+async function createDomains() {
+	console.log('Creating domains table');
+	await pool.query(
+		`
+		CREATE TABLE domains(
+			domain VARCHAR(255) PRIMARY KEY,
+			redirect VARCHAR(255),
+			deploymentId BINARY(16),
+			FOREIGN KEY(redirect) REFERENCES domains(domain),
+			FOREIGN KEY(deploymentId) REFERENCES deployment_servers(deploymentId)
+		)
+		`,
+	);
+}
+
 // TODO: Server authentication details needed by deployer would go here (docker tlsverify certs).
 // Also details like the server region (in the future) would go here
 async function createServers() {
@@ -192,6 +208,7 @@ export default async function initialise() {
 		await createServers();
 		await createDeployments();
 		await createDeploymentServers();
+		await createDomains();
 		console.log('All tables created');
 	}
 }
