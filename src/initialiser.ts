@@ -139,23 +139,11 @@ async function createDeployments() {
 			deploymentId BINARY(16) PRIMARY KEY,
 			repository VARCHAR(100) NOT NULL,
 			tag VARCHAR(100) NOT NULL,
-			configuration JSON
+			configuration JSON,
+			serverId BINARY(16),
+			UNIQUE(repository, tag, serverId),
+			FOREIGN KEY(serverId) REFERENCES servers(serverId)
         );
-        `,
-	);
-}
-
-async function createDeploymentServers() {
-	console.log('Creating deployment_servers table');
-	await pool.query(
-		`
-        CREATE TABLE deployment_servers(
-			deploymentId BINARY(16),
-			serverId BINARY(16), 
-			FOREIGN KEY(serverId) REFERENCES servers(serverId),
-			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId),
-			UNIQUE(deploymentId, serverId)
-		) 
         `,
 	);
 }
@@ -167,10 +155,9 @@ async function createDomains() {
 		`
 		CREATE TABLE domains(
 			domain VARCHAR(255) PRIMARY KEY,
-			redirect VARCHAR(255),
-			deploymentId BINARY(16),
-			FOREIGN KEY(redirect) REFERENCES domains(domain),
-			FOREIGN KEY(deploymentId) REFERENCES deployment_servers(deploymentId)
+			deploymentId BINARY(16) NOT NULL,
+			port SMALLINT UNSIGNED NOT NULL,
+			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId)
 		)
 		`,
 	);
@@ -207,7 +194,6 @@ export default async function initialise() {
 		await createResourceGroups();
 		await createServers();
 		await createDeployments();
-		await createDeploymentServers();
 		await createDomains();
 		console.log('All tables created');
 	}

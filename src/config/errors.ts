@@ -21,6 +21,9 @@ export const errors = {
 	profileNotFound: 'profileNotFound',
 	duplicateUser: 'duplicateUser',
 	invalidClient: 'invalidOauthClient',
+	dnsNotConfigured: 'dnsNotconfigured',
+	portNotExposed: 'portNotExposed',
+	sslGenerationFailed: 'sslGenerationFailed',
 };
 
 export const messages: { [index: string]: string } = {
@@ -46,4 +49,7 @@ export const messages: { [index: string]: string } = {
 	profileNotFound: 'The profile doesn\'t seem to exist',
 	duplicateUser: 'Sorry, the email address/username is taken',
 	invalidClient: 'The oauth client application could not be identified by the auth.bytesonus.com',
+	dnsNotConfigured: 'DNS Records haven\'t been configured correctly',
+	portNotExposed: 'Mapped port is not exposed by the container',
+	sslGenerationFailed: 'Failed to generate ssl certificates for the domain',
 };
