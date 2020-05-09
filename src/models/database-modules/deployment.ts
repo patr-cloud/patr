@@ -1,8 +1,10 @@
 import { v4 } from 'uuid';
+import { parse } from 'url';
 
 import pool from '../database';
-import { Deployment } from '../interfaces/deployment';
+import { Deployment, DeployJob, RegAuth } from '../interfaces/deployment';
 import { Server } from '../interfaces/server';
+import { dockerHubRegistry, privateRegistry } from '../../config/config';
 
 
 export async function createDeployment(
@@ -80,25 +82,24 @@ export async function getRepoDeployments(
 		[respository, tag],
 	);
 
-	const deployJobs: { [deploymentId: string]: any } = {};
-	deployments.forEach((d) => {
-		if (deployJobs[d.deploymentId]) {
-			deployJobs[d.deploymentId].servers.push(
-				{
-					host: d.ip,
-					port: d.port,
-				},
-			);
-		} else {
-			deployJobs[d.deploymentId] = {
-				repository: d.repository,
-				servers: [{
-					host: d.ip,
-					port: d.port,
-				}],
-				options: JSON.parse(d.configuration as any),
-			};
+	const deployJobs: DeployJob[] = deployments.map((deployment) => {
+		let auth: RegAuth | undefined;
+		const registryUrl = parse(deployment.repository).hostname;
+		if (registryUrl === dockerHubRegistry.serveraddress) {
+			auth = undefined; // Don't pass authentication for docker hub
+		} else if (registryUrl === privateRegistry.serveraddress) {
+			auth = privateRegistry;
 		}
+		return {
+			id: deployment.deploymentId,
+			image: deployment.repository,
+			server: {
+				host: deployment.ip,
+				port: deployment.port,
+			},
+			auth,
+			configuration: JSON.parse(deployment.configuration as any),
+		};
 	});
 
 	return deployJobs;

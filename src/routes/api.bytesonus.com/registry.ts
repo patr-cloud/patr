@@ -20,9 +20,7 @@ router.post('/event', async (req, res) => {
 			const { tag } = event.target;
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
-			Object.values(deployments).forEach((deployment: any) => {
-				module.callFunction('deployer.deploy', deployment);
-			});
+			module.callFunction('deployer.deploy', deployments);
 		}
 	});
 

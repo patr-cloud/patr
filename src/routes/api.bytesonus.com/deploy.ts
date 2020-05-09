@@ -8,6 +8,7 @@ import { createDeployment, getDeploymentsById } from '../../models/database-modu
 import { errors, messages } from '../../config/errors';
 import { generateNginxConfig, generateSSL } from './nginx';
 import { nginxFolder } from '../../config/config';
+import module from '../../module';
 
 const lookupPromise = promisify(lookup);
 
@@ -66,11 +67,6 @@ router.post('/domain', async (req, res, next) => {
 		});
 	}
 
-	const nginxConfig = generateNginxConfig(req.body.domain, deployments.ip, machinePort);
-
-	await writeFile(join(nginxFolder, req.body.domain), nginxConfig);
-	// TODO: Reload nginx on all servers
-
 	try {
 		await generateSSL(req.body.domain);
 	} catch {
@@ -80,6 +76,12 @@ router.post('/domain', async (req, res, next) => {
 			message: messages.sslGenerationFailed,
 		});
 	}
+
+	const nginxConfig = generateNginxConfig(req.body.domain, deployments.ip, machinePort);
+
+	await writeFile(join(nginxFolder, req.body.domain), nginxConfig);
+	module.triggerHook('reload');
+
 
 	return res.json({
 		success: true,
