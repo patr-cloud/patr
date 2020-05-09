@@ -6,9 +6,10 @@ import { join } from 'path';
 
 import { createDeployment, getDeploymentsById } from '../../models/database-modules/deployment';
 import { errors, messages } from '../../config/errors';
-import { generateNginxConfig, generateSSL } from './nginx';
+import { generateNginxConfig, generateSSL, deleteSSL } from './nginx';
 import { nginxFolder } from '../../config/config';
 import module from '../../module';
+import { deleteDomain, getDomain, createDomain } from '../../models/database-modules/domain';
 
 const lookupPromise = promisify(lookup);
 
@@ -37,6 +38,12 @@ router.post('/new', async (req, res, next) => {
 // Configure a new domain for a deployment
 router.post('/domain', async (req, res, next) => {
 	if (!req.body.domain || !req.body.deploymentId || !req.body.port) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
+	if (getDomain(req.body.domain)) {
 		return res.status(400).json({
 			success: false,
 		});
@@ -82,7 +89,29 @@ router.post('/domain', async (req, res, next) => {
 	await writeFile(join(nginxFolder, req.body.domain), nginxConfig);
 	module.triggerHook('reload');
 
+	await createDomain(req.body.deploymentId, req.body.domain, req.body.port);
+	return res.json({
+		success: true,
+	});
+});
 
+// Delete a configured domain
+router.delete('/domain', async (req, res, next) => {
+	if (!req.body.domain) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
+
+	if (!getDomain(req.body.domain)) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
+	await deleteSSL(req.body.domain);
+	await deleteDomain(req.body.domain);
 	return res.json({
 		success: true,
 	});

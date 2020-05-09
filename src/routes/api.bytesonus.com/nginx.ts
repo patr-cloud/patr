@@ -33,3 +33,7 @@ server {
 export async function generateSSL(domain: string) {
 	await execPromise(`certbot certonly --webroot -w /var/www/example -d ${domain}`);
 }
+
+export async function deleteSSL(domain: string) {
+	await execPromise(`certbot delete --cert-name ${domain}`);
+}
