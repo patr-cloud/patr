@@ -2,6 +2,7 @@ import Redis from 'ioredis';
 
 import { Adapter, AdapterPayload } from 'oidc-provider';
 import { redis } from '../../../config/config';
+import { getClient } from '../../../models/database-modules/client';
 
 const client = new Redis(redis);
 
@@ -21,6 +22,7 @@ class RedisAdapter implements Adapter {
 	private name: string;
 
 	constructor(name: string) {
+		console.log(`Adapter ${name} created`);
 		this.name = name;
 	}
 
@@ -61,6 +63,20 @@ class RedisAdapter implements Adapter {
 	}
 
 	async find(id: string) {
+		// Store Client on mysql instead of redis
+		if (this.name === 'Client') {
+			const openIdClient = await getClient(id);
+			if (openIdClient === null) {
+				return undefined;
+			}
+			return {
+				client_id: openIdClient.clientId,
+				client_secret: openIdClient.clientSecret,
+				redirect_uris: openIdClient.redirectUris,
+				responseTypes: openIdClient.responseTypes,
+				grant_types: openIdClient.grantTypes,
+			};
+		}
 		const key = this.key(id);
 		const data = await client.call('JSON.GET', key);
 		if (!data) return undefined;

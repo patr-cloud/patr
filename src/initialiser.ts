@@ -1,5 +1,20 @@
 import pool from './models/database';
 
+async function createClients() {
+	console.log('Creating clients table');
+	await pool.query(
+		`
+	CREATE TABLE clients(
+		clientId VARCHAR(32) PRIMARY KEY,
+		clientSecret VARCHAR(32) NOT NULL,
+		redirectUris JSON NOT NULL,
+		responseTypes JSON NOT NULL,
+		grantTypes JSON NOT NULL
+	);
+	`,
+	);
+}
+
 async function createUsers() {
 	console.log('Creating users table');
 	await pool.query(
@@ -185,6 +200,7 @@ export default async function initialise() {
 	if (rows.length === 0) {
 		console.log('No tables exist. Creating fresh');
 		await createUsers();
+		await createClients();
 		await createResources();
 		await createGroups();
 		await createPermissions();

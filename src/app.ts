@@ -73,11 +73,11 @@ app.use((_req, res, next) => {
 app.use('/static', express.static(join(__dirname, 'static')));
 
 app.use(basePath, (req, res, next) => {
-	if (req.hostname === 'api.bytesonus.co' || req.hostname === 'localhost') {
+	if (req.hostname === 'api.bytesonus.co') {
 		apiRouter(req, res, next);
 	} else if (req.hostname === 'assets.bytesonus.co') {
 		assetsRouter(req, res, next);
-	} else if (req.hostname === 'auth.bytesonus.co') {
+	} else if (req.hostname === 'auth.bytesonus.co' || req.hostname === 'localhost') {
 		authRouter(req, res, next);
 	} else {
 		next();
