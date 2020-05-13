@@ -12,19 +12,23 @@ const selectAccount = new interactionPolicy.Prompt({
 
 const config: Configuration = {
 	adapter: RedisAdapter,
-	clients: [{
+	/*
+     * Clients are present in a MYSQL table instead
+    clients: [{
 		client_id: 'foo',
 		client_secret: 'bar',
 		redirect_uris: ['http://localhost:3000/user/oauth2/bytesonus/callback'],
 		response_types: ['code'],
 		grant_types: ['authorization_code'],
 	}],
+    */
 	jwks,
 	formats: {
 		AccessToken: 'jwt',
 	},
 	claims: {
 		openid: ['sub', 'email'],
+		bytesonus: ['userId', 'groups'],
 	},
 	interactions: {
 		policy: interactions,

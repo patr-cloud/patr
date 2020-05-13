@@ -23,12 +23,13 @@ router.post('/new', async (req, res, next) => {
 		});
 	}
 
-	await createDeployment(
-		req.body.repository,
-		req.body.tag,
-		req.body.configuration,
-		req.body.serverId,
-	);
+	await createDeployment({
+		deploymentId: '',
+		repository: req.body.repository,
+		tag: req.body.tag,
+		configuration: req.body.configuration,
+		serverId: req.body.serverId,
+	});
 
 	return res.json({
 		success: true,
@@ -89,7 +90,11 @@ router.post('/domain', async (req, res, next) => {
 	await writeFile(join(nginxFolder, req.body.domain), nginxConfig);
 	module.triggerHook('reload');
 
-	await createDomain(req.body.deploymentId, req.body.domain, req.body.port);
+	await createDomain({
+		deploymentId: req.body.deploymentId,
+		domain: req.body.domain,
+		port: req.body.port,
+	});
 	return res.json({
 		success: true,
 	});

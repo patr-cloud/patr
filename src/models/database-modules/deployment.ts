@@ -8,29 +8,25 @@ import { dockerHubRegistry, privateRegistry } from '../../config/config';
 
 
 export async function createDeployment(
-	repository: string,
-	tag: string,
-	configuration: object,
-	serverId: string,
+	deployment: Deployment,
 ): Promise<Deployment> {
-	const deploymentId = v4();
+	deployment.deploymentId = v4();
 	await pool.query(
 		`
 		INSERT INTO
 			deployments(deploymentId, repository, tag, configuration, serverId)
 		VALUES
-			(?, ?, ?, ?)
+			(UUID_TO_BIN(?), ?, ?, ?)
 		`,
-		[deploymentId, repository, tag, JSON.stringify(configuration), serverId],
+		[
+			deployment.deploymentId,
+			deployment.repository,
+			deployment.tag, JSON.stringify(deployment.configuration),
+			deployment.serverId,
+		],
 	);
 
-	return {
-		deploymentId,
-		repository,
-		tag,
-		configuration,
-		serverId,
-	};
+	return deployment;
 }
 
 export function getDeploymentsById(

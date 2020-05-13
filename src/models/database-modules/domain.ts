@@ -2,9 +2,7 @@ import pool from '../database';
 import { Domain } from '../interfaces/domain';
 
 export async function createDomain(
-	deploymentId: string,
-	domain: string,
-	port: number,
+	domain: Domain,
 ): Promise<Domain> {
 	await pool.query(
 		`
@@ -13,14 +11,10 @@ export async function createDomain(
 		VALUES
 			(?, ?, ?)
 		`,
-		[deploymentId, domain, port],
+		[domain.deploymentId, domain.domain, domain.port],
 	);
 
-	return {
-		deploymentId,
-		domain,
-		port,
-	};
+	return domain;
 }
 
 export async function deleteDomain(domain: string) {

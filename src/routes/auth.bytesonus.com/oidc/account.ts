@@ -4,6 +4,15 @@ import bcrypt from 'bcrypt';
 import { getUserByUserid, getUserByUsername, createUser } from '../../../models/database-modules/user';
 import { User } from '../../../models/interfaces/user';
 import { saltRounds } from '../../../config/config';
+import { getUserGroups } from '../../../models/database-modules/group';
+
+
+interface BytesonusClaims {
+	sub: string;
+	email: string;
+	userId?: string;
+	groups?: string[];
+}
 
 export default class Account {
 	static findAccount: FindAccount = async (ctx, id) => {
@@ -14,18 +23,25 @@ export default class Account {
 
 		return {
 			accountId: id,
-			async claims() {
-				return Account.claimFromUser(account);
+			async claims(use: string, scope: string) {
+				return Account.claimFromUser(account, scope);
 			},
 		};
 	};
 
-	static claimFromUser(user: User) {
+	static async claimFromUser(user: User, scope: string) {
+		const scopes = scope.split(' ');
 		// Claims to include in the User's OpenID Connect claims
-		return {
+		const claims: BytesonusClaims = {
 			sub: user.username,
 			email: user.email,
 		};
+		if (scopes.indexOf('bytesonus') > -1) {
+			const groups = (await getUserGroups(user.userId)).map((g) => g.groupId);
+			claims.userId = user.userId;
+			claims.groups = groups;
+		}
+		return claims;
 	}
 
 	static async authenticate(username: string, password: string) {
@@ -42,6 +58,11 @@ export default class Account {
 
 	static async register(username: string, email: string, password: string) {
 		const passwordHash = await bcrypt.hash(password, saltRounds);
-		return createUser(email, username, passwordHash);
+		return createUser({
+			email,
+			username,
+			password: passwordHash,
+			userId: '',
+		});
 	}
 }

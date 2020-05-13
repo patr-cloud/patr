@@ -22,7 +22,7 @@ async function createUsers() {
 		CREATE TABLE users(
 			userId BINARY(16) PRIMARY KEY,
 			username VARCHAR(80) UNIQUE NOT NULL,
-			password BINARY(60) NOT NULL,
+			password CHAR(60) NOT NULL,
 			email VARCHAR(320) UNIQUE NOT NULL
 		  );
 		`,
@@ -64,9 +64,8 @@ async function createResources() {
 		`
 		CREATE TABLE resources(
 			resourceId BINARY(16) PRIMARY KEY,
-			name VARCHAR(80) NOT NULL,
-			type VARCHAR(80) NOT NULL,
-			UNIQUE KEY(name, type)
+			name VARCHAR(80) UNIQUE NOT NULL,
+			type VARCHAR(80) NOT NULL
 		  );
 		  
 		`,

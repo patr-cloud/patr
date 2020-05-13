@@ -3,24 +3,19 @@ import { v4 } from 'uuid';
 import pool from '../database';
 import { User } from '../interfaces/user';
 
-export async function createUser(email:string, username: string, password: string): Promise<User> {
-	const userId = v4();
+export async function createUser(user: User): Promise<User> {
+	user.userId = v4();
 	await pool.query(
 		`
         INSERT INTO
-            users (email, userId, username, password)
+            users (userId, email, username, password)
         VALUES
-            (?, ?, ?, ?);
+            (UUID_TO_BIN(?), ?, ?, ?);
         `,
-		[email, userId, username, password],
+		[user.userId, user.email, user.username, user.password],
 	);
 
-	return {
-		email,
-		userId,
-		username,
-		password,
-	};
+	return user;
 }
 
 export async function getUserByUsername(username: string): Promise<User> {
