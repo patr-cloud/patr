@@ -38,8 +38,8 @@ export default class Account {
 		};
 		if (scopes.indexOf('bytesonus') > -1) {
 			const groups = (await getUserGroups(user.userId)).map((g) => g.groupId);
-			claims.userId = user.userId;
-			claims.groups = groups;
+			claims.userId = user.userId.toString('hex');
+			claims.groups = groups.map((b) => b.toString('hex'));
 		}
 		return claims;
 	}
@@ -62,7 +62,7 @@ export default class Account {
 			email,
 			username,
 			password: passwordHash,
-			userId: '',
+			userId: null,
 		});
 	}
 }

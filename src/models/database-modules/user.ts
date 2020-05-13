@@ -4,7 +4,9 @@ import pool from '../database';
 import { User } from '../interfaces/user';
 
 export async function createUser(user: User): Promise<User> {
-	user.userId = v4();
+	if (!user.userId) {
+		user.userId = v4({}, Buffer.alloc(16));
+	}
 	await pool.query(
 		`
         INSERT INTO
@@ -37,7 +39,7 @@ export async function getUserByUsername(username: string): Promise<User> {
 	return null;
 }
 
-export async function getUserByUserid(userId: string): Promise<User> {
+export async function getUserByUserid(userId: Buffer): Promise<User> {
 	const users = await pool.query(
 		`
         SELECT

@@ -15,7 +15,7 @@ router.post('/', async (req, res, next) => {
 	}
 	// TODO: Regex checks for name
 	const group = await createGroup({
-		groupId: '',
+		groupId: null,
 		name: req.body.name,
 	});
 	return res.json({
@@ -72,7 +72,11 @@ router.post('/:groupName/resources/:resourceName?/users', (req, res, next) => {
 	)(req, res, next);
 }, async (req, res, next) => {
 	const resource = await getResourceByName(res.locals.resourceName);
-	await grantUserResource(req.body.userId, resource.resourceId, req.body.roleId);
+	await grantUserResource(
+		Buffer.from(req.body.userId, 'hex'),
+		resource.resourceId,
+		req.body.roleId,
+	);
 	res.json({
 		success: true,
 	});

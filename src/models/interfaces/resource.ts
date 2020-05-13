@@ -1,5 +1,5 @@
 export interface Resource {
-	resourceId: string;
+	resourceId: Buffer;
 	name: string;
 	type: 'group' | 'deployer' | 'registry';
 }

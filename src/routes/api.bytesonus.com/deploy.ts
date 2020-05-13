@@ -24,7 +24,7 @@ router.post('/new', async (req, res, next) => {
 	}
 
 	await createDeployment({
-		deploymentId: '',
+		deploymentId: null,
 		repository: req.body.repository,
 		tag: req.body.tag,
 		configuration: req.body.configuration,

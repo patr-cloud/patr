@@ -3,7 +3,9 @@ import pool from '../database';
 import { Resource } from '../interfaces/resource';
 
 export async function createResource(resource: Resource) {
-	resource.resourceId = v4();
+	if (!resource.resourceId) {
+		resource.resourceId = v4({}, Buffer.alloc(16));
+	}
 	await pool.query(
 		`
 		INSERT INTO
@@ -46,7 +48,7 @@ export async function deleteResource(resourceId: string) {
 	);
 }
 
-export async function grantUserResource(userId: string, resourceId: string, roleId: number) {
+export async function grantUserResource(userId: Buffer, resourceId: Buffer, roleId: number) {
 	await pool.query(
 		`
 		INSERT INTO

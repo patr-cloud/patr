@@ -5,7 +5,9 @@ import { createResource } from './resource';
 
 
 export async function createGroup(group: Group) {
-	group.groupId = v4();
+	if (!group.groupId) {
+		group.groupId = v4({}, Buffer.alloc(16));
+	}
 	await createResource({
 		resourceId: group.groupId,
 		name: group.name,
@@ -25,9 +27,9 @@ export async function createGroup(group: Group) {
 }
 
 export async function getUserGroups(
-	userId: string,
-): Promise<({groupId: string, roleId: string})[]> {
-	return pool.query(
+	userId: Buffer,
+): Promise<({groupId: Buffer, roleId: Buffer})[]> {
+	const groups = await pool.query(
 		`
         SELECT
             user_groups.groupId,
@@ -37,9 +39,12 @@ export async function getUserGroups(
             resource_users,
 			user_groups
         WHERE
-            resource_users.userId = ?,
+            resource_users.userId = ? AND
 			user_groups.groupId = resource_users.resourceId
         `,
 		[userId],
 	);
+
+	console.log(groups);
+	return groups;
 }

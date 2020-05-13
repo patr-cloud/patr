@@ -1,5 +1,5 @@
 export interface Server {
-	serverId: string;
+	serverId: Buffer;
 	ip: string;
 	port: number;
 }

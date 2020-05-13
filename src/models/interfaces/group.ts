@@ -1,4 +1,4 @@
 export interface Group {
-	groupId: string;
+	groupId: Buffer;
 	name: string;
 }

@@ -1,7 +1,7 @@
 import { ContainerCreateOptions } from 'dockerode';
 
 export interface Deployment {
-	deploymentId: string;
+	deploymentId: Buffer;
 	repository: string;
 	tag: string;
 	configuration: ContainerCreateOptions; // Replace with configuration interface

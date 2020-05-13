@@ -10,7 +10,7 @@ import { dockerHubRegistry, privateRegistry } from '../../config/config';
 export async function createDeployment(
 	deployment: Deployment,
 ): Promise<Deployment> {
-	deployment.deploymentId = v4();
+	deployment.deploymentId = v4({}, Buffer.alloc(16));
 	await pool.query(
 		`
 		INSERT INTO
@@ -87,7 +87,7 @@ export async function getRepoDeployments(
 			auth = privateRegistry;
 		}
 		return {
-			id: deployment.deploymentId,
+			id: deployment.deploymentId.toString('hex'),
 			image: deployment.repository,
 			server: {
 				host: deployment.ip,

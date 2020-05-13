@@ -46,6 +46,7 @@ const config: Configuration = {
 	cookies: {
 		keys: cookieKeys,
 	},
+	conformIdTokenClaims: false,
 };
 
 const oidc = new Provider('https://auth.vicara.co', config);
