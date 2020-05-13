@@ -12,7 +12,7 @@ export async function createUser(user: User): Promise<User> {
         INSERT INTO
             users (userId, email, username, password)
         VALUES
-            (UUID_TO_BIN(?), ?, ?, ?);
+            (?, ?, ?, ?);
         `,
 		[user.userId, user.email, user.username, user.password],
 	);

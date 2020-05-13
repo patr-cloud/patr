@@ -10,13 +10,15 @@ import { dockerHubRegistry, privateRegistry } from '../../config/config';
 export async function createDeployment(
 	deployment: Deployment,
 ): Promise<Deployment> {
-	deployment.deploymentId = v4({}, Buffer.alloc(16));
+	if (!deployment.deploymentId) {
+		deployment.deploymentId = v4({}, Buffer.alloc(16));
+	}
 	await pool.query(
 		`
 		INSERT INTO
 			deployments(deploymentId, repository, tag, configuration, serverId)
 		VALUES
-			(UUID_TO_BIN(?), ?, ?, ?)
+			(?, ?, ?, ?)
 		`,
 		[
 			deployment.deploymentId,

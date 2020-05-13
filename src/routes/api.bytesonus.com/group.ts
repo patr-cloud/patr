@@ -3,11 +3,16 @@ import { createGroup } from '../../models/database-modules/group';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
 import { getResourceByName, grantUserResource } from '../../models/database-modules/resource';
+import { getUserByUsername } from '../../models/database-modules/user';
+import { errors } from '../../config/errors';
 
 const router = Router();
 
 
-router.post('/', async (req, res, next) => {
+/*
+ * Currently only site admins can create groups
+* */
+router.post('/', check(permissions.Group.create, 'site_admins'), async (req, res, next) => {
 	if (!req.body.name) {
 		return res.status(400).json({
 			success: false,
@@ -55,7 +60,7 @@ router.post('/:groupName/resources/:resourceName/groups', (req, res, next) => {
  * /myOrg/resources/users
 */
 router.post('/:groupName/resources/:resourceName?/users', (req, res, next) => {
-	if (!req.body.roleId || !req.body.userId) {
+	if (!req.body.roleId || !req.body.username) {
 		return res.status(400).json({
 			success: false,
 		});
@@ -72,12 +77,21 @@ router.post('/:groupName/resources/:resourceName?/users', (req, res, next) => {
 	)(req, res, next);
 }, async (req, res, next) => {
 	const resource = await getResourceByName(res.locals.resourceName);
+
+	const user = await getUserByUsername(req.body.username);
+
+	if (!user) {
+		return res.status(400).json({
+			success: false,
+			error: errors.serverError,
+		});
+	}
 	await grantUserResource(
-		Buffer.from(req.body.userId, 'hex'),
+		user.userId,
 		resource.resourceId,
 		req.body.roleId,
 	);
-	res.json({
+	return res.json({
 		success: true,
 	});
 });

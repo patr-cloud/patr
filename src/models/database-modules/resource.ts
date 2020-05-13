@@ -9,9 +9,9 @@ export async function createResource(resource: Resource) {
 	await pool.query(
 		`
 		INSERT INTO
-			resource(resourceId, name, type)
+			resources(resourceId, name, type)
 		VALUES
-			(UUID_TO_BIN(?), ?, ?);
+			(?, ?, ?);
 		`,
 		[resource.resourceId, resource.name, resource.type],
 	);

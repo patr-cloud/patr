@@ -9,6 +9,7 @@ enum Deployer {
 }
 
 enum Group {
+	create = 'Group.create',
 	addUser = 'Group.addUser',
 	deleteUser = 'Group.deleteUser',
 }

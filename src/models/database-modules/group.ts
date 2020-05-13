@@ -16,7 +16,7 @@ export async function createGroup(group: Group) {
 	await pool.query(
 		`
             INSERT INTO
-                user_groups (UUID_TO_BIN(groupId), name)
+                user_groups (groupId, name)
             VALUES
                 (?, ?);
             `,

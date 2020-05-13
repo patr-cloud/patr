@@ -102,6 +102,9 @@ router.get('/select_account', sessionCheck, async (req, res, next) => {
 	}
 
 	const user = await getUserByUsername(session.accountId as string);
+	if (!user) {
+		return res.redirect('/oauth/login');
+	}
 	return res.render('pages/select_account', {
 		title: 'Continue',
 		email: user.email,

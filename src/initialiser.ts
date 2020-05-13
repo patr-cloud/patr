@@ -1,4 +1,5 @@
 import pool from './models/database';
+import {createGroup} from './models/database-modules/group';
 
 async function createClients() {
 	console.log('Creating clients table');
@@ -119,7 +120,7 @@ async function createResourceGroups() {
 		CREATE TABLE resource_groups (
 			groupId BINARY(16) NOT NULL,
 			resourceId BINARY(16) NOT NULL,
-			roleId BINARY(16) NOT NULL,
+			roleId NUMBER NOT NULL,
 			PRIMARY KEY(groupId, resourceId, roleId),
 			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -135,7 +136,7 @@ async function createResourceUsers() {
 		CREATE TABLE resource_users (
 			resourceId BINARY(16) NOT NULL,
 			userId BINARY(16) NOT NULL,
-			roleId BINARY(16) NOT NULL,
+			roleId NUMBER NOT NULL,
 			PRIMARY KEY(userId, resourceId, roleId),
 			FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -193,6 +194,14 @@ async function createServers() {
 	);
 }
 
+
+async function initialiseAdminGroup() {
+	await createGroup({
+		groupId: Buffer.from('0'.repeat(32), 'hex'),
+		name: 'site-admins',
+	});
+}
+
 export default async function initialise() {
 	console.log('Initialising database');
 	const rows = await pool.query('SHOW TABLES;');
@@ -210,6 +219,8 @@ export default async function initialise() {
 		await createServers();
 		await createDeployments();
 		await createDomains();
+
+		await initialiseAdminGroup();
 		console.log('All tables created');
 	}
 }

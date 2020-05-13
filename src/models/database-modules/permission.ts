@@ -9,33 +9,37 @@ import { Permission } from '../interfaces/permission';
  * of the resources with name resourceNames and type resourceType
 * */
 export default async function checkIfUserHasPermission(
-	userId: string,
-	userGroups: string[],
+	userId: Buffer,
+	userGroups: Buffer[],
 	resourceNames: string[],
 	permission: Permission,
 ) {
+	if (resourceNames.length === 0) {
+		throw Error('No resourceNames provided to check middleware');
+	}
 	// First check if the permission is granted through one of the
 	// user's groups
-	const groupsGrants = await pool.query(
-		`
+
+	if (userGroups.length > 0) {
+		const groupsGrants = await pool.query(
+			`
 			SELECT
 				resource_groups.roleId
 			FROM
 				resources,
 				resource_groups
 			WHERE
-				resources.name IN ? AND
+				resources.name IN (?) AND
 				resources.resourceId = resource_groups.resourceId AND
-				resource_groups.groupId IN ?
-
+				resource_groups.groupId IN (?)
 		`,
-		[resourceNames, userGroups],
-	);
-
-	// eslint-disable-next-line no-restricted-syntax
-	for (const grant of groupsGrants) {
-		if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
-			return true;
+			[resourceNames, userGroups],
+		);
+		// eslint-disable-next-line no-restricted-syntax
+		for (const grant of groupsGrants) {
+			if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
+				return true;
+			}
 		}
 	}
 
@@ -49,9 +53,9 @@ export default async function checkIfUserHasPermission(
 				resources,
 				resource_users
 			WHERE
-				resources.name IN ? AND
+				resources.name IN (?) AND
 				resources.resourceId = resource_users.resourceId AND
-				resources_users.userId = ?
+				resource_users.userId = ?
 		`,
 		[resourceNames, userId],
 	);
