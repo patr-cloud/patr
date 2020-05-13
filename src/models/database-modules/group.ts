@@ -45,6 +45,5 @@ export async function getUserGroups(
 		[userId],
 	);
 
-	console.log(groups);
 	return groups;
 }
