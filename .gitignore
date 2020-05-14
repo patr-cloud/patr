@@ -60,13 +60,17 @@ jspm_packages/
 
 bin
 
-# local config
-src/config/config.dev.ts
-
 # macOS .DS_Store files
 .DS_Store
 
 *.bundle.js
 
 src/**/*.js
+
 docker/registry/data
+docker/registry/certs
+scripts/certs
+
+src/config
+!src/config/config.ts
+!src/config/config.prod.ts

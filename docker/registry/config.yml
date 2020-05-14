@@ -12,12 +12,12 @@ http:
   headers:
     X-Content-Type-Options: [nosniff]
 # TODO: Enable auth when routes ported from deployer to bytesonus
-# auth:
-#     token:
-#         realm: http://bytesonus_api/auth/token
-#         service: registry.bytesonus.co
-#         issuer: auth.bytesonus.co
-#         rootcertbundle: /certs/server.crt
+auth:
+  token:
+    realm: http://api.bytesonus.com:5001/registry/token
+    service: registry.bytesonus.com:5001
+    issuer: api.bytesonus.com:5001
+    rootcertbundle: /certs/server.crt
 #
 # TLS will be handled through reverse proxy
 #http:
@@ -32,7 +32,7 @@ health:
 notifications:
     endpoints:
       - name: deployerlistener
-        url: http://localhost:5001/registry/event
+        url: http://api.bytesonus.com:5001/registry/event
         timeout: 1s
         threshold: 5
         backoff: 1s

@@ -12,5 +12,5 @@ Promise.all([
 	keystore.generate('EC', 'P-256', { use: 'enc' }),
 	keystore.generate('OKP', 'Ed25519', { use: 'sig' }),
 ]).then(() => {
-	fs.writeFileSync(path.resolve('src/jwks.json'), JSON.stringify(keystore.toJWKS(true), null, 2));
+	fs.writeFileSync(path.join(__dirname, 'jwks.json'), JSON.stringify(keystore.toJWKS(true), null, 2));
 });
