@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { webRootFolder } from '../../config/config';
 
 const execPromise = promisify(exec);
 
@@ -31,7 +32,7 @@ server {
 }
 
 export async function generateSSL(domain: string) {
-	await execPromise(`certbot certonly --webroot -w /var/www/example -d ${domain}`);
+	await execPromise(`certbot certonly --webroot -w ${webRootFolder} -d ${domain}`);
 }
 
 export async function deleteSSL(domain: string) {

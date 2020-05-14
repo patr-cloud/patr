@@ -35,11 +35,12 @@ router.post('/event', async (req, res) => {
  * only those permissions which were allowed.
  */
 router.get('/token', async (req, res) => {
-    if (!req.headers.authorization) {
-        return res.status(401).json({
-            success: false,
-        });
-    }
+	if (!req.headers.authorization) {
+		return res.status(401).json({
+			success: false,
+		});
+	}
+	return 1;
 });
 
 export default router;
