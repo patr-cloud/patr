@@ -27,4 +27,19 @@ router.post('/event', async (req, res) => {
 	res.json({ success: true });
 });
 
+
+/**
+ * Route to provide docker registry with
+ * tokens. Checks if user has access to perform
+ * the requested action on the resource, and grants
+ * only those permissions which were allowed.
+ */
+router.get('/token', async (req, res) => {
+    if (!req.headers.authorization) {
+        return res.status(401).json({
+            success: false,
+        });
+    }
+});
+
 export default router;
