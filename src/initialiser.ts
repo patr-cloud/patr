@@ -120,7 +120,7 @@ async function createResourceGroups() {
 		CREATE TABLE resource_groups (
 			groupId BINARY(16) NOT NULL,
 			resourceId BINARY(16) NOT NULL,
-			roleId NUMBER NOT NULL,
+			roleId INT NOT NULL,
 			PRIMARY KEY(groupId, resourceId, roleId),
 			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
@@ -136,7 +136,7 @@ async function createResourceUsers() {
 		CREATE TABLE resource_users (
 			resourceId BINARY(16) NOT NULL,
 			userId BINARY(16) NOT NULL,
-			roleId NUMBER NOT NULL,
+			roleId INT NOT NULL,
 			PRIMARY KEY(userId, resourceId, roleId),
 			FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
