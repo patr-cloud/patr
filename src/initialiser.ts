@@ -1,5 +1,5 @@
 import pool from './models/database';
-import {createGroup} from './models/database-modules/group';
+import { createGroup } from './models/database-modules/group';
 
 async function createClients() {
 	console.log('Creating clients table');

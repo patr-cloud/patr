@@ -59,8 +59,6 @@ export default function check(
 			return next();
 		}
 		const resourceNames = resourceName.split(':').map((_, i, resources) => resources.slice(0, i + 1).join('::'));
-		console.log(resourceNames);
-		console.log(userGroups);
 		if (await checkIfUserHasPermission(
 			userId,
 			userGroups,

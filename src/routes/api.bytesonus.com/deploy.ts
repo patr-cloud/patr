@@ -10,13 +10,17 @@ import { generateNginxConfig, generateSSL, deleteSSL } from './nginx';
 import { nginxFolder } from '../../config/config';
 import module from '../../module';
 import { deleteDomain, getDomain, createDomain } from '../../models/database-modules/domain';
+import check from './middleware';
+import { permissions } from '../../models/interfaces/permission';
 
 const lookupPromise = promisify(lookup);
 
 const router = Router();
 
-// TODO: Permission checks,only group owner can do this
-router.post('/new', async (req, res, next) => {
+router.post('/:groupName/deployment', async (req, res, next) => {
+	const resourceName = `${req.params.groupName}::deployer`;
+	return check(permissions.Deployer.create, resourceName)(req, res, next);
+}, async (req, res, next) => {
 	if (!req.body.repository || !req.body.tag || !req.body.configuration || !req.body.serverId) {
 		return res.status(400).json({
 			success: false,
@@ -37,13 +41,17 @@ router.post('/new', async (req, res, next) => {
 });
 
 // Configure a new domain for a deployment
-router.post('/domain', async (req, res, next) => {
-	if (!req.body.domain || !req.body.deploymentId || !req.body.port) {
+router.post('/::groupName/deployment/::deploymentId/domain', async (req, res, next) => {
+	const resourceName = `${req.params.groupName}::deployer`;
+	return check(permissions.Deployer.addDomain, resourceName)(req, res, next);
+}, async (req, res, next) => {
+	if (!req.body.domain || !req.params.deploymentId || !req.body.port) {
 		return res.status(400).json({
 			success: false,
 		});
 	}
 
+	// Check if domain already mapped
 	if (getDomain(req.body.domain)) {
 		return res.status(400).json({
 			success: false,
@@ -101,7 +109,10 @@ router.post('/domain', async (req, res, next) => {
 });
 
 // Delete a configured domain
-router.delete('/domain', async (req, res, next) => {
+router.delete('/::groupName/deployment/::deploymentId/domain', async (req, res, next) => {
+	const resourceName = `${req.params.groupName}::deployer`;
+	return check(permissions.Deployer.removeDomain, resourceName)(req, res, next);
+}, async (req, res, next) => {
 	if (!req.body.domain) {
 		return res.status(400).json({
 			success: false,

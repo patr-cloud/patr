@@ -61,7 +61,7 @@ export async function grantUserResource(userId: Buffer, resourceId: Buffer, role
 	);
 }
 
-export async function grantGroupResource(groupId: string, resourceId: string, roleId: number) {
+export async function grantGroupResource(groupId: Buffer, resourceId: Buffer, roleId: number) {
 	await pool.query(
 		`
 		INSERT INTO

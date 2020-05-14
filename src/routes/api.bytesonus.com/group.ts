@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { createGroup } from '../../models/database-modules/group';
+import { createGroup, getGroupByName } from '../../models/database-modules/group';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
-import { getResourceByName, grantUserResource } from '../../models/database-modules/resource';
+import {
+	getResourceByName, grantUserResource, createResource, grantGroupResource,
+} from '../../models/database-modules/resource';
 import { getUserByUsername } from '../../models/database-modules/user';
 import { errors } from '../../config/errors';
 
@@ -19,13 +21,31 @@ router.post('/', check(permissions.Group.create, 'site_admins'), async (req, res
 		});
 	}
 	// TODO: Regex checks for name
-	const group = await createGroup({
-		groupId: null,
-		name: req.body.name,
-	});
+
+	// TODO: Later, these resources would be
+	// provisioned by the service class
+	const data = await Promise.all([
+		createGroup({
+			groupId: null,
+			name: req.body.name,
+		}),
+		createResource({
+			resourceId: null,
+			name: `${req.body.name}::deployer`,
+			type: 'deployer',
+		}),
+		createResource({
+			resourceId: null,
+			name: `${req.body.name}::docker_registry`,
+			type: 'docker_registry',
+		}),
+	]);
 	return res.json({
 		success: true,
-		group,
+		group: {
+			groupId: data[0].groupId.toString('hex'),
+			name: req.body.name,
+		},
 	});
 });
 
@@ -42,8 +62,35 @@ router.delete('/:groupId', (req, res, next) => {
  * Eg: /myOrg/resources/deployer::myAPI/groups
 */
 router.post('/:groupName/resources/:resourceName/groups', (req, res, next) => {
-	// TODO: Add group to resource
-	// Same as next route mostly
+	if (!req.body.roleId || !req.body.group) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+	res.locals.resourceName = `${req.params.groupName}::${req.params.resourceName}`;
+
+	return check(
+		permissions.Resource.grantPriveleges,
+		res.locals.resourceName,
+	)(req, res, next);
+}, async (req, res, next) => {
+	const resource = await getResourceByName(res.locals.resourceName);
+
+	const group = await getGroupByName(req.body.group);
+	if (!group) {
+		return res.status(400).json({
+			success: false,
+			error: errors.serverError,
+		});
+	}
+	await grantGroupResource(
+		group.groupId,
+		resource.resourceId,
+		req.body.roleId,
+	);
+	return res.json({
+		success: true,
+	});
 });
 
 

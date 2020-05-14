@@ -18,10 +18,12 @@ http:
 #         service: registry.bytesonus.co
 #         issuer: auth.bytesonus.co
 #         rootcertbundle: /certs/server.crt
-http:
-    tls:
-        certificate: /certs/server.crt
-        key: /certs/server.key
+#
+# TLS will be handled through reverse proxy
+#http:
+#    tls:
+#        certificate: /certs/server.crt
+#        key: /certs/server.key
 health:
   storagedriver:
     enabled: true

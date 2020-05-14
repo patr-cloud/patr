@@ -6,6 +6,8 @@ enum DockerRegistry {
 enum Deployer {
 	create = 'Deployer.create',
 	delete ='Deployer.delete',
+	addDomain ='Deployer.addDomain',
+	removeDomain = 'Deployer.removeDomain',
 }
 
 enum Group {

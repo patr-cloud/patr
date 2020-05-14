@@ -26,6 +26,25 @@ export async function createGroup(group: Group) {
 	return group;
 }
 
+export async function getGroupByName(groupName: string): Promise<Group> {
+	const groups = await pool.query(
+		`
+		SELECT
+			*
+		FROM
+			user_groups
+		WHERE
+			name = ?
+		`,
+		[groupName],
+	);
+
+	if (groups.length === 1) {
+		return groups[0];
+	}
+	return null;
+}
+
 export async function getUserGroups(
 	userId: Buffer,
 ): Promise<({groupId: Buffer, roleId: Buffer})[]> {
