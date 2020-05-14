@@ -8,7 +8,7 @@ import { createDeployment, getDeploymentsById } from '../../models/database-modu
 import { errors, messages } from '../../config/errors';
 import { generateNginxConfig, generateSSL, deleteSSL } from './nginx';
 import { nginxFolder } from '../../config/config';
-import module from '../../module';
+import getJunoModule from '../../module';
 import { deleteDomain, getDomain, createDomain } from '../../models/database-modules/domain';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
@@ -96,6 +96,7 @@ router.post('/::groupName/deployment/::deploymentId/domain', async (req, res, ne
 	const nginxConfig = generateNginxConfig(req.body.domain, deployments.ip, machinePort);
 
 	await writeFile(join(nginxFolder, req.body.domain), nginxConfig);
+	const module = await getJunoModule();
 	module.triggerHook('reload');
 
 	await createDomain({

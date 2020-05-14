@@ -8,7 +8,7 @@ import app from './app';
 import { port as listenPort } from './config/config';
 import initialise from './initialiser';
 
-import JunoModule from './module';
+import getJunoModule from './module';
 
 const packageJson = require('./package.json');
 
@@ -82,12 +82,12 @@ function onListening() {
 	console.log(`Application listening on ${bind}`);
 }
 
-initialise().then(() => {
-	console.log('Initializing Juno Module');
-	return JunoModule.initialize('bytesonus_api', packageJson.version, {
+async function main() {
+	await initialise();
+	const module = await getJunoModule();
+	await module.initialize('bytesonus_api', packageJson.version, {
 		deployer: '1.0.0',
 	});
-}).then(() => {
 	server = createServer(app);
 
 	/**
@@ -97,4 +97,6 @@ initialise().then(() => {
 	server.listen(port);
 	server.on('error', onError);
 	server.on('listening', onListening);
-});
+}
+
+main();

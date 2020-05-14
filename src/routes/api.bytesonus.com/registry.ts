@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRepoDeployments } from '../../models/database-modules/deployment';
-import module from '../../module';
+import getJunoModule from '../../module';
 
 const router = express.Router();
 
@@ -20,6 +20,7 @@ router.post('/event', async (req, res) => {
 			const { tag } = event.target;
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
+			const module = await getJunoModule();
 			module.callFunction('deployer.deploy', deployments);
 		}
 	});
