@@ -2,6 +2,8 @@ import pool from '../database';
 import { checkIfRoleGrantsPermission } from './role';
 import { Permission } from '../interfaces/permission';
 
+const siteAdminsUUID = Buffer.from('0'.repeat(32), 'hex');
+
 /*
  * Takes userId, and userGroups (array of groupsIds which the user
  * is a part of)
@@ -29,6 +31,12 @@ export default async function checkIfUserHasPermission(
 	resourceName: string,
 	permissions: Permission[],
 ): Promise<boolean[]> {
+	if (userGroups.find((groupId) => groupId.equals(siteAdminsUUID))) {
+		// If the site admin group is present in the user's groups, then
+		// all permissions are granted
+		return Array(permissions.length).fill(true);
+	}
+
 	const resourceNames = resourceName.split(':').map((_, i, resources) => resources.slice(0, i + 1).join('::'));
 	const granted: boolean[] = Array(permissions.length).fill(false);
 

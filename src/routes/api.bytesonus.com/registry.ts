@@ -106,14 +106,13 @@ async function grantedClaims(
 }
 
 const router = Router();
-
 router.use(
 	json({
 		type: 'application/vnd.docker.distribution.events.v1+json',
 	}),
 );
 
-router.post('/event', async (req, res) => {
+router.get('/event', async (req, res) => {
 	req.body.events.map(async (event: any) => {
 		if (
 			event.action === 'push'
@@ -184,19 +183,19 @@ router.get('/token', async (req, res) => {
 	let scopes: string[];
 
 	// Scopes is not passed in the case of docker login
-	if (!req.query.scopes) {
+	if (!req.query.scope) {
 		scopes = [];
 	}
 
 	// If a single scope is passed, convert it to array
-	if (typeof req.query.scopes === 'string') {
-		scopes = [req.query.scopes];
+	if (typeof req.query.scope === 'string') {
+		scopes = [req.query.scope];
 	}
 
 	const userGroups = (await getUserGroups(user.userId)).map((g) => g.groupId);
 
 	const token = JWT.sign({
-		access: grantedClaims(user, userGroups, scopes),
+		access: await grantedClaims(user, userGroups, scopes),
 	},
 	jwtSigningKey,
 	{

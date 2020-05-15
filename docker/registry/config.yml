@@ -32,7 +32,7 @@ health:
 notifications:
     endpoints:
       - name: deployerlistener
-        url: http://api.bytesonus.com:5001/registry/event
-        timeout: 1s
+        url: http://api.bytesonus.com:5002
+        timeout: 2s
         threshold: 5
         backoff: 1s

@@ -5,7 +5,6 @@ import { Permission } from '../../models/interfaces/permission';
 import AccessToken from '../../models/interfaces/access-token';
 
 
-const siteAdminsUUID = Buffer.from('0'.repeat(32), 'hex');
 
 /* Middleware to authorize the jwt the user sends along, and check
  * if the user is allowed to perform the permission (or ALL of multiple permissions)
@@ -60,11 +59,6 @@ export default function check(
 		const userId = Buffer.from(accessToken.userId, 'hex');
 		const userGroups = accessToken.groups.map((g) => Buffer.from(g, 'hex'));
 
-		if (userGroups.find((groupId) => groupId.equals(siteAdminsUUID))) {
-			// If the site admin group is present in the user's groups, then
-			// all permissions are granted
-			return next();
-		}
 
 		const granted = await checkIfUserHasPermission(
 			userId,
