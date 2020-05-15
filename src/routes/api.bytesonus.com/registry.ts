@@ -190,6 +190,8 @@ router.get('/token', async (req, res) => {
 	// If a single scope is passed, convert it to array
 	if (typeof req.query.scope === 'string') {
 		scopes = [req.query.scope];
+	} else {
+		scopes = req.query.scope as string[];
 	}
 
 	const userGroups = (await getUserGroups(user.userId)).map((g) => g.groupId);

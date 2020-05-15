@@ -19,8 +19,8 @@ if(pkg.devDependencies)
 fs.writeFileSync('./bin/package.json', JSON.stringify(pkg, null, '\t'));
 
 console.log('Installing production dependencies...');
-childProcess.execSync('npm install --only=production', {
-	cwd: './bin',
+childProcess.execSync('cp -r ./src/node_modules ./bin/', {
+	cwd: '.',
 	env: env,
 	stdio: [0, 1, 2]
 });

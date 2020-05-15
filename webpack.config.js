@@ -39,6 +39,15 @@ module.exports = (env, argv) => ({
 				to: 'static',
 				ignore: ['*.ts']
 			},
+			{
+				from: 'src/views',
+				to: 'views'
+			},
+			{
+				from: 'src/config',
+				to: 'config',
+				ignore: ["*.ts"]
+			}
 		]),
 	],
 	module: {
