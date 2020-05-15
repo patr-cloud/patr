@@ -11,6 +11,11 @@ import getJunoModule from '../../module';
 import { errors, messages } from '../../config/errors';
 import { getUserByUsername } from '../../models/database-modules/user';
 import Account from '../auth.bytesonus.com/oidc/account';
+import { RegistryClaims } from '../../models/interfaces/registry';
+import { permissions } from '../../models/interfaces/permission';
+import { getUserGroups } from '../../models/database-modules/group';
+import checkIfUserHasPermission from '../../models/database-modules/permission';
+import { User } from '../../models/interfaces/user';
 
 
 /*
@@ -25,7 +30,7 @@ import Account from '../auth.bytesonus.com/oidc/account';
  *
  * Idk why docker can't just follow the jwk standard
 * */
-const generateKid = (publicKey: Buffer) => {
+function generateKid(publicKey: Buffer) {
 	const encoded = base32Encode(
 		createHash('sha256').update(publicKey).digest().slice(0, 30),
 		'RFC4648',
@@ -37,12 +42,68 @@ const generateKid = (publicKey: Buffer) => {
 	}
 
 	return chunks.join(':');
-};
+}
 
 const jwtSigningKey = JWK.asKey(registryPrivateKey, {
 	kid: generateKid(registryPublicKeyDER),
 	alg: 'RS256',
 });
+
+
+/*
+ * Checks is a user (belonging to userGroups) is permitted
+ * to perform the actions specified by the given docker
+ * registry scopes.
+ *
+ * Returns the claims that were granted, in the format specified
+ * in https://docs.docker.com/registry/spec/auth/jwt/
+ *
+* */
+async function grantedClaims(
+	user: User,
+	userGroups: Buffer[],
+	scopes: string[],
+): Promise<RegistryClaims> {
+	const access: RegistryClaims = await Promise.all(scopes.map(async (scope) => {
+		const [_type, repository, actions] = scope.split(':');
+		const [group, image] = repository.split('/');
+
+		if (!image) {
+			// User tried to push without a group name, access
+			// not granted
+			return {
+				type: 'repository' as const,
+				name: repository,
+				actions: [],
+			};
+		}
+
+		const actionsList = actions.split(',') as ('push'|'pull')[];
+		const permsRequested = actionsList.map((action) => {
+			if (action === 'push') {
+				return permissions.DockerRegistry.push;
+			}
+			if (action === 'pull') {
+				return permissions.DockerRegistry.pull;
+			}
+			throw Error(`Unkown action ${action} requested by registry!`);
+		});
+
+		const granted = await checkIfUserHasPermission(
+			user.userId,
+			userGroups,
+			`${group}::docker_registry`,
+			permsRequested,
+		);
+
+		return {
+			type: 'repository' as const,
+			name: repository,
+			actions: actionsList.filter((_action, i) => granted[i]),
+		};
+	}));
+	return access;
+}
 
 const router = Router();
 
@@ -132,8 +193,10 @@ router.get('/token', async (req, res) => {
 		scopes = [req.query.scopes];
 	}
 
+	const userGroups = (await getUserGroups(user.userId)).map((g) => g.groupId);
+
 	const token = JWT.sign({
-		access: [],
+		access: grantedClaims(user, userGroups, scopes),
 	},
 	jwtSigningKey,
 	{

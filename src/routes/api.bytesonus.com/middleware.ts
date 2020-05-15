@@ -8,7 +8,8 @@ import AccessToken from '../../models/interfaces/access-token';
 const siteAdminsUUID = Buffer.from('0'.repeat(32), 'hex');
 
 /* Middleware to authorize the jwt the user sends along, and check
- * if the user is allowed to perform the permission on resourceName
+ * if the user is allowed to perform the permission (or ALL of multiple permissions)
+ * on the resource with name resourceName
  *
  * Note that resourceName can use the :: seperator to perform permission
  * checks in a hierarchial fashion.
@@ -17,15 +18,21 @@ const siteAdminsUUID = Buffer.from('0'.repeat(32), 'hex');
  *
  * check(permissions.deployer.update, 'orgName::deployer::myAPI')
  *
- * will check if the create permission was granted on either the
+ * will check if the update permission was granted on either the
  * orgName resource, the orgName::deploter resource, or the
  * orgName::deployer::myAPI resource
  *
 * */
 export default function check(
-	permission: Permission,
+	permission: Permission | Permission[],
 	resourceName: string,
 ): RequestHandler {
+	let permissions: Permission[];
+	if (!Array.isArray(permission)) {
+		permissions = [permission];
+	} else {
+		permissions = permission;
+	}
 	return async (req, res, next) => {
 		if (!req.headers.authorization) {
 			return res.status(401).json({
@@ -58,13 +65,14 @@ export default function check(
 			// all permissions are granted
 			return next();
 		}
-		const resourceNames = resourceName.split(':').map((_, i, resources) => resources.slice(0, i + 1).join('::'));
-		if (await checkIfUserHasPermission(
+
+		const granted = await checkIfUserHasPermission(
 			userId,
 			userGroups,
-			resourceNames,
-			permission,
-		)) {
+			resourceName,
+			permissions,
+		);
+		if (granted.every((g) => g === true)) {
 			return next();
 		}
 		return res.status(401).json({

@@ -5,21 +5,35 @@ import { Permission } from '../interfaces/permission';
 /*
  * Takes userId, and userGroups (array of groupsIds which the user
  * is a part of)
- * Checks if the user can perform the permission 'permission' on any
- * of the resources with name resourceNames and type resourceType
+ * Checks if the user can perform all the permissions 'permissions' on the
+ * resource with name resourceName
+ *
+ * The function returns an array of booleans, representing which permissions
+ * were granted and which of them weren't
+ *
+ * Note that resourceName can use the :: seperator to perform permission
+ * checks in a hierarchial fashion.
+ *
+ * For example,
+ *
+ * check(..., 'orgName::registry::myAPI', [permissions.push, permissions.pull])
+ *
+ * will check if the push/pull is granted either on orgName, or orgName::registry
+ * or orgName::registry::myAPI. The array of booleans returned tells which of the
+ * perms were granted.
+ * for eg, if [false, true] is returned, then push wasn't granted, but pull was granted
 * */
 export default async function checkIfUserHasPermission(
 	userId: Buffer,
 	userGroups: Buffer[],
-	resourceNames: string[],
-	permission: Permission,
-) {
-	if (resourceNames.length === 0) {
-		throw Error('No resourceNames provided to check middleware');
-	}
+	resourceName: string,
+	permissions: Permission[],
+): Promise<boolean[]> {
+	const resourceNames = resourceName.split(':').map((_, i, resources) => resources.slice(0, i + 1).join('::'));
+	const granted: boolean[] = Array(permissions.length).fill(false);
+
 	// First check if the permission is granted through one of the
 	// user's groups
-
 	if (userGroups.length > 0) {
 		const groupsGrants = await pool.query(
 			`
@@ -35,11 +49,25 @@ export default async function checkIfUserHasPermission(
 		`,
 			[resourceNames, userGroups],
 		);
-		// eslint-disable-next-line no-restricted-syntax
-		for (const grant of groupsGrants) {
-			if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
-				return true;
+
+		let all = true;
+		permissions.map((permission, i) => {
+			// eslint-disable-next-line no-restricted-syntax
+			for (const grant of groupsGrants) {
+				if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
+					granted[i] = true;
+					return true;
+				}
 			}
+
+			all = false;
+			return false;
+		});
+
+		// If all permissions were granted, just return granted, don't need
+		// to make next query
+		if (all) {
+			return granted;
 		}
 	}
 
@@ -60,12 +88,16 @@ export default async function checkIfUserHasPermission(
 		[resourceNames, userId],
 	);
 
+	permissions.map((permission, i) => {
 	// eslint-disable-next-line no-restricted-syntax
-	for (const grant of userGrants) {
-		if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
-			return true;
+		for (const grant of userGrants) {
+			if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
+				granted[i] = true;
+				return true;
+			}
 		}
-	}
+		return false;
+	});
 
-	return false;
+	return granted;
 }
