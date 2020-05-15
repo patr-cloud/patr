@@ -31,8 +31,8 @@ health:
     threshold: 3
 notifications:
     endpoints:
-      - name: deployerlistener
-        url: http://api.bytesonus.com:5002
+      - name: bytesonus
+        url: http://localhost:5001/registry/token
         timeout: 2s
         threshold: 5
         backoff: 1s
