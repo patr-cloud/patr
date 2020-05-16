@@ -8,6 +8,7 @@ enum Deployer {
 	delete ='Deployer.delete',
 	addDomain ='Deployer.addDomain',
 	removeDomain = 'Deployer.removeDomain',
+	verifyDomain = 'Deployer.verifyDomain',
 }
 
 enum Group {

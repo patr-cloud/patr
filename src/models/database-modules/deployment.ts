@@ -5,6 +5,7 @@ import pool from '../database';
 import { Deployment, DeployJob, RegAuth } from '../interfaces/deployment';
 import { Server } from '../interfaces/server';
 import { dockerHubRegistry, privateRegistry } from '../../config/config';
+import { deleteDeploymentDomains } from './domain';
 
 
 export async function createDeployment(
@@ -31,10 +32,27 @@ export async function createDeployment(
 	return deployment;
 }
 
-export function getDeploymentsById(
-	deploymentId: string,
-): Promise<(Deployment & Server)[]> {
-	return pool.query(
+export async function deleteDeployment(
+	deploymentId: Buffer,
+) {
+	await deleteDeploymentDomains(deploymentId);
+	await pool.query(
+		`
+		DELETE FROM
+			deployments
+		WHERE
+			deploymentId = ?
+		`,
+		[
+			deploymentId,
+		],
+	);
+}
+
+export async function getDeploymentById(
+	deploymentId: Buffer,
+): Promise<(Deployment & Server)> {
+	const deployments = await pool.query(
 		`
 		SELECT
 			deployments.deploymentId,
@@ -46,13 +64,18 @@ export function getDeploymentsById(
 			servers.port
 		FROM
 			deployments,
-			servers,
+			servers
 		WHERE
 			deployments.deploymentId = ?,
 			deployments.serverId = servers.severId
 		`,
 		[deploymentId],
 	);
+
+	if (deployments.length === 1) {
+		return deployments[0];
+	}
+	return null;
 }
 
 
@@ -101,9 +124,4 @@ export async function getRepoDeployments(
 	});
 
 	return deployJobs;
-}
-
-export async function removeDeployment() {
-	// To BE IMPLEMENTED
-	return -1;
 }

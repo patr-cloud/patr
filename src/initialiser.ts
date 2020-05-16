@@ -172,6 +172,8 @@ async function createDomains() {
 			domain VARCHAR(255) PRIMARY KEY,
 			deploymentId BINARY(16) NOT NULL,
 			port SMALLINT UNSIGNED NOT NULL,
+			verified TINYINT(1) NOT NULL,
+            challenge BINARY(16) NOT NULL,
 			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId)
 		)
 		`,

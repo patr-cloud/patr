@@ -6,7 +6,7 @@ import groupRouter from './group';
 
 const router = Router();
 
-router.use('/deploy', deployRouter);
+router.use('/deployer', deployRouter);
 router.use('/registry', registryRouter);
 router.use('/openid', openidRouter);
 router.use('/group', groupRouter);
