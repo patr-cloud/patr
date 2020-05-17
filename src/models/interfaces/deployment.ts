@@ -5,6 +5,7 @@ export interface Deployment {
 	repository: string;
 	tag: string;
 	configuration: ContainerCreateOptions; // Replace with configuration interface
+	hostConfig?: ContainerCreateOptions['HostConfig'];
 	serverId: string;
 }
 
@@ -15,6 +16,7 @@ export interface DeployJob {
 	auth?: RegAuth;
 	server: Server;
 	configuration?: ContainerCreateOptions;
+	hostConfig?: ContainerCreateOptions['HostConfig'];
 }
 
 

@@ -3,10 +3,11 @@ import { createHash, randomBytes } from 'crypto';
 import base32Encode from 'base32-encode';
 import { JWK, JWT } from 'jose';
 
+import { ContainerCreateOptions } from 'dockerode';
 import {
 	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
 } from '../../config/config';
-import { getRepoDeployments } from '../../models/database-modules/deployment';
+import { getRepoDeployments, updateDeployment } from '../../models/database-modules/deployment';
 import getJunoModule from '../../module';
 import { errors, messages } from '../../config/errors';
 import { getUserByUsername } from '../../models/database-modules/user';
@@ -112,6 +113,9 @@ router.use(
 	}),
 );
 
+/**
+ * Route to deploy docker container
+ */
 router.get('/event', async (req, res) => {
 	req.body.events.map(async (event: any) => {
 		if (
@@ -123,7 +127,9 @@ router.get('/event', async (req, res) => {
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
 			const module = await getJunoModule();
-			module.callFunction('deployer.deploy', deployments);
+			// TODO: Update this to array of configs, when deployer master is updated
+			const config = await module.callFunction('deployer.deploy', deployments);
+			await updateDeployment(config.id, config.configuration);
 		}
 	});
 

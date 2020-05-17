@@ -25,8 +25,8 @@ router.post('/:groupName/deployment', async (req, res, next) => {
 		});
 	}
 
-	// TODO: Checks for configuration object, it cannot contain any
-	// disallowed host configuration
+	delete req.body.configuration.HostConfig;
+
 	await createDeployment({
 		deploymentId: null,
 		repository: req.body.repository,
