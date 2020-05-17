@@ -150,17 +150,17 @@ async function createDeployments() {
 	console.log('Creating deployments table');
 	await pool.query(
 		`
-        CREATE TABLE deployments (
+		CREATE TABLE deployments (
 			deploymentId BINARY(16) PRIMARY KEY,
 			repository VARCHAR(100) NOT NULL,
 			tag VARCHAR(100) NOT NULL,
-            configuration JSON,
-            hostConfig JSON,
+			configuration JSON,
+			hostConfig JSON,
 			serverId BINARY(16),
 			UNIQUE(repository, tag, serverId),
 			FOREIGN KEY(serverId) REFERENCES servers(serverId)
-        );
-        `,
+		);
+		`,
 	);
 }
 
@@ -174,7 +174,7 @@ async function createDomains() {
 			deploymentId BINARY(16) NOT NULL,
 			port SMALLINT UNSIGNED NOT NULL,
 			verified TINYINT(1) NOT NULL,
-            challenge BINARY(16) NOT NULL,
+			challenge BINARY(16) NOT NULL,
 			FOREIGN KEY(deploymentId) REFERENCES deployments(deploymentId)
 		)
 		`,
@@ -189,7 +189,7 @@ async function createServers() {
 		`
 		CREATE TABLE servers (
 			serverId BINARY(16) PRIMARY KEY,
-            ip CHAR(15) NOT NULL,
+			ip CHAR(15) NOT NULL,
 			port SMALLINT UNSIGNED NOT NULL,
 			UNIQUE(IP, PORT)
 		);
