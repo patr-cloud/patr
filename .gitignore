@@ -71,6 +71,3 @@ docker/registry/data
 docker/registry/certs
 scripts/certs
 
-src/config
-!src/config/config.ts
-!src/config/config.prod.ts

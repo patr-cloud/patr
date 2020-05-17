@@ -11,7 +11,7 @@ import {
 } from '../../models/database-modules/domain';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
-import {domainRegex} from '../../config/constants';
+import { domainRegex } from '../../config/constants';
 
 const router = Router();
 
