@@ -33,9 +33,9 @@ export async function createDeployment(
 	return deployment;
 }
 
-export async function updateDeployment(
-	id: Deployment['deploymentId'],
-	configuration: DeployJob['hostConfig'],
+export async function updateDeploymentConfig(
+	deploymentId: Buffer,
+	hostConfig: Deployment['hostConfig'],
 ): Promise<boolean> {
 	const update = await pool.query(
 		`
@@ -46,7 +46,7 @@ export async function updateDeployment(
 		WHERE
 			deploymentId = ?
 		`,
-		[configuration, id],
+		[hostConfig, deploymentId],
 	);
 
 	return !!update;

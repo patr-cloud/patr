@@ -3,11 +3,10 @@ import { createHash, randomBytes } from 'crypto';
 import base32Encode from 'base32-encode';
 import { JWK, JWT } from 'jose';
 
-import { ContainerCreateOptions } from 'dockerode';
 import {
 	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
 } from '../../config/config';
-import { getRepoDeployments, updateDeployment } from '../../models/database-modules/deployment';
+import { getRepoDeployments, updateDeploymentConfig } from '../../models/database-modules/deployment';
 import getJunoModule from '../../module';
 import { errors, messages } from '../../config/errors';
 import { getUserByUsername } from '../../models/database-modules/user';
@@ -127,9 +126,10 @@ router.get('/event', async (req, res) => {
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
 			const module = await getJunoModule();
-			// TODO: Update this to array of configs, when deployer master is updated
-			const config = await module.callFunction('deployer.deploy', deployments);
-			await updateDeployment(config.id, config.configuration);
+			const configs = await module.callFunction('deployer.deploy', deployments);
+			await Promise.all(configs.map(async (config) => {
+				await updateDeploymentConfig(config.id, config.configuration);
+			}));
 		}
 	});
 

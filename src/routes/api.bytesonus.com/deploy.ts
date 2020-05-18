@@ -25,7 +25,8 @@ router.post('/:groupName/deployment', async (req, res, next) => {
 		});
 	}
 
-	delete req.body.configuration.HostConfig;
+	const { PortBindings, Mounts, ...filteredHostConfig } = req.body.configuration.HostConfig;
+	req.body.configuration.HostConfig = { PortBindings, Mounts };
 
 	await createDeployment({
 		deploymentId: null,

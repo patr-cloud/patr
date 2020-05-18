@@ -4,7 +4,7 @@ export interface Deployment {
 	deploymentId: Buffer;
 	repository: string;
 	tag: string;
-	configuration: ContainerCreateOptions; // Replace with configuration interface
+	configuration: ContainerCreateOptions;
 	hostConfig?: ContainerCreateOptions['HostConfig'];
 	serverId: string;
 }
