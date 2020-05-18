@@ -46,7 +46,7 @@ export async function updateDeploymentConfig(
 		WHERE
 			deploymentId = ?
 		`,
-		[hostConfig, deploymentId],
+		[JSON.stringify(hostConfig), deploymentId],
 	);
 
 	return !!update;

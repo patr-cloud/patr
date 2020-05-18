@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { v4 } from 'uuid';
+import path from 'path';
 import { ContainerCreateOptions } from 'dockerode';
 
 import { createDeployment, getDeploymentById, deleteDeployment } from '../../models/database-modules/deployment';
@@ -27,17 +28,40 @@ router.post('/:groupName/deployment', async (req, res, next) => {
 		});
 	}
 
-	const { PortBindings, Mounts } = req.body.configuration.HostConfig;
+	const { PortBindings, Mounts, ...rest } = req.body.configuration.HostConfig;
 	const deploymentId = v4({}, Buffer.alloc(16));
+
+	// Check if only PortBindings and Mounts are passed in HostConfig
+	if (rest) {
+		return res.json({
+			success: false,
+			error: errors.invalidHostConfig,
+			messages: messages.invalidHostConfig,
+		});
+	}
+	// Check if no host port is mapped to containerPorts inside PortBinding
 	if (!parseBindings(PortBindings)) {
 		return res.json({
 			success: false,
-			error: errors.portNotExposed,
+			error: errors.invalidPortBindings,
 			messages: messages.invalidPortBindings,
 		});
 	}
-	if (Mounts) {
-		req.body.configuration.HostConfig.Mounts = addVolumePath(Mounts, deploymentId.toString());
+	// Check if no machine path is mapped to containerPath inside Mounts
+	if (!parseMounts(Mounts)) {
+		return res.json({
+			success: false,
+			error: errors.invalidPortBindings,
+			messages: messages.invalidPortBindings,
+		});
+	}
+	// Allow only filtered paths and mounts to be passed through HostConfig
+	if (Mounts || PortBindings) {
+		const bindedMounts = bindVolumeSource(Mounts, deploymentId.toString());
+		req.body.configuration.HostConfig = {
+			Mounts: bindedMounts,
+			PortBindings,
+		};
 	}
 
 	await createDeployment({
@@ -104,7 +128,7 @@ router.post('/:groupName/domain', async (req, res, next) => {
 	);
 
 	// Check if deployment is actually exposing port. If it is, get the machine port
-	const machinePort = deployment.configuration?.HostConfig?.PortBindings[req.body.port]?.HostPort;
+	const machinePort = deployment.hostConfig?.PortBindings[req.body.port]?.HostPort;
 
 	if (!machinePort) {
 		return res.json({
@@ -210,12 +234,19 @@ router.delete('/:groupName/domain', async (req, res, next) => {
 export default router;
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
-	if (binds[containerPort] === []) {
+	if (!binds[containerPort]) {
 		return true;
 	} return false;
 });
 
-const addVolumePath = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
-	mount.Source = `${volumesDir}/${deploymentId}/${v4()}`;
+const parseMounts = (mounts: ContainerCreateOptions['HostConfig']['Mounts']) => mounts.every((mount) => {
+	if (!mount.Source) {
+		return true;
+	} return false;
+});
+
+const bindVolumeSource = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
+	const volumeUUID = v4();
+	mount.Source = path.join(volumesDir, deploymentId, volumeUUID);
 	return mount;
 });

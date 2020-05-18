@@ -25,6 +25,7 @@ export const errors = {
 	portNotExposed: 'portNotExposed',
 	sslGenerationFailed: 'sslGenerationFailed',
 	invalidPortBindings: 'invalidPortBindings',
+	invalidHostConfig: 'invalidHostConfig',
 };
 
 export const messages: { [index: string]: string } = {
@@ -54,4 +55,5 @@ export const messages: { [index: string]: string } = {
 	portNotExposed: 'Mapped port is not exposed by the container',
 	sslGenerationFailed: 'Failed to generate ssl certificates for the domain',
 	invalidPortBindings: 'Cannot modify port bindings. Try again mapping empty port bindings',
+	invalidHostConfig: 'Only PortBindings and Mounts can be passed inside HostConfig',
 };

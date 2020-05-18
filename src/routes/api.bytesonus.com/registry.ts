@@ -126,9 +126,10 @@ router.get('/event', async (req, res) => {
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
 			const module = await getJunoModule();
-			const configs = await module.callFunction('deployer.deploy', deployments);
-			await Promise.all(configs.map(async (config) => {
-				await updateDeploymentConfig(config.id, config.configuration);
+			const containers = await module.callFunction('deployer.deploy', deployments);
+			await Promise.all(containers.map(async (container) => {
+				const { hostConfig } = container.configuration.hostConfig;
+				await updateDeploymentConfig(container.id, container.configuration);
 			}));
 		}
 	});
