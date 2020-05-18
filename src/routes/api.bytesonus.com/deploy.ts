@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { v4 } from 'uuid';
+import { ContainerCreateOptions } from 'dockerode';
 
 import { createDeployment, getDeploymentById, deleteDeployment } from '../../models/database-modules/deployment';
 import { errors, messages } from '../../config/errors';
@@ -11,7 +13,7 @@ import {
 } from '../../models/database-modules/domain';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
-import { domainRegex } from '../../config/constants';
+import { domainRegex, volumesDir } from '../../config/constants';
 
 const router = Router();
 
@@ -25,11 +27,21 @@ router.post('/:groupName/deployment', async (req, res, next) => {
 		});
 	}
 
-	const { PortBindings, Mounts, ...filteredHostConfig } = req.body.configuration.HostConfig;
-	req.body.configuration.HostConfig = { PortBindings, Mounts };
+	const { PortBindings, Mounts } = req.body.configuration.HostConfig;
+	const deploymentId = v4({}, Buffer.alloc(16));
+	if (!parseBindings(PortBindings)) {
+		return res.json({
+			success: false,
+			error: errors.portNotExposed,
+			messages: messages.invalidPortBindings,
+		});
+	}
+	if (Mounts) {
+		req.body.configuration.HostConfig.Mounts = addVolumePath(Mounts, deploymentId.toString());
+	}
 
 	await createDeployment({
-		deploymentId: null,
+		deploymentId,
 		repository: req.body.repository,
 		tag: req.body.tag,
 		configuration: req.body.configuration,
@@ -98,7 +110,7 @@ router.post('/:groupName/domain', async (req, res, next) => {
 		return res.json({
 			success: false,
 			error: errors.portNotExposed,
-			nessages: messages.portNotExposed,
+			messages: messages.portNotExposed,
 		});
 	}
 
@@ -196,3 +208,14 @@ router.delete('/:groupName/domain', async (req, res, next) => {
 });
 
 export default router;
+
+const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
+	if (binds[containerPort] === []) {
+		return true;
+	} return false;
+});
+
+const addVolumePath = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
+	mount.Source = `${volumesDir}/${deploymentId}/${v4()}`;
+	return mount;
+});
