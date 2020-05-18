@@ -24,12 +24,32 @@ export async function createDeployment(
 		[
 			deployment.deploymentId,
 			deployment.repository,
-			deployment.tag, JSON.stringify(deployment.configuration),
+			deployment.tag,
+			JSON.stringify(deployment.configuration),
 			deployment.serverId,
 		],
 	);
 
 	return deployment;
+}
+
+export async function updateDeploymentConfig(
+	deploymentId: Buffer,
+	hostConfig: Deployment['hostConfig'],
+): Promise<boolean> {
+	const update = await pool.query(
+		`
+		UPDATE
+			deployments
+		SET
+			hostConfig = ?
+		WHERE
+			deploymentId = ?
+		`,
+		[JSON.stringify(hostConfig), deploymentId],
+	);
+
+	return !!update;
 }
 
 export async function deleteDeployment(
@@ -90,14 +110,15 @@ export async function getRepoDeployments(
 			deployments.repository,
 			deployments.tag,
 			deployments.configuration,
+			deployments.hostConfig,
 			servers.serverId,
 			servers.ip,
 			servers.port
 		FROM
 			deployments, servers
 		WHERE
-            deployments.repository = ?
-            AND deployments.tag = ?
+			deployments.repository = ?
+			AND deployments.tag = ?
 			AND deployments.serverId = servers.serverId
 		`,
 		[respository, tag],
@@ -111,6 +132,9 @@ export async function getRepoDeployments(
 		} else if (registryUrl === privateRegistry.serveraddress) {
 			auth = privateRegistry;
 		}
+		if (deployment.hostConfig) {
+			deployment.configuration.HostConfig = deployment.hostConfig;
+		}
 		return {
 			id: deployment.deploymentId.toString('hex'),
 			image: deployment.repository,
@@ -119,7 +143,7 @@ export async function getRepoDeployments(
 				port: deployment.port,
 			},
 			auth,
-			configuration: JSON.parse(deployment.configuration as any),
+			configuration: JSON.parse(deployment.configuration as string),
 		};
 	});
 

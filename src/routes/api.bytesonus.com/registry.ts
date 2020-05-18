@@ -6,7 +6,7 @@ import { JWK, JWT } from 'jose';
 import {
 	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
 } from '../../config/config';
-import { getRepoDeployments } from '../../models/database-modules/deployment';
+import { getRepoDeployments, updateDeploymentConfig } from '../../models/database-modules/deployment';
 import getJunoModule from '../../module';
 import { errors, messages } from '../../config/errors';
 import { getUserByUsername } from '../../models/database-modules/user';
@@ -112,6 +112,9 @@ router.use(
 	}),
 );
 
+/**
+ * Route to deploy docker container
+ */
 router.get('/event', async (req, res) => {
 	req.body.events.map(async (event: any) => {
 		if (
@@ -123,7 +126,11 @@ router.get('/event', async (req, res) => {
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
 			const module = await getJunoModule();
-			module.callFunction('deployer.deploy', deployments);
+			const containers = await module.callFunction('deployer.deploy', deployments);
+			await Promise.all(containers.map(async (container) => {
+				const { hostConfig } = container.configuration.hostConfig;
+				await updateDeploymentConfig(container.id, container.configuration);
+			}));
 		}
 	});
 
