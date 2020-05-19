@@ -19,7 +19,7 @@ import { getOrganizationByName } from '../../models/database-modules/organizatio
 import { getServerById } from '../../models/database-modules/server';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
-	if (!binds[containerPort]) {
+	if (Array.isArray(binds[containerPort]) && binds[containerPort].length === 0) {
 		return true;
 	} return false;
 });
@@ -62,7 +62,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 	const deploymentId = v4({}, Buffer.alloc(16));
 
 	// Check if only PortBindings and Mounts are passed in HostConfig
-	if (rest) {
+	if (Object.keys(rest).length !== 0) {
 		return res.json({
 			success: false,
 			error: errors.invalidHostConfig,
@@ -70,7 +70,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		});
 	}
 	// Check if no host port is mapped to containerPorts inside PortBinding
-	if (!parseBindings(PortBindings)) {
+	if (PortBindings && !parseBindings(PortBindings)) {
 		return res.json({
 			success: false,
 			error: errors.invalidPortBindings,
@@ -78,7 +78,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		});
 	}
 	// Check if no machine path is mapped to containerPath inside Mounts
-	if (!parseMounts(Mounts)) {
+	if (Mounts && !parseMounts(Mounts)) {
 		return res.json({
 			success: false,
 			error: errors.invalidPortBindings,
@@ -86,12 +86,13 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		});
 	}
 	// Allow only filtered paths and mounts to be passed through HostConfig
-	if (Mounts || PortBindings) {
+	if (Mounts) {
 		const bindedMounts = bindVolumeSource(Mounts, deploymentId.toString());
-		req.body.configuration.HostConfig = {
-			Mounts: bindedMounts,
-			PortBindings,
-		};
+		req.body.configuration.HostConfig.Mounts = bindedMounts;
+	}
+
+	if (PortBindings) {
+		req.body.configuration.HostConfig.PortBindings = PortBindings;
 	}
 
 	const organization = await getOrganizationByName(req.params.orgName);

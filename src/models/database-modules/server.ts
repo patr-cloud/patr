@@ -19,8 +19,7 @@ export async function getServerById(serverId: Buffer): Promise<Server> {
 		`,
 		[serverId],
 	);
-
-	if (server.length === 0) {
+	if (server.length === 1) {
 		return server[0];
 	}
 	return null;

@@ -17,9 +17,9 @@ export async function createDeployment(
 	await pool.query(
 		`
 		INSERT INTO
-			deployments(deploymentId, repository, tag, configuration, serverId)
+			deployments(deploymentId, repository, tag, configuration, serverId, organizationId)
 		VALUES
-			(?, ?, ?, ?)
+			(?, ?, ?, ?, ?, ?)
 		`,
 		[
 			deployment.deploymentId,
@@ -27,6 +27,7 @@ export async function createDeployment(
 			deployment.tag,
 			JSON.stringify(deployment.configuration),
 			deployment.serverId,
+			deployment.organizationId,
 		],
 	);
 
