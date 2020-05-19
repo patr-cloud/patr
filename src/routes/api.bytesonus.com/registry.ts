@@ -2,6 +2,7 @@ import { Router, json } from 'express';
 import { createHash, randomBytes } from 'crypto';
 import base32Encode from 'base32-encode';
 import { JWK, JWT } from 'jose';
+import { ContainerCreateOptions } from 'dockerode';
 
 import {
 	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
@@ -78,7 +79,7 @@ async function grantedClaims(
 			};
 		}
 
-		const actionsList = actions.split(',') as ('push'|'pull')[];
+		const actionsList = actions.split(',') as ('push' | 'pull')[];
 		const permsRequested = actionsList.map((action) => {
 			if (action === 'push') {
 				return permissions.DockerRegistry.push;
@@ -127,10 +128,15 @@ router.get('/event', async (req, res) => {
 			const deployments = await getRepoDeployments(repo, tag);
 			const module = await getJunoModule();
 			const containers = await module.callFunction('deployer.deploy', deployments);
-			await Promise.all(containers.map(async (container) => {
-				const { hostConfig } = container.configuration.hostConfig;
-				await updateDeploymentConfig(container.id, container.configuration);
-			}));
+			await Promise.all(containers.map(
+				async (container: { id: string, configuration: ContainerCreateOptions }) => {
+					const hostConfig = container.configuration.HostConfig;
+					await updateDeploymentConfig(
+						Buffer.from(container.id, 'hex'),
+						hostConfig,
+					);
+				},
+			));
 		}
 	});
 
