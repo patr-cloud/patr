@@ -16,6 +16,7 @@ import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
 import { domainRegex, volumesDir } from '../../config/constants';
 import { getOrganizationByName } from '../../models/database-modules/organization';
+import { getServerById } from '../../models/database-modules/server';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
 	if (!binds[containerPort]) {
@@ -48,6 +49,15 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		});
 	}
 
+	const serverId = Buffer.from(req.body.serverId, 'hex');
+
+	const server = await getServerById(serverId);
+
+	if (!server) {
+		return res.json({
+			success: false,
+		});
+	}
 	const { PortBindings, Mounts, ...rest } = req.body.configuration.HostConfig;
 	const deploymentId = v4({}, Buffer.alloc(16));
 
@@ -91,7 +101,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		repository: req.body.repository,
 		tag: req.body.tag,
 		configuration: req.body.configuration,
-		serverId: req.body.serverId,
+		serverId,
 		organizationId: organization.organizationId,
 	});
 
