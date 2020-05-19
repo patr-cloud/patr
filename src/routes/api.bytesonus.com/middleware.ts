@@ -68,8 +68,8 @@ export default function check(
 		if (granted.every((g) => g === true)) {
 			res.locals.user = {
 				username: accessToken.sub,
-				userId: accessToken.userId,
-				organizations: accessToken.organizations,
+				userId,
+				organizations: userOrgs,
 			};
 			return next();
 		}

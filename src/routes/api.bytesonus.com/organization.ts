@@ -25,7 +25,7 @@ router.post('/', check(permissions.Organization.create, 'site_admins'), async (r
 
 	// TODO: Later, these resources would be
 	// provisioned by the service class
-	const data = await Promise.all([
+	const [organization, resource, registry] = await Promise.all([
 		createOrganization({
 			organizationId: null,
 			name: req.body.name,
@@ -42,6 +42,12 @@ router.post('/', check(permissions.Organization.create, 'site_admins'), async (r
 		}),
 	]);
 
+	// Make user who made the organization as owner
+	await grantUserResource(
+		res.locals.user.userId,
+		resource.resourceId,
+		0,
+	);
 	const module = await getJunoModule();
 	module.triggerHook('createOrganization', {
 		name: req.body.name,
@@ -50,7 +56,7 @@ router.post('/', check(permissions.Organization.create, 'site_admins'), async (r
 	return res.json({
 		success: true,
 		organization: {
-			organizationId: data[0].organizationId.toString('hex'),
+			organizationId: organization.organizationId.toString('hex'),
 			name: req.body.name,
 		},
 	});

@@ -15,6 +15,8 @@ export async function createResource(resource: Resource) {
 		`,
 		[resource.resourceId, resource.name, resource.type],
 	);
+
+	return resource;
 }
 
 export async function getResourceByName(resourceName: string): Promise<Resource> {
