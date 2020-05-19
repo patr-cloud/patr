@@ -5,6 +5,7 @@ import Account from './oidc/account';
 import oidc from './oidc/provider';
 import { getUserByUsername } from '../../models/database-modules/user';
 import { sessionCheck, Interaction } from './middleware';
+import getJunoModule from '../../module';
 
 const router = Router();
 
@@ -55,6 +56,12 @@ router.post('/register', sessionCheck, async (req, res, _next) => {
 
 	try {
 		await Account.register(req.body.username, req.body.email, req.body.password);
+		const module = await getJunoModule();
+
+		module.triggerHook('createUser', {
+			username: req.body.username,
+			email: req.body.email,
+		});
 		// Redirect back to interaction
 		return res.json({
 			success: true,

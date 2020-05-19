@@ -4,14 +4,14 @@ import bcrypt from 'bcrypt';
 import { getUserByUserid, getUserByUsername, createUser } from '../../../models/database-modules/user';
 import { User } from '../../../models/interfaces/user';
 import { saltRounds } from '../../../config/config';
-import { getUserGroups } from '../../../models/database-modules/group';
+import { getUserOrgs } from '../../../models/database-modules/organization';
 
 
 interface BytesonusClaims {
 	sub: string;
 	email: string;
 	userId?: string;
-	groups?: string[];
+	organizations?: string[];
 }
 
 export default class Account {
@@ -37,9 +37,9 @@ export default class Account {
 			email: user.email,
 		};
 		if (scopes.indexOf('bytesonus') > -1) {
-			const groups = (await getUserGroups(user.userId)).map((g) => g.groupId);
+			const orgs = (await getUserOrgs(user.userId)).map((g) => g.organizationId);
 			claims.userId = user.userId.toString('hex');
-			claims.groups = groups.map((b) => b.toString('hex'));
+			claims.organizations = orgs.map((b) => b.toString('hex'));
 		}
 		return claims;
 	}

@@ -11,20 +11,20 @@ enum Deployer {
 	verifyDomain = 'Deployer.verifyDomain',
 }
 
-enum Group {
-	create = 'Group.create',
-	addUser = 'Group.addUser',
-	deleteUser = 'Group.deleteUser',
+enum Organization {
+	create = 'Organization.create',
+	addUser = 'Organization.addUser',
+	deleteUser = 'Organization.deleteUser',
 }
 
 enum Resource {
 	grantPriveleges = 'Resource.grantPriveleges',
 }
 
-export type Permission = DockerRegistry | Deployer | Group | Resource;
+export type Permission = DockerRegistry | Deployer | Organization | Resource;
 export const permissions = {
 	DockerRegistry,
 	Deployer,
-	Group,
+	Organization,
 	Resource,
 };

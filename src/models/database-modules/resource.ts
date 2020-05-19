@@ -61,14 +61,14 @@ export async function grantUserResource(userId: Buffer, resourceId: Buffer, role
 	);
 }
 
-export async function grantGroupResource(groupId: Buffer, resourceId: Buffer, roleId: number) {
+export async function grantOrgResource(orgId: Buffer, resourceId: Buffer, roleId: number) {
 	await pool.query(
 		`
 		INSERT INTO
-			resource_groups(resourceId, groupId, roleId)
+			resource_organizations(resourceId, organizationId, roleId)
 		VALUES
 			(?, ?, ?)
 		`,
-		[resourceId, groupId, roleId],
+		[resourceId, orgId, roleId],
 	);
 }

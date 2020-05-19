@@ -7,7 +7,9 @@ export default class AccessToken {
 
 	public userId: string = null;
 
-	public groups: string[] = [];
+	public organizations: string[] = [];
+
+	public sub: string; // In our case, the sub is also the username of the user
 
 	public static parse(jwt: string) {
 		const payload = JWS.verify(jwt, AccessToken.key);

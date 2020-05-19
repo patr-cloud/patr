@@ -27,11 +27,11 @@ const siteAdminsUUID = Buffer.from('0'.repeat(32), 'hex');
 * */
 export default async function checkIfUserHasPermission(
 	userId: Buffer,
-	userGroups: Buffer[],
+	userOrgs: Buffer[],
 	resourceName: string,
 	permissions: Permission[],
 ): Promise<boolean[]> {
-	if (userGroups.find((groupId) => groupId.equals(siteAdminsUUID))) {
+	if (userOrgs.find((orgId) => orgId.equals(siteAdminsUUID))) {
 		// If the site admin group is present in the user's groups, then
 		// all permissions are granted
 		return Array(permissions.length).fill(true);
@@ -42,26 +42,26 @@ export default async function checkIfUserHasPermission(
 
 	// First check if the permission is granted through one of the
 	// user's groups
-	if (userGroups.length > 0) {
-		const groupsGrants = await pool.query(
+	if (userOrgs.length > 0) {
+		const orgsGrants = await pool.query(
 			`
 			SELECT
-				resource_groups.roleId
+				resource_organizations.roleId
 			FROM
 				resources,
-				resource_groups
+				resource_organizations
 			WHERE
 				resources.name IN (?) AND
-				resources.resourceId = resource_groups.resourceId AND
-				resource_groups.groupId IN (?)
+				resources.resourceId = resource_organizations.resourceId AND
+				resource_organizations.organizationId IN (?)
 		`,
-			[resourceNames, userGroups],
+			[resourceNames, userOrgs],
 		);
 
 		let all = true;
 		permissions.map((permission, i) => {
 			// eslint-disable-next-line no-restricted-syntax
-			for (const grant of groupsGrants) {
+			for (const grant of orgsGrants) {
 				if (checkIfRoleGrantsPermission(grant.roleId, permission)) {
 					granted[i] = true;
 					return true;

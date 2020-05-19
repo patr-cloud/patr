@@ -28,7 +28,7 @@ const config: Configuration = {
 	},
 	claims: {
 		openid: ['sub', 'email'],
-		bytesonus: ['userId', 'groups'],
+		bytesonus: ['userId', 'organizations'],
 	},
 	interactions: {
 		policy: interactions,

@@ -16,10 +16,29 @@ import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
 import { domainRegex, volumesDir } from '../../config/constants';
 
+const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
+	if (!binds[containerPort]) {
+		return true;
+	} return false;
+});
+
+const parseMounts = (mounts: ContainerCreateOptions['HostConfig']['Mounts']) => mounts.every((mount) => {
+	if (!mount.Source) {
+		return true;
+	} return false;
+});
+
+const bindVolumeSource = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
+	const volumeUUID = v4();
+	mount.Source = path.join(volumesDir, deploymentId, volumeUUID);
+	return mount;
+});
+
+
 const router = Router();
 
-router.post('/:groupName/deployment', async (req, res, next) => {
-	const resourceName = `${req.params.groupName}::deployer`;
+router.post('/:orgName/deployment', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.create, resourceName)(req, res, next);
 }, async (req, res, next) => {
 	if (!req.body.repository || !req.body.tag || !req.body.configuration || !req.body.serverId) {
@@ -77,8 +96,8 @@ router.post('/:groupName/deployment', async (req, res, next) => {
 	});
 });
 
-router.delete('/:groupName/deployment/:deploymentId', async (req, res, next) => {
-	const resourceName = `${req.params.groupName}::deployer`;
+router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.delete, resourceName)(req, res, next);
 }, async (req, res, next) => {
 	const domains = await getDeploymentDomains(
@@ -100,8 +119,8 @@ router.delete('/:groupName/deployment/:deploymentId', async (req, res, next) => 
 });
 
 // Configure a new domain for a deployment
-router.post('/:groupName/domain', async (req, res, next) => {
-	const resourceName = `${req.params.groupName}::deployer`;
+router.post('/:orgName/domain', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.addDomain, resourceName)(req, res, next);
 }, async (req, res, next) => {
 	if (!req.body.domain || !req.body.deploymentId || !req.body.port) {
@@ -153,8 +172,8 @@ router.post('/:groupName/domain', async (req, res, next) => {
 });
 
 
-router.post('/:groupName/domain/verify', async (req, res, next) => {
-	const resourceName = `${req.params.groupName}::deployer`;
+router.post('/:orgName/domain/verify', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.verifyDomain, resourceName)(req, res, next);
 }, async (req, res, next) => {
 	if (!req.body.domain) {
@@ -199,8 +218,8 @@ router.post('/:groupName/domain/verify', async (req, res, next) => {
 });
 
 // Delete a configured domain
-router.delete('/:groupName/domain', async (req, res, next) => {
-	const resourceName = `${req.params.groupName}::deployer`;
+router.delete('/:orgName/domain', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.removeDomain, resourceName)(req, res, next);
 }, async (req, res, next) => {
 	if (!req.body.domain) {
@@ -232,21 +251,3 @@ router.delete('/:groupName/domain', async (req, res, next) => {
 });
 
 export default router;
-
-const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
-	if (!binds[containerPort]) {
-		return true;
-	} return false;
-});
-
-const parseMounts = (mounts: ContainerCreateOptions['HostConfig']['Mounts']) => mounts.every((mount) => {
-	if (!mount.Source) {
-		return true;
-	} return false;
-});
-
-const bindVolumeSource = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
-	const volumeUUID = v4();
-	mount.Source = path.join(volumesDir, deploymentId, volumeUUID);
-	return mount;
-});

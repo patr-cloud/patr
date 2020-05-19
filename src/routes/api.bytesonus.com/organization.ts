@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { createGroup, getGroupByName } from '../../models/database-modules/group';
+import { createOrganization, getOrganizationByName } from '../../models/database-modules/organization';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
 import {
-	getResourceByName, grantUserResource, createResource, grantGroupResource,
+	getResourceByName, grantUserResource, createResource, grantOrgResource,
 } from '../../models/database-modules/resource';
 import { getUserByUsername } from '../../models/database-modules/user';
 import { errors } from '../../config/errors';
+import getJunoModule from '../../module';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
 /*
  * Currently only site admins can create groups
 * */
-router.post('/', check(permissions.Group.create, 'site_admins'), async (req, res, next) => {
+router.post('/', check(permissions.Organization.create, 'site_admins'), async (req, res, next) => {
 	if (!req.body.name) {
 		return res.status(400).json({
 			success: false,
@@ -25,8 +26,8 @@ router.post('/', check(permissions.Group.create, 'site_admins'), async (req, res
 	// TODO: Later, these resources would be
 	// provisioned by the service class
 	const data = await Promise.all([
-		createGroup({
-			groupId: null,
+		createOrganization({
+			organizationId: null,
 			name: req.body.name,
 		}),
 		createResource({
@@ -40,34 +41,40 @@ router.post('/', check(permissions.Group.create, 'site_admins'), async (req, res
 			type: 'docker_registry',
 		}),
 	]);
+
+	const module = await getJunoModule();
+	module.triggerHook('createOrganization', {
+		name: req.body.name,
+		username: res.locals.user.username,
+	});
 	return res.json({
 		success: true,
-		group: {
-			groupId: data[0].groupId.toString('hex'),
+		organization: {
+			organizationId: data[0].organizationId.toString('hex'),
 			name: req.body.name,
 		},
 	});
 });
 
-router.delete('/:groupId', (req, res, next) => {
+router.delete('/:organizationId', (req, res, next) => {
 	// TODO: Deleting an organization has to delete
 	// a LOT of stuff, handle this later
 });
 
 /*
- * Grant privileges to a resource to a whole group
- * Need to pass the roleId granted and the groupId
- * of the group
+ * Grant privileges to a resource to a whole organization
+ * Need to pass the roleId granted and the organizationId
+ * of the organization
  *
- * Eg: /myOrg/resources/deployer::myAPI/groups
+ * Eg: /myOrg/resources/deployer::myAPI/organizations
 */
-router.post('/:groupName/resources/:resourceName/groups', (req, res, next) => {
-	if (!req.body.roleId || !req.body.group) {
+router.post('/:orgName/resources/:resourceName/organizations', (req, res, next) => {
+	if (!req.body.roleId || !req.body.organization) {
 		return res.status(400).json({
 			success: false,
 		});
 	}
-	res.locals.resourceName = `${req.params.groupName}::${req.params.resourceName}`;
+	res.locals.resourceName = `${req.params.orgName}::${req.params.resourceName}`;
 
 	return check(
 		permissions.Resource.grantPriveleges,
@@ -76,15 +83,15 @@ router.post('/:groupName/resources/:resourceName/groups', (req, res, next) => {
 }, async (req, res, next) => {
 	const resource = await getResourceByName(res.locals.resourceName);
 
-	const group = await getGroupByName(req.body.group);
-	if (!group) {
+	const org = await getOrganizationByName(req.body.organization);
+	if (!org) {
 		return res.status(400).json({
 			success: false,
 			error: errors.serverError,
 		});
 	}
-	await grantGroupResource(
-		group.groupId,
+	await grantOrgResource(
+		org.organizationId,
 		resource.resourceId,
 		req.body.roleId,
 	);
@@ -106,16 +113,16 @@ router.post('/:groupName/resources/:resourceName/groups', (req, res, next) => {
  * myOrg, we would use:
  * /myOrg/resources/users
 */
-router.post('/:groupName/resources/:resourceName?/users', (req, res, next) => {
+router.post('/:orgName/resources/:resourceName?/users', (req, res, next) => {
 	if (!req.body.roleId || !req.body.username) {
 		return res.status(400).json({
 			success: false,
 		});
 	}
 	if (req.params.resourceName === undefined) {
-		res.locals.resourceName = req.params.groupName;
+		res.locals.resourceName = req.params.orgName;
 	} else {
-		res.locals.resourceName = `${req.params.groupName}::${req.params.resourceName}`;
+		res.locals.resourceName = `${req.params.orgName}::${req.params.resourceName}`;
 	}
 
 	return check(

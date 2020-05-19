@@ -13,7 +13,7 @@ import { getUserByUsername } from '../../models/database-modules/user';
 import Account from '../auth.bytesonus.com/oidc/account';
 import { RegistryClaims } from '../../models/interfaces/registry';
 import { permissions } from '../../models/interfaces/permission';
-import { getUserGroups } from '../../models/database-modules/group';
+import { getUserOrgs } from '../../models/database-modules/organization';
 import checkIfUserHasPermission from '../../models/database-modules/permission';
 import { User } from '../../models/interfaces/user';
 
@@ -61,12 +61,12 @@ const jwtSigningKey = JWK.asKey(registryPrivateKey, {
 * */
 async function grantedClaims(
 	user: User,
-	userGroups: Buffer[],
+	userOrgs: Buffer[],
 	scopes: string[],
 ): Promise<RegistryClaims> {
 	const access: RegistryClaims = await Promise.all(scopes.map(async (scope) => {
 		const [_type, repository, actions] = scope.split(':');
-		const [group, image] = repository.split('/');
+		const [org, image] = repository.split('/');
 
 		if (!image) {
 			// User tried to push without a group name, access
@@ -91,8 +91,8 @@ async function grantedClaims(
 
 		const granted = await checkIfUserHasPermission(
 			user.userId,
-			userGroups,
-			`${group}::docker_registry`,
+			userOrgs,
+			`${org}::docker_registry`,
 			permsRequested,
 		);
 
@@ -201,10 +201,10 @@ router.get('/token', async (req, res) => {
 		scopes = req.query.scope as string[];
 	}
 
-	const userGroups = (await getUserGroups(user.userId)).map((g) => g.groupId);
+	const userOrgs = (await getUserOrgs(user.userId)).map((g) => g.organizationId);
 
 	const token = JWT.sign({
-		access: await grantedClaims(user, userGroups, scopes),
+		access: await grantedClaims(user, userOrgs, scopes),
 	},
 	jwtSigningKey,
 	{

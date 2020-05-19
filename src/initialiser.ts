@@ -1,5 +1,5 @@
 import pool from './models/database';
-import { createGroup } from './models/database-modules/group';
+import { createOrganization } from './models/database-modules/organization';
 
 async function createClients() {
 	console.log('Creating clients table');
@@ -30,34 +30,18 @@ async function createUsers() {
 	);
 }
 
-async function createGroups() {
-	console.log('Creating groups table');
+async function createOrganizations() {
+	console.log('Creating organizations table');
 	await pool.query(
 		`
-		CREATE TABLE user_groups(
-			groupId BINARY(16) PRIMARY KEY,
+		CREATE TABLE organizations(
+			organizationId BINARY(16) PRIMARY KEY,
 			name VARCHAR(80) UNIQUE NOT NULL,
-			FOREIGN KEY(groupId) REFERENCES resources(resourceId) ON DELETE CASCADE
+			FOREIGN KEY(organizationId) REFERENCES resources(resourceId) ON DELETE CASCADE
 		  );
 		`,
 	);
 }
-
-// async function createUserGroups() {
-//     console.log("Creating user_groups table");
-//     await pool.query(
-//         `
-//         CREATE TABLE user_groups(
-//             userId VARCHAR(36) NOT NULL,
-//             GroupId VARCHAR(36) NOT NULL,
-//             PRIMARY KEY(userId, groupId),
-//             FOREIGN KEY(userId) REFERENCES users(userId) ON DELETE CASCADE,
-//             FOREIGN KEY(groupId) REFERENCES groups(groupId) ON DELETE CASCADE
-//           );
-
-//         `
-//     )
-// }
 
 async function createResources() {
 	console.log('Creating resources table');
@@ -92,8 +76,8 @@ async function createRoles() {
 		CREATE TABLE roles(
 			roleId BINARY(16) PRIMARY KEY,
 			name VARCHAR(80) NOT NULL,
-			groupId BINARY(16) NULL,
-			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE
+			organizationId BINARY(16) NULL,
+			FOREIGN KEY(organizationId) REFERENCES organizations(organizationId) ON DELETE CASCADE
 		);
 		`,
 	);
@@ -113,16 +97,16 @@ async function createRolePermissions() {
 		`,
 	);
 }
-async function createResourceGroups() {
-	console.log('Creating resource_groups table');
+async function createResourceOrganizations() {
+	console.log('Creating resource_organizations table');
 	await pool.query(
 		`
-		CREATE TABLE resource_groups (
-			groupId BINARY(16) NOT NULL,
+		CREATE TABLE resource_organizations (
+			organizationId BINARY(16) NOT NULL,
 			resourceId BINARY(16) NOT NULL,
 			roleId INT NOT NULL,
-			PRIMARY KEY(groupId, resourceId, roleId),
-			FOREIGN KEY(groupId) REFERENCES user_groups(groupId) ON DELETE CASCADE,
+			PRIMARY KEY(organizationId, resourceId, roleId),
+			FOREIGN KEY(organizationId) REFERENCES organizations(organizationId) ON DELETE CASCADE,
 			FOREIGN KEY(resourceId) REFERENCES resources(resourceId) ON DELETE CASCADE
 		  );
 		`,
@@ -198,9 +182,9 @@ async function createServers() {
 }
 
 
-async function initialiseAdminGroup() {
-	await createGroup({
-		groupId: Buffer.from('0'.repeat(32), 'hex'),
+async function initialiseAdminOrg() {
+	await createOrganization({
+		organizationId: Buffer.from('0'.repeat(32), 'hex'),
 		name: 'site-admins',
 	});
 }
@@ -213,17 +197,17 @@ export default async function initialise() {
 		await createUsers();
 		await createClients();
 		await createResources();
-		await createGroups();
+		await createOrganizations();
 		await createPermissions();
 		await createRoles();
 		await createRolePermissions();
 		await createResourceUsers();
-		await createResourceGroups();
+		await createResourceOrganizations();
 		await createServers();
 		await createDeployments();
 		await createDomains();
 
-		await initialiseAdminGroup();
+		await initialiseAdminOrg();
 		console.log('All tables created');
 	}
 }

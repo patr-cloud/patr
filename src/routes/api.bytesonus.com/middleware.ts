@@ -5,7 +5,6 @@ import { Permission } from '../../models/interfaces/permission';
 import AccessToken from '../../models/interfaces/access-token';
 
 
-
 /* Middleware to authorize the jwt the user sends along, and check
  * if the user is allowed to perform the permission (or ALL of multiple permissions)
  * on the resource with name resourceName
@@ -57,16 +56,21 @@ export default function check(
 		}
 
 		const userId = Buffer.from(accessToken.userId, 'hex');
-		const userGroups = accessToken.groups.map((g) => Buffer.from(g, 'hex'));
+		const userOrgs = accessToken.organizations.map((g) => Buffer.from(g, 'hex'));
 
 
 		const granted = await checkIfUserHasPermission(
 			userId,
-			userGroups,
+			userOrgs,
 			resourceName,
 			permissions,
 		);
 		if (granted.every((g) => g === true)) {
+			res.locals.user = {
+				username: accessToken.sub,
+				userId: accessToken.userId,
+				organizations: accessToken.organizations,
+			};
 			return next();
 		}
 		return res.status(401).json({
