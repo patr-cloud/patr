@@ -85,9 +85,7 @@ function onListening() {
 async function main() {
 	await initialise();
 	const module = await getJunoModule();
-	await module.initialize('bytesonus_api', packageJson.version, {
-		deployer: '1.0.0',
-	});
+	await module.initialize('bytesonus_api', packageJson.version);
 	server = createServer(app);
 
 	/**

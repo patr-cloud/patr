@@ -7,6 +7,7 @@ export interface Deployment {
 	configuration: ContainerCreateOptions;
 	hostConfig?: ContainerCreateOptions['HostConfig'];
 	serverId: string;
+	organizationId: Buffer;
 }
 
 

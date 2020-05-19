@@ -15,6 +15,7 @@ import {
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
 import { domainRegex, volumesDir } from '../../config/constants';
+import { getOrganizationByName } from '../../models/database-modules/organization';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
 	if (!binds[containerPort]) {
@@ -83,12 +84,15 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		};
 	}
 
+	const organization = await getOrganizationByName(req.params.orgName);
+
 	await createDeployment({
 		deploymentId,
 		repository: req.body.repository,
 		tag: req.body.tag,
 		configuration: req.body.configuration,
 		serverId: req.body.serverId,
+		organizationId: organization.organizationId,
 	});
 
 	return res.json({
@@ -100,6 +104,16 @@ router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
 	const resourceName = `${req.params.orgName}::deployer`;
 	return check(permissions.Deployer.delete, resourceName)(req, res, next);
 }, async (req, res, next) => {
+	const [deployment, organization] = await Promise.all([
+		getDeploymentById(Buffer.from(req.params.deploymentId, 'hex')),
+		getOrganizationByName(req.params.orgName),
+	]);
+
+	if (!deployment.organizationId.equals(organization.organizationId)) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
 	const domains = await getDeploymentDomains(
 		Buffer.from(req.params.deploymentId, 'hex'),
 	);
