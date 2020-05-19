@@ -37,8 +37,8 @@ export async function createDeployment(
 export async function updateDeploymentConfig(
 	deploymentId: Buffer,
 	hostConfig: Deployment['hostConfig'],
-): Promise<boolean> {
-	const update = await pool.query(
+) {
+	await pool.query(
 		`
 		UPDATE
 			deployments
@@ -49,8 +49,6 @@ export async function updateDeploymentConfig(
 		`,
 		[JSON.stringify(hostConfig), deploymentId],
 	);
-
-	return !!update;
 }
 
 export async function deleteDeployment(
@@ -138,7 +136,7 @@ export async function getRepoDeployments(
 		}
 		return {
 			id: deployment.deploymentId.toString('hex'),
-			image: deployment.repository,
+			image: `${deployment.repository}:${deployment.tag}`,
 			server: {
 				host: deployment.ip,
 				port: deployment.port,

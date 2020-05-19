@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { v4 } from 'uuid';
 import path from 'path';
+import url from 'url';
 import { ContainerCreateOptions } from 'dockerode';
 
 import { createDeployment, getDeploymentById, deleteDeployment } from '../../models/database-modules/deployment';
@@ -17,9 +18,16 @@ import { permissions } from '../../models/interfaces/permission';
 import { domainRegex, volumesDir } from '../../config/constants';
 import { getOrganizationByName } from '../../models/database-modules/organization';
 import { getServerById } from '../../models/database-modules/server';
+import checkIfUserHasPermission from '../../models/database-modules/permission';
+import { dockerHubRegistry } from '../../config/config';
+import { deploy } from './registry';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
 	if (Array.isArray(binds[containerPort]) && binds[containerPort].length === 0) {
+		binds[containerPort] = [{
+			HostIp: '0.0.0.0',
+			HostPort: '',
+		}];
 		return true;
 	} return false;
 });
@@ -97,7 +105,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 
 	const organization = await getOrganizationByName(req.params.orgName);
 
-	await createDeployment({
+	const deployment = await createDeployment({
 		deploymentId,
 		repository: req.body.repository,
 		tag: req.body.tag,
@@ -105,6 +113,23 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 		serverId,
 		organizationId: organization.organizationId,
 	});
+
+	const hostname = req.body.repository.slice(0, req.body.repository.indexOf('/'));
+	// Docker hub images can be deployed directly, instead of triggering only
+	// on a push to the registry.
+	// TODO: Should the same behvaious happen for existing images already pushed on the
+	// private registry?
+	if (hostname === dockerHubRegistry.serveraddress) {
+		deploy([{
+			id: deployment.deploymentId.toString('hex'),
+			image: `${deployment.repository}:${deployment.tag}`,
+			server: {
+				host: server.host,
+				port: server.port,
+			},
+			configuration: req.body.configuration,
+		}]);
+	}
 
 	return res.json({
 		success: true,

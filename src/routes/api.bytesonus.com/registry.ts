@@ -2,7 +2,7 @@ import { Router, json } from 'express';
 import { createHash, randomBytes } from 'crypto';
 import base32Encode from 'base32-encode';
 import { JWK, JWT } from 'jose';
-import { ContainerCreateOptions } from 'dockerode';
+import { ContainerCreateOptions, HostConfig } from 'dockerode';
 
 import {
 	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
@@ -17,6 +17,7 @@ import { permissions } from '../../models/interfaces/permission';
 import { getUserOrgs } from '../../models/database-modules/organization';
 import checkIfUserHasPermission from '../../models/database-modules/permission';
 import { User } from '../../models/interfaces/user';
+import { DeployJob } from '../../models/interfaces/deployment';
 
 
 /*
@@ -114,6 +115,27 @@ router.use(
 );
 
 /**
+ * Takes an array of deployer jobs, and triggers deployer.deploy
+ * The host config returned back by deployer is updated in the
+ * database
+ */
+export async function deploy(jobs: DeployJob[]) {
+	const module = await getJunoModule();
+	const containers = await module.callFunction('deployer.deploy', {
+		jobs,
+	});
+	await Promise.all(containers.map(
+		(container: { id: string, configuration: HostConfig }) => {
+			const hostConfig = container.configuration;
+			return updateDeploymentConfig(
+				Buffer.from(container.id, 'hex'),
+				hostConfig,
+			);
+		},
+	));
+}
+
+/**
  * Route to deploy docker container
  */
 router.get('/event', async (req, res) => {
@@ -126,17 +148,7 @@ router.get('/event', async (req, res) => {
 			const { tag } = event.target;
 			const repo = event.target.repository;
 			const deployments = await getRepoDeployments(repo, tag);
-			const module = await getJunoModule();
-			const containers = await module.callFunction('deployer.deploy', deployments);
-			await Promise.all(containers.map(
-				async (container: { id: string, configuration: ContainerCreateOptions }) => {
-					const hostConfig = container.configuration.HostConfig;
-					await updateDeploymentConfig(
-						Buffer.from(container.id, 'hex'),
-						hostConfig,
-					);
-				},
-			));
+			deploy(deployments);
 		}
 	});
 

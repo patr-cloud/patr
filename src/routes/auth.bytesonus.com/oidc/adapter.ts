@@ -22,7 +22,6 @@ class RedisAdapter implements Adapter {
 	private name: string;
 
 	constructor(name: string) {
-		console.log(`Adapter ${name} created`);
 		this.name = name;
 	}
 
