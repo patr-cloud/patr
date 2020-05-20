@@ -46,3 +46,5 @@ export const registryPublicKeyDER = readFileSync(join(__dirname, 'example.org.pu
 
 export const apiDomain = 'api.bytesonus.com:5001';
 export const authDomain = 'auth.bytesonus.com:5001';
+
+export const volumesDir = '/home/thebongy/deployerVols';

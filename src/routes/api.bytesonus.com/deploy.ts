@@ -15,11 +15,11 @@ import {
 } from '../../models/database-modules/domain';
 import check from './middleware';
 import { permissions } from '../../models/interfaces/permission';
-import { domainRegex, volumesDir } from '../../config/constants';
+import { domainRegex } from '../../config/constants';
 import { getOrganizationByName } from '../../models/database-modules/organization';
 import { getServerById } from '../../models/database-modules/server';
 import checkIfUserHasPermission from '../../models/database-modules/permission';
-import { dockerHubRegistry } from '../../config/config';
+import { dockerHubRegistry, volumesDir } from '../../config/config';
 import { deploy } from './registry';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
@@ -35,7 +35,7 @@ const parseMounts = (mounts: ContainerCreateOptions['HostConfig']['Mounts']) => 
 });
 
 const bindVolumeSource = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
-	const volumeUUID = v4();
+	const volumeUUID = v4({}, Buffer.alloc(16)).toString('hex');
 	mount.Source = path.join(volumesDir, deploymentId, volumeUUID);
 	return mount;
 });
@@ -91,7 +91,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 	}
 	// Allow only filtered paths and mounts to be passed through HostConfig
 	if (Mounts) {
-		const bindedMounts = bindVolumeSource(Mounts, deploymentId.toString());
+		const bindedMounts = bindVolumeSource(Mounts, deploymentId.toString('hex'));
 		req.body.configuration.HostConfig.Mounts = bindedMounts;
 	}
 
