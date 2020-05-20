@@ -11,7 +11,7 @@ import initialise from './initialiser';
 
 import getJunoModule from './module';
 import { updateDeploymentConfig } from './models/database-modules/deployment';
-import {DeployerConfigurations} from './models/interfaces/deployment';
+import { DeployerConfigurations } from './models/interfaces/deployment';
 
 const packageJson = require('./package.json');
 
@@ -90,7 +90,7 @@ async function main() {
 	const module = await getJunoModule();
 	await module.initialize('bytesonus_api', packageJson.version);
 
-	module.registerHook('deployer.configUpdate', async (args: DeployerConfigurations) => {
+	module.declareFunction('configUpdate', async (args: DeployerConfigurations) => {
 		await Promise.all(args.configurations.map(
 			(container: {id: string, configuration: ContainerCreateOptions}) => {
 				const hostConfig = container.configuration.HostConfig;
@@ -101,6 +101,11 @@ async function main() {
 			},
 		));
 	});
+
+	module.declareFunction('createRegistryBot', (args: {organization: string}) => ({
+		username: 'username',
+		password: 'password',
+	}));
 	server = createServer(app);
 
 	/**
