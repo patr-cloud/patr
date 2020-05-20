@@ -130,6 +130,11 @@ export async function deploy(jobs: DeployJob[]) {
  * Route to deploy docker container
  */
 router.post('/event', async (req, res) => {
+	if (!req.body.events) {
+		res.status(400).json({
+			success: false,
+		});
+	}
 	req.body.events.map(async (event: any) => {
 		if (
 			event.action === 'push'
