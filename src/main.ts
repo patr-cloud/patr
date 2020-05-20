@@ -4,11 +4,14 @@
  * Module dependencies.
  */
 import { createServer, Server } from 'http';
+import { ContainerCreateOptions } from 'dockerode';
 import app from './app';
 import { port as listenPort } from './config/config';
 import initialise from './initialiser';
 
 import getJunoModule from './module';
+import { updateDeploymentConfig } from './models/database-modules/deployment';
+import {DeployerConfigurations} from './models/interfaces/deployment';
 
 const packageJson = require('./package.json');
 
@@ -86,6 +89,18 @@ async function main() {
 	await initialise();
 	const module = await getJunoModule();
 	await module.initialize('bytesonus_api', packageJson.version);
+
+	module.registerHook('deployer.configUpdate', async (args: DeployerConfigurations) => {
+		await Promise.all(args.configurations.map(
+			(container: {id: string, configuration: ContainerCreateOptions}) => {
+				const hostConfig = container.configuration.HostConfig;
+				return updateDeploymentConfig(
+					Buffer.from(container.id, 'hex'),
+					hostConfig,
+				);
+			},
+		));
+	});
 	server = createServer(app);
 
 	/**

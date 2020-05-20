@@ -1,6 +1,6 @@
 import { v4 } from 'uuid';
 import pool from '../database';
-import { Server } from '../interfaces/deployment';
+import { Server } from '../interfaces/server';
 
 
 export async function createServer() {

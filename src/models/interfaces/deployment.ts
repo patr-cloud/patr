@@ -10,12 +10,20 @@ export interface Deployment {
 	organizationId: Buffer;
 }
 
+export interface DeployerConfigurations {
+	configurations: ContainerConfiguration[];
+}
+
+interface ContainerConfiguration {
+	id: string;
+	configuration: ContainerCreateOptions;
+}
 
 export interface DeployJob {
 	id: string;
 	image: string;
 	auth?: RegAuth;
-	server: Server;
+	server: DeployerServer;
 	configuration?: ContainerCreateOptions;
 	hostConfig?: ContainerCreateOptions['HostConfig'];
 }
@@ -27,7 +35,7 @@ export interface RegAuth {
 	serveraddress: string
 }
 
-export interface Server {
+export interface DeployerServer {
 	protocol?: 'http' | 'https',
 	host: string,
 	port?: number,

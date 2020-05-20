@@ -120,7 +120,7 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 			id: deployment.deploymentId.toString('hex'),
 			image: `${deployment.repository}:${deployment.tag}`,
 			server: {
-				host: server.host,
+				host: server.ip,
 				port: server.port,
 			},
 			configuration: req.body.configuration,

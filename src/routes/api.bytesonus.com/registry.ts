@@ -121,18 +121,9 @@ router.use(
  */
 export async function deploy(jobs: DeployJob[]) {
 	const module = await getJunoModule();
-	const containers = await module.callFunction('deployer.deploy', {
+	await module.triggerHook('deploy', {
 		jobs,
 	});
-	await Promise.all(containers.map(
-		(container: { id: string, configuration: ContainerCreateOptions }) => {
-			const hostConfig = container.configuration.HostConfig;
-			return updateDeploymentConfig(
-				Buffer.from(container.id, 'hex'),
-				hostConfig,
-			);
-		},
-	));
 }
 
 /**
