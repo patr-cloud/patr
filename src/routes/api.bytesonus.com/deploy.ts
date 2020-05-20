@@ -24,10 +24,6 @@ import { deploy } from './registry';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
 	if (Array.isArray(binds[containerPort]) && binds[containerPort].length === 0) {
-		binds[containerPort] = [{
-			HostIp: '0.0.0.0',
-			HostPort: '',
-		}];
 		return true;
 	} return false;
 });

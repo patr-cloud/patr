@@ -125,8 +125,8 @@ export async function deploy(jobs: DeployJob[]) {
 		jobs,
 	});
 	await Promise.all(containers.map(
-		(container: { id: string, configuration: HostConfig }) => {
-			const hostConfig = container.configuration;
+		(container: { id: string, configuration: ContainerCreateOptions }) => {
+			const hostConfig = container.configuration.HostConfig;
 			return updateDeploymentConfig(
 				Buffer.from(container.id, 'hex'),
 				hostConfig,
