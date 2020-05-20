@@ -129,7 +129,7 @@ export async function deploy(jobs: DeployJob[]) {
 /**
  * Route to deploy docker container
  */
-router.get('/event', async (req, res) => {
+router.post('/event', async (req, res) => {
 	req.body.events.map(async (event: any) => {
 		if (
 			event.action === 'push'
