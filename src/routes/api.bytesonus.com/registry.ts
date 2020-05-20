@@ -201,10 +201,8 @@ router.get('/token', async (req, res) => {
 	// Scopes is not passed in the case of docker login
 	if (!req.query.scope) {
 		scopes = [];
-	}
-
-	// If a single scope is passed, convert it to array
-	if (typeof req.query.scope === 'string') {
+	} else if (typeof req.query.scope === 'string') {
+		// If a single scope is passed, convert it to array
 		scopes = [req.query.scope];
 	} else {
 		scopes = req.query.scope as string[];
