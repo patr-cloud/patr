@@ -15,7 +15,7 @@ http:
 auth:
   token:
     realm: http://api.bytesonus.com:5001/registry/token
-    service: registry.bytesonus.com:5001
+    service: registry.bytesonus.com:5000
     issuer: api.bytesonus.com:5001
     rootcertbundle: /certs/server.crt
 #
@@ -32,7 +32,7 @@ health:
 notifications:
     endpoints:
       - name: bytesonus
-        url: http://localhost:5001/registry/token
+        url: http://localhost:5001/registry/event
         timeout: 2s
         threshold: 5
         backoff: 1s

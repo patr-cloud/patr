@@ -73,7 +73,7 @@ app.use((_req, res, next) => {
 app.use('/static', express.static(join(__dirname, 'static')));
 
 app.use(basePath, (req, res, next) => {
-	if (req.hostname === 'api.bytesonus.com') {
+	if (req.hostname === 'api.bytesonus.com' || req.hostname === 'localhost') {
 		apiRouter(req, res, next);
 	} else if (req.hostname === 'assets.bytesonus.com') {
 		assetsRouter(req, res, next);

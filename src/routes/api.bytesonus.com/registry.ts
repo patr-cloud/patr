@@ -2,12 +2,12 @@ import { Router, json } from 'express';
 import { createHash, randomBytes } from 'crypto';
 import base32Encode from 'base32-encode';
 import { JWK, JWT } from 'jose';
-import { ContainerCreateOptions, HostConfig } from 'dockerode';
+import { join } from 'path';
 
 import {
-	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain,
+	registryPrivateKey, registryPublicKeyDER, registryUrl, apiDomain, privateRegistry,
 } from '../../config/config';
-import { getRepoDeployments, updateDeploymentConfig } from '../../models/database-modules/deployment';
+import { getRepoDeployments } from '../../models/database-modules/deployment';
 import getJunoModule from '../../module';
 import { errors, messages } from '../../config/errors';
 import { getUserByUsername } from '../../models/database-modules/user';
@@ -151,7 +151,7 @@ router.post('/event', async (req, res) => {
 			=== 'application/vnd.docker.distribution.manifest.v2+json'
 		) {
 			const { tag } = event.target;
-			const repo = event.target.repository;
+			const repo = join(privateRegistry.serveraddress, event.target.repository);
 			const deployments = await getRepoDeployments(repo, tag);
 			deploy(deployments);
 		}

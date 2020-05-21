@@ -122,7 +122,7 @@ export async function getRepoDeployments(
 
 	const deployJobs: DeployJob[] = deployments.map((deployment) => {
 		let auth: RegAuth | undefined;
-		const registryUrl = parse(deployment.repository).hostname;
+		const registryUrl = deployment.repository.slice(0, deployment.repository.indexOf('/'));
 		if (registryUrl === dockerHubRegistry.serveraddress) {
 			auth = undefined; // Don't pass authentication for docker hub
 		} else if (registryUrl === privateRegistry.serveraddress) {
