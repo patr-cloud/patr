@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { v4 } from 'uuid';
-import path from 'path';
 import { ContainerCreateOptions } from 'dockerode';
 
 import { createDeployment, getDeploymentById, deleteDeployment } from '../../models/database-modules/deployment';
@@ -80,10 +79,6 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 			error: errors.invalidPortBindings,
 			messages: messages.invalidPortBindings,
 		});
-	}
-
-	if (PortBindings) {
-		req.body.configuration.HostConfig.PortBindings = PortBindings;
 	}
 
 	const organization = await getOrganizationByName(req.params.orgName);
