@@ -144,7 +144,7 @@ router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
 		getOrganizationByName(req.params.orgName),
 	]);
 
-	if (!deployment) {
+	if (!deployment || !organization) {
 		return res.status(400).json({
 			success: false,
 		});
