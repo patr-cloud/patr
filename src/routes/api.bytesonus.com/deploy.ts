@@ -144,6 +144,12 @@ router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
 		getOrganizationByName(req.params.orgName),
 	]);
 
+	if (!deployment) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
 	if (!deployment.organizationId.equals(organization.organizationId)) {
 		return res.status(400).json({
 			success: false,
@@ -172,7 +178,7 @@ router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
 		},
 		configuration: deployment.configuration,
 	}]);
-	await deleteDeployment(Buffer.from(req.params.deploymentId, 'hex'));
+	await deleteDeployment(deployment.deploymentId);
 	return res.json({
 		success: true,
 	});

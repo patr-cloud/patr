@@ -106,7 +106,6 @@ export async function getRepoDeployments(
 			deployments.repository,
 			deployments.tag,
 			deployments.configuration,
-			deployments.hostConfig,
 			servers.serverId,
 			servers.ip,
 			servers.port

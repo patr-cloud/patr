@@ -141,7 +141,6 @@ async function createDeployments() {
 			configuration JSON,
 			serverId BINARY(16),
 			organizationId BINARY(16),
-			UNIQUE(repository, tag, serverId),
 			FOREIGN KEY(serverId) REFERENCES servers(serverId),
 			FOREIGN KEY(organizationId) REFERENCES organizations(organizationId)
 		);
