@@ -92,13 +92,10 @@ async function main() {
 
 	module.declareFunction('configUpdate', async (args: DeployerConfigurations) => {
 		await Promise.all(args.configurations.map(
-			(container: {id: string, configuration: ContainerCreateOptions}) => {
-				const hostConfig = container.configuration.HostConfig;
-				return updateDeploymentConfig(
-					Buffer.from(container.id, 'hex'),
-					hostConfig,
-				);
-			},
+			(container: {id: string, configuration: ContainerCreateOptions}) => updateDeploymentConfig(
+				Buffer.from(container.id, 'hex'),
+				container.configuration,
+			),
 		));
 	});
 

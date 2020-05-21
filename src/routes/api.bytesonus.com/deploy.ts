@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { v4 } from 'uuid';
 import path from 'path';
-import url from 'url';
 import { ContainerCreateOptions } from 'dockerode';
 
 import { createDeployment, getDeploymentById, deleteDeployment } from '../../models/database-modules/deployment';
@@ -18,9 +17,8 @@ import { permissions } from '../../models/interfaces/permission';
 import { domainRegex } from '../../config/constants';
 import { getOrganizationByName } from '../../models/database-modules/organization';
 import { getServerById } from '../../models/database-modules/server';
-import checkIfUserHasPermission from '../../models/database-modules/permission';
-import { dockerHubRegistry, volumesDir } from '../../config/config';
-import { deploy } from './registry';
+import { dockerHubRegistry } from '../../config/config';
+import { deploy, unDeploy } from './registry';
 
 const parseBindings = (binds: ContainerCreateOptions['HostConfig']['PortBindings']) => Object.keys(binds).every((containerPort) => {
 	if (Array.isArray(binds[containerPort]) && binds[containerPort].length === 0) {
@@ -32,12 +30,6 @@ const parseMounts = (mounts: ContainerCreateOptions['HostConfig']['Mounts']) => 
 	if (!mount.Source) {
 		return true;
 	} return false;
-});
-
-const bindVolumeSource = (mounts: ContainerCreateOptions['HostConfig']['Mounts'], deploymentId: string) => mounts.map((mount) => {
-	const volumeUUID = v4({}, Buffer.alloc(16)).toString('hex');
-	mount.Source = path.join(volumesDir, deploymentId, volumeUUID);
-	return mount;
 });
 
 
@@ -89,11 +81,6 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 			messages: messages.invalidPortBindings,
 		});
 	}
-	// Allow only filtered paths and mounts to be passed through HostConfig
-	if (Mounts) {
-		const bindedMounts = bindVolumeSource(Mounts, deploymentId.toString('hex'));
-		req.body.configuration.HostConfig.Mounts = bindedMounts;
-	}
 
 	if (PortBindings) {
 		req.body.configuration.HostConfig.PortBindings = PortBindings;
@@ -129,6 +116,27 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 
 	return res.json({
 		success: true,
+		deploymentId: deployment.deploymentId.toString('hex'),
+	});
+});
+
+router.put('/:orgName/deployment/:deploymentId', async (req, res, next) => {
+	const resourceName = `${req.params.orgName}::deployer`;
+	return check(permissions.Deployer.delete, resourceName)(req, res, next);
+}, async (req, res, next) => {
+	const [deployment, organization] = await Promise.all([
+		getDeploymentById(Buffer.from(req.params.deploymentId, 'hex')),
+		getOrganizationByName(req.params.orgName),
+	]);
+
+	if (!deployment.organizationId.equals(organization.organizationId)) {
+		return res.status(400).json({
+			success: false,
+		});
+	}
+
+	return res.json({
+		success: true,
 	});
 });
 
@@ -158,6 +166,17 @@ router.delete('/:orgName/deployment/:deploymentId', async (req, res, next) => {
 		}
 		return Promise.all(tasks);
 	}));
+
+	const server = await getServerById(deployment.serverId);
+	unDeploy([{
+		id: deployment.deploymentId.toString('hex'),
+		image: `${deployment.repository}:${deployment.tag}`,
+		server: {
+			host: server.ip,
+			port: server.port,
+		},
+		configuration: deployment.configuration,
+	}]);
 	await deleteDeployment(Buffer.from(req.params.deploymentId, 'hex'));
 	return res.json({
 		success: true,

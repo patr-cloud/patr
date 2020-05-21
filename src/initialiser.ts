@@ -139,7 +139,6 @@ async function createDeployments() {
 			repository VARCHAR(100) NOT NULL,
 			tag VARCHAR(100) NOT NULL,
 			configuration JSON,
-			hostConfig JSON,
 			serverId BINARY(16),
 			organizationId BINARY(16),
 			UNIQUE(repository, tag, serverId),

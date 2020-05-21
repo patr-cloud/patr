@@ -126,6 +126,15 @@ export async function deploy(jobs: DeployJob[]) {
 	});
 }
 
+
+export async function unDeploy(jobs: DeployJob[]) {
+	const module = await getJunoModule();
+	await module.triggerHook('unDeploy', {
+		jobs,
+		deleteVolumes: true,
+	});
+}
+
 /**
  * Route to deploy docker container
  */

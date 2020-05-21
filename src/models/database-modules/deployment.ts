@@ -36,18 +36,18 @@ export async function createDeployment(
 
 export async function updateDeploymentConfig(
 	deploymentId: Buffer,
-	hostConfig: Deployment['hostConfig'],
+	configuration: Deployment['configuration'],
 ) {
 	await pool.query(
 		`
 		UPDATE
 			deployments
 		SET
-			hostConfig = ?
+			configuration = ?
 		WHERE
 			deploymentId = ?
 		`,
-		[JSON.stringify(hostConfig), deploymentId],
+		[JSON.stringify(configuration), deploymentId],
 	);
 }
 
@@ -74,24 +74,21 @@ export async function getDeploymentById(
 	const deployments = await pool.query(
 		`
 		SELECT
-			deployments.deploymentId,
-			deployments.repository,
-			deployments.tag,
-			deployments.configuration,
-			servers.serverId,
-			servers.ip,
-			servers.port
+			*
 		FROM
 			deployments,
 			servers
 		WHERE
-			deployments.deploymentId = ?,
-			deployments.serverId = servers.severId
+			deployments.deploymentId = ? AND
+			deployments.serverId = servers.serverId
 		`,
 		[deploymentId],
 	);
 
 	if (deployments.length === 1) {
+		if (deployments[0].configuration) {
+			deployments[0].configuration = JSON.parse(deployments[0].configuration);
+		}
 		return deployments[0];
 	}
 	return null;
