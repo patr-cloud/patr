@@ -202,18 +202,23 @@ router.post('/:orgName/domain', async (req, res, next) => {
 	}
 
 	// Check if domain already mapped
-	if (getDomain(req.body.domain)) {
+	if (await getDomain(req.body.domain)) {
 		return res.status(400).json({
 			success: false,
 		});
 	}
+
+	const deploymentId = Buffer.from(req.body.deploymentId, 'hex');
 	// TODO: Handle load balancing multiple deployments here later, for now just pick first deployment
-	const deployment = await getDeploymentById(
-		Buffer.from(req.params.deploymentId, 'hex'),
-	);
+	const deployment = await getDeploymentById(deploymentId);
 
 	// Check if deployment is actually exposing port. If it is, get the machine port
-	const machinePort = deployment.hostConfig?.PortBindings[req.body.port]?.HostPort;
+	const portBindings = deployment.configuration?.HostConfig?.PortBindings[`${req.body.port}/tcp`];
+
+	let machinePort;
+	if (portBindings) {
+		machinePort = portBindings[0]?.HostPort;
+	}
 
 	if (!machinePort) {
 		return res.json({
@@ -226,7 +231,7 @@ router.post('/:orgName/domain', async (req, res, next) => {
 	// Setup a temporary nginx config for domain verification
 	const challenge = await generateVerification();
 	await createDomain({
-		deploymentId: req.body.deploymentId,
+		deploymentId,
 		domain: req.body.domain,
 		port: req.body.port,
 		verified: 0,
@@ -268,8 +273,8 @@ router.post('/:orgName/domain/verify', async (req, res, next) => {
 	if (verified) {
 		// Mark the domain as verified in the database, cleanup the challenge,
 		// and setup the ssl for the domain
-		const deployment = await getDeploymentById(domain.deploymentId);
-		await Promise.all([
+		const [deployment, ...rest] = await Promise.all([
+			getDeploymentById(domain.deploymentId),
 			verifyDomainDB(domain.domain),
 			cleanupChallenge(domain.challenge),
 			generateSSL(domain.domain),
@@ -303,10 +308,11 @@ router.delete('/:orgName/domain', async (req, res, next) => {
 
 	const tasks = [];
 
-	tasks.push(deleteNginxConfig(req.body.domain));
-
 	if (domain.verified === 1) {
+		tasks.push(deleteNginxConfig(req.body.domain));
 		tasks.push(deleteSSL(req.body.domain));
+	} else {
+		tasks.push(cleanupChallenge(domain.deploymentId));
 	}
 
 	tasks.push(deleteDomain(req.body.domain));

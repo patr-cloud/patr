@@ -4,7 +4,7 @@ import { v4 } from 'uuid';
 import { join } from 'path';
 import { resolve } from 'url';
 import { writeFile, unlink } from 'fs';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 
 import { certbotWebRoot, nginxFolder } from '../../config/config';
 import getJunoModule from '../../module';
@@ -22,12 +22,17 @@ export async function generateVerification() {
 
 export async function verifyDomain(domain: string, challengeId: Buffer) {
 	const challengeStr = challengeId.toString('hex');
-	const response = await axios.get(resolve(`http://${domain}`, `/.well-known/acme-challenge/${challengeStr}`));
+	let response: AxiosResponse<any>;
+	try {
+		response = await axios.get(resolve(`http://${domain}`, `/.well-known/acme-challenge/${challengeStr}`));
+	} catch (error) {
+		return false;
+	}
 	return response.data === challengeStr;
 }
 
 export async function cleanupChallenge(challengeId: Buffer) {
-	await unlinkPromise(challengeId.toString('hex'));
+	await unlinkPromise(join(certbotWebRoot, challengeId.toString('hex')));
 }
 
 export async function generateProxy(domain: string, ip: string, port: string | number) {

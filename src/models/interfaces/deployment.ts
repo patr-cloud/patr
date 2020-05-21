@@ -5,7 +5,6 @@ export interface Deployment {
 	repository: string;
 	tag: string;
 	configuration: ContainerCreateOptions;
-	hostConfig?: ContainerCreateOptions['HostConfig'];
 	serverId: Buffer;
 	organizationId: Buffer;
 }

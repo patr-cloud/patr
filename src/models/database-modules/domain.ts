@@ -9,7 +9,7 @@ export async function createDomain(
 		INSERT INTO
 			domains(deploymentId, domain, port, verified, challenge)
 		VALUES
-			(?, ?, ?)
+			(?, ?, ?, ?, ?)
 		`,
 		[domain.deploymentId, domain.domain, domain.port, domain.verified, domain.challenge],
 	);

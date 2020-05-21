@@ -127,9 +127,6 @@ export async function getRepoDeployments(
 		} else if (registryUrl === privateRegistry.serveraddress) {
 			auth = privateRegistry;
 		}
-		if (deployment.hostConfig) {
-			deployment.configuration.HostConfig = deployment.hostConfig;
-		}
 		return {
 			id: deployment.deploymentId.toString('hex'),
 			image: `${deployment.repository}:${deployment.tag}`,
