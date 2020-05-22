@@ -233,7 +233,7 @@ router.post('/:orgName/domain', async (req, res, next) => {
 	await createDomain({
 		deploymentId,
 		domain: req.body.domain,
-		port: req.body.port,
+		port: machinePort,
 		verified: 0,
 		challenge,
 	});
