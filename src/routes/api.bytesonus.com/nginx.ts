@@ -104,7 +104,7 @@ export async function deleteNginxConfig(domain: string) {
 }
 
 export async function generateSSL(domain: string) {
-	await execPromise(`certbot certonly --webroot -w ${certbotWebRoot} -d ${domain}`);
+	await execPromise(`certbot certonly --webroot -w ${certbotWebRoot} -d ${domain} --agree-tos --register-unsafely-without-email`);
 }
 
 export async function deleteSSL(domain: string) {
