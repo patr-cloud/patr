@@ -53,7 +53,9 @@ router.post('/:orgName/deployment', async (req, res, next) => {
 			success: false,
 		});
 	}
-	const { PortBindings, Mounts, ...rest } = req.body.configuration.HostConfig;
+	const {
+		PortBindings, Mounts, ExtraHosts, ...rest
+	} = req.body.configuration.HostConfig;
 	const deploymentId = v4({}, Buffer.alloc(16));
 
 	// Check if only PortBindings and Mounts are passed in HostConfig
