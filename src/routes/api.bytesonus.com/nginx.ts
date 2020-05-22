@@ -16,7 +16,7 @@ const unlinkPromise = promisify(unlink);
 export async function generateVerification() {
 	const challengeId = v4({}, Buffer.alloc(16));
 	const challengeStr = challengeId.toString('hex');
-	await writeFilePromise(join(certbotWebRoot, challengeStr), challengeStr);
+	await writeFilePromise(join(certbotWebRoot, `.well-known/acme-challenge/${challengeStr}`), challengeStr);
 	return challengeId;
 }
 
@@ -32,7 +32,7 @@ export async function verifyDomain(domain: string, challengeId: Buffer) {
 }
 
 export async function cleanupChallenge(challengeId: Buffer) {
-	await unlinkPromise(join(certbotWebRoot, challengeId.toString('hex')));
+	await unlinkPromise(join(certbotWebRoot, `.well-known/acme-challenge/${challengeId.toString('hex')}`));
 }
 
 export async function generateProxy(domain: string, ip: string, port: string | number) {
