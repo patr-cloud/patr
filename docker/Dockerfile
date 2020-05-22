@@ -18,7 +18,7 @@ FROM node:lts
 WORKDIR /usr/src/app
 
 RUN apt update && \
-    apt install dumb-init certbot
+    apt install -y dumb-init certbot
 COPY --from=node_build /usr/src/app/bin/ .
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
