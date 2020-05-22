@@ -2,7 +2,6 @@ FROM node:lts AS node_build
 
 WORKDIR  /usr/src/app
 
-RUN apt-get update && apt-get install -y certbot python-certbot-apache
 
 COPY package.json .
 COPY src/package.json ./src/
@@ -19,7 +18,7 @@ FROM node:lts
 WORKDIR /usr/src/app
 
 RUN apt update && \
-    apt install dumb-init
+    apt install dumb-init certbot
 COPY --from=node_build /usr/src/app/bin/ .
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
