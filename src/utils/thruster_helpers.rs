@@ -1,6 +1,6 @@
 use crate::app::App;
 use bytes::Bytes;
-use sqlx::{MySqlConnection, Transaction, pool::PoolConnection};
+use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 use std::collections::HashMap;
 use thruster::{
 	middleware::{
@@ -24,7 +24,7 @@ pub struct ThrusterContext {
 
 #[allow(dead_code)]
 impl ThrusterContext {
-	pub fn new(request: Request, state: App) -> ThrusterContext {
+	pub fn new(request: Request, state: App) -> Self {
 		let mut ctx = ThrusterContext {
 			response: Response::new(),
 			cookies: Vec::new(),
@@ -44,6 +44,20 @@ impl ThrusterContext {
 		ctx.set("Server", "Thruster");
 
 		ctx
+	}
+
+	pub fn from_response(response: Response, state: App) -> Self {
+		ThrusterContext {
+			response,
+			cookies: vec![],
+			query_params: HashMap::new(),
+			request: Request::new(),
+			headers: HashMap::new(),
+			params: HashMap::new(),
+			status: 200,
+			db_connection: None,
+			state
+		}
 	}
 
 	pub fn body(&mut self, body_string: &str) {
@@ -84,8 +98,12 @@ impl ThrusterContext {
 		self.set("Set-Cookie", &cookie_value);
 	}
 
-	pub fn header(&self, name: &str) -> Option<&String> {
-		self.headers.get(name)
+	pub fn header(&self, name: &str) -> Option<&str> {
+		if let Some(header) = self.headers.get(name) {
+			Some(header)
+		} else {
+			None
+		}
 	}
 
 	pub fn param(&self, name: &str) -> Option<&String> {
@@ -114,6 +132,10 @@ impl ThrusterContext {
 
 	pub fn take_db_connection(&mut self) -> Transaction<PoolConnection<MySqlConnection>> {
 		self.db_connection.take().unwrap()
+	}
+
+	pub fn get_request(&self) -> &Request {
+		&self.request
 	}
 
 	fn cookify_options(&self, name: &str, value: &str, options: &CookieOptions) -> String {

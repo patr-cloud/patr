@@ -28,7 +28,7 @@ pub fn parse_config() -> Settings {
 	}
 
 	settings
-		.merge(Environment::with_prefix("app"))
+		.merge(Environment::with_prefix("app_"))
 		.expect("unable to merge with environment variables");
 
 	settings.try_into().expect("unable to parse settings")

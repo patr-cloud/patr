@@ -2,5 +2,5 @@
 /log
 
 /config/*
-!/config/dev.*
+!/config/*.sample.*
 .env

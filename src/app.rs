@@ -1,6 +1,8 @@
-use crate::utils::{settings::Settings, thruster_helpers::ThrusterContext};
+use crate::{
+	routes,
+	utils::{settings::Settings, thruster_helpers::ThrusterContext},
+};
 
-use async_std::task;
 use colored::Colorize;
 use sqlx::{mysql::MySqlPool, Connection};
 use std::time::Instant;
@@ -8,6 +10,7 @@ use thruster::{
 	async_middleware, errors::ThrusterError, middleware_fn, App as ThrusterApp, MiddlewareNext,
 	MiddlewareResult, Request, Server, ThrusterServer,
 };
+use async_std::task;
 
 #[derive(Clone)]
 pub struct App {
@@ -17,14 +20,15 @@ pub struct App {
 
 pub async fn start_server(app: App) {
 	let port = app.config.port;
-	let mut thruster_app = create_thruster_app(app);
+
+	let mut thruster_app = create_thruster_app(app.clone());
 
 	thruster_app.use_middleware("/", async_middleware!(ThrusterContext, [init_handler]));
-
+	thruster_app.use_sub_app("/", routes::create_sub_app(app));
 	thruster_app.set404(async_middleware!(ThrusterContext, [unhandled_handler]));
 
 	let server = Server::new(thruster_app);
-	server.start("127.0.0.1", port);
+	server.build("127.0.0.1", port).await;
 }
 
 pub fn create_thruster_app(app: App) -> ThrusterApp<Request, ThrusterContext, App> {

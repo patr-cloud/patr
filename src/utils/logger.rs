@@ -1,4 +1,7 @@
-use crate::{utils::settings::{RunningEnvironment, Settings}, Result};
+use crate::{
+	utils::settings::{RunningEnvironment, Settings},
+	Result,
+};
 
 use log::LevelFilter;
 use log4rs::{
@@ -17,14 +20,16 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 	let config = match config.environment {
 		RunningEnvironment::Development => Config::builder()
 			.appender(
-				Appender::builder().build(
-					"default",
-					Box::new(
-						ConsoleAppender::builder()
-							.encoder(Box::new(PatternEncoder::new("")))
-							.build(),
+				Appender::builder()
+					.filter(Box::new(ThresholdFilter::new(LevelFilter::Error)))
+					.build(
+						"default",
+						Box::new(
+							ConsoleAppender::builder()
+								.encoder(Box::new(PatternEncoder::new("")))
+								.build(),
+						),
 					),
-				),
 			)
 			.appender(
 				Appender::builder().build(
@@ -47,11 +52,7 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 					.appender("console")
 					.build("api", LevelFilter::Trace),
 			)
-			.build(
-				Root::builder()
-					.appender("default")
-					.build(LevelFilter::Warn),
-			)?,
+			.build(Root::builder().appender("default").build(LevelFilter::Warn))?,
 		RunningEnvironment::Production => Config::builder()
 			.appender(
 				Appender::builder().build(

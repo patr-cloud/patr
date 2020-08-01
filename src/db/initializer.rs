@@ -5,6 +5,7 @@ use crate::{
 };
 
 use semver::Version;
+use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 use std::cmp::Ordering;
 
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
@@ -18,9 +19,14 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");
 
+		let mut transaction = app.db_pool.begin().await?;
+
 		// Create all tables
-		initialize_meta(app).await?;
-		initialize_users(app).await?;
+		initialize_meta(&mut transaction).await?;
+		initialize_users(&mut transaction).await?;
+		initialize_rbac(&mut transaction).await?;
+
+		transaction.commit().await?;
 
 		// Set the database schema version
 		set_database_version(app, &constants::DATABASE_VERSION).await?;
@@ -79,7 +85,9 @@ async fn migrate_database(app: &App, db_version: Version) -> Result<(), sqlx::Er
 	Ok(())
 }
 
-async fn initialize_meta(app: &App) -> Result<(), sqlx::Error> {
+async fn initialize_meta(
+	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
 	crate::query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS meta_data (
@@ -88,12 +96,14 @@ async fn initialize_meta(app: &App) -> Result<(), sqlx::Error> {
 		);
 		"#
 	)
-	.execute(&app.db_pool)
+	.execute(transaction)
 	.await?;
 	Ok(())
 }
 
-async fn initialize_users(app: &App) -> Result<(), sqlx::Error> {
+async fn initialize_users(
+	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
 	crate::query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS users (
@@ -104,7 +114,31 @@ async fn initialize_users(app: &App) -> Result<(), sqlx::Error> {
 		);
 		"#
 	)
-	.execute(&app.db_pool)
+	.execute(transaction)
+	.await?;
+	Ok(())
+}
+
+async fn initialize_rbac(
+	mut transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
+	crate::query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS resources (
+			resourceId BINARY(16) PRIMARY KEY
+		);
+		"#
+	)
+	.execute(&mut transaction)
+	.await?;
+	crate::query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS roles (
+			resourceId BINARY(16) PRIMARY KEY
+		);
+		"#
+	)
+	.execute(&mut transaction)
 	.await?;
 	Ok(())
 }
