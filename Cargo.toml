@@ -11,12 +11,12 @@ async-std = {version = "1.6.2", features = ["attributes"]}
 bytes = "0.5.5"
 colored = "1.9.3"
 config = "0.10.1"
+express-rs = {path = "../express-rs"}
 log = "0.4.8"
 semver = "0.10.0"
 serde = "1.0.114"
 serde_derive = "1.0.114"
 sqlx = {version = "0.3.5", features = ["mysql"]}
-thruster = "0.9.0-alpha.13"
 
 [dependencies.log4rs]
 default-features = false
