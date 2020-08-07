@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate async_trait;
 extern crate colored;
 extern crate config as config_rs;
 extern crate log;
@@ -8,12 +10,15 @@ extern crate semver;
 extern crate serde;
 extern crate sqlx;
 extern crate async_std;
+extern crate serde_json;
+extern crate jsonwebtoken;
 
 mod app;
 mod db;
 mod macros;
 mod routes;
 mod utils;
+mod models;
 
 use app::App;
 use utils::logger;

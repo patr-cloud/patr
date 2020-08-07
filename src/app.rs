@@ -1,11 +1,14 @@
-use crate::{routes, utils::settings::Settings};
+use crate::{
+	routes,
+	utils::{settings::Settings, EveContext, EveMiddleware},
+};
 
 use colored::Colorize;
 use express_rs::listen;
 use express_rs::{
-	App as ThrusterApp, Context, DefaultContext, DefaultMiddleware, Error, NextHandler,
+	default_middlewares::compression, App as EveApp, Context, Error, NextHandler, Request,
 };
-use sqlx::mysql::MySqlPool;
+use sqlx::{mysql::MySqlPool, Connection};
 use std::{future::Future, pin::Pin, time::Instant};
 
 #[derive(Clone)]
@@ -17,41 +20,49 @@ pub struct App {
 pub async fn start_server(app: App) {
 	let port = app.config.port;
 
-	let mut thruster_app = create_thruster_app();
+	let mut eve_app = create_eve_app(app.clone());
 
-	thruster_app.use_middleware("/", &[DefaultMiddleware::new(init_handler)]);
-	thruster_app.use_sub_app("/", routes::create_sub_app());
+	eve_app.use_middleware(
+		"/",
+		&[
+			EveMiddleware::CustomFunction(init_states),
+			EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
+			EveMiddleware::JsonParser,
+			EveMiddleware::UrlEncodedParser,
+			EveMiddleware::CookieParser,
+		],
+	);
+	eve_app.use_sub_app("/", routes::create_sub_app(app));
 
-	listen(thruster_app, ([127, 0, 0, 1], port)).await;
+	log::info!("Listening for connections on 127.0.0.1:{}", port);
+	listen(eve_app, ([127, 0, 0, 1], port), None).await;
 }
 
-pub fn create_thruster_app() -> ThrusterApp<DefaultContext, DefaultMiddleware> {
-	ThrusterApp::<DefaultContext, DefaultMiddleware>::new()
+pub fn create_eve_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
+	EveApp::<EveContext, EveMiddleware, App>::create(eve_context_generator, app)
 }
 
-fn init_handler(
-	mut context: DefaultContext,
-	next: NextHandler<DefaultContext>,
-) -> Pin<Box<dyn Future<Output = Result<DefaultContext, Error>> + Send>> {
+fn eve_context_generator(request: Request, state: &App) -> EveContext {
+	let state = state.clone();
+	EveContext::new(request, state)
+}
+
+fn init_states(
+	mut context: EveContext,
+	next: NextHandler<EveContext>,
+) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>> {
 	Box::pin(async move {
 		// Start measuring time to check how long a route takes to execute
 		let start_time = Instant::now();
 
-		/* Get a connection from the connection pool
-		let pool_connection = context.get_state().db_pool.acquire().await;
-		if let Err(err) = pool_connection {
-			return Ok(context);
-		}
+		// Get a connection from the connection pool
+		let pool_connection = context.get_state().db_pool.acquire().await?;
 
 		// Begin a transaction on that connection
-		let transaction = pool_connection.unwrap().begin().await;
-		if let Err(err) = transaction {
-			return Ok(context);
-		}
+		let transaction = pool_connection.begin().await?;
 
 		// Set the transaction
-		context.set_db_connection(transaction.unwrap());
-		*/
+		context.set_db_connection(transaction);
 
 		// Execute the next route and handle the result
 		context = next(context).await?;
@@ -76,58 +87,13 @@ fn init_handler(
 			} else {
 				format!("{} μs", elapsed_time.as_micros())
 			},
-			context.get_body().unwrap().len()
+			context.get_response().get_body().len()
 		);
 
-		/*
-		task::spawn(async {
-			if let Err(err) = db_connection.commit().await {
-				log::error!("Unable to commit transaction: {}", err);
-			}
-		});
-		*/
+		if let Err(err) = context.take_db_connection().commit().await {
+			log::error!("Unable to commit transaction: {}", err);
+		}
 
 		Ok(context)
-
-		/*
-		match route_result {
-			Ok(mut context) => {
-				//let db_connection = context.take_db_connection();
-			}
-			Err(mut err) => {
-				let context = &mut err.context;
-				let db_connection = context.take_db_connection();
-
-				log::error!(target: "console", "Error while processing request: {}", err.message);
-				log::info!(
-					"{} {} {} {} - {}",
-					context.method(),
-					context.url(),
-					match err.status {
-						100..=199 => format!("{}", context.get_status()).normal(),
-						200..=299 => format!("{}", context.get_status()).green(),
-						300..=399 => format!("{}", context.get_status()).cyan(),
-						400..=499 => format!("{}", context.get_status()).yellow(),
-						500..=599 => format!("{}", context.get_status()).red(),
-						_ => format!("{}", context.get_status()).purple(),
-					},
-					if elapsed_time.as_millis() > 0 {
-						format!("{} ms", elapsed_time.as_millis())
-					} else {
-						format!("{} μs", elapsed_time.as_micros())
-					},
-					context.get_body().len()
-				);
-
-				task::spawn(async {
-					if let Err(err) = db_connection.rollback().await {
-						log::error!("Unable to rollback transaction: {}", err);
-					}
-				});
-
-				Err(err)
-			}
-		}
-		*/
 	})
 }
