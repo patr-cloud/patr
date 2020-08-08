@@ -1,12 +1,15 @@
 use super::EveContext;
-use crate::models::{access_token_data::AccessTokenData, error_messages, errors};
+use crate::{
+	app::App,
+	models::{access_token_data::AccessTokenData, error_messages, errors},
+};
 use express_rs::{
 	default_middlewares::{
 		compression::CompressionHandler, cookie_parser::parser as cookie_parser,
 		json::parser as json_parser, logger, static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	Context, Error, Middleware, NextHandler,
+	App as EveApp, Context, Error, Middleware, NextHandler,
 };
 use serde_json::json;
 use std::{future::Future, pin::Pin};
@@ -28,6 +31,7 @@ pub enum EveMiddleware {
 	StaticHandler(StaticFileServer),
 	TokenAuthenticator(Vec<&'static str>),
 	CustomFunction(MiddlewareHandlerFunction),
+	DomainRouter(String, EveApp<EveContext, EveMiddleware, App>),
 }
 
 #[async_trait]
@@ -113,6 +117,13 @@ impl Middleware<EveContext> for EveMiddleware {
 				next(context).await
 			}
 			EveMiddleware::CustomFunction(function) => function(context, next).await,
+			EveMiddleware::DomainRouter(domain, app) => {
+				if &context.get_host() == domain {
+					app.resolve(context).await
+				} else {
+					next(context).await
+				}
+			}
 		}
 	}
 }

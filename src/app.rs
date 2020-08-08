@@ -32,7 +32,7 @@ pub async fn start_server(app: App) {
 			EveMiddleware::CookieParser,
 		],
 	);
-	eve_app.use_sub_app("/", routes::create_sub_app(app));
+	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app.clone()));
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
 	listen(eve_app, ([127, 0, 0, 1], port), None).await;

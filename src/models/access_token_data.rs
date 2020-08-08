@@ -1,6 +1,6 @@
 use jsonwebtoken::{errors::Error, DecodingKey, EncodingKey, TokenData, Validation};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AccessTokenData {
 	pub iss: String,
 	pub aud: String,

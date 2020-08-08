@@ -89,3 +89,16 @@ impl Context for EveContext {
 		&mut self.response
 	}
 }
+
+impl Clone for EveContext {
+	fn clone(&self) -> Self {
+		EveContext {
+			request: self.request.clone(),
+			response: self.response.clone(),
+			body_object: self.body_object.clone(),
+			state: self.state.clone(),
+			db_connection: None,
+			access_token_data: self.access_token_data.clone(),
+		}
+	}
+}
