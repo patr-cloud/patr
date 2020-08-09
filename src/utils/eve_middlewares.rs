@@ -1,7 +1,11 @@
 use super::EveContext;
 use crate::{
 	app::App,
-	models::{access_token_data::AccessTokenData, error_messages, errors},
+	models::{
+		access_token_data::AccessTokenData,
+		errors::{errors, messages},
+	},
+	utils::constants::request_keys,
 };
 use express_rs::{
 	default_middlewares::{
@@ -88,9 +92,9 @@ impl Middleware<EveContext> for EveMiddleware {
 				if authorization.is_none() {
 					// 401
 					context.status(401).json(json!({
-						"success": false,
-						"error": errors::UNAUTHORIZED,
-						"message": error_messages::UNAUTHORIZED
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: errors::UNAUTHORIZED,
+						request_keys::MESSAGE: messages::UNAUTHORIZED
 					}));
 					return Ok(context);
 				}
@@ -103,9 +107,9 @@ impl Middleware<EveContext> for EveMiddleware {
 				if let Err(err) = result {
 					log::warn!("Error occured while parsing JWT: {}", err.to_string());
 					context.status(401).json(json!({
-						"success": false,
-						"error": errors::UNAUTHORIZED,
-						"message": error_messages::UNAUTHORIZED
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: errors::UNAUTHORIZED,
+						request_keys::MESSAGE: messages::UNAUTHORIZED
 					}));
 					return Ok(context);
 				}

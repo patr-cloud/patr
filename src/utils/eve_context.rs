@@ -42,7 +42,6 @@ impl EveContext {
 		self.db_connection = Some(connection);
 	}
 
-	#[allow(dead_code)]
 	pub fn get_body_object(&self) -> Option<&Value> {
 		self.body_object.as_ref()
 	}

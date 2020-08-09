@@ -12,6 +12,7 @@ extern crate sqlx;
 extern crate async_std;
 extern crate serde_json;
 extern crate jsonwebtoken;
+extern crate argon2;
 
 mod app;
 mod db;

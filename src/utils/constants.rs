@@ -7,3 +7,12 @@ pub const DATABASE_VERSION: Version = Version {
 	pre: vec![],
 	build: vec![],
 };
+
+pub mod request_keys {
+	pub const USER_ID: &str = "userId";
+	pub const PASSWORD: &str = "password";
+	pub const SUCCESS: &str = "success";
+	pub const ERROR: &str = "error";
+	pub const MESSAGE: &str = "message";
+	pub const ACCESS_TOKEN: &str = "accessToken";
+}
