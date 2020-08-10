@@ -2,6 +2,23 @@ use crate::app::App;
 
 use crate::query;
 use semver::Version;
+use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+
+pub async fn initialize_meta(
+	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
+	crate::query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS meta_data (
+			metaId VARCHAR(100) PRIMARY KEY,
+			value TEXT NOT NULL
+		);
+		"#
+	)
+	.execute(transaction)
+	.await?;
+	Ok(())
+}
 
 pub async fn set_database_version(app: &App, version: &Version) -> Result<(), sqlx::Error> {
 	query!(

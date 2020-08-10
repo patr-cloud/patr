@@ -20,15 +20,15 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[
 			EveMiddleware::DomainRouter(
 				String::from("api.bytesonus.com"),
-				api_bytesonus_com::create_sub_app(app.clone()),
+				Box::new(api_bytesonus_com::create_sub_app(app.clone())),
 			),
 			EveMiddleware::DomainRouter(
 				String::from("assets.bytesonus.com"),
-				assets_bytesonus_com::create_sub_app(app.clone()),
+				Box::new(assets_bytesonus_com::create_sub_app(app.clone())),
 			),
 			EveMiddleware::DomainRouter(
 				String::from("auth.bytesonus.com"),
-				auth_bytesonus_com::create_sub_app(app.clone()),
+				Box::new(auth_bytesonus_com::create_sub_app(app)),
 			),
 		],
 	);

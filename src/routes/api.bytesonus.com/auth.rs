@@ -3,7 +3,7 @@ use crate::{
 	db,
 	models::{
 		access_token_data::AccessTokenData,
-		errors::{errors, messages},
+		errors::{error_ids, messages},
 	},
 	pin_fn,
 	utils::{constants::request_keys, get_current_time, EveContext, EveMiddleware},
@@ -33,7 +33,7 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: errors::WRONG_PARAMETERS,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
 			request_keys::MESSAGE: messages::WRONG_PARAMETERS
 		}));
 		return Ok(context);
@@ -44,7 +44,7 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: errors::WRONG_PARAMETERS,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
 			request_keys::MESSAGE: messages::WRONG_PARAMETERS
 		}));
 		return Ok(context);
@@ -55,7 +55,7 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: errors::WRONG_PARAMETERS,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
 			request_keys::MESSAGE: messages::WRONG_PARAMETERS
 		}));
 		return Ok(context);
@@ -66,7 +66,7 @@ async fn sign_in(
 	} else {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: errors::USER_NOT_FOUND,
+			request_keys::ERROR: error_ids::USER_NOT_FOUND,
 			request_keys::MESSAGE: messages::USER_NOT_FOUND
 		}));
 		return Ok(context);
@@ -82,7 +82,7 @@ async fn sign_in(
 	if !success {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: errors::INVALID_PASSWORD,
+			request_keys::ERROR: error_ids::INVALID_PASSWORD,
 			request_keys::MESSAGE: messages::INVALID_PASSWORD
 		}));
 		return Ok(context);
@@ -99,7 +99,7 @@ async fn sign_in(
 		typ: String::from("accessToken"),
 		exp,
 	};
-	let jwt = token_data.to_string(&context.get_state().config.jwt_secret)?;
+	let jwt = token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

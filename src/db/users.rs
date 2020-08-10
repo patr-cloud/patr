@@ -1,6 +1,24 @@
 use crate::{models::user::User, query};
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
+pub async fn initialize_users(
+	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
+	crate::query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS users (
+			userId BINARY(16) PRIMARY KEY,
+			username VARCHAR(100) UNIQUE NOT NULL,
+			password BINARY(64) NOT NULL,
+			email VARCHAR(320) UNIQUE NOT NULL
+		);
+		"#
+	)
+	.execute(transaction)
+	.await?;
+	Ok(())
+}
+
 pub async fn get_user(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	user_id: &str,
@@ -21,7 +39,7 @@ pub async fn get_user(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.len() == 0 {
+	if rows.is_empty() {
 		return Ok(None);
 	}
 

@@ -1,4 +1,4 @@
-pub mod errors {
+pub mod error_ids {
 	pub const USER_NOT_FOUND: &str = "userNotFound";
 	pub const EMAIL_NOT_VERIFIED: &str = "emailNotVerified";
 	pub const INVALID_PASSWORD: &str = "invalidPassword";

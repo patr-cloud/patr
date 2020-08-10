@@ -3,7 +3,7 @@ use crate::{
 	app::App,
 	models::{
 		access_token_data::AccessTokenData,
-		errors::{errors, messages},
+		errors::{error_ids, messages},
 	},
 	utils::constants::request_keys,
 };
@@ -35,7 +35,7 @@ pub enum EveMiddleware {
 	StaticHandler(StaticFileServer),
 	TokenAuthenticator(Vec<&'static str>),
 	CustomFunction(MiddlewareHandlerFunction),
-	DomainRouter(String, EveApp<EveContext, EveMiddleware, App>),
+	DomainRouter(String, Box<EveApp<EveContext, EveMiddleware, App>>),
 }
 
 #[async_trait]
@@ -93,7 +93,7 @@ impl Middleware<EveContext> for EveMiddleware {
 					// 401
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
-						request_keys::ERROR: errors::UNAUTHORIZED,
+						request_keys::ERROR: error_ids::UNAUTHORIZED,
 						request_keys::MESSAGE: messages::UNAUTHORIZED
 					}));
 					return Ok(context);
@@ -108,7 +108,7 @@ impl Middleware<EveContext> for EveMiddleware {
 					log::warn!("Error occured while parsing JWT: {}", err.to_string());
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
-						request_keys::ERROR: errors::UNAUTHORIZED,
+						request_keys::ERROR: error_ids::UNAUTHORIZED,
 						request_keys::MESSAGE: messages::UNAUTHORIZED
 					}));
 					return Ok(context);

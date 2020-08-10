@@ -1,11 +1,10 @@
 use crate::{
 	app::App,
-	db::{get_database_version, set_database_version},
+	db::{self, get_database_version, set_database_version},
 	utils::constants,
 };
 
 use semver::Version;
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 use std::cmp::Ordering;
 
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
@@ -22,9 +21,9 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		let mut transaction = app.db_pool.begin().await?;
 
 		// Create all tables
-		initialize_meta(&mut transaction).await?;
-		initialize_users(&mut transaction).await?;
-		initialize_rbac(&mut transaction).await?;
+		db::initialize_meta(&mut transaction).await?;
+		db::initialize_users(&mut transaction).await?;
+		db::initialize_rbac(&mut transaction).await?;
 
 		transaction.commit().await?;
 
@@ -82,63 +81,5 @@ async fn migrate_database(app: &App, db_version: Version) -> Result<(), sqlx::Er
 
 	set_database_version(app, &constants::DATABASE_VERSION).await?;
 
-	Ok(())
-}
-
-async fn initialize_meta(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
-) -> Result<(), sqlx::Error> {
-	crate::query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS meta_data (
-			metaId VARCHAR(100) PRIMARY KEY,
-			value TEXT NOT NULL
-		);
-		"#
-	)
-	.execute(transaction)
-	.await?;
-	Ok(())
-}
-
-async fn initialize_users(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
-) -> Result<(), sqlx::Error> {
-	crate::query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS users (
-			userId BINARY(16) PRIMARY KEY,
-			username VARCHAR(100) UNIQUE NOT NULL,
-			password BINARY(64) NOT NULL,
-			email VARCHAR(320) UNIQUE NOT NULL
-		);
-		"#
-	)
-	.execute(transaction)
-	.await?;
-	Ok(())
-}
-
-async fn initialize_rbac(
-	mut transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
-) -> Result<(), sqlx::Error> {
-	crate::query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS resources (
-			resourceId BINARY(16) PRIMARY KEY
-		);
-		"#
-	)
-	.execute(&mut transaction)
-	.await?;
-	crate::query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS roles (
-			resourceId BINARY(16) PRIMARY KEY
-		);
-		"#
-	)
-	.execute(&mut transaction)
-	.await?;
 	Ok(())
 }
