@@ -10,6 +10,8 @@ pub const DATABASE_VERSION: Version = Version {
 
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
+	pub const USERNAME: &str = "username";
+	pub const EMAIL: &str = "email";
 	pub const PASSWORD: &str = "password";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";

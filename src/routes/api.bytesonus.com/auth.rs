@@ -6,11 +6,12 @@ use crate::{
 		errors::{error_ids, messages},
 	},
 	pin_fn,
-	utils::{constants::request_keys, get_current_time, EveContext, EveMiddleware},
+	utils::{constants::request_keys, get_current_time, validator, EveContext, EveMiddleware},
 };
 
-use argon2::Config;
+use argon2::Variant;
 use express_rs::{App as EveApp, Context, Error, NextHandler};
+use rand::{distributions::Alphanumeric, Rng};
 use serde_json::{json, Value};
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -19,6 +20,11 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 	app.get(
 		"/sign-in",
 		&[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
+	);
+
+	app.get(
+		"/sign-up",
+		&[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
 
 	app
@@ -61,7 +67,9 @@ async fn sign_in(
 		return Ok(context);
 	};
 
-	let user = if let Some(user) = db::get_user(context.get_db_connection(), user_id).await? {
+	let user = if let Some(user) =
+		db::get_user_by_username_or_email(context.get_db_connection(), user_id).await?
+	{
 		user
 	} else {
 		context.json(json!({
@@ -76,7 +84,11 @@ async fn sign_in(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
 		&user.password,
-		&Config::default(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
 	)?;
 
 	if !success {
@@ -105,5 +117,147 @@ async fn sign_in(
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt
 	}));
+	Ok(context)
+}
+
+async fn sign_up(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
+			request_keys::MESSAGE: messages::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let username = if let Some(Value::String(username)) = body.get(request_keys::USERNAME) {
+		username
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
+			request_keys::MESSAGE: messages::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let email = if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
+		email
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
+			request_keys::MESSAGE: messages::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let password = if let Some(Value::String(password)) = body.get(request_keys::PASSWORD) {
+		password
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
+			request_keys::MESSAGE: messages::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	if !validator::is_username_valid(username) {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::INVALID_USERNAME,
+			request_keys::MESSAGE: messages::INVALID_USERNAME
+		}));
+		return Ok(context);
+	}
+
+	if !validator::is_email_valid(email) {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::INVALID_EMAIL,
+			request_keys::MESSAGE: messages::INVALID_EMAIL
+		}));
+		return Ok(context);
+	}
+
+	if !validator::is_password_valid(password) {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::PASSWORD_TOO_WEAK,
+			request_keys::MESSAGE: messages::PASSWORD_TOO_WEAK
+		}));
+		return Ok(context);
+	}
+
+	if db::get_user_by_username(context.get_db_connection(), username)
+		.await?
+		.is_some()
+	{
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::USERNAME_TAKEN,
+			request_keys::MESSAGE: messages::USERNAME_TAKEN
+		}));
+		return Ok(context);
+	}
+
+	if db::get_user_by_email(context.get_db_connection(), email)
+		.await?
+		.is_some()
+	{
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::EMAIL_TAKEN,
+			request_keys::MESSAGE: messages::EMAIL_TAKEN
+		}));
+		return Ok(context);
+	}
+
+	let join_token = rand::thread_rng()
+		.sample_iter(Alphanumeric)
+		.take(40)
+		.collect::<String>();
+	let token_expiry = get_current_time() + (1000 * 60 * 60 * 24); // 24 hours
+	let password = argon2::hash_raw(
+		password.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+	let token_hash = argon2::hash_raw(
+		join_token.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	db::set_user_email_to_be_verified(
+		context.get_db_connection(),
+		email,
+		username,
+		&password,
+		&token_hash,
+		token_expiry,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+
+	// TODO send email with join_token as a token
+
 	Ok(context)
 }

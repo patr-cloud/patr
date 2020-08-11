@@ -36,14 +36,18 @@ dependencies = [
  "config",
  "express-rs",
  "jsonwebtoken",
+ "lazy_static",
  "log",
  "log4rs",
+ "rand",
+ "regex",
  "rust-argon2",
  "semver",
  "serde 1.0.114",
  "serde_derive",
  "serde_json",
  "sqlx",
+ "uuid",
 ]
 
 [[package]]
@@ -1817,6 +1821,12 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
+
+[[package]]
+name = "uuid"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fde2f6a4bea1d6e007c4ad38c6839fa71cbb63b6dbf5b595aa38dc9b1093c11"
 
 [[package]]
 name = "vcpkg"

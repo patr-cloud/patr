@@ -10,7 +10,7 @@ pub async fn initialize_meta(
 	crate::query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS meta_data (
-			metaId VARCHAR(100) PRIMARY KEY,
+			id VARCHAR(100) PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#
@@ -47,9 +47,9 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 		SELECT * FROM
 			meta_data
 		WHERE
-			metaId = 'version_major' OR
-			metaId = 'version_minor' OR
-			metaId = 'version_patch';
+			id = 'version_major' OR
+			id = 'version_minor' OR
+			id = 'version_patch';
 		"#,
 	)
 	.fetch_all(&app.db_pool)
@@ -58,7 +58,7 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 	let mut version = Version::new(0, 0, 0);
 
 	for row in rows {
-		match row.metaId.as_ref() {
+		match row.id.as_ref() {
 			"version_major" => version.major = row.value.parse::<u64>().unwrap(),
 			"version_minor" => version.minor = row.value.parse::<u64>().unwrap(),
 			"version_patch" => version.patch = row.value.parse::<u64>().unwrap(),

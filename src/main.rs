@@ -2,6 +2,8 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate async_trait;
+#[macro_use]
+extern crate lazy_static;
 extern crate colored;
 extern crate config as config_rs;
 extern crate log;
@@ -13,6 +15,9 @@ extern crate async_std;
 extern crate serde_json;
 extern crate jsonwebtoken;
 extern crate argon2;
+extern crate uuid;
+extern crate regex;
+extern crate rand;
 
 mod app;
 mod db;
