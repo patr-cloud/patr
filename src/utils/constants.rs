@@ -17,4 +17,6 @@ pub mod request_keys {
 	pub const ERROR: &str = "error";
 	pub const MESSAGE: &str = "message";
 	pub const ACCESS_TOKEN: &str = "accessToken";
+	pub const REFRESH_TOKEN: &str = "refreshToken";
+	pub const AVAILABLE: &str = "available";
 }

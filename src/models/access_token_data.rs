@@ -32,4 +32,14 @@ impl AccessTokenData {
 			&EncodingKey::from_secret(key.as_ref()),
 		)
 	}
+
+	pub fn new(iat: u64, exp: u64) -> Self {
+		AccessTokenData {
+			iss: String::from("https://api.bytesonus.com"),
+			aud: String::from("https://*.bytesonus.com"),
+			iat,
+			typ: String::from("accessToken"),
+			exp,
+		}
+	}
 }

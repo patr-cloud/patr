@@ -5,10 +5,17 @@ use crate::{
 
 use log::LevelFilter;
 use log4rs::{
-	append::rolling_file::policy::compound::{
-		roll::fixed_window::FixedWindowRoller, trigger::size::SizeTrigger, CompoundPolicy,
+	append::{
+		console::ConsoleAppender,
+		rolling_file::{
+			policy::compound::{
+				roll::fixed_window::FixedWindowRoller,
+				trigger::size::SizeTrigger,
+				CompoundPolicy,
+			},
+			RollingFileAppender,
+		},
 	},
-	append::{console::ConsoleAppender, rolling_file::RollingFileAppender},
 	config::{Appender, Config, Logger, Root},
 	encode::pattern::PatternEncoder,
 	filter::threshold::ThresholdFilter,

@@ -1,10 +1,9 @@
-
-#[allow(dead_code)]
-pub mod rbac;
+pub mod access_token_data;
 #[allow(dead_code)]
 pub mod errors;
+#[allow(dead_code)]
+pub mod rbac;
 pub mod user;
-pub mod access_token_data;
 
 /*
 New:
@@ -26,7 +25,7 @@ When validating a request:
 Each resource must be "owned" by someone or the other.
 There can't be a resouce that doesn't have an owner.
 2 ways to do this:
-- The "owner" role cannot be removed from a resource. 
+- The "owner" role cannot be removed from a resource.
   Can be transferred, maybe, but no.
 	Pros:
 	- Fits in well with rbac middlewares. Can be done in the same SQL query

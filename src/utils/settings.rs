@@ -5,7 +5,10 @@ pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
 	let mut settings = Config::new();
 
-	match env::var("APP_ENV").unwrap_or_else(|_| "dev".into()).as_ref() {
+	match env::var("APP_ENV")
+		.unwrap_or_else(|_| "dev".into())
+		.as_ref()
+	{
 		"prod" | "production" => {
 			settings
 				.merge(File::with_name("config/prod"))

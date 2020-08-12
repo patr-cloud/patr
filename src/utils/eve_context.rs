@@ -84,6 +84,10 @@ impl Context for EveContext {
 		&self.response
 	}
 
+	fn take_response(self) -> Response {
+		self.response
+	}
+
 	fn get_response_mut(&mut self) -> &mut Response {
 		&mut self.response
 	}

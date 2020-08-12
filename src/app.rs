@@ -1,15 +1,23 @@
 use crate::{
+	models::errors::{error_ids, error_messages},
 	routes,
-	utils::{settings::Settings, EveContext, EveMiddleware},
+	utils::{constants::request_keys, settings::Settings, EveContext, EveMiddleware},
 };
 
 use colored::Colorize;
-use express_rs::listen;
 use express_rs::{
-	default_middlewares::compression, App as EveApp, Context, Error, NextHandler, Request,
+	default_middlewares::compression,
+	listen,
+	App as EveApp,
+	Context,
+	Error,
+	NextHandler,
+	Request,
+	Response,
 };
+use serde_json::json;
 use sqlx::{mysql::MySqlPool, Connection};
-use std::{future::Future, pin::Pin, time::Instant};
+use std::{error::Error as StdError, future::Future, pin::Pin, time::Instant};
 
 #[derive(Clone)]
 pub struct App {
@@ -22,6 +30,7 @@ pub async fn start_server(app: App) {
 
 	let mut eve_app = create_eve_app(app.clone());
 
+	eve_app.set_error_handler(eve_error_handler);
 	eve_app.use_middleware(
 		"/",
 		&[
@@ -45,6 +54,23 @@ pub fn create_eve_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 fn eve_context_generator(request: Request, state: &App) -> EveContext {
 	let state = state.clone();
 	EveContext::new(request, state)
+}
+
+fn eve_error_handler(mut response: Response, error: Box<dyn StdError>) -> Response {
+	log::error!(
+		"Error occured while processing request: {}",
+		error.to_string()
+	);
+	response.set_content_type("application/json");
+	response.set_body(
+		&json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error_ids::SERVER_ERROR,
+			request_keys::MESSAGE: error_messages::SERVER_ERROR
+		})
+		.to_string(),
+	);
+	response
 }
 
 fn init_states(

@@ -13,8 +13,8 @@ pub mod error_ids {
 	pub const SERVER_ERROR: &str = "serverError";
 	pub const EMAIL_TAKEN: &str = "emailTaken";
 	pub const USERNAME_TAKEN: &str = "usernameTaken";
-	pub const TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
-	pub const TOKEN_EXPIRED: &str = "emailTokenExpired";
+	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
+	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
 	pub const NOT_FOUND: &str = "notFound";
 	pub const RESOURCE_EXISTS: &str = "resourceExists";
 	pub const RESOURCE_DOES_NOT_EXIST: &str = "resourceDoesNotExist";
@@ -22,7 +22,7 @@ pub mod error_ids {
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 }
 
-pub mod messages {
+pub mod error_messages {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
 	pub const INVALID_PASSWORD: &str = "Your username/password is incorrect";
@@ -39,9 +39,10 @@ pub mod messages {
 	pub const SERVER_ERROR: &str = "An internal server error has occured. Please try again later";
 	pub const EMAIL_TAKEN: &str = "Sorry. That email address is already in use.";
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken.";
-	pub const TOKEN_NOT_FOUND: &str =
+	pub const EMAIL_TOKEN_NOT_FOUND: &str =
 		"Your link seems to be invalid. Please request for a new link again";
-	pub const TOKEN_EXPIRED: &str = "Your link has expired. Please request for a new link again";
+	pub const EMAIL_TOKEN_EXPIRED: &str =
+		"Your link has expired. Please request for a new link again";
 	pub const NOT_FOUND: &str = "That route doesn't seem to exist";
 	pub const RESOURCE_EXISTS: &str = "That resource already exists";
 	pub const RESOURCE_DOES_NOT_EXIST: &str = "That resource doesn't seem to exist";

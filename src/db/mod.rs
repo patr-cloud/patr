@@ -1,15 +1,15 @@
 mod initializer;
 mod meta_data;
-mod users;
 mod rbac;
+mod users;
 
 use crate::utils::settings::Settings;
 use sqlx::mysql::MySqlPool;
 
 pub use initializer::initialize;
 pub use meta_data::*;
-pub use users::*;
 pub use rbac::*;
+pub use users::*;
 
 pub async fn create_connection_pool(config: &Settings) -> Result<MySqlPool, sqlx::Error> {
 	log::trace!("Creating database connection pool...");
