@@ -8,10 +8,11 @@ pub mod user;
 /*
 New:
 
-Users have roles
 Users belong to an organisation through a role
-Roles have permissions on a resource
-Resources belong to a user, or an organisation
+Users can create an organisation for all their personal resources
+Roles have permissions on a resource type or a specific resource
+Resources belong to an organisation
+Actions on a resource require permissions on that resource
 
 
 When validating a request:

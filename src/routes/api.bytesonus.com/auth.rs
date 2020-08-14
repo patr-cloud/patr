@@ -6,11 +6,12 @@ use crate::{
 		errors::{error_ids, error_messages},
 	},
 	pin_fn,
-	utils::{constants::request_keys, get_current_time, validator, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys, get_current_time, mailer, validator, EveContext, EveMiddleware,
+	},
 };
 
 use argon2::Variant;
-use async_std::task;
 use express_rs::{App as EveApp, Context, Error, NextHandler};
 use job_scheduler::Uuid;
 use rand::{distributions::Alphanumeric, Rng};
@@ -278,10 +279,11 @@ async fn sign_up(
 		request_keys::SUCCESS: true
 	}));
 
-	task::spawn(async move {
-		// TODO send email with join_token as a token
-		println!("Join token for user: {}", join_token);
-	});
+	mailer::send_email_verification_mail(
+		context.get_state().config.clone(),
+		email.clone(),
+		join_token,
+	);
 
 	Ok(context)
 }

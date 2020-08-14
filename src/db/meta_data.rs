@@ -7,7 +7,7 @@ use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 pub async fn initialize_meta(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
-	crate::query!(
+	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS meta_data (
 			id VARCHAR(100) PRIMARY KEY,

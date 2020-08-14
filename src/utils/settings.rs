@@ -49,6 +49,7 @@ pub struct Settings {
 	pub mysql: MySQLSettings,
 	pub mongodb: MongoDBSettings,
 	pub redis: RedisSettings,
+	pub email: EmailSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -92,6 +93,17 @@ pub struct RedisSettings {
 	pub password: Option<String>,
 	pub database: Option<String>,
 	pub connection_limit: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct EmailSettings {
+	pub host: String,
+	pub port: u16,
+	pub secure: bool,
+	pub username: String,
+	pub from: String,
+	pub password: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -30,6 +30,7 @@ type MiddlewareHandlerFunction =
 		EveContext,
 		NextHandler<EveContext>,
 	) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>>;
+type ResourcesRequiredFn = fn(EveContext) -> Vec<String>;
 
 #[allow(dead_code)]
 #[derive(Clone)]

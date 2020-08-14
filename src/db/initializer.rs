@@ -2,6 +2,7 @@ use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
 	utils::constants,
+	query,
 };
 
 use semver::Version;
@@ -10,7 +11,7 @@ use std::cmp::Ordering;
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
 
-	let tables = crate::query!("SHOW TABLES;")
+	let tables = query!("SHOW TABLES;")
 		.fetch_all(&app.db_pool)
 		.await?;
 
@@ -23,6 +24,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		// Create all tables
 		db::initialize_meta(&mut transaction).await?;
 		db::initialize_users(&mut transaction).await?;
+		db::initialize_organisations(&mut transaction).await?;
 		db::initialize_rbac(&mut transaction).await?;
 
 		transaction.commit().await?;

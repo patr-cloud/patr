@@ -1,7 +1,7 @@
 {
 	"port": 3000,
 	"basePath": "/",
-	"passwordSaltRounds": 10,
+	"passwordSalt": "keyboard cat",
 	"jwtSecret": "keyboard cat",
 	"s3": {
 		"endpoint": "s3.localhost",
@@ -15,7 +15,7 @@
 		"port": 3306,
 		"user": "root",
 		"password": "mysql",
-		"database": "bytesonus_api",
+		"database": "api",
 		"connectionLimit": 10
 	},
 	"mongodb": {
@@ -23,7 +23,7 @@
 		"port": 27017,
 		"user": "root",
 		"password": "mongodb",
-		"database": "bytesonus_api",
+		"database": "api",
 		"connectionLimit": 10
 	},
 	"redis": {
@@ -31,7 +31,15 @@
 		"port": 6379,
 		"user": "root",
 		"password": "redis",
-		"database": "bytesonus_api",
+		"database": "api",
 		"connectionLimit": 10
+	},
+	"email": {
+		"host": "smtp.example.com",
+		"port": 587,
+		"secure": true,
+		"username": "no-reply@example.com",
+		"from": "no-reply@example.com",
+		"password": "password"
 	}
 }

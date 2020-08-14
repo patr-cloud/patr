@@ -7,7 +7,7 @@ use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 pub async fn initialize_users(
 	mut transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
-	crate::query!(
+	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user (
 			id BINARY(16) PRIMARY KEY,
@@ -20,7 +20,7 @@ pub async fn initialize_users(
 	.execute(&mut transaction)
 	.await?;
 
-	crate::query!(
+	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_login (
 			refresh_token BINARY(16) PRIMARY KEY,
@@ -35,7 +35,7 @@ pub async fn initialize_users(
 	.execute(&mut transaction)
 	.await?;
 
-	crate::query!(
+	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS emails_to_be_verified (
 			email VARCHAR(320) PRIMARY KEY,
@@ -49,7 +49,7 @@ pub async fn initialize_users(
 	.execute(&mut transaction)
 	.await?;
 
-	crate::query!(
+	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS password_reset_requests (
 			user_id BINARY(16) PRIMARY KEY,
@@ -170,9 +170,18 @@ pub async fn set_user_email_to_be_verified(
 		INSERT INTO
 			emails_to_be_verified
 		VALUES
-			(?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			username = ?,
+			password = ?,
+			token = ?,
+			token_expiry = ?;
 		"#,
 		email,
+		username,
+		password,
+		token_hash,
+		token_expiry,
 		username,
 		password,
 		token_hash,
