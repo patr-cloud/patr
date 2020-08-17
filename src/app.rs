@@ -5,7 +5,7 @@ use crate::{
 };
 
 use colored::Colorize;
-use express_rs::{
+use eve_rs::{
 	default_middlewares::compression,
 	listen,
 	App as EveApp,

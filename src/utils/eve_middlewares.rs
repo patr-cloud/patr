@@ -7,7 +7,7 @@ use crate::{
 	},
 	utils::constants::request_keys,
 };
-use express_rs::{
+use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
 		cookie_parser::parser as cookie_parser,

@@ -13,7 +13,7 @@ bytes = "0.5.5"
 clap = "2.33.1"
 colored = "1.9.3"
 config = "0.10.1"
-express-rs = {path = "../express-rs"}
+eve-rs = "0.1.0"
 job_scheduler = {git = "https://github.com/alopatindev/job_scheduler/", branch = "fix-issue-20"}
 jsonwebtoken = "7.2.0"
 lazy_static = "1.4.0"

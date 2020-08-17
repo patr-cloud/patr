@@ -17,7 +17,7 @@ use crate::{
 };
 
 use argon2::Variant;
-use express_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use job_scheduler::Uuid;
 use rand::{distributions::Alphanumeric, Rng};
 use serde_json::{json, Value};
