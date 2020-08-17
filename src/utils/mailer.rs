@@ -1,8 +1,12 @@
 use crate::utils::settings::Settings;
 
 use lettre::{
-	header, message::SinglePart, transport::smtp::authentication::Credentials, Message,
-	SmtpTransport, Transport,
+	header,
+	message::SinglePart,
+	transport::smtp::authentication::Credentials,
+	Message,
+	SmtpTransport,
+	Transport,
 };
 
 pub fn send_email_verification_mail(

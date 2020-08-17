@@ -3,9 +3,9 @@ mod eve_middlewares;
 
 pub mod constants;
 pub mod logger;
+pub mod mailer;
 pub mod settings;
 pub mod validator;
-pub mod mailer;
 
 pub use eve_context::*;
 pub use eve_middlewares::*;

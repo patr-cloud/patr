@@ -7,7 +7,12 @@ use crate::{
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, mailer, validator, EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
 

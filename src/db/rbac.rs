@@ -5,7 +5,9 @@ use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 pub async fn initialize_rbac(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
-	// Resource types, like Application, deployment, VM, etc
+	log::info!("Initializing rbac tables");
+
+	// Resource types, like application, deployment, VM, etc
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS resource_type (

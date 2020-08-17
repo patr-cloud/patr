@@ -1,8 +1,8 @@
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
-	utils::constants,
 	query,
+	utils::constants,
 };
 
 use semver::Version;
@@ -11,9 +11,7 @@ use std::cmp::Ordering;
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
 
-	let tables = query!("SHOW TABLES;")
-		.fetch_all(&app.db_pool)
-		.await?;
+	let tables = query!("SHOW TABLES;").fetch_all(&app.db_pool).await?;
 
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {

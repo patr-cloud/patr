@@ -12,7 +12,6 @@ use express_rs::{
 		compression::CompressionHandler,
 		cookie_parser::parser as cookie_parser,
 		json::parser as json_parser,
-		logger,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
@@ -35,7 +34,6 @@ type ResourcesRequiredFn = fn(EveContext) -> Vec<String>;
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum EveMiddleware {
-	Logger(String),
 	Compression(u32),
 	JsonParser,
 	UrlEncodedParser,
@@ -54,18 +52,6 @@ impl Middleware<EveContext> for EveMiddleware {
 		next: NextHandler<EveContext>,
 	) -> Result<EveContext, Error<EveContext>> {
 		match self {
-			EveMiddleware::Logger(format) => {
-				let mut logger = logger::with_format(format);
-				logger.begin_measuring();
-				context = next(context).await?;
-				log::info!(
-					"{}",
-					logger
-						.complete_measuring(&context)
-						.unwrap_or_else(|| "-".to_string())
-				);
-				Ok(context)
-			}
 			EveMiddleware::Compression(compression_level) => {
 				let mut compressor = CompressionHandler::create(*compression_level);
 

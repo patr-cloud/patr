@@ -5,6 +5,7 @@ use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 pub async fn initialize_organisations(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Initializing organisation tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS organisation (

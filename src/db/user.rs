@@ -7,6 +7,7 @@ use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 pub async fn initialize_users(
 	mut transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Initializing user tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user (
