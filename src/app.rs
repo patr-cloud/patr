@@ -1,5 +1,5 @@
 use crate::{
-	models::errors::{error_ids, error_messages},
+	models::error,
 	routes,
 	utils::{constants::request_keys, settings::Settings, EveContext, EveMiddleware},
 };
@@ -65,8 +65,8 @@ fn eve_error_handler(mut response: Response, error: Box<dyn StdError>) -> Respon
 	response.set_body(
 		&json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::SERVER_ERROR,
-			request_keys::MESSAGE: error_messages::SERVER_ERROR
+			request_keys::ERROR: error::id::SERVER_ERROR,
+			request_keys::MESSAGE: error::message::SERVER_ERROR
 		})
 		.to_string(),
 	);

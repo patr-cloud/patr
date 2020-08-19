@@ -1,10 +1,7 @@
 use super::EveContext;
 use crate::{
 	app::App,
-	models::{
-		access_token_data::AccessTokenData,
-		errors::{error_ids, error_messages},
-	},
+	models::{access_token_data::AccessTokenData, error},
 	utils::constants::request_keys,
 };
 use eve_rs::{
@@ -29,7 +26,6 @@ type MiddlewareHandlerFunction =
 		EveContext,
 		NextHandler<EveContext>,
 	) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>>;
-type ResourcesRequiredFn = fn(EveContext) -> Vec<String>;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -87,8 +83,8 @@ impl Middleware<EveContext> for EveMiddleware {
 					// 401
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
-						request_keys::ERROR: error_ids::UNAUTHORIZED,
-						request_keys::MESSAGE: error_messages::UNAUTHORIZED
+						request_keys::ERROR: error::id::UNAUTHORIZED,
+						request_keys::MESSAGE: error::message::UNAUTHORIZED
 					}));
 					return Ok(context);
 				}
@@ -102,8 +98,8 @@ impl Middleware<EveContext> for EveMiddleware {
 					log::warn!("Error occured while parsing JWT: {}", err.to_string());
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
-						request_keys::ERROR: error_ids::UNAUTHORIZED,
-						request_keys::MESSAGE: error_messages::UNAUTHORIZED
+						request_keys::ERROR: error::id::UNAUTHORIZED,
+						request_keys::MESSAGE: error::message::UNAUTHORIZED
 					}));
 					return Ok(context);
 				}
@@ -116,7 +112,9 @@ impl Middleware<EveContext> for EveMiddleware {
 			}
 			EveMiddleware::CustomFunction(function) => function(context, next).await,
 			EveMiddleware::DomainRouter(domain, app) => {
-				if &context.get_host() == domain || &context.get_host() == "localhost" {
+				if &context.get_host() == domain ||
+					context.get_host() == format!("localhost:{}", app.get_state().config.port)
+				{
 					app.resolve(context).await
 				} else {
 					next(context).await

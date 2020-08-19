@@ -1,4 +1,4 @@
-pub mod error_ids {
+pub mod id {
 	pub const USER_NOT_FOUND: &str = "userNotFound";
 	pub const EMAIL_NOT_VERIFIED: &str = "emailNotVerified";
 	pub const INVALID_PASSWORD: &str = "invalidPassword";
@@ -22,7 +22,7 @@ pub mod error_ids {
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 }
 
-pub mod error_messages {
+pub mod message {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
 	pub const INVALID_PASSWORD: &str = "Your username/password is incorrect";

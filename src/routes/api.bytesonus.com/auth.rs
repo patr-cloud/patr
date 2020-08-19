@@ -1,10 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
-	models::{
-		access_token_data::AccessTokenData,
-		errors::{error_ids, error_messages},
-	},
+	models::{access_token_data::AccessTokenData, error},
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -17,6 +14,7 @@ use crate::{
 };
 
 use argon2::Variant;
+use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use job_scheduler::Uuid;
 use rand::{distributions::Alphanumeric, Rng};
@@ -60,8 +58,8 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -71,8 +69,8 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -82,8 +80,8 @@ async fn sign_in(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -95,8 +93,8 @@ async fn sign_in(
 	} else {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::USER_NOT_FOUND,
-			request_keys::MESSAGE: error_messages::USER_NOT_FOUND
+			request_keys::ERROR: error::id::USER_NOT_FOUND,
+			request_keys::MESSAGE: error::message::USER_NOT_FOUND
 		}));
 		return Ok(context);
 	};
@@ -115,8 +113,8 @@ async fn sign_in(
 	if !success {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::INVALID_PASSWORD,
-			request_keys::MESSAGE: error_messages::INVALID_PASSWORD
+			request_keys::ERROR: error::id::INVALID_PASSWORD,
+			request_keys::MESSAGE: error::message::INVALID_PASSWORD
 		}));
 		return Ok(context);
 	}
@@ -156,8 +154,8 @@ async fn sign_up(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -167,8 +165,8 @@ async fn sign_up(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -178,8 +176,8 @@ async fn sign_up(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -189,8 +187,8 @@ async fn sign_up(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -198,8 +196,8 @@ async fn sign_up(
 	if !validator::is_username_valid(username) {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::INVALID_USERNAME,
-			request_keys::MESSAGE: error_messages::INVALID_USERNAME
+			request_keys::ERROR: error::id::INVALID_USERNAME,
+			request_keys::MESSAGE: error::message::INVALID_USERNAME
 		}));
 		return Ok(context);
 	}
@@ -207,8 +205,8 @@ async fn sign_up(
 	if !validator::is_email_valid(email) {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::INVALID_EMAIL,
-			request_keys::MESSAGE: error_messages::INVALID_EMAIL
+			request_keys::ERROR: error::id::INVALID_EMAIL,
+			request_keys::MESSAGE: error::message::INVALID_EMAIL
 		}));
 		return Ok(context);
 	}
@@ -216,8 +214,8 @@ async fn sign_up(
 	if !validator::is_password_valid(password) {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::PASSWORD_TOO_WEAK,
-			request_keys::MESSAGE: error_messages::PASSWORD_TOO_WEAK
+			request_keys::ERROR: error::id::PASSWORD_TOO_WEAK,
+			request_keys::MESSAGE: error::message::PASSWORD_TOO_WEAK
 		}));
 		return Ok(context);
 	}
@@ -228,8 +226,8 @@ async fn sign_up(
 	{
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::USERNAME_TAKEN,
-			request_keys::MESSAGE: error_messages::USERNAME_TAKEN
+			request_keys::ERROR: error::id::USERNAME_TAKEN,
+			request_keys::MESSAGE: error::message::USERNAME_TAKEN
 		}));
 		return Ok(context);
 	}
@@ -240,8 +238,8 @@ async fn sign_up(
 	{
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::EMAIL_TAKEN,
-			request_keys::MESSAGE: error_messages::EMAIL_TAKEN
+			request_keys::ERROR: error::id::EMAIL_TAKEN,
+			request_keys::MESSAGE: error::message::EMAIL_TAKEN
 		}));
 		return Ok(context);
 	}
@@ -284,11 +282,11 @@ async fn sign_up(
 		request_keys::SUCCESS: true
 	}));
 
-	mailer::send_email_verification_mail(
-		context.get_state().config.clone(),
-		email.clone(),
-		join_token,
-	);
+	let config = context.get_state().config.clone();
+	let email = email.clone();
+	task::spawn(async move {
+		mailer::send_email_verification_mail(config, email, join_token);
+	});
 
 	Ok(context)
 }
@@ -302,8 +300,8 @@ async fn get_access_token(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -313,8 +311,8 @@ async fn get_access_token(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -328,8 +326,8 @@ async fn get_access_token(
 	if user_login.is_none() {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error_messages::EMAIL_TOKEN_NOT_FOUND
+			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
+			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
 		}));
 		return Ok(context);
 	}
@@ -339,8 +337,8 @@ async fn get_access_token(
 		// Token has expired
 		context.status(401).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::UNAUTHORIZED,
-			request_keys::MESSAGE: error_messages::UNAUTHORIZED,
+			request_keys::ERROR: error::id::UNAUTHORIZED,
+			request_keys::MESSAGE: error::message::UNAUTHORIZED,
 		}));
 		return Ok(context);
 	}
@@ -377,8 +375,8 @@ async fn is_email_available(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -388,8 +386,8 @@ async fn is_email_available(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -397,8 +395,8 @@ async fn is_email_available(
 	if !validator::is_email_valid(email) {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::INVALID_EMAIL,
-			request_keys::MESSAGE: error_messages::INVALID_EMAIL
+			request_keys::ERROR: error::id::INVALID_EMAIL,
+			request_keys::MESSAGE: error::message::INVALID_EMAIL
 		}));
 		return Ok(context);
 	}
@@ -421,8 +419,8 @@ async fn is_username_available(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -432,8 +430,8 @@ async fn is_username_available(
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error_messages::WRONG_PARAMETERS
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
 	};
@@ -441,8 +439,8 @@ async fn is_username_available(
 	if !validator::is_username_valid(username) {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::ERROR: error_ids::INVALID_USERNAME,
-			request_keys::MESSAGE: error_messages::INVALID_USERNAME
+			request_keys::ERROR: error::id::INVALID_USERNAME,
+			request_keys::MESSAGE: error::message::INVALID_USERNAME
 		}));
 		return Ok(context);
 	}

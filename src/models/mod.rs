@@ -1,6 +1,6 @@
 pub mod access_token_data;
 #[allow(dead_code)]
-pub mod errors;
+pub mod error;
 #[allow(dead_code)]
 pub mod rbac;
 pub mod user;
