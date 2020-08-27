@@ -50,6 +50,7 @@ pub struct Settings {
 	pub mongodb: MongoDBSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
+	pub twilio: TwilioSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -93,6 +94,14 @@ pub struct RedisSettings {
 	pub password: Option<String>,
 	pub database: Option<String>,
 	pub connection_limit: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TwilioSettings {
+	pub username: String,
+	pub access_token: String,
+	pub from_number: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

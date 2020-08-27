@@ -5,6 +5,7 @@ pub mod constants;
 pub mod logger;
 pub mod mailer;
 pub mod settings;
+pub mod sms;
 pub mod validator;
 
 pub use eve_context::*;

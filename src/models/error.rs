@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 pub mod id {
 	pub const USER_NOT_FOUND: &str = "userNotFound";
 	pub const EMAIL_NOT_VERIFIED: &str = "emailNotVerified";
@@ -5,6 +6,7 @@ pub mod id {
 	pub const INVALID_EMAIL: &str = "invalidEmail";
 	pub const INVALID_CREDENTIALS: &str = "invalidCredentials";
 	pub const INVALID_USERNAME: &str = "invalidUsername";
+	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
@@ -13,8 +15,11 @@ pub mod id {
 	pub const SERVER_ERROR: &str = "serverError";
 	pub const EMAIL_TAKEN: &str = "emailTaken";
 	pub const USERNAME_TAKEN: &str = "usernameTaken";
+	pub const PHONE_NUMBER_TAKEN: &str = "phoneNumberTaken";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
 	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
+	pub const INVALID_OTP: &str = "invalidOtp";
+	pub const OTP_EXPIRED: &str = "otpExpired";
 	pub const NOT_FOUND: &str = "notFound";
 	pub const RESOURCE_EXISTS: &str = "resourceExists";
 	pub const RESOURCE_DOES_NOT_EXIST: &str = "resourceDoesNotExist";
@@ -22,6 +27,7 @@ pub mod id {
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 }
 
+#[allow(dead_code)]
 pub mod message {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
@@ -29,6 +35,7 @@ pub mod message {
 	pub const INVALID_EMAIL: &str = "Your password seems to be incorrect";
 	pub const INVALID_CREDENTIALS: &str = "Your email address is not valid";
 	pub const INVALID_USERNAME: &str = "Your username is not valid";
+	pub const INVALID_PHONE_NUMBER: &str = "Your phone number seems to be incorrect";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
 	pub const WRONG_PARAMETERS: &str = "An internal error occured. This incident has been reported";
@@ -39,10 +46,13 @@ pub mod message {
 	pub const SERVER_ERROR: &str = "An internal server error has occured. Please try again later";
 	pub const EMAIL_TAKEN: &str = "Sorry. That email address is already in use.";
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken.";
+	pub const PHONE_NUMBER_TAKEN: &str = "That phone number is already in use. Did you mean to sign in?";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str =
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
 		"Your link has expired. Please request for a new link again";
+	pub const INVALID_OTP: &str = "That OTP seems to be invalid";
+	pub const OTP_EXPIRED: &str = "That OTP seems to have been expired. Please request a new one";
 	pub const NOT_FOUND: &str = "That route doesn't seem to exist";
 	pub const RESOURCE_EXISTS: &str = "That resource already exists";
 	pub const RESOURCE_DOES_NOT_EXIST: &str = "That resource doesn't seem to exist";

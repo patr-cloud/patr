@@ -18,6 +18,7 @@ extern crate semver;
 extern crate serde;
 extern crate serde_json;
 extern crate sqlx;
+extern crate surf;
 extern crate uuid;
 
 mod app;
@@ -58,9 +59,7 @@ async fn main() -> Result<()> {
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 
-	task::spawn(async {
-		run_scheduler().await;
-	});
+	task::spawn(run_scheduler());
 	log::debug!("Schedulers initialized");
 
 	app::start_server(app).await;

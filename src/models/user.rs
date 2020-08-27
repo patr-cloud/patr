@@ -2,18 +2,9 @@ pub struct User {
 	pub id: Vec<u8>,
 	pub username: String,
 	pub password: Vec<u8>,
-	pub email: String,
-}
-
-impl User {
-	pub fn from(id: Vec<u8>, username: String, password: Vec<u8>, email: String) -> Self {
-		Self {
-			id,
-			username,
-			password,
-			email,
-		}
-	}
+	pub phone_number: String,
+	pub first_name: String,
+	pub last_name: String
 }
 
 pub struct UserLogin {
@@ -24,20 +15,13 @@ pub struct UserLogin {
 	pub last_activity: u64,
 }
 
-impl UserLogin {
-	pub fn from(
-		refresh_token: Vec<u8>,
-		token_expiry: u64,
-		user_id: Vec<u8>,
-		last_login: u64,
-		last_activity: u64,
-	) -> Self {
-		Self {
-			refresh_token,
-			token_expiry,
-			user_id,
-			last_login,
-			last_activity,
-		}
-	}
+pub struct UserToSignUp {
+	pub phone_number: String,
+	pub email: String,
+	pub username: String,
+	pub password: Vec<u8>,
+	pub otp: String,
+	pub otp_expiry: u64,
+	pub first_name: String,
+	pub last_name: String,
 }

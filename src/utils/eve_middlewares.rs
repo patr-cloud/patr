@@ -1,7 +1,7 @@
 use super::EveContext;
 use crate::{
 	app::App,
-	models::{access_token_data::AccessTokenData, error},
+	models::{error, AccessTokenData},
 	utils::constants::request_keys,
 };
 use eve_rs::{

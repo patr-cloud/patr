@@ -1,3 +1,5 @@
+
+#[allow(dead_code)]
 pub mod permissions {
 	pub mod docker {
 		pub const PUSH: &str = "docker::push";

@@ -1,14 +1,10 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
-	models::{access_token_data::AccessTokenData, error},
+	models::{error, AccessTokenData},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		mailer,
-		validator,
-		EveContext,
+		constants::request_keys, get_current_time, mailer, sms, validator, EveContext,
 		EveMiddleware,
 	},
 };
@@ -17,7 +13,7 @@ use argon2::Variant;
 use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use job_scheduler::Uuid;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::Rng;
 use serde_json::{json, Value};
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -31,19 +27,18 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/sign-up",
 		&[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
+	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
 		"/access-token",
 		&[EveMiddleware::CustomFunction(pin_fn!(get_access_token))],
 	);
 	app.get(
-		"/email-available",
-		&[EveMiddleware::CustomFunction(pin_fn!(is_email_available))],
+		"/email-valid",
+		&[EveMiddleware::CustomFunction(pin_fn!(is_email_valid))],
 	);
 	app.get(
-		"/username-available",
-		&[EveMiddleware::CustomFunction(pin_fn!(
-			is_username_available
-		))],
+		"/username-valid",
+		&[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
 
 	app
@@ -87,7 +82,8 @@ async fn sign_in(
 	};
 
 	let user = if let Some(user) =
-		db::get_user_by_username_or_email(context.get_db_connection(), user_id).await?
+		db::get_user_by_username_or_email_or_phone_number(context.get_db_connection(), user_id)
+			.await?
 	{
 		user
 	} else {
@@ -160,6 +156,17 @@ async fn sign_up(
 		return Ok(context);
 	};
 
+	let phone_number = if let Some(Value::String(phone)) = body.get(request_keys::PHONE_NUMBER) {
+		phone
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
 	let username = if let Some(Value::String(username)) = body.get(request_keys::USERNAME) {
 		username
 	} else {
@@ -193,6 +200,28 @@ async fn sign_up(
 		return Ok(context);
 	};
 
+	let first_name = if let Some(Value::String(first_name)) = body.get(request_keys::FIRST_NAME) {
+		first_name
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let last_name = if let Some(Value::String(last_name)) = body.get(request_keys::LAST_NAME) {
+		last_name
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
 	if !validator::is_username_valid(username) {
 		context.json(json!({
 			request_keys::SUCCESS: false,
@@ -207,6 +236,15 @@ async fn sign_up(
 			request_keys::SUCCESS: false,
 			request_keys::ERROR: error::id::INVALID_EMAIL,
 			request_keys::MESSAGE: error::message::INVALID_EMAIL
+		}));
+		return Ok(context);
+	}
+
+	if !validator::is_phone_number_valid(phone_number) {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::INVALID_PHONE_NUMBER,
+			request_keys::MESSAGE: error::message::INVALID_PHONE_NUMBER
 		}));
 		return Ok(context);
 	}
@@ -244,11 +282,30 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	let join_token = rand::thread_rng()
-		.sample_iter(Alphanumeric)
-		.take(40)
-		.collect::<String>();
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 24); // 24 hours
+	if db::get_user_by_phone_number(context.get_db_connection(), phone_number)
+		.await?
+		.is_some()
+	{
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::PHONE_NUMBER_TAKEN,
+			request_keys::MESSAGE: error::message::PHONE_NUMBER_TAKEN
+		}));
+		return Ok(context);
+	}
+
+	let otp = rand::thread_rng().gen_range(0, 9999);
+	let otp = if otp < 10 {
+		format!("000{}", otp)
+	} else if otp < 100 {
+		format!("00{}", otp)
+	} else if otp < 1000 {
+		format!("0{}", otp)
+	} else {
+		format!("{}", otp)
+	};
+
+	let otp_expiry = get_current_time() + (1000 * 60 * 60 * 24); // 24 hours
 	let password = argon2::hash_raw(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
@@ -258,34 +315,139 @@ async fn sign_up(
 			..Default::default()
 		},
 	)?;
-	let token_hash = argon2::hash_raw(
-		join_token.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
-	)?;
 
-	db::set_user_email_to_be_verified(
+	db::set_user_to_be_signed_up(
 		context.get_db_connection(),
+		phone_number,
 		email,
 		username,
 		&password,
-		&token_hash,
-		token_expiry,
+		&first_name,
+		&last_name,
+		&otp,
+		otp_expiry,
 	)
 	.await?;
+
+	let config = context.get_state().config.clone();
+	let result = sms::send_otp_sms(config, phone_number.clone(), otp).await;
+
+	if let Err(err) = result {
+		if err == error::id::SERVER_ERROR {
+			context.json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::SERVER_ERROR,
+				request_keys::MESSAGE: error::message::SERVER_ERROR
+			}));
+			return Ok(context);
+		} else if err == error::id::INVALID_PHONE_NUMBER {
+			context.json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::INVALID_PHONE_NUMBER,
+				request_keys::MESSAGE: error::message::INVALID_PHONE_NUMBER
+			}));
+			return Ok(context);
+		}
+	}
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn join(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let otp = if let Some(Value::String(token)) = body.get(request_keys::VERIFICATION_TOKEN) {
+		token
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let phone_number = if let Some(Value::String(phone)) = body.get(request_keys::PHONE_NUMBER) {
+		phone
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let user_data = if let Some(user_data) =
+		db::get_user_email_to_sign_up(context.get_db_connection(), phone_number).await?
+	{
+		user_data
+	} else {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::INVALID_OTP,
+			request_keys::MESSAGE: error::message::INVALID_OTP
+		}));
+		return Ok(context);
+	};
+
+	if &user_data.otp != otp {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::INVALID_OTP,
+			request_keys::MESSAGE: error::message::INVALID_OTP
+		}));
+		return Ok(context);
+	}
+
+	if user_data.otp_expiry < get_current_time() {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::OTP_EXPIRED,
+			request_keys::MESSAGE: error::message::OTP_EXPIRED
+		}));
+		return Ok(context);
+	}
+
+	let user_id = Uuid::new_v4();
+	let user_id = user_id.as_bytes();
+	db::create_user(
+		context.get_db_connection(),
+		user_id,
+		&user_data.username,
+		&user_data.phone_number,
+		&user_data.password,
+		&user_data.first_name,
+		&user_data.last_name,
+	)
+	.await?;
+	db::add_email_for_user(context.get_db_connection(), user_id, &user_data.email).await?;
+
+	db::delete_user_email_to_be_signed_up(context.get_db_connection(), &user_data.phone_number).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 
 	let config = context.get_state().config.clone();
-	let email = email.clone();
+	let email = user_data.email.clone();
 	task::spawn(async move {
-		mailer::send_email_verification_mail(config, email, join_token);
+		mailer::send_sign_up_completed_mail(config, email);
 	});
 
 	Ok(context)
@@ -366,7 +528,7 @@ async fn get_access_token(
 	Ok(context)
 }
 
-async fn is_email_available(
+async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
@@ -410,7 +572,7 @@ async fn is_email_available(
 	Ok(context)
 }
 
-async fn is_username_available(
+async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {

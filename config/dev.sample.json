@@ -41,5 +41,10 @@
 		"username": "no-reply@example.com",
 		"from": "no-reply@example.com",
 		"password": "password"
+	},
+	"twilio": {
+		"username": "<example-user-name>",
+		"accessToken": "<ACCESS-TOKEN-HHERE>",
+		"fromNumber": "+0123456789"
 	}
 }

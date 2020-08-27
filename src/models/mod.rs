@@ -1,9 +1,13 @@
-pub mod access_token_data;
-#[allow(dead_code)]
 pub mod error;
-#[allow(dead_code)]
 pub mod rbac;
-pub mod user;
+
+mod twilio_sms_body;
+mod access_token_data;
+mod user;
+
+pub use access_token_data::AccessTokenData;
+pub use user::{User, UserToSignUp, UserLogin};
+pub use twilio_sms_body::SmsRequest;
 
 /*
 New:

@@ -33,13 +33,21 @@ pub async fn start_server(app: App) {
 	eve_app.set_error_handler(eve_error_handler);
 	eve_app.use_middleware(
 		"/",
-		&[
-			EveMiddleware::CustomFunction(init_states),
-			EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
-			EveMiddleware::JsonParser,
-			EveMiddleware::UrlEncodedParser,
-			EveMiddleware::CookieParser,
-		],
+		if cfg!(debug_assertions) {
+			&[
+				EveMiddleware::CustomFunction(init_states),
+				EveMiddleware::JsonParser,
+				EveMiddleware::UrlEncodedParser,
+			]
+		} else {
+			&[
+				EveMiddleware::CustomFunction(init_states),
+				EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
+				EveMiddleware::JsonParser,
+				EveMiddleware::UrlEncodedParser,
+				EveMiddleware::CookieParser,
+			]
+		},
 	);
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app.clone()));
 
