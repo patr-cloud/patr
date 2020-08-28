@@ -2,7 +2,7 @@ use crate::query;
 
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
-pub async fn initialize_rbac(
+pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing rbac tables");
@@ -110,5 +110,11 @@ pub async fn initialize_rbac(
 	.execute(&mut *transaction)
 	.await?;
 
+	Ok(())
+}
+
+pub async fn initialize_rbac_post(
+	_transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
 	Ok(())
 }

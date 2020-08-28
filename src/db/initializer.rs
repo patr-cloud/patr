@@ -20,10 +20,15 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		let mut transaction = app.db_pool.begin().await?;
 
 		// Create all tables
-		db::initialize_meta(&mut transaction).await?;
-		db::initialize_users(&mut transaction).await?;
-		db::initialize_organisations(&mut transaction).await?;
-		db::initialize_rbac(&mut transaction).await?;
+		db::initialize_meta_pre(&mut transaction).await?;
+		db::initialize_users_pre(&mut transaction).await?;
+		db::initialize_organisations_pre(&mut transaction).await?;
+		db::initialize_rbac_pre(&mut transaction).await?;
+
+		db::initialize_rbac_post(&mut transaction).await?;
+		db::initialize_organisations_post(&mut transaction).await?;
+		db::initialize_users_post(&mut transaction).await?;
+		db::initialize_meta_post(&mut transaction).await?;
 
 		transaction.commit().await?;
 

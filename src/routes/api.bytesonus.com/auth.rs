@@ -333,18 +333,18 @@ async fn sign_up(
 	let result = sms::send_otp_sms(config, phone_number.clone(), otp).await;
 
 	if let Err(err) = result {
-		if err == error::id::SERVER_ERROR {
-			context.json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::SERVER_ERROR,
-				request_keys::MESSAGE: error::message::SERVER_ERROR
-			}));
-			return Ok(context);
-		} else if err == error::id::INVALID_PHONE_NUMBER {
+		if err == error::id::INVALID_PHONE_NUMBER {
 			context.json(json!({
 				request_keys::SUCCESS: false,
 				request_keys::ERROR: error::id::INVALID_PHONE_NUMBER,
 				request_keys::MESSAGE: error::message::INVALID_PHONE_NUMBER
+			}));
+			return Ok(context);
+		} else {
+			context.json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::SERVER_ERROR,
+				request_keys::MESSAGE: error::message::SERVER_ERROR
 			}));
 			return Ok(context);
 		}

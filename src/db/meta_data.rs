@@ -4,7 +4,7 @@ use crate::query;
 use semver::Version;
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
-pub async fn initialize_meta(
+pub async fn initialize_meta_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing meta tables");
@@ -18,6 +18,12 @@ pub async fn initialize_meta(
 	)
 	.execute(transaction)
 	.await?;
+	Ok(())
+}
+
+pub async fn initialize_meta_post(
+	_transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 

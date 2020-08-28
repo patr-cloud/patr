@@ -4,7 +4,7 @@ use crate::{
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
-pub async fn initialize_users(
+pub async fn initialize_users_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
@@ -17,19 +17,6 @@ pub async fn initialize_users(
 			phone_number CHAR(15) UNIQUE NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS user_email_address (
-			email VARCHAR(320) PRIMARY KEY,
-			user_id BINARY(16) NOT NULL,
-			UNIQUE(email, user_id),
-			FOREIGN KEY(user_id) REFERENCES user(id)
 		);
 		"#
 	)
@@ -84,6 +71,33 @@ pub async fn initialize_users(
 	Ok(())
 }
 
+pub async fn initialize_users_post(
+	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<(), sqlx::Error> {
+	// TODO have two different kinds of email address.
+	// One for external email (for personal accounts)
+	// and one for organisation emails
+	// We can have a complicated constraint like so:
+	// Ref: https://stackoverflow.com/a/10273951/3393442
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS user_email_address (
+			email_local VARCHAR(320),
+			domain_id BINARY(16),
+			user_id BINARY(16) NOT NULL,
+			UNIQUE(email_local, domain_id, user_id),
+			PRIMARY KEY(email_local, domain_id),
+			FOREIGN KEY(user_id) REFERENCES user(id),
+			FOREIGN KEY(domain_id) REFERENCES domain(id)
+		);
+		"#
+	)
+	.execute(transaction)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_user_by_username_or_email_or_phone_number(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	user_id: &str,
@@ -94,13 +108,14 @@ pub async fn get_user_by_username_or_email_or_phone_number(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address
+			user, user_email_address, domain
 		WHERE
 			user.id = user_email_address.user_id AND
+			user_email_address.domain_id = domain.id AND
 			(
 				user.username = ? OR
 				user.phone_number = ? OR
-				user_email_address.email = ?
+				CONCAT(user_email_address.email_local, '@', domain.name) = ?
 			)
 		"#,
 		user_id,
@@ -128,10 +143,11 @@ pub async fn get_user_by_email(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address
+			user, user_email_address, domain
 		WHERE
 			user.id = user_email_address.user_id AND
-			user_email_address.email = ?
+			user_email_address.domain_id = domain.id AND
+			CONCAT(user_email_address.email_local, '@', domain.name) = ?
 		"#,
 		email
 	)
@@ -279,15 +295,17 @@ pub async fn add_email_for_user(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	user_id: &[u8],
 	email: &str,
+	domain: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			user_email_address
 		VALUES
-			(?, ?);
+			(?, ?, ?);
 		"#,
 		email,
+		domain,
 		user_id
 	)
 	.execute(connection)
