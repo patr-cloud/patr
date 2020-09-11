@@ -23,4 +23,7 @@ pub mod request_keys {
 	pub const PHONE_NUMBER: &str = "phoneNumber";
 	pub const FIRST_NAME: &str = "firstName";
 	pub const LAST_NAME: &str = "lastName";
+	pub const EMAIL_TYPE: &str = "emailType";
+	pub const DOMAIN: &str = "domain";
+	pub const ORGANISATION_NAME: &str = "organisationName";
 }

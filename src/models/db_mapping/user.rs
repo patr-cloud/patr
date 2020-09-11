@@ -15,9 +15,28 @@ pub struct UserLogin {
 	pub last_activity: u64,
 }
 
+#[derive(Clone)]
+pub enum UserEmailAddress {
+	Personal(String),
+	Organisation {
+		email_local: String,
+		domain_id: Vec<u8>,
+	},
+}
+
+#[derive(Clone)]
+pub enum UserEmailAddressSignUp {
+	Personal(String),
+	Organisation {
+		email_local: String,
+		domain_name: String,
+		organisation_name: String,
+	},
+}
+
 pub struct UserToSignUp {
 	pub phone_number: String,
-	pub email: String,
+	pub email: UserEmailAddressSignUp,
 	pub username: String,
 	pub password: Vec<u8>,
 	pub otp: String,

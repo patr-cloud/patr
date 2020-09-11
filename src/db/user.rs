@@ -1,5 +1,5 @@
 use crate::{
-	models::{User, UserLogin, UserToSignUp},
+	models::db_mapping::{User, UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp},
 	query, query_as,
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
@@ -40,23 +40,6 @@ pub async fn initialize_users_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_to_sign_up (
-			phone_number CHAR(15) PRIMARY KEY,
-			email VARCHAR(320) UNIQUE NOT NULL,
-			username VARCHAR(100) UNIQUE NOT NULL,
-			password BINARY(64) NOT NULL,
-			first_name VARCHAR(100) NOT NULL,
-			last_name VARCHAR(100) NOT NULL,
-			otp CHAR(4) UNIQUE NOT NULL,
-			otp_expiry BIGINT UNSIGNED NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE IF NOT EXISTS password_reset_request (
 			user_id BINARY(16) PRIMARY KEY,
 			token BINARY(64) UNIQUE NOT NULL,
@@ -74,7 +57,7 @@ pub async fn initialize_users_pre(
 pub async fn initialize_users_post(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
-	// TODO have two different kinds of email address.
+	// have two different kinds of email address.
 	// One for external email (for personal accounts)
 	// and one for organisation emails
 	// We can have a complicated constraint like so:
@@ -82,17 +65,130 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_email_address (
-			email_local VARCHAR(320),
+			type ENUM('personal', 'organisation') NOT NULL,
+
+			# Personal email address
+			email_address VARCHAR(320),
+			
+			# Organisation email address
+			email_local VARCHAR(160),
 			domain_id BINARY(16),
+
 			user_id BINARY(16) NOT NULL,
-			UNIQUE(email_local, domain_id, user_id),
-			PRIMARY KEY(email_local, domain_id),
+			
+			UNIQUE(email_address, email_local, domain_id, user_id),
 			FOREIGN KEY(user_id) REFERENCES user(id),
-			FOREIGN KEY(domain_id) REFERENCES domain(id)
+			FOREIGN KEY(domain_id) REFERENCES domain(id),
+			CONSTRAINT CHECK
+			(
+				(
+					type = 'personal' AND (
+						email_address IS NOT NULL AND
+						email_local IS NULL AND
+						domain_id IS NULL
+					)
+				) OR
+				(
+					type = 'organisation' AND (
+						email_address IS NULL AND
+						email_local IS NOT NULL AND
+						domain_id IS NOT NULL
+					)
+				)
+			)
 		);
 		"#
 	)
-	.execute(transaction)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS user_unverified_email_address (
+			# Personal email address
+			email_address VARCHAR(320),
+			user_id BINARY(16) NOT NULL,
+			verification_token_hash BINARY(64) UNIQUE NOT NULL,
+			verification_token_expiry BIGINT UNSIGNED NOT NULL,
+			
+			PRIMARY KEY(email_address, user_id),
+			FOREIGN KEY(user_id) REFERENCES user(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE VIEW
+			user_email_address_view
+		AS
+			SELECT
+				CASE WHEN (user_email_address.type = 'external') THEN
+					user_email_address.email_address
+				ELSE
+					CONCAT(user_email_address.email_local, '@', domain.name)
+				END AS email,
+				user_email_address.user_id AS user_id,
+				user_email_address.type AS type,
+				domain.id AS domain_id,
+				domain.name AS domain_name
+			FROM
+				user_email_address, domain
+			WHERE
+				user_email_address.domain_id = domain.id;
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS user_to_sign_up (
+			phone_number CHAR(15) PRIMARY KEY,
+			account_type ENUM('personal', 'organisation') NOT NULL,
+			
+			# Personal email address
+			email_address VARCHAR(320),
+
+			# Organisation email address
+			email_local VARCHAR(160),
+			domain_name VARCHAR(100),
+
+			username VARCHAR(100) UNIQUE NOT NULL,
+			password BINARY(64) NOT NULL,
+			first_name VARCHAR(100) NOT NULL,
+			last_name VARCHAR(100) NOT NULL,
+
+			organisation_name VARCHAR(100),
+
+			otp CHAR(4) UNIQUE NOT NULL,
+			otp_expiry BIGINT UNSIGNED NOT NULL,
+
+			CONSTRAINT CHECK
+			(
+				(
+					account_type = 'personal' AND (
+						email_address IS NOT NULL AND
+						email_local IS NULL AND
+						domain_name IS NULL AND
+						organisation_name IS NULL
+					)
+				) OR
+				(
+					account_type = 'organisation' AND (
+						email_address IS NULL AND
+						email_local IS NOT NULL AND
+						domain_name IS NOT NULL AND
+						organisation_name IS NOT NULL
+					)
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
 	.await?;
 
 	Ok(())
@@ -108,14 +204,13 @@ pub async fn get_user_by_username_or_email_or_phone_number(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address, domain
+			user, user_email_address_view
 		WHERE
-			user.id = user_email_address.user_id AND
-			user_email_address.domain_id = domain.id AND
+			user.id = user_email_address_view.user_id AND
 			(
 				user.username = ? OR
 				user.phone_number = ? OR
-				CONCAT(user_email_address.email_local, '@', domain.name) = ?
+				user_email_address_view.email = ?
 			)
 		"#,
 		user_id,
@@ -143,11 +238,10 @@ pub async fn get_user_by_email(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address, domain
+			user, user_email_address_view
 		WHERE
-			user.id = user_email_address.user_id AND
-			user_email_address.domain_id = domain.id AND
-			CONCAT(user_email_address.email_local, '@', domain.name) = ?
+			user.id = user_email_address_view.user_id AND
+			user_email_address_view.email = ?
 		"#,
 		email
 	)
@@ -219,7 +313,7 @@ pub async fn get_user_by_phone_number(
 pub async fn set_user_to_be_signed_up(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	phone_number: &str,
-	email: &str,
+	email: UserEmailAddressSignUp,
 	username: &str,
 	password: &[u8],
 	first_name: &str,
@@ -227,39 +321,139 @@ pub async fn set_user_to_be_signed_up(
 	otp: &str,
 	otp_expiry: u64,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			user_to_sign_up
-		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			email = ?,
-			username = ?,
-			password = ?,
-			first_name = ?,
-			last_name = ?,
-			otp = ?,
-			otp_expiry = ?;
-		"#,
-		phone_number,
-		email,
-		username,
-		password,
-		first_name,
-		last_name,
-		otp,
-		otp_expiry,
-		email,
-		username,
-		password,
-		first_name,
-		last_name,
-		otp,
-		otp_expiry
-	)
-	.execute(connection)
-	.await?;
+	match email {
+		UserEmailAddressSignUp::Personal(email) => {
+			query!(
+				r#"
+				INSERT INTO
+					user_to_sign_up (
+						phone_number,
+						account_type,
+						
+						email_address,
+						
+						email_local,
+						domain_name,
+						
+						username,
+						password,
+						first_name,
+						last_name,
+						
+						organisation_name,
+						
+						otp,
+						otp_expiry
+					)
+				VALUES
+					(?, 'personal', ?, NULL, NULL, ?, ?, ?, ?, NULL, ?, ?)
+				ON DUPLICATE KEY UPDATE
+					account_type = 'personal',
+					
+					email_address = ?,
+					
+					email_local = NULL,
+					domain_name = NULL,
+					
+					organisation_name = NULL,
+					
+					username = ?,
+					password = ?,
+					first_name = ?,
+					last_name = ?,
+					otp = ?,
+					otp_expiry = ?;
+				"#,
+				phone_number,
+				email,
+				username,
+				password,
+				first_name,
+				last_name,
+				otp,
+				otp_expiry,
+				email,
+				username,
+				password,
+				first_name,
+				last_name,
+				otp,
+				otp_expiry
+			)
+			.execute(connection)
+			.await?;
+		}
+		UserEmailAddressSignUp::Organisation {
+			email_local,
+			domain_name,
+			organisation_name,
+		} => {
+			query!(
+				r#"
+				INSERT INTO
+					user_to_sign_up (
+						phone_number,
+						account_type,
+						
+						email_address,
+						
+						email_local,
+						domain_name,
+						
+						username,
+						password,
+						first_name,
+						last_name,
+						
+						organisation_name,
+						
+						otp,
+						otp_expiry
+					)
+				VALUES
+					(?, 'organisation', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON DUPLICATE KEY UPDATE
+					account_type = 'organisation',
+					
+					email_address = NULL,
+					
+					email_local = ?,
+					domain_name = ?,
+					
+					username = ?,
+					password = ?,
+					first_name = ?,
+					last_name = ?,
+					
+					organisation_name = ?,
+					
+					otp = ?,
+					otp_expiry = ?;
+				"#,
+				phone_number,
+				email_local,
+				domain_name,
+				username,
+				password,
+				first_name,
+				last_name,
+				organisation_name,
+				otp,
+				otp_expiry,
+				email_local,
+				domain_name,
+				username,
+				password,
+				first_name,
+				last_name,
+				organisation_name,
+				otp,
+				otp_expiry
+			)
+			.execute(connection)
+			.await?;
+		}
+	}
 
 	Ok(())
 }
@@ -268,8 +462,7 @@ pub async fn get_user_email_to_sign_up(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	phone_number: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let rows = query_as!(
-		UserToSignUp,
+	let rows = query!(
 		r#"
 		SELECT
 			*
@@ -288,25 +481,56 @@ pub async fn get_user_email_to_sign_up(
 	}
 	let row = rows.into_iter().next().unwrap();
 
-	Ok(Some(row))
+	Ok(Some(UserToSignUp {
+		phone_number: row.phone_number,
+		email: if row.account_type == "personal" {
+			UserEmailAddressSignUp::Personal(row.email_address.unwrap())
+		} else if row.account_type == "organisation" {
+			UserEmailAddressSignUp::Organisation {
+				email_local: row.email_local.unwrap(),
+				domain_name: row.domain_name.unwrap(),
+				organisation_name: row.organisation_name.unwrap(),
+			}
+		} else {
+			panic!("Unknown account_type");
+		},
+		username: row.username,
+		password: row.password,
+		otp: row.otp,
+		otp_expiry: row.otp_expiry,
+		first_name: row.first_name,
+		last_name: row.last_name,
+	}))
 }
 
-pub async fn add_email_for_user(
+pub async fn add_personal_email_for_user_to_be_verified(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	email_address: &str,
 	user_id: &[u8],
-	email: &str,
-	domain: &[u8],
+	verification_token: &[u8],
+	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			user_email_address
+			user_unverified_email_address (
+				email_address,
+				user_id,
+				verification_token_hash,
+				verification_token_expiry
+			)
 		VALUES
-			(?, ?, ?);
+			(?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			verification_token_hash = ?,
+			verification_token_expiry = ?;
 		"#,
-		email,
-		domain,
-		user_id
+		email_address,
+		user_id,
+		verification_token,
+		token_expiry,
+		verification_token,
+		token_expiry
 	)
 	.execute(connection)
 	.await?;
@@ -314,7 +538,66 @@ pub async fn add_email_for_user(
 	Ok(())
 }
 
-pub async fn delete_user_email_to_be_signed_up(
+pub async fn add_email_for_user(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+	email: UserEmailAddress,
+) -> Result<(), sqlx::Error> {
+	match email {
+		UserEmailAddress::Personal(email) => {
+			query!(
+				r#"
+				INSERT INTO
+					user_email_address (
+						type,
+						email_address,
+
+						email_local,
+						domain_id,
+
+						user_id
+					)
+				VALUES
+					('personal', ?, NULL, NULL, ?);
+				"#,
+				email,
+				user_id
+			)
+			.execute(connection)
+			.await?;
+		}
+		UserEmailAddress::Organisation {
+			email_local,
+			domain_id,
+		} => {
+			query!(
+				r#"
+				INSERT INTO
+					user_email_address (
+						type,
+						email_address,
+
+						email_local,
+						domain_id,
+
+						user_id
+					)
+				VALUES
+					('organisation', NULL, ?, ?, ?);
+				"#,
+				email_local,
+				domain_id,
+				user_id
+			)
+			.execute(connection)
+			.await?;
+		}
+	}
+
+	Ok(())
+}
+
+pub async fn delete_user_to_be_signed_up(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {

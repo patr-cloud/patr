@@ -1,7 +1,10 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
-	models::{error, AccessTokenData},
+	models::{
+		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
+		error, AccessTokenData,
+	},
 	pin_fn,
 	utils::{
 		constants::request_keys, get_current_time, mailer, sms, validator, EveContext,
@@ -13,7 +16,7 @@ use argon2::Variant;
 use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use job_scheduler::Uuid;
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use serde_json::{json, Value};
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -178,6 +181,53 @@ async fn sign_up(
 		return Ok(context);
 	};
 
+	let email_type = if let Some(Value::String(email_type)) = body.get(request_keys::EMAIL_TYPE) {
+		email_type
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let (domain_name, organisation_name) = match email_type.as_ref() {
+		"organisation" => (
+			if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
+				Some(domain)
+			} else {
+				context.status(400).json(json!({
+					request_keys::SUCCESS: false,
+					request_keys::ERROR: error::id::WRONG_PARAMETERS,
+					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+				}));
+				return Ok(context);
+			},
+			if let Some(Value::String(organisation_name)) =
+				body.get(request_keys::ORGANISATION_NAME)
+			{
+				Some(organisation_name)
+			} else {
+				context.status(400).json(json!({
+					request_keys::SUCCESS: false,
+					request_keys::ERROR: error::id::WRONG_PARAMETERS,
+					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+				}));
+				return Ok(context);
+			},
+		),
+		"personal" => (None, None),
+		_ => {
+			context.status(400).json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::WRONG_PARAMETERS,
+				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+			}));
+			return Ok(context);
+		}
+	};
+
 	let email = if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
 		email
 	} else {
@@ -316,6 +366,18 @@ async fn sign_up(
 		},
 	)?;
 
+	let email = if email_type == "organisation" {
+		UserEmailAddressSignUp::Organisation {
+			email_local: email.replace(&format!("@{}", domain_name.unwrap()), ""),
+			domain_name: domain_name.unwrap().clone(),
+			organisation_name: organisation_name.unwrap().clone(),
+		}
+	} else if email_type == "personal" {
+		UserEmailAddressSignUp::Personal(email.clone())
+	} else {
+		panic!("email type is neither personal, nor organisation. How did you even get here?")
+	};
+
 	db::set_user_to_be_signed_up(
 		context.get_db_connection(),
 		phone_number,
@@ -426,6 +488,7 @@ async fn join(
 
 	let user_id = Uuid::new_v4();
 	let user_id = user_id.as_bytes();
+
 	db::create_user(
 		context.get_db_connection(),
 		user_id,
@@ -436,16 +499,44 @@ async fn join(
 		&user_data.last_name,
 	)
 	.await?;
-	db::add_email_for_user(context.get_db_connection(), user_id, &user_data.email).await?;
 
-	db::delete_user_email_to_be_signed_up(context.get_db_connection(), &user_data.phone_number).await?;
+	match user_data.email {
+		UserEmailAddressSignUp::Personal(email) => {
+			let config = context.get_state().config.clone();
+			let to_email = email.clone();
+			let verification_token = rand::thread_rng()
+				.sample_iter(Alphanumeric)
+				.take(20)
+				.collect();
+			task::spawn(async move {
+				mailer::send_email_verification_mail(config, to_email, verification_token);
+			});
+			// NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+			// Need to revert back to backup email addresses.
+			// FUCK MY LIFE!!!!
+		}
+		UserEmailAddressSignUp::Organisation {
+			email_local,
+			domain_name,
+			organisation_name,
+		} => {}
+	}
+
+	db::add_email_for_user(
+		context.get_db_connection(),
+		user_id,
+		user_data.email.clone(),
+	)
+	.await?;
+
+	db::delete_user_to_be_signed_up(context.get_db_connection(), &user_data.phone_number).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 
 	let config = context.get_state().config.clone();
-	let email = user_data.email.clone();
+	let email = user_data.email;
 	task::spawn(async move {
 		mailer::send_sign_up_completed_mail(config, email);
 	});

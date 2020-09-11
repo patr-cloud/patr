@@ -26,6 +26,7 @@ pub async fn initialize_organisations_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) UNIQUE NOT NULL,
 			owner_organisation_id BINARY(16) NOT NULL,
+			is_verified BOOL NOT NULL DEFAULT FALSE,
 			FOREIGN KEY(owner_organisation_id) REFERENCES organisation(id)
 		);
 		"#
@@ -39,5 +40,61 @@ pub async fn initialize_organisations_pre(
 pub async fn initialize_organisations_post(
 	_transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+pub async fn create_organisation(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	organisation_id: &[u8],
+	name: &str,
+	super_admin_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			organisation (
+				id,
+				name,
+				super_admin_id,
+				active
+			)
+		VALUES
+			(?, ?, ?, ?);
+		"#,
+		organisation_id,
+		name,
+		super_admin_id,
+		false
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn add_domain_to_organisation(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	domain_id: &[u8],
+	domain_name: &str,
+	organisation_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			domain (
+				id,
+				name,
+				owner_organisation_id
+			)
+		VALUES
+			(?, ?, ?);
+		"#,
+		domain_id,
+		domain_name,
+		organisation_id
+	)
+	.execute(connection)
+	.await?;
+
 	Ok(())
 }
