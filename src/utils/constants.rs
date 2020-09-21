@@ -20,10 +20,10 @@ pub mod request_keys {
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	pub const VERIFICATION_TOKEN: &str = "verificationToken";
 	pub const AVAILABLE: &str = "available";
-	pub const PHONE_NUMBER: &str = "phoneNumber";
 	pub const FIRST_NAME: &str = "firstName";
 	pub const LAST_NAME: &str = "lastName";
-	pub const EMAIL_TYPE: &str = "emailType";
+	pub const ACCOUNT_TYPE: &str = "accountType";
 	pub const DOMAIN: &str = "domain";
 	pub const ORGANISATION_NAME: &str = "organisationName";
+	pub const BACKUP_EMAIL: &str = "backupEmail";
 }

@@ -4,6 +4,7 @@ use crate::{
 };
 use serde_json::Value;
 
+#[allow(dead_code)]
 pub async fn send_otp_sms(config: Settings, to_number: String, otp: String) -> Result<(), String> {
 	let request = surf::post(format!(
 		"https://{}:{}@api.twilio.com/2010-04-01/Accounts/{}/Messages.json",

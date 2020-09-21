@@ -2,7 +2,7 @@ pub struct User {
 	pub id: Vec<u8>,
 	pub username: String,
 	pub password: Vec<u8>,
-	pub phone_number: String,
+	pub backup_email: String,
 	pub first_name: String,
 	pub last_name: String
 }
@@ -31,15 +31,16 @@ pub enum UserEmailAddressSignUp {
 		email_local: String,
 		domain_name: String,
 		organisation_name: String,
+		backup_email: String,
 	},
 }
 
 pub struct UserToSignUp {
-	pub phone_number: String,
-	pub email: UserEmailAddressSignUp,
 	pub username: String,
+	pub backup_email: String,
+	pub email: UserEmailAddressSignUp,
 	pub password: Vec<u8>,
-	pub otp: String,
+	pub otp_hash: Vec<u8>,
 	pub otp_expiry: u64,
 	pub first_name: String,
 	pub last_name: String,

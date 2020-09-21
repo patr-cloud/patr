@@ -7,17 +7,16 @@ use crate::{
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, mailer, sms, validator, EveContext,
-		EveMiddleware,
+		constants::request_keys, get_current_time, mailer, validator, EveContext, EveMiddleware,
 	},
 };
 
 use argon2::Variant;
 use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use job_scheduler::Uuid;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::Rng;
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(app);
@@ -159,17 +158,6 @@ async fn sign_up(
 		return Ok(context);
 	};
 
-	let phone_number = if let Some(Value::String(phone)) = body.get(request_keys::PHONE_NUMBER) {
-		phone
-	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
-		return Ok(context);
-	};
-
 	let username = if let Some(Value::String(username)) = body.get(request_keys::USERNAME) {
 		username
 	} else {
@@ -179,53 +167,6 @@ async fn sign_up(
 			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
 		}));
 		return Ok(context);
-	};
-
-	let email_type = if let Some(Value::String(email_type)) = body.get(request_keys::EMAIL_TYPE) {
-		email_type
-	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
-		return Ok(context);
-	};
-
-	let (domain_name, organisation_name) = match email_type.as_ref() {
-		"organisation" => (
-			if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
-				Some(domain)
-			} else {
-				context.status(400).json(json!({
-					request_keys::SUCCESS: false,
-					request_keys::ERROR: error::id::WRONG_PARAMETERS,
-					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-				}));
-				return Ok(context);
-			},
-			if let Some(Value::String(organisation_name)) =
-				body.get(request_keys::ORGANISATION_NAME)
-			{
-				Some(organisation_name)
-			} else {
-				context.status(400).json(json!({
-					request_keys::SUCCESS: false,
-					request_keys::ERROR: error::id::WRONG_PARAMETERS,
-					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-				}));
-				return Ok(context);
-			},
-		),
-		"personal" => (None, None),
-		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
-			return Ok(context);
-		}
 	};
 
 	let email = if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
@@ -250,6 +191,18 @@ async fn sign_up(
 		return Ok(context);
 	};
 
+	let account_type =
+		if let Some(Value::String(account_type)) = body.get(request_keys::ACCOUNT_TYPE) {
+			account_type
+		} else {
+			context.status(400).json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::WRONG_PARAMETERS,
+				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+			}));
+			return Ok(context);
+		};
+
 	let first_name = if let Some(Value::String(first_name)) = body.get(request_keys::FIRST_NAME) {
 		first_name
 	} else {
@@ -272,6 +225,52 @@ async fn sign_up(
 		return Ok(context);
 	};
 
+	let (domain_name, organisation_name, backup_email) = match account_type.as_ref() {
+		"organisation" => (
+			if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
+				Some(domain)
+			} else {
+				context.status(400).json(json!({
+					request_keys::SUCCESS: false,
+					request_keys::ERROR: error::id::WRONG_PARAMETERS,
+					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+				}));
+				return Ok(context);
+			},
+			if let Some(Value::String(organisation_name)) =
+				body.get(request_keys::ORGANISATION_NAME)
+			{
+				Some(organisation_name)
+			} else {
+				context.status(400).json(json!({
+					request_keys::SUCCESS: false,
+					request_keys::ERROR: error::id::WRONG_PARAMETERS,
+					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+				}));
+				return Ok(context);
+			},
+			if let Some(Value::String(backup_email)) = body.get(request_keys::BACKUP_EMAIL) {
+				Some(backup_email)
+			} else {
+				context.status(400).json(json!({
+					request_keys::SUCCESS: false,
+					request_keys::ERROR: error::id::WRONG_PARAMETERS,
+					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+				}));
+				return Ok(context);
+			},
+		),
+		"personal" => (None, None, None),
+		_ => {
+			context.status(400).json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::WRONG_PARAMETERS,
+				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+			}));
+			return Ok(context);
+		}
+	};
+
 	if !validator::is_username_valid(username) {
 		context.json(json!({
 			request_keys::SUCCESS: false,
@@ -290,13 +289,15 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if !validator::is_phone_number_valid(phone_number) {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_PHONE_NUMBER,
-			request_keys::MESSAGE: error::message::INVALID_PHONE_NUMBER
-		}));
-		return Ok(context);
+	if let Some(backup_email) = backup_email {
+		if !validator::is_email_valid(email) {
+			context.json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::INVALID_EMAIL,
+				request_keys::MESSAGE: error::message::INVALID_EMAIL
+			}));
+			return Ok(context);
+		}
 	}
 
 	if !validator::is_password_valid(password) {
@@ -332,30 +333,23 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if db::get_user_by_phone_number(context.get_db_connection(), phone_number)
-		.await?
-		.is_some()
-	{
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::PHONE_NUMBER_TAKEN,
-			request_keys::MESSAGE: error::message::PHONE_NUMBER_TAKEN
-		}));
-		return Ok(context);
-	}
-
-	let otp = rand::thread_rng().gen_range(0, 9999);
+	let otp: u32 = rand::thread_rng().gen_range(0, 999999);
 	let otp = if otp < 10 {
-		format!("000{}", otp)
+		format!("00000{}", otp)
 	} else if otp < 100 {
-		format!("00{}", otp)
+		format!("0000{}", otp)
 	} else if otp < 1000 {
+		format!("000{}", otp)
+	} else if otp < 10000 {
+		format!("00{}", otp)
+	} else if otp < 100000 {
 		format!("0{}", otp)
 	} else {
 		format!("{}", otp)
 	};
+	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let otp_expiry = get_current_time() + (1000 * 60 * 60 * 24); // 24 hours
+	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 	let password = argon2::hash_raw(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
@@ -365,14 +359,24 @@ async fn sign_up(
 			..Default::default()
 		},
 	)?;
+	let token_hash = argon2::hash_raw(
+		otp.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
 
-	let email = if email_type == "organisation" {
+	let email = if account_type == "organisation" {
 		UserEmailAddressSignUp::Organisation {
 			email_local: email.replace(&format!("@{}", domain_name.unwrap()), ""),
 			domain_name: domain_name.unwrap().clone(),
 			organisation_name: organisation_name.unwrap().clone(),
+			backup_email: backup_email.unwrap().clone(),
 		}
-	} else if email_type == "personal" {
+	} else if account_type == "personal" {
 		UserEmailAddressSignUp::Personal(email.clone())
 	} else {
 		panic!("email type is neither personal, nor organisation. How did you even get here?")
@@ -380,37 +384,27 @@ async fn sign_up(
 
 	db::set_user_to_be_signed_up(
 		context.get_db_connection(),
-		phone_number,
-		email,
+		email.clone(),
 		username,
 		&password,
 		&first_name,
 		&last_name,
-		&otp,
-		otp_expiry,
+		&token_hash,
+		token_expiry,
 	)
 	.await?;
 
 	let config = context.get_state().config.clone();
-	let result = sms::send_otp_sms(config, phone_number.clone(), otp).await;
-
-	if let Err(err) = result {
-		if err == error::id::INVALID_PHONE_NUMBER {
-			context.json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::INVALID_PHONE_NUMBER,
-				request_keys::MESSAGE: error::message::INVALID_PHONE_NUMBER
-			}));
-			return Ok(context);
-		} else {
-			context.json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::SERVER_ERROR,
-				request_keys::MESSAGE: error::message::SERVER_ERROR
-			}));
-			return Ok(context);
-		}
-	}
+	task::spawn(async move {
+		mailer::send_email_verification_mail(
+			config,
+			match email {
+				UserEmailAddressSignUp::Organisation { backup_email, .. } => backup_email,
+				UserEmailAddressSignUp::Personal(email) => email,
+			},
+			otp,
+		);
+	});
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -444,8 +438,8 @@ async fn join(
 		return Ok(context);
 	};
 
-	let phone_number = if let Some(Value::String(phone)) = body.get(request_keys::PHONE_NUMBER) {
-		phone
+	let username = if let Some(Value::String(username)) = body.get(request_keys::USERNAME) {
+		username
 	} else {
 		context.status(400).json(json!({
 			request_keys::SUCCESS: false,
@@ -456,7 +450,7 @@ async fn join(
 	};
 
 	let user_data = if let Some(user_data) =
-		db::get_user_email_to_sign_up(context.get_db_connection(), phone_number).await?
+		db::get_user_email_to_sign_up(context.get_db_connection(), username).await?
 	{
 		user_data
 	} else {
@@ -468,7 +462,17 @@ async fn join(
 		return Ok(context);
 	};
 
-	if &user_data.otp != otp {
+	let success = argon2::verify_raw(
+		otp.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&user_data.otp_hash,
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+	if !success {
 		context.json(json!({
 			request_keys::SUCCESS: false,
 			request_keys::ERROR: error::id::INVALID_OTP,
@@ -493,53 +497,78 @@ async fn join(
 		context.get_db_connection(),
 		user_id,
 		&user_data.username,
-		&user_data.phone_number,
 		&user_data.password,
+		&user_data.backup_email,
 		&user_data.first_name,
 		&user_data.last_name,
 	)
 	.await?;
 
+	// For an organisation, create the organisation and domain
+	let email;
+	let welcome_email_to;
+	let backup_email_notification_to;
 	match user_data.email {
-		UserEmailAddressSignUp::Personal(email) => {
-			let config = context.get_state().config.clone();
-			let to_email = email.clone();
-			let verification_token = rand::thread_rng()
-				.sample_iter(Alphanumeric)
-				.take(20)
-				.collect();
-			task::spawn(async move {
-				mailer::send_email_verification_mail(config, to_email, verification_token);
-			});
-			// NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-			// Need to revert back to backup email addresses.
-			// FUCK MY LIFE!!!!
+		UserEmailAddressSignUp::Personal(email_address) => {
+			email = UserEmailAddress::Personal(email_address.clone());
+			backup_email_notification_to = None;
+			welcome_email_to = email_address;
 		}
 		UserEmailAddressSignUp::Organisation {
-			email_local,
 			domain_name,
+			email_local,
+			backup_email,
 			organisation_name,
-		} => {}
+		} => {
+			let organisation_id = Uuid::new_v4();
+			let organisation_id = organisation_id.as_bytes();
+
+			db::create_organisation(
+				context.get_db_connection(),
+				organisation_id,
+				&organisation_name,
+				user_id,
+			)
+			.await?;
+
+			let domain_id = Uuid::new_v4();
+			let domain_id = domain_id.as_bytes().to_vec();
+
+			db::add_domain_to_organisation(
+				context.get_db_connection(),
+				&domain_id,
+				&domain_name,
+				organisation_id,
+			)
+			.await?;
+
+			welcome_email_to = format!("{}@{}", email_local, domain_name);
+			email = UserEmailAddress::Organisation {
+				domain_id,
+				email_local,
+			};
+			backup_email_notification_to = Some(backup_email);
+		}
 	}
 
-	db::add_email_for_user(
-		context.get_db_connection(),
-		user_id,
-		user_data.email.clone(),
-	)
-	.await?;
-
-	db::delete_user_to_be_signed_up(context.get_db_connection(), &user_data.phone_number).await?;
+	db::add_email_for_user(context.get_db_connection(), user_id, email).await?;
+	db::delete_user_to_be_signed_up(context.get_db_connection(), &user_data.username).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 
 	let config = context.get_state().config.clone();
-	let email = user_data.email;
 	task::spawn(async move {
-		mailer::send_sign_up_completed_mail(config, email);
+		mailer::send_sign_up_completed_mail(config, welcome_email_to);
 	});
+
+	if let Some(backup_email) = backup_email_notification_to {
+		let config = context.get_state().config.clone();
+		task::spawn(async move {
+			mailer::send_sign_up_completed_mail(config, backup_email);
+		});
+	}
 
 	Ok(context)
 }

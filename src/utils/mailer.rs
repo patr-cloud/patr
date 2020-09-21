@@ -4,9 +4,7 @@ use lettre::{
 	header,
 	message::{MultiPart, SinglePart},
 	transport::smtp::authentication::Credentials,
-	Message,
-	SmtpTransport,
-	Transport,
+	Message, SmtpTransport, Transport,
 };
 
 pub fn send_email_verification_mail(
@@ -55,6 +53,59 @@ pub fn send_email_verification_mail(
 							TODO: Proper email goes here, with HTML templates and all"#,
 							token = verification_token,
 							email = to_email
+						)),
+				),
+		)
+		.unwrap();
+
+	// Open a remote connection to gmail
+	let mailer = SmtpTransport::relay(&config.email.host)
+		.unwrap()
+		.credentials(Credentials::new(
+			config.email.username,
+			config.email.password,
+		))
+		.build();
+
+	// Send the email
+	match mailer.send(&email) {
+		Ok(_) => {
+			log::info!(target: "emails", "Verification email to {} sent successfully!", to_email);
+		}
+		Err(err) => {
+			log::error!(target: "emails", "Could not send email to {}: {:#?}", to_email, err);
+		}
+	}
+}
+
+pub fn send_backup_registration_mail(config: Settings, to_email: String) {
+	let from = format!("Bytesonus <{}>", config.email.from)
+		.parse()
+		.unwrap();
+	let to = to_email.parse().unwrap();
+
+	let email = Message::builder()
+		.from(from)
+		.to(to)
+		.subject("Verify your email")
+		.multipart(
+			MultiPart::alternative()
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/html; charset=utf8".parse().unwrap(),
+						))
+						.body(format!(
+							r#"Dis account is now a backup email for account, kewl?"#,
+						)),
+				)
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/plain; charset=utf8".parse().unwrap(),
+						))
+						.body(format!(
+							r#"Dis account is now a backup email for account, kewl?"#,
 						)),
 				),
 		)

@@ -41,6 +41,7 @@ pub fn is_password_valid(password: &str) -> bool {
 	password.len() >= 8 && has_lower_case && has_upper_case && has_number && has_special_character
 }
 
+#[allow(dead_code)]
 pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
 }
