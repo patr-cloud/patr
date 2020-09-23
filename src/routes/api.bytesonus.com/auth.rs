@@ -3,17 +3,12 @@ use crate::{
 	db,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error,
-		AccessTokenData,
+		error, AccessTokenData,
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, get_current_time, mailer, validator,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -142,9 +137,9 @@ async fn sign_in(
 
 	db::add_user_login(
 		context.get_db_connection(),
-		refresh_token.as_bytes().to_vec(),
+		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
-		user.id,
+		&user.id,
 		iat,
 		iat,
 	)
@@ -552,6 +547,8 @@ async fn join(
 			email = UserEmailAddress::Personal(email_address.clone());
 			backup_email_notification_to = None;
 			welcome_email_to = email_address;
+
+			// TODO add personal organisation
 		}
 		UserEmailAddressSignUp::Organisation {
 			domain_name,
@@ -598,8 +595,34 @@ async fn join(
 	)
 	.await?;
 
+	// generate JWT
+	let iat = get_current_time();
+	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
+
+	let mut token_data = AccessTokenData::new(iat, exp);
+	token_data.orgs = db::get_all_organisation_roles_for_user(
+		context.get_db_connection(),
+		user_id,
+	)
+	.await?;
+	let jwt =
+		token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
+	let refresh_token = Uuid::new_v4();
+
+	db::add_user_login(
+		context.get_db_connection(),
+		refresh_token.as_bytes(),
+		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
+		user_id,
+		iat,
+		iat,
+	)
+	.await?;
+
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		request_keys::ACCESS_TOKEN: jwt,
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
 	}));
 
 	let config = context.get_state().config.clone();
@@ -643,12 +666,10 @@ async fn get_access_token(
 		}));
 		return Ok(context);
 	};
+	let refresh_token = refresh_token.as_bytes();
 
-	let user_login = db::get_user_login(
-		context.get_db_connection(),
-		refresh_token.as_bytes().to_vec(),
-	)
-	.await?;
+	let user_login =
+		db::get_user_login(context.get_db_connection(), refresh_token).await?;
 
 	if user_login.is_none() {
 		context.json(json!({
@@ -682,12 +703,12 @@ async fn get_access_token(
 	)
 	.await?;
 
-	let refresh_token =
+	let access_token =
 		token_data.to_string(&context.get_state().config.jwt_secret)?;
 
 	db::set_refresh_token_expiry(
 		context.get_db_connection(),
-		refresh_token.as_bytes().to_vec(),
+		refresh_token,
 		iat,
 		exp,
 	)
@@ -695,7 +716,7 @@ async fn get_access_token(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: refresh_token
+		request_keys::ACCESS_TOKEN: access_token
 	}));
 	Ok(context)
 }

@@ -631,9 +631,9 @@ pub async fn create_user(
 
 pub async fn add_user_login(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
-	refresh_token: Vec<u8>,
+	refresh_token: &[u8],
 	token_expiry: u64,
-	user_id: Vec<u8>,
+	user_id: &[u8],
 	last_login: u64,
 	last_activity: u64,
 ) -> Result<(), sqlx::Error> {
@@ -658,7 +658,7 @@ pub async fn add_user_login(
 
 pub async fn get_user_login(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
-	refresh_token: Vec<u8>,
+	refresh_token: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let rows = query_as!(
 		UserLogin,
@@ -684,7 +684,7 @@ pub async fn get_user_login(
 
 pub async fn set_refresh_token_expiry(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
-	refresh_token: Vec<u8>,
+	refresh_token: &[u8],
 	last_activity: u64,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
