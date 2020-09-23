@@ -10,7 +10,7 @@ use jsonwebtoken::{
 
 use crate::models::rbac::OrgPermissions;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AccessTokenData {
 	pub iss: String,
 	pub aud: String,

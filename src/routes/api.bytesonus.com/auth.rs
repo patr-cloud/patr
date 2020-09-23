@@ -43,6 +43,7 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/username-valid",
 		&[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
+	// TODO /forgot-password /reset-password
 
 	app
 }

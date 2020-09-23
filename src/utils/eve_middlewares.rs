@@ -21,7 +21,7 @@ use eve_rs::{
 use serde_json::json;
 use std::{future::Future, pin::Pin};
 
-type MiddlewareHandlerFunction = fn(
+pub type MiddlewareHandlerFunction = fn(
 	EveContext,
 	NextHandler<EveContext>,
 ) -> Pin<

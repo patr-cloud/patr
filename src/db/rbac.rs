@@ -3,7 +3,6 @@ use std::{collections::HashMap, fmt::Write};
 use crate::{models::rbac::OrgPermissions, query};
 
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
-use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
