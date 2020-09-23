@@ -12,6 +12,7 @@ extern crate job_scheduler;
 extern crate jsonwebtoken;
 extern crate log;
 extern crate log4rs;
+extern crate once_cell;
 extern crate rand;
 extern crate regex;
 extern crate semver;

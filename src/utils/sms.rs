@@ -5,10 +5,16 @@ use crate::{
 use serde_json::Value;
 
 #[allow(dead_code)]
-pub async fn send_otp_sms(config: Settings, to_number: String, otp: String) -> Result<(), String> {
+pub async fn send_otp_sms(
+	config: Settings,
+	to_number: String,
+	otp: String,
+) -> Result<(), String> {
 	let request = surf::post(format!(
 		"https://{}:{}@api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
-		config.twilio.username, config.twilio.access_token, config.twilio.username
+		config.twilio.username,
+		config.twilio.access_token,
+		config.twilio.username
 	))
 	.body_form(&SmsRequest {
 		body: format!(
@@ -39,7 +45,8 @@ pub async fn send_otp_sms(config: Settings, to_number: String, otp: String) -> R
 			} else {
 				return Err(String::from(error::id::SERVER_ERROR));
 			};
-			let status = if let Some(Value::String(status)) = data.get("status") {
+			let status = if let Some(Value::String(status)) = data.get("status")
+			{
 				status
 			} else {
 				return Err(String::from(error::id::SERVER_ERROR));

@@ -4,7 +4,9 @@ use lettre::{
 	header,
 	message::{MultiPart, SinglePart},
 	transport::smtp::authentication::Credentials,
-	Message, SmtpTransport, Transport,
+	Message,
+	SmtpTransport,
+	Transport,
 };
 
 pub fn send_email_verification_mail(

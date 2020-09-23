@@ -21,11 +21,12 @@ use eve_rs::{
 use serde_json::json;
 use std::{future::Future, pin::Pin};
 
-type MiddlewareHandlerFunction =
-	fn(
-		EveContext,
-		NextHandler<EveContext>,
-	) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>>;
+type MiddlewareHandlerFunction = fn(
+	EveContext,
+	NextHandler<EveContext>,
+) -> Pin<
+	Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>,
+>;
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -49,7 +50,8 @@ impl Middleware<EveContext> for EveMiddleware {
 	) -> Result<EveContext, Error<EveContext>> {
 		match self {
 			EveMiddleware::Compression(compression_level) => {
-				let mut compressor = CompressionHandler::create(*compression_level);
+				let mut compressor =
+					CompressionHandler::create(*compression_level);
 
 				context = next(context).await?;
 				compressor.compress(&mut context);
@@ -78,7 +80,8 @@ impl Middleware<EveContext> for EveMiddleware {
 				static_file_server.run_middleware(context, next).await
 			}
 			EveMiddleware::TokenAuthenticator(_allowed_groups) => {
-				let authorization = context.get_request().get_header("Authorization");
+				let authorization =
+					context.get_request().get_header("Authorization");
 				if authorization.is_none() {
 					// 401
 					context.status(401).json(json!({
@@ -95,7 +98,10 @@ impl Middleware<EveContext> for EveMiddleware {
 					context.get_state().config.jwt_secret.as_ref(),
 				);
 				if let Err(err) = result {
-					log::warn!("Error occured while parsing JWT: {}", err.to_string());
+					log::warn!(
+						"Error occured while parsing JWT: {}",
+						err.to_string()
+					);
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
 						request_keys::ERROR: error::id::UNAUTHORIZED,
@@ -110,11 +116,16 @@ impl Middleware<EveContext> for EveMiddleware {
 				context.set_token_data(access_data);
 				next(context).await
 			}
-			EveMiddleware::CustomFunction(function) => function(context, next).await,
+			EveMiddleware::CustomFunction(function) => {
+				function(context, next).await
+			}
 			EveMiddleware::DomainRouter(domain, app) => {
 				if &context.get_host() == domain ||
-					context.get_host() == format!("localhost:{}", app.get_state().config.port)
-				{
+					context.get_host() ==
+						format!(
+							"localhost:{}",
+							app.get_state().config.port
+						) {
 					app.resolve(context).await
 				} else {
 					next(context).await

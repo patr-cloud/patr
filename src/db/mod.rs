@@ -13,7 +13,9 @@ pub use organisation::*;
 pub use rbac::*;
 pub use user::*;
 
-pub async fn create_connection_pool(config: &Settings) -> Result<MySqlPool, sqlx::Error> {
+pub async fn create_connection_pool(
+	config: &Settings,
+) -> Result<MySqlPool, sqlx::Error> {
 	log::trace!("Creating database connection pool...");
 	MySqlPool::builder()
 		.max_size(config.mysql.connection_limit)

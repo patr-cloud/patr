@@ -13,6 +13,7 @@ pub async fn initialize_organisations_pre(
 			name VARCHAR(100) UNIQUE NOT NULL,
 			super_admin_id BINARY(16) NOT NULL,
 			active BOOL NOT NULL DEFAULT FALSE,
+			created BIGINT UNSIGNED NOT NULL,
 			FOREIGN KEY(super_admin_id) REFERENCES user(id)
 		);
 		"#
@@ -48,6 +49,7 @@ pub async fn create_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
+	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -56,15 +58,17 @@ pub async fn create_organisation(
 				id,
 				name,
 				super_admin_id,
-				active
+				active,
+				created
 			)
 		VALUES
-			(?, ?, ?, ?);
+			(?, ?, ?, ?, ?);
 		"#,
 		organisation_id,
 		name,
 		super_admin_id,
-		false
+		true,
+		created,
 	)
 	.execute(connection)
 	.await?;

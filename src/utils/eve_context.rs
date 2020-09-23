@@ -30,15 +30,22 @@ impl EveContext {
 	}
 
 	#[allow(dead_code)]
-	pub fn get_db_connection(&mut self) -> &mut Transaction<PoolConnection<MySqlConnection>> {
+	pub fn get_db_connection(
+		&mut self,
+	) -> &mut Transaction<PoolConnection<MySqlConnection>> {
 		self.db_connection.as_mut().unwrap()
 	}
 
-	pub fn take_db_connection(&mut self) -> Transaction<PoolConnection<MySqlConnection>> {
+	pub fn take_db_connection(
+		&mut self,
+	) -> Transaction<PoolConnection<MySqlConnection>> {
 		self.db_connection.take().unwrap()
 	}
 
-	pub fn set_db_connection(&mut self, connection: Transaction<PoolConnection<MySqlConnection>>) {
+	pub fn set_db_connection(
+		&mut self,
+		connection: Transaction<PoolConnection<MySqlConnection>>,
+	) {
 		self.db_connection = Some(connection);
 	}
 

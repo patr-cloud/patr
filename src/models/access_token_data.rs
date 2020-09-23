@@ -1,4 +1,14 @@
-use jsonwebtoken::{errors::Error, DecodingKey, EncodingKey, TokenData, Validation};
+use std::collections::HashMap;
+
+use jsonwebtoken::{
+	errors::Error,
+	DecodingKey,
+	EncodingKey,
+	TokenData,
+	Validation,
+};
+
+use crate::models::rbac::OrgPermissions;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AccessTokenData {
@@ -7,7 +17,8 @@ pub struct AccessTokenData {
 	pub iat: u64,
 	pub typ: String,
 	pub exp: u64,
-	// TODO add more
+	pub orgs: HashMap<String, OrgPermissions>,
+	// Do we need to add more?
 }
 
 impl AccessTokenData {
@@ -39,6 +50,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
+			orgs: HashMap::new(),
 		}
 	}
 }

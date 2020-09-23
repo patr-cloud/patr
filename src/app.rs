@@ -1,7 +1,12 @@
 use crate::{
 	models::error,
 	routes,
-	utils::{constants::request_keys, settings::Settings, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		settings::Settings,
+		EveContext,
+		EveMiddleware,
+	},
 };
 
 use colored::Colorize;
@@ -42,14 +47,19 @@ pub async fn start_server(app: App) {
 		} else {
 			&[
 				EveMiddleware::CustomFunction(init_states),
-				EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
+				EveMiddleware::Compression(
+					compression::DEFAULT_COMPRESSION_LEVEL,
+				),
 				EveMiddleware::JsonParser,
 				EveMiddleware::UrlEncodedParser,
 				EveMiddleware::CookieParser,
 			]
 		},
 	);
-	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app.clone()));
+	eve_app.use_sub_app(
+		&app.config.base_path,
+		routes::create_sub_app(app.clone()),
+	);
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
 	listen(eve_app, ([127, 0, 0, 1], port), None).await;
@@ -64,7 +74,10 @@ fn eve_context_generator(request: Request, state: &App) -> EveContext {
 	EveContext::new(request, state)
 }
 
-fn eve_error_handler(mut response: Response, error: Box<dyn StdError>) -> Response {
+fn eve_error_handler(
+	mut response: Response,
+	error: Box<dyn StdError>,
+) -> Response {
 	log::error!(
 		"Error occured while processing request: {}",
 		error.to_string()
@@ -84,7 +97,8 @@ fn eve_error_handler(mut response: Response, error: Box<dyn StdError>) -> Respon
 fn init_states(
 	mut context: EveContext,
 	next: NextHandler<EveContext>,
-) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>> {
+) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>>
+{
 	Box::pin(async move {
 		// Start measuring time to check how long a route takes to execute
 		let start_time = Instant::now();
@@ -109,12 +123,18 @@ fn init_states(
 			context.get_method(),
 			context.get_path(),
 			match context.get_response().get_status() {
-				100..=199 => format!("{}", context.get_response().get_status()).normal(),
-				200..=299 => format!("{}", context.get_response().get_status()).green(),
-				300..=399 => format!("{}", context.get_response().get_status()).cyan(),
-				400..=499 => format!("{}", context.get_response().get_status()).yellow(),
-				500..=599 => format!("{}", context.get_response().get_status()).red(),
-				_ => format!("{}", context.get_response().get_status()).purple(),
+				100..=199 =>
+					format!("{}", context.get_response().get_status()).normal(),
+				200..=299 =>
+					format!("{}", context.get_response().get_status()).green(),
+				300..=399 =>
+					format!("{}", context.get_response().get_status()).cyan(),
+				400..=499 =>
+					format!("{}", context.get_response().get_status()).yellow(),
+				500..=599 =>
+					format!("{}", context.get_response().get_status()).red(),
+				_ =>
+					format!("{}", context.get_response().get_status()).purple(),
 			},
 			if elapsed_time.as_millis() > 0 {
 				format!("{} ms", elapsed_time.as_millis())

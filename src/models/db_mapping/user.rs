@@ -4,7 +4,8 @@ pub struct User {
 	pub password: Vec<u8>,
 	pub backup_email: String,
 	pub first_name: String,
-	pub last_name: String
+	pub last_name: String,
+	pub created: u64,
 }
 
 pub struct UserLogin {

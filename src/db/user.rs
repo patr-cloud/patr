@@ -1,6 +1,13 @@
 use crate::{
-	models::db_mapping::{User, UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp},
-	query, query_as,
+	models::db_mapping::{
+		User,
+		UserEmailAddress,
+		UserEmailAddressSignUp,
+		UserLogin,
+		UserToSignUp,
+	},
+	query,
+	query_as,
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
@@ -16,7 +23,8 @@ pub async fn initialize_users_pre(
 			password BINARY(64) NOT NULL,
 			backup_email VARCHAR(320) UNIQUE NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
-			last_name VARCHAR(100) NOT NULL
+			last_name VARCHAR(100) NOT NULL,
+			created BIGINT UNSIGNED NOT NULL
 		);
 		"#
 	)
@@ -67,8 +75,8 @@ pub async fn initialize_users_post(
 		CREATE TABLE IF NOT EXISTS user_email_address (
 			type ENUM('personal', 'organisation') NOT NULL,
 
-			# Personal email address OR backup email address
-			email_address VARCHAR(320) NOT NULL,
+			# Personal email address
+			email_address VARCHAR(320),
 			
 			# Organisation email address
 			email_local VARCHAR(160),
@@ -84,6 +92,7 @@ pub async fn initialize_users_post(
 				(
 					type = 'personal' AND
 					(
+						email_address IS NOT NULL AND
 						email_local IS NULL AND
 						domain_id IS NULL
 					)
@@ -91,6 +100,7 @@ pub async fn initialize_users_post(
 				(
 					type = 'organisation' AND
 					(
+						email_address IS NULL AND
 						email_local IS NOT NULL AND
 						domain_id IS NOT NULL
 					)
@@ -193,7 +203,7 @@ pub async fn initialize_users_post(
 	Ok(())
 }
 
-pub async fn get_user_by_username_or_email_or_phone_number(
+pub async fn get_user_by_username_or_email(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
@@ -337,7 +347,6 @@ pub async fn set_user_to_be_signed_up(
 				last_name,
 				otp_hash,
 				otp_expiry,
-				
 				email,
 				password,
 				first_name,
@@ -404,7 +413,6 @@ pub async fn set_user_to_be_signed_up(
 				organisation_name,
 				otp_hash,
 				otp_expiry,
-
 				backup_email,
 				email_local,
 				domain_name,
@@ -590,6 +598,7 @@ pub async fn create_user(
 	backup_email: &str,
 	first_name: &str,
 	last_name: &str,
+	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -600,17 +609,19 @@ pub async fn create_user(
 				password,
 				backup_email,
 				first_name,
-				last_name
+				last_name,
+				created
 			)
 		VALUES
-			(?, ?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?, ?, ?);
 		"#,
 		user_id,
 		username,
 		password,
 		backup_email,
 		first_name,
-		last_name
+		last_name,
+		created
 	)
 	.execute(connection)
 	.await?;

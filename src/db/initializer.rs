@@ -66,7 +66,10 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	}
 }
 
-async fn migrate_database(app: &App, db_version: Version) -> Result<(), sqlx::Error> {
+async fn migrate_database(
+	app: &App,
+	db_version: Version,
+) -> Result<(), sqlx::Error> {
 	let migrations = vec!["0.0.0"];
 
 	let mut migrating = false;

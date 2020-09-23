@@ -27,7 +27,10 @@ pub async fn initialize_meta_post(
 	Ok(())
 }
 
-pub async fn set_database_version(app: &App, version: &Version) -> Result<(), sqlx::Error> {
+pub async fn set_database_version(
+	app: &App,
+	version: &Version,
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
@@ -69,9 +72,15 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 
 	for row in rows {
 		match row.id.as_ref() {
-			"version_major" => version.major = row.value.parse::<u64>().unwrap(),
-			"version_minor" => version.minor = row.value.parse::<u64>().unwrap(),
-			"version_patch" => version.patch = row.value.parse::<u64>().unwrap(),
+			"version_major" => {
+				version.major = row.value.parse::<u64>().unwrap()
+			}
+			"version_minor" => {
+				version.minor = row.value.parse::<u64>().unwrap()
+			}
+			"version_patch" => {
+				version.patch = row.value.parse::<u64>().unwrap()
+			}
 			_ => {}
 		}
 	}
