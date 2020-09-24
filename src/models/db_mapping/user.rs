@@ -5,6 +5,9 @@ pub struct User {
 	pub backup_email: String,
 	pub first_name: String,
 	pub last_name: String,
+	pub dob: Option<u64>,
+	pub bio: Option<String>,
+	pub location: Option<String>,
 	pub created: u64,
 }
 

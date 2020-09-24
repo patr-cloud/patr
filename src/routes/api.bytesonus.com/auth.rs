@@ -3,7 +3,7 @@ use crate::{
 	db,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error, AccessTokenData,
+		error, AccessTokenData, ExposedUserData,
 	},
 	pin_fn,
 	utils::{
@@ -125,13 +125,20 @@ async fn sign_in(
 	// generate JWT
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-
-	let mut token_data = AccessTokenData::new(iat, exp);
-	token_data.orgs = db::get_all_organisation_roles_for_user(
+	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_db_connection(),
 		&user.id,
 	)
 	.await?;
+	let user = ExposedUserData {
+		id: user.id,
+		username: user.username,
+		first_name: user.first_name,
+		last_name: user.last_name,
+		created: user.created,
+	};
+
+	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 	let jwt =
 		token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
 	let refresh_token = Uuid::new_v4();
@@ -140,7 +147,7 @@ async fn sign_in(
 		context.get_db_connection(),
 		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
-		&user.id,
+		&token_data.user.id,
 		iat,
 		iat,
 	)
@@ -526,6 +533,7 @@ async fn join(
 
 	let user_id = Uuid::new_v4();
 	let user_id = user_id.as_bytes();
+	let created = get_current_time();
 
 	db::create_user(
 		context.get_db_connection(),
@@ -535,7 +543,7 @@ async fn join(
 		&user_data.backup_email,
 		&user_data.first_name,
 		&user_data.last_name,
-		get_current_time(),
+		created,
 	)
 	.await?;
 
@@ -599,13 +607,20 @@ async fn join(
 	// generate JWT
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-
-	let mut token_data = AccessTokenData::new(iat, exp);
-	token_data.orgs = db::get_all_organisation_roles_for_user(
+	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_db_connection(),
 		user_id,
 	)
 	.await?;
+	let user = ExposedUserData {
+		id: user_id.to_vec(),
+		username: user_data.username,
+		first_name: user_data.first_name,
+		last_name: user_data.last_name,
+		created,
+	};
+
+	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 	let jwt =
 		token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
 	let refresh_token = Uuid::new_v4();
@@ -697,12 +712,24 @@ async fn get_access_token(
 
 	let iat = get_current_time();
 	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
-	let mut token_data = AccessTokenData::new(iat, exp);
-	token_data.orgs = db::get_all_organisation_roles_for_user(
+	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_db_connection(),
 		&user_login.user_id,
 	)
 	.await?;
+	let user_id = user_login.user_id;
+	let user_data =
+		db::get_user_by_user_id(context.get_db_connection(), &user_id)
+			.await?
+			.unwrap();
+	let user = ExposedUserData {
+		id: user_id,
+		username: user_data.username,
+		first_name: user_data.first_name,
+		last_name: user_data.last_name,
+		created: user_data.created,
+	};
+	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 
 	let access_token =
 		token_data.to_string(&context.get_state().config.jwt_secret)?;

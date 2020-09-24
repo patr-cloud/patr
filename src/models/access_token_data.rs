@@ -11,6 +11,7 @@ use jsonwebtoken::{
 use crate::models::rbac::OrgPermissions;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
 	pub iss: String,
 	pub aud: String,
@@ -18,7 +19,10 @@ pub struct AccessTokenData {
 	pub typ: String,
 	pub exp: u64,
 	pub orgs: HashMap<String, OrgPermissions>,
+	pub user: ExposedUserData, // for userId, name, etc
 	// Do we need to add more?
+	// TODO
+	// pub ip: IpAddr, // which IP is allowed to access this route
 }
 
 impl AccessTokenData {
@@ -43,14 +47,26 @@ impl AccessTokenData {
 		)
 	}
 
-	pub fn new(iat: u64, exp: u64) -> Self {
+	pub fn new(iat: u64, exp: u64, orgs: HashMap<String, OrgPermissions>, user: ExposedUserData) -> Self {
 		AccessTokenData {
 			iss: String::from("https://api.bytesonus.com"),
 			aud: String::from("https://*.bytesonus.com"),
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			orgs: HashMap::new(),
+			orgs,
+			user,
 		}
 	}
+}
+
+// Data about the user that can be exposed in the access token
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExposedUserData {
+	pub id: Vec<u8>,
+	pub username: String,
+	pub first_name: String,
+	pub last_name: String,
+	pub created: u64,
 }

@@ -1,13 +1,8 @@
 use crate::{
 	models::db_mapping::{
-		User,
-		UserEmailAddress,
-		UserEmailAddressSignUp,
-		UserLogin,
-		UserToSignUp,
+		User, UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
+	query, query_as,
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 
@@ -24,6 +19,9 @@ pub async fn initialize_users_pre(
 			backup_email VARCHAR(320) UNIQUE NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
+			dob BIGINT UNSIGNED DEFAULT NULL,
+			bio VARCHAR(128) DEFAULT NULL,
+			location VARCHAR(128) DEFAULT NULL,
 			created BIGINT UNSIGNED NOT NULL
 		);
 		"#
@@ -278,6 +276,33 @@ pub async fn get_user_by_username(
 			username = ?
 		"#,
 		username
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+
+	Ok(Some(row))
+}
+
+pub async fn get_user_by_user_id(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+) -> Result<Option<User>, sqlx::Error> {
+	let rows = query_as!(
+		User,
+		r#"
+		SELECT
+			*
+		FROM
+			user
+		WHERE
+			id = ?
+		"#,
+		user_id
 	)
 	.fetch_all(connection)
 	.await?;
@@ -704,6 +729,46 @@ pub async fn set_refresh_token_expiry(
 	)
 	.execute(connection)
 	.await?;
+
+	Ok(())
+}
+
+pub async fn update_user_data(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	first_name: Option<&str>,
+	last_name: Option<&str>,
+	dob: Option<&str>,
+	bio: Option<&str>,
+	location: Option<&str>,
+) -> Result<(), sqlx::Error> {
+	let params = [
+		(first_name, "first_name"),
+		(last_name, "last_name"),
+		(dob, "dob"),
+		(bio, "bio"),
+		(location, "location"),
+	];
+
+	let param_updates = params
+		.iter()
+		.filter_map(|(param, name)| {
+			if param.is_none() {
+				None
+			} else {
+				Some(format!("{} = ?", name))
+			}
+		})
+		.collect::<Vec<String>>()
+		.join(", ");
+
+	let query_string = format!("UPDATE user SET {};", param_updates);
+	let mut query = sqlx::query(&query_string);
+	for (param, _) in params.iter() {
+		if let Some(value) = param {
+			query = query.bind(value);
+		}
+	}
+	query.execute(connection).await?;
 
 	Ok(())
 }

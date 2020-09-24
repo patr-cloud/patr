@@ -26,4 +26,7 @@ pub mod request_keys {
 	pub const DOMAIN: &str = "domain";
 	pub const ORGANISATION_NAME: &str = "organisationName";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const BIRTHDAY: &str = "birthday";
+	pub const BIO: &str = "bio";
+	pub const LOCATION: &str = "location";
 }

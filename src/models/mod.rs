@@ -5,8 +5,8 @@ pub mod rbac;
 mod access_token_data;
 mod twilio_sms_body;
 
-pub use access_token_data::AccessTokenData;
-pub use twilio_sms_body::SmsRequest;
+pub use access_token_data::*;
+pub use twilio_sms_body::*;
 
 /*
 New:
