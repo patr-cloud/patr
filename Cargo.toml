@@ -1,5 +1,10 @@
 [workspace]
 members = [
   "api",
-  "frontend",
+  "macros"
 ]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 'z'

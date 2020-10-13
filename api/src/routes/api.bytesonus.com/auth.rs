@@ -3,7 +3,7 @@ use crate::{
 	db,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error, AccessTokenData, ExposedUserData,
+		error, rbac, AccessTokenData, ExposedUserData,
 	},
 	pin_fn,
 	utils::{
@@ -17,6 +17,7 @@ use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rand::Rng;
 use serde_json::{json, Value};
+use sqlx::Connection;
 use uuid::Uuid;
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -43,7 +44,14 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/username-valid",
 		&[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
-	// TODO /forgot-password /reset-password
+	app.post(
+		"/forgot-password",
+		&[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
+	);
+	app.post(
+		"/reset-password",
+		&[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
+	);
 
 	app
 }
@@ -322,15 +330,15 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some() {
-		if !validator::is_email_valid(backup_email.as_ref().unwrap()) {
-			context.json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::INVALID_EMAIL,
-				request_keys::MESSAGE: error::message::INVALID_EMAIL
-			}));
-			return Ok(context);
-		}
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	{
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::INVALID_EMAIL,
+			request_keys::MESSAGE: error::message::INVALID_EMAIL
+		}));
+		return Ok(context);
 	}
 
 	if !validator::is_password_valid(password) {
@@ -531,9 +539,15 @@ async fn join(
 		return Ok(context);
 	}
 
-	let user_id = Uuid::new_v4();
-	let user_id = user_id.as_bytes();
+	let user_uuid = Uuid::new_v4();
+	let user_id = user_uuid.as_bytes();
 	let created = get_current_time();
+
+	if rbac::GOD_USER_ID.get().is_none() {
+		rbac::GOD_USER_ID
+			.set(user_uuid)
+			.expect("GOD_USER_ID was already set");
+	}
 
 	db::create_user(
 		context.get_db_connection(),
@@ -565,7 +579,9 @@ async fn join(
 			backup_email,
 			organisation_name,
 		} => {
-			let organisation_id = Uuid::new_v4();
+			let organisation_id =
+				db::generate_new_resource_id(context.get_db_connection())
+					.await?;
 			let organisation_id = organisation_id.as_bytes();
 
 			db::create_organisation(
@@ -576,8 +592,28 @@ async fn join(
 				get_current_time(),
 			)
 			.await?;
+			db::create_resource(
+				context.get_db_connection(),
+				organisation_id,
+				&format!("Organiation: {}", organisation_name),
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::ORGANISATION)
+					.unwrap(),
+				organisation_id,
+			)
+			.await?;
+			db::set_resource_id_for_organisation(
+				context.get_db_connection(),
+				organisation_id,
+				organisation_id,
+			)
+			.await?;
 
-			let domain_id = Uuid::new_v4();
+			let domain_id =
+				db::generate_new_resource_id(context.get_db_connection())
+					.await?;
 			let domain_id = domain_id.as_bytes().to_vec();
 
 			db::add_domain_to_organisation(
@@ -838,6 +874,243 @@ async fn is_username_valid(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::AVAILABLE: user.is_none()
+	}));
+	Ok(context)
+}
+
+async fn forgot_password(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let user_id =
+		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
+			user_id
+		} else {
+			context.status(400).json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::WRONG_PARAMETERS,
+				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+			}));
+			return Ok(context);
+		};
+
+	let user =
+		db::get_user_by_username_or_email(context.get_db_connection(), user_id)
+			.await?;
+
+	if user.is_none() {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::USER_NOT_FOUND,
+			request_keys::MESSAGE: error::id::USER_NOT_FOUND,
+		}));
+		return Ok(context);
+	}
+	let user = user.unwrap();
+
+	let otp: u32 = rand::thread_rng().gen_range(0, 999999);
+	let otp = if otp < 10 {
+		format!("00000{}", otp)
+	} else if otp < 100 {
+		format!("0000{}", otp)
+	} else if otp < 1000 {
+		format!("000{}", otp)
+	} else if otp < 10000 {
+		format!("00{}", otp)
+	} else if otp < 100000 {
+		format!("0{}", otp)
+	} else {
+		format!("{}", otp)
+	};
+	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+
+	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_hash = argon2::hash_raw(
+		otp.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	db::add_password_reset_request(
+		context.get_db_connection(),
+		&user.id,
+		&token_hash,
+		token_expiry,
+	)
+	.await?;
+
+	let config = context.get_state().config.clone();
+	task::spawn(async move {
+		mailer::send_password_reset_requested_mail(
+			config,
+			user.backup_email,
+			otp,
+		);
+	});
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn reset_password(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let new_password = if let Some(Value::String(password)) =
+		body.get(request_keys::PASSWORD)
+	{
+		password
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+	let token = if let Some(Value::String(token)) =
+		body.get(request_keys::VERIFICATION_TOKEN)
+	{
+		token
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+	let user_id =
+		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
+			user_id
+		} else {
+			context.status(400).json(json!({
+				request_keys::SUCCESS: false,
+				request_keys::ERROR: error::id::WRONG_PARAMETERS,
+				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+			}));
+			return Ok(context);
+		};
+	let user_id = if let Ok(user_id) = hex::decode(user_id) {
+		user_id
+	} else {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::WRONG_PARAMETERS,
+			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
+		}));
+		return Ok(context);
+	};
+
+	let reset_request = db::get_password_reset_request_for_user(
+		context.get_db_connection(),
+		&user_id,
+	)
+	.await?;
+
+	if reset_request.is_none() {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
+			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
+		}));
+		return Ok(context);
+	}
+	let reset_request = reset_request.unwrap();
+
+	let success = argon2::verify_raw(
+		token.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&reset_request.token,
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	if !success {
+		context.status(400).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
+			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
+		}));
+		return Ok(context);
+	}
+
+	let new_password = argon2::hash_raw(
+		new_password.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	db::update_user_password(
+		context.get_db_connection(),
+		&user_id,
+		&new_password,
+	)
+	.await?;
+	db::delete_password_reset_request_for_user(
+		context.get_db_connection(),
+		&user_id,
+	)
+	.await?;
+
+	let config = context.get_state().config.clone();
+	let pool = context.get_state().db_pool.clone();
+	task::spawn(async move {
+		let mut connection = pool
+			.acquire()
+			.await
+			.expect("unable to aquire db connection from pool")
+			.begin()
+			.await
+			.expect("unable to begin transaction from connection");
+		let user = db::get_user_by_user_id(&mut connection, &user_id)
+			.await
+			.expect("unable to get user data")
+			.expect("user data for that user_id was None");
+
+		mailer::send_password_changed_notification_mail(
+			config,
+			user.backup_email,
+		);
+	});
+
+	context.json(json!({
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

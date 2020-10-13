@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 
 use jsonwebtoken::{
-	errors::Error,
-	DecodingKey,
-	EncodingKey,
-	TokenData,
-	Validation,
+	errors::Error, DecodingKey, EncodingKey, TokenData, Validation,
 };
 
 use crate::models::rbac::OrgPermissions;
@@ -19,10 +15,8 @@ pub struct AccessTokenData {
 	pub typ: String,
 	pub exp: u64,
 	pub orgs: HashMap<String, OrgPermissions>,
-	pub user: ExposedUserData, // for userId, name, etc
+	pub user: ExposedUserData,
 	// Do we need to add more?
-	// TODO
-	// pub ip: IpAddr, // which IP is allowed to access this route
 }
 
 impl AccessTokenData {
@@ -47,7 +41,12 @@ impl AccessTokenData {
 		)
 	}
 
-	pub fn new(iat: u64, exp: u64, orgs: HashMap<String, OrgPermissions>, user: ExposedUserData) -> Self {
+	pub fn new(
+		iat: u64,
+		exp: u64,
+		orgs: HashMap<String, OrgPermissions>,
+		user: ExposedUserData,
+	) -> Self {
 		AccessTokenData {
 			iss: String::from("https://api.bytesonus.com"),
 			aud: String::from("https://*.bytesonus.com"),

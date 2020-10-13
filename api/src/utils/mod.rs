@@ -3,6 +3,7 @@ mod eve_middlewares;
 
 pub mod constants;
 pub mod logger;
+#[allow(unused_variables)]
 pub mod mailer;
 pub mod settings;
 pub mod sms;

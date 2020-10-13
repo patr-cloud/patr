@@ -29,4 +29,11 @@ pub mod request_keys {
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
+	pub const ORGANISATION_ID: &str = "organisationId";
+	pub const NAME: &str = "name";
+	pub const ACTIVE: &str = "active";
+	pub const CREATED: &str = "created";
+	pub const DOMAINS: &str = "domains";
+	pub const VERIFIED: &str = "verified";
+	pub const ID: &str = "id";
 }

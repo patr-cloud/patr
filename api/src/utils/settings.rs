@@ -1,5 +1,8 @@
 use config_rs::{Config, Environment, File};
-use std::env;
+use std::{
+	env,
+	fmt::{Display, Formatter},
+};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
@@ -31,7 +34,7 @@ pub fn parse_config() -> Settings {
 	}
 
 	settings
-		.merge(Environment::with_prefix("app_"))
+		.merge(Environment::with_prefix("APP_"))
 		.expect("unable to merge with environment variables");
 
 	settings.try_into().expect("unable to parse settings")
@@ -122,8 +125,8 @@ pub enum RunningEnvironment {
 	Production,
 }
 
-impl std::fmt::Display for RunningEnvironment {
-	fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for RunningEnvironment {
+	fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
 		formatter.write_str(match self {
 			RunningEnvironment::Development => "Development",
 			RunningEnvironment::Production => "Production",

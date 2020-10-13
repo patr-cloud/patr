@@ -29,7 +29,6 @@ impl EveContext {
 		&self.state
 	}
 
-	#[allow(dead_code)]
 	pub fn get_db_connection(
 		&mut self,
 	) -> &mut Transaction<PoolConnection<MySqlConnection>> {
@@ -57,13 +56,16 @@ impl EveContext {
 		self.body_object = Some(body);
 	}
 
-	#[allow(dead_code)]
 	pub fn get_token_data(&mut self) -> Option<&mut AccessTokenData> {
 		self.access_token_data.as_mut()
 	}
 
 	pub fn set_token_data(&mut self, token_data: AccessTokenData) {
 		self.access_token_data = Some(token_data);
+	}
+
+	pub fn get_param(&self, param_id: &str) -> Option<&String> {
+		self.get_request().get_params().get(param_id)
 	}
 }
 

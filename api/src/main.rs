@@ -1,24 +1,29 @@
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate async_trait;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate serde_derive;
 extern crate argon2;
 extern crate async_std;
 extern crate colored;
 extern crate config as config_rs;
+extern crate hex;
 extern crate job_scheduler;
 extern crate jsonwebtoken;
 extern crate log;
 extern crate log4rs;
+extern crate macros as api_macros;
 extern crate once_cell;
 extern crate rand;
 extern crate regex;
+extern crate s3;
 extern crate semver;
 extern crate serde;
 extern crate serde_json;
 extern crate sqlx;
+extern crate strum;
+extern crate strum_macros;
 extern crate surf;
 extern crate uuid;
 
@@ -30,6 +35,7 @@ mod routes;
 mod scheduler;
 mod utils;
 
+use api_macros::{query, query_as};
 use app::App;
 use utils::logger;
 
@@ -50,13 +56,10 @@ async fn main() -> Result<()> {
 	logger::initialize(&config).await?;
 	log::debug!("Logger initialized");
 
-	let db = db::create_connection_pool(&config).await?;
+	let db_pool = db::create_connection_pool(&config).await?;
 	log::debug!("Database connection pool established");
 
-	let app = App {
-		config,
-		db_pool: db,
-	};
+	let app = App { config, db_pool };
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 

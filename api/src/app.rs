@@ -2,23 +2,14 @@ use crate::{
 	models::error,
 	routes,
 	utils::{
-		constants::request_keys,
-		settings::Settings,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, settings::Settings, EveContext, EveMiddleware,
 	},
 };
 
 use colored::Colorize;
 use eve_rs::{
-	default_middlewares::compression,
-	listen,
-	App as EveApp,
-	Context,
-	Error,
-	NextHandler,
-	Request,
-	Response,
+	default_middlewares::compression, listen, App as EveApp, Context, Error,
+	NextHandler, Request, Response,
 };
 use serde_json::json;
 use sqlx::{mysql::MySqlPool, Connection};

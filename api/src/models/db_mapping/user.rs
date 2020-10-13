@@ -49,3 +49,16 @@ pub struct UserToSignUp {
 	pub first_name: String,
 	pub last_name: String,
 }
+
+pub struct PasswordResetRequest {
+	pub user_id: Vec<u8>,
+	pub token: Vec<u8>,
+	pub token_expiry: u64,
+}
+
+pub struct PersonalEmailToBeVerified {
+	pub email_address: String,
+	pub user_id: Vec<u8>,
+	pub verification_token_hash: Vec<u8>,
+	pub verification_token_expiry: u64,
+}

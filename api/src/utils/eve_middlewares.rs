@@ -1,23 +1,18 @@
-use super::EveContext;
 use crate::{
 	app::App,
-	models::{error, AccessTokenData},
-	utils::constants::request_keys,
+	models::{db_mapping::Resource, error, rbac, AccessTokenData},
+	utils::{constants::request_keys, get_current_time, EveContext},
 };
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser,
-		json::parser as json_parser,
+		cookie_parser::parser as cookie_parser, json::parser as json_parser,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	App as EveApp,
-	Context,
-	Error,
-	Middleware,
-	NextHandler,
+	App as EveApp, Context, Error, Middleware, NextHandler,
 };
+use rbac::GOD_USER_ID;
 use serde_json::json;
 use std::{future::Future, pin::Pin};
 
@@ -28,6 +23,19 @@ pub type MiddlewareHandlerFunction = fn(
 	Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>,
 >;
 
+pub type ResourceRequiredFunction = fn(
+	EveContext,
+) -> Pin<
+	Box<
+		dyn Future<
+				Output = Result<
+					(EveContext, Option<Resource>),
+					Error<EveContext>,
+				>,
+			> + Send,
+	>,
+>;
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum EveMiddleware {
@@ -36,7 +44,8 @@ pub enum EveMiddleware {
 	UrlEncodedParser,
 	CookieParser,
 	StaticHandler(StaticFileServer),
-	TokenAuthenticator(Vec<&'static str>),
+	PlainTokenAuthenticator,
+	ResourceTokenAuthenticator(&'static str, ResourceRequiredFunction), /* (permission, resource_required) */
 	CustomFunction(MiddlewareHandlerFunction),
 	DomainRouter(String, Box<EveApp<EveContext, EveMiddleware, App>>),
 }
@@ -79,11 +88,20 @@ impl Middleware<EveContext> for EveMiddleware {
 			EveMiddleware::StaticHandler(static_file_server) => {
 				static_file_server.run_middleware(context, next).await
 			}
-			EveMiddleware::TokenAuthenticator(_allowed_groups) => {
-				let authorization =
-					context.get_request().get_header("Authorization");
-				if authorization.is_none() {
-					// 401
+			EveMiddleware::PlainTokenAuthenticator => {
+				let access_data =
+					if let Some(token) = decode_access_token(&mut context) {
+						token
+					} else {
+						context.status(401).json(json!({
+							request_keys::SUCCESS: false,
+							request_keys::ERROR: error::id::UNAUTHORIZED,
+							request_keys::MESSAGE: error::message::UNAUTHORIZED
+						}));
+						return Ok(context);
+					};
+
+				if !is_access_token_valid(&access_data) {
 					context.status(401).json(json!({
 						request_keys::SUCCESS: false,
 						request_keys::ERROR: error::id::UNAUTHORIZED,
@@ -91,41 +109,97 @@ impl Middleware<EveContext> for EveMiddleware {
 					}));
 					return Ok(context);
 				}
-				let authorization = authorization.unwrap();
-
-				let result = AccessTokenData::parse(
-					authorization,
-					context.get_state().config.jwt_secret.as_ref(),
-				);
-				if let Err(err) = result {
-					log::warn!(
-						"Error occured while parsing JWT: {}",
-						err.to_string()
-					);
-					context.status(401).json(json!({
-						request_keys::SUCCESS: false,
-						request_keys::ERROR: error::id::UNAUTHORIZED,
-						request_keys::MESSAGE: error::message::UNAUTHORIZED
-					}));
-					return Ok(context);
-				}
-				let access_data = result.unwrap();
-
-				// TODO check if the user, based on the access token data, is allowed as per allowed_groups
 
 				context.set_token_data(access_data);
 				next(context).await
+			}
+			EveMiddleware::ResourceTokenAuthenticator(
+				permission_required,
+				resource_in_question,
+			) => {
+				let access_data =
+					if let Some(token) = decode_access_token(&mut context) {
+						token
+					} else {
+						context.status(401).json(json!({
+							request_keys::SUCCESS: false,
+							request_keys::ERROR: error::id::UNAUTHORIZED,
+							request_keys::MESSAGE: error::message::UNAUTHORIZED
+						}));
+						return Ok(context);
+					};
+
+				if !is_access_token_valid(&access_data) {
+					context.status(401).json(json!({
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: error::id::UNAUTHORIZED,
+						request_keys::MESSAGE: error::message::UNAUTHORIZED
+					}));
+					return Ok(context);
+				}
+
+				// check if the access token has access to the resource
+				let (mut context, resource) =
+					resource_in_question(context).await?;
+				if resource.is_none() {
+					context.status(404).json(json!({
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
+						request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
+					}));
+					return Ok(context);
+				}
+				let resource = resource.unwrap();
+
+				let org_id = hex::encode(resource.owner_id);
+				let org_permission = access_data.orgs.get(&org_id);
+
+				if org_permission.is_none() {
+					context.status(404).json(json!({
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
+						request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
+					}));
+					return Ok(context);
+				}
+				let org_permission = org_permission.unwrap();
+
+				let allowed = if let Some(permissions) = org_permission
+					.resource_types
+					.get(&resource.resource_type_id)
+				{
+					permissions.contains(&permission_required.to_string())
+				} else if let Some(permissions) =
+					org_permission.resources.get(&resource.id)
+				{
+					permissions.contains(&permission_required.to_string())
+				} else {
+					org_permission.is_super_admin || {
+						let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
+						access_data.user.id == god_user_id
+					}
+				};
+
+				if allowed {
+					context.set_token_data(access_data);
+					next(context).await
+				} else {
+					context.status(401).json(json!({
+						request_keys::SUCCESS: false,
+						request_keys::ERROR: error::id::UNPRIVILEGED,
+						request_keys::MESSAGE: error::message::UNPRIVILEGED,
+					}));
+					Ok(context)
+				}
 			}
 			EveMiddleware::CustomFunction(function) => {
 				function(context, next).await
 			}
 			EveMiddleware::DomainRouter(domain, app) => {
-				if &context.get_host() == domain ||
-					context.get_host() ==
-						format!(
-							"localhost:{}",
-							app.get_state().config.port
-						) {
+				if context.get_host()
+					== format!("localhost:{}", app.get_state().config.port)
+					|| &context.get_host() == domain
+				{
 					app.resolve(context).await
 				} else {
 					next(context).await
@@ -133,4 +207,24 @@ impl Middleware<EveContext> for EveMiddleware {
 			}
 		}
 	}
+}
+
+fn decode_access_token(context: &mut EveContext) -> Option<AccessTokenData> {
+	let authorization = context.get_header("Authorization")?;
+
+	let result = AccessTokenData::parse(
+		authorization,
+		context.get_state().config.jwt_secret.as_ref(),
+	);
+	if let Err(err) = result {
+		log::warn!("Error occured while parsing JWT: {}", err.to_string());
+		return None;
+	}
+	let access_data = result.unwrap();
+	Some(access_data)
+}
+
+fn is_access_token_valid(token: &AccessTokenData) -> bool {
+	// TODO token banning goes here
+	token.exp > get_current_time()
 }

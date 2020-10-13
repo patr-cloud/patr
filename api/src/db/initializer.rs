@@ -1,6 +1,7 @@
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
+	models::rbac,
 	query,
 	utils::constants,
 };
@@ -61,6 +62,25 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 				log::info!("Database already in the latest version. No migration required.");
 			}
 		}
+
+		// Initialize data
+		// If a god UUID already exists, set it
+		let mut connection = app.db_pool.begin().await?;
+
+		let god_uuid = db::get_god_user_id(&mut connection).await?;
+		if let Some(uuid) = god_uuid {
+			rbac::GOD_USER_ID
+				.set(uuid)
+				.expect("GOD_USER_ID was already set");
+		}
+
+		let resource_types =
+			db::get_all_resource_types(&mut connection).await?;
+		rbac::RESOURCE_TYPES
+			.set(resource_types)
+			.expect("RESOURCE_TYPES is already set");
+
+		drop(connection);
 
 		Ok(())
 	}

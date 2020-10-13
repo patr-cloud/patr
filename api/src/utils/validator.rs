@@ -38,11 +38,11 @@ pub fn is_password_valid(password: &str) -> bool {
 			has_special_character = true
 		}
 	});
-	password.len() >= 8 &&
-		has_lower_case &&
-		has_upper_case &&
-		has_number &&
-		has_special_character
+	password.len() >= 8
+		&& has_lower_case
+		&& has_upper_case
+		&& has_number
+		&& has_special_character
 }
 
 #[allow(dead_code)]

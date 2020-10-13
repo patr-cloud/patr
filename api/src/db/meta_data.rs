@@ -34,10 +34,7 @@ pub async fn set_database_version(
 	query!(
 		r#"
 		INSERT INTO
-			meta_data (
-				id,
-				value
-			)
+			meta_data
 		VALUES
 			('version_major', ?),
 			('version_minor', ?),

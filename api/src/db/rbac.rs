@@ -1,8 +1,15 @@
-use std::{collections::HashMap, fmt::Write};
+use std::collections::HashMap;
 
-use crate::{models::rbac::OrgPermissions, query};
+use crate::{
+	models::{
+		db_mapping::Resource,
+		rbac::{self, OrgPermissions},
+	},
+	query,
+};
 
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use sqlx::{pool::PoolConnection, query_as, MySqlConnection, Transaction};
+use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
@@ -13,7 +20,7 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS resource_type (
-			id VARCHAR(100) PRIMARY KEY,
+			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) UNIQUE NOT NULL,
 			description VARCHAR(500)
 		);
@@ -27,7 +34,7 @@ pub async fn initialize_rbac_pre(
 		CREATE TABLE IF NOT EXISTS resource (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100),
-			resource_type_id VARCHAR(100) NOT NULL,
+			resource_type_id BINARY(16) NOT NULL,
 			owner_id BINARY(16) NOT NULL,
 			FOREIGN KEY(owner_id) REFERENCES organisation(id),
 			FOREIGN KEY(resource_type_id) REFERENCES resource_type(id)
@@ -52,7 +59,7 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS permission (
-			id VARCHAR(100) PRIMARY KEY,
+			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500)
 		);
@@ -83,8 +90,8 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS role_permissions_resource_type (
 			role_id BINARY(16),
-			permission_id VARCHAR(100),
-			resource_type_id VARCHAR(100),
+			permission_id BINARY(16),
+			resource_type_id BINARY(16),
 			PRIMARY KEY(role_id, permission_id, resource_type_id),
 			FOREIGN KEY(role_id) REFERENCES role(id),
 			FOREIGN KEY(permission_id) REFERENCES permission(id),
@@ -100,7 +107,7 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS role_permissions_resource (
 			role_id BINARY(16),
-			permission_id VARCHAR(100),
+			permission_id BINARY(16),
 			resource_id BINARY(16),
 			PRIMARY KEY(role_id, permission_id, resource_id),
 			FOREIGN KEY(role_id) REFERENCES role(id),
@@ -116,8 +123,54 @@ pub async fn initialize_rbac_pre(
 }
 
 pub async fn initialize_rbac_post(
-	_transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 ) -> Result<(), sqlx::Error> {
+	for (_, permission) in rbac::permissions::consts_iter().iter() {
+		let uuid = generate_new_resource_id(&mut *connection).await?;
+		let uuid = uuid.as_bytes().as_ref();
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				(?, ?, NULL)
+			"#,
+			uuid,
+			permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	let resource_types = rbac::resource_types::consts_iter()
+		.iter()
+		.map(|(_, resource_type)| {
+			(
+				resource_type.to_string(),
+				Uuid::new_v4().as_bytes().to_vec(),
+			)
+		})
+		.collect::<HashMap<_, _>>();
+
+	for (resource_type, uuid) in &resource_types {
+		query!(
+			r#"
+			INSERT INTO
+				resource_type
+			VALUES
+				(?, ?, NULL);
+			"#,
+			uuid,
+			resource_type,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	rbac::RESOURCE_TYPES
+		.set(resource_types)
+		.expect("RESOURCE_TYPES is already set");
+
 	Ok(())
 }
 
@@ -144,11 +197,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_role in org_roles {
-		let mut org_id = String::with_capacity(32);
-		for byte in org_role.organisation_id {
-			write!(org_id, "{:02x}", byte)
-				.expect("unable to write byte array to string");
-		}
+		let org_id = hex::encode(org_role.organisation_id);
 
 		let resources = query!(
 			r#"
@@ -180,31 +229,32 @@ pub async fn get_all_organisation_roles_for_user(
 
 		if let Some(permission) = orgs.get_mut(&org_id) {
 			for resource in resources {
+				let permission_id = hex::encode(&resource.permission_id);
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
-					if !permissions.contains(&resource.permission_id) {
-						permissions.push(resource.permission_id);
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
 					}
 				} else {
-					permission.resources.insert(
-						resource.resource_id,
-						vec![resource.permission_id],
-					);
+					permission
+						.resources
+						.insert(resource.resource_id, vec![permission_id]);
 				}
 			}
 			for resource_type in resource_types {
+				let permission_id = hex::encode(&resource_type.permission_id);
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
 				{
-					if !permissions.contains(&resource_type.permission_id) {
-						permissions.push(resource_type.permission_id);
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
 					}
 				} else {
 					permission.resource_types.insert(
 						resource_type.resource_type_id,
-						vec![resource_type.permission_id],
+						vec![permission_id],
 					);
 				}
 			}
@@ -215,39 +265,40 @@ pub async fn get_all_organisation_roles_for_user(
 				resource_types: HashMap::new(),
 			};
 			for resource in resources {
+				let permission_id = hex::encode(&resource.permission_id);
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
-					if !permissions.contains(&resource.permission_id) {
-						permissions.push(resource.permission_id);
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
 					}
 				} else {
-					permission.resources.insert(
-						resource.resource_id,
-						vec![resource.permission_id],
-					);
+					permission
+						.resources
+						.insert(resource.resource_id, vec![permission_id]);
 				}
 			}
 			for resource_type in resource_types {
+				let permission_id = hex::encode(&resource_type.permission_id);
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
 				{
-					if !permissions.contains(&resource_type.permission_id) {
-						permissions.push(resource_type.permission_id);
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
 					}
 				} else {
 					permission.resource_types.insert(
 						resource_type.resource_type_id,
-						vec![resource_type.permission_id],
+						vec![permission_id],
 					);
 				}
 			}
 			orgs.insert(org_id, permission);
 		}
 	}
-	// add superadmins to the data-structure too
 
+	// add superadmins to the data-structure too
 	let orgs_details = query!(
 		r#"
 		SELECT
@@ -263,11 +314,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_details in orgs_details {
-		let mut org_id = String::with_capacity(32);
-		for byte in org_details.id {
-			write!(org_id, "{:02x}", byte)
-				.expect("unable to write byte array to string");
-		}
+		let org_id = hex::encode(org_details.id);
 		if let Some(org) = orgs.get_mut(&org_id) {
 			org.is_super_admin = true;
 		} else {
@@ -283,4 +330,93 @@ pub async fn get_all_organisation_roles_for_user(
 	}
 
 	Ok(orgs)
+}
+
+pub async fn get_all_resource_types(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<HashMap<String, Vec<u8>>, sqlx::Error> {
+	let mut resource_types = HashMap::new();
+
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			resource_type;
+		"#
+	)
+	.fetch_all(connection)
+	.await?;
+
+	for row in rows {
+		resource_types.insert(row.name, row.id);
+	}
+
+	Ok(resource_types)
+}
+
+pub async fn create_resource(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	resource_id: &[u8],
+	resource_name: &str,
+	resource_type_id: &[u8],
+	owner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			resource
+		VALUES
+			(?, ?, ?, ?);
+		"#,
+		resource_id,
+		resource_name,
+		resource_type_id,
+		owner_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn generate_new_resource_id(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		Resource,
+		r#"
+		SELECT
+			*
+		FROM
+			resource
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			Resource,
+			r#"
+			SELECT
+				*
+			FROM
+				resource
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
 }

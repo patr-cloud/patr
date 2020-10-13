@@ -1,10 +1,12 @@
 use crate::{
 	models::db_mapping::{
-		User, UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
+		PasswordResetRequest, PersonalEmailToBeVerified, User,
+		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
 	},
 	query, query_as,
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use uuid::Uuid;
 
 pub async fn initialize_users_pre(
 	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
@@ -233,6 +235,35 @@ pub async fn get_user_by_username_or_email(
 	Ok(Some(row))
 }
 
+pub async fn get_god_user_id(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+) -> Result<Option<Uuid>, sqlx::Error> {
+	let rows = query_as!(
+		User,
+		r#"
+		SELECT
+			*
+		FROM
+			user
+		ORDER BY
+			created
+		DESC
+		LIMIT 1;
+		"#
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+	let id = Uuid::from_slice(row.id.as_ref())
+		.expect("unable to unwrap UUID from Vec<u8>");
+
+	Ok(Some(id))
+}
+
 pub async fn get_user_by_email(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	email: &str,
@@ -330,23 +361,7 @@ pub async fn set_user_to_be_signed_up(
 			query!(
 				r#"
 				INSERT INTO
-					user_to_sign_up (
-						username,
-						account_type,
-						
-						email_address,
-						
-						email_local,
-						domain_name,
-						password,
-						first_name,
-						last_name,
-						
-						organisation_name,
-						
-						otp_hash,
-						otp_expiry
-					)
+					user_to_sign_up
 				VALUES
 					(?, 'personal', ?, NULL, NULL, ?, ?, ?, NULL, ?, ?)
 				ON DUPLICATE KEY UPDATE
@@ -391,24 +406,7 @@ pub async fn set_user_to_be_signed_up(
 			query!(
 				r#"
 				INSERT INTO
-					user_to_sign_up (
-						username,
-						account_type,
-						
-						email_address,
-						
-						email_local,
-						domain_name,
-						
-						password,
-						first_name,
-						last_name,
-						
-						organisation_name,
-						
-						otp_hash,
-						otp_expiry
-					)
+					user_to_sign_up
 				VALUES
 					(?, 'organisation', ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON DUPLICATE KEY UPDATE
@@ -502,9 +500,9 @@ pub async fn get_user_email_to_sign_up(
 	}))
 }
 
-pub async fn add_personal_email_for_user_to_be_verified(
+pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
-	email_address: &str,
+	email: &str,
 	user_id: &[u8],
 	verification_token: &[u8],
 	token_expiry: u64,
@@ -512,19 +510,14 @@ pub async fn add_personal_email_for_user_to_be_verified(
 	query!(
 		r#"
 		INSERT INTO
-			user_unverified_email_address (
-				email_address,
-				user_id,
-				verification_token_hash,
-				verification_token_expiry
-			)
+			user_unverified_email_address
 		VALUES
 			(?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			verification_token_hash = ?,
 			verification_token_expiry = ?;
 		"#,
-		email_address,
+		email,
 		user_id,
 		verification_token,
 		token_expiry,
@@ -537,6 +530,37 @@ pub async fn add_personal_email_for_user_to_be_verified(
 	Ok(())
 }
 
+pub async fn get_personal_email_to_be_verified_for_user(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+	email: &str,
+) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
+	let rows = query_as!(
+		PersonalEmailToBeVerified,
+		r#"
+		SELECT
+			*
+		FROM
+			user_unverified_email_address
+		WHERE
+			user_id = ? AND
+			email_address = ?;
+		"#,
+		user_id,
+		email
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+
+	let row = rows.into_iter().next().unwrap();
+
+	Ok(Some(row))
+}
+
 pub async fn add_email_for_user(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	user_id: &[u8],
@@ -547,15 +571,7 @@ pub async fn add_email_for_user(
 			query!(
 				r#"
 				INSERT INTO
-					user_email_address (
-						type,
-						email_address,
-
-						email_local,
-						domain_id,
-
-						user_id
-					)
+					user_email_address
 				VALUES
 					('personal', ?, NULL, NULL, ?);
 				"#,
@@ -572,15 +588,7 @@ pub async fn add_email_for_user(
 			query!(
 				r#"
 				INSERT INTO
-					user_email_address (
-						type,
-						email_address,
-
-						email_local,
-						domain_id,
-
-						user_id
-					)
+					user_email_address
 				VALUES
 					('organisation', NULL, ?, ?, ?);
 				"#,
@@ -628,17 +636,9 @@ pub async fn create_user(
 	query!(
 		r#"
 		INSERT INTO
-			user (
-				id,
-				username,
-				password,
-				backup_email,
-				first_name,
-				last_name,
-				created
-			)
+			user
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?);
 		"#,
 		user_id,
 		username,
@@ -769,6 +769,103 @@ pub async fn update_user_data(
 		}
 	}
 	query.execute(connection).await?;
+
+	Ok(())
+}
+
+pub async fn update_user_password(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+	password: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			user
+		SET
+			password = ?
+		WHERE
+			id = ?;
+		"#,
+		password,
+		user_id,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn add_password_reset_request(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+	token_hash: &[u8],
+	token_expiry: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			password_reset_request
+		VALUES
+			(?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			token = ?,
+			token_expiry = ?;
+		"#,
+		user_id,
+		token_hash,
+		token_expiry,
+		token_hash,
+		token_expiry,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn get_password_reset_request_for_user(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
+	let rows = query_as!(
+		PasswordResetRequest,
+		r#"
+		SELECT
+			*
+		FROM
+			password_reset_request
+		WHERE
+			user_id = ?;
+		"#,
+		user_id,
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+
+	Ok(Some(row))
+}
+
+pub async fn delete_password_reset_request_for_user(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	user_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			password_reset_request
+		WHERE
+			user_id = ?;
+		"#,
+		user_id,
+	)
+	.execute(connection)
+	.await?;
 
 	Ok(())
 }
