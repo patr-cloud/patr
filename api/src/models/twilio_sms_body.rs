@@ -1,3 +1,5 @@
+use serde_derive::Serialize;
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SmsRequest {

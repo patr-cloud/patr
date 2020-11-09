@@ -10,7 +10,8 @@ use log4rs::{
 		rolling_file::{
 			policy::compound::{
 				roll::fixed_window::FixedWindowRoller,
-				trigger::size::SizeTrigger, CompoundPolicy,
+				trigger::size::SizeTrigger,
+				CompoundPolicy,
 			},
 			RollingFileAppender,
 		},

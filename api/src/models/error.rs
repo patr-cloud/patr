@@ -25,6 +25,7 @@ pub mod id {
 	pub const RESOURCE_DOES_NOT_EXIST: &str = "resourceDoesNotExist";
 	pub const PROFILE_NOT_FOUND: &str = "profileNotFound";
 	pub const DUPLICATE_USER: &str = "duplicateUser";
+	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
 }
 
 #[allow(dead_code)]
@@ -68,4 +69,6 @@ pub mod message {
 	pub const PROFILE_NOT_FOUND: &str = "The profile doesn't seem to exist";
 	pub const DUPLICATE_USER: &str =
 		"Sorry, the email address/username is taken";
+	pub const DOMAIN_UNVERIFIED: &str =
+		"That domain is unverified. Check your verification settings";
 }

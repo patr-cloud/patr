@@ -1,17 +1,21 @@
-use config_rs::{Config, Environment, File};
 use std::{
 	env,
 	fmt::{Display, Formatter},
 };
 
+use config_rs::{Config, Environment, File};
+use serde_derive::Deserialize;
+
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
 	let mut settings = Config::new();
+	let env = if cfg!(debug_assertions) {
+		"dev".to_string()
+	} else {
+		env::var("APP_ENV").unwrap_or_else(|_| "dev".into())
+	};
 
-	match env::var("APP_ENV")
-		.unwrap_or_else(|_| "dev".into())
-		.as_ref()
-	{
+	match env.as_ref() {
 		"prod" | "production" => {
 			settings
 				.merge(File::with_name("config/prod"))
@@ -54,6 +58,7 @@ pub struct Settings {
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
+	pub cloudflare: CloudflareSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -116,6 +121,14 @@ pub struct EmailSettings {
 	pub username: String,
 	pub from: String,
 	pub password: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudflareSettings {
+	pub account_id: String,
+	pub account_email: String,
+	pub api_token: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

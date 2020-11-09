@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 
 use jsonwebtoken::{
-	errors::Error, DecodingKey, EncodingKey, TokenData, Validation,
+	errors::Error,
+	DecodingKey,
+	EncodingKey,
+	TokenData,
+	Validation,
 };
+use serde_derive::{Deserialize, Serialize};
 
 use crate::models::rbac::OrgPermissions;
 
@@ -48,8 +53,8 @@ impl AccessTokenData {
 		user: ExposedUserData,
 	) -> Self {
 		AccessTokenData {
-			iss: String::from("https://api.bytesonus.com"),
-			aud: String::from("https://*.bytesonus.com"),
+			iss: String::from("https://api.vicara.co"),
+			aud: String::from("https://*.vicara.co"),
 			iat,
 			typ: String::from("accessToken"),
 			exp,

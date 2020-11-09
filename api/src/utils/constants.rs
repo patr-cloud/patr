@@ -24,6 +24,7 @@ pub mod request_keys {
 	pub const LAST_NAME: &str = "lastName";
 	pub const ACCOUNT_TYPE: &str = "accountType";
 	pub const DOMAIN: &str = "domain";
+	pub const DOMAIN_ID: &str = "domainId";
 	pub const ORGANISATION_NAME: &str = "organisationName";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
 	pub const BIRTHDAY: &str = "birthday";

@@ -35,7 +35,7 @@ pub async fn initialize_rbac_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100),
 			resource_type_id BINARY(16) NOT NULL,
-			owner_id BINARY(16) NOT NULL,
+			owner_id BINARY(16),
 			FOREIGN KEY(owner_id) REFERENCES organisation(id),
 			FOREIGN KEY(resource_type_id) REFERENCES resource_type(id)
 		);
@@ -355,6 +355,52 @@ pub async fn get_all_resource_types(
 	Ok(resource_types)
 }
 
+pub async fn create_orphaned_resource(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	resource_id: &[u8],
+	resource_name: &str,
+	resource_type_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			resource
+		VALUES
+			(?, ?, ?, NULL);
+		"#,
+		resource_id,
+		resource_name,
+		resource_type_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn set_resource_owner_id(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	resource_id: &[u8],
+	owner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			owner_id = ?
+		WHERE
+			id = ?;
+		"#,
+		owner_id,
+		resource_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn create_resource(
 	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
 	resource_id: &[u8],
@@ -419,4 +465,45 @@ pub async fn generate_new_resource_id(
 	}
 
 	Ok(uuid)
+}
+
+pub async fn get_resource_by_id(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	resource_id: &[u8],
+) -> Result<Option<Resource>, sqlx::Error> {
+	let rows = query_as!(
+		Resource,
+		r#"
+		SELECT
+			*
+		FROM
+			resource
+		WHERE
+			id = ?;
+		"#,
+		resource_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+pub async fn delete_resource(
+	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	resource_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			resource
+		WHERE
+			id = ?;
+		"#,
+		resource_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
 }

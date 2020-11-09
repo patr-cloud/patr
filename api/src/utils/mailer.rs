@@ -4,7 +4,9 @@ use lettre::{
 	header,
 	message::{MultiPart, SinglePart},
 	transport::smtp::authentication::Credentials,
-	Message, SmtpTransport, Transport,
+	Message,
+	SmtpTransport,
+	Transport,
 };
 
 /*
@@ -327,4 +329,114 @@ pub fn send_password_changed_notification_mail(
 			log::error!(target: "emails", "Could not send email to {}: {:#?}", email, err);
 		}
 	}
+}
+
+pub fn send_domain_verified_mail(
+	config: Settings,
+	email: String,
+	domain: String,
+) {
+	let from = format!("Bytesonus <{}>", config.email.from)
+		.parse()
+		.unwrap();
+	let to = email.parse().unwrap();
+
+	let message = Message::builder()
+		.from(from)
+		.to(to)
+		.subject("Domain verified")
+		.multipart(
+			MultiPart::alternative()
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/html; charset=utf8".parse().unwrap(),
+						))
+						.body(format!("Domain `{}` verified", domain)),
+				)
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/plain; charset=utf8".parse().unwrap(),
+						))
+						.body(format!("Domain `{}` verified", domain)),
+				),
+		)
+		.unwrap();
+
+	// Open a remote connection to gmail
+	let mailer = SmtpTransport::relay(&config.email.host)
+		.unwrap()
+		.credentials(Credentials::new(
+			config.email.username,
+			config.email.password,
+		))
+		.build();
+
+	/*
+	// Send the email
+	match mailer.send(&message) {
+		Ok(_) => {
+			log::info!(target: "emails", "Sign up confirmation email to {} sent successfully!", email);
+		}
+		Err(err) => {
+			log::error!(target: "emails", "Could not send email to {}: {:#?}", email, err);
+		}
+	}
+	*/
+}
+
+pub fn send_domain_unverified_mail(
+	config: Settings,
+	email: String,
+	domain: String,
+) {
+	let from = format!("Bytesonus <{}>", config.email.from)
+		.parse()
+		.unwrap();
+	let to = email.parse().unwrap();
+
+	let message = Message::builder()
+		.from(from)
+		.to(to)
+		.subject("Domain unverified")
+		.multipart(
+			MultiPart::alternative()
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/html; charset=utf8".parse().unwrap(),
+						))
+						.body(format!("Domain `{}` unverified", domain)),
+				)
+				.singlepart(
+					SinglePart::base64()
+						.header(header::ContentType(
+							"text/plain; charset=utf8".parse().unwrap(),
+						))
+						.body(format!("Domain `{}` unverified", domain)),
+				),
+		)
+		.unwrap();
+
+	// Open a remote connection to gmail
+	let mailer = SmtpTransport::relay(&config.email.host)
+		.unwrap()
+		.credentials(Credentials::new(
+			config.email.username,
+			config.email.password,
+		))
+		.build();
+
+	/*
+	// Send the email
+	match mailer.send(&message) {
+		Ok(_) => {
+			log::info!(target: "emails", "Sign up confirmation email to {} sent successfully!", email);
+		}
+		Err(err) => {
+			log::error!(target: "emails", "Could not send email to {}: {:#?}", email, err);
+		}
+	}
+	*/
 }

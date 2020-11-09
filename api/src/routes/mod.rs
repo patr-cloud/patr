@@ -1,9 +1,9 @@
-#[path = "./api.bytesonus.com/mod.rs"]
-mod api_bytesonus_com;
-#[path = "./assets.bytesonus.com/mod.rs"]
-mod assets_bytesonus_com;
-#[path = "./auth.bytesonus.com/mod.rs"]
-mod auth_bytesonus_com;
+#[path = "./api.vicara.co/mod.rs"]
+mod api_vicara_co;
+#[path = "./assets.vicara.co/mod.rs"]
+mod assets_vicara_co;
+#[path = "./auth.vicara.co/mod.rs"]
+mod auth_vicara_co;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -18,16 +18,16 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/",
 		&[
 			EveMiddleware::DomainRouter(
-				String::from("api.bytesonus.com"),
-				Box::new(api_bytesonus_com::create_sub_app(app.clone())),
+				String::from("api.vicara.co"),
+				Box::new(api_vicara_co::create_sub_app(app.clone())),
 			),
 			EveMiddleware::DomainRouter(
-				String::from("assets.bytesonus.com"),
-				Box::new(assets_bytesonus_com::create_sub_app(app.clone())),
+				String::from("assets.vicara.co"),
+				Box::new(assets_vicara_co::create_sub_app(app.clone())),
 			),
 			EveMiddleware::DomainRouter(
-				String::from("auth.bytesonus.com"),
-				Box::new(auth_bytesonus_com::create_sub_app(app)),
+				String::from("auth.vicara.co"),
+				Box::new(auth_vicara_co::create_sub_app(app)),
 			),
 		],
 	);

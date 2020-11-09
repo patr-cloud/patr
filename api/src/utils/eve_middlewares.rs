@@ -3,14 +3,21 @@ use crate::{
 	models::{db_mapping::Resource, error, rbac, AccessTokenData},
 	utils::{constants::request_keys, get_current_time, EveContext},
 };
+
+use async_trait::async_trait;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser, json::parser as json_parser,
+		cookie_parser::parser as cookie_parser,
+		json::parser as json_parser,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	App as EveApp, Context, Error, Middleware, NextHandler,
+	App as EveApp,
+	Context,
+	Error,
+	Middleware,
+	NextHandler,
 };
 use rbac::GOD_USER_ID;
 use serde_json::json;
@@ -90,7 +97,7 @@ impl Middleware<EveContext> for EveMiddleware {
 			}
 			EveMiddleware::PlainTokenAuthenticator => {
 				let access_data =
-					if let Some(token) = decode_access_token(&mut context) {
+					if let Some(token) = decode_access_token(&context) {
 						token
 					} else {
 						context.status(401).json(json!({
@@ -118,7 +125,7 @@ impl Middleware<EveContext> for EveMiddleware {
 				resource_in_question,
 			) => {
 				let access_data =
-					if let Some(token) = decode_access_token(&mut context) {
+					if let Some(token) = decode_access_token(&context) {
 						token
 					} else {
 						context.status(401).json(json!({
@@ -142,11 +149,6 @@ impl Middleware<EveContext> for EveMiddleware {
 				let (mut context, resource) =
 					resource_in_question(context).await?;
 				if resource.is_none() {
-					context.status(404).json(json!({
-						request_keys::SUCCESS: false,
-						request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-						request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-					}));
 					return Ok(context);
 				}
 				let resource = resource.unwrap();
@@ -196,9 +198,10 @@ impl Middleware<EveContext> for EveMiddleware {
 				function(context, next).await
 			}
 			EveMiddleware::DomainRouter(domain, app) => {
-				if context.get_host()
-					== format!("localhost:{}", app.get_state().config.port)
-					|| &context.get_host() == domain
+				let localhost =
+					format!("localhost:{}", app.get_state().config.port);
+				if &context.get_host() == domain ||
+					context.get_host() == localhost
 				{
 					app.resolve(context).await
 				} else {
@@ -209,7 +212,7 @@ impl Middleware<EveContext> for EveMiddleware {
 	}
 }
 
-fn decode_access_token(context: &mut EveContext) -> Option<AccessTokenData> {
+fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
 	let authorization = context.get_header("Authorization")?;
 
 	let result = AccessTokenData::parse(

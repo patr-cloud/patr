@@ -4,7 +4,10 @@ use crate::{
 	models::{db_mapping::UserEmailAddress, error},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, validator, EveContext,
+		constants::request_keys,
+		get_current_time,
+		validator,
+		EveContext,
 		EveMiddleware,
 	},
 };

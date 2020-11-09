@@ -91,11 +91,12 @@ async fn migrate_database(
 	db_version: Version,
 ) -> Result<(), sqlx::Error> {
 	let migrations = vec!["0.0.0"];
+	let db_version = db_version.to_string();
 
 	let mut migrating = false;
 
 	for migration_version in migrations {
-		if migration_version == db_version.to_string() {
+		if migration_version == db_version {
 			migrating = true;
 		}
 		if !migrating {

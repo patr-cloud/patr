@@ -46,5 +46,10 @@
 		"username": "<example-user-name>",
 		"accessToken": "<ACCESS-TOKEN-HHERE>",
 		"fromNumber": "+0123456789"
+	},
+	"cloudflare": {
+		"accountId": "<example-account-id>",
+		"accountEmail": "account@example.com",
+		"apiToken": "<example-api-token>"
 	}
 }

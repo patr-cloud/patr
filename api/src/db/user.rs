@@ -1,9 +1,15 @@
 use crate::{
 	models::db_mapping::{
-		PasswordResetRequest, PersonalEmailToBeVerified, User,
-		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		User,
+		UserEmailAddress,
+		UserEmailAddressSignUp,
+		UserLogin,
+		UserToSignUp,
 	},
-	query, query_as,
+	query,
+	query_as,
 };
 use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
 use uuid::Uuid;

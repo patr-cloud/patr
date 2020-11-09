@@ -8,7 +8,9 @@ use syn::{
 		TokenStream2,
 	},
 	parse::{Parse, ParseStream},
-	parse_macro_input, Error, LitStr,
+	parse_macro_input,
+	Error,
+	LitStr,
 };
 
 #[derive(Serialize, Deserialize, Debug)]

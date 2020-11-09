@@ -14,12 +14,12 @@ pub struct EveContext {
 }
 
 impl EveContext {
-	pub fn new(request: Request, state: App) -> Self {
+	pub fn new(request: Request, state: &App) -> Self {
 		EveContext {
 			request,
 			response: Response::new(),
 			body_object: None,
-			state,
+			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
 		}

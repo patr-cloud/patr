@@ -2,7 +2,8 @@ use proc_macro::TokenStream;
 use syn::{
 	export::quote::quote,
 	parse::{Parse, ParseStream},
-	parse_macro_input, ExprClosure,
+	parse_macro_input,
+	ExprClosure,
 };
 
 struct ClosureAsPinnedBoxParser {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
+use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
@@ -17,6 +18,18 @@ pub struct OrgPermissions {
 #[allow(dead_code)]
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
+
+	pub mod organisation {
+		pub const VIEW_DOMAINS: &str = "organisation::domain::viewDomains";
+		pub const ADD_DOMAIN: &str = "organisation::domain::addDomain";
+
+		pub mod domain {
+			pub const VIEW_DETAILS: &str = "organisation::domain::viewDetails";
+			pub const VERIFY: &str = "organisation::domain::verify";
+			pub const DELETE: &str = "organisation::domain::delete";
+		}
+	}
+
 	pub mod docker {
 		pub const PUSH: &str = "docker::push";
 		pub const PULL: &str = "docker::pull";
@@ -24,14 +37,6 @@ pub mod permissions {
 
 	pub mod deployer {
 		pub const DEPLOY: &str = "deployer::deploy";
-	}
-
-	pub mod organisation {
-		pub mod domain {
-			pub const VIEW: &str = "organisation::domain::view";
-			pub const ADD: &str = "organisation::domain::add";
-			pub const VERIFY: &str = "organisation::domain::verify";
-		}
 	}
 }
 

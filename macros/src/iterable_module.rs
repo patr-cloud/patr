@@ -4,7 +4,14 @@ use proc_macro::TokenStream;
 use syn::{
 	export::quote::quote,
 	parse::{Parse, ParseStream},
-	parse_macro_input, Error, Expr, Item, ItemFn, ItemMod, Lit, Token,
+	parse_macro_input,
+	Error,
+	Expr,
+	Item,
+	ItemFn,
+	ItemMod,
+	Lit,
+	Token,
 };
 
 #[derive(Eq, PartialEq, Hash, Debug)]
@@ -197,9 +204,7 @@ fn parse_module(
 						)));
 					};
 
-					iterators
-						.entry(IterTypes::Consts)
-						.or_insert_with(|| vec![]);
+					iterators.entry(IterTypes::Consts).or_insert_with(Vec::new);
 					iterators
 						.get_mut(&IterTypes::Consts)
 						.unwrap()
@@ -210,7 +215,7 @@ fn parse_module(
 				if args.iter_types.contains(&IterTypes::Fns) {
 					let fn_name = fn_item.sig.ident.to_string();
 
-					iterators.entry(IterTypes::Fns).or_insert_with(|| vec![]);
+					iterators.entry(IterTypes::Fns).or_insert_with(Vec::new);
 					iterators
 						.get_mut(&IterTypes::Fns)
 						.unwrap()
@@ -223,7 +228,7 @@ fn parse_module(
 
 					iterators
 						.entry(IterTypes::Structs)
-						.or_insert_with(|| vec![]);
+						.or_insert_with(Vec::new);
 					iterators
 						.get_mut(&IterTypes::Structs)
 						.unwrap()
@@ -235,7 +240,7 @@ fn parse_module(
 					let enum_name = enum_item.ident.to_string();
 					let values = &enum_item.variants;
 
-					iterators.entry(IterTypes::Enums).or_insert_with(|| vec![]);
+					iterators.entry(IterTypes::Enums).or_insert_with(Vec::new);
 					for value in values {
 						iterators
 							.get_mut(&IterTypes::Enums)

@@ -3,12 +3,19 @@ use crate::{
 	db,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error, rbac, AccessTokenData, ExposedUserData,
+		error,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, mailer, validator,
-		EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -330,8 +337,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(json!({
 			request_keys::SUCCESS: false,
@@ -571,7 +578,38 @@ async fn join(
 			backup_email_notification_to = None;
 			welcome_email_to = email_address;
 
-			// TODO add personal organisation
+			// add personal organisation
+			let organisation_id =
+				db::generate_new_resource_id(context.get_db_connection())
+					.await?;
+			let organisation_id = organisation_id.as_bytes();
+			let organisation_name = "Personal organisation".to_string();
+
+			db::create_orphaned_resource(
+				context.get_db_connection(),
+				organisation_id,
+				&organisation_name,
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::ORGANISATION)
+					.unwrap(),
+			)
+			.await?;
+			db::create_organisation(
+				context.get_db_connection(),
+				organisation_id,
+				&organisation_name,
+				user_id,
+				get_current_time(),
+			)
+			.await?;
+			db::set_resource_owner_id(
+				context.get_db_connection(),
+				organisation_id,
+				organisation_id,
+			)
+			.await?;
 		}
 		UserEmailAddressSignUp::Organisation {
 			domain_name,
@@ -584,15 +622,7 @@ async fn join(
 					.await?;
 			let organisation_id = organisation_id.as_bytes();
 
-			db::create_organisation(
-				context.get_db_connection(),
-				organisation_id,
-				&organisation_name,
-				user_id,
-				get_current_time(),
-			)
-			.await?;
-			db::create_resource(
+			db::create_orphaned_resource(
 				context.get_db_connection(),
 				organisation_id,
 				&format!("Organiation: {}", organisation_name),
@@ -601,10 +631,17 @@ async fn join(
 					.unwrap()
 					.get(rbac::resource_types::ORGANISATION)
 					.unwrap(),
-				organisation_id,
 			)
 			.await?;
-			db::set_resource_id_for_organisation(
+			db::create_organisation(
+				context.get_db_connection(),
+				organisation_id,
+				&organisation_name,
+				user_id,
+				get_current_time(),
+			)
+			.await?;
+			db::set_resource_owner_id(
 				context.get_db_connection(),
 				organisation_id,
 				organisation_id,
@@ -616,11 +653,22 @@ async fn join(
 					.await?;
 			let domain_id = domain_id.as_bytes().to_vec();
 
+			db::create_resource(
+				context.get_db_connection(),
+				&domain_id,
+				&format!("Domain: {}", domain_name),
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::DOMAIN)
+					.unwrap(),
+				organisation_id,
+			)
+			.await?;
 			db::add_domain_to_organisation(
 				context.get_db_connection(),
 				&domain_id,
 				&domain_name,
-				organisation_id,
 			)
 			.await?;
 

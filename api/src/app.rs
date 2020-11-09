@@ -2,20 +2,28 @@ use crate::{
 	models::error,
 	routes,
 	utils::{
-		constants::request_keys, settings::Settings, EveContext, EveMiddleware,
+		constants::request_keys,
+		settings::Settings,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
 use colored::Colorize;
 use eve_rs::{
-	default_middlewares::compression, listen, App as EveApp, Context, Error,
-	NextHandler, Request, Response,
+	default_middlewares::compression,
+	listen,
+	App as EveApp,
+	Context,
+	Error,
+	NextHandler,
+	Response,
 };
 use serde_json::json;
 use sqlx::{mysql::MySqlPool, Connection};
 use std::{error::Error as StdError, future::Future, pin::Pin, time::Instant};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct App {
 	pub config: Settings,
 	pub db_pool: MySqlPool,
@@ -48,8 +56,8 @@ pub async fn start_server(app: App) {
 		},
 	);
 	eve_app.use_sub_app(
-		&app.config.base_path,
-		routes::create_sub_app(app.clone()),
+		&app.config.base_path.clone(),
+		routes::create_sub_app(app),
 	);
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
@@ -57,12 +65,7 @@ pub async fn start_server(app: App) {
 }
 
 pub fn create_eve_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
-	EveApp::<EveContext, EveMiddleware, App>::create(eve_context_generator, app)
-}
-
-fn eve_context_generator(request: Request, state: &App) -> EveContext {
-	let state = state.clone();
-	EveContext::new(request, state)
+	EveApp::create(EveContext::new, app)
 }
 
 fn eve_error_handler(

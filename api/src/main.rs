@@ -1,31 +1,5 @@
-#[macro_use]
-extern crate async_trait;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate serde_derive;
-extern crate argon2;
-extern crate async_std;
-extern crate colored;
 extern crate config as config_rs;
-extern crate hex;
-extern crate job_scheduler;
-extern crate jsonwebtoken;
-extern crate log;
-extern crate log4rs;
 extern crate macros as api_macros;
-extern crate once_cell;
-extern crate rand;
-extern crate regex;
-extern crate s3;
-extern crate semver;
-extern crate serde;
-extern crate serde_json;
-extern crate sqlx;
-extern crate strum;
-extern crate strum_macros;
-extern crate surf;
-extern crate uuid;
 
 mod app;
 mod db;
@@ -41,7 +15,7 @@ use utils::logger;
 
 use async_std::task;
 use job_scheduler::JobScheduler;
-use std::{error::Error, time::Duration};
+use std::error::Error;
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
@@ -63,7 +37,7 @@ async fn main() -> Result<()> {
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 
-	task::spawn(run_scheduler());
+	task::spawn(run_scheduler(app.clone()));
 	log::debug!("Schedulers initialized");
 
 	app::start_server(app).await;
@@ -71,8 +45,10 @@ async fn main() -> Result<()> {
 	Ok(())
 }
 
-async fn run_scheduler() {
+async fn run_scheduler(app: App) {
 	let mut scheduler = JobScheduler::new();
+
+	scheduler::CONFIG.set(app).expect("CONFIG is already set");
 
 	let jobs = scheduler::get_scheduled_jobs();
 
@@ -81,8 +57,8 @@ async fn run_scheduler() {
 	}
 
 	loop {
-		let wait_time = scheduler.time_till_next_job().as_millis() as u64;
-		task::sleep(Duration::from_millis(wait_time)).await;
+		let wait_time = scheduler.time_till_next_job();
+		task::sleep(wait_time).await;
 		scheduler.tick();
 	}
 }
