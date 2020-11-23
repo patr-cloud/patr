@@ -8,11 +8,11 @@ use crate::{
 	query,
 };
 
-use sqlx::{pool::PoolConnection, query_as, MySqlConnection, Transaction};
+use sqlx::{query_as, MySql, Transaction};
 use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing rbac tables");
 
@@ -33,7 +33,7 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS resource (
 			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(100),
+			name VARCHAR(100) NOT NULL,
 			resource_type_id BINARY(16) NOT NULL,
 			owner_id BINARY(16),
 			FOREIGN KEY(owner_id) REFERENCES organisation(id),
@@ -123,7 +123,7 @@ pub async fn initialize_rbac_pre(
 }
 
 pub async fn initialize_rbac_post(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_resource_id(&mut *connection).await?;
@@ -175,7 +175,7 @@ pub async fn initialize_rbac_post(
 }
 
 pub async fn get_all_organisation_roles_for_user(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<HashMap<String, OrgPermissions>, sqlx::Error> {
 	let mut orgs: HashMap<String, OrgPermissions> = HashMap::new();
@@ -333,7 +333,7 @@ pub async fn get_all_organisation_roles_for_user(
 }
 
 pub async fn get_all_resource_types(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<HashMap<String, Vec<u8>>, sqlx::Error> {
 	let mut resource_types = HashMap::new();
 
@@ -356,7 +356,7 @@ pub async fn get_all_resource_types(
 }
 
 pub async fn create_orphaned_resource(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 	resource_name: &str,
 	resource_type_id: &[u8],
@@ -379,7 +379,7 @@ pub async fn create_orphaned_resource(
 }
 
 pub async fn set_resource_owner_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 	owner_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -402,7 +402,7 @@ pub async fn set_resource_owner_id(
 }
 
 pub async fn create_resource(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 	resource_name: &str,
 	resource_type_id: &[u8],
@@ -427,7 +427,7 @@ pub async fn create_resource(
 }
 
 pub async fn generate_new_resource_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -435,7 +435,10 @@ pub async fn generate_new_resource_id(
 		Resource,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			resource_type_id,
+			"owner_id!: Vec<u8>"
 		FROM
 			resource
 		WHERE
@@ -452,7 +455,10 @@ pub async fn generate_new_resource_id(
 			Resource,
 			r#"
 			SELECT
-				*
+				id,
+				name,
+				resource_type_id,
+				"owner_id!: Vec<u8>"
 			FROM
 				resource
 			WHERE
@@ -468,14 +474,17 @@ pub async fn generate_new_resource_id(
 }
 
 pub async fn get_resource_by_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
 	let rows = query_as!(
 		Resource,
 		r#"
 		SELECT
-			*
+			id,
+			"name!",
+			resource_type_id,
+			"owner_id!: Vec<u8>"
 		FROM
 			resource
 		WHERE
@@ -490,7 +499,7 @@ pub async fn get_resource_by_id(
 }
 
 pub async fn delete_resource(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

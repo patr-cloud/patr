@@ -1,6 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
 		error,
@@ -20,11 +21,10 @@ use crate::{
 };
 
 use argon2::Variant;
-use async_std::task;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rand::Rng;
 use serde_json::{json, Value};
-use sqlx::Connection;
+use tokio::task;
 use uuid::Uuid;
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -70,11 +70,7 @@ async fn sign_in(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -82,11 +78,7 @@ async fn sign_in(
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
 			user_id
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
@@ -95,17 +87,15 @@ async fn sign_in(
 	{
 		password
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
-	let user = if let Some(user) =
-		db::get_user_by_username_or_email(context.get_db_connection(), user_id)
-			.await?
+	let user = if let Some(user) = db::get_user_by_username_or_email(
+		context.get_mysql_connection(),
+		user_id,
+	)
+	.await?
 	{
 		user
 	} else {
@@ -141,7 +131,7 @@ async fn sign_in(
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user.id,
 	)
 	.await?;
@@ -159,7 +149,7 @@ async fn sign_in(
 	let refresh_token = Uuid::new_v4();
 
 	db::add_user_login(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
 		&token_data.user.id,
@@ -183,11 +173,7 @@ async fn sign_up(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -196,11 +182,7 @@ async fn sign_up(
 	{
 		username
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -208,11 +190,7 @@ async fn sign_up(
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
 			email
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
@@ -221,11 +199,7 @@ async fn sign_up(
 	{
 		password
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -234,11 +208,7 @@ async fn sign_up(
 	{
 		account_type
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -247,11 +217,7 @@ async fn sign_up(
 	{
 		first_name
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -260,11 +226,7 @@ async fn sign_up(
 	{
 		last_name
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -276,11 +238,7 @@ async fn sign_up(
 			{
 				Some(domain)
 			} else {
-				context.status(400).json(json!({
-					request_keys::SUCCESS: false,
-					request_keys::ERROR: error::id::WRONG_PARAMETERS,
-					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-				}));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			},
 			if let Some(Value::String(organisation_name)) =
@@ -288,11 +246,7 @@ async fn sign_up(
 			{
 				Some(organisation_name)
 			} else {
-				context.status(400).json(json!({
-					request_keys::SUCCESS: false,
-					request_keys::ERROR: error::id::WRONG_PARAMETERS,
-					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-				}));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			},
 			if let Some(Value::String(backup_email)) =
@@ -300,21 +254,13 @@ async fn sign_up(
 			{
 				Some(backup_email)
 			} else {
-				context.status(400).json(json!({
-					request_keys::SUCCESS: false,
-					request_keys::ERROR: error::id::WRONG_PARAMETERS,
-					request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-				}));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			},
 		),
 		"personal" => (None, None, None),
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -329,22 +275,14 @@ async fn sign_up(
 	}
 
 	if !validator::is_email_valid(email) {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_EMAIL,
-			request_keys::MESSAGE: error::message::INVALID_EMAIL
-		}));
+		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
 
 	if backup_email.is_some() &&
 		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_EMAIL,
-			request_keys::MESSAGE: error::message::INVALID_EMAIL
-		}));
+		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
 
@@ -357,7 +295,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if db::get_user_by_username(context.get_db_connection(), username)
+	if db::get_user_by_username(context.get_mysql_connection(), username)
 		.await?
 		.is_some()
 	{
@@ -369,7 +307,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if db::get_user_by_email(context.get_db_connection(), email)
+	if db::get_user_by_email(context.get_mysql_connection(), email)
 		.await?
 		.is_some()
 	{
@@ -432,7 +370,7 @@ async fn sign_up(
 	};
 
 	db::set_user_to_be_signed_up(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		email.clone(),
 		username,
 		&password,
@@ -444,7 +382,7 @@ async fn sign_up(
 	.await?;
 
 	let config = context.get_state().config.clone();
-	task::spawn(async move {
+	task::spawn_blocking(|| {
 		mailer::send_email_verification_mail(
 			config,
 			match email {
@@ -470,11 +408,7 @@ async fn join(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -483,11 +417,7 @@ async fn join(
 	{
 		token
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -496,16 +426,12 @@ async fn join(
 	{
 		username
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
 	let user_data = if let Some(user_data) =
-		db::get_user_email_to_sign_up(context.get_db_connection(), username)
+		db::get_user_email_to_sign_up(context.get_mysql_connection(), username)
 			.await?
 	{
 		user_data
@@ -557,7 +483,7 @@ async fn join(
 	}
 
 	db::create_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		user_id,
 		&user_data.username,
 		&user_data.password,
@@ -580,13 +506,13 @@ async fn join(
 
 			// add personal organisation
 			let organisation_id =
-				db::generate_new_resource_id(context.get_db_connection())
+				db::generate_new_resource_id(context.get_mysql_connection())
 					.await?;
 			let organisation_id = organisation_id.as_bytes();
 			let organisation_name = "Personal organisation".to_string();
 
 			db::create_orphaned_resource(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				&organisation_name,
 				rbac::RESOURCE_TYPES
@@ -597,7 +523,7 @@ async fn join(
 			)
 			.await?;
 			db::create_organisation(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				&organisation_name,
 				user_id,
@@ -605,7 +531,7 @@ async fn join(
 			)
 			.await?;
 			db::set_resource_owner_id(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				organisation_id,
 			)
@@ -618,12 +544,12 @@ async fn join(
 			organisation_name,
 		} => {
 			let organisation_id =
-				db::generate_new_resource_id(context.get_db_connection())
+				db::generate_new_resource_id(context.get_mysql_connection())
 					.await?;
 			let organisation_id = organisation_id.as_bytes();
 
 			db::create_orphaned_resource(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				&format!("Organiation: {}", organisation_name),
 				rbac::RESOURCE_TYPES
@@ -634,7 +560,7 @@ async fn join(
 			)
 			.await?;
 			db::create_organisation(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				&organisation_name,
 				user_id,
@@ -642,19 +568,19 @@ async fn join(
 			)
 			.await?;
 			db::set_resource_owner_id(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				organisation_id,
 				organisation_id,
 			)
 			.await?;
 
 			let domain_id =
-				db::generate_new_resource_id(context.get_db_connection())
+				db::generate_new_resource_id(context.get_mysql_connection())
 					.await?;
 			let domain_id = domain_id.as_bytes().to_vec();
 
 			db::create_resource(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				&domain_id,
 				&format!("Domain: {}", domain_name),
 				rbac::RESOURCE_TYPES
@@ -666,7 +592,7 @@ async fn join(
 			)
 			.await?;
 			db::add_domain_to_organisation(
-				context.get_db_connection(),
+				context.get_mysql_connection(),
 				&domain_id,
 				&domain_name,
 			)
@@ -681,9 +607,10 @@ async fn join(
 		}
 	}
 
-	db::add_email_for_user(context.get_db_connection(), user_id, email).await?;
+	db::add_email_for_user(context.get_mysql_connection(), user_id, email)
+		.await?;
 	db::delete_user_to_be_signed_up(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_data.username,
 	)
 	.await?;
@@ -692,7 +619,7 @@ async fn join(
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		user_id,
 	)
 	.await?;
@@ -710,7 +637,7 @@ async fn join(
 	let refresh_token = Uuid::new_v4();
 
 	db::add_user_login(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
 		user_id,
@@ -726,13 +653,13 @@ async fn join(
 	}));
 
 	let config = context.get_state().config.clone();
-	task::spawn(async move {
+	task::spawn_blocking(|| {
 		mailer::send_sign_up_completed_mail(config, welcome_email_to);
 	});
 
 	if let Some(backup_email) = backup_email_notification_to {
 		let config = context.get_state().config.clone();
-		task::spawn(async move {
+		task::spawn_blocking(|| {
 			mailer::send_backup_registration_mail(config, backup_email);
 		});
 	}
@@ -748,28 +675,21 @@ async fn get_access_token(
 		if let Some(header) = context.get_header("Authorization") {
 			header
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
 	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
 		uuid
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 	let refresh_token = refresh_token.as_bytes();
 
 	let user_login =
-		db::get_user_login(context.get_db_connection(), refresh_token).await?;
+		db::get_user_login(context.get_mysql_connection(), refresh_token)
+			.await?;
 
 	if user_login.is_none() {
 		context.json(json!({
@@ -783,11 +703,7 @@ async fn get_access_token(
 
 	if user_login.token_expiry < get_current_time() {
 		// Token has expired
-		context.status(401).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::UNAUTHORIZED,
-			request_keys::MESSAGE: error::message::UNAUTHORIZED,
-		}));
+		context.status(401).json(error!(UNAUTHORIZED));
 		return Ok(context);
 	}
 
@@ -797,13 +713,13 @@ async fn get_access_token(
 	let iat = get_current_time();
 	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_login.user_id,
 	)
 	.await?;
 	let user_id = user_login.user_id;
 	let user_data =
-		db::get_user_by_user_id(context.get_db_connection(), &user_id)
+		db::get_user_by_user_id(context.get_mysql_connection(), &user_id)
 			.await?
 			.unwrap();
 	let user = ExposedUserData {
@@ -819,7 +735,7 @@ async fn get_access_token(
 		token_data.to_string(&context.get_state().config.jwt_secret)?;
 
 	db::set_refresh_token_expiry(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		refresh_token,
 		iat,
 		exp,
@@ -840,11 +756,7 @@ async fn is_email_valid(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -852,25 +764,17 @@ async fn is_email_valid(
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
 			email
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
 	if !validator::is_email_valid(email) {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_EMAIL,
-			request_keys::MESSAGE: error::message::INVALID_EMAIL
-		}));
+		context.status(400).json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
 
 	let user =
-		db::get_user_by_email(context.get_db_connection(), email).await?;
+		db::get_user_by_email(context.get_mysql_connection(), email).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -886,11 +790,7 @@ async fn is_username_valid(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -899,25 +799,18 @@ async fn is_username_valid(
 	{
 		username
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
 	if !validator::is_username_valid(username) {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_USERNAME,
-			request_keys::MESSAGE: error::message::INVALID_USERNAME
-		}));
+		context.status(400).json(error!(INVALID_USERNAME));
 		return Ok(context);
 	}
 
 	let user =
-		db::get_user_by_username(context.get_db_connection(), username).await?;
+		db::get_user_by_username(context.get_mysql_connection(), username)
+			.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -933,11 +826,7 @@ async fn forgot_password(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -945,17 +834,15 @@ async fn forgot_password(
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
 			user_id
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
-	let user =
-		db::get_user_by_username_or_email(context.get_db_connection(), user_id)
-			.await?;
+	let user = db::get_user_by_username_or_email(
+		context.get_mysql_connection(),
+		user_id,
+	)
+	.await?;
 
 	if user.is_none() {
 		context.json(json!({
@@ -995,7 +882,7 @@ async fn forgot_password(
 	)?;
 
 	db::add_password_reset_request(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user.id,
 		&token_hash,
 		token_expiry,
@@ -1003,7 +890,7 @@ async fn forgot_password(
 	.await?;
 
 	let config = context.get_state().config.clone();
-	task::spawn(async move {
+	task::spawn_blocking(|| {
 		mailer::send_password_reset_requested_mail(
 			config,
 			user.backup_email,
@@ -1024,11 +911,7 @@ async fn reset_password(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -1037,11 +920,7 @@ async fn reset_password(
 	{
 		password
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 	let token = if let Some(Value::String(token)) =
@@ -1049,47 +928,31 @@ async fn reset_password(
 	{
 		token
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 	let user_id =
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
 			user_id
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 	let user_id = if let Ok(user_id) = hex::decode(user_id) {
 		user_id
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
 	let reset_request = db::get_password_reset_request_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_id,
 	)
 	.await?;
 
 	if reset_request.is_none() {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
-		}));
+		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 	let reset_request = reset_request.unwrap();
@@ -1106,11 +969,7 @@ async fn reset_password(
 	)?;
 
 	if !success {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
-		}));
+		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 
@@ -1125,24 +984,21 @@ async fn reset_password(
 	)?;
 
 	db::update_user_password(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_id,
 		&new_password,
 	)
 	.await?;
 	db::delete_password_reset_request_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_id,
 	)
 	.await?;
 
 	let config = context.get_state().config.clone();
-	let pool = context.get_state().db_pool.clone();
+	let pool = context.get_state().mysql.clone();
 	task::spawn(async move {
 		let mut connection = pool
-			.acquire()
-			.await
-			.expect("unable to aquire db connection from pool")
 			.begin()
 			.await
 			.expect("unable to begin transaction from connection");
@@ -1151,10 +1007,12 @@ async fn reset_password(
 			.expect("unable to get user data")
 			.expect("user data for that user_id was None");
 
-		mailer::send_password_changed_notification_mail(
-			config,
-			user.backup_email,
-		);
+		task::spawn_blocking(|| {
+			mailer::send_password_changed_notification_mail(
+				config,
+				user.backup_email,
+			);
+		});
 	});
 
 	context.json(json!({

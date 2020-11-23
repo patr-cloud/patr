@@ -1,6 +1,3 @@
-extern crate config as config_rs;
-extern crate macros as api_macros;
-
 mod app;
 mod db;
 mod macros;
@@ -13,13 +10,11 @@ use api_macros::{query, query_as};
 use app::App;
 use utils::logger;
 
-use async_std::task;
-use job_scheduler::JobScheduler;
 use std::error::Error;
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<()> {
 	let config = utils::settings::parse_config();
 	println!(
@@ -30,35 +25,24 @@ async fn main() -> Result<()> {
 	logger::initialize(&config).await?;
 	log::debug!("Logger initialized");
 
-	let db_pool = db::create_connection_pool(&config).await?;
-	log::debug!("Database connection pool established");
+	let mysql = db::create_mysql_connection(&config).await?;
+	log::debug!("Mysql connection pool established");
 
-	let app = App { config, db_pool };
+	let redis = db::create_redis_connection(&config).await?;
+	log::debug!("Redis connection pool established");
+
+	let app = App {
+		config,
+		mysql,
+		redis,
+	};
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 
-	task::spawn(run_scheduler(app.clone()));
+	scheduler::initialize_jobs(&app);
 	log::debug!("Schedulers initialized");
 
 	app::start_server(app).await;
 
 	Ok(())
-}
-
-async fn run_scheduler(app: App) {
-	let mut scheduler = JobScheduler::new();
-
-	scheduler::CONFIG.set(app).expect("CONFIG is already set");
-
-	let jobs = scheduler::get_scheduled_jobs();
-
-	for job in jobs {
-		scheduler.add(job);
-	}
-
-	loop {
-		let wait_time = scheduler.time_till_next_job();
-		task::sleep(wait_time).await;
-		scheduler.tick();
-	}
 }

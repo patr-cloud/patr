@@ -1,12 +1,13 @@
 use crate::{
 	models::db_mapping::{Domain, Organisation},
 	query,
+	query_as,
 };
 
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use sqlx::{MySql, Transaction};
 
 pub async fn initialize_organisations_pre(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing organisation tables");
 	query!(
@@ -40,7 +41,7 @@ pub async fn initialize_organisations_pre(
 }
 
 pub async fn initialize_organisations_post(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -66,7 +67,7 @@ pub async fn initialize_organisations_post(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
@@ -92,7 +93,7 @@ pub async fn create_organisation(
 }
 
 pub async fn add_domain_to_organisation(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 	domain_name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -113,13 +114,18 @@ pub async fn add_domain_to_organisation(
 }
 
 pub async fn get_organisation_info(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query!(
+	let rows = query_as!(
+		Organisation,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			super_admin_id,
+			"active: bool",
+			created
 		FROM
 			organisation
 		WHERE
@@ -130,28 +136,20 @@ pub async fn get_organisation_info(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(Organisation {
-		id: row.id,
-		name: row.name,
-		super_admin_id: row.super_admin_id,
-		active: row.active > 0,
-		created: row.created,
-	}))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn get_domains_for_organisation(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query!(
+	let rows = query_as!(
+		Domain,
 		r#"
 		SELECT
-			domain.*, resource.owner_id
+			domain.id,
+			domain.name,
+			"is_verified: bool"
 		FROM
 			domain, resource
 		WHERE
@@ -163,26 +161,19 @@ pub async fn get_domains_for_organisation(
 	.fetch_all(connection)
 	.await?;
 
-	let mut domains = Vec::with_capacity(rows.len());
-
-	for row in rows {
-		domains.push(Domain {
-			id: row.id,
-			name: row.name,
-			is_verified: row.is_verified > 0,
-		});
-	}
-
-	Ok(domains)
+	Ok(rows)
 }
 
 pub async fn get_all_unverified_domains(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query!(
+	let rows = query_as!(
+		Domain,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			"is_verified: bool"
 		FROM
 			domain
 		WHERE
@@ -192,21 +183,11 @@ pub async fn get_all_unverified_domains(
 	.fetch_all(connection)
 	.await?;
 
-	let mut domains = Vec::with_capacity(rows.len());
-
-	for row in rows {
-		domains.push(Domain {
-			id: row.id,
-			name: row.name,
-			is_verified: row.is_verified > 0,
-		});
-	}
-
-	Ok(domains)
+	Ok(rows)
 }
 
 pub async fn set_domain_as_verified(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -227,12 +208,15 @@ pub async fn set_domain_as_verified(
 }
 
 pub async fn get_all_verified_domains(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query!(
+	let rows = query_as!(
+		Domain,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			"is_verified: bool"
 		FROM
 			domain
 		WHERE
@@ -242,21 +226,11 @@ pub async fn get_all_verified_domains(
 	.fetch_all(connection)
 	.await?;
 
-	let mut domains = Vec::with_capacity(rows.len());
-
-	for row in rows {
-		domains.push(Domain {
-			id: row.id,
-			name: row.name,
-			is_verified: row.is_verified > 0,
-		});
-	}
-
-	Ok(domains)
+	Ok(rows)
 }
 
 pub async fn set_domain_as_unverified(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -277,7 +251,7 @@ pub async fn set_domain_as_unverified(
 }
 
 pub async fn get_notification_email_for_domain(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<Option<String>, sqlx::Error> {
 	let rows = query!(
@@ -306,7 +280,7 @@ pub async fn get_notification_email_for_domain(
 }
 
 pub async fn delete_domain_from_organisation(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -325,13 +299,16 @@ pub async fn delete_domain_from_organisation(
 }
 
 pub async fn get_domain_by_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<Option<Domain>, sqlx::Error> {
-	let rows = query!(
+	let rows = query_as!(
+		Domain,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			"is_verified: bool"
 		FROM
 			domain
 		WHERE
@@ -342,15 +319,5 @@ pub async fn get_domain_by_id(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(Domain {
-		id: row.id,
-		name: row.name,
-		is_verified: row.is_verified > 0,
-	}))
+	Ok(rows.into_iter().next())
 }

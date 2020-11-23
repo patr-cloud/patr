@@ -1,6 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
 	models::{error, rbac},
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
@@ -36,11 +37,7 @@ async fn get_organisation_info(
 		.clone();
 	let organisation_id = hex::decode(&org_id_string);
 	if organisation_id.is_err() {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	}
 	let organisation_id = organisation_id.unwrap();
@@ -50,16 +47,12 @@ async fn get_organisation_info(
 	if !access_token_data.orgs.contains_key(&org_id_string) &&
 		access_token_data.user.id != god_user_id
 	{
-		context.status(404).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-			request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-		}));
+		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 		return Ok(context);
 	}
 
 	let organisation = db::get_organisation_info(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&organisation_id,
 	)
 	.await?;
@@ -73,11 +66,7 @@ async fn get_organisation_info(
 			request_keys::CREATED: organisation.created,
 		}));
 	} else {
-		context.status(500).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::SERVER_ERROR,
-			request_keys::MESSAGE: error::message::SERVER_ERROR,
-		}));
+		context.status(500).json(error!(SERVER_ERROR));
 	}
 
 	Ok(context)

@@ -1,5 +1,6 @@
 use crate::{
 	models::error,
+	pin_fn,
 	routes,
 	utils::{
 		constants::request_keys,
@@ -19,14 +20,26 @@ use eve_rs::{
 	NextHandler,
 	Response,
 };
+use redis::aio::MultiplexedConnection as RedisConnection;
 use serde_json::json;
-use sqlx::{mysql::MySqlPool, Connection};
-use std::{error::Error as StdError, future::Future, pin::Pin, time::Instant};
+use sqlx::mysql::MySqlPool;
+use std::{
+	error::Error as StdError,
+	fmt::{Debug, Formatter},
+	time::Instant,
+};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct App {
 	pub config: Settings,
-	pub db_pool: MySqlPool,
+	pub mysql: MySqlPool,
+	pub redis: RedisConnection,
+}
+
+impl Debug for App {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{:#?}", self)
+	}
 }
 
 pub async fn start_server(app: App) {
@@ -39,13 +52,13 @@ pub async fn start_server(app: App) {
 		"/",
 		if cfg!(debug_assertions) {
 			&[
-				EveMiddleware::CustomFunction(init_states),
+				EveMiddleware::CustomFunction(pin_fn!(init_states)),
 				EveMiddleware::JsonParser,
 				EveMiddleware::UrlEncodedParser,
 			]
 		} else {
 			&[
-				EveMiddleware::CustomFunction(init_states),
+				EveMiddleware::CustomFunction(pin_fn!(init_states)),
 				EveMiddleware::Compression(
 					compression::DEFAULT_COMPRESSION_LEVEL,
 				),
@@ -88,60 +101,53 @@ fn eve_error_handler(
 	response
 }
 
-fn init_states(
+async fn init_states(
 	mut context: EveContext,
 	next: NextHandler<EveContext>,
-) -> Pin<Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>>
-{
-	Box::pin(async move {
-		// Start measuring time to check how long a route takes to execute
-		let start_time = Instant::now();
+) -> Result<EveContext, Error<EveContext>> {
+	// Start measuring time to check how long a route takes to execute
+	let start_time = Instant::now();
 
-		// Get a connection from the connection pool
-		let pool_connection = context.get_state().db_pool.acquire().await?;
+	// Get a connection from the connection pool and begin a transaction on that connection
+	let transaction = context.get_state().mysql.begin().await?;
 
-		// Begin a transaction on that connection
-		let transaction = pool_connection.begin().await?;
+	// Set the mysql transaction
+	context.set_mysql_connection(transaction);
 
-		// Set the transaction
-		context.set_db_connection(transaction);
+	// Execute the next route and handle the result
+	context = next(context).await?;
 
-		// Execute the next route and handle the result
-		context = next(context).await?;
+	// Log how long the request took, then either commit or rollback the transaction
+	let elapsed_time = start_time.elapsed();
 
-		// Log how long the request took, then either commit or rollback the transaction
-		let elapsed_time = start_time.elapsed();
+	log::info!(
+		"{} {} {} {} - {}",
+		context.get_method(),
+		context.get_path(),
+		match context.get_response().get_status() {
+			100..=199 =>
+				format!("{}", context.get_response().get_status()).normal(),
+			200..=299 =>
+				format!("{}", context.get_response().get_status()).green(),
+			300..=399 =>
+				format!("{}", context.get_response().get_status()).cyan(),
+			400..=499 =>
+				format!("{}", context.get_response().get_status()).yellow(),
+			500..=599 =>
+				format!("{}", context.get_response().get_status()).red(),
+			_ => format!("{}", context.get_response().get_status()).purple(),
+		},
+		if elapsed_time.as_millis() > 0 {
+			format!("{} ms", elapsed_time.as_millis())
+		} else {
+			format!("{} μs", elapsed_time.as_micros())
+		},
+		context.get_response().get_body().len()
+	);
 
-		log::info!(
-			"{} {} {} {} - {}",
-			context.get_method(),
-			context.get_path(),
-			match context.get_response().get_status() {
-				100..=199 =>
-					format!("{}", context.get_response().get_status()).normal(),
-				200..=299 =>
-					format!("{}", context.get_response().get_status()).green(),
-				300..=399 =>
-					format!("{}", context.get_response().get_status()).cyan(),
-				400..=499 =>
-					format!("{}", context.get_response().get_status()).yellow(),
-				500..=599 =>
-					format!("{}", context.get_response().get_status()).red(),
-				_ =>
-					format!("{}", context.get_response().get_status()).purple(),
-			},
-			if elapsed_time.as_millis() > 0 {
-				format!("{} ms", elapsed_time.as_millis())
-			} else {
-				format!("{} μs", elapsed_time.as_micros())
-			},
-			context.get_response().get_body().len()
-		);
+	if let Err(err) = context.take_mysql_connection().commit().await {
+		log::error!("Unable to commit transaction: {}", err);
+	}
 
-		if let Err(err) = context.take_db_connection().commit().await {
-			log::error!("Unable to commit transaction: {}", err);
-		}
-
-		Ok(context)
-	})
+	Ok(context)
 }

@@ -2,10 +2,10 @@ use crate::app::App;
 
 use crate::query;
 use semver::Version;
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use sqlx::{MySql, Transaction};
 
 pub async fn initialize_meta_pre(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing meta tables");
 	query!(
@@ -22,7 +22,7 @@ pub async fn initialize_meta_pre(
 }
 
 pub async fn initialize_meta_post(
-	_transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	_transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
@@ -46,7 +46,7 @@ pub async fn set_database_version(
 		version.minor,
 		version.patch
 	)
-	.execute(&app.db_pool)
+	.execute(&app.mysql)
 	.await?;
 	Ok(())
 }
@@ -62,7 +62,7 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 			id = 'version_patch';
 		"#,
 	)
-	.fetch_all(&app.db_pool)
+	.fetch_all(&app.mysql)
 	.await?;
 
 	let mut version = Version::new(0, 0, 0);

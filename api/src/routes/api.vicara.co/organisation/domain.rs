@@ -1,6 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
 	models::{
 		error,
 		rbac::{self, permissions},
@@ -12,6 +13,7 @@ use crate::{
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::{json, Value};
+use trust_dns_client::rr::{Name, RData};
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(app);
@@ -28,27 +30,21 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 						.unwrap();
 					let organisation_id = hex::decode(&org_id_string);
 					if organisation_id.is_err() {
-						context.status(400).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::WRONG_PARAMETERS,
-							request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-						}));
+						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 					let organisation_id = organisation_id.unwrap();
 
 					let resource = db::get_resource_by_id(
-						context.get_db_connection(),
+						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
 
 					if resource.is_none() {
-						context.status(404).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-							request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-						}));
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -72,27 +68,21 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 						.unwrap();
 					let organisation_id = hex::decode(&org_id_string);
 					if organisation_id.is_err() {
-						context.status(400).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::WRONG_PARAMETERS,
-							request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-						}));
+						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 					let organisation_id = organisation_id.unwrap();
 
 					let resource = db::get_resource_by_id(
-						context.get_db_connection(),
+						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
 
 					if resource.is_none() {
-						context.status(404).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-							request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-						}));
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -113,27 +103,21 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = hex::decode(&domain_id_string);
 					if domain_id.is_err() {
-						context.status(400).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::WRONG_PARAMETERS,
-							request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-						}));
+						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 					let domain_id = domain_id.unwrap();
 
 					let resource = db::get_resource_by_id(
-						context.get_db_connection(),
+						context.get_mysql_connection(),
 						&domain_id,
 					)
 					.await?;
 
 					if resource.is_none() {
-						context.status(404).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-							request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-						}));
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -156,26 +140,20 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = hex::decode(&domain_id_string);
 					if domain_id.is_err() {
-						context.status(400).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::WRONG_PARAMETERS,
-							request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-						}));
+						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 					let domain_id = domain_id.unwrap();
 					let resource = db::get_resource_by_id(
-						context.get_db_connection(),
+						context.get_mysql_connection(),
 						&domain_id,
 					)
 					.await?;
 
 					if resource.is_none() {
-						context.status(404).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-							request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-						}));
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -198,26 +176,20 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = hex::decode(&domain_id_string);
 					if domain_id.is_err() {
-						context.status(400).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::WRONG_PARAMETERS,
-							request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-						}));
+						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 					let domain_id = domain_id.unwrap();
 					let resource = db::get_resource_by_id(
-						context.get_db_connection(),
+						context.get_mysql_connection(),
 						&domain_id,
 					)
 					.await?;
 
 					if resource.is_none() {
-						context.status(404).json(json!({
-							request_keys::SUCCESS: false,
-							request_keys::ERROR: error::id::RESOURCE_DOES_NOT_EXIST,
-							request_keys::MESSAGE: error::message::RESOURCE_DOES_NOT_EXIST,
-						}));
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -239,11 +211,11 @@ async fn get_domains_for_organisation(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	let organisation_id =
-		hex::decode(&context.get_param(request_keys::ORGANISATION_ID).unwrap())
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
 	let domains = db::get_domains_for_organisation(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -276,11 +248,7 @@ async fn add_domain_to_organisation(
 	let body = if let Some(Value::Object(body)) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -288,16 +256,12 @@ async fn add_domain_to_organisation(
 		if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
 			domain
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
 	let domain_exists = db::get_domains_for_organisation(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -305,20 +269,16 @@ async fn add_domain_to_organisation(
 	.any(|domain| &domain.name == domain_name);
 
 	if domain_exists {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::RESOURCE_EXISTS,
-			request_keys::MESSAGE: error::message::RESOURCE_EXISTS
-		}));
+		context.status(400).json(error!(RESOURCE_EXISTS));
 		return Ok(context);
 	}
 
 	let domain_id =
-		db::generate_new_resource_id(context.get_db_connection()).await?;
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let domain_id = domain_id.as_bytes();
 
 	db::create_resource(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		domain_id,
 		&format!("Domain: {}", domain_name),
 		rbac::RESOURCE_TYPES
@@ -330,7 +290,7 @@ async fn add_domain_to_organisation(
 	)
 	.await?;
 	db::add_domain_to_organisation(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		domain_id,
 		domain_name,
 	)
@@ -357,7 +317,8 @@ async fn verify_domain_in_organisation(
 	let domain_id = hex::decode(domain_id).unwrap();
 
 	let domain =
-		db::get_domain_by_id(context.get_db_connection(), &domain_id).await?;
+		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
+			.await?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -365,11 +326,7 @@ async fn verify_domain_in_organisation(
 		// The resource middleware checks if a resource with that name exists.
 		// If the domain is null but the resource exists, then you have a dangling resource.
 		// This is a big problem. Make sure it's logged and investigated into
-		context.status(500).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::SERVER_ERROR,
-			request_keys::MESSAGE: error::message::SERVER_ERROR
-		}));
+		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
@@ -391,7 +348,7 @@ async fn verify_domain_in_organisation(
 		)
 		.unwrap(),
 	);
-	let response = trust_dns_client::client::Client::query(
+	let mut response = trust_dns_client::client::Client::query(
 		&client,
 		&trust_dns_client::rr::Name::from_utf8(format!(
 			"vceVerify.{}",
@@ -402,23 +359,19 @@ async fn verify_domain_in_organisation(
 		trust_dns_client::rr::RecordType::CNAME,
 	)
 	.unwrap();
-	let response = response.answers().into_iter().find(|record| {
-		let expected_cname = trust_dns_client::rr::RData::CNAME(
-			trust_dns_client::rr::Name::from_utf8(format!(
-				"{}.vicara.co",
-				domain_hash
-			))
-			.unwrap(),
+	let response = response.take_answers().into_iter().find(|record| {
+		let expected_cname = RData::CNAME(
+			Name::from_utf8(format!("{}.vicara.co", domain_hash)).unwrap(),
 		);
 		record.rdata() == &expected_cname
 	});
 
 	if response.is_some() {
-		// NOPE
 		context.json(json!({
 			request_keys::SUCCESS: true
 		}));
 	} else {
+		// NOPE
 		context.json(json!({
 			request_keys::SUCCESS: false,
 			request_keys::ERROR: error::id::DOMAIN_UNVERIFIED,
@@ -441,7 +394,8 @@ async fn get_domain_info_in_organisation(
 	let domain_id = hex::decode(domain_id).unwrap();
 
 	let domain =
-		db::get_domain_by_id(context.get_db_connection(), &domain_id).await?;
+		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
+			.await?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -449,11 +403,7 @@ async fn get_domain_info_in_organisation(
 		// The resource middleware checks if a resource with that name exists.
 		// If the domain is null but the resource exists, then you have a dangling resource.
 		// This is a big problem. Make sure it's logged and investigated into
-		context.status(500).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::SERVER_ERROR,
-			request_keys::MESSAGE: error::message::SERVER_ERROR
-		}));
+		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
@@ -506,11 +456,11 @@ async fn delete_domain_in_organisation(
 	// TODO make sure all associated resources to this domain are removed first
 
 	db::delete_domain_from_organisation(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&domain_id,
 	)
 	.await?;
-	db::delete_resource(context.get_db_connection(), &domain_id).await?;
+	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

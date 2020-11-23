@@ -1,7 +1,7 @@
 use crate::{app::App, models::AccessTokenData};
 use eve_rs::{Context, Request, Response};
 use serde_json::Value;
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use sqlx::{MySql, Transaction};
 use std::fmt::{Debug, Formatter};
 
 pub struct EveContext {
@@ -9,7 +9,7 @@ pub struct EveContext {
 	response: Response,
 	body_object: Option<Value>,
 	state: App,
-	db_connection: Option<Transaction<PoolConnection<MySqlConnection>>>,
+	db_connection: Option<Transaction<'static, MySql>>,
 	access_token_data: Option<AccessTokenData>,
 }
 
@@ -29,21 +29,21 @@ impl EveContext {
 		&self.state
 	}
 
-	pub fn get_db_connection(
-		&mut self,
-	) -> &mut Transaction<PoolConnection<MySqlConnection>> {
+	pub fn get_state_mut(&mut self) -> &mut App {
+		&mut self.state
+	}
+
+	pub fn get_mysql_connection(&mut self) -> &mut Transaction<'static, MySql> {
 		self.db_connection.as_mut().unwrap()
 	}
 
-	pub fn take_db_connection(
-		&mut self,
-	) -> Transaction<PoolConnection<MySqlConnection>> {
+	pub fn take_mysql_connection(&mut self) -> Transaction<'_, MySql> {
 		self.db_connection.take().unwrap()
 	}
 
-	pub fn set_db_connection(
+	pub fn set_mysql_connection(
 		&mut self,
-		connection: Transaction<PoolConnection<MySqlConnection>>,
+		connection: Transaction<'static, MySql>,
 	) {
 		self.db_connection = Some(connection);
 	}

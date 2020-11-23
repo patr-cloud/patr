@@ -1,6 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
 	models::{db_mapping::UserEmailAddress, error},
 	pin_fn,
 	utils::{
@@ -72,11 +73,7 @@ async fn update_user_info(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -84,11 +81,7 @@ async fn update_user_info(
 		Some(Value::String(first_name)) => Some(first_name),
 		None => None,
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -97,11 +90,7 @@ async fn update_user_info(
 		Some(Value::String(last_name)) => Some(last_name),
 		None => None,
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -110,11 +99,7 @@ async fn update_user_info(
 		Some(Value::String(dob)) => Some(dob),
 		None => None,
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -123,11 +108,7 @@ async fn update_user_info(
 		Some(Value::String(bio)) => Some(bio),
 		None => None,
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -136,11 +117,7 @@ async fn update_user_info(
 		Some(Value::String(location)) => Some(location),
 		None => None,
 		_ => {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		}
 	};
@@ -153,16 +130,12 @@ async fn update_user_info(
 		.is_none()
 	{
 		// No parameters to update
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	}
 
 	db::update_user_data(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		first_name,
 		last_name,
 		dob,
@@ -181,11 +154,7 @@ async fn add_email_address(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -193,24 +162,16 @@ async fn add_email_address(
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
 			email
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
 	if !validator::is_email_valid(email_address) {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_EMAIL,
-			request_keys::MESSAGE: error::message::INVALID_EMAIL
-		}));
+		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
 
-	if db::get_user_by_email(context.get_db_connection(), email_address)
+	if db::get_user_by_email(context.get_mysql_connection(), email_address)
 		.await?
 		.is_some()
 	{
@@ -251,7 +212,7 @@ async fn add_email_address(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	db::add_personal_email_to_be_verified_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&email_address,
 		&user_id,
 		&verification_token,
@@ -272,11 +233,7 @@ async fn verify_email_address(
 	let body = if let Some(body) = context.get_body_object() {
 		body.clone()
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
@@ -284,11 +241,7 @@ async fn verify_email_address(
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
 			email
 		} else {
-			context.status(400).json(json!({
-				request_keys::SUCCESS: false,
-				request_keys::ERROR: error::id::WRONG_PARAMETERS,
-				request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-			}));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
@@ -297,29 +250,21 @@ async fn verify_email_address(
 	{
 		token
 	} else {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::WRONG_PARAMETERS,
-			request_keys::MESSAGE: error::message::WRONG_PARAMETERS
-		}));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let email_verification_data =
 		db::get_personal_email_to_be_verified_for_user(
-			context.get_db_connection(),
+			context.get_mysql_connection(),
 			&user_id,
 			&email,
 		)
 		.await?;
 
 	if email_verification_data.is_none() {
-		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND,
-		}));
+		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 	let email_verification_data = email_verification_data.unwrap();
@@ -356,7 +301,7 @@ async fn verify_email_address(
 		UserEmailAddress::Personal(email_verification_data.email_address);
 
 	db::add_email_for_user(
-		context.get_db_connection(),
+		context.get_mysql_connection(),
 		&user_id,
 		email_address,
 	)

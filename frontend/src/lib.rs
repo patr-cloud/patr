@@ -1,5 +1,7 @@
 mod app;
 mod constants;
+#[allow(dead_code)]
+mod pages;
 
 use wasm_bindgen::prelude::*;
 

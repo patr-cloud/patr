@@ -11,11 +11,11 @@ use crate::{
 	query,
 	query_as,
 };
-use sqlx::{pool::PoolConnection, MySqlConnection, Transaction};
+use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 pub async fn initialize_users_pre(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
 	query!(
@@ -69,7 +69,7 @@ pub async fn initialize_users_pre(
 }
 
 pub async fn initialize_users_post(
-	transaction: &mut Transaction<PoolConnection<MySqlConnection>>,
+	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	// have two different kinds of email address.
 	// One for external email (for personal accounts)
@@ -210,7 +210,7 @@ pub async fn initialize_users_post(
 }
 
 pub async fn get_user_by_username_or_email(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -242,7 +242,7 @@ pub async fn get_user_by_username_or_email(
 }
 
 pub async fn get_god_user_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Option<Uuid>, sqlx::Error> {
 	let rows = query_as!(
 		User,
@@ -271,7 +271,7 @@ pub async fn get_god_user_id(
 }
 
 pub async fn get_user_by_email(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -299,7 +299,7 @@ pub async fn get_user_by_email(
 }
 
 pub async fn get_user_by_username(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -326,7 +326,7 @@ pub async fn get_user_by_username(
 }
 
 pub async fn get_user_by_user_id(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -353,7 +353,7 @@ pub async fn get_user_by_user_id(
 }
 
 pub async fn set_user_to_be_signed_up(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	email: UserEmailAddressSignUp,
 	username: &str,
 	password: &[u8],
@@ -461,7 +461,7 @@ pub async fn set_user_to_be_signed_up(
 }
 
 pub async fn get_user_email_to_sign_up(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let rows = query!(
@@ -507,7 +507,7 @@ pub async fn get_user_email_to_sign_up(
 }
 
 pub async fn add_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 	user_id: &[u8],
 	verification_token: &[u8],
@@ -537,7 +537,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 pub async fn get_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
@@ -568,7 +568,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 }
 
 pub async fn add_email_for_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	email: UserEmailAddress,
 ) -> Result<(), sqlx::Error> {
@@ -611,7 +611,7 @@ pub async fn add_email_for_user(
 }
 
 pub async fn delete_user_to_be_signed_up(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -630,7 +630,7 @@ pub async fn delete_user_to_be_signed_up(
 }
 
 pub async fn create_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	username: &str,
 	password: &[u8],
@@ -661,7 +661,7 @@ pub async fn create_user(
 }
 
 pub async fn add_user_login(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	refresh_token: &[u8],
 	token_expiry: u64,
 	user_id: &[u8],
@@ -688,7 +688,7 @@ pub async fn add_user_login(
 }
 
 pub async fn get_user_login(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	refresh_token: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let rows = query_as!(
@@ -714,7 +714,7 @@ pub async fn get_user_login(
 }
 
 pub async fn set_refresh_token_expiry(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	refresh_token: &[u8],
 	last_activity: u64,
 	token_expiry: u64,
@@ -740,7 +740,7 @@ pub async fn set_refresh_token_expiry(
 }
 
 pub async fn update_user_data(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
 	dob: Option<&str>,
@@ -780,7 +780,7 @@ pub async fn update_user_data(
 }
 
 pub async fn update_user_password(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	password: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -803,7 +803,7 @@ pub async fn update_user_password(
 }
 
 pub async fn add_password_reset_request(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	token_hash: &[u8],
 	token_expiry: u64,
@@ -831,7 +831,7 @@ pub async fn add_password_reset_request(
 }
 
 pub async fn get_password_reset_request_for_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
 	let rows = query_as!(
@@ -858,7 +858,7 @@ pub async fn get_password_reset_request_for_user(
 }
 
 pub async fn delete_password_reset_request_for_user(
-	connection: &mut Transaction<PoolConnection<MySqlConnection>>,
+	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

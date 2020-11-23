@@ -1,46 +1,37 @@
-use crate::{db, utils::mailer};
+use crate::{db, scheduler::Job, utils::mailer};
 
-use async_std::task;
 use cloudflare::{
 	endpoints::zone::{self, Status, Zone},
 	framework::{
-		apiclient::ApiClient,
+		async_api::{ApiClient, Client},
 		auth::Credentials,
 		Environment,
-		HttpApiClient,
 		HttpApiClientConfig,
 	},
 };
-use job_scheduler::Job;
 use surf::mime::APPLICATION_JSON;
 
 // Every two hours
-pub fn verify_unverified_domains_job<'a>() -> Job<'a> {
-	Job::new("0 0 1/2 * * *".parse().unwrap(), || {
-		task::block_on(verify_unverified_domains()).unwrap_or_else(|err| {
-			log::error!(
-				"Error while trying to verify unverified domains: {}",
-				err
-			);
-		});
-	})
+pub(super) fn verify_unverified_domains_job() -> Job {
+	Job::new(
+		String::from("Verify unverified domains"),
+		"0 0 1/2 * * *".parse().unwrap(),
+		|| Box::pin(verify_unverified_domains()),
+	)
 }
 
 // Every day at 4 am
-pub fn reverify_verified_domains_job<'a>() -> Job<'a> {
-	Job::new("0 0 4 * * *".parse().unwrap(), || {
-		task::block_on(reverify_verified_domains()).unwrap_or_else(|err| {
-			log::error!(
-				"Error while trying to verify unverified domains: {}",
-				err
-			);
-		});
-	})
+pub(super) fn reverify_verified_domains_job() -> Job {
+	Job::new(
+		String::from("Reverify verified domains"),
+		"0 0 4 * * *".parse().unwrap(),
+		|| Box::pin(reverify_verified_domains()),
+	)
 }
 
 async fn verify_unverified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.db_pool;
+	let db_pool = &config.mysql;
 	let mut connection = db_pool.begin().await?;
 
 	let unverified_domains =
@@ -50,7 +41,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 		token: config.config.cloudflare.api_token.clone(),
 	};
 
-	let client = HttpApiClient::new(
+	let client = Client::new(
 		credentials,
 		HttpApiClientConfig::default(),
 		Environment::Production,
@@ -65,14 +56,16 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 				"Domain `{}` was not added to cloudflare. Adding again.",
 				unverified_domain.name
 			);
-			let response = client.request(&zone::CreateZone {
-				params: zone::CreateZoneParams {
-					account: &config.config.cloudflare.account_id,
-					name: &unverified_domain.name,
-					jump_start: Some(false),
-					zone_type: Some(zone::Type::Full),
-				},
-			})?;
+			let response = client
+				.request(&zone::CreateZone {
+					params: zone::CreateZoneParams {
+						account: &config.config.cloudflare.account_id,
+						name: &unverified_domain.name,
+						jump_start: Some(false),
+						zone_type: Some(zone::Type::Full),
+					},
+				})
+				.await?;
 			if !response.errors.is_empty() {
 				log::error!(
 					"Domain `{}` errored while adding to cloudflare: {:#?}",
@@ -84,9 +77,11 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 		}
 		let zone = zone.unwrap();
 
-		let response = client.request(&zone::ZoneDetails {
-			identifier: &zone.id,
-		})?;
+		let response = client
+			.request(&zone::ZoneDetails {
+				identifier: &zone.id,
+			})
+			.await?;
 
 		if let Status::Active = response.result.status {
 			// Domain is now verified
@@ -135,7 +130,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 
 async fn reverify_verified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.db_pool;
+	let db_pool = &config.mysql;
 	let mut connection = db_pool.begin().await?;
 
 	let verified_domains =
@@ -145,7 +140,7 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 		token: config.config.cloudflare.api_token.clone(),
 	};
 
-	let client = HttpApiClient::new(
+	let client = Client::new(
 		credentials,
 		HttpApiClientConfig::default(),
 		Environment::Production,
@@ -161,14 +156,16 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 				"Domain `{}` was not added to cloudflare. Adding again.",
 				verified_domain.name
 			);
-			let response = client.request(&zone::CreateZone {
-				params: zone::CreateZoneParams {
-					account: &config.config.cloudflare.account_id,
-					name: &verified_domain.name,
-					jump_start: Some(false),
-					zone_type: Some(zone::Type::Full),
-				},
-			})?;
+			let response = client
+				.request(&zone::CreateZone {
+					params: zone::CreateZoneParams {
+						account: &config.config.cloudflare.account_id,
+						name: &verified_domain.name,
+						jump_start: Some(false),
+						zone_type: Some(zone::Type::Full),
+					},
+				})
+				.await?;
 			if !response.errors.is_empty() {
 				log::error!(
 					"Domain `{}` errored while adding to cloudflare: {:#?}",
@@ -180,9 +177,11 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 		}
 		let zone = zone.unwrap();
 
-		let response = client.request(&zone::ZoneDetails {
-			identifier: &zone.id,
-		})?;
+		let response = client
+			.request(&zone::ZoneDetails {
+				identifier: &zone.id,
+			})
+			.await?;
 
 		if let Status::Active = response.result.status {
 			continue;
@@ -211,15 +210,18 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 }
 
 pub async fn get_zone_for_domain(
-	client: &HttpApiClient,
+	client: &Client,
 	domain: &str,
 ) -> Option<Zone> {
-	let response = if let Ok(response) = client.request(&zone::ListZones {
-		params: zone::ListZonesParams {
-			name: Some(domain.to_string()),
-			..Default::default()
-		},
-	}) {
+	let response = if let Ok(response) = client
+		.request(&zone::ListZones {
+			params: zone::ListZonesParams {
+				name: Some(domain.to_string()),
+				..Default::default()
+			},
+		})
+		.await
+	{
 		response
 	} else {
 		return None;

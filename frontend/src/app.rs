@@ -2,8 +2,9 @@ use yew::{
 	prelude::*,
 	services::{storage::Area, StorageService},
 };
+use yew_router::{router::Router, Switch};
 
-use crate::constants::keys;
+use crate::{constants::keys, pages::*};
 
 #[derive(Default)]
 pub struct UserData {
@@ -20,12 +21,24 @@ pub struct UserData {
 	pub refresh_token: String,
 }
 
+#[allow(dead_code)]
 pub struct App {
 	link: ComponentLink<Self>,
 	storage: StorageService,
 	user_data: Option<UserData>,
 }
 
+#[derive(Switch, Debug, Clone)]
+pub enum MainRouter {
+	#[to = "/sign-in"]
+	SignIn,
+	#[to = "/sign-up"]
+	SignUp,
+	#[to = "/"]
+	Home,
+}
+
+#[allow(dead_code)]
 pub enum Msg {
 	OpenLoginScreen,
 	OpenSignUpScreen,
@@ -35,11 +48,12 @@ pub enum Msg {
 }
 
 impl Component for App {
-	type Message = Msg;
+	type Message = ();
 	type Properties = ();
 
 	fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-		let storage = StorageService::new(Area::Local);
+		let storage = StorageService::new(Area::Local)
+			.expect("unable to open localStorage");
 		let user_data = get_user_data(&storage);
 		App {
 			link,
@@ -48,41 +62,31 @@ impl Component for App {
 		}
 	}
 
-	fn update(&mut self, msg: Self::Message) -> ShouldRender {
-		if let Msg::Login = msg {
-			self.user_data = Some(Default::default());
-			return true;
-		} else if let Msg::Logout = msg {
-			self.user_data = None;
-			return true;
-		} else {
-			return false;
-		}
+	fn update(&mut self, _: Self::Message) -> ShouldRender {
+		false
+	}
+
+	fn change(&mut self, _: Self::Properties) -> ShouldRender {
+		false
 	}
 
 	fn view(&self) -> Html {
-		if self.user_data.is_none() {
-			html! {
-				<>
-					<h1>{"Login"}</h1>
-					<div class="container row">
-						<input type="email" name="userId" class="col s3" />
-						<input type="password" name="password" class="col s3" />
-						<input type="button" value="Login" class="button col s3" onclick=self.link.callback(|_| Msg::Login) />
-					</div>
-				</>
-			}
-		} else {
-			html! {
-				<>
-					<h1>{"Logged in"}</h1>
-					<div class="container row">
-						<input type="email" name="userId" class="col s3" />
-						<input type="password" name="password" class="col s3" />
-						<input type="button" value="Logout" class="button col s3" onclick=self.link.callback(|_| Msg::Logout) />
-					</div>
-				</>
-			}
+		html! {
+			<Router<MainRouter>
+				render=Router::render(|switch: MainRouter| {
+					match switch {
+						MainRouter::SignIn => html! {
+							<SignInComponent />
+						},
+						MainRouter::SignUp => html! {
+							<SignUpComponent />
+						},
+						MainRouter::Home => html! {
+							<HomeComponent />
+						}
+					}
+				})
+			/>
 		}
 	}
 }
@@ -92,7 +96,7 @@ fn get_user_data(storage: &StorageService) -> Option<UserData> {
 		.restore::<Result<String, _>>(keys::IS_LOGGED_IN)
 		.unwrap_or_else(|_| String::from(keys::FALSE))
 		.parse::<bool>()
-		.unwrap();
+		.unwrap_or_else(|_| false);
 
 	if is_logged_in {
 		let id = if let Ok(id) =

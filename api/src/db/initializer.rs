@@ -12,13 +12,13 @@ use std::cmp::Ordering;
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
 
-	let tables = query!("SHOW TABLES;").fetch_all(&app.db_pool).await?;
+	let tables = query!("SHOW TABLES;").fetch_all(&app.mysql).await?;
 
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");
 
-		let mut transaction = app.db_pool.begin().await?;
+		let mut transaction = app.mysql.begin().await?;
 
 		// Create all tables
 		db::initialize_meta_pre(&mut transaction).await?;
@@ -65,7 +65,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 
 		// Initialize data
 		// If a god UUID already exists, set it
-		let mut connection = app.db_pool.begin().await?;
+		let mut connection = app.mysql.begin().await?;
 
 		let god_uuid = db::get_god_user_id(&mut connection).await?;
 		if let Some(uuid) = god_uuid {
