@@ -1,0 +1,8 @@
+{
+	"name": "TestEmail",
+	"html": "test.html",
+	"plain": "plain.txt",
+	"variables": {
+		"username": "String"
+	}
+}

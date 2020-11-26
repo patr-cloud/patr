@@ -1,0 +1,55 @@
+{
+	"port": 3000,
+	"basePath": "/",
+	"passwordSalt": "keyboard cat",
+	"jwtSecret": "keyboard cat",
+	"s3": {
+		"endpoint": "s3.localhost",
+		"region": "sample-region",
+		"bucket": "sample-bucket",
+		"key": "key123",
+		"secret": "secret123"
+	},
+	"mysql": {
+		"host": "localhost",
+		"port": 3306,
+		"user": "root",
+		"password": "mysql",
+		"database": "api",
+		"connectionLimit": 10
+	},
+	"mongodb": {
+		"host": "localhost",
+		"port": 27017,
+		"user": "root",
+		"password": "mongodb",
+		"database": "api",
+		"connectionLimit": 10
+	},
+	"redis": {
+		"host": "localhost",
+		"port": 6379,
+		"user": "root",
+		"password": "redis",
+		"database": "api",
+		"connectionLimit": 10
+	},
+	"email": {
+		"host": "smtp.example.com",
+		"port": 587,
+		"secure": true,
+		"username": "no-reply@example.com",
+		"from": "no-reply@example.com",
+		"password": "password"
+	},
+	"twilio": {
+		"username": "<example-user-name>",
+		"accessToken": "<ACCESS-TOKEN-HHERE>",
+		"fromNumber": "+0123456789"
+	},
+	"cloudflare": {
+		"accountId": "<example-account-id>",
+		"accountEmail": "account@example.com",
+		"apiToken": "<example-api-token>"
+	}
+}

@@ -1,0 +1,17 @@
+[package]
+name = 'macros'
+version = '0.1.0'
+authors = ['Rakshith Ravi <rakshith.ravi@gmx.com>']
+edition = '2018'
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = '1.0.42'
+askama = '0.10.3'
+serde_json = '1.0.58'
+serde = '1.0.116'
+handlebars = "3.5.1"
