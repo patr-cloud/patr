@@ -2,7 +2,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{error, rbac},
+	models::rbac,
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };

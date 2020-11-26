@@ -12,12 +12,12 @@ askama = '0.10.3'
 async-trait = '0.1.36'
 bytes = '0.5.5'
 chrono = '0.4.19'
-clap = '2.33.1'
+clap = "2.33.3"
 cloudflare = {git = 'https://github.com/rakshith-ravi/cloudflare-rs'}
 colored = '1.9.3'
 config_rs = {version = '0.10.1', package = 'config'}
 cron = '0.6.1'
-eve-rs = '0.2.0'
+eve-rs = {path = '../../eve-rs'}
 hex = '0.4.2'
 jsonwebtoken = '7.2.0'
 lazy_static = '1.4.0'

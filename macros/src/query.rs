@@ -45,7 +45,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	let expanded = quote! {
 		{
 			log::info!(target: "api::queries", #simplified_query);
-			sqlx::query!(#query, #(#params), *)
+			sqlx::query!(#simplified_query, #(#params), *)
 		}
 	};
 	TokenStream::from(expanded)

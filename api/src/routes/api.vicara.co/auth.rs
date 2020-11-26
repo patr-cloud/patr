@@ -4,7 +4,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error,
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -99,11 +98,7 @@ async fn sign_in(
 	{
 		user
 	} else {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::USER_NOT_FOUND,
-			request_keys::MESSAGE: error::message::USER_NOT_FOUND
-		}));
+		context.json(error!(USER_NOT_FOUND));
 		return Ok(context);
 	};
 
@@ -119,11 +114,7 @@ async fn sign_in(
 	)?;
 
 	if !success {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_PASSWORD,
-			request_keys::MESSAGE: error::message::INVALID_PASSWORD
-		}));
+		context.json(error!(INVALID_PASSWORD));
 		return Ok(context);
 	}
 
@@ -266,11 +257,7 @@ async fn sign_up(
 	};
 
 	if !validator::is_username_valid(username) {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_USERNAME,
-			request_keys::MESSAGE: error::message::INVALID_USERNAME
-		}));
+		context.json(error!(INVALID_USERNAME));
 		return Ok(context);
 	}
 
@@ -287,11 +274,7 @@ async fn sign_up(
 	}
 
 	if !validator::is_password_valid(password) {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::PASSWORD_TOO_WEAK,
-			request_keys::MESSAGE: error::message::PASSWORD_TOO_WEAK
-		}));
+		context.json(error!(PASSWORD_TOO_WEAK));
 		return Ok(context);
 	}
 
@@ -299,11 +282,7 @@ async fn sign_up(
 		.await?
 		.is_some()
 	{
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::USERNAME_TAKEN,
-			request_keys::MESSAGE: error::message::USERNAME_TAKEN
-		}));
+		context.json(error!(USERNAME_TAKEN));
 		return Ok(context);
 	}
 
@@ -311,11 +290,7 @@ async fn sign_up(
 		.await?
 		.is_some()
 	{
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TAKEN,
-			request_keys::MESSAGE: error::message::EMAIL_TAKEN
-		}));
+		context.json(error!(EMAIL_TAKEN));
 		return Ok(context);
 	}
 
@@ -436,11 +411,7 @@ async fn join(
 	{
 		user_data
 	} else {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_OTP,
-			request_keys::MESSAGE: error::message::INVALID_OTP
-		}));
+		context.json(error!(INVALID_OTP));
 		return Ok(context);
 	};
 
@@ -455,20 +426,12 @@ async fn join(
 		},
 	)?;
 	if !success {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::INVALID_OTP,
-			request_keys::MESSAGE: error::message::INVALID_OTP
-		}));
+		context.json(error!(INVALID_OTP));
 		return Ok(context);
 	}
 
 	if user_data.otp_expiry < get_current_time() {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::OTP_EXPIRED,
-			request_keys::MESSAGE: error::message::OTP_EXPIRED
-		}));
+		context.json(error!(OTP_EXPIRED));
 		return Ok(context);
 	}
 
@@ -692,11 +655,7 @@ async fn get_access_token(
 			.await?;
 
 	if user_login.is_none() {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
-		}));
+		context.json(error!(EMAIL_TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 	let user_login = user_login.unwrap();
@@ -845,11 +804,7 @@ async fn forgot_password(
 	.await?;
 
 	if user.is_none() {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::USER_NOT_FOUND,
-			request_keys::MESSAGE: error::id::USER_NOT_FOUND,
-		}));
+		context.json(error!(USER_NOT_FOUND));
 		return Ok(context);
 	}
 	let user = user.unwrap();

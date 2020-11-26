@@ -13,6 +13,7 @@ use crate::{
 use colored::Colorize;
 use eve_rs::{
 	default_middlewares::compression,
+	handlebars::Handlebars,
 	listen,
 	App as EveApp,
 	Context,
@@ -26,6 +27,7 @@ use sqlx::mysql::MySqlPool;
 use std::{
 	error::Error as StdError,
 	fmt::{Debug, Formatter},
+	sync::Arc,
 	time::Instant,
 };
 
@@ -34,6 +36,7 @@ pub struct App {
 	pub config: Settings,
 	pub mysql: MySqlPool,
 	pub redis: RedisConnection,
+	pub render_register: Arc<Handlebars<'static>>,
 }
 
 impl Debug for App {

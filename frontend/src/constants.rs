@@ -14,5 +14,5 @@ pub mod keys {
 
 	#[allow(dead_code)]
 	pub const TRUE: &str = "true";
-	pub const FALSE: &str = "true";
+	pub const FALSE: &str = "false";
 }

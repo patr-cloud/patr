@@ -2,10 +2,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{
-		error,
-		rbac::{self, permissions},
-	},
+	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
@@ -13,7 +10,11 @@ use crate::{
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::{json, Value};
-use trust_dns_client::rr::{Name, RData};
+use trust_dns_client::{
+	client::{Client, SyncClient},
+	rr::{DNSClass, Name, RData, RecordType},
+	tcp::TcpClientConnection,
+};
 
 pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(app);
@@ -342,23 +343,14 @@ async fn verify_domain_in_organisation(
 	)?;
 	let domain_hash = hex::encode(domain_hash);
 
-	let client = trust_dns_client::client::SyncClient::new(
-		trust_dns_client::tcp::TcpClientConnection::new(
-			"1.1.1.1:53".parse().unwrap(),
-		)
-		.unwrap(),
+	let client = SyncClient::new(
+		TcpClientConnection::new("1.1.1.1:53".parse().unwrap()).unwrap(),
 	);
-	let mut response = trust_dns_client::client::Client::query(
-		&client,
-		&trust_dns_client::rr::Name::from_utf8(format!(
-			"vceVerify.{}",
-			domain.name
-		))
-		.unwrap(),
-		trust_dns_client::rr::DNSClass::IN,
-		trust_dns_client::rr::RecordType::CNAME,
-	)
-	.unwrap();
+	let mut response = client.query(
+		&Name::from_utf8(format!("vceVerify.{}", domain.name)).unwrap(),
+		DNSClass::IN,
+		RecordType::CNAME,
+	)?;
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!("{}.vicara.co", domain_hash)).unwrap(),
@@ -372,11 +364,7 @@ async fn verify_domain_in_organisation(
 		}));
 	} else {
 		// NOPE
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::DOMAIN_UNVERIFIED,
-			request_keys::MESSAGE: error::message::DOMAIN_UNVERIFIED
-		}));
+		context.json(error!(DOMAIN_UNVERIFIED));
 	}
 	Ok(context)
 }

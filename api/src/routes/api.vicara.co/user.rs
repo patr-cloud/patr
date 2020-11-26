@@ -2,7 +2,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::UserEmailAddress, error},
+	models::db_mapping::UserEmailAddress,
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -175,11 +175,7 @@ async fn add_email_address(
 		.await?
 		.is_some()
 	{
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TAKEN,
-			request_keys::MESSAGE: error::message::EMAIL_TAKEN
-		}));
+		context.json(error!(EMAIL_TAKEN));
 		return Ok(context);
 	}
 
@@ -280,20 +276,12 @@ async fn verify_email_address(
 		},
 	)?;
 	if !success {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_NOT_FOUND,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_NOT_FOUND
-		}));
+		context.json(error!(EMAIL_TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 
 	if email_verification_data.verification_token_expiry < get_current_time() {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::EMAIL_TOKEN_EXPIRED,
-			request_keys::MESSAGE: error::message::EMAIL_TOKEN_EXPIRED
-		}));
+		context.json(error!(EMAIL_TOKEN_EXPIRED));
 		return Ok(context);
 	}
 

@@ -34,8 +34,8 @@ pub enum MainRouter {
 	SignIn,
 	#[to = "/sign-up"]
 	SignUp,
-	#[to = "/"]
-	Home,
+	#[to = "/{*:rest}"]
+	Home(HomeRouter),
 }
 
 #[allow(dead_code)]
@@ -81,8 +81,8 @@ impl Component for App {
 						MainRouter::SignUp => html! {
 							<SignUpComponent />
 						},
-						MainRouter::Home => html! {
-							<HomeComponent />
+						MainRouter::Home(home_route) => html! {
+							<HomeComponent route = home_route/>
 						}
 					}
 				})

@@ -13,9 +13,9 @@ macro_rules! pin_fn (
 macro_rules! error (
 	($err_name:ident) => ({
 		serde_json::json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::$err_name,
-			request_keys::MESSAGE: error::message::$err_name
+			$crate::utils::constants::request_keys::SUCCESS: false,
+			$crate::utils::constants::request_keys::ERROR: $crate::models::error::id::$err_name,
+			$crate::utils::constants::request_keys::MESSAGE: $crate::models::error::message::$err_name
 		})
 	});
 );

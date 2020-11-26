@@ -81,10 +81,10 @@ pub async fn initialize_users_post(
 		CREATE TABLE IF NOT EXISTS user_email_address (
 			type ENUM('personal', 'organisation') NOT NULL,
 
-			# Personal email address
+			/* Personal email address */
 			email_address VARCHAR(320),
 			
-			# Organisation email address
+			/* Organisation email address */
 			email_local VARCHAR(160),
 			domain_id BINARY(16),
 
@@ -121,7 +121,7 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_unverified_email_address (
-			# Personal email address
+			/* Personal email address */
 			email_address VARCHAR(320),
 			user_id BINARY(16) NOT NULL,
 			verification_token_hash BINARY(64) UNIQUE NOT NULL,
@@ -165,10 +165,10 @@ pub async fn initialize_users_post(
 			username VARCHAR(100) PRIMARY KEY,
 			account_type ENUM('personal', 'organisation') NOT NULL,
 			
-			# Personal email address OR backup email
+			/* Personal email address OR backup email */
 			email_address VARCHAR(320) NOT NULL,
 
-			# Organisation email address
+			/* Organisation email address */
 			email_local VARCHAR(160),
 			domain_name VARCHAR(100),
 
@@ -233,12 +233,7 @@ pub async fn get_user_by_username_or_email(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn get_god_user_id(
@@ -290,12 +285,7 @@ pub async fn get_user_by_email(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn get_user_by_username(
@@ -317,12 +307,7 @@ pub async fn get_user_by_username(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn get_user_by_user_id(
@@ -344,12 +329,7 @@ pub async fn get_user_by_user_id(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn set_user_to_be_signed_up(
@@ -558,13 +538,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn add_email_for_user(
@@ -704,13 +678,7 @@ pub async fn get_user_login(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn set_refresh_token_expiry(
@@ -849,12 +817,7 @@ pub async fn get_password_reset_request_for_user(
 	.fetch_all(connection)
 	.await?;
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(row))
+	Ok(rows.into_iter().next())
 }
 
 pub async fn delete_password_reset_request_for_user(

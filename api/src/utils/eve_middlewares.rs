@@ -1,8 +1,8 @@
 use crate::{
 	app::App,
 	error,
-	models::{db_mapping::Resource, error, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{constants::request_keys, get_current_time, EveContext},
+	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
+	utils::{get_current_time, EveContext},
 };
 
 use async_trait::async_trait;

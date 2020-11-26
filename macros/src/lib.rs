@@ -10,6 +10,7 @@ mod email_template;
 mod iterable_module;
 mod query;
 mod query_as;
+mod render;
 
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
@@ -34,4 +35,9 @@ pub fn iterable_module(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn closure_as_pinned_box(input: TokenStream) -> TokenStream {
 	closure_as_pinned_box::parse(input)
+}
+
+#[proc_macro]
+pub fn render(input: TokenStream) -> TokenStream {
+	render::parse(input)
 }
