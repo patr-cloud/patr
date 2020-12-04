@@ -18,7 +18,7 @@ use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rand::Rng;
 use serde_json::{json, Value};
 
-pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(app);
 
 	app.get(

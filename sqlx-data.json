@@ -165,6 +165,16 @@
       "nullable": []
     }
   },
+  "1db8bafdde3f2fa4402ed243659f68717f97843536f9ad0e09ff0ffc3d40c5c1": {
+    "query": "ALTER TABLE application ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "2170f039ddb46624f010285cbd21fe3a4b8d233da09ef51569b17157657329ac": {
     "query": "INSERT INTO user_email_address VALUES ('organisation', NULL, ?, ?, ?);",
     "describe": {
@@ -1229,6 +1239,16 @@
         false,
         false
       ]
+    }
+  },
+  "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
+    "query": "CREATE TABLE IF NOT EXISTS application ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "94b589a75b3fb8a01da02a16f38002db53287b5fff53f031b008a96b7167436c": {

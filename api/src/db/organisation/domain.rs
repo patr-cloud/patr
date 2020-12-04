@@ -1,30 +1,11 @@
-use crate::{
-	models::db_mapping::{Domain, Organisation},
-	query,
-	query_as,
-};
-
 use sqlx::{MySql, Transaction};
 
-pub async fn initialize_organisations_pre(
+use crate::{models::db_mapping::Domain, query, query_as};
+
+pub async fn initialize_domain_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing organisation tables");
-	query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS organisation (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(100) UNIQUE NOT NULL,
-			super_admin_id BINARY(16) NOT NULL,
-			active BOOL NOT NULL DEFAULT FALSE,
-			created BIGINT UNSIGNED NOT NULL,
-			FOREIGN KEY(super_admin_id) REFERENCES user(id)
-		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
+	log::info!("Initializing domain tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS domain (
@@ -40,19 +21,9 @@ pub async fn initialize_organisations_pre(
 	Ok(())
 }
 
-pub async fn initialize_organisations_post(
+pub async fn initialize_domain_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		ALTER TABLE organisation
-		ADD CONSTRAINT
-		FOREIGN KEY(id) REFERENCES resource(id);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
 	query!(
 		r#"
 		ALTER TABLE domain
@@ -61,32 +32,6 @@ pub async fn initialize_organisations_post(
 		"#
 	)
 	.execute(&mut *transaction)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
-	organisation_id: &[u8],
-	name: &str,
-	super_admin_id: &[u8],
-	created: u64,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			organisation
-		VALUES
-			(?, ?, ?, ?, ?);
-		"#,
-		organisation_id,
-		name,
-		super_admin_id,
-		true,
-		created,
-	)
-	.execute(connection)
 	.await?;
 
 	Ok(())
@@ -111,32 +56,6 @@ pub async fn add_domain_to_organisation(
 	.await?;
 
 	Ok(())
-}
-
-pub async fn get_organisation_info(
-	connection: &mut Transaction<'_, MySql>,
-	organisation_id: &[u8],
-) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query_as!(
-		Organisation,
-		r#"
-		SELECT
-			id,
-			name,
-			super_admin_id,
-			"active: bool",
-			created
-		FROM
-			organisation
-		WHERE
-			id = ?;
-		"#,
-		organisation_id
-	)
-	.fetch_all(connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
 }
 
 pub async fn get_domains_for_organisation(

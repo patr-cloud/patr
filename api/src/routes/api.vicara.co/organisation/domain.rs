@@ -16,15 +16,15 @@ use trust_dns_client::{
 	tcp::TcpClientConnection,
 };
 
-pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+	let mut app = create_eve_app(&app);
 
 	// Get all domains
 	app.get(
 		"/",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_DOMAINS,
+				permissions::organisation::domain::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)
@@ -62,7 +62,7 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::ADD_DOMAIN,
+				permissions::organisation::domain::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)

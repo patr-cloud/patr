@@ -26,8 +26,8 @@ use serde_json::{json, Value};
 use tokio::task;
 use uuid::Uuid;
 
-pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
-	let mut app = create_eve_app(app);
+pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+	let mut app = create_eve_app(&app);
 
 	app.post(
 		"/sign-in",

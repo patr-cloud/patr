@@ -53,7 +53,7 @@ pub async fn create_redis_connection(
 		config.redis.host,
 		config.redis.port
 	))?
-	.create_multiplexed_async_std_connection()
+	.create_multiplexed_tokio_connection()
 	.await?;
 	task::spawn(redis_poller);
 

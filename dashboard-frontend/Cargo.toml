@@ -1,7 +1,7 @@
 [package]
 authors = ['Rakshith Ravi <rakshith.ravi@gmx.com>']
 edition = '2018'
-name = 'frontend'
+name = 'dashboard-frontend'
 version = '0.1.0'
 
 [lib]

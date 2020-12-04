@@ -6,6 +6,7 @@ extern crate serde_json;
 extern crate syn;
 
 mod closure_as_pinned_box;
+mod config;
 mod email_template;
 mod iterable_module;
 mod query;
@@ -40,4 +41,9 @@ pub fn closure_as_pinned_box(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn render(input: TokenStream) -> TokenStream {
 	render::parse(input)
+}
+
+#[proc_macro]
+pub fn config(input: TokenStream) -> TokenStream {
+	config::parse(input)
 }

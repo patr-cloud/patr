@@ -4,7 +4,7 @@ use crate::{
 };
 use eve_rs::App as EveApp;
 
-pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// TODO Populate assets sub-apps here
 	create_eve_app(app)
 }

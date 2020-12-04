@@ -18,15 +18,21 @@ pub struct OrgPermissions {
 #[allow(dead_code)]
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
-
 	pub mod organisation {
-		pub const VIEW_DOMAINS: &str = "organisation::domain::viewDomains";
-		pub const ADD_DOMAIN: &str = "organisation::domain::addDomain";
-
 		pub mod domain {
+			pub const LIST: &str = "organisation::domain::list";
+			pub const ADD: &str = "organisation::domain::add";
 			pub const VIEW_DETAILS: &str = "organisation::domain::viewDetails";
 			pub const VERIFY: &str = "organisation::domain::verify";
 			pub const DELETE: &str = "organisation::domain::delete";
+		}
+
+		pub mod application {
+			pub const LIST: &str = "organisation::application::list";
+			pub const ADD: &str = "organisation::application::add";
+			pub const VIEW_DETAILS: &str =
+				"organisation::application::viewDetails";
+			pub const DELETE: &str = "organisation::application::delete";
 		}
 	}
 
@@ -45,4 +51,5 @@ pub mod permissions {
 pub mod resource_types {
 	pub const ORGANISATION: &str = "organisation";
 	pub const DOMAIN: &str = "domain";
+	pub const APPLICATION: &str = "application";
 }

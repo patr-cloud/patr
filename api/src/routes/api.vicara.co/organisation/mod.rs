@@ -9,10 +9,11 @@ use crate::{
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::json;
 
+mod application;
 mod domain;
 
-pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
-	let mut sub_app = create_eve_app(app.clone());
+pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
 		"/:organisationId/info",
@@ -22,6 +23,7 @@ pub fn create_sub_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
+	sub_app.use_sub_app("/application", application::create_sub_app(app));
 	sub_app.use_sub_app("/domain", domain::create_sub_app(app));
 
 	sub_app

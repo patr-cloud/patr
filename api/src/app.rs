@@ -1,13 +1,8 @@
 use crate::{
-	models::error,
+	error,
 	pin_fn,
 	routes,
-	utils::{
-		constants::request_keys,
-		settings::Settings,
-		EveContext,
-		EveMiddleware,
-	},
+	utils::{settings::Settings, EveContext, EveMiddleware},
 };
 
 use colored::Colorize;
@@ -22,7 +17,6 @@ use eve_rs::{
 	Response,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
-use serde_json::json;
 use sqlx::mysql::MySqlPool;
 use std::{
 	error::Error as StdError,
@@ -48,7 +42,7 @@ impl Debug for App {
 pub async fn start_server(app: App) {
 	let port = app.config.port;
 
-	let mut eve_app = create_eve_app(app.clone());
+	let mut eve_app = create_eve_app(&app);
 
 	eve_app.set_error_handler(eve_error_handler);
 	eve_app.use_middleware(
@@ -71,17 +65,15 @@ pub async fn start_server(app: App) {
 			]
 		},
 	);
-	eve_app.use_sub_app(
-		&app.config.base_path.clone(),
-		routes::create_sub_app(app),
-	);
+	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
-	listen(eve_app, ([127, 0, 0, 1], port), None).await;
+	let shutdown_signal = Some(futures::future::pending());
+	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
-pub fn create_eve_app(app: App) -> EveApp<EveContext, EveMiddleware, App> {
-	EveApp::create(EveContext::new, app)
+pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+	EveApp::create(EveContext::new, app.clone())
 }
 
 fn eve_error_handler(
@@ -93,14 +85,7 @@ fn eve_error_handler(
 		error.to_string()
 	);
 	response.set_content_type("application/json");
-	response.set_body(
-		&json!({
-			request_keys::SUCCESS: false,
-			request_keys::ERROR: error::id::SERVER_ERROR,
-			request_keys::MESSAGE: error::message::SERVER_ERROR
-		})
-		.to_string(),
-	);
+	response.set_body(&error!(SERVER_ERROR).to_string());
 	response
 }
 
@@ -150,6 +135,12 @@ async fn init_states(
 
 	if let Err(err) = context.take_mysql_connection().commit().await {
 		log::error!("Unable to commit transaction: {}", err);
+		return Err(Error::new(
+			Some(context),
+			String::from("Unable to commit transaction"),
+			500,
+			Box::new(err),
+		));
 	}
 
 	Ok(context)
