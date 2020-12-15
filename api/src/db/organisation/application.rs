@@ -77,7 +77,7 @@ pub async fn get_applications_for_organisation(
 		Application,
 		r#"
 			SELECT 
-				name
+				*
 			FROM
 				application
 		"#
