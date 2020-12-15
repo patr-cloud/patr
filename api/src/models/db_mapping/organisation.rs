@@ -11,3 +11,9 @@ pub struct Domain {
 	pub name: String,
 	pub is_verified: bool,
 }
+
+
+pub struct Application {
+	pub id : Vec<u8>,
+	pub name : String,
+}

@@ -1,6 +1,8 @@
 use crate::query;
 
 use sqlx::{MySql, Transaction};
+use crate::{models::db_mapping::Application, query, query_as};
+
 
 pub async fn initialize_application_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -62,4 +64,26 @@ pub async fn initialize_application_post(
 	.await?;
 
 	Ok(())
+}
+
+
+pub async fn get_applications_for_organisation(
+	connection : &mut Transaction<'_, MySql>
+) -> Result<Vec<Domain>, sqlx::Error> {
+	// sql query to fetch application names.
+	// todo : add resource authentication
+
+	let rows = query!(
+		Application,
+		r#"
+			SELECT 
+				name
+			FROM
+				application
+		"#
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows)
 }

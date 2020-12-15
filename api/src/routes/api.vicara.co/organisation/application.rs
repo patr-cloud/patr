@@ -1,3 +1,4 @@
+
 use eve_rs::{App as EveApp, Context};
 
 use crate::{
@@ -38,8 +39,57 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 				Ok((context, resource))
 			}),
-		)],
+		),
+		EveMiddleware::CustomFunction(pin_fn!(
+			get_applications_for_organisation
+		)),
+		
+		],
 	);
 
 	app
+}
+
+
+// todo: write a function which will list out all the applications.
+// write a function which will show information regarding a specific application.
+
+
+
+/**
+ * Function to list out all the application in an organisation.
+ */
+async fn get_applications_for_organisation(
+	mut context : EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	
+	// maybe take this
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+
+	
+	let applications = db::get_applications_for_organisation(
+		context.get_mysql_connection()
+	)
+	.await?
+	.into_iter()
+	.map(|application| {
+		let id = hex::encode(application.id); // get application id 
+		json!({
+				request_keys::ID : id,
+				request_keys::NAME : application.name,
+			})
+
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({	
+		request_keys::SUCCESS : true,
+		request_keys::DOMAINS: domains,
+	}));
+
+	Ok(context)
+
 }
