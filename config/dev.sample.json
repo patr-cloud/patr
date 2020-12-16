@@ -14,8 +14,8 @@
 		"host": "localhost",
 		"port": 3306,
 		"user": "root",
-		"password": "mysql",
-		"database": "api",
+		"password": "Mydb@123",
+		"database": "vicara",
 		"connectionLimit": 10
 	},
 	"mongodb": {
