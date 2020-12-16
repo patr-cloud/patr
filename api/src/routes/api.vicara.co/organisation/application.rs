@@ -1,5 +1,5 @@
 
-use eve_rs::{App as EveApp, Context};
+use eve_rs::{App as EveApp, Context, Error, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -7,7 +7,10 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
+	pin_fn,
 };
+use serde_json::{json, Value};
+
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);
@@ -47,6 +50,16 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
+
+	// get details for an application
+	// app.get(
+	// 	"/:applicationId",
+	// 	&[
+	// 		EveMiddleware::ResourceTokenAuthenticator(
+
+	// 		)
+	// 	]
+	// )
 	app
 }
 
@@ -87,7 +100,7 @@ async fn get_applications_for_organisation(
 
 	context.json(json!({	
 		request_keys::SUCCESS : true,
-		request_keys::DOMAINS: domains,
+		request_keys::APPLICATIONS: applications,
 	}));
 
 	Ok(context)
