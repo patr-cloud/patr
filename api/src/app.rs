@@ -25,12 +25,13 @@ use std::{
 	time::Instant,
 };
 
+use futures::future;
 #[derive(Clone)]
 pub struct App {
 	pub config: Settings,
 	pub mysql: MySqlPool,
 	pub redis: RedisConnection,
-	pub render_register: Arc<Handlebars<'static>>,
+	// pub render_register: Arc<Handlebars<'static>>,
 }
 
 impl Debug for App {

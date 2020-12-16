@@ -81,6 +81,7 @@ dependencies = [
  "config",
  "cron",
  "eve-rs",
+ "futures 0.3.8",
  "hex",
  "jsonwebtoken",
  "lazy_static",
