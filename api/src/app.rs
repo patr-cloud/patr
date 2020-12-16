@@ -70,7 +70,7 @@ pub async fn start_server(app: App) {
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
 	let shutdown_signal = Some(futures::future::pending());
-	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
+	listen(eve_app, ([127, 0, 0, 1], port), None).await;
 }
 
 pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
