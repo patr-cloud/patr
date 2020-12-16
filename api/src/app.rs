@@ -8,7 +8,7 @@ use crate::{
 use colored::Colorize;
 use eve_rs::{
 	default_middlewares::compression,
-	handlebars::Handlebars,
+	// handlebars::Handlebars,
 	listen,
 	App as EveApp,
 	Context,
