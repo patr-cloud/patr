@@ -77,14 +77,15 @@ async fn get_applications_for_organisation(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	
-	// maybe take this
+	// enquire if this is needed in query.
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
 	
 	let applications = db::get_applications_for_organisation(
-		context.get_mysql_connection()
+		context.get_mysql_connection(),
+		&organisation_id,
 	)
 	.await?
 	.into_iter()

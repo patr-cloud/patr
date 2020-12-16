@@ -68,19 +68,24 @@ pub async fn initialize_application_post(
 
 
 pub async fn get_applications_for_organisation(
-	connection : &mut Transaction<'_, MySql>
+	connection : &mut Transaction<'_, MySql>,
+	organisation_id : &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
 	// sql query to fetch application names.
 	// todo : add resource authentication
-
 	let rows = query_as!(
 		Application,
 		r#"
 			SELECT 
-				*
+				application.id,
+				application.name
 			FROM
 				application
-		"#
+			WHERE
+				resource.owner_id = ? AND
+				resource.id = domain.id;
+		"#,
+		organisation_id
 	)
 	.fetch_all(connection)
 	.await?;
