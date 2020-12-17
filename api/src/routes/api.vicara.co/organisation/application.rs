@@ -43,9 +43,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 				Ok((context, resource))
 			}),
 		),
-		EveMiddleware::CustomFunction(pin_fn!(
-			get_applications_for_organisation
-		)),
+		// EveMiddleware::CustomFunction(pin_fn!(
+		// 	get_applications_for_organisation
+		// )),
 		
 		],
 	);
@@ -69,41 +69,43 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 
 
-/**
- * Function to list out all the application in an organisation.
- */
-async fn get_applications_for_organisation(
-	mut context : EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+// /**
+//  * Function to list out all the application in an organisation.
+//  */
+// async fn get_applications_for_organisation(
+// 	mut context : EveContext,
+// 	_: NextHandler<EveContext>,
+// ) -> Result<EveContext, Error<EveContext>> {
 	
-	// enquire if this is needed in query.
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-			.unwrap();
+// 	// enquire if this is needed in query.
+// 	let organisation_id =
+// 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+// 			.unwrap();
 
 	
-	let applications = db::get_applications_for_organisation(
-		context.get_mysql_connection(),
-		&organisation_id,
-	)
-	.await?
-	.into_iter()
-	.map(|application| {
-		let id = hex::encode(application.id); // get application id 
-		json!({
-				request_keys::ID : id,
-				request_keys::NAME : application.name,
-			})
+// 	let applications = db::get_applications_for_organisation(
+// 		context.get_mysql_connection(),
+// 		&organisation_id,
+// 	)
+// 	.await?
+// 	.into_iter()
+// 	.map(|application| {
+// 		let id = hex::encode(application.id); // get application id 
+// 		json!({
+// 				request_keys::ID : id,
+// 				request_keys::NAME : application.name,
+// 			})
 
-	})
-	.collect::<Vec<_>>();
+// 	})
+// 	.collect::<Vec<_>>();
 
-	context.json(json!({	
-		request_keys::SUCCESS : true,
-		request_keys::APPLICATIONS: applications,
-	}));
+// 	context.json(json!({	
+// 		request_keys::SUCCESS : true,
+// 		request_keys::APPLICATIONS: applications,
+// 	}));
 
-	Ok(context)
+// 	Ok(context)
 
-}
+// }
+
+// function to list out specific application details
