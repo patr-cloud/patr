@@ -1,7 +1,7 @@
-// use crate::query;
+use crate::query;
 
-// use sqlx::{MySql, Transaction};
-// use crate::{models::db_mapping::Application, query_as};
+use sqlx::{MySql, Transaction};
+use crate::{models::db_mapping::Application, query_as};
 
 
 // pub async fn initialize_application_pre(
@@ -94,3 +94,26 @@
 // }
 
 // // add function to get application for specific given id
+
+pub async fn get_application_by_id (
+    connection : &mut Transaction<'_, MySql>,
+    application_id : &[u8],
+) -> Result<Option<Application>, sqlx::Error> {
+    let rows = query_as!(
+        Application,
+        r#"
+        SELECT 
+            id,
+            name
+        FROM
+            application
+        WHERE 
+            id = ?
+        "#,
+        application_id
+    )
+    .fetch_all(connection)
+    .await?;
+
+    Ok(rows.into_iter().next())
+}

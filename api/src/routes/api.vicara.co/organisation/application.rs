@@ -108,4 +108,32 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 // }
 
-// function to list out specific application details
+
+
+// get details for an application
+async fn get_application_info_in_organisation(
+	mut context : EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext> > {
+	let application_id = context.get_param(request_keys::APPLICATION_ID).unwrap();
+
+	let application_id = hex::decode(application_id).unwrap();
+
+	let application = 
+		db::get_application_by_id(
+			context.get_mysql_connection(),
+			&application_id
+		).await?;
+
+	if application.is_none() {
+		// check if application can be null.
+	}
+
+	let application = application.unwrap();
+	let application_id = hex::encode(application.id);
+
+	// add response to context json
+
+	Ok(context)
+
+}

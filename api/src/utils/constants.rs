@@ -45,4 +45,5 @@ pub mod request_keys {
 	pub const ID: &str = "id";
 
 	pub const APPLICATIONS : &str = "domains";
+	pub const APPLICATION_ID : &str = "applicationId";
 }
