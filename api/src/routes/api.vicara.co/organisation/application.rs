@@ -43,70 +43,93 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 				Ok((context, resource))
 			}),
 		),
-		// EveMiddleware::CustomFunction(pin_fn!(
-		// 	get_applications_for_organisation
-		// )),
+		EveMiddleware::CustomFunction(pin_fn!(
+			get_applications_for_organisation
+		)),
 		
 		],
 	);
 
 
 	// get details for an application
-	// app.get(
-	// 	"/:applicationId",
-	// 	&[
-	// 		EveMiddleware::ResourceTokenAuthenticator(
+	app.get(
+		"/:applicationId",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::application::VIEW_DETAILS,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let application_id_string =
+						context.get_param(request_keys::APPLICATION_ID).unwrap();
+					let application_id = hex::decode(&application_id_string);
+					if application_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let application_id = application_id.unwrap();
+	
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&application_id,
+					)
+					.await?;
+	
+					if resource.is_none() {
+						context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+	
+					Ok((context, resource))
+				}),
 
-	// 		)
-	// 	]
-	// )
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_application_info_in_organisation
+			))
+		],
+	);
+
+
 	app
 }
 
 
-// todo: write a function which will list out all the applications.
-// write a function which will show information regarding a specific application.
-
-
-
-// /**
-//  * Function to list out all the application in an organisation.
-//  */
-// async fn get_applications_for_organisation(
-// 	mut context : EveContext,
-// 	_: NextHandler<EveContext>,
-// ) -> Result<EveContext, Error<EveContext>> {
+/**
+ * Function to list out all the application in an organisation.
+ */
+async fn get_applications_for_organisation(
+	mut context : EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
 	
-// 	// enquire if this is needed in query.
-// 	let organisation_id =
-// 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-// 			.unwrap();
+	// enquire if this is needed in query.
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
 
 	
-// 	let applications = db::get_applications_for_organisation(
-// 		context.get_mysql_connection(),
-// 		&organisation_id,
-// 	)
-// 	.await?
-// 	.into_iter()
-// 	.map(|application| {
-// 		let id = hex::encode(application.id); // get application id 
-// 		json!({
-// 				request_keys::ID : id,
-// 				request_keys::NAME : application.name,
-// 			})
+	let applications = db::get_applications_for_organisation(
+		context.get_mysql_connection(),
+		&organisation_id,
+	)
+	.await?
+	.into_iter()
+	.map(|application| {
+		let id = hex::encode(application.id); // get application id 
+		json!({
+				request_keys::ID : id,
+				request_keys::NAME : application.name,
+			})
 
-// 	})
-// 	.collect::<Vec<_>>();
+	})
+	.collect::<Vec<_>>();
 
-// 	context.json(json!({	
-// 		request_keys::SUCCESS : true,
-// 		request_keys::APPLICATIONS: applications,
-// 	}));
+	context.json(json!({	
+		request_keys::SUCCESS : true,
+		request_keys::APPLICATIONS: applications,
+	}));
 
-// 	Ok(context)
+	Ok(context)
 
-// }
+}
 
 
 

@@ -67,53 +67,58 @@ use crate::{models::db_mapping::Application, query_as};
 // }
 
 
-// pub async fn get_applications_for_organisation(
-// 	connection : &mut Transaction<'_, MySql>,
-// 	organisation_id : &[u8],
-// ) -> Result<Vec<Application>, sqlx::Error> {
-// 	// sql query to fetch application names.
-// 	// todo : add resource authentication
-// 	let rows = query_as!(
-// 		Application,
-// 		r#"
-// 			SELECT 
-// 				application.id,
-// 				application.name
-// 			FROM
-// 				application
-// 			WHERE
-// 				resource.owner_id = ? AND
-// 				resource.id = domain.id;
-// 		"#,
-// 		organisation_id
-// 	)
-// 	.fetch_all(connection)
-// 	.await?;
+// function to fetch all the application names.
+//TODO: implement the function
+pub async fn get_applications_for_organisation(
+	connection : &mut Transaction<'_, MySql>,
+	organisation_id : &[u8],
+) -> Result<Vec<Application>, sqlx::Error> {
+	// sql query to fetch application names.
+    
+    let rows : Vec<Application> = Vec::new();
+    // let rows = query_as!(
+	// 	Application,
+	// 	r#"
+	// 		SELECT 
+	// 			application.id,
+	// 			application.name
+	// 		FROM
+	// 			application
+	// 		WHERE
+	// 			resource.owner_id = ? AND
+	// 			resource.id = domain.id;
+	// 	"#,
+	// 	organisation_id
+	// )
+	// .fetch_all(connection)
+	// .await?;
 
-// 	Ok(rows)
-// }
+    Ok(rows)
+}
 
-// // add function to get application for specific given id
+// add function to get application for specific given id
+// TODO: implement this function
 
 pub async fn get_application_by_id (
     connection : &mut Transaction<'_, MySql>,
     application_id : &[u8],
 ) -> Result<Option<Application>, sqlx::Error> {
-    let rows = query_as!(
-        Application,
-        r#"
-        SELECT 
-            id,
-            name
-        FROM
-            application
-        WHERE 
-            id = ?
-        "#,
-        application_id
-    )
-    .fetch_all(connection)
-    .await?;
+    // let rows = query_as!(
+    //     Application,
+    //     r#"
+    //     SELECT 
+    //         id,
+    //         name
+    //     FROM
+    //         application
+    //     WHERE 
+    //         id = ?
+    //     "#,
+    //     application_id
+    // )
+    // .fetch_all(connection)
+    // .await?;
 
-    Ok(rows.into_iter().next())
+    // Ok(rows.into_iter().next())
+    Ok(None)
 }
