@@ -1,8 +1,8 @@
 use crate::{app::App, models::AccessTokenData};
 use eve_rs::{
-	// handlebars::Handlebars,
+	handlebars::Handlebars,
 	Context,
-	// RenderEngine,
+	RenderEngine,
 	Request,
 	Response,
 };
@@ -17,7 +17,7 @@ pub struct EveContext {
 	request: Request,
 	response: Response,
 	body_object: Option<Value>,
-	// render_register: Option<Arc<Handlebars<'static>>>,
+	render_register: Option<Arc<Handlebars<'static>>>,
 	state: App,
 	db_connection: Option<Transaction<'static, MySql>>,
 	access_token_data: Option<AccessTokenData>,
@@ -25,12 +25,12 @@ pub struct EveContext {
 
 impl EveContext {
 	pub fn new(request: Request, state: &App) -> Self {
-		// let render_register = Some(state.render_register.clone());
+		let render_register = Some(state.render_register.clone());
 		EveContext {
 			request,
 			response: Response::new(),
 			body_object: None,
-			// render_register,
+			render_register,
 			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
@@ -81,15 +81,15 @@ impl EveContext {
 	}
 }
 
-// impl RenderEngine for EveContext {
-// 	fn get_register(&self) -> &Arc<Handlebars> {
-// 		self.render_register.as_ref().unwrap()
-// 	}
+impl RenderEngine for EveContext {
+	fn get_register(&self) -> &Arc<Handlebars> {
+		self.render_register.as_ref().unwrap()
+	}
 
-// 	fn set_register(&mut self, register: Arc<Handlebars<'static>>) {
-// 		self.render_register = Some(register);
-// 	}
-// }
+	fn set_register(&mut self, register: Arc<Handlebars<'static>>) {
+		self.render_register = Some(register);
+	}
+}
 
 #[cfg(debug_assertions)]
 impl Debug for EveContext {
@@ -138,7 +138,7 @@ impl Clone for EveContext {
 			request: self.request.clone(),
 			response: self.response.clone(),
 			body_object: self.body_object.clone(),
-			// render_register: self.render_register.clone(),
+			render_register: self.render_register.clone(),
 			state: self.state.clone(),
 			db_connection: None,
 			access_token_data: self.access_token_data.clone(),
