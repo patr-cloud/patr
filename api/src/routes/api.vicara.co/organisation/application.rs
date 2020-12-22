@@ -87,6 +87,43 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
+	// get list of versions for an application
+	app.get(
+		"/:applicationId/versions",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::application::LIST_APPLICATION_VERSIONS,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let application_id_string =
+						context.get_param(request_keys::APPLICATION_ID).unwrap();
+					let application_id = hex::decode(&application_id_string);
+					if application_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let application_id = application_id.unwrap();
+					
+					// check if resource with the given application id exists.
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&application_id,
+					)
+					.await?;
+	
+					if resource.is_none() {
+						context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+	
+					Ok((context, resource))
+				}),
+
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_versions_for_application
+			))
+		],
+	);
+
 
 	app
 }
@@ -156,7 +193,62 @@ async fn get_application_info_in_organisation(
 	let application_id = hex::encode(application.id);
 
 	// add response to context json
+	context.json(
+			json!({
+				request_keys::SUCCESS : true,
+				request_keys::APPLICATION_ID : application_id,
+				request_keys::NAME : application.name,
+			})
+		
+	);
 
 	Ok(context)
 
+}
+
+
+
+// TODO: List out all the versions of an application.
+async fn get_versions_for_application(
+	mut context : EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	// write a query to fetch all the versions for the given application using application id
+
+	let application_id = context.get_param(request_keys::APPLICATION_ID).unwrap();
+	let application_id = hex::decode(application_id).unwrap();
+
+
+	// call fetch query
+	let versions = db::get_versions_for_application(
+		context.get_mysql_connection(),
+		&application_id
+	)
+	.await?
+	.into_iter()
+	.map(|version| {
+		json!({
+			request_keys::APPLICATION_ID: application_id,
+			request_keys::VERSION : version.version
+		})
+	})
+	.collect::<Vec<_>>();
+
+	// check if version is null.
+	if versions.is_empty() {
+		// not possible. Report error
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+
+	// send true, application id, and versions.
+	context.json(
+		json!({
+			request_keys::SUCCESS : true,
+			request_keys::APPLICATION_ID : application_id,
+			request_keys::VERSIONS : versions
+		})
+	);
+
+	Ok(context)
 }
