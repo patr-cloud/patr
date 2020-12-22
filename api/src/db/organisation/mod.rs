@@ -29,7 +29,7 @@ pub async fn initialize_organisations_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// application::initialize_application_pre(&mut *transaction).await?;
+	application::initialize_application_pre(&mut *transaction).await?;
 	domain::initialize_domain_pre(&mut *transaction).await?;
 
 	Ok(())
@@ -48,7 +48,7 @@ pub async fn initialize_organisations_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	// application::initialize_application_post(&mut *transaction).await?;
+	application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
 
 	Ok(())
