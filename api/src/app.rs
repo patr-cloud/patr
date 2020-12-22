@@ -8,7 +8,7 @@ use crate::{
 use colored::Colorize;
 use eve_rs::{
 	default_middlewares::compression,
-	// handlebars::Handlebars,
+	handlebars::Handlebars,
 	listen,
 	App as EveApp,
 	Context,
@@ -32,7 +32,7 @@ pub struct App {
 	pub config: Settings,
 	pub mysql: MySqlPool,
 	pub redis: RedisConnection,
-	// pub render_register: Arc<Handlebars<'static>>,
+	pub render_register: Arc<Handlebars<'static>>,
 }
 
 impl Debug for App {
@@ -70,8 +70,8 @@ pub async fn start_server(app: App) {
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 	
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
-	// let shutdown_signal = Some(futures::future::pending());
-	listen(eve_app, ([127, 0, 0, 1], port), None).await;
+	let shutdown_signal = Some(futures::future::pending());
+	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
 pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {

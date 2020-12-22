@@ -1029,15 +1029,16 @@ dependencies = [
 
 [[package]]
 name = "eve-rs"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0adc41df0d4144550272ea8b31eb462641fa8ae18ac932b62e750a0d1d9e0e97"
+checksum = "ebbc462efb84e1d7ea9795667d18e9df0ebadfb1bcf74028ae2a2fd8b4213289"
 dependencies = [
  "async-trait",
  "chrono",
  "colored 2.0.0",
  "flate2",
  "futures 0.3.8",
+ "handlebars",
  "hyper",
  "log",
  "regex",
