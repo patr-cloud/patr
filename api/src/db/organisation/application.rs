@@ -76,13 +76,13 @@ pub async fn get_applications_in_organisation(
 	let rows = query_as!(
 		Application,
 		r#"
-			SELECT 
-				application.*
-			FROM
-				application, resource
-			WHERE
-				resource.owner_id = ? AND
-				resource.id = application.id
+		SELECT
+			application.*
+		FROM
+			application, resource
+		WHERE
+			resource.owner_id = ? AND
+			resource.id = application.id;
 		"#,
 		organisation_id
 	)
@@ -100,13 +100,13 @@ pub async fn get_application_by_id(
 	let rows = query_as!(
 		Application,
 		r#"
-        SELECT 
-            *
-        FROM
-            application
-        WHERE 
-            id = ?
-        "#,
+		SELECT
+			*
+		FROM
+			application
+		WHERE
+			id = ?;
+		"#,
 		application_id
 	)
 	.fetch_all(connection)
@@ -124,14 +124,14 @@ pub async fn get_all_versions_for_application(
 	let versions = query_as!(
 		ApplicationVersion,
 		r#"
-        SELECT 
-            application_id,
-            version
-        FROM 
-            application_version
-        WHERE
-            application_id = ?
-        "#,
+		SELECT
+			application_id,
+			version
+		FROM
+			application_version
+		WHERE
+			application_id = ?;
+		"#,
 		appliction_id
 	)
 	.fetch_all(connection)
