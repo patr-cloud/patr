@@ -1,8 +1,8 @@
 use crate::query;
 
 use sqlx::{MySql, Transaction};
-use crate::{models::db_mapping::
-    {
+use crate::{
+	models::db_mapping::{
         Application, 
         Version
     }, 
@@ -73,23 +73,18 @@ pub async fn initialize_application_post(
 }
 
 
-// function to fetch all the application names.
-//TODO: implement the function
+/// function to fetch all the application names.
 pub async fn get_applications_for_organisation(
 	connection : &mut Transaction<'_, MySql>,
 	organisation_id : &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
-	// sql query to fetch application names.
-    
-    // let rows : Vec<Application> = Vec::new();
     let rows = query_as!(
 		Application,
 		r#"
 			SELECT 
-				application.id,
-				application.name
+				application.*
 			FROM
-				application
+				application, resource
 			WHERE
 				resource.owner_id = ? AND
 				resource.id = domain.id;
@@ -102,9 +97,7 @@ pub async fn get_applications_for_organisation(
     Ok(rows)
 }
 
-// add function to get application for specific given id
-// TODO: implement this function
-
+/// add function to get application for specific given id
 pub async fn get_application_by_id (
     connection : &mut Transaction<'_, MySql>,
     application_id : &[u8],
@@ -113,8 +106,7 @@ pub async fn get_application_by_id (
         Application,
         r#"
         SELECT 
-            id,
-            name
+            *
         FROM
             application
         WHERE 
@@ -126,16 +118,14 @@ pub async fn get_application_by_id (
     .await?;
 
     Ok(rows.into_iter().next())
-    // Ok(None)
 }
 
-// query to fetch versions for an application.
-// check table application_versions
-pub async fn get_versions_for_application(
+/// query to fetch versions for an application.
+/// this query checks versions for an application from TABLE application_versions.
+pub async fn get_all_versions_for_application (
     connection : &mut Transaction<'_, MySql>,
     appliction_id : &[u8],
-) -> Result<Option<Version>, sqlx::Error> {
-    
+) -> Result<Vec<Version>, sqlx::Error> {
     let versions = query_as!(
         Version,
         r#"
@@ -152,5 +142,5 @@ pub async fn get_versions_for_application(
     .fetch_all(connection)
     .await?;
 
-    Ok(versions.into_iter().next())
+    Ok(versions)
 }

@@ -113,13 +113,13 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 					if resource.is_none() {
 						context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
-	
+
 					Ok((context, resource))
 				}),
 
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				get_versions_for_application
+				get_all_versions_for_application
 			))
 		],
 	);
@@ -129,15 +129,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 }
 
 
-/**
- * Function to list out all the application in an organisation.
- */
+
+/// Function to list out all the application in an organisation.
 async fn get_applications_for_organisation(
 	mut context : EveContext,
 	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
-	
-	// enquire if this is needed in query.
+) -> Result<EveContext, Error<EveContext>> {	
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -165,34 +162,30 @@ async fn get_applications_for_organisation(
 	}));
 
 	Ok(context)
-
 }
 
 
 
-// get details for an application
+/// get details for an application
 async fn get_application_info_in_organisation(
 	mut context : EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext> > {
 	let application_id = context.get_param(request_keys::APPLICATION_ID).unwrap();
-
 	let application_id = hex::decode(application_id).unwrap();
-
 	let application = 
 		db::get_application_by_id(
 			context.get_mysql_connection(),
 			&application_id
 		).await?;
-
-	if application.is_none() {
-		// check if application can be null.
-	}
-
+	
+	/// since the resource/application is already been checked in ResourceTokenAuthenticator, 
+	/// application cannot be null, else, the code would not reach at this point
+	/// Hence, it is safe to unwrap the application.
 	let application = application.unwrap();
 	let application_id = hex::encode(application.id);
 
-	// add response to context json
+	/// add response to context json
 	context.json(
 			json!({
 				request_keys::SUCCESS : true,
@@ -206,21 +199,16 @@ async fn get_application_info_in_organisation(
 
 }
 
-
-
-// TODO: List out all the versions of an application.
-async fn get_versions_for_application(
+/// List out all the versions of an application.
+async fn get_all_versions_for_application(
 	mut context : EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	// write a query to fetch all the versions for the given application using application id
-
 	let application_id = context.get_param(request_keys::APPLICATION_ID).unwrap();
 	let application_id = hex::decode(application_id).unwrap();
 
-
-	// call fetch query
-	let versions = db::get_versions_for_application(
+	/// call fetch query for the given application id.
+	let versions = db::get_all_versions_for_application(
 		context.get_mysql_connection(),
 		&application_id
 	)
@@ -234,14 +222,14 @@ async fn get_versions_for_application(
 	})
 	.collect::<Vec<_>>();
 
-	// check if version is null.
+	/// check if versions is empty.
 	if versions.is_empty() {
 		// not possible. Report error
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 
-	// send true, application id, and versions.
+	/// send true, application id, and versions.
 	context.json(
 		json!({
 			request_keys::SUCCESS : true,
