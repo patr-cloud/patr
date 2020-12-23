@@ -26,7 +26,7 @@ pub fn parse_config() -> Settings {
 		}
 		"dev" | "development" => {
 			settings
-				.merge(File::with_name("config/dev.json"))
+				.merge(File::with_name("config/dev"))
 				.expect("unable to find dev config");
 			settings
 				.set("environment", "development")
