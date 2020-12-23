@@ -19,7 +19,7 @@ pub struct Application {
 }
 
 // struct to store information regarding the version for an application.
-pub struct Version {
+pub struct ApplicationVersion {
 	pub application_id : Vec<u8>,
 	pub version : String,
 }

@@ -4,7 +4,7 @@ use sqlx::{MySql, Transaction};
 use crate::{
 	models::db_mapping::{
         Application, 
-        Version
+        ApplicationVersion
     }, 
     query_as
 };
@@ -125,9 +125,9 @@ pub async fn get_application_by_id (
 pub async fn get_all_versions_for_application (
     connection : &mut Transaction<'_, MySql>,
     appliction_id : &[u8],
-) -> Result<Vec<Version>, sqlx::Error> {
+) -> Result<Vec<ApplicationVersion>, sqlx::Error> {
     let versions = query_as!(
-        Version,
+        ApplicationVersion,
         r#"
         SELECT 
             application_id,
