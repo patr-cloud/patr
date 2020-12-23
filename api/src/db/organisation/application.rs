@@ -1,14 +1,10 @@
 use crate::query;
 
-use sqlx::{MySql, Transaction};
 use crate::{
-	models::db_mapping::{
-        Application, 
-        ApplicationVersion
-    }, 
-    query_as
+	models::db_mapping::{Application, ApplicationVersion},
+	query_as,
 };
-
+use sqlx::{MySql, Transaction};
 
 pub async fn initialize_application_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -72,13 +68,12 @@ pub async fn initialize_application_post(
 	Ok(())
 }
 
-
 /// function to fetch all the application names.
 pub async fn get_applications_in_organisation(
-	connection : &mut Transaction<'_, MySql>,
-	organisation_id : &[u8],
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
-    let rows = query_as!(
+	let rows = query_as!(
 		Application,
 		r#"
 			SELECT 
@@ -94,17 +89,17 @@ pub async fn get_applications_in_organisation(
 	.fetch_all(connection)
 	.await?;
 
-    Ok(rows)
+	Ok(rows)
 }
 
 /// add function to get application for specific given id
-pub async fn get_application_by_id (
-    connection : &mut Transaction<'_, MySql>,
-    application_id : &[u8],
+pub async fn get_application_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	application_id: &[u8],
 ) -> Result<Option<Application>, sqlx::Error> {
-    let rows = query_as!(
-        Application,
-        r#"
+	let rows = query_as!(
+		Application,
+		r#"
         SELECT 
             *
         FROM
@@ -112,23 +107,23 @@ pub async fn get_application_by_id (
         WHERE 
             id = ?
         "#,
-        application_id
-    )
-    .fetch_all(connection)
-    .await?;
+		application_id
+	)
+	.fetch_all(connection)
+	.await?;
 
-    Ok(rows.into_iter().next())
+	Ok(rows.into_iter().next())
 }
 
 /// query to fetch versions for an application.
 /// this query checks versions for an application from TABLE application_versions.
-pub async fn get_all_versions_for_application (
-    connection : &mut Transaction<'_, MySql>,
-    appliction_id : &[u8],
+pub async fn get_all_versions_for_application(
+	connection: &mut Transaction<'_, MySql>,
+	appliction_id: &[u8],
 ) -> Result<Vec<ApplicationVersion>, sqlx::Error> {
-    let versions = query_as!(
-        ApplicationVersion,
-        r#"
+	let versions = query_as!(
+		ApplicationVersion,
+		r#"
         SELECT 
             application_id,
             version
@@ -137,10 +132,10 @@ pub async fn get_all_versions_for_application (
         WHERE
             application_id = ?
         "#,
-        appliction_id
-    )
-    .fetch_all(connection)
-    .await?;
+		appliction_id
+	)
+	.fetch_all(connection)
+	.await?;
 
-    Ok(versions)
+	Ok(versions)
 }
