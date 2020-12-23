@@ -1,8 +1,8 @@
-#[path = "./api.vicara.co/mod.rs"]
+#[path = "api.vicara.co/mod.rs"]
 mod api_vicara_co;
-#[path = "./assets.vicara.co/mod.rs"]
+#[path = "assets.vicara.co/mod.rs"]
 mod assets_vicara_co;
-#[path = "./auth.vicara.co/mod.rs"]
+#[path = "auth.vicara.co/mod.rs"]
 mod auth_vicara_co;
 
 use crate::{

@@ -23,8 +23,11 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
-	sub_app.use_sub_app("/application", application::create_sub_app(app));
-	sub_app.use_sub_app("/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app(
+		"/:organisationId/application",
+		application::create_sub_app(app),
+	);
+	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
 
 	sub_app
 }

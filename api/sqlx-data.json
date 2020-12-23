@@ -20,70 +20,6 @@
       "nullable": []
     }
   },
-  "0507e4cb1cc8a933a473a2b0bc1b34f4002b440500dfe3c130a8ec2b09768145": {
-    "query": "\n\t\tSELECT\n\t\t\tid,\n\t\t\tname,\n\t\t\tresource_type_id,\n\t\t\t\"owner_id!: Vec<u8>\"\n\t\tFROM\n\t\t\tresource\n\t\tWHERE\n\t\t\tid = ?;\n\t\t",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "resource_type_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "owner_id!: Vec<u8>",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 72
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "08ca3806e5ab2178c5fc829db0aae32082ae97cc51e7c9024b2791805abdcbb7": {
     "query": "DELETE FROM resource WHERE id = ?;",
     "describe": {
@@ -361,6 +297,16 @@
       ]
     }
   },
+  "32b30194b7c8a2630470eba3330fdcdd184c011ffa2ff0565f73e7ec7420c68e": {
+    "query": "CREATE TABLE IF NOT EXISTS application_version ( application_id BINARY(16) NOT NULL, version VARCHAR(32) NOT NULL, PRIMARY KEY(application_id, version), FOREIGN KEY(application_id) REFERENCES application(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "32bbca67f63e1e5aa72546ffbf96822796156627286ecd1c1f8a6156407579e3": {
     "query": "SELECT * FROM resource_type;",
     "describe": {
@@ -432,6 +378,44 @@
       "nullable": []
     }
   },
+  "3cf059a11201973c89d8a6b059a2bd2c3e646efab3cd6776d251f08da74b8b48": {
+    "query": "SELECT application.* FROM application, resource WHERE resource.owner_id = ? AND resource.id = application.id;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "3e9c3969fef4dbd846ee2e9e5f0c572737f1d8dfbb29e890486fefe09a8bda5f": {
     "query": "SELECT * FROM organisation_user WHERE user_id = ? ORDER BY organisation_id;",
     "describe": {
@@ -477,70 +461,6 @@
         "Right": 1
       },
       "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "4330273520e1ccc5fbe492d865825ead7c5712123684c468e21611d9c37872fd": {
-    "query": "\n\t\t\tSELECT\n\t\t\t\tid,\n\t\t\t\tname,\n\t\t\t\tresource_type_id,\n\t\t\t\t\"owner_id!: Vec<u8>\"\n\t\t\tFROM\n\t\t\t\tresource\n\t\t\tWHERE\n\t\t\t\tid = ?;\n\t\t\t",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "resource_type_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "owner_id!: Vec<u8>",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 72
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
         false,
         false,
         false
@@ -859,6 +779,16 @@
         true,
         false
       ]
+    }
+  },
+  "74552dd3887b7800f00b007dbd6b8362d041a7d0c3157bc1073837435d6098a7": {
+    "query": "CREATE TABLE IF NOT EXISTS application_version_platform ( application_id BINARY(16) NOT NULL, version VARCHAR(32) NOT NULL, platform VARCHAR(60) NOT NULL, PRIMARY KEY(application_id, version, platform), FOREIGN KEY(application_id, version) REFERENCES application_version(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "79b16b905cb201a6e81c6190120324df27fc4372ac663acac6909db3e2a329b9": {
@@ -1261,6 +1191,44 @@
       "nullable": []
     }
   },
+  "991fa0051805c981ee2e6b6669b4f3f05de0a724cf9edb688db6c726f01bd694": {
+    "query": "SELECT * FROM application WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "9b8133636b27cc7469941860bdc29710364e8b6b1c6462b0343b77aea0b1f740": {
     "query": "INSERT INTO resource_type VALUES (?, ?, NULL);",
     "describe": {
@@ -1309,6 +1277,70 @@
         "Right": 0
       },
       "nullable": []
+    }
+  },
+  "abc73c01e06ecb0567f992fdf42fd74fcdb9e084178eab52980b95cdc62e7184": {
+    "query": "SELECT id, name, resource_type_id, owner_id as `owner_id!` FROM resource WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_type_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "owner_id!",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ]
     }
   },
   "abf07b761467e57f88e1ecb9625e310d61df9d5afc38b973b06996c73111f430": {
@@ -2114,6 +2146,44 @@
       "nullable": []
     }
   },
+  "d85b169f94a97d1e8ab470deb5373e31723fa1dd872ecb9edbcb1461243e7be2": {
+    "query": "SELECT application_id, version FROM application_version WHERE application_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "application_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "version",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4099
+            },
+            "char_set": 224,
+            "max_size": 128
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "dcb001a506be9d77bbb944507b2634f1bcc77cc0edfe14337d8d3b3c0cc281c9": {
     "query": "UPDATE user_login SET token_expiry = ?, last_activity = ? WHERE refresh_token = ?;",
     "describe": {
@@ -2132,70 +2202,6 @@
         "Right": 2
       },
       "nullable": []
-    }
-  },
-  "e149de0fc03dae2345d5158d90262863ca64086d0e4ad4731bf034fead18d2f8": {
-    "query": "\n\t\tSELECT\n\t\t\tid,\n\t\t\t\"name!\",\n\t\t\tresource_type_id,\n\t\t\t\"owner_id!: Vec<u8>\"\n\t\tFROM\n\t\t\tresource\n\t\tWHERE\n\t\t\tid = ?;\n\t\t",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name!",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "resource_type_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "owner_id!: Vec<u8>",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 72
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
