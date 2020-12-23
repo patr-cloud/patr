@@ -74,7 +74,7 @@ pub async fn initialize_application_post(
 
 
 /// function to fetch all the application names.
-pub async fn get_applications_for_organisation(
+pub async fn get_applications_in_organisation(
 	connection : &mut Transaction<'_, MySql>,
 	organisation_id : &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {

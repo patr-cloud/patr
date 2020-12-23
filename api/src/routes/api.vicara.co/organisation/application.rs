@@ -44,7 +44,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			}),
 		),
 		EveMiddleware::CustomFunction(pin_fn!(
-			get_applications_for_organisation
+			get_applications
 		)),
 		
 		],
@@ -124,14 +124,13 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
-
 	app
 }
 
 
 
 /// Function to list out all the application in an organisation.
-async fn get_applications_for_organisation(
+async fn get_applications(
 	mut context : EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {	
@@ -140,7 +139,7 @@ async fn get_applications_for_organisation(
 			.unwrap();
 
 	
-	let applications = db::get_applications_for_organisation(
+	let applications = db::get_applications_in_organisation(
 		context.get_mysql_connection(),
 		&organisation_id,
 	)
@@ -160,7 +159,6 @@ async fn get_applications_for_organisation(
 		request_keys::SUCCESS : true,
 		request_keys::APPLICATIONS: applications,
 	}));
-
 	Ok(context)
 }
 
@@ -194,9 +192,7 @@ async fn get_application_info_in_organisation(
 			})
 		
 	);
-
 	Ok(context)
-
 }
 
 /// List out all the versions of an application.
@@ -237,6 +233,5 @@ async fn get_all_versions_for_application(
 			request_keys::VERSIONS : versions
 		})
 	);
-
 	Ok(context)
 }
