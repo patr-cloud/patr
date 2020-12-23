@@ -43,8 +43,7 @@ pub mod request_keys {
 	pub const DOMAINS: &str = "domains";
 	pub const VERIFIED: &str = "verified";
 	pub const ID: &str = "id";
-
-	pub const APPLICATIONS: &str = "domains";
+	pub const APPLICATIONS: &str = "applications";
 	pub const APPLICATION_ID: &str = "applicationId";
 	pub const VERSIONS: &str = "versions";
 	pub const VERSION: &str = "version";

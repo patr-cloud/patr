@@ -8,7 +8,7 @@ use crate::{
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
-use serde_json::{json, Value};
+use serde_json::json;
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);

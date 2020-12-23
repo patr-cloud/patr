@@ -6,9 +6,10 @@ use crate::{
 		rbac::{self, OrgPermissions},
 	},
 	query,
+	query_as,
 };
 
-use sqlx::{query_as, MySql, Transaction};
+use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
@@ -438,7 +439,7 @@ pub async fn generate_new_resource_id(
 			id,
 			name,
 			resource_type_id,
-			"owner_id!: Vec<u8>"
+			owner_id as `owner_id!`
 		FROM
 			resource
 		WHERE
@@ -458,7 +459,7 @@ pub async fn generate_new_resource_id(
 				id,
 				name,
 				resource_type_id,
-				"owner_id!: Vec<u8>"
+				owner_id as `owner_id!`
 			FROM
 				resource
 			WHERE
@@ -482,9 +483,9 @@ pub async fn get_resource_by_id(
 		r#"
 		SELECT
 			id,
-			"name!",
+			name,
 			resource_type_id,
-			"owner_id!: Vec<u8>"
+			owner_id as `owner_id!`
 		FROM
 			resource
 		WHERE
