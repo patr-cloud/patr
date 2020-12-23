@@ -82,6 +82,7 @@ pub async fn get_applications_in_organisation(
 				application, resource
 			WHERE
 				resource.owner_id = ? AND
+				resource.id = application.id
 		"#,
 		organisation_id
 	)
