@@ -92,7 +92,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/:applicationId/versions",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::application::LIST_APPLICATION_VERSIONS,
+				permissions::organisation::application::LIST_VERSIONS,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let application_id_string =
 						context.get_param(request_keys::APPLICATION_ID).unwrap();

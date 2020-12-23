@@ -33,7 +33,7 @@ pub mod permissions {
 			pub const VIEW_DETAILS: &str =
 				"organisation::application::viewDetails";
 			pub const DELETE: &str = "organisation::application::delete";
-			pub const LIST_APPLICATION_VERSIONS : &str = "organisation::application::listApplicationVersions";
+			pub const LIST_VERSIONS : &str = "organisation::application::listVersions";
 		}
 	}
 
