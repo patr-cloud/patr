@@ -127,8 +127,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	app
 }
 
-
-
 /// Function to list out all the application in an organisation.
 async fn get_applications(
 	mut context : EveContext,
@@ -138,7 +136,6 @@ async fn get_applications(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
-	
 	let applications = db::get_applications_in_organisation(
 		context.get_mysql_connection(),
 		&organisation_id,
@@ -162,8 +159,6 @@ async fn get_applications(
 	Ok(context)
 }
 
-
-
 /// get details for an application
 async fn get_application_info_in_organisation(
 	mut context : EveContext,
@@ -177,20 +172,18 @@ async fn get_application_info_in_organisation(
 			&application_id
 		).await?;
 	
-	/// since the resource/application is already been checked in ResourceTokenAuthenticator, 
-	/// application cannot be null, else, the code would not reach at this point
-	/// Hence, it is safe to unwrap the application.
+	// since the resource/application is already been checked in ResourceTokenAuthenticator, 
+	// application cannot be null, else, the code would not reach at this point
+	// Hence, it is safe to unwrap the application.
 	let application = application.unwrap();
-	let application_id = hex::encode(application.id);
 
-	/// add response to context json
+	// add response to context json
 	context.json(
 			json!({
 				request_keys::SUCCESS : true,
 				request_keys::APPLICATION_ID : application_id,
 				request_keys::NAME : application.name,
-			})
-		
+			})	
 	);
 	Ok(context)
 }
@@ -200,10 +193,12 @@ async fn get_all_versions_for_application(
 	mut context : EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let application_id = context.get_param(request_keys::APPLICATION_ID).unwrap();
-	let application_id = hex::decode(application_id).unwrap();
+	let application_id_string = context.get_param(request_keys::APPLICATION_ID).unwrap().clone();
 
-	/// call fetch query for the given application id.
+	// it is safe to unwrap as the a resource for the given application already exists.
+	let application_id = hex::decode(&application_id_string).unwrap();
+
+	// call fetch query for the given application id.
 	let versions = db::get_all_versions_for_application(
 		context.get_mysql_connection(),
 		&application_id
@@ -218,18 +213,11 @@ async fn get_all_versions_for_application(
 	})
 	.collect::<Vec<_>>();
 
-	/// check if versions is empty.
-	if versions.is_empty() {
-		// not possible. Report error
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-
-	/// send true, application id, and versions.
+	// send true, application id, and versions.
 	context.json(
 		json!({
 			request_keys::SUCCESS : true,
-			request_keys::APPLICATION_ID : application_id,
+			request_keys::APPLICATION_ID : application_id_string,
 			request_keys::VERSIONS : versions
 		})
 	);
