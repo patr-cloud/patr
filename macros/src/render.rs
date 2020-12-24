@@ -100,14 +100,12 @@ pub fn parse(input: TokenStream) -> TokenStream {
 						Value::String(format!("{}", value.value()))
 					}
 					Lit::Int(value) => {
-						Value::String(format!("{}", value.base10_digits()))
+						Value::String(value.base10_digits().to_string())
 					}
 					Lit::Float(value) => {
-						Value::String(format!("{}", value.base10_digits()))
+						Value::String(value.base10_digits().to_string())
 					}
-					Lit::Verbatim(value) => {
-						Value::String(format!("{}", value.to_string()))
-					}
+					Lit::Verbatim(value) => Value::String(value.to_string()),
 				},
 				// Expr::Path(path) => {
 				// 	path.path.

@@ -1,13 +1,13 @@
 [package]
-authors = ['Rakshith Ravi <rakshith.ravi@gmx.com>']
-edition = '2018'
-name = 'dashboard-frontend'
-version = '0.1.0'
+authors = ["Rakshith Ravi <rakshith.ravi@gmx.com>"]
+edition = "2018"
+name = "dashboard-frontend"
+version = "0.1.0"
 
 [lib]
-crate-type = ['cdylib']
+crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = '^0.2'
-yew = '0.17'
+wasm-bindgen = "^0.2"
+yew = "0.17"
 yew-router = "0.14.0"

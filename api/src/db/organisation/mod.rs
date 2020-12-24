@@ -31,6 +31,7 @@ pub async fn initialize_organisations_pre(
 
 	application::initialize_application_pre(&mut *transaction).await?;
 	domain::initialize_domain_pre(&mut *transaction).await?;
+	drive::initialize_drive_pre(&mut *transaction).await?;
 
 	Ok(())
 }
@@ -50,6 +51,7 @@ pub async fn initialize_organisations_post(
 
 	application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
+	drive::initialize_drive_post(&mut *transaction).await?;
 
 	Ok(())
 }

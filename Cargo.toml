@@ -1,13 +1,13 @@
 [workspace]
 members = [
-  'api',
-  'macros',
-  'dashboard-frontend',
-  'drive-frontend'
+  "api",
+  "macros",
+  "dashboard-frontend",
+  "drive-frontend"
 ]
 
 [profile.release]
 codegen-units = 1
 lto = true
-opt-level = 'z'
-panic = 'abort'
+opt-level = "z"
+panic = "abort"

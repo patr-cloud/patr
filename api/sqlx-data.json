@@ -2126,6 +2126,16 @@
       "nullable": []
     }
   },
+  "d334dbe26b7ab3688b0cf565d4a2542516a1d7680731fea0b37d5ddbe869b480": {
+    "query": "CREATE TABLE IF NOT EXISTS file ( id BINARY(16) PRIMARY KEY, name VARCHAR(250) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "d5afdc451676c5d7982f7c8aca2ec96ffda9238858136bf1b263d6a6ae8aa27b": {
     "query": "CREATE TABLE IF NOT EXISTS organisation ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, super_admin_id BINARY(16) NOT NULL, active BOOL NOT NULL DEFAULT FALSE, created BIGINT UNSIGNED NOT NULL, FOREIGN KEY(super_admin_id) REFERENCES user(id) );",
     "describe": {
@@ -2364,6 +2374,16 @@
         true,
         false
       ]
+    }
+  },
+  "edddc427c2d59da76499dd64cc93166619332951071305d67df5b2cb056f442d": {
+    "query": "ALTER TABLE file ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "f10a94d2cb6ef8ede5b0588f0825fca7641597066705d944adf7d1f902f1058a": {
