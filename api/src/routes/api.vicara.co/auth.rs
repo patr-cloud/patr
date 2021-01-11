@@ -26,6 +26,7 @@ use serde_json::{json, Value};
 use tokio::task;
 use uuid::Uuid;
 
+// TODO change all get body to query string
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);
 
@@ -294,7 +295,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 999999);
+	let otp = generate_sign_up_otp();
 	let otp = if otp < 10 {
 		format!("00000{}", otp)
 	} else if otp < 100 {
@@ -435,6 +436,26 @@ async fn join(
 		return Ok(context);
 	}
 
+	// For a personal account, get:
+	// - username
+	// - email
+	// - password
+	// - account_type
+	// - first_name
+	// - last_name
+
+	// For an organisation account, also get:
+	// - domain_name
+	// - organisation_name
+	// - backup_email
+
+	// First create user,
+	// Then create an organisation if an org account,
+	// Then add the domain if org account,
+	// Then create personal org regardless,
+	// Then set email to backup email if personal account,
+	// And finally send the token, along with the email to the user
+
 	let user_uuid = Uuid::new_v4();
 	let user_id = user_uuid.as_bytes();
 	let created = get_current_time();
@@ -466,39 +487,6 @@ async fn join(
 			email = UserEmailAddress::Personal(email_address.clone());
 			backup_email_notification_to = None;
 			welcome_email_to = email_address;
-
-			// add personal organisation
-			let organisation_id =
-				db::generate_new_resource_id(context.get_mysql_connection())
-					.await?;
-			let organisation_id = organisation_id.as_bytes();
-			let organisation_name = "Personal organisation".to_string();
-
-			db::create_orphaned_resource(
-				context.get_mysql_connection(),
-				organisation_id,
-				&organisation_name,
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::ORGANISATION)
-					.unwrap(),
-			)
-			.await?;
-			db::create_organisation(
-				context.get_mysql_connection(),
-				organisation_id,
-				&organisation_name,
-				user_id,
-				get_current_time(),
-			)
-			.await?;
-			db::set_resource_owner_id(
-				context.get_mysql_connection(),
-				organisation_id,
-				organisation_id,
-			)
-			.await?;
 		}
 		UserEmailAddressSignUp::Organisation {
 			domain_name,
@@ -569,6 +557,39 @@ async fn join(
 			backup_email_notification_to = Some(backup_email);
 		}
 	}
+
+	// add personal organisation
+	let organisation_id =
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+	let organisation_id = organisation_id.as_bytes();
+	let organisation_name =
+		format!("personal-organisation-{}", hex::encode(user_id));
+
+	db::create_orphaned_resource(
+		context.get_mysql_connection(),
+		organisation_id,
+		&organisation_name,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::ORGANISATION)
+			.unwrap(),
+	)
+	.await?;
+	db::create_organisation(
+		context.get_mysql_connection(),
+		organisation_id,
+		&organisation_name,
+		user_id,
+		get_current_time(),
+	)
+	.await?;
+	db::set_resource_owner_id(
+		context.get_mysql_connection(),
+		organisation_id,
+		organisation_id,
+	)
+	.await?;
 
 	db::add_email_for_user(context.get_mysql_connection(), user_id, email)
 		.await?;
@@ -974,4 +995,14 @@ async fn reset_password(
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
+}
+
+#[cfg(not(feature = "sample-data"))]
+fn generate_sign_up_otp() -> u32 {
+	rand::thread_rng().gen_range(0, 1_000_000)
+}
+
+#[cfg(feature = "sample-data")]
+fn generate_sign_up_otp() -> u32 {
+	000_000
 }

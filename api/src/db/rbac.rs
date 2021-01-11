@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
 	models::{
-		db_mapping::Resource,
+		db_mapping::{Permission, Resource, ResourceType, Role},
 		rbac::{self, OrgPermissions},
 	},
 	query,
@@ -45,12 +45,16 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	// Roles belong to an organisation
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS role (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
-			description VARCHAR(500)
+			description VARCHAR(500),
+			owner_id BINARY(16) NOT NULL,
+			UNIQUE(name, owner_id),
+			FOREIGN KEY(owner_id) REFERENCES organisation(id)
 		);
 		"#
 	)
@@ -335,10 +339,9 @@ pub async fn get_all_organisation_roles_for_user(
 
 pub async fn get_all_resource_types(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<HashMap<String, Vec<u8>>, sqlx::Error> {
-	let mut resource_types = HashMap::new();
-
-	let rows = query!(
+) -> Result<Vec<ResourceType>, sqlx::Error> {
+	query_as!(
+		ResourceType,
 		r#"
 		SELECT
 			*
@@ -347,13 +350,73 @@ pub async fn get_all_resource_types(
 		"#
 	)
 	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_all_permissions(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Vec<Permission>, sqlx::Error> {
+	query_as!(
+		Permission,
+		r#"
+		SELECT
+			*
+		FROM
+			permission;
+		"#
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_resource_type_for_resource(
+	connection: &mut Transaction<'_, MySql>,
+	resource_id: &[u8],
+) -> Result<Option<ResourceType>, sqlx::Error> {
+	let rows = query_as!(
+		ResourceType,
+		r#"
+		SELECT
+			resource_type.*
+		FROM
+			resource_type
+		INNER JOIN
+			resource
+		ON
+			resource.resource_type_id = resource_type.id
+		WHERE
+			resource.id = ?;
+		"#,
+		resource_id
+	)
+	.fetch_all(connection)
 	.await?;
 
-	for row in rows {
-		resource_types.insert(row.name, row.id);
-	}
+	Ok(rows.into_iter().next())
+}
 
-	Ok(resource_types)
+pub async fn create_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+	name: &str,
+	description: &Option<String>,
+	owner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			role
+		VALUES
+			(?, ?, ?, ?);
+		"#,
+		role_id,
+		name,
+		description,
+		owner_id
+	)
+	.fetch_all(connection)
+	.await?;
+	Ok(())
 }
 
 pub async fn create_orphaned_resource(
@@ -513,6 +576,238 @@ pub async fn delete_resource(
 		resource_id
 	)
 	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn get_all_organisation_roles(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
+) -> Result<Vec<Role>, sqlx::Error> {
+	query_as!(
+		Role,
+		r#"
+		SELECT
+			*
+		FROM
+			role
+		WHERE
+			owner_id = ?;
+		"#,
+		organisation_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_role_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<Option<Role>, sqlx::Error> {
+	let rows = query_as!(
+		Role,
+		r#"
+		SELECT
+			*
+		FROM
+			role
+		WHERE
+			id = ?;
+		"#,
+		role_id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+/// For a given role, what permissions does it have and on what resources?
+/// Returns a HashMap of Resource -> Permission[]
+pub async fn get_permissions_on_resources_for_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
+	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			role_permissions_resource
+		INNER JOIN
+			permission
+		ON
+			role_permissions_resource.permission_id = permission.id
+		WHERE
+			role_permissions_resource.role_id = ?;
+		"#,
+		role_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		let permission = Permission {
+			id: row.permission_id,
+			name: row.name,
+			description: row.description,
+		};
+		if permissions.contains_key(&row.resource_id) {
+			permissions
+				.get_mut(&row.resource_id)
+				.unwrap()
+				.push(permission);
+		} else {
+			permissions.insert(row.resource_id, vec![permission]);
+		}
+	}
+
+	Ok(permissions)
+}
+
+/// For a given role, what permissions does it have and on what resources types?
+/// Returns a HashMap of ResourceType -> Permission[]
+pub async fn get_permissions_on_resource_types_for_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
+	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			role_permissions_resource_type
+		INNER JOIN
+			permission
+		ON
+			role_permissions_resource_type.permission_id = permission.id
+		WHERE
+			role_permissions_resource_type.role_id = ?;
+		"#,
+		role_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	for row in rows {
+		let permission = Permission {
+			id: row.permission_id,
+			name: row.name,
+			description: row.description,
+		};
+		if permissions.contains_key(&row.resource_type_id) {
+			permissions
+				.get_mut(&row.resource_type_id)
+				.unwrap()
+				.push(permission);
+		} else {
+			permissions.insert(row.resource_type_id, vec![permission]);
+		}
+	}
+
+	Ok(permissions)
+}
+
+pub async fn remove_all_permissions_for_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			role_permissions_resource
+		WHERE
+			role_id = ?;
+		"#,
+		role_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			role_permissions_resource_type
+		WHERE
+			role_id = ?;
+		"#,
+		role_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn insert_resource_permissions_for_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+	resource_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
+) -> Result<(), sqlx::Error> {
+	for (resource_id, permissions) in resource_permissions {
+		for permission_id in permissions {
+			query!(
+				r#"
+				INSERT INTO
+					role_permissions_resource
+				VALUES
+					(?, ?, ?);
+				"#,
+				role_id,
+				permission_id,
+				resource_id,
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+	}
+	Ok(())
+}
+
+pub async fn insert_resource_type_permissions_for_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+	resource_type_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
+) -> Result<(), sqlx::Error> {
+	for (resource_id, permissions) in resource_type_permissions {
+		for permission_id in permissions {
+			query!(
+				r#"
+				INSERT INTO
+					role_permissions_resource_type
+				VALUES
+					(?, ?, ?);
+				"#,
+				role_id,
+				permission_id,
+				resource_id,
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+	}
+	Ok(())
+}
+
+pub async fn delete_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	remove_all_permissions_for_role(&mut *connection, role_id).await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			role
+		WHERE
+			id = ?;
+		"#,
+		role_id
+	)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

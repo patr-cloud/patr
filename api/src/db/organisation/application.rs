@@ -73,23 +73,24 @@ pub async fn get_applications_in_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Application,
 		r#"
 		SELECT
 			application.*
 		FROM
-			application, resource
+			application
+		INNER JOIN
+			resource
+		ON
+			application.id = resource.id
 		WHERE
-			resource.owner_id = ? AND
-			resource.id = application.id;
+			resource.owner_id = ?;
 		"#,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 /// add function to get application for specific given id

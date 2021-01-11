@@ -1,8 +1,8 @@
 use std::fs;
 
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
-	export::quote::quote,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Error,

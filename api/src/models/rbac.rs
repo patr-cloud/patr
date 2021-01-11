@@ -36,6 +36,11 @@ pub mod permissions {
 			pub const LIST_VERSIONS: &str =
 				"organisation::application::listVersions";
 		}
+
+		pub const VIEW_ROLES: &str = "organisation::viewRoles";
+		pub const CREATE_ROLE: &str = "organisation::createRole";
+		pub const EDIT_ROLE: &str = "organisation::editRole";
+		pub const DELETE_ROLE: &str = "organisation::deleteRole";
 	}
 
 	pub mod docker {

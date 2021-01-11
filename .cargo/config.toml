@@ -1,0 +1,2 @@
+[alias]
+populate = ["run", "--all-features", "--", "--populate-sample-data"]

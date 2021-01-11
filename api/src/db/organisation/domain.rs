@@ -62,7 +62,7 @@ pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Domain,
 		r#"
 		SELECT
@@ -70,23 +70,24 @@ pub async fn get_domains_for_organisation(
 			domain.name,
 			"is_verified: bool"
 		FROM
-			domain, resource
+			domain
+		INNER JOIN
+			resource
+		ON
+			domain.id = resource.id
 		WHERE
-			resource.owner_id = ? AND
-			resource.id = domain.id;
+			resource.owner_id = ?;
 		"#,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_all_unverified_domains(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Domain,
 		r#"
 		SELECT
@@ -100,9 +101,7 @@ pub async fn get_all_unverified_domains(
 		"#
 	)
 	.fetch_all(connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn set_domain_as_verified(
@@ -129,7 +128,7 @@ pub async fn set_domain_as_verified(
 pub async fn get_all_verified_domains(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<Domain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Domain,
 		r#"
 		SELECT
@@ -143,9 +142,7 @@ pub async fn get_all_verified_domains(
 		"#
 	)
 	.fetch_all(connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn set_domain_as_unverified(
@@ -169,6 +166,7 @@ pub async fn set_domain_as_unverified(
 	Ok(())
 }
 
+// TODO get the correct email based on organisation or personal
 pub async fn get_notification_email_for_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
@@ -178,12 +176,21 @@ pub async fn get_notification_email_for_domain(
 		SELECT
 			user.*
 		FROM
-			domain, resource, organisation, user
+			domain
+		INNER JOIN
+			resource
+		ON
+			domain.id = resource.id
+		INNER JOIN
+			organisation
+		ON
+			resource.owner_id = organisation.id
+		INNER JOIN
+			user
+		ON
+			organisation.super_admin_id = user.id
 		WHERE
-			domain.id = ? AND
-			domain.id = resource.id AND
-			resource.owner_id = organisation.id AND
-			organisation.super_admin_id = user.id;
+			domain.id = ?;
 		"#,
 		domain_id
 	)

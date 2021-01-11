@@ -4,13 +4,20 @@ use crate::{
 	error,
 	models::rbac,
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
+	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use serde_json::json;
+use serde_json::{json, Value};
 
 mod application;
 mod domain;
+#[path = "./rbac.rs"]
+mod rbac_routes;
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
@@ -22,12 +29,28 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::CustomFunction(pin_fn!(get_organisation_info)),
 		],
 	);
-
 	sub_app.use_sub_app(
 		"/:organisationId/application",
 		application::create_sub_app(app),
 	);
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
+	sub_app
+		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
+
+	sub_app.get(
+		"/is-name-available",
+		&[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(is_name_available)),
+		],
+	);
+	sub_app.post(
+		"/",
+		&[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
+		],
+	);
 
 	sub_app
 }
@@ -74,5 +97,138 @@ async fn get_organisation_info(
 		context.status(500).json(error!(SERVER_ERROR));
 	}
 
+	Ok(context)
+}
+
+async fn is_name_available(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let organisation_name =
+		if let Some(Value::String(name)) = body.get(request_keys::NAME) {
+			name
+		} else {
+			context.status(400).json(error!(WRONG_PARAMETERS));
+			return Ok(context);
+		};
+
+	let organisation = db::get_organisation_by_name(
+		context.get_mysql_connection(),
+		organisation_name,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::AVAILABLE: organisation.is_none()
+	}));
+	Ok(context)
+}
+
+async fn create_new_organisation(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let body = if let Some(body) = context.get_body_object() {
+		body.clone()
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let domain_name =
+		if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
+			domain
+		} else {
+			context.status(400).json(error!(WRONG_PARAMETERS));
+			return Ok(context);
+		};
+
+	let organisation_name = if let Some(Value::String(organisation_name)) =
+		body.get(request_keys::ORGANISATION_NAME)
+	{
+		organisation_name
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let organisation = db::get_organisation_by_name(
+		context.get_mysql_connection(),
+		organisation_name,
+	)
+	.await?;
+
+	if organisation.is_some() {
+		context.status(400).json(error!(RESOURCE_EXISTS));
+		return Ok(context);
+	}
+
+	let organisation_id =
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+	let organisation_id = organisation_id.as_bytes();
+	let org_id_string = hex::encode(organisation_id);
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	db::create_orphaned_resource(
+		context.get_mysql_connection(),
+		organisation_id,
+		&format!("Organiation: {}", organisation_name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::ORGANISATION)
+			.unwrap(),
+	)
+	.await?;
+	db::create_organisation(
+		context.get_mysql_connection(),
+		organisation_id,
+		&organisation_name,
+		&user_id,
+		get_current_time(),
+	)
+	.await?;
+	db::set_resource_owner_id(
+		context.get_mysql_connection(),
+		organisation_id,
+		organisation_id,
+	)
+	.await?;
+
+	let domain_id =
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+	let domain_id = domain_id.as_bytes().to_vec();
+
+	db::create_resource(
+		context.get_mysql_connection(),
+		&domain_id,
+		&format!("Domain: {}", domain_name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DOMAIN)
+			.unwrap(),
+		organisation_id,
+	)
+	.await?;
+	db::add_domain_to_organisation(
+		context.get_mysql_connection(),
+		&domain_id,
+		&domain_name,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ORGANISATION_ID: org_id_string
+	}));
 	Ok(context)
 }

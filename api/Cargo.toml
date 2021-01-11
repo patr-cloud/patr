@@ -5,6 +5,10 @@ name = "api"
 version = "0.1.0"
 default-run = "api"
 
+[features]
+default = ["sample-data"]
+sample-data = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -42,6 +46,7 @@ tokio = {version = "0.2.22", features = ["full"]}
 trust-dns-client = "0.19.5"
 uuid = "0.8.1"
 futures = "0.3.8"
+quote = "1.0.8"
 
 [dependencies.log4rs]
 default-features = false

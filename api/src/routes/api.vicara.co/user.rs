@@ -15,7 +15,6 @@ use crate::{
 
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use rand::Rng;
 use serde_json::{json, Value};
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -47,6 +46,13 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
+		],
+	);
+	app.get(
+		"/organisations",
+		&[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_organisations_for_user)),
 		],
 	);
 
@@ -179,7 +185,7 @@ async fn add_email_address(
 		return Ok(context);
 	}
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp = generate_add_email_address_otp();
 	let otp = if otp < 10 {
 		format!("00000{}", otp)
 	} else if otp < 100 {
@@ -299,4 +305,45 @@ async fn verify_email_address(
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
+}
+
+async fn get_organisations_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let organisations = db::get_all_organisations_for_user(
+		context.get_mysql_connection(),
+		&user_id,
+	)
+	.await?;
+	let organisations = organisations
+		.into_iter()
+		.map(|org| {
+			json!({
+				request_keys::ID: hex::encode(org.id),
+				request_keys::NAME: org.name,
+				request_keys::ACTIVE: org.active,
+				request_keys::CREATED: org.created
+			})
+		})
+		.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ORGANISATIONS: organisations
+	}));
+	Ok(context)
+}
+
+#[cfg(not(feature = "sample-data"))]
+fn generate_add_email_address_otp() -> u32 {
+	use rand::Rng;
+
+	rand::thread_rng().gen_range(0, 1_000_000)
+}
+
+#[cfg(feature = "sample-data")]
+fn generate_add_email_address_otp() -> u32 {
+	000_000
 }

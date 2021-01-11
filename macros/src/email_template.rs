@@ -1,12 +1,10 @@
 use std::{collections::HashMap, fs, io::ErrorKind};
 
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
 use serde::{Deserialize, Serialize};
 use syn::{
-	export::{
-		quote::{format_ident, quote},
-		TokenStream2,
-	},
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Error,
@@ -90,8 +88,6 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		.parse()
 		.unwrap();
 
-	let struct_name = format_ident!("{}", name);
-
 	let html_file_name =
 		format!("./assets/emails/{}/{}", template_name.value(), html);
 	let html_content = fs::read_to_string(&html_file_name);
@@ -146,15 +142,15 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 		#[derive(askama::Template)]
 		#[template(source = #html_content, ext = "html")]
-		struct #struct_name {
+		struct #name {
 			#variable_and_types
 		}
 
-		impl #struct_name {
+		impl #name {
 			fn render(
 				#variable_and_types
 			) -> lettre::message::MultiPart {
-				let template = #struct_name {
+				let template = #name {
 					#variable_names
 				};
 				lettre::message::MultiPart::alternative()

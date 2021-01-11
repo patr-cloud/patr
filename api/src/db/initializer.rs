@@ -76,6 +76,10 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 
 		let resource_types =
 			db::get_all_resource_types(&mut connection).await?;
+		let resource_types = resource_types
+			.into_iter()
+			.map(|resource_type| (resource_type.name, resource_type.id))
+			.collect();
 		rbac::RESOURCE_TYPES
 			.set(resource_types)
 			.expect("RESOURCE_TYPES is already set");

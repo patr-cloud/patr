@@ -107,3 +107,29 @@ pub async fn get_organisation_info(
 
 	Ok(rows.into_iter().next())
 }
+
+pub async fn get_organisation_by_name(
+	connection: &mut Transaction<'_, MySql>,
+	name: &str,
+) -> Result<Option<Organisation>, sqlx::Error> {
+	let rows = query_as!(
+		Organisation,
+		r#"
+		SELECT
+			id,
+			name,
+			super_admin_id,
+			"active: bool",
+			created
+		FROM
+			organisation
+		WHERE
+			name = ?;
+		"#,
+		name
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}

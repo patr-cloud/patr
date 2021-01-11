@@ -12,6 +12,7 @@ mod iterable_module;
 mod query;
 mod query_as;
 mod render;
+mod settings_component;
 
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
@@ -28,11 +29,6 @@ pub fn email_template(input: TokenStream) -> TokenStream {
 	email_template::parse(input)
 }
 
-#[proc_macro_attribute]
-pub fn iterable_module(args: TokenStream, input: TokenStream) -> TokenStream {
-	iterable_module::parse(args, input)
-}
-
 #[proc_macro]
 pub fn closure_as_pinned_box(input: TokenStream) -> TokenStream {
 	closure_as_pinned_box::parse(input)
@@ -46,4 +42,14 @@ pub fn render(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn config(input: TokenStream) -> TokenStream {
 	config::parse(input)
+}
+
+#[proc_macro_attribute]
+pub fn iterable_module(args: TokenStream, input: TokenStream) -> TokenStream {
+	iterable_module::parse(args, input)
+}
+
+#[proc_macro_derive(SettingsComponent)]
+pub fn settings_component(input: TokenStream) -> TokenStream {
+	settings_component::parse(input)
 }

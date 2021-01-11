@@ -1,5 +1,6 @@
 use crate::{
 	models::db_mapping::{
+		Organisation,
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		User,
@@ -141,7 +142,7 @@ pub async fn initialize_users_post(
 			user_email_address_view
 		AS
 			SELECT
-				CASE WHEN (user_email_address.type = 'external') THEN
+				CASE WHEN (user_email_address.type = 'personal') THEN
 					user_email_address.email_address
 				ELSE
 					CONCAT(user_email_address.email_local, '@', domain.name)
@@ -151,8 +152,10 @@ pub async fn initialize_users_post(
 				domain.id AS domain_id,
 				domain.name AS domain_name
 			FROM
-				user_email_address, domain
-			WHERE
+				user_email_address
+			LEFT JOIN
+				domain
+			ON
 				user_email_address.domain_id = domain.id;
 		"#
 	)
@@ -219,13 +222,14 @@ pub async fn get_user_by_username_or_email(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address_view
+			user
+		LEFT JOIN
+			user_email_address_view
+		ON
+			user_email_address_view.user_id = user.id
 		WHERE
-			user.id = user_email_address_view.user_id AND
-			(
-				user.username = ? OR
-				user_email_address_view.email = ?
-			)
+			user.username = ? OR
+			user_email_address_view.email = ?;
 		"#,
 		user_id,
 		user_id
@@ -275,9 +279,12 @@ pub async fn get_user_by_email(
 		SELECT
 			user.*
 		FROM
-			user, user_email_address_view
+			user
+		LEFT JOIN
+			user_email_address_view
+		ON
+			user_email_address_view.user_id = user.id
 		WHERE
-			user.id = user_email_address_view.user_id AND
 			user_email_address_view.email = ?
 		"#,
 		email
@@ -837,4 +844,36 @@ pub async fn delete_password_reset_request_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn get_all_organisations_for_user(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: &[u8],
+) -> Result<Vec<Organisation>, sqlx::Error> {
+	let organisations = query_as!(
+		Organisation,
+		r#"
+		SELECT DISTINCT
+			organisation.id,
+			organisation.name,
+			organisation.super_admin_id,
+			organisation.active as `active!: bool`,
+			organisation.created
+		FROM
+			organisation
+		LEFT JOIN
+			organisation_user
+		ON
+			organisation.id = organisation_user.organisation_id
+		WHERE
+			organisation.super_admin_id = ? OR
+			organisation_user.user_id = ?;
+		"#,
+		user_id,
+		user_id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(organisations)
 }

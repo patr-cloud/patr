@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use handlebars::Handlebars;
 use proc_macro::TokenStream;
+use quote::quote;
 use serde_json::{Map, Value};
 use syn::{
-	export::quote::quote,
 	parse::{Parse, ParseStream},
 	parse_macro_input,
 	Error,

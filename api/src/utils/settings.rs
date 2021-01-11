@@ -140,9 +140,13 @@ pub enum RunningEnvironment {
 
 impl Display for RunningEnvironment {
 	fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
-		formatter.write_str(match self {
-			RunningEnvironment::Development => "Development",
-			RunningEnvironment::Production => "Production",
-		})
+		write!(
+			formatter,
+			"{}",
+			match self {
+				RunningEnvironment::Development => "Development",
+				RunningEnvironment::Production => "Production",
+			}
+		)
 	}
 }

@@ -59,13 +59,19 @@ async fn main() -> Result<()> {
 	scheduler::initialize_jobs(&app);
 	log::debug!("Schedulers initialized");
 
+	#[cfg(feature = "sample-data")]
+	if args.is_present("populate-sample-data") {
+		use tokio::task;
+
+		task::spawn(models::initialize_sample_data(app.clone()));
+	}
 	app::start_server(app).await;
 
 	Ok(())
 }
 
 fn parse_cli_args<'a>() -> ArgMatches<'a> {
-	ClapApp::new(constants::APP_NAME)
+	let app = ClapApp::new(constants::APP_NAME)
 		.version(constants::APP_VERSION)
 		.author(constants::APP_AUTHORS)
 		.about(constants::APP_ABOUT)
@@ -75,8 +81,22 @@ fn parse_cli_args<'a>() -> ArgMatches<'a> {
 				.takes_value(false)
 				.multiple(false)
 				.help("Initialises the database and quits"),
+		);
+	#[cfg(feature = "sample-data")]
+	{
+		app.arg(
+			Arg::with_name("populate-sample-data")
+				.long("populate-sample-data")
+				.takes_value(false)
+				.multiple(false)
+				.help("Initialises the database with sample data and quits"),
 		)
 		.get_matches()
+	}
+	#[cfg(not(feature = "sample-data"))]
+	{
+		app.get_matches()
+	}
 }
 
 async fn create_render_registry(

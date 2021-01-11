@@ -37,6 +37,7 @@ pub mod request_keys {
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
 	pub const ORGANISATION_ID: &str = "organisationId";
+	pub const ORGANISATIONS: &str = "organisations";
 	pub const NAME: &str = "name";
 	pub const ACTIVE: &str = "active";
 	pub const CREATED: &str = "created";
@@ -47,4 +48,16 @@ pub mod request_keys {
 	pub const APPLICATION_ID: &str = "applicationId";
 	pub const VERSIONS: &str = "versions";
 	pub const VERSION: &str = "version";
+	pub const ROLE_ID: &str = "roleId";
+	pub const ROLES: &str = "roles";
+	pub const DESCRIPTION: &str = "description";
+	pub const RESOURCE_PERMISSIONS: &str = "resourcePermissions";
+	pub const RESOURCE_TYPE_PERMISSIONS: &str = "resourceTypePermissions";
+	pub const PERMISSIONS: &str = "permissions";
+	pub const PERMISSION_ID: &str = "permissionId";
+	pub const RESOURCE: &str = "resource";
+	pub const RESOURCE_ID: &str = "resourceId";
+	pub const RESOURCE_TYPE_ID: &str = "resourceTypeId";
+	pub const RESOURCE_TYPES: &str = "resourceTypes";
+	pub const RESOURCE_TYPE: &str = "resourceType";
 }
