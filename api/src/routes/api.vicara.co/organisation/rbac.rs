@@ -453,12 +453,7 @@ async fn create_role(
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 	let name = if let Some(Value::String(name)) = body.get(request_keys::NAME) {
 		name.clone()
 	} else {
@@ -502,12 +497,7 @@ async fn update_role_permissions(
 		return Ok(context);
 	};
 
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let resource_permissions_map = if let Some(Value::Object(permissions)) =
 		body.get(request_keys::RESOURCE_PERMISSIONS)

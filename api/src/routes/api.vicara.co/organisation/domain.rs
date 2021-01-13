@@ -246,7 +246,7 @@ async fn add_domain_to_organisation(
 		hex::decode(&context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
-	let body = if let Some(Value::Object(body)) = context.get_body_object() {
+	let body = if let Value::Object(body) = context.get_body_object() {
 		body.clone()
 	} else {
 		context.status(400).json(error!(WRONG_PARAMETERS));

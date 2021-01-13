@@ -80,7 +80,7 @@ impl Middleware<EveContext> for EveMiddleware {
 			}
 			EveMiddleware::UrlEncodedParser => {
 				if let Some(value) = url_encoded_parser(&context)? {
-					context.set_body_object(value);
+					context.set_query_object(value);
 				}
 
 				next(context).await

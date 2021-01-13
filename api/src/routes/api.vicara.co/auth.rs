@@ -67,12 +67,7 @@ async fn sign_in(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let user_id =
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
@@ -93,7 +88,7 @@ async fn sign_in(
 
 	let user = if let Some(user) = db::get_user_by_username_or_email(
 		context.get_mysql_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	{
@@ -162,12 +157,7 @@ async fn sign_up(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let username = if let Some(Value::String(username)) =
 		body.get(request_keys::USERNAME)
@@ -257,12 +247,12 @@ async fn sign_up(
 		}
 	};
 
-	if !validator::is_username_valid(username) {
+	if !validator::is_username_valid(&username) {
 		context.json(error!(INVALID_USERNAME));
 		return Ok(context);
 	}
 
-	if !validator::is_email_valid(email) {
+	if !validator::is_email_valid(&email) {
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
@@ -274,12 +264,12 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if !validator::is_password_valid(password) {
+	if !validator::is_password_valid(&password) {
 		context.json(error!(PASSWORD_TOO_WEAK));
 		return Ok(context);
 	}
 
-	if db::get_user_by_username(context.get_mysql_connection(), username)
+	if db::get_user_by_username(context.get_mysql_connection(), &username)
 		.await?
 		.is_some()
 	{
@@ -287,7 +277,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if db::get_user_by_email(context.get_mysql_connection(), email)
+	if db::get_user_by_email(context.get_mysql_connection(), &email)
 		.await?
 		.is_some()
 	{
@@ -348,7 +338,7 @@ async fn sign_up(
 	db::set_user_to_be_signed_up(
 		context.get_mysql_connection(),
 		email.clone(),
-		username,
+		&username,
 		&password,
 		&first_name,
 		&last_name,
@@ -381,12 +371,7 @@ async fn join(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let otp = if let Some(Value::String(token)) =
 		body.get(request_keys::VERIFICATION_TOKEN)
@@ -407,7 +392,7 @@ async fn join(
 	};
 
 	let user_data = if let Some(user_data) =
-		db::get_user_email_to_sign_up(context.get_mysql_connection(), username)
+		db::get_user_email_to_sign_up(context.get_mysql_connection(), &username)
 			.await?
 	{
 		user_data
@@ -733,28 +718,23 @@ async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let query = context.get_query_object().clone();
 
 	let email =
-		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
+		if let Some(Value::String(email)) = query.get(request_keys::EMAIL) {
 			email
 		} else {
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
-	if !validator::is_email_valid(email) {
+	if !validator::is_email_valid(&email) {
 		context.status(400).json(error!(INVALID_EMAIL));
 		return Ok(context);
 	}
 
 	let user =
-		db::get_user_by_email(context.get_mysql_connection(), email).await?;
+		db::get_user_by_email(context.get_mysql_connection(), &email).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -767,15 +747,10 @@ async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let query = context.get_query_object().clone();
 
 	let username = if let Some(Value::String(username)) =
-		body.get(request_keys::USERNAME)
+		query.get(request_keys::USERNAME)
 	{
 		username
 	} else {
@@ -783,13 +758,13 @@ async fn is_username_valid(
 		return Ok(context);
 	};
 
-	if !validator::is_username_valid(username) {
+	if !validator::is_username_valid(&username) {
 		context.status(400).json(error!(INVALID_USERNAME));
 		return Ok(context);
 	}
 
 	let user =
-		db::get_user_by_username(context.get_mysql_connection(), username)
+		db::get_user_by_username(context.get_mysql_connection(), &username)
 			.await?;
 
 	context.json(json!({
@@ -803,12 +778,7 @@ async fn forgot_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let user_id =
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
@@ -820,7 +790,7 @@ async fn forgot_password(
 
 	let user = db::get_user_by_username_or_email(
 		context.get_mysql_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?;
 
@@ -884,12 +854,7 @@ async fn reset_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let new_password = if let Some(Value::String(password)) =
 		body.get(request_keys::PASSWORD)

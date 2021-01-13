@@ -16,7 +16,8 @@ use std::{
 pub struct EveContext {
 	request: Request,
 	response: Response,
-	body_object: Option<Value>,
+	body_object: Value,
+	query_object: Value,
 	render_register: Option<Arc<Handlebars<'static>>>,
 	state: App,
 	db_connection: Option<Transaction<'static, MySql>>,
@@ -29,7 +30,8 @@ impl EveContext {
 		EveContext {
 			request,
 			response: Response::new(),
-			body_object: None,
+			body_object: Value::Null,
+			query_object: Value::Null,
 			render_register,
 			state: state.clone(),
 			db_connection: None,
@@ -60,12 +62,20 @@ impl EveContext {
 		self.db_connection = Some(connection);
 	}
 
-	pub fn get_body_object(&self) -> Option<&Value> {
-		self.body_object.as_ref()
+	pub fn get_body_object(&self) -> &Value {
+		&self.body_object
 	}
 
 	pub fn set_body_object(&mut self, body: Value) {
-		self.body_object = Some(body);
+		self.body_object = body;
+	}
+
+	pub fn get_query_object(&self) -> &Value {
+		&self.query_object
+	}
+
+	pub fn set_query_object(&mut self, query: Value) {
+		self.query_object = query;
 	}
 
 	pub fn get_token_data(&mut self) -> Option<&mut AccessTokenData> {
@@ -138,6 +148,7 @@ impl Clone for EveContext {
 			request: self.request.clone(),
 			response: self.response.clone(),
 			body_object: self.body_object.clone(),
+			query_object: self.query_object.clone(),
 			render_register: self.render_register.clone(),
 			state: self.state.clone(),
 			db_connection: None,

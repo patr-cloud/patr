@@ -104,12 +104,7 @@ async fn is_name_available(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let organisation_name =
 		if let Some(Value::String(name)) = body.get(request_keys::NAME) {
@@ -121,7 +116,7 @@ async fn is_name_available(
 
 	let organisation = db::get_organisation_by_name(
 		context.get_mysql_connection(),
-		organisation_name,
+		&organisation_name,
 	)
 	.await?;
 
@@ -136,12 +131,7 @@ async fn create_new_organisation(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let domain_name =
 		if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN) {
@@ -162,7 +152,7 @@ async fn create_new_organisation(
 
 	let organisation = db::get_organisation_by_name(
 		context.get_mysql_connection(),
-		organisation_name,
+		&organisation_name,
 	)
 	.await?;
 

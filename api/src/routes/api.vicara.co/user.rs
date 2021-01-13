@@ -76,12 +76,7 @@ async fn update_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let first_name: Option<&str> = match body.get(request_keys::FIRST_NAME) {
 		Some(Value::String(first_name)) => Some(first_name),
@@ -157,12 +152,7 @@ async fn add_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let email_address =
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
@@ -177,7 +167,7 @@ async fn add_email_address(
 		return Ok(context);
 	}
 
-	if db::get_user_by_email(context.get_mysql_connection(), email_address)
+	if db::get_user_by_email(context.get_mysql_connection(), &email_address)
 		.await?
 		.is_some()
 	{
@@ -232,12 +222,7 @@ async fn verify_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let body = if let Some(body) = context.get_body_object() {
-		body.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let body = context.get_body_object().clone();
 
 	let email =
 		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
