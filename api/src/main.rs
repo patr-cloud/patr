@@ -9,7 +9,6 @@ mod utils;
 use api_macros::{query, query_as};
 use app::App;
 use eve_rs::handlebars::Handlebars;
-use serde_json::Value;
 use tokio::fs;
 use utils::{constants, logger};
 
@@ -111,6 +110,7 @@ async fn create_render_registry(
 		render_register.register_template_file(
 			path.replace(template_location, "")
 				.replace(".handlebars", "")
+				.replace(".hbs", "")
 				.to_string()
 				.as_ref(),
 			path,

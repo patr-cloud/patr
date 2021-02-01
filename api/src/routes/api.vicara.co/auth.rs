@@ -10,6 +10,7 @@ use crate::{
 	},
 	pin_fn,
 	utils::{
+		self,
 		constants::request_keys,
 		get_current_time,
 		mailer,
@@ -21,12 +22,10 @@ use crate::{
 
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use rand::Rng;
 use serde_json::{json, Value};
 use tokio::task;
 use uuid::Uuid;
 
-// TODO change all get body to query string
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);
 
@@ -285,20 +284,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	let otp = generate_sign_up_otp();
-	let otp = if otp < 10 {
-		format!("00000{}", otp)
-	} else if otp < 100 {
-		format!("0000{}", otp)
-	} else if otp < 1000 {
-		format!("000{}", otp)
-	} else if otp < 10000 {
-		format!("00{}", otp)
-	} else if otp < 100000 {
-		format!("0{}", otp)
-	} else {
-		format!("{}", otp)
-	};
+	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
@@ -340,8 +326,7 @@ async fn sign_up(
 		email.clone(),
 		&username,
 		&password,
-		&first_name,
-		&last_name,
+		(&first_name, &last_name),
 		&token_hash,
 		token_expiry,
 	)
@@ -457,8 +442,7 @@ async fn join(
 		&user_data.username,
 		&user_data.password,
 		&user_data.backup_email,
-		&user_data.first_name,
-		&user_data.last_name,
+		(&user_data.first_name, &user_data.last_name),
 		created,
 	)
 	.await?;
@@ -718,15 +702,14 @@ async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let query = context.get_query_object().clone();
+	let query = context.get_request().get_query().clone();
 
-	let email =
-		if let Some(Value::String(email)) = query.get(request_keys::EMAIL) {
-			email
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let email = if let Some(email) = query.get(request_keys::EMAIL) {
+		email
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
 
 	if !validator::is_email_valid(&email) {
 		context.status(400).json(error!(INVALID_EMAIL));
@@ -747,11 +730,9 @@ async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let query = context.get_query_object().clone();
+	let query = context.get_request().get_query().clone();
 
-	let username = if let Some(Value::String(username)) =
-		query.get(request_keys::USERNAME)
-	{
+	let username = if let Some(username) = query.get(request_keys::USERNAME) {
 		username
 	} else {
 		context.status(400).json(error!(WRONG_PARAMETERS));
@@ -800,20 +781,7 @@ async fn forgot_password(
 	}
 	let user = user.unwrap();
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 999999);
-	let otp = if otp < 10 {
-		format!("00000{}", otp)
-	} else if otp < 100 {
-		format!("0000{}", otp)
-	} else if otp < 1000 {
-		format!("000{}", otp)
-	} else if otp < 10000 {
-		format!("00{}", otp)
-	} else if otp < 100000 {
-		format!("0{}", otp)
-	} else {
-		format!("{}", otp)
-	};
+	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
@@ -960,14 +928,4 @@ async fn reset_password(
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
-}
-
-#[cfg(not(feature = "sample-data"))]
-fn generate_sign_up_otp() -> u32 {
-	rand::thread_rng().gen_range(0, 1_000_000)
-}
-
-#[cfg(feature = "sample-data")]
-fn generate_sign_up_otp() -> u32 {
-	000_000
 }

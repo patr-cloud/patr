@@ -620,6 +620,10 @@ async fn delete_role(
 		return Ok(context);
 	};
 
+	// Remove all users who belong to this role
+	db::remove_all_users_from_role(context.get_mysql_connection(), &role_id)
+		.await?;
+	// Delete role
 	db::delete_role(context.get_mysql_connection(), &role_id).await?;
 
 	context.json(json!({

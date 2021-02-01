@@ -88,7 +88,7 @@ async fn get_organisation_info(
 	if let Some(organisation) = organisation {
 		context.json(json!({
 			request_keys::SUCCESS: true,
-			request_keys::ORGANISATION_ID: organisation_id,
+			request_keys::ORGANISATION_ID: org_id_string,
 			request_keys::NAME: organisation.name,
 			request_keys::ACTIVE: organisation.active,
 			request_keys::CREATED: organisation.created,

@@ -5,6 +5,7 @@ use crate::{
 	models::db_mapping::UserEmailAddress,
 	pin_fn,
 	utils::{
+		self,
 		constants::request_keys,
 		get_current_time,
 		validator,
@@ -175,20 +176,7 @@ async fn add_email_address(
 		return Ok(context);
 	}
 
-	let otp = generate_add_email_address_otp();
-	let otp = if otp < 10 {
-		format!("00000{}", otp)
-	} else if otp < 100 {
-		format!("0000{}", otp)
-	} else if otp < 1000 {
-		format!("000{}", otp)
-	} else if otp < 10000 {
-		format!("00{}", otp)
-	} else if otp < 100000 {
-		format!("0{}", otp)
-	} else {
-		format!("{}", otp)
-	};
+	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
@@ -319,16 +307,4 @@ async fn get_organisations_for_user(
 		request_keys::ORGANISATIONS: organisations
 	}));
 	Ok(context)
-}
-
-#[cfg(not(feature = "sample-data"))]
-fn generate_add_email_address_otp() -> u32 {
-	use rand::Rng;
-
-	rand::thread_rng().gen_range(0, 1_000_000)
-}
-
-#[cfg(feature = "sample-data")]
-fn generate_add_email_address_otp() -> u32 {
-	000_000
 }

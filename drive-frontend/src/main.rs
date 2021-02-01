@@ -1,45 +1,19 @@
-use yew::prelude::*;
+#![recursion_limit = "1024"]
 
-pub struct App;
+mod models;
+mod ui;
 
-impl Component for App {
-	type Message = ();
-	type Properties = ();
+use ui::App;
+use wasm_bindgen::prelude::*;
 
-	fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
-		App
-	}
+#[wasm_bindgen]
+extern "C" {
+	#[wasm_bindgen(js_namespace = window)]
+	fn initMaterialize();
+}
 
-	fn update(&mut self, _: Self::Message) -> ShouldRender {
-		false
-	}
-
-	fn change(&mut self, _: Self::Properties) -> ShouldRender {
-		false
-	}
-
-	fn view(&self) -> Html {
-		html! {
-			// <Router<MainRouter>
-			// 	render=Router::render(|switch: MainRouter| {
-			// 		match switch {
-			// 			MainRouter::SignIn => html! {
-			// 				<SignInComponent />
-			// 			},
-			// 			MainRouter::SignUp => html! {
-			// 				<SignUpComponent />
-			// 			},
-			// 			MainRouter::Home(home_route) => html! {
-			// 				<HomeComponent route = home_route/>
-			// 			}
-			// 		}
-			// 	})
-			// />
-			<div>
-				{"HTML CONTENT GOES HERE"}
-			</div>
-		}
-	}
+pub fn init_materialize() {
+	initMaterialize();
 }
 
 fn main() {

@@ -93,7 +93,7 @@ pub async fn get_organisation_info(
 			id,
 			name,
 			super_admin_id,
-			"active: bool",
+			active as `active: bool`,
 			created
 		FROM
 			organisation
@@ -119,7 +119,7 @@ pub async fn get_organisation_by_name(
 			id,
 			name,
 			super_admin_id,
-			"active: bool",
+			active as `active: bool`,
 			created
 		FROM
 			organisation

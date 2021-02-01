@@ -654,14 +654,10 @@ pub async fn get_permissions_on_resources_for_role(
 			name: row.name,
 			description: row.description,
 		};
-		if permissions.contains_key(&row.resource_id) {
-			permissions
-				.get_mut(&row.resource_id)
-				.unwrap()
-				.push(permission);
-		} else {
-			permissions.insert(row.resource_id, vec![permission]);
-		}
+		permissions
+			.entry(row.resource_id)
+			.or_insert_with(Vec::new)
+			.push(permission);
 	}
 
 	Ok(permissions)
@@ -698,14 +694,10 @@ pub async fn get_permissions_on_resource_types_for_role(
 			name: row.name,
 			description: row.description,
 		};
-		if permissions.contains_key(&row.resource_type_id) {
-			permissions
-				.get_mut(&row.resource_type_id)
-				.unwrap()
-				.push(permission);
-		} else {
-			permissions.insert(row.resource_type_id, vec![permission]);
-		}
+		permissions
+			.entry(row.resource_type_id)
+			.or_insert_with(Vec::new)
+			.push(permission);
 	}
 
 	Ok(permissions)
@@ -810,5 +802,23 @@ pub async fn delete_role(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+pub async fn remove_all_users_from_role(
+	connection: &mut Transaction<'_, MySql>,
+	role_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			organisation_user
+		WHERE
+			role_id = ?;
+		"#,
+		role_id
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }

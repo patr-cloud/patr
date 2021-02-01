@@ -344,8 +344,7 @@ pub async fn set_user_to_be_signed_up(
 	email: UserEmailAddressSignUp,
 	username: &str,
 	password: &[u8],
-	first_name: &str,
-	last_name: &str,
+	(first_name, last_name): (&str, &str),
 	otp_hash: &[u8],
 	otp_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -616,8 +615,7 @@ pub async fn create_user(
 	username: &str,
 	password: &[u8],
 	backup_email: &str,
-	first_name: &str,
-	last_name: &str,
+	(first_name, last_name): (&str, &str),
 	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(

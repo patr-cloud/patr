@@ -136,7 +136,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 	}
 
 	fn get_user_by_username<'a>(
-		users: &'a Vec<SampleDataUser>,
+		users: &'a [SampleDataUser],
 		username: &str,
 	) -> &'a SampleDataUser {
 		users.iter().find(|user| user.username == username).unwrap()

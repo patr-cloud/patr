@@ -68,7 +68,7 @@ pub async fn get_domains_for_organisation(
 		SELECT
 			domain.id,
 			domain.name,
-			"is_verified: bool"
+			is_verified as `is_verified: bool`
 		FROM
 			domain
 		INNER JOIN
@@ -93,7 +93,7 @@ pub async fn get_all_unverified_domains(
 		SELECT
 			id,
 			name,
-			"is_verified: bool"
+			is_verified as `is_verified: bool`
 		FROM
 			domain
 		WHERE
@@ -134,7 +134,7 @@ pub async fn get_all_verified_domains(
 		SELECT
 			id,
 			name,
-			"is_verified: bool"
+			is_verified as `is_verified: bool`
 		FROM
 			domain
 		WHERE
@@ -234,7 +234,7 @@ pub async fn get_domain_by_id(
 		SELECT
 			id,
 			name,
-			"is_verified: bool"
+			is_verified as `is_verified: bool`
 		FROM
 			domain
 		WHERE

@@ -20,83 +20,6 @@
       "nullable": []
     }
   },
-  "088fd10605cd826bfb22a44d52e966740eba19a2f4b0b21f3800cd3774a9ad99": {
-    "query": "SELECT id, name, super_admin_id, \"active: bool\", created FROM organisation WHERE name = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "super_admin_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "active: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 48
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "08ca3806e5ab2178c5fc829db0aae32082ae97cc51e7c9024b2791805abdcbb7": {
     "query": "DELETE FROM resource WHERE id = ?;",
     "describe": {
@@ -232,6 +155,57 @@
       ]
     }
   },
+  "182255c41edae8b0b148bf98e3f3bab99849d85b425960b0afbb08bff9b4a8b2": {
+    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "18b66fbcb4b034f46e5e0a5146213a45396b6b893e3e5ece8fc74fdca937ef63": {
     "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password BINARY(64) NOT NULL, backup_email VARCHAR(320) UNIQUE NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL );",
     "describe": {
@@ -242,6 +216,83 @@
       "nullable": []
     }
   },
+  "18dab6bbd5dd9236b9cd5ef0c6ebabfb547b5766af96b22ab25b671f8c0a5514": {
+    "query": "SELECT id, name, super_admin_id, active as `active: bool`, created FROM organisation WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "active: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "19985f2d68f445f815d54b09c7ce3137489c6b9bd2e3506bf0616ba9e9775d7e": {
     "query": "CREATE TABLE IF NOT EXISTS organisation_user ( user_id BINARY(16) NOT NULL, organisation_id BINARY(16) NOT NULL, role_id BINARY(16) NOT NULL, PRIMARY KEY(user_id, organisation_id, role_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(organisation_id) REFERENCES organisation(id), FOREIGN KEY(role_id) REFERENCES role(id) );",
     "describe": {
@@ -250,6 +301,57 @@
         "Right": 0
       },
       "nullable": []
+    }
+  },
+  "1a896b4c2994e2cf150f5d0cdac886e958d8f12f1b48b876851449783c7ee73a": {
+    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE id = ?",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "1db8bafdde3f2fa4402ed243659f68717f97843536f9ad0e09ff0ffc3d40c5c1": {
@@ -318,83 +420,6 @@
         "Right": 0
       },
       "nullable": []
-    }
-  },
-  "254fc9cc6f574a395d0e2d50135d819690fe5f00f736fd5d323f9a59064a62e3": {
-    "query": "SELECT id, name, super_admin_id, \"active: bool\", created FROM organisation WHERE id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "super_admin_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "active: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 48
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "2800638e0b9b0a15ed2f97715f6b16eee1f5ecd998fbeea9ace67289a8a09643": {
@@ -929,57 +954,6 @@
       "nullable": []
     }
   },
-  "4709402d6dfe679c4657f8485582f5d4f4d08e8f216cf45cc51b1b333a022129": {
-    "query": "SELECT id, name, \"is_verified: bool\" FROM domain WHERE is_verified = TRUE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 68
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "47a70a52811cac523a6c979679939213c839fd3b567eed9e879e13161113787c": {
     "query": "CREATE TABLE IF NOT EXISTS user_unverified_email_address ( /* Personal email address */ email_address VARCHAR(320), user_id BINARY(16) NOT NULL, verification_token_hash BINARY(64) UNIQUE NOT NULL, verification_token_expiry BIGINT UNSIGNED NOT NULL, PRIMARY KEY(email_address, user_id), FOREIGN KEY(user_id) REFERENCES user(id) );",
     "describe": {
@@ -1020,57 +994,6 @@
       "nullable": []
     }
   },
-  "51bdc8376fca00fd6e1a8a95cf4bf5214373706098708bbff121be6a201a2629": {
-    "query": "SELECT id, name, \"is_verified: bool\" FROM domain WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 68
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1089,57 +1012,6 @@
         "Right": 0
       },
       "nullable": []
-    }
-  },
-  "5ce81513ad53b7e8e7972d2f000a6e5c238983361f86459d0a67bcdc91c9c286": {
-    "query": "SELECT domain.id, domain.name, \"is_verified: bool\" FROM domain INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 68
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "63e41055c49bcc16c270cc4dd906c4a1f2c0176228ad9b6f974d8d426e814a28": {
@@ -1778,57 +1650,6 @@
       ]
     }
   },
-  "871b0df46894123af03b51e343bbd539c1fac93238dcbcf84c43955c257ad3e3": {
-    "query": "SELECT id, name, \"is_verified: bool\" FROM domain WHERE id = ?",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 68
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "8a8bbee60fc109098b0ac29824b8f6b0a91959274cadb0aa982f4c68375c9659": {
     "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource_type ( role_id BINARY(16), permission_id BINARY(16), resource_type_id BINARY(16), PRIMARY KEY(role_id, permission_id, resource_type_id), FOREIGN KEY(role_id) REFERENCES role(id), FOREIGN KEY(permission_id) REFERENCES permission(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
     "describe": {
@@ -1969,6 +1790,57 @@
         "Right": 1
       },
       "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "9a6d60a224be2211ef20f30a47ea65f729e640b423fc66d6b866e8ff4b22131f": {
+    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": [
+        false,
         false,
         false
       ]
@@ -2211,6 +2083,134 @@
         "Right": 3
       },
       "nullable": []
+    }
+  },
+  "b7b665b9b9844c24322f7a1153d86945a7380c40e2c40f01b018412e4153e8df": {
+    "query": "SELECT id, name, super_admin_id, active as `active: bool`, created FROM organisation WHERE name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "active: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "b8db8b23ba2514928e24c5d221a4dcbb5ccc819852a8131fb362e77b615d60ee": {
+    "query": "SELECT domain.id, domain.name, is_verified as `is_verified: bool` FROM domain INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "b98f6ad11050eb79fed881ff45dfabde14271b91f1eab617ba8f055d4a189f5b": {
