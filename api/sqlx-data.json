@@ -1573,6 +1573,16 @@
       ]
     }
   },
+  "80d87f55cd48c8ed559d4dd4f4f488109bd7d83c9578f5deb9369818c6f34191": {
+    "query": "DELETE FROM organisation_user WHERE role_id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
   "8659a1c8e68476e1dd39e11fcc5a07c18f488e8f7a0d8cc81c11a5cc8270d006": {
     "query": "SELECT * FROM organisation WHERE super_admin_id = ?;",
     "describe": {
