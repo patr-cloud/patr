@@ -48,6 +48,8 @@ uuid = "0.8.1"
 futures = "0.3.8"
 quote = "1.0.8"
 multer = "1.2.2"
+dotenv = "0.15.0"
+dotenv_codegen = "0.15.0"
 
 [dependencies.log4rs]
 default-features = false
