@@ -60,4 +60,10 @@ pub mod request_keys {
 	pub const RESOURCE_TYPE_ID: &str = "resourceTypeId";
 	pub const RESOURCE_TYPES: &str = "resourceTypes";
 	pub const RESOURCE_TYPE: &str = "resourceType";
+	pub const LOCAL_PORT: &str = "localPort";
+	pub const LOCAL_HOST_NAME: &str = "localHostName";
+	pub const SERVER_PORT: &str = "serverPort";
+	pub const SERVER_IP_ADDRESS: &str = "serverIpAddress";
+	pub const SERVER_USER_NAME: &str = "serverUserName";
+	pub const SCRIPT : &str = "script";
 }

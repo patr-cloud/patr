@@ -8,11 +8,11 @@ mod utils;
 
 use api_macros::{query, query_as};
 use app::App;
+use dotenv::dotenv;
 use eve_rs::handlebars::Handlebars;
+use std::env;
 use tokio::fs;
 use utils::{constants, logger};
-use dotenv::dotenv;
-use std::env;
 
 use std::{error::Error, sync::Arc};
 

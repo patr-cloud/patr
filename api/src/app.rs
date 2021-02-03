@@ -85,6 +85,7 @@ fn eve_error_handler(
 		error.to_string()
 	);
 	response.set_content_type("application/json");
+	response.set_status(500);
 	response.set_body(&error!(SERVER_ERROR).to_string());
 	response
 }
