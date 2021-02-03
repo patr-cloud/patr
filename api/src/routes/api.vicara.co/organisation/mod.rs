@@ -14,6 +14,7 @@ use crate::{
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::{json, Value};
 
+mod pi_tunnel;
 mod application;
 mod domain;
 #[path = "./rbac.rs"]
