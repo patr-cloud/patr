@@ -65,5 +65,5 @@ pub mod request_keys {
 	pub const SERVER_PORT: &str = "serverPort";
 	pub const SERVER_IP_ADDRESS: &str = "serverIpAddress";
 	pub const SERVER_USER_NAME: &str = "serverUserName";
-	pub const SCRIPT : &str = "script";
+	pub const SCRIPT: &str = "script";
 }

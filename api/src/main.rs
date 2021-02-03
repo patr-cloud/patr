@@ -8,9 +8,7 @@ mod utils;
 
 use api_macros::{query, query_as};
 use app::App;
-use dotenv::dotenv;
 use eve_rs::handlebars::Handlebars;
-use std::env;
 use tokio::fs;
 use utils::{constants, logger};
 
@@ -22,9 +20,6 @@ pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	// init env variables
-	dotenv().ok();
-
 	let args = parse_cli_args();
 
 	let config = utils::settings::parse_config();

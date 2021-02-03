@@ -35,8 +35,11 @@ pub type ResourceRequiredFunction = fn(
 ) -> Pin<
 	Box<
 		dyn Future<
-			Output = Result<(EveContext, Option<Resource>), Error<EveContext>>,
-		> + Send,
+				Output = Result<
+					(EveContext, Option<Resource>),
+					Error<EveContext>,
+				>,
+			> + Send,
 	>,
 >;
 
