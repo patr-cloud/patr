@@ -13,7 +13,6 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::env;
 use std::io;
-use std::path::PathBuf;
 use std::fs;
 
 /// END POINTS TO BE ADDED.
@@ -23,7 +22,7 @@ use std::fs;
 
 // todo: implement token auth.
 pub fn creare_sub_app(app: &App) {
-	let sub_app = create_eve_app(app);
+	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
 		"/addUser",
@@ -171,7 +170,7 @@ async fn bash_script_formatter(
 	contents.replace("localPortVariable", local_host_name);
 	contents.replace("localHostNameVaribale", local_host_name);
 	contents.replace("serverPortVariable", server_port);
-	contents.replace("serverHostNameOrIpAddressVariable", server_host_name);
+	contents.replace("serverHostNameOrIpAddressVariable", server_ip_address);
 	contents.replace("serverUserNameVariable", server_user_name);
 
 	Ok(contents)
@@ -179,7 +178,7 @@ async fn bash_script_formatter(
 
 /// returns path to the script file.
 fn get_bash_script_path() -> std::io::Result<PathBuf> {
-	let root_path = env::current_dir()?;
+	let mut root_path = env::current_dir()?;
 	root_path.push("src");
 	root_path.push("assets");
 	root_path.push("pi_tunnel");
