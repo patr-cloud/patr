@@ -133,3 +133,26 @@ pub async fn get_organisation_by_name(
 
 	Ok(rows.into_iter().next())
 }
+
+pub async fn update_organisation_name(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			organisation
+		SET
+			name = ?
+		WHERE
+			id = ?;
+		"#,
+		name,
+		organisation_id,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}

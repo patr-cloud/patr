@@ -146,6 +146,9 @@ async fn update_user_info(
 	)
 	.await?;
 
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
@@ -289,18 +292,17 @@ async fn get_organisations_for_user(
 		context.get_mysql_connection(),
 		&user_id,
 	)
-	.await?;
-	let organisations = organisations
-		.into_iter()
-		.map(|org| {
-			json!({
-				request_keys::ID: hex::encode(org.id),
-				request_keys::NAME: org.name,
-				request_keys::ACTIVE: org.active,
-				request_keys::CREATED: org.created
-			})
+	.await?
+	.into_iter()
+	.map(|org| {
+		json!({
+			request_keys::ID: hex::encode(org.id),
+			request_keys::NAME: org.name,
+			request_keys::ACTIVE: org.active,
+			request_keys::CREATED: org.created
 		})
-		.collect::<Vec<_>>();
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
