@@ -98,7 +98,6 @@ dependencies = [
  "macros",
  "multer",
  "once_cell",
- "quote",
  "rand 0.7.3",
  "redis",
  "regex",

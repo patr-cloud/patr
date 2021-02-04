@@ -46,7 +46,6 @@ tokio = {version = "1", features = ["full"]}
 trust-dns-client = "0.19.5"
 uuid = "0.8.1"
 futures = "0.3.8"
-quote = "1.0.8"
 multer = "1.2.2"
 
 [dependencies.log4rs]
