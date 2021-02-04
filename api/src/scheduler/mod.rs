@@ -33,7 +33,7 @@ async fn run_job(job: Job) {
 			job.schedule.after(last_tick.as_ref().unwrap()).next()
 		{
 			if event > now {
-				time::delay_for(Duration::from_millis(
+				time::sleep(Duration::from_millis(
 					(event - now).num_milliseconds().abs() as u64,
 				))
 				.await;
