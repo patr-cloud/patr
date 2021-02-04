@@ -1,16 +1,20 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac,
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use futures::StreamExt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
-use std::{env, io, path::PathBuf};
-use tokio::fs;
+use shiplift::{ContainerOptions, Docker, PullOptions};
+use std::{
+	env, io,
+	path::{Path, PathBuf},
+};
+use tokio::{fs, io::AsyncWriteExt, prelude::AsyncWrite};
 
 /// END POINTS TO BE ADDED.
 /// addUser/
@@ -44,15 +48,67 @@ async fn add_user(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	// get user name from tokendata
-	let username = &context.get_token_data().unwrap().user;
-
+	let mut username = &context.get_token_data().unwrap().username;
 	// generate unique password
 	let generated_password = generate_password(10);
 
-	// get docker image and expose port
-	// call script to add usern in the image
-	// upon success, return credentials
+	// get user data file
+	let user_data_file_content =
+		get_updated_user_data(username, generated_password).await;
+	if let Err(user_data_error) = user_data_file_content {
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+	let user_data_file_content = user_data_file_content.unwrap();
 
+	// once updated content is received, create a file in home/web/pi_tunnel unique for the given user.
+	// format for file <username>_user_data
+	if let Err(create_file_error) =
+		create_user_data_file(&mut username, user_data_file_content).await
+	{
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+
+	// create container
+	let docker = Docker::new();
+	let image = ""; // todo : insert image name here
+	let mut container_name = String::from(username);
+	container_name.push_str("-container");
+	let voulume_path = String::from("/home/web/pi-tunnel/");
+	voulume_path
+		.push_str("username")
+		.push_str("-user-data")
+		.push_str(":/temp/");
+	let voulmes = vec![&voulume_path[..]];
+
+	match docker
+		.containers()
+		.create(
+			&ContainerOptions::builder(image.as_ref())
+				.name(&container_name)
+				.volumes(voulmes)
+				.expose(4343, "tcp", 6969)
+				.build(),
+		)
+		.await
+	{
+		Err(docker_error) => {
+			context.status(500).json(error!(SERVER_ERROR));
+			return Ok(context);
+		}
+		Ok(container_info) => {
+			let container_id = container_info.id;
+			if let Err(container_start_error) =
+				docker.containers().get(&container_id).start().await
+			{
+				context.status(500).json(error!(SERVER_ERROR));
+				return Ok(context);
+			}
+		}
+	}
+
+	// on success, return ssh port, username,  exposed port, server ip address, password
 	Ok(context)
 }
 
@@ -181,4 +237,46 @@ fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("assets")
 		.join("pi_tunnel")
 		.join("connection-to-pi-server.sh"))
+}
+
+/// reads user data file and replaces username and password with the given values
+async fn get_updated_user_data(
+	username: String,
+	password: String,
+) -> std::io::Result<String> {
+	let path = get_user_data_file_path()?;
+	let mut contents = fs::read_to_string(path).await?;
+	contents = contents
+		.replace("usernameVariable", username)
+		.replace("passwordVariable", password);
+	Ok(contents)
+}
+
+/// returns path to user-data files
+fn get_user_data_file_path() -> std::io::Result<PathBuf> {
+	Ok(env::current_dir()?
+		.join("src")
+		.join("assets")
+		.join("pi_tunnel")
+		.join("user-data"))
+}
+
+/// cretes user data file at /home/web/pi_tunnel
+async fn create_user_data_file(
+	username: &mut String,
+	file_content: String,
+) -> io::Result<()> {
+	// generate file name
+	username.push_str("-user-data.txt");
+	//generate path
+	let path = Path::new("/home")
+		.join("web")
+		.join("pi_tunnel")
+		.join(username);
+
+	// create and write to the file
+	fs::File::create(path)
+		.await?
+		.write_all(file_content.as_bytes())
+		.await
 }

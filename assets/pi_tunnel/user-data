@@ -1,2 +1,2 @@
-export USERNAME=user_name
-export PASSWORD=user_password
+export TUNNEL_USERNAME=usernameVariable
+export TUNNEL_PASSWORD=passwordVariable
