@@ -21,7 +21,7 @@ use tokio::{fs, io::AsyncWriteExt};
 /// deleteTunnel/
 
 // todo: implement token auth.
-pub fn creare_sub_app(app: &App) {
+pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
@@ -33,6 +33,7 @@ pub fn creare_sub_app(app: &App) {
 		"/get-bash-script",
 		&[EveMiddleware::CustomFunction(pin_fn!(get_bash_script))],
 	);
+	sub_app
 }
 
 /// function to create new user in linux machine
