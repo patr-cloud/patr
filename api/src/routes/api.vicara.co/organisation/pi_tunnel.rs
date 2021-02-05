@@ -6,6 +6,7 @@ use crate::{
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use log::debug;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
 use shiplift::{ContainerOptions, Docker};
@@ -29,7 +30,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(add_user))],
 	);
 
-	sub_app.get(
+	sub_app.post(
 		"/get-bash-script",
 		&[EveMiddleware::CustomFunction(pin_fn!(get_bash_script))],
 	);
@@ -185,7 +186,6 @@ async fn get_bash_script(
 		server_user_name,
 	)
 	.await;
-
 	if let Err(error) = bash_script_file_content {
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
@@ -240,10 +240,9 @@ async fn bash_script_formatter(
 /// returns path to the script file.
 fn get_bash_script_path() -> std::io::Result<PathBuf> {
 	Ok(env::current_dir()?
-		.join("src")
 		.join("assets")
 		.join("pi_tunnel")
-		.join("connection-to-pi-server.sh"))
+		.join("connect-pi-to-server.sh"))
 }
 
 /// reads user data file and replaces username and password with the given values

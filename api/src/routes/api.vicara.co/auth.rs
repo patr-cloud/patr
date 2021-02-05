@@ -1,22 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	pin_fn,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time, mailer, validator,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -256,8 +248,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
@@ -286,6 +278,7 @@ async fn sign_up(
 
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+	let response_otp = otp.clone();
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 	let password = argon2::hash_raw(
@@ -347,7 +340,8 @@ async fn sign_up(
 	});
 
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		"OTP" : &response_otp,
 	}));
 	Ok(context)
 }
