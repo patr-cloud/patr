@@ -7,6 +7,7 @@ pub mod id {
 	pub const INVALID_CREDENTIALS: &str = "invalidCredentials";
 	pub const INVALID_USERNAME: &str = "invalidUsername";
 	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
+	pub const INVALID_ORGANISATION_NAME: &str = "invalidOrganisationName";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
@@ -34,10 +35,12 @@ pub mod message {
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
 	pub const INVALID_PASSWORD: &str = "Your username/password is incorrect";
 	pub const INVALID_EMAIL: &str = "Your password seems to be incorrect";
-	pub const INVALID_CREDENTIALS: &str = "Your email address is not valid";
+	pub const INVALID_CREDENTIALS: &str = "Your credentials are not valid";
 	pub const INVALID_USERNAME: &str = "Your username is not valid";
 	pub const INVALID_PHONE_NUMBER: &str =
 		"Your phone number seems to be incorrect";
+	pub const INVALID_ORGANISATION_NAME: &str =
+		"That organisation name is not valid";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
 	pub const WRONG_PARAMETERS: &str =

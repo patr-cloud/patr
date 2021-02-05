@@ -1256,6 +1256,16 @@
       ]
     }
   },
+  "6fa2444bb63e13a9590e092c01ba865ce21d7b2c4a5b434272bda49d9c2ea729": {
+    "query": "UPDATE organisation SET name = ? WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
   "72d233edd83ef70f809909acafef81bb9b0d22834e6568fa909e852c95d82b6e": {
     "query": "SELECT user.* FROM domain INNER JOIN resource ON domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN user ON organisation.super_admin_id = user.id WHERE domain.id = ?;",
     "describe": {
@@ -3036,7 +3046,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_bytesonus_api",
+          "name": "Tables_in_api",
           "type_info": {
             "type": "VarString",
             "flags": {

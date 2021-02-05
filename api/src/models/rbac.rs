@@ -41,6 +41,7 @@ pub mod permissions {
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";
 		pub const DELETE_ROLE: &str = "organisation::deleteRole";
+		pub const EDIT_INFO: &str = "organisation::editInfo";
 	}
 
 	pub mod docker {

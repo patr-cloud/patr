@@ -49,7 +49,16 @@ async fn add_user(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	// get user name from tokendata
-	let username = context.get_token_data().unwrap().user.username.clone();
+	// let username = context.get_token_data().unwrap().user.username.clone();
+	let body = context.get_body_object().clone();
+	let username = if let Some(Value::String(username)) =
+		body.get(request_keys::USERNAME)
+	{
+		username
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
 	// generate unique password
 	let generated_password = generate_password(10);
 
@@ -73,31 +82,36 @@ async fn add_user(
 
 	// create container
 	let docker = Docker::new();
-	let image = "test_tunnel_container"; // todo : insert image name here
-	let mut container_name = String::from(&username);
+	let image = "test_tunnel_container:1.0"; // todo : insert image name here
+	let mut container_name = String::from(username);
 	container_name.push_str("-container");
 	let mut voulume_path = String::from("/home/web/pi-tunnel/");
-	voulume_path.push_str("username");
+	voulume_path.push_str(username);
 	voulume_path.push_str("-user-data");
 	voulume_path.push_str(":/temp/user-data");
-	let voulmes = vec![&voulume_path[..]];
+	let volumes = vec![&voulume_path[..]];
 
 	match docker
 		.containers()
 		.create(
 			&ContainerOptions::builder(image.as_ref())
 				.name(&container_name)
-				.volumes(voulmes)
+				.volumes(volumes)
 				.expose(4343, "tcp", 6969)
 				.build(),
 		)
 		.await
 	{
 		Err(docker_error) => {
+			log::debug!(
+				"Could not create docker image. error => {:#?}",
+				docker_error
+			);
 			context.status(500).json(error!(SERVER_ERROR));
 			return Ok(context);
 		}
 		Ok(container_info) => {
+			log::debug!("fectching docker information...");
 			let container_id = container_info.id;
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
@@ -261,7 +275,6 @@ async fn get_updated_user_data(
 /// returns path to user-data file
 fn get_user_data_file_path() -> std::io::Result<PathBuf> {
 	Ok(env::current_dir()?
-		.join("src")
 		.join("assets")
 		.join("pi_tunnel")
 		.join("user-data"))
@@ -274,11 +287,11 @@ async fn create_user_data_file(
 ) -> io::Result<()> {
 	let mut filename = String::from(username);
 	// generate file name
-	filename.push_str("-user-data.txt");
+	filename.push_str("-user-data");
 	//generate path
 	let path = Path::new("/home")
 		.join("web")
-		.join("pi_tunnel")
+		.join("pi-tunnel")
 		.join(filename);
 
 	// create and write to the file

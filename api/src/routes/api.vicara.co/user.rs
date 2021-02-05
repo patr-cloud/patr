@@ -2,7 +2,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::UserEmailAddress,
+	models::{db_mapping::UserEmailAddress, ExposedUserData},
 	pin_fn,
 	utils::{
 		self,
@@ -33,6 +33,13 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
+		],
+	);
+	app.get(
+		"/:userId/info",
+		&[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
 	app.post(
@@ -70,6 +77,39 @@ async fn get_user_info(
 	data.as_object_mut().unwrap().remove("id");
 
 	context.json(data);
+	Ok(context)
+}
+
+async fn get_user_info_by_user_id(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let user_id = context.get_param(request_keys::USER_ID).unwrap();
+	let user_id = if let Ok(user_id) = hex::decode(user_id) {
+		user_id
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let user_data =
+		db::get_user_by_user_id(context.get_mysql_connection(), &user_id)
+			.await?;
+
+	if user_data.is_none() {
+		context.status(400).json(error!(PROFILE_NOT_FOUND));
+		return Ok(context);
+	}
+	let user_data = user_data.unwrap();
+	let data = ExposedUserData {
+		id: user_id,
+		username: user_data.username,
+		first_name: user_data.first_name,
+		last_name: user_data.last_name,
+		created: user_data.created,
+	};
+
+	context.json(json!(data));
 	Ok(context)
 }
 
@@ -146,6 +186,9 @@ async fn update_user_info(
 	)
 	.await?;
 
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
@@ -289,18 +332,17 @@ async fn get_organisations_for_user(
 		context.get_mysql_connection(),
 		&user_id,
 	)
-	.await?;
-	let organisations = organisations
-		.into_iter()
-		.map(|org| {
-			json!({
-				request_keys::ID: hex::encode(org.id),
-				request_keys::NAME: org.name,
-				request_keys::ACTIVE: org.active,
-				request_keys::CREATED: org.created
-			})
+	.await?
+	.into_iter()
+	.map(|org| {
+		json!({
+			request_keys::ID: hex::encode(org.id),
+			request_keys::NAME: org.name,
+			request_keys::ACTIVE: org.active,
+			request_keys::CREATED: org.created
 		})
-		.collect::<Vec<_>>();
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

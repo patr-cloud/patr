@@ -13,4 +13,4 @@ COPY create-user.sh /temp
 # expose port in the docker image
 EXPOSE 8081 4343
 
-CMD ["bash","-c", "/temp/create-user.sh && rm /temp"]
+CMD ["bash","-c", "/temp/create-user.sh && rm /temp/create-user.sh"]

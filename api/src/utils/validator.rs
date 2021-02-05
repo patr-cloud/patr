@@ -10,6 +10,8 @@ lazy_static! {
 	static ref PHONE_NUMBER_REGEX: Regex = Regex::new("\\+?[0-9]{9,15}$").unwrap();
 	// Needs to have at least 1 a-z, 1 A-Z, 1 0-9 and a special character
 	//static ref PASSWORD_REGEX: Regex = Regex::new("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-+=()])(?=\\S+$).{8,}$").unwrap();
+	// Needs to begin with personal-organisation- and follow up with a 128 bit hex
+	static ref PERSONAL_ORGANISATION_NAME_REGEX: Regex = Regex::new("personal-organisation-[a-z0-9]{32}").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -49,4 +51,8 @@ pub fn is_password_valid(password: &str) -> bool {
 #[allow(dead_code)]
 pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
+}
+
+pub fn is_organisation_name_valid(organisation_name: &str) -> bool {
+	!PERSONAL_ORGANISATION_NAME_REGEX.is_match(organisation_name)
 }
