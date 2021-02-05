@@ -66,4 +66,6 @@ pub mod request_keys {
 	pub const SERVER_IP_ADDRESS: &str = "serverIpAddress";
 	pub const SERVER_USER_NAME: &str = "serverUserName";
 	pub const SCRIPT: &str = "script";
+	pub const SSH_PORT: &str = "sshPort";
+	pub const EXPOSED_PORT: &str = "exposedPort";
 }

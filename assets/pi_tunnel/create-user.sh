@@ -2,6 +2,7 @@
 
 echo "running script file"
 
+# export env variables
 source /temp/user-data
 username=$TUNNEL_USERNAME
 password=$TUNNEL_PASSWORD

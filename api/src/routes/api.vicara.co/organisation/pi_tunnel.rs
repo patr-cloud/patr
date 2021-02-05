@@ -6,15 +6,14 @@ use crate::{
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use futures::StreamExt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
-use shiplift::{ContainerOptions, Docker, PullOptions};
+use shiplift::{ContainerOptions, Docker};
 use std::{
 	env, io,
 	path::{Path, PathBuf},
 };
-use tokio::{fs, io::AsyncWriteExt, prelude::AsyncWrite};
+use tokio::{fs, io::AsyncWriteExt};
 
 /// END POINTS TO BE ADDED.
 /// addUser/
@@ -48,13 +47,13 @@ async fn add_user(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	// get user name from tokendata
-	let mut username = &context.get_token_data().unwrap().username;
+	let username = context.get_token_data().unwrap().user.username.clone();
 	// generate unique password
 	let generated_password = generate_password(10);
 
 	// get user data file
 	let user_data_file_content =
-		get_updated_user_data(username, generated_password).await;
+		get_updated_user_data(username.as_str(), &generated_password).await;
 	if let Err(user_data_error) = user_data_file_content {
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
@@ -62,9 +61,9 @@ async fn add_user(
 	let user_data_file_content = user_data_file_content.unwrap();
 
 	// once updated content is received, create a file in home/web/pi_tunnel unique for the given user.
-	// format for file <username>_user_data
+	// format for filename => <username>_user_data
 	if let Err(create_file_error) =
-		create_user_data_file(&mut username, user_data_file_content).await
+		create_user_data_file(username.as_str(), user_data_file_content).await
 	{
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
@@ -72,14 +71,13 @@ async fn add_user(
 
 	// create container
 	let docker = Docker::new();
-	let image = ""; // todo : insert image name here
-	let mut container_name = String::from(username);
+	let image = "test_tunnel_container"; // todo : insert image name here
+	let mut container_name = String::from(&username);
 	container_name.push_str("-container");
-	let voulume_path = String::from("/home/web/pi-tunnel/");
-	voulume_path
-		.push_str("username")
-		.push_str("-user-data")
-		.push_str(":/temp/");
+	let mut voulume_path = String::from("/home/web/pi-tunnel/");
+	voulume_path.push_str("username");
+	voulume_path.push_str("-user-data");
+	voulume_path.push_str(":/temp/user-data");
 	let voulmes = vec![&voulume_path[..]];
 
 	match docker
@@ -108,6 +106,14 @@ async fn add_user(
 		}
 	}
 
+	context.json(json!({
+		request_keys::SUCCESS : true,
+		request_keys::USERNAME : &username,
+		request_keys::PASSWORD : &generated_password,
+		request_keys::SERVER_IP_ADDRESS : "",
+		request_keys::SSH_PORT : 4343,
+		request_keys::EXPOSED_PORT : vec![8081],
+	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password
 	Ok(context)
 }
@@ -198,7 +204,7 @@ async fn get_bash_script(
 
 // UTIL FUNCTIONS
 
-/// generates random password of given length.
+///generates random password of given length.
 fn generate_password(length: u16) -> String {
 	let password: String = thread_rng()
 		.sample_iter(&Alphanumeric)
@@ -209,7 +215,7 @@ fn generate_password(length: u16) -> String {
 	return password;
 }
 
-/// reads the script file, replaces given data and returns file content as String.
+///reads the script file, replaces given data and returns file content as String.
 async fn bash_script_formatter(
 	local_port: &String,
 	local_host_name: &String,
@@ -241,8 +247,8 @@ fn get_bash_script_path() -> std::io::Result<PathBuf> {
 
 /// reads user data file and replaces username and password with the given values
 async fn get_updated_user_data(
-	username: String,
-	password: String,
+	username: &str,
+	password: &str,
 ) -> std::io::Result<String> {
 	let path = get_user_data_file_path()?;
 	let mut contents = fs::read_to_string(path).await?;
@@ -252,7 +258,7 @@ async fn get_updated_user_data(
 	Ok(contents)
 }
 
-/// returns path to user-data files
+/// returns path to user-data file
 fn get_user_data_file_path() -> std::io::Result<PathBuf> {
 	Ok(env::current_dir()?
 		.join("src")
@@ -263,16 +269,17 @@ fn get_user_data_file_path() -> std::io::Result<PathBuf> {
 
 /// cretes user data file at /home/web/pi_tunnel
 async fn create_user_data_file(
-	username: &mut String,
+	username: &str,
 	file_content: String,
 ) -> io::Result<()> {
+	let mut filename = String::from(username);
 	// generate file name
-	username.push_str("-user-data.txt");
+	filename.push_str("-user-data.txt");
 	//generate path
 	let path = Path::new("/home")
 		.join("web")
 		.join("pi_tunnel")
-		.join(username);
+		.join(filename);
 
 	// create and write to the file
 	fs::File::create(path)
