@@ -1,7 +1,8 @@
-FROM ubuntu:latest
+# FROM ubuntu:latest
+FROM linuxserver/openssh-server:amd64-latest
 
-RUN apt update
-RUN apt install -y openssh-server
+# RUN apt update
+# RUN apt install -y openssh-server
 
 #make a temp dir
 RUN mkdir /temp
@@ -13,4 +14,4 @@ COPY create-user.sh /temp
 # expose port in the docker image
 EXPOSE 8081 4343
 
-CMD ["bash","-c", "/temp/create-user.sh && rm /temp/create-user.sh"]
+# CMD ["bash","-c", "/temp/create-user.sh && rm /temp/create-user.sh"]

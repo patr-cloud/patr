@@ -82,7 +82,7 @@ async fn add_user(
 
 	// create container
 	let docker = Docker::new();
-	let image = "test_tunnel_container:1.0"; // todo : insert image name here
+	let image = "manjeet_test_tunnel:1.0"; // todo : insert image name here
 	let mut container_name = String::from(username);
 	container_name.push_str("-container");
 	let mut voulume_path = String::from("/home/web/pi-tunnel/");
