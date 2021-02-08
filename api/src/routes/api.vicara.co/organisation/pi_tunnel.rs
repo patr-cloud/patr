@@ -1,13 +1,12 @@
 use crate::{
 	app::{create_eve_app, App},
 	db, error,
-	models::rbac,
+	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use futures::{StreamExt, TryStreamExt};
-use log::debug;
+use futures::StreamExt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
 use shiplift::builder::ExecContainerOptions;
@@ -29,7 +28,45 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.post(
 		"/add-user",
-		&[EveMiddleware::CustomFunction(pin_fn!(add_user))],
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::domain::LIST,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID);
+					
+					if org_id_string.is_none() {
+						log::debug!("no org id");
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+
+					let org_id_string = org_id_string.unwrap();
+
+					let organisation_id = hex::decode(&org_id_string);
+					if organisation_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let organisation_id = organisation_id.unwrap();
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_user)),
+		],
 	);
 
 	sub_app.post(
@@ -51,16 +88,9 @@ async fn add_user(
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
 	// get user name from tokendata
-	// let username = context.get_token_data().unwrap().user.username.clone();
-	let body = context.get_body_object().clone();
-	let username = if let Some(Value::String(username)) =
-		body.get(request_keys::USERNAME)
-	{
-		username
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let username = &context.get_token_data().unwrap().user.username.clone();
+	let id = &context.get_token_data().unwrap().user.id.clone();
+
 	// generate unique password
 	let generated_password = generate_password(10);
 
@@ -88,7 +118,7 @@ async fn add_user(
 	let mut container_name = String::from(username);
 	container_name.push_str("-container");
 	let mut voulume_path = String::from("/home/web/pi-tunnel/");
-	voulume_path.push_str(username);
+	voulume_path.push_str(username.as_str());
 	voulume_path.push_str("-user-data");
 	voulume_path.push_str(":/temp/user-data");
 	let volumes = vec![&voulume_path[..]];
@@ -142,6 +172,17 @@ async fn add_user(
 					log::debug!("error occured while executing exec for docker container. Err => {:?}", docker_container_err);
 				}
 			}
+
+			// store data in db
+			db::add_user_for_pi_tunnel(
+				context.get_mysql_connection(),
+				&id[..],
+				username.as_str(),
+				4343,
+				8081,
+				&container_id.as_str(),
+			)
+			.await?;
 		}
 	}
 
@@ -322,3 +363,8 @@ async fn create_user_data_file(
 		.write_all(file_content.as_bytes())
 		.await
 }
+
+// queries for pi tunnel table
+
+// CREATE TABLE IF NOT EXISTS pi_tunnel (id binary(16),username varchar(100), sshPort integer, exposedPort integer, containerId varchar(50));
+// ALTER TABLE pi_tunnel ADD PRIMARY KEY (`id`);
