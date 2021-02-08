@@ -27,14 +27,14 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/add-user",
+		"/:organisationId/add-user",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID);
-					
+					let org_id_string =
+						context.get_param(request_keys::ORGANISATION_ID);
+
 					if org_id_string.is_none() {
 						log::debug!("no org id");
 						context.status(400).json(error!(WRONG_PARAMETERS));
@@ -145,6 +145,7 @@ async fn add_user(
 		Ok(container_info) => {
 			log::debug!("fectching docker information...");
 			let container_id = container_info.id;
+			log::debug!("generated container id is {}", &container_id);
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
 			{

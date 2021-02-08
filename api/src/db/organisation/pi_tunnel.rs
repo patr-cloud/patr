@@ -13,7 +13,7 @@ pub async fn initialize_pi_tunnel_pre(
             username VARCHAR(100), 
             sshPort INTEGER, 
             exposedPort INTEGER, 
-            containerId VARCHAR(50)
+            containerId VARCHAR(64)
         );
         "#
 	)

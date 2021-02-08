@@ -2405,16 +2405,6 @@
       ]
     }
   },
-  "be33285b222dff6b393d5a3fff570ee7fe0f0d35803c85385e56657aacdafc00": {
-    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerId VARCHAR(50) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "c057024a48f7f44b924ee20c14458f43b5798ab122c4f0adf70246a0640200ea": {
     "query": "INSERT INTO password_reset_request VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, token_expiry = ?;",
     "describe": {
@@ -2890,6 +2880,16 @@
   },
   "e6ca3a70fe08bad0f61d4f84b1f83d651912dd175931a0d2ec2786de87064a76": {
     "query": "CREATE TABLE IF NOT EXISTS resource ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BINARY(16) NOT NULL, owner_id BINARY(16), FOREIGN KEY(owner_id) REFERENCES organisation(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e893aecf379f38c3309f8bd6c91d560b450421d5bb59f04f3be90b82a879fa2d": {
+    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerId VARCHAR(64) );",
     "describe": {
       "columns": [],
       "parameters": {

@@ -55,7 +55,7 @@ pub async fn initialize_organisations_post(
 	application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
 	drive::initialize_drive_post(&mut *transaction).await?;
-	pi_tunnel::initialize_pi_tunnel_post(&mut *transaction).await?;
+	// pi_tunnel::initialize_pi_tunnel_post(&mut *transaction).await?;
 
 	Ok(())
 }
