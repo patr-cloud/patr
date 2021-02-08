@@ -6,9 +6,11 @@ use crate::{
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use futures::{StreamExt, TryStreamExt};
 use log::debug;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
+use shiplift::builder::ExecContainerOptions;
 use shiplift::{ContainerOptions, Docker};
 use std::{
 	env, io,
@@ -119,11 +121,31 @@ async fn add_user(
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
 			}
+
+			// once container is started, use exec to run bash command.
+			let container_options = ExecContainerOptions::builder()
+				.cmd(vec![
+					"/bin/bash",
+					"-c",
+					"temp/create-user.sh && rm temp/create-user.sh",
+				])
+				.build();
+
+			while let Some(docker_container) = docker
+				.containers()
+				.get(&container_id)
+				.exec(&container_options)
+				.next()
+				.await
+			{
+				if let Err(docker_container_err) = docker_container {
+					log::debug!("error occured while executing exec for docker container. Err => {:?}", docker_container_err);
+				}
+			}
 		}
 	}
 
-	context.json(json!({
-		request_keys::SUCCESS : true,
+	context.json(json!({		request_keys::SUCCESS : true,
 		request_keys::USERNAME : &username,
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : "",
