@@ -152,14 +152,11 @@ async fn add_user(
 
 	// create container
 	let docker = Docker::new();
-	let image = "manjeet_test_tunnel:1.0"; // todo : insert image name here
-	let mut container_name = String::from(username);
-	container_name.push_str("-container");
-	let mut voulume_path = String::from("/home/web/pi-tunnel/");
-	voulume_path.push_str(username.as_str());
-	voulume_path.push_str("-user-data");
-	voulume_path.push_str(":/temp/user-data");
-	let volumes = vec![&voulume_path[..]];
+	let image = get_docker_image_name();
+	let image = image.as_str();
+	let container_name = get_container_name(username.as_str());
+	let volume_path = get_volume_path(username.as_str());
+	let volumes = vec![&volume_path[..]];
 
 	match docker
 		.containers()
@@ -413,6 +410,32 @@ async fn create_user_data_file(
 		.await
 }
 
+fn get_exposed_port() -> u32 {
+	return 8081;
+}
+
+fn get_ssh_port() -> u32 {
+	return 4343;
+}
+
+fn get_container_name(username: &str) -> String {
+	let mut container_name = String::from(username);
+	container_name.push_str("-container");
+	return container_name;
+}
+
+fn get_docker_image_name() -> String {
+	let image = "manjeet_test_tunnel:1.0";
+	return String::from(image);
+}
+
+fn get_volume_path(username: &str) -> String {
+	let mut volume_path = String::from("/home/web/pi-tunnel/");
+	volume_path.push_str(username);
+	volume_path.push_str("-user-data");
+	volume_path.push_str(":/temp/user-data");
+	return volume_path;
+}
 // queries for pi tunnel table
 
 // CREATE TABLE IF NOT EXISTS pi_tunnel (id binary(16),username varchar(100), sshPort integer, exposedPort integer, containerId varchar(50));
