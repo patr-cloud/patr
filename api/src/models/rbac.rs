@@ -37,6 +37,10 @@ pub mod permissions {
 				"organisation::application::listVersions";
 		}
 
+		pub mod pi_tunnel {
+			pub const ADD: &str = "organisation::pi_tunnel::add";
+		}
+
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";

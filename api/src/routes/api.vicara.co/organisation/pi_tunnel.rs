@@ -30,19 +30,17 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/:organisationId/add-user",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::LIST,
+				permissions::organisation::pi_tunnel::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let org_id_string =
 						context.get_param(request_keys::ORGANISATION_ID);
 
 					if org_id_string.is_none() {
-						log::debug!("no org id");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 
 					let org_id_string = org_id_string.unwrap();
-
 					let organisation_id = hex::decode(&org_id_string);
 					if organisation_id.is_err() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
@@ -55,7 +53,6 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						&organisation_id,
 					)
 					.await?;
-
 					if resource.is_none() {
 						context
 							.status(404)
@@ -79,7 +76,6 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_param(request_keys::ORGANISATION_ID);
 
 					if org_id_string.is_none() {
-						log::debug!("no org id");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
@@ -157,6 +153,9 @@ async fn add_user(
 	let container_name = get_container_name(username.as_str());
 	let volume_path = get_volume_path(username.as_str());
 	let volumes = vec![&volume_path[..]];
+	let host_ssh_port = get_host_ssh_port();
+	let exposed_port = get_exposed_port();
+	let server_ssh_port = get_ssh_port_for_server();
 
 	match docker
 		.containers()
@@ -164,7 +163,7 @@ async fn add_user(
 			&ContainerOptions::builder(image.as_ref())
 				.name(&container_name)
 				.volumes(volumes)
-				.expose(4343, "tcp", 6969)
+				.expose(server_ssh_port, "tcp", host_ssh_port)
 				.build(),
 		)
 		.await
@@ -225,6 +224,15 @@ async fn add_user(
 					"Error while adding data to pi_tunnel table. {:#?}",
 					database_error
 				);
+				// if ther is error in database query, stop the container which just started.
+				if let Err(docker_stop_error) =
+					docker.containers().get(&container_id).stop(None).await
+				{
+					log::error!(
+						"could not stop docker container. Error => {:#?}",
+						docker_stop_error
+					);
+				}
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
 			};
@@ -236,8 +244,8 @@ async fn add_user(
 		request_keys::USERNAME : &username,
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : "",
-		request_keys::SSH_PORT : 4343,
-		request_keys::EXPOSED_PORT : vec![8081],
+		request_keys::SSH_PORT : host_ssh_port,
+		request_keys::EXPOSED_PORT : vec![exposed_port],
 	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password
 	Ok(context)
@@ -351,7 +359,7 @@ async fn bash_script_formatter(
 	let path = get_bash_script_path()?;
 	let mut contents = fs::read_to_string(path).await?;
 	contents = contents
-		.replace("localPortVariable", local_host_name)
+		.replace("localPortVariable", local_port)
 		.replace("localHostNameVaribale", local_host_name)
 		.replace("serverPortVariable", server_port)
 		.replace("serverHostNameOrIpAddressVariable", server_ip_address)
@@ -414,7 +422,11 @@ fn get_exposed_port() -> u32 {
 	return 8081;
 }
 
-fn get_ssh_port() -> u32 {
+fn get_host_ssh_port() -> u32 {
+	return 6969;
+}
+
+fn get_ssh_port_for_server() -> u32 {
 	return 4343;
 }
 
