@@ -70,8 +70,46 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 
 	sub_app.post(
-		"/get-bash-script",
-		&[EveMiddleware::CustomFunction(pin_fn!(get_bash_script))],
+		"/:organisationId/get-bash-script",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::domain::LIST,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let org_id_string =
+						context.get_param(request_keys::ORGANISATION_ID);
+
+					if org_id_string.is_none() {
+						log::debug!("no org id");
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+
+					let org_id_string = org_id_string.unwrap();
+
+					let organisation_id = hex::decode(&org_id_string);
+					if organisation_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let organisation_id = organisation_id.unwrap();
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_bash_script)),
+		],
 	);
 	sub_app
 }
@@ -135,7 +173,7 @@ async fn add_user(
 		.await
 	{
 		Err(docker_error) => {
-			log::debug!(
+			log::error!(
 				"Could not create docker image. error => {:#?}",
 				docker_error
 			);
@@ -145,7 +183,6 @@ async fn add_user(
 		Ok(container_info) => {
 			log::debug!("fectching docker information...");
 			let container_id = container_info.id;
-			log::debug!("generated container id is {}", &container_id);
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
 			{
@@ -170,12 +207,14 @@ async fn add_user(
 				.await
 			{
 				if let Err(docker_container_err) = docker_container {
-					log::debug!("error occured while executing exec for docker container. Err => {:?}", docker_container_err);
+					log::error!("error occured while executing exec for docker container. Err => {:?}", docker_container_err);
+					context.status(500).json(error!(SERVER_ERROR));
+					return Ok(context);
 				}
 			}
 
 			// store data in db
-			db::add_user_for_pi_tunnel(
+			if let Err(database_error) = db::add_user_for_pi_tunnel(
 				context.get_mysql_connection(),
 				&id[..],
 				username.as_str(),
@@ -183,11 +222,20 @@ async fn add_user(
 				8081,
 				&container_id.as_str(),
 			)
-			.await?;
+			.await
+			{
+				log::error!(
+					"Error while adding data to pi_tunnel table. {:#?}",
+					database_error
+				);
+				context.status(500).json(error!(SERVER_ERROR));
+				return Ok(context);
+			};
 		}
 	}
 
-	context.json(json!({		request_keys::SUCCESS : true,
+	context.json(json!({
+		request_keys::SUCCESS : true,
 		request_keys::USERNAME : &username,
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : "",
