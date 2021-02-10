@@ -432,6 +432,16 @@
       "nullable": []
     }
   },
+  "2a2e068c011c9ae5c2c71ffd85eb36e465b098e4edb5ee2d2500644691cb5b5a": {
+    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerName VARCHAR(50) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "2be8c5de464f3454de2f9d7841f4611b2e10717a31054b89b5a9091b6908bb48": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1416,6 +1426,83 @@
         "Right": 0
       },
       "nullable": []
+    }
+  },
+  "768961a8249d92f2043b04336f4f3216d09a20ee812bcf481f7754e1c8814d3a": {
+    "query": "SELECT * FROM pi_tunnel WHERE containerName = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "sshPort",
+          "type_info": {
+            "type": "Long",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 63,
+            "max_size": 11
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposedPort",
+          "type_info": {
+            "type": "Long",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 63,
+            "max_size": 11
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "containerName",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "79b16b905cb201a6e81c6190120324df27fc4372ac663acac6909db3e2a329b9": {
@@ -2880,16 +2967,6 @@
   },
   "e6ca3a70fe08bad0f61d4f84b1f83d651912dd175931a0d2ec2786de87064a76": {
     "query": "CREATE TABLE IF NOT EXISTS resource ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BINARY(16) NOT NULL, owner_id BINARY(16), FOREIGN KEY(owner_id) REFERENCES organisation(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "e893aecf379f38c3309f8bd6c91d560b450421d5bb59f04f3be90b82a879fa2d": {
-    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerId VARCHAR(64) );",
     "describe": {
       "columns": [],
       "parameters": {

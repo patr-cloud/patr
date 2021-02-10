@@ -157,13 +157,31 @@ async fn add_user(
 	let exposed_port = get_exposed_port();
 	let server_ssh_port = get_ssh_port_for_server();
 
+	// check if container name already exists
+	let is_container_available = db::check_if_container_exists(
+		context.get_mysql_connection(),
+		&container_name,
+	)
+	.await;
+	if let Err(container_check_err) = is_container_available {
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	};
+	let is_container_available = is_container_available.unwrap();
+
+	if is_container_available.is_some() {
+		log::error!("Container with the name already exists");
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+
 	match docker
 		.containers()
 		.create(
 			&ContainerOptions::builder(image.as_ref())
 				.name(&container_name)
 				.volumes(volumes)
-				.expose(server_ssh_port, "tcp", host_ssh_port)
+				.expose(2222, "tcp", host_ssh_port)
 				.build(),
 		)
 		.await
@@ -182,6 +200,7 @@ async fn add_user(
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
 			{
+				log::error!("{:?}", container_start_error);
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
 			}
@@ -214,9 +233,9 @@ async fn add_user(
 				context.get_mysql_connection(),
 				&id[..],
 				username.as_str(),
-				4343,
-				8081,
-				&container_id.as_str(),
+				host_ssh_port,
+				exposed_port,
+				&container_name.as_str(),
 			)
 			.await
 			{
@@ -423,7 +442,7 @@ fn get_exposed_port() -> u32 {
 }
 
 fn get_host_ssh_port() -> u32 {
-	return 6969;
+	return 8082;
 }
 
 fn get_ssh_port_for_server() -> u32 {
@@ -437,7 +456,7 @@ fn get_container_name(username: &str) -> String {
 }
 
 fn get_docker_image_name() -> String {
-	let image = "manjeet_test_tunnel:1.0";
+	let image = "third-tunnel:1.0";
 	return String::from(image);
 }
 

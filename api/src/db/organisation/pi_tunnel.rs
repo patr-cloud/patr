@@ -13,7 +13,7 @@ pub async fn initialize_pi_tunnel_pre(
             username VARCHAR(100), 
             sshPort INTEGER, 
             exposedPort INTEGER, 
-            containerId VARCHAR(64)
+            containerName VARCHAR(50)
         );
         "#
 	)
@@ -44,7 +44,7 @@ pub async fn add_user_for_pi_tunnel(
 	username: &str,
 	ssh_port: u32,
 	exposed_port: u32,
-	container_id: &str,
+	container_name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -57,9 +57,36 @@ pub async fn add_user_for_pi_tunnel(
 		username,
 		ssh_port,
 		exposed_port,
-		container_id,
+		container_name,
 	)
 	.execute(connection)
 	.await?;
 	Ok(())
+}
+
+/// function to check if container exists
+pub async fn check_if_container_exists(
+	connection: &mut Transaction<'_, MySql>,
+	container_name: &str,
+) -> Result<Option<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT 
+			*
+		FROM
+			pi_tunnel
+		WHERE
+			containerName = ?;
+		"#,
+		container_name
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+
+	let row = rows.into_iter().next().unwrap();
+	Ok(Some(row.containerName.unwrap()))
 }
