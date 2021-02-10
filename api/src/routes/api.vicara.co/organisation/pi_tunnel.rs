@@ -128,6 +128,7 @@ async fn add_user(
 	// generate unique password
 	let generated_password = generate_password(10);
 
+	// ======= remove start ======
 	// get user data file
 	let user_data_file_content =
 		get_updated_user_data(username.as_str(), &generated_password).await;
@@ -145,6 +146,8 @@ async fn add_user(
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
+
+	// ======= remove end ======
 
 	// create container
 	let docker = Docker::new();
@@ -168,7 +171,6 @@ async fn add_user(
 		return Ok(context);
 	};
 	let is_container_available = is_container_available.unwrap();
-
 	if is_container_available.is_some() {
 		log::error!("Container with the name already exists");
 		context.status(500).json(error!(SERVER_ERROR));
@@ -206,11 +208,15 @@ async fn add_user(
 			let container_id = container_info.id;
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
-			{
+			{	
+				// one possibility of failing is when the contaier with the given name already exists`
+				// so maybe, delete the container here?
 				log::error!("{:?}", container_start_error);
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
 			}
+
+			// ======= remove start ======
 
 			// once container is started, use exec to run bash command.
 			let container_options = ExecContainerOptions::builder()
@@ -235,6 +241,8 @@ async fn add_user(
 				}
 			}
 
+			// ======= remove over ======
+
 			// store data in db
 			if let Err(database_error) = db::add_user_for_pi_tunnel(
 				context.get_mysql_connection(),
@@ -250,7 +258,7 @@ async fn add_user(
 					"Error while adding data to pi_tunnel table. {:#?}",
 					database_error
 				);
-				// if ther is error in database query, stop the container which just started.
+				// if there is an error in database query, stop the container which just started.
 				if let Err(docker_stop_error) =
 					docker.containers().get(&container_id).stop(None).await
 				{
