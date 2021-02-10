@@ -5,10 +5,10 @@ FROM linuxserver/openssh-server:amd64-latest
 # RUN apt install -y openssh-server
 
 #make a temp dir
-RUN mkdir /temp
+# RUN mkdir /temp
 
 #copy shell script to temp dir
-COPY create-user.sh /temp
+# COPY create-user.sh /temp
 
 #export credentials to env and run bash script
 # expose port in the docker image

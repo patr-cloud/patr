@@ -1,7 +1,7 @@
 use crate::{
 	app::{create_eve_app, App},
 	db, error,
-	models::rbac::{self, permissions},
+	models::rbac::permissions,
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
@@ -131,7 +131,7 @@ async fn add_user(
 	// get user data file
 	let user_data_file_content =
 		get_updated_user_data(username.as_str(), &generated_password).await;
-	if let Err(user_data_error) = user_data_file_content {
+	if let Err(_user_data_error) = user_data_file_content {
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
@@ -139,7 +139,7 @@ async fn add_user(
 
 	// once updated content is received, create a file in home/web/pi_tunnel unique for the given user.
 	// format for filename => <username>_user_data
-	if let Err(create_file_error) =
+	if let Err(_create_file_error) =
 		create_user_data_file(username.as_str(), user_data_file_content).await
 	{
 		context.status(500).json(error!(SERVER_ERROR));
@@ -163,7 +163,7 @@ async fn add_user(
 		&container_name,
 	)
 	.await;
-	if let Err(container_check_err) = is_container_available {
+	if let Err(_container_check_err) = is_container_available {
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	};
@@ -181,7 +181,14 @@ async fn add_user(
 			&ContainerOptions::builder(image.as_ref())
 				.name(&container_name)
 				.volumes(volumes)
-				.expose(2222, "tcp", host_ssh_port)
+				.env(vec![
+					format!("name={}", &container_name).as_str(),
+					format!("SUDO_ACCESS={}", true).as_str(),
+					format!("PASSWORD_ACCESS={}", true).as_str(),
+					format!("USER_PASSWORD={}", &generated_password).as_str(),
+					format!("USER_NAME={}", &username).as_str(),
+				])
+				.expose(server_ssh_port, "tcp", host_ssh_port)
 				.build(),
 		)
 		.await
@@ -210,7 +217,7 @@ async fn add_user(
 				.cmd(vec![
 					"/bin/bash",
 					"-c",
-					"temp/create-user.sh && rm temp/create-user.sh",
+					// "temp/create-user.sh && rm temp/create-user.sh",
 				])
 				.build();
 
@@ -336,7 +343,7 @@ async fn get_bash_script(
 		server_user_name,
 	)
 	.await;
-	if let Err(error) = bash_script_file_content {
+	if let Err(_error) = bash_script_file_content {
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
@@ -456,7 +463,7 @@ fn get_container_name(username: &str) -> String {
 }
 
 fn get_docker_image_name() -> String {
-	let image = "third-tunnel:1.0";
+	let image = "new-image:1.0";
 	return String::from(image);
 }
 
