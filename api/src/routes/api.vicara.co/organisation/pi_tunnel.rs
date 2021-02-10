@@ -128,27 +128,6 @@ async fn add_user(
 	// generate unique password
 	let generated_password = generate_password(10);
 
-	// ======= remove start ======
-	// get user data file
-	let user_data_file_content =
-		get_updated_user_data(username.as_str(), &generated_password).await;
-	if let Err(_user_data_error) = user_data_file_content {
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let user_data_file_content = user_data_file_content.unwrap();
-
-	// once updated content is received, create a file in home/web/pi_tunnel unique for the given user.
-	// format for filename => <username>_user_data
-	if let Err(_create_file_error) =
-		create_user_data_file(username.as_str(), user_data_file_content).await
-	{
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-
-	// ======= remove end ======
-
 	// create container
 	let docker = Docker::new();
 	let image = get_docker_image_name();
@@ -208,40 +187,13 @@ async fn add_user(
 			let container_id = container_info.id;
 			if let Err(container_start_error) =
 				docker.containers().get(&container_id).start().await
-			{	
+			{
 				// one possibility of failing is when the contaier with the given name already exists`
 				// so maybe, delete the container here?
 				log::error!("{:?}", container_start_error);
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
 			}
-
-			// ======= remove start ======
-
-			// once container is started, use exec to run bash command.
-			let container_options = ExecContainerOptions::builder()
-				.cmd(vec![
-					"/bin/bash",
-					"-c",
-					// "temp/create-user.sh && rm temp/create-user.sh",
-				])
-				.build();
-
-			while let Some(docker_container) = docker
-				.containers()
-				.get(&container_id)
-				.exec(&container_options)
-				.next()
-				.await
-			{
-				if let Err(docker_container_err) = docker_container {
-					log::error!("error occured while executing exec for docker container. Err => {:?}", docker_container_err);
-					context.status(500).json(error!(SERVER_ERROR));
-					return Ok(context);
-				}
-			}
-
-			// ======= remove over ======
 
 			// store data in db
 			if let Err(database_error) = db::add_user_for_pi_tunnel(
@@ -457,11 +409,11 @@ fn get_exposed_port() -> u32 {
 }
 
 fn get_host_ssh_port() -> u32 {
-	return 8082;
+	return generate_port();
 }
 
 fn get_ssh_port_for_server() -> u32 {
-	return 4343;
+	return 2222;
 }
 
 fn get_container_name(username: &str) -> String {
@@ -482,6 +434,36 @@ fn get_volume_path(username: &str) -> String {
 	volume_path.push_str(":/temp/user-data");
 	return volume_path;
 }
+
+// generates valid port
+pub fn generate_port() -> u32 {
+	let low = 1025;
+	let high = 65535;
+	let port = rand::thread_rng().gen_range(low, high);
+
+	if !is_valid_port(port, low, high) {
+		return generate_port();
+	}
+
+	return port as u32;
+}
+
+/// returns true if port is valid
+pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
+	let restricted_ports = vec![5800, 8080, 9000];
+	if restricted_ports.iter().any(|&port| port == generated_port) {
+		return false;
+	}
+	// check port between 1-1024 && 5900 - 5910s
+	if generated_port <= low
+		|| (generated_port >= 5900 && generated_port <= 5910)
+	{
+		return false;
+	}
+	return true; // valid port
+}
+
+fn get_resource_id() {}
 // queries for pi tunnel table
 
 // CREATE TABLE IF NOT EXISTS pi_tunnel (id binary(16),username varchar(100), sshPort integer, exposedPort integer, containerId varchar(50));
