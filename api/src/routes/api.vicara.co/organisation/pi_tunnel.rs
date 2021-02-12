@@ -206,6 +206,9 @@ async fn add_user(
 			}
 
 			// store data in db
+
+			// add resource to resource table
+
 			if let Err(database_error) = db::add_user_for_pi_tunnel(
 				context.get_mysql_connection(),
 				&id[..],
@@ -220,14 +223,27 @@ async fn add_user(
 					"Error while adding data to pi_tunnel table. {:#?}",
 					database_error
 				);
+
 				// if there is an error in database query, stop the container which just started.
-				if let Err(docker_stop_error) =
+				log::info!("Stopping container {} ...", &container_name);
+				if let Err(container_stop_error) =
 					docker.containers().get(&container_id).stop(None).await
 				{
 					log::error!(
-						"could not stop docker container. Error => {:#?}",
-						docker_stop_error
+						"Error while stopping the container. Error => {:?}",
+						container_stop_error
 					);
+				} else {
+					log::info!("Deleting container...");
+					// delete the container
+					if let Err(container_delete_error) =
+						docker.containers().get(&container_id).delete().await
+					{
+						log::error!(
+							"could not stop delete container. Error => {:#?}",
+							container_delete_error
+						);
+					}
 				}
 				context.status(500).json(error!(SERVER_ERROR));
 				return Ok(context);
