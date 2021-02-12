@@ -123,7 +123,17 @@ async fn add_user(
 ) -> Result<EveContext, Error<EveContext>> {
 	// get user name from tokendata
 	let username = &context.get_token_data().unwrap().user.username.clone();
-	let id = &context.get_token_data().unwrap().user.id.clone();
+
+	// generate new resource id for the generated container.
+	let id = db::generate_new_resource_id(context.get_mysql_connection()).await;
+	if let Err(resource_id_error) = id {
+		log::error!("Error occured while generating resource id for pi tunnel");
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+	let id = id.unwrap();
+	let id = id.as_bytes(); // convert to byte array
+	log::debug!("Generated resource id is {:#?}", &id);
 
 	// generate unique password
 	let generated_password = generate_password(10);
