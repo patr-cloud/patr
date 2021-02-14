@@ -12,6 +12,7 @@ pub mod id {
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
 	pub const EXPIRED: &str = "expired";
+	pub const INVALID_DOMAIN_NAME: &str = "invalidDomainName";
 	pub const UNPRIVILEGED: &str = "unprivileged";
 	pub const SERVER_ERROR: &str = "serverError";
 	pub const EMAIL_TAKEN: &str = "emailTaken";
@@ -33,8 +34,8 @@ pub mod id {
 pub mod message {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
-	pub const INVALID_PASSWORD: &str = "Your username/password is incorrect";
-	pub const INVALID_EMAIL: &str = "Your password seems to be incorrect";
+	pub const INVALID_PASSWORD: &str = "Your password is incorrect";
+	pub const INVALID_EMAIL: &str = "Your email address is invalid";
 	pub const INVALID_CREDENTIALS: &str = "Your credentials are not valid";
 	pub const INVALID_USERNAME: &str = "Your username is not valid";
 	pub const INVALID_PHONE_NUMBER: &str =
@@ -49,6 +50,8 @@ pub mod message {
 		"An error occured. If this persists, please contact the administrator";
 	pub const EXPIRED: &str =
 		"An error occured. If this persists, please try logging in again";
+	pub const INVALID_DOMAIN_NAME: &str =
+		"That doesn't seem to be a valid domain name. Please try another name";
 	pub const UNPRIVILEGED: &str =
 		"You do not have the permission to perform that action";
 	pub const SERVER_ERROR: &str =

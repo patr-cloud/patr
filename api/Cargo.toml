@@ -18,7 +18,7 @@ async-trait = "0.1.36"
 bytes = "0.5.5"
 chrono = "0.4.19"
 clap = "2.33.3"
-cloudflare = {git = "https://github.com/rakshith-ravi/cloudflare-rs"}
+cloudflare = "0.7.3"
 colored = "1.9.3"
 config_rs = {version = "0.10.1", package = "config"}
 cron = "0.6.1"

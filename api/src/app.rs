@@ -13,6 +13,7 @@ use eve_rs::{
 	App as EveApp,
 	Context,
 	Error,
+	HttpMethod,
 	NextHandler,
 	Response,
 };
@@ -50,12 +51,14 @@ pub async fn start_server(app: App) {
 		if cfg!(debug_assertions) {
 			&[
 				EveMiddleware::CustomFunction(pin_fn!(init_states)),
+				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
 				EveMiddleware::JsonParser,
 				EveMiddleware::UrlEncodedParser,
 			]
 		} else {
 			&[
 				EveMiddleware::CustomFunction(pin_fn!(init_states)),
+				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
 				EveMiddleware::Compression(
 					compression::DEFAULT_COMPRESSION_LEVEL,
 				),
@@ -144,4 +147,20 @@ async fn init_states(
 	}
 
 	Ok(context)
+}
+
+async fn add_cors_headers(
+	mut context: EveContext,
+	next: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	context
+		.header("Access-Control-Allow-Origin", "*")
+		.header("Access-Control-Allow-Methods", "*")
+		.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+	if context.get_method() == &HttpMethod::Options {
+		return Ok(context);
+	}
+
+	next(context).await
 }

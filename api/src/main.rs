@@ -56,6 +56,9 @@ async fn main() -> Result<()> {
 		return Ok(());
 	}
 
+	scheduler::domain::refresh_domain_tld_list().await?;
+	log::info!("Domain TLD list initialized");
+
 	scheduler::initialize_jobs(&app);
 	log::debug!("Schedulers initialized");
 

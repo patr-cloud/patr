@@ -268,6 +268,13 @@ async fn sign_up(
 		return Ok(context);
 	}
 
+	if let Some(domain) = domain_name {
+		if !validator::is_domain_name_valid(domain.as_str()).await {
+			context.json(error!(INVALID_DOMAIN_NAME));
+			return Ok(context);
+		}
+	}
+
 	if db::get_user_by_username(context.get_mysql_connection(), &username)
 		.await?
 		.is_some()

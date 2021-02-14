@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use tokio::sync::RwLock;
 
 lazy_static! {
 	// Can only contain a-z, A-Z, 0-9, . and _. Cannot begin with a . (github rules, basically)
@@ -12,6 +13,8 @@ lazy_static! {
 	//static ref PASSWORD_REGEX: Regex = Regex::new("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-+=()])(?=\\S+$).{8,}$").unwrap();
 	// Needs to begin with personal-organisation- and follow up with a 128 bit hex
 	static ref PERSONAL_ORGANISATION_NAME_REGEX: Regex = Regex::new("personal-organisation-[a-z0-9]{32}").unwrap();
+	// List of all TLDs supported by ICANN. Updated every week.
+	pub(crate) static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -37,7 +40,7 @@ pub fn is_password_valid(password: &str) -> bool {
 		if ch.is_numeric() {
 			has_number = true;
 		}
-		if "@#$%^&-+=()".contains(ch) {
+		if "~`!@#$%^&*()-_+=[]{};':\",./<>?".contains(ch) {
 			has_special_character = true
 		}
 	});
@@ -55,4 +58,20 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 
 pub fn is_organisation_name_valid(organisation_name: &str) -> bool {
 	!PERSONAL_ORGANISATION_NAME_REGEX.is_match(organisation_name)
+}
+
+pub async fn is_domain_name_valid(domain: &str) -> bool {
+	let tld_list = DOMAIN_TLD_LIST.read().await;
+	for tld in tld_list.iter() {
+		if !domain.ends_with(tld) {
+			// If domain doesn't end with tld, ignore it
+			continue;
+		}
+		// If it doesn't have a . after removing the TLD and the www., ignore
+		if domain.replace(tld, "").replace("www.", "").contains('.') {
+			continue;
+		}
+		return true;
+	}
+	false
 }

@@ -4,7 +4,7 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{constants::request_keys, validator, EveContext, EveMiddleware},
 };
 
 use argon2::Variant;
@@ -260,6 +260,11 @@ async fn add_domain_to_organisation(
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
+
+	if !validator::is_domain_name_valid(domain.as_str()).await {
+		context.json(error!(INVALID_DOMAIN_NAME));
+		return Ok(context);
+	}
 
 	let domain_exists = db::get_domains_for_organisation(
 		context.get_mysql_connection(),

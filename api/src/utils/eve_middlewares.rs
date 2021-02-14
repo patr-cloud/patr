@@ -35,8 +35,11 @@ pub type ResourceRequiredFunction = fn(
 ) -> Pin<
 	Box<
 		dyn Future<
-			Output = Result<(EveContext, Option<Resource>), Error<EveContext>>,
-		> + Send,
+				Output = Result<
+					(EveContext, Option<Resource>),
+					Error<EveContext>,
+				>,
+			> + Send,
 	>,
 >;
 
@@ -115,7 +118,7 @@ impl Middleware<EveContext> for EveMiddleware {
 				let access_token_valid = token_valid.unwrap();
 
 				if !access_token_valid {
-					context.status(401).json(error!(UNAUTHORIZED));
+					context.status(401).json(error!(EXPIRED));
 					return Ok(context);
 				}
 
