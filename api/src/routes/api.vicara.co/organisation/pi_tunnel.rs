@@ -30,7 +30,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/:organisationId/add-user",
+		"/:organisationId/create",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::pi_tunnel::ADD,
@@ -65,7 +65,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(add_user)),
+			EveMiddleware::CustomFunction(pin_fn!(create)),
 		],
 	);
 
@@ -116,7 +116,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app
 }
 
-async fn add_user(
+async fn create(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
