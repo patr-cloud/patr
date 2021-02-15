@@ -39,6 +39,7 @@ pub mod permissions {
 
 		pub mod pi_tunnel {
 			pub const ADD: &str = "organisation::pi_tunnel::add";
+			pub const VIEW: &str = "organisation::pi_tunnel::view";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
@@ -64,4 +65,5 @@ pub mod resource_types {
 	pub const ORGANISATION: &str = "organisation";
 	pub const DOMAIN: &str = "domain";
 	pub const APPLICATION: &str = "application";
+	pub const PI_TUNNEL: &str = "pi_tunnel";
 }

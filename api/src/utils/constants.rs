@@ -62,10 +62,13 @@ pub mod request_keys {
 	pub const RESOURCE_TYPE: &str = "resourceType";
 	pub const LOCAL_PORT: &str = "localPort";
 	pub const LOCAL_HOST_NAME: &str = "localHostName";
-	pub const SERVER_PORT: &str = "serverPort";
+	pub const EXPOSED_SERVER_PORT: &str = "exposedServerPort";
 	pub const SERVER_IP_ADDRESS: &str = "serverIpAddress";
 	pub const SERVER_USER_NAME: &str = "serverUserName";
 	pub const SCRIPT: &str = "script";
 	pub const SSH_PORT: &str = "sshPort";
 	pub const EXPOSED_PORT: &str = "exposedPort";
+	pub const TUNNEL_NAME: &str = "tunnelName";
+	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
+	pub const HOST_LISTENING_PORT: &str = "hostListeningPort";
 }

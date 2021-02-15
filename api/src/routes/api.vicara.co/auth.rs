@@ -461,7 +461,7 @@ async fn join(
 				db::generate_new_resource_id(context.get_mysql_connection())
 					.await?;
 			let organisation_id = organisation_id.as_bytes();
-
+//
 			db::create_orphaned_resource(
 				context.get_mysql_connection(),
 				organisation_id,

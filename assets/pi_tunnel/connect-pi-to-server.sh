@@ -5,9 +5,10 @@ localPort=localPortVariable
 localHostName=localHostNameVaribale
 
 #get remote server information
-serverPort=serverPortVariable
+exposedServerPort=exposedServerPortVariable
+serverSSHPort=serverSSHPortVariable
 serverHostNameOrIpAddress=serverHostNameOrIpAddressVariable
 serverUserName=serverUserNameVariable
 
 #command to be executed
-ssh -R $serverPort:$localHostName:$localPort $serverUserName@$serverHostNameOrIpAddress
+ssh -R $exposedServerPort:$localHostName:$localPort -p $serverSSHPort $serverUserName@$serverHostNameOrIpAddress

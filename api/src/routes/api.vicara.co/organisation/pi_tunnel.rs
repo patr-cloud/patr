@@ -1,9 +1,11 @@
 use crate::{
 	app::{create_eve_app, App},
 	db, error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys, get_current_time, EveContext, EveMiddleware,
+	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
@@ -14,6 +16,7 @@ use shiplift::{ContainerOptions, Docker};
 use std::{
 	env, io,
 	path::{Path, PathBuf},
+	str::from_utf8,
 };
 use tokio::{fs, io::AsyncWriteExt};
 
@@ -70,12 +73,13 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/:organisationId/get-bash-script",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::LIST,
+				permissions::organisation::pi_tunnel::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let org_id_string =
 						context.get_param(request_keys::ORGANISATION_ID);
 
 					if org_id_string.is_none() {
+						log::debug!("org id is none");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
@@ -84,6 +88,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 					let organisation_id = hex::decode(&org_id_string);
 					if organisation_id.is_err() {
+						log::debug!("could not decoide org id");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
@@ -96,6 +101,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 					.await?;
 
 					if resource.is_none() {
+						log::debug!("resource is none");
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
@@ -110,19 +116,26 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app
 }
 
-/// function to create new user in linux machine
-
-// gets username from the context
-// generates a random 10 character alphanumeric password for the given username
-// adds the user to docker image
-// sends back username, password, ipaddress, port(server) to login into, and port exposed in docker image.
-
 async fn add_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	// get user name from tokendata
+	let body = context.get_body_object().clone();
+	// get tunnel name
+	let tunnel_name = if let Some(Value::String(tunnel_name)) =
+		body.get(request_keys::TUNNEL_NAME)
+	{
+		tunnel_name
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	// get user name and user id from tokendata
 	let username = &context.get_token_data().unwrap().user.username.clone();
+	let user_id = context.get_param(request_keys::ORGANISATION_ID).unwrap();
+	let user_id = hex::decode(&user_id).unwrap();
+	log::debug!("Generated user is is {:#?}", user_id);
 
 	// generate new resource id for the generated container.
 	let id = db::generate_new_resource_id(context.get_mysql_connection()).await;
@@ -145,9 +158,11 @@ async fn add_user(
 	let container_name = get_container_name(username.as_str());
 	let volume_path = get_volume_path(username.as_str());
 	let volumes = vec![&volume_path[..]];
-	let host_ssh_port = get_host_ssh_port();
+	let host_ssh_port = get_port();
 	let exposed_port = get_exposed_port();
 	let server_ssh_port = get_ssh_port_for_server();
+	let host_listen_port = get_port();
+	let server_ip_address = get_server_ip_address();
 
 	// check if container name already exists
 	let is_container_available = db::check_if_container_exists(
@@ -180,6 +195,7 @@ async fn add_user(
 					format!("USER_NAME={}", &username).as_str(),
 				])
 				.expose(server_ssh_port, "tcp", host_ssh_port)
+				.expose(exposed_port, "tcp", host_listen_port)
 				.build(),
 		)
 		.await
@@ -207,8 +223,24 @@ async fn add_user(
 
 			// store data in db
 
-			// add resource to resource table
+			// create resource in db
+			if let Err(resource_err) = db::create_resource(
+				context.get_mysql_connection(),
+				id,
+				&format!("PiTunnel-container-{}", tunnel_name),
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::PI_TUNNEL)
+					.unwrap(),
+				&user_id,
+			)
+			.await
+			{
+				log::error!("error for org query{:?}", resource_err);
+			}
 
+			//  add container information in pi_tunnel table
 			if let Err(database_error) = db::add_user_for_pi_tunnel(
 				context.get_mysql_connection(),
 				&id[..],
@@ -255,8 +287,9 @@ async fn add_user(
 		request_keys::SUCCESS : true,
 		request_keys::USERNAME : &username,
 		request_keys::PASSWORD : &generated_password,
-		request_keys::SERVER_IP_ADDRESS : "",
+		request_keys::SERVER_IP_ADDRESS : &server_ip_address,
 		request_keys::SSH_PORT : host_ssh_port,
+		request_keys::HOST_LISTENING_PORT : host_listen_port,
 		request_keys::EXPOSED_PORT : vec![exposed_port],
 	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password
@@ -266,7 +299,8 @@ async fn add_user(
 // {
 // 	localPort,
 // 	localHostName,
-// 	serverPort,
+// 	exposedServerPort,
+//	serverSSHPort
 // 	serverIPAddress,
 // 	serverUserName
 // }
@@ -274,6 +308,7 @@ async fn get_bash_script(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
+	log::debug!("inside bash script func");
 	// get request body
 	let body = context.get_body_object().clone();
 	let local_port = if let Some(Value::String(local_port)) =
@@ -281,6 +316,7 @@ async fn get_bash_script(
 	{
 		local_port
 	} else {
+		log::debug!("failed at local port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -290,15 +326,17 @@ async fn get_bash_script(
 	{
 		local_host_name
 	} else {
+		log::debug!("failed at local host name");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
-	let server_port = if let Some(Value::String(server_port)) =
-		body.get(request_keys::SERVER_PORT)
+	let exposed_server_port = if let Some(Value::String(exposed_server_port)) =
+		body.get(request_keys::EXPOSED_SERVER_PORT)
 	{
-		server_port
+		exposed_server_port
 	} else {
+		log::debug!("here is exposed server port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -308,6 +346,7 @@ async fn get_bash_script(
 	{
 		server_ip_address
 	} else {
+		log::debug!("failed at server ip address");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -317,6 +356,17 @@ async fn get_bash_script(
 	{
 		server_user_name
 	} else {
+		log::debug!("failed at server user name");
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let server_ssh_port = if let Some(Value::String(server_ssh_port)) =
+		body.get(request_keys::SERVER_SSH_PORT)
+	{
+		server_ssh_port
+	} else {
+		log::debug!("here is exposed server port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -324,9 +374,10 @@ async fn get_bash_script(
 	let bash_script_file_content = bash_script_formatter(
 		local_port,
 		local_host_name,
-		server_port,
+		exposed_server_port,
 		server_ip_address,
 		server_user_name,
+		server_ssh_port,
 	)
 	.await;
 	if let Err(_error) = bash_script_file_content {
@@ -363,9 +414,10 @@ fn generate_password(length: u16) -> String {
 async fn bash_script_formatter(
 	local_port: &String,
 	local_host_name: &String,
-	server_port: &String,
+	exposed_server_port: &String,
 	server_ip_address: &String,
 	server_user_name: &String,
+	server_ssh_port: &String,
 ) -> std::io::Result<String> {
 	// get script file path
 	let path = get_bash_script_path()?;
@@ -373,9 +425,10 @@ async fn bash_script_formatter(
 	contents = contents
 		.replace("localPortVariable", local_port)
 		.replace("localHostNameVaribale", local_host_name)
-		.replace("serverPortVariable", server_port)
+		.replace("exposedServerPortVariable", exposed_server_port)
 		.replace("serverHostNameOrIpAddressVariable", server_ip_address)
-		.replace("serverUserNameVariable", server_user_name);
+		.replace("serverUserNameVariable", server_user_name)
+		.replace("serverSSHPortVariable", server_ssh_port);
 
 	Ok(contents)
 }
@@ -434,7 +487,7 @@ fn get_exposed_port() -> u32 {
 	return 8081;
 }
 
-fn get_host_ssh_port() -> u32 {
+fn get_port() -> u32 {
 	return generate_port();
 }
 
@@ -489,7 +542,9 @@ pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
 	return true; // valid port
 }
 
-fn get_resource_id() {}
+pub fn get_server_ip_address() -> String {
+	return String::from("143.110.179.80");
+}
 // queries for pi tunnel table
 
 // CREATE TABLE IF NOT EXISTS pi_tunnel (id binary(16),username varchar(100), sshPort integer, exposedPort integer, containerId varchar(50));
