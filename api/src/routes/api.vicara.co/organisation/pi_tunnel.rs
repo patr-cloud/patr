@@ -1,20 +1,24 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
-use shiplift::builder::ExecContainerOptions;
-use shiplift::{ContainerOptions, Docker};
+use shiplift::{builder::ExecContainerOptions, ContainerOptions, Docker};
 use std::{
-	env, io,
+	env,
+	io,
 	path::{Path, PathBuf},
 	str::from_utf8,
 };
@@ -534,8 +538,8 @@ pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
 		return false;
 	}
 	// check port between 1-1024 && 5900 - 5910s
-	if generated_port <= low
-		|| (generated_port >= 5900 && generated_port <= 5910)
+	if generated_port <= low ||
+		(generated_port >= 5900 && generated_port <= 5910)
 	{
 		return false;
 	}

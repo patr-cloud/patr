@@ -1,14 +1,22 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	pin_fn,
 	utils::{
-		self, constants::request_keys, get_current_time, mailer, validator,
-		EveContext, EveMiddleware,
+		self,
+		constants::request_keys,
+		get_current_time,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -248,8 +256,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
@@ -461,7 +469,7 @@ async fn join(
 				db::generate_new_resource_id(context.get_mysql_connection())
 					.await?;
 			let organisation_id = organisation_id.as_bytes();
-//
+			//
 			db::create_orphaned_resource(
 				context.get_mysql_connection(),
 				organisation_id,
