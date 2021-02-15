@@ -78,7 +78,6 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_param(request_keys::ORGANISATION_ID);
 
 					if org_id_string.is_none() {
-						log::debug!("org id is none");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
@@ -87,7 +86,6 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 					let organisation_id = hex::decode(&org_id_string);
 					if organisation_id.is_err() {
-						log::debug!("could not decoide org id");
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
@@ -100,7 +98,6 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 					.await?;
 
 					if resource.is_none() {
-						log::debug!("resource is none");
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
@@ -134,18 +131,16 @@ async fn create(
 	let username = &context.get_token_data().unwrap().user.username.clone();
 	let user_id = context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let user_id = hex::decode(&user_id).unwrap();
-	log::debug!("Generated user is is {:#?}", user_id);
 
 	// generate new resource id for the generated container.
 	let id = db::generate_new_resource_id(context.get_mysql_connection()).await;
 	if let Err(resource_id_error) = id {
-		log::error!("Error occured while generating resource id for pi tunnel");
+		log::error!("Error occured while generating resource id for pi tunnel . Error {}", resource_id_error);
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 	let id = id.unwrap();
 	let id = id.as_bytes(); // convert to byte array
-	log::debug!("Generated resource id is {:#?}", &id);
 
 	// generate unique password
 	let generated_password = generate_password(10);
@@ -237,7 +232,10 @@ async fn create(
 			)
 			.await
 			{
-				log::error!("error for org query{:?}", resource_err);
+				log::error!(
+					"Error occured while creating resource. Error => {:?}",
+					resource_err
+				);
 			}
 
 			//  add container information in pi_tunnel table
@@ -309,7 +307,6 @@ async fn get_bash_script(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	log::debug!("inside bash script func");
 	// get request body
 	let body = context.get_body_object().clone();
 	let local_port = if let Some(Value::String(local_port)) =
@@ -317,7 +314,6 @@ async fn get_bash_script(
 	{
 		local_port
 	} else {
-		log::debug!("failed at local port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -327,7 +323,6 @@ async fn get_bash_script(
 	{
 		local_host_name
 	} else {
-		log::debug!("failed at local host name");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -337,7 +332,6 @@ async fn get_bash_script(
 	{
 		exposed_server_port
 	} else {
-		log::debug!("here is exposed server port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -347,7 +341,6 @@ async fn get_bash_script(
 	{
 		server_ip_address
 	} else {
-		log::debug!("failed at server ip address");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -357,7 +350,6 @@ async fn get_bash_script(
 	{
 		server_user_name
 	} else {
-		log::debug!("failed at server user name");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -367,7 +359,6 @@ async fn get_bash_script(
 	{
 		server_ssh_port
 	} else {
-		log::debug!("here is exposed server port");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -503,7 +494,7 @@ fn get_container_name(username: &str) -> String {
 }
 
 fn get_docker_image_name() -> String {
-	let image = "new-image:1.0";
+	let image = "pi_tunnel_image:1.0";
 	return String::from(image);
 }
 
