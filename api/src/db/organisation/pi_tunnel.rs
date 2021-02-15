@@ -13,7 +13,8 @@ pub async fn initialize_pi_tunnel_pre(
             username VARCHAR(100), 
             sshPort INTEGER, 
             exposedPort INTEGER, 
-            containerName VARCHAR(50)
+            containerName VARCHAR(50),
+			tunnelName VARCHAR(50)
         );
         "#
 	)
@@ -45,19 +46,21 @@ pub async fn add_user_for_pi_tunnel(
 	ssh_port: u32,
 	exposed_port: u32,
 	container_name: &str,
+	tunnel_name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
         INSERT INTO
             pi_tunnel
         VALUES
-            (?,?,?,?,?);
+            (?,?,?,?,?,?);
         "#,
 		id,
 		username,
 		ssh_port,
 		exposed_port,
 		container_name,
+		tunnel_name,
 	)
 	.execute(connection)
 	.await?;

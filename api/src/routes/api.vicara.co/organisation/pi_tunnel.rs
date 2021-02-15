@@ -1,14 +1,10 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, get_current_time, EveContext, EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -17,8 +13,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
 use shiplift::{builder::ExecContainerOptions, ContainerOptions, Docker};
 use std::{
-	env,
-	io,
+	env, io,
 	path::{Path, PathBuf},
 	str::from_utf8,
 };
@@ -167,6 +162,7 @@ async fn create(
 	let server_ssh_port = get_ssh_port_for_server();
 	let host_listen_port = get_port();
 	let server_ip_address = get_server_ip_address();
+	let generated_tunnel_name = get_tunnel_name(tunnel_name.as_str());
 
 	// check if container name already exists
 	let is_container_available = db::check_if_container_exists(
@@ -231,7 +227,7 @@ async fn create(
 			if let Err(resource_err) = db::create_resource(
 				context.get_mysql_connection(),
 				id,
-				&format!("PiTunnel-container-{}", tunnel_name),
+				&generated_tunnel_name,
 				rbac::RESOURCE_TYPES
 					.get()
 					.unwrap()
@@ -252,6 +248,7 @@ async fn create(
 				host_ssh_port,
 				exposed_port,
 				&container_name.as_str(),
+				&generated_tunnel_name,
 			)
 			.await
 			{
@@ -538,8 +535,8 @@ pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
 		return false;
 	}
 	// check port between 1-1024 && 5900 - 5910s
-	if generated_port <= low ||
-		(generated_port >= 5900 && generated_port <= 5910)
+	if generated_port <= low
+		|| (generated_port >= 5900 && generated_port <= 5910)
 	{
 		return false;
 	}
@@ -548,6 +545,13 @@ pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
 
 pub fn get_server_ip_address() -> String {
 	return String::from("143.110.179.80");
+}
+
+pub fn get_tunnel_name(tunnel_name: &str) -> String {
+	let mut generated_tunnel_name = String::from("PiTunnel-container-");
+	generated_tunnel_name.push_str(tunnel_name);
+
+	return generated_tunnel_name;
 }
 // queries for pi tunnel table
 

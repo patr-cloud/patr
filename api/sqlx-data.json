@@ -432,16 +432,6 @@
       "nullable": []
     }
   },
-  "2a2e068c011c9ae5c2c71ffd85eb36e465b098e4edb5ee2d2500644691cb5b5a": {
-    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerName VARCHAR(50) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "2be8c5de464f3454de2f9d7841f4611b2e10717a31054b89b5a9091b6908bb48": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1024,6 +1014,16 @@
       "nullable": []
     }
   },
+  "5d01c30f524f24541e7c37b982c945c1c1ba5d7478e02a3dba9e09177e34ee24": {
+    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerName VARCHAR(50), tunnelName VARCHAR(50) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "63e41055c49bcc16c270cc4dd906c4a1f2c0176228ad9b6f974d8d426e814a28": {
     "query": "SELECT * FROM role_permissions_resource_type INNER JOIN permission ON role_permissions_resource_type.permission_id = permission.id WHERE role_permissions_resource_type.role_id = ?;",
     "describe": {
@@ -1491,6 +1491,18 @@
             "char_set": 224,
             "max_size": 200
           }
+        },
+        {
+          "ordinal": 5,
+          "name": "tunnelName",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
         }
       ],
       "parameters": {
@@ -1498,6 +1510,7 @@
       },
       "nullable": [
         false,
+        true,
         true,
         true,
         true,
@@ -1511,16 +1524,6 @@
       "columns": [],
       "parameters": {
         "Right": 4
-      },
-      "nullable": []
-    }
-  },
-  "7d558ac6ada1169108a6674ac3b127a7d7d26e24ac2c8e67e322c9d91fb4b12f": {
-    "query": "INSERT INTO pi_tunnel VALUES (?,?,?,?,?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 5
       },
       "nullable": []
     }
@@ -2941,6 +2944,16 @@
       "columns": [],
       "parameters": {
         "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "de980ce5d02b18608b14882f91ef3830455494b8f1faa66fc3437de804d36fee": {
+    "query": "INSERT INTO pi_tunnel VALUES (?,?,?,?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 6
       },
       "nullable": []
     }
