@@ -266,11 +266,14 @@ async fn create(
 	}
 
 	context.json(json!({
+		request_keys::ID : id,
+		request_keys::TUNNEL_NAME : &generated_tunnel_name,
 		request_keys::SUCCESS : true,
 		request_keys::USERNAME : &username,
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : &server_ip_address,
 		request_keys::SSH_PORT : host_ssh_port,
+		request_keys::CREATED : get_current_time(),
 		request_keys::EXPOSED_PORT : vec![exposed_port],
 	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password

@@ -1,20 +1,12 @@
 use crate::{
-	error,
-	pin_fn,
-	routes,
+	error, pin_fn, routes,
 	utils::{settings::Settings, EveContext, EveMiddleware},
 };
 
 use colored::Colorize;
 use eve_rs::{
-	default_middlewares::compression,
-	handlebars::Handlebars,
-	listen,
-	App as EveApp,
-	Context,
-	Error,
-	NextHandler,
-	Response,
+	default_middlewares::compression, handlebars::Handlebars, listen,
+	App as EveApp, Context, Error, HttpMethod, NextHandler, Response,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::mysql::MySqlPool;
@@ -50,12 +42,14 @@ pub async fn start_server(app: App) {
 		if cfg!(debug_assertions) {
 			&[
 				EveMiddleware::CustomFunction(pin_fn!(init_states)),
+				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
 				EveMiddleware::JsonParser,
 				EveMiddleware::UrlEncodedParser,
 			]
 		} else {
 			&[
 				EveMiddleware::CustomFunction(pin_fn!(init_states)),
+				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
 				EveMiddleware::Compression(
 					compression::DEFAULT_COMPRESSION_LEVEL,
 				),
@@ -69,7 +63,7 @@ pub async fn start_server(app: App) {
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
 	let shutdown_signal = Some(futures::future::pending());
-	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
+	listen(eve_app, ([0, 0, 0, 0], port), shutdown_signal).await;
 }
 
 pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -145,4 +139,20 @@ async fn init_states(
 	}
 
 	Ok(context)
+}
+
+async fn add_cors_headers(
+	mut context: EveContext,
+	next: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	context
+		.header("Access-Control-Allow-Origin", "*")
+		.header("Access-Control-Allow-Methods", "*")
+		.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+	if context.get_method() == &HttpMethod::Options {
+		return Ok(context);
+	}
+
+	next(context).await
 }
