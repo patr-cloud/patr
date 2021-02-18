@@ -261,7 +261,7 @@ async fn add_domain_to_organisation(
 			return Ok(context);
 		};
 
-	if !validator::is_domain_name_valid(domain.as_str()).await {
+	if !validator::is_domain_name_valid(domain_name.as_str()).await {
 		context.json(error!(INVALID_DOMAIN_NAME));
 		return Ok(context);
 	}

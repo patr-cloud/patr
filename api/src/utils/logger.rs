@@ -28,7 +28,7 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 		RunningEnvironment::Development => Config::builder()
 			.appender(
 				Appender::builder()
-					.filter(Box::new(ThresholdFilter::new(LevelFilter::Error)))
+					.filter(Box::new(ThresholdFilter::new(LevelFilter::Off)))
 					.build(
 						"default",
 						Box::new(
@@ -67,7 +67,7 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 					Box::new(
 						RollingFileAppender::builder()
 							.encoder(Box::new(PatternEncoder::new(
-								"[{d(%a, %d-%b-%Y %I:%M:%S %P)} - {l}]: {m}{n}",
+								"[{d(%a, %d-%b-%Y %I:%M:%S %P)} - {M} - {l}]: {m}{n}",
 							)))
 							.append(true)
 							.build(
@@ -84,6 +84,18 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 							)?,
 					),
 				),
+			)
+			.appender(
+				Appender::builder()
+					.filter(Box::new(ThresholdFilter::new(LevelFilter::Off)))
+					.build(
+					"empty",
+					Box::new(
+						ConsoleAppender::builder()
+							.encoder(Box::new(PatternEncoder::new("")))
+							.build(),
+					)
+				)
 			)
 			.appender(
 				Appender::builder()
@@ -157,6 +169,12 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 					.appender("queries")
 					.additive(false)
 					.build("api::queries", LevelFilter::Trace),
+			)
+			.logger(
+				Logger::builder()
+					.appender("empty")
+					.additive(false)
+					.build("sqlx::query", LevelFilter::Error),
 			)
 			.build(
 				Root::builder()

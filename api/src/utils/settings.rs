@@ -12,7 +12,7 @@ pub fn parse_config() -> Settings {
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
-		env::var("APP_ENV").unwrap_or_else(|_| "dev".into())
+		env::var("APP_ENV").unwrap_or_else(|_| "prod".into())
 	};
 
 	match env.as_ref() {
