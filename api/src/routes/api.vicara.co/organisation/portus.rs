@@ -1,10 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -13,26 +17,21 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
 use shiplift::{builder::ExecContainerOptions, ContainerOptions, Docker};
 use std::{
-	env, io,
+	env,
+	io,
 	path::{Path, PathBuf},
 	str::from_utf8,
 };
 use tokio::{fs, io::AsyncWriteExt};
 
-/// END POINTS TO BE ADDED.
-/// addUser/
-/// getBashScript/
-/// deleteTunnel/
-
-// todo: implement token auth.
 pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/:organisationId/create",
+		"/create",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::pi_tunnel::ADD,
+				permissions::organisation::portus::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let org_id_string =
 						context.get_param(request_keys::ORGANISATION_ID);
@@ -69,31 +68,30 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 
 	sub_app.post(
-		"/:organisationId/get-bash-script",
+		"/:tunnelId/get-bash-script",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::pi_tunnel::VIEW,
+				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string =
-						context.get_param(request_keys::ORGANISATION_ID);
+					let tunnel_id_string =
+						context.get_param(request_keys::TUNNEL_ID);
 
-					if org_id_string.is_none() {
+					if tunnel_id_string.is_none() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
+					let tunnel_id_string = tunnel_id_string.unwrap();
 
-					let org_id_string = org_id_string.unwrap();
-
-					let organisation_id = hex::decode(&org_id_string);
-					if organisation_id.is_err() {
+					let tunnel_id = hex::decode(&tunnel_id_string);
+					if tunnel_id.is_err() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
-					let organisation_id = organisation_id.unwrap();
+					let tunnel_id = tunnel_id.unwrap();
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
-						&organisation_id,
+						&tunnel_id,
 					)
 					.await?;
 
@@ -128,18 +126,13 @@ async fn create(
 	};
 
 	// get user name and user id from tokendata
-	let username = &context.get_token_data().unwrap().user.username.clone();
+	let username = generate_username(10);
 	let user_id = context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let user_id = hex::decode(&user_id).unwrap();
 
 	// generate new resource id for the generated container.
-	let id = db::generate_new_resource_id(context.get_mysql_connection()).await;
-	if let Err(resource_id_error) = id {
-		log::error!("Error occured while generating resource id for pi tunnel . Error {}", resource_id_error);
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let id = id.unwrap();
+	let id =
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let id = id.as_bytes(); // convert to byte array
 
 	// generate unique password
@@ -150,19 +143,16 @@ async fn create(
 	let image = get_docker_image_name();
 	let image = image.as_str();
 	let container_name = get_container_name(username.as_str());
-	let volume_path = get_volume_path(username.as_str());
-	let volumes = vec![&volume_path[..]];
 	let host_ssh_port = get_port();
-	let exposed_port = get_exposed_port();
+	let exposed_port = get_port();
 	let server_ssh_port = get_ssh_port_for_server();
-	let host_listen_port = get_port();
 	let server_ip_address = get_server_ip_address();
 	let generated_tunnel_name = get_tunnel_name(tunnel_name.as_str());
 
 	// check if container name already exists
-	let is_container_available = db::check_if_container_exists(
+	let is_container_available = db::check_if_tunnel_exists(
 		context.get_mysql_connection(),
-		&container_name,
+		&generated_tunnel_name,
 	)
 	.await;
 	if let Err(_container_check_err) = is_container_available {
@@ -170,9 +160,10 @@ async fn create(
 		return Ok(context);
 	};
 	let is_container_available = is_container_available.unwrap();
-	if is_container_available.is_some() {
+
+	if is_container_available {
 		log::error!("Container with the name already exists");
-		context.status(500).json(error!(SERVER_ERROR));
+		context.status(500).json(error!(RESOURCE_EXISTS));
 		return Ok(context);
 	}
 
@@ -181,16 +172,14 @@ async fn create(
 		.create(
 			&ContainerOptions::builder(image.as_ref())
 				.name(&container_name)
-				.volumes(volumes)
 				.env(vec![
-					format!("name={}", &container_name).as_str(),
 					format!("SUDO_ACCESS={}", true).as_str(),
 					format!("PASSWORD_ACCESS={}", true).as_str(),
 					format!("USER_PASSWORD={}", &generated_password).as_str(),
 					format!("USER_NAME={}", &username).as_str(),
 				])
 				.expose(server_ssh_port, "tcp", host_ssh_port)
-				.expose(exposed_port, "tcp", host_listen_port)
+				.expose(exposed_port, "tcp", exposed_port)
 				.build(),
 		)
 		.await
@@ -226,7 +215,7 @@ async fn create(
 				rbac::RESOURCE_TYPES
 					.get()
 					.unwrap()
-					.get(rbac::resource_types::PI_TUNNEL)
+					.get(rbac::resource_types::PORTUS)
 					.unwrap(),
 				&user_id,
 			)
@@ -239,13 +228,12 @@ async fn create(
 			}
 
 			//  add container information in pi_tunnel table
-			if let Err(database_error) = db::add_user_for_pi_tunnel(
+			if let Err(database_error) = db::add_user_for_portus(
 				context.get_mysql_connection(),
 				&id[..],
 				username.as_str(),
 				host_ssh_port,
 				exposed_port,
-				&container_name.as_str(),
 				&generated_tunnel_name,
 			)
 			.await
@@ -288,7 +276,6 @@ async fn create(
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : &server_ip_address,
 		request_keys::SSH_PORT : host_ssh_port,
-		request_keys::HOST_LISTENING_PORT : host_listen_port,
 		request_keys::EXPOSED_PORT : vec![exposed_port],
 	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password
@@ -402,6 +389,19 @@ fn generate_password(length: u16) -> String {
 	return password;
 }
 
+/// generates random username of given length
+fn generate_username(length: u16) -> String {
+	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+
+	let username: String = (0..length)
+		.map(|_| {
+			let idx = thread_rng().gen_range(0, CHARSET.len());
+			CHARSET[idx] as char
+		})
+		.collect();
+
+	return username;
+}
 ///reads the script file, replaces given data and returns file content as String.
 async fn bash_script_formatter(
 	local_port: &String,
@@ -433,52 +433,6 @@ fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("connect-pi-to-server.sh"))
 }
 
-/// reads user data file and replaces username and password with the given values
-async fn get_updated_user_data(
-	username: &str,
-	password: &str,
-) -> std::io::Result<String> {
-	let path = get_user_data_file_path()?;
-	let mut contents = fs::read_to_string(path).await?;
-	contents = contents
-		.replace("usernameVariable", username)
-		.replace("passwordVariable", password);
-	Ok(contents)
-}
-
-/// returns path to user-data file
-fn get_user_data_file_path() -> std::io::Result<PathBuf> {
-	Ok(env::current_dir()?
-		.join("assets")
-		.join("pi_tunnel")
-		.join("user-data"))
-}
-
-/// cretes user data file at /home/web/pi_tunnel
-async fn create_user_data_file(
-	username: &str,
-	file_content: String,
-) -> io::Result<()> {
-	let mut filename = String::from(username);
-	// generate file name
-	filename.push_str("-user-data");
-	//generate path
-	let path = Path::new("/home")
-		.join("web")
-		.join("pi-tunnel")
-		.join(filename);
-
-	// create and write to the file
-	fs::File::create(path)
-		.await?
-		.write_all(file_content.as_bytes())
-		.await
-}
-
-fn get_exposed_port() -> u32 {
-	return 8081;
-}
-
 fn get_port() -> u32 {
 	return generate_port();
 }
@@ -494,16 +448,8 @@ fn get_container_name(username: &str) -> String {
 }
 
 fn get_docker_image_name() -> String {
-	let image = "pi_tunnel_image:1.0";
+	let image = "portus_image:1.0";
 	return String::from(image);
-}
-
-fn get_volume_path(username: &str) -> String {
-	let mut volume_path = String::from("/home/web/pi-tunnel/");
-	volume_path.push_str(username);
-	volume_path.push_str("-user-data");
-	volume_path.push_str(":/temp/user-data");
-	return volume_path;
 }
 
 // generates valid port
@@ -526,8 +472,8 @@ pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
 		return false;
 	}
 	// check port between 1-1024 && 5900 - 5910s
-	if generated_port <= low
-		|| (generated_port >= 5900 && generated_port <= 5910)
+	if generated_port <= low ||
+		(generated_port >= 5900 && generated_port <= 5910)
 	{
 		return false;
 	}
@@ -544,7 +490,3 @@ pub fn get_tunnel_name(tunnel_name: &str) -> String {
 
 	return generated_tunnel_name;
 }
-// queries for pi tunnel table
-
-// CREATE TABLE IF NOT EXISTS pi_tunnel (id binary(16),username varchar(100), sshPort integer, exposedPort integer, containerId varchar(50));
-// ALTER TABLE pi_tunnel ADD PRIMARY KEY (`id`);

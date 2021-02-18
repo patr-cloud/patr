@@ -863,6 +863,16 @@
       ]
     }
   },
+  "3b4426e160691528cab008f43477f13ce4a9396f91466736f6463b5ae9299620": {
+    "query": "CREATE TABLE IF NOT EXISTS portus ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, tunnelName VARCHAR(50) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
     "query": "CREATE TABLE IF NOT EXISTS meta_data ( id VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -1006,16 +1016,6 @@
   },
   "5cd0a78fcf69ed853bc49d1efd8afa8cabc699d0ce35fad11b95a256d6571779": {
     "query": "ALTER TABLE domain ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "5d01c30f524f24541e7c37b982c945c1c1ba5d7478e02a3dba9e09177e34ee24": {
-    "query": "CREATE TABLE IF NOT EXISTS pi_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, containerName VARCHAR(50), tunnelName VARCHAR(50) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1428,96 +1428,6 @@
       "nullable": []
     }
   },
-  "768961a8249d92f2043b04336f4f3216d09a20ee812bcf481f7754e1c8814d3a": {
-    "query": "SELECT * FROM pi_tunnel WHERE containerName = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "sshPort",
-          "type_info": {
-            "type": "Long",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 63,
-            "max_size": 11
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposedPort",
-          "type_info": {
-            "type": "Long",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 63,
-            "max_size": 11
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "containerName",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "tunnelName",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "79b16b905cb201a6e81c6190120324df27fc4372ac663acac6909db3e2a329b9": {
     "query": "INSERT INTO resource VALUES (?, ?, ?, ?);",
     "describe": {
@@ -1877,6 +1787,16 @@
       "nullable": []
     }
   },
+  "94e84df16cd545686926e2b0709d5d8056620d2276ba33f808cf848cbc9b1774": {
+    "query": "ALTER TABLE portus ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "991fa0051805c981ee2e6b6669b4f3f05de0a724cf9edb688db6c726f01bd694": {
     "query": "SELECT * FROM application WHERE id = ?;",
     "describe": {
@@ -1964,6 +1884,16 @@
         false,
         false
       ]
+    }
+  },
+  "9b2cdecac860f4af191722a9063c10e65614a7bacf7de858454329f9783df303": {
+    "query": "INSERT INTO portus VALUES (?,?,?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
     }
   },
   "9b8133636b27cc7469941860bdc29710364e8b6b1c6462b0343b77aea0b1f740": {
@@ -2948,16 +2878,6 @@
       "nullable": []
     }
   },
-  "de980ce5d02b18608b14882f91ef3830455494b8f1faa66fc3437de804d36fee": {
-    "query": "INSERT INTO pi_tunnel VALUES (?,?,?,?,?,?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 6
-      },
-      "nullable": []
-    }
-  },
   "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
     "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
     "describe": {
@@ -2966,6 +2886,83 @@
         "Right": 2
       },
       "nullable": []
+    }
+  },
+  "e39ab00b98f19b7be992acc133799623188c04ddf171e43eb09dbf1a4ee06dc9": {
+    "query": "SELECT * FROM portus WHERE tunnelName = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "sshPort",
+          "type_info": {
+            "type": "Long",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 63,
+            "max_size": 11
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposedPort",
+          "type_info": {
+            "type": "Long",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 63,
+            "max_size": 11
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "tunnelName",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
@@ -2980,16 +2977,6 @@
   },
   "e6ca3a70fe08bad0f61d4f84b1f83d651912dd175931a0d2ec2786de87064a76": {
     "query": "CREATE TABLE IF NOT EXISTS resource ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BINARY(16) NOT NULL, owner_id BINARY(16), FOREIGN KEY(owner_id) REFERENCES organisation(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "e9a27c380150aab33beae2937600c9e2f9bb0030b232ff62ff921ab7512c7210": {
-    "query": "ALTER TABLE pi_tunnel ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
       "parameters": {

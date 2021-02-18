@@ -5,12 +5,12 @@ use sqlx::{MySql, Transaction};
 mod application;
 mod domain;
 mod drive;
-mod pi_tunnel;
+mod portus;
 
 pub use application::*;
 pub use domain::*;
 pub use drive::*;
-pub use pi_tunnel::*;
+pub use portus::*;
 
 pub async fn initialize_organisations_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -34,7 +34,7 @@ pub async fn initialize_organisations_pre(
 	application::initialize_application_pre(&mut *transaction).await?;
 	domain::initialize_domain_pre(&mut *transaction).await?;
 	drive::initialize_drive_pre(&mut *transaction).await?;
-	pi_tunnel::initialize_pi_tunnel_pre(&mut *transaction).await?;
+	portus::initialize_portus_pre(&mut *transaction).await?;
 
 	Ok(())
 }
@@ -55,7 +55,7 @@ pub async fn initialize_organisations_post(
 	application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
 	drive::initialize_drive_post(&mut *transaction).await?;
-	pi_tunnel::initialize_pi_tunnel_post(&mut *transaction).await?;
+	portus::initialize_portus_post(&mut *transaction).await?;
 
 	Ok(())
 }

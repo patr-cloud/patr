@@ -71,4 +71,5 @@ pub mod request_keys {
 	pub const TUNNEL_NAME: &str = "tunnelName";
 	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
 	pub const HOST_LISTENING_PORT: &str = "hostListeningPort";
+	pub const TUNNEL_ID: &str = "tunnelId";
 }

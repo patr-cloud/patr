@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 
 mod application;
 mod domain;
-mod pi_tunnel;
+mod portus;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 
@@ -69,7 +69,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/:organisationId/application",
 		application::create_sub_app(app),
 	);
-	sub_app.use_sub_app("/pi-tunnel", pi_tunnel::creare_sub_app(app));
+	sub_app
+		.use_sub_app("/:organisationId/pi-tunnel", portus::creare_sub_app(app));
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
 	sub_app
 		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
