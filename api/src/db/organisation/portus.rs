@@ -13,6 +13,7 @@ pub async fn initialize_portus_pre(
 			username VARCHAR(100),
 			sshPort INTEGER,
 			exposedPort INTEGER,
+			created BIGINT UNSIGNED,
 			tunnelName VARCHAR(50)
 		);
 		"#
@@ -45,18 +46,20 @@ pub async fn add_user_for_portus(
 	ssh_port: u32,
 	exposed_port: u32,
 	tunnel_name: &str,
+	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			portus
 		VALUES
-			(?,?,?,?,?);
+			(?,?,?,?,?,?);
 		"#,
 		id,
 		username,
 		ssh_port,
 		exposed_port,
+		created,
 		tunnel_name,
 	)
 	.execute(connection)

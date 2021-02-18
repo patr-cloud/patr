@@ -17,6 +17,7 @@ use std::{
 	path::{Path, PathBuf},
 	str::from_utf8,
 };
+
 use tokio::{fs, io::AsyncWriteExt};
 
 pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -143,6 +144,7 @@ async fn create(
 	let server_ssh_port = get_ssh_port_for_server();
 	let server_ip_address = get_server_ip_address();
 	let generated_tunnel_name = get_tunnel_name(tunnel_name.as_str());
+	let created_time: u64 = get_current_time();
 
 	// check if container name already exists
 	let is_container_available = db::check_if_tunnel_exists(
@@ -230,6 +232,7 @@ async fn create(
 				host_ssh_port,
 				exposed_port,
 				&generated_tunnel_name,
+				created_time,
 			)
 			.await
 			{
@@ -273,7 +276,7 @@ async fn create(
 		request_keys::PASSWORD : &generated_password,
 		request_keys::SERVER_IP_ADDRESS : &server_ip_address,
 		request_keys::SSH_PORT : host_ssh_port,
-		request_keys::CREATED : get_current_time(),
+		request_keys::CREATED : created_time,
 		request_keys::EXPOSED_PORT : vec![exposed_port],
 	}));
 	// on success, return ssh port, username,  exposed port, server ip address, password

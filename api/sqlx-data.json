@@ -863,16 +863,6 @@
       ]
     }
   },
-  "3b4426e160691528cab008f43477f13ce4a9396f91466736f6463b5ae9299620": {
-    "query": "CREATE TABLE IF NOT EXISTS portus ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, tunnelName VARCHAR(50) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
     "query": "CREATE TABLE IF NOT EXISTS meta_data ( id VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -1886,16 +1876,6 @@
       ]
     }
   },
-  "9b2cdecac860f4af191722a9063c10e65614a7bacf7de858454329f9783df303": {
-    "query": "INSERT INTO portus VALUES (?,?,?,?,?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 5
-      },
-      "nullable": []
-    }
-  },
   "9b8133636b27cc7469941860bdc29710364e8b6b1c6462b0343b77aea0b1f740": {
     "query": "INSERT INTO resource_type VALUES (?, ?, NULL);",
     "describe": {
@@ -2113,6 +2093,16 @@
         false,
         false
       ]
+    }
+  },
+  "b179e72f0f2993fa2971127aba9ee374505bff05489e64d9c0bdca27572a4317": {
+    "query": "CREATE TABLE IF NOT EXISTS portus ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, created BIGINT UNSIGNED, tunnelName VARCHAR(50) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "b57be83f666c81c38197c96f4f9b845e520144d3295f4fb1218a3c34ca7cd1b2": {
@@ -2423,6 +2413,16 @@
         true,
         false
       ]
+    }
+  },
+  "b9ede8a255c5db455a6a734540537bb29415efe6da81927ba8c6f92b2928de8f": {
+    "query": "INSERT INTO portus VALUES (?,?,?,?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 6
+      },
+      "nullable": []
     }
   },
   "c057024a48f7f44b924ee20c14458f43b5798ab122c4f0adf70246a0640200ea": {
@@ -2942,6 +2942,18 @@
         },
         {
           "ordinal": 4,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 5,
           "name": "tunnelName",
           "type_info": {
             "type": "VarString",
@@ -2958,6 +2970,7 @@
       },
       "nullable": [
         false,
+        true,
         true,
         true,
         true,
