@@ -1,12 +1,21 @@
 use crate::{
-	error, pin_fn, routes,
+	error,
+	pin_fn,
+	routes,
 	utils::{settings::Settings, EveContext, EveMiddleware},
 };
 
 use colored::Colorize;
 use eve_rs::{
-	default_middlewares::compression, handlebars::Handlebars, listen,
-	App as EveApp, Context, Error, HttpMethod, NextHandler, Response,
+	default_middlewares::compression,
+	handlebars::Handlebars,
+	listen,
+	App as EveApp,
+	Context,
+	Error,
+	HttpMethod,
+	NextHandler,
+	Response,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::mysql::MySqlPool;

@@ -286,7 +286,6 @@ async fn sign_up(
 
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-	let response_otp = otp.clone();
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 	let password = argon2::hash_raw(
@@ -348,8 +347,7 @@ async fn sign_up(
 	});
 
 	context.json(json!({
-		request_keys::SUCCESS: true,
-		"OTP" : &response_otp,
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

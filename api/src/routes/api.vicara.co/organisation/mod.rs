@@ -1,10 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys, get_current_time, validator, EveContext,
+		constants::request_keys,
+		get_current_time,
+		validator,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -105,8 +109,8 @@ async fn get_organisation_info(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
-	if !access_token_data.orgs.contains_key(&org_id_string)
-		&& access_token_data.user.id != god_user_id
+	if !access_token_data.orgs.contains_key(&org_id_string) &&
+		access_token_data.user.id != god_user_id
 	{
 		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 		return Ok(context);
