@@ -1,29 +1,21 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		EveContext,
-		EveMiddleware,
+		constants::{self, request_keys},
+		get_current_time, EveContext, EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use futures::StreamExt;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::{json, Value};
-use shiplift::{builder::ExecContainerOptions, ContainerOptions, Docker};
-use std::{
-	env,
-	io,
-	path::{Path, PathBuf},
-	str::from_utf8,
-};
+use shiplift::{ContainerOptions, Docker};
+use sqlx::{MySql, Transaction};
+use std::{env, error::Error as StdError, path::PathBuf};
 
-use tokio::{fs, io::AsyncWriteExt};
+use tokio::fs;
 
 pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
@@ -34,16 +26,16 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string =
+					let org_id =
 						context.get_param(request_keys::ORGANISATION_ID);
 
-					if org_id_string.is_none() {
+					if org_id.is_none() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
 
-					let org_id_string = org_id_string.unwrap();
-					let organisation_id = hex::decode(&org_id_string);
+					let org_id = org_id.unwrap();
+					let organisation_id = hex::decode(&org_id);
 					if organisation_id.is_err() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
@@ -74,16 +66,15 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let tunnel_id_string =
-						context.get_param(request_keys::TUNNEL_ID);
+					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
 
-					if tunnel_id_string.is_none() {
+					if tunnel_id.is_none() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
 					}
-					let tunnel_id_string = tunnel_id_string.unwrap();
+					let tunnel_id = tunnel_id.unwrap();
 
-					let tunnel_id = hex::decode(&tunnel_id_string);
+					let tunnel_id = hex::decode(&tunnel_id);
 					if tunnel_id.is_err() {
 						context.status(400).json(error!(WRONG_PARAMETERS));
 						return Ok((context, None));
@@ -128,51 +119,47 @@ async fn create(
 
 	// get user name and user id from tokendata
 	let username = generate_username(10);
-	let user_id = context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let user_id = hex::decode(&user_id).unwrap();
+	let organisation_id =
+		context.get_param(request_keys::ORGANISATION_ID).unwrap();
+	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	// generate new resource id for the generated container.
-	let id =
+	let resource_id =
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
-	let id = id.as_bytes(); // convert to byte array
+	let resource_id = resource_id.as_bytes(); // convert to byte array
 
 	// generate unique password
 	let generated_password = generate_password(10);
 
 	// create container
 	let docker = Docker::new();
-	let image = get_docker_image_name();
-	let image = image.as_str();
+	let image = constants::PORTUS_DOCKER_IMAGE;
 	let container_name = get_container_name(username.as_str());
-	let host_ssh_port = get_port();
-	let exposed_port = get_port();
-	let server_ssh_port = get_ssh_port_for_server();
+	let ssh_port =
+		assign_available_port(context.get_mysql_connection()).await?;
+	let exposed_port =
+		assign_available_port(context.get_mysql_connection()).await?;
+	let image_ssh_port = get_ssh_port_for_server();
 	let server_ip_address = get_server_ip_address();
-	let generated_tunnel_name = get_tunnel_name(tunnel_name.as_str());
-	let created_time: u64 = get_current_time();
+	let created = get_current_time();
 
 	// check if container name already exists
-	let is_container_available = db::check_if_tunnel_exists(
+	let portus_tunnel = db::get_portus_tunnel_by_name(
 		context.get_mysql_connection(),
-		&generated_tunnel_name,
+		&tunnel_name,
 	)
-	.await;
-	if let Err(_container_check_err) = is_container_available {
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	};
-	let is_container_available = is_container_available.unwrap();
+	.await?;
 
-	if is_container_available {
-		log::error!("Container with the name already exists");
+	if portus_tunnel.is_some() {
+		log::info!("Container with the name already exists");
 		context.status(500).json(error!(RESOURCE_EXISTS));
 		return Ok(context);
 	}
 
-	match docker
+	let container_info = docker
 		.containers()
 		.create(
-			&ContainerOptions::builder(image.as_ref())
+			&ContainerOptions::builder(image)
 				.name(&container_name)
 				.env(vec![
 					format!("SUDO_ACCESS={}", true).as_str(),
@@ -180,111 +167,96 @@ async fn create(
 					format!("USER_PASSWORD={}", &generated_password).as_str(),
 					format!("USER_NAME={}", &username).as_str(),
 				])
-				.expose(server_ssh_port, "tcp", host_ssh_port)
+				.expose(image_ssh_port, "tcp", ssh_port)
 				.expose(exposed_port, "tcp", exposed_port)
 				.build(),
 		)
-		.await
-	{
-		Err(docker_error) => {
+		.await?;
+
+	log::trace!("Fetching docker information...");
+	let container_id = container_info.id;
+
+	let container_start_result =
+		docker.containers().get(&container_id).start().await;
+
+	// create resource in db
+	let create_resource_result = db::create_resource(
+		context.get_mysql_connection(),
+		resource_id,
+		&format!("portus-tunnel-{}", tunnel_name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::PORTUS)
+			.unwrap(),
+		&organisation_id,
+	)
+	.await;
+
+	let create_tunnel_result = db::add_user_for_portus(
+		context.get_mysql_connection(),
+		resource_id,
+		&username,
+		ssh_port,
+		exposed_port,
+		&tunnel_name,
+		created,
+	)
+	.await;
+
+	//  add container information in portus table
+	type StdErrorType = Box<dyn StdError + Send + 'static>;
+	let tunnel_register_result = container_start_result
+		.map_err::<StdErrorType, _>(|err| Box::new(err))
+		.and(
+			create_resource_result
+				.map_err::<StdErrorType, _>(|err| Box::new(err)),
+		)
+		.and(
+			create_tunnel_result
+				.map_err::<StdErrorType, _>(|err| Box::new(err)),
+		);
+	if let Err(err) = tunnel_register_result {
+		log::error!("Error while adding data to portus table. {:#?}", err);
+
+		// if there is an error in database query, stop the container which just started.
+		log::info!("Stopping container {} ...", &container_name);
+		let container_stop_result =
+			docker.containers().get(&container_id).stop(None).await;
+
+		if let Err(err) = container_stop_result {
 			log::error!(
-				"Could not create docker image. error => {:#?}",
-				docker_error
+				"Error while stopping the container. Error => {:?}",
+				err
 			);
-			context.status(500).json(error!(SERVER_ERROR));
-			return Ok(context);
 		}
-		Ok(container_info) => {
-			log::debug!("fectching docker information...");
-			let container_id = container_info.id;
-			if let Err(container_start_error) =
-				docker.containers().get(&container_id).start().await
-			{
-				// one possibility of failing is when the contaier with the given name already exists`
-				// so maybe, delete the container here?
-				log::error!("{:?}", container_start_error);
-				context.status(500).json(error!(SERVER_ERROR));
-				return Ok(context);
-			}
 
-			// store data in db
-
-			// create resource in db
-			if let Err(resource_err) = db::create_resource(
-				context.get_mysql_connection(),
-				id,
-				&generated_tunnel_name,
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::PORTUS)
-					.unwrap(),
-				&user_id,
-			)
-			.await
-			{
-				log::error!(
-					"Error occured while creating resource. Error => {:?}",
-					resource_err
-				);
-			}
-
-			//  add container information in pi_tunnel table
-			if let Err(database_error) = db::add_user_for_portus(
-				context.get_mysql_connection(),
-				&id[..],
-				username.as_str(),
-				host_ssh_port,
-				exposed_port,
-				&generated_tunnel_name,
-				created_time,
-			)
-			.await
-			{
-				log::error!(
-					"Error while adding data to pi_tunnel table. {:#?}",
-					database_error
-				);
-
-				// if there is an error in database query, stop the container which just started.
-				log::info!("Stopping container {} ...", &container_name);
-				if let Err(container_stop_error) =
-					docker.containers().get(&container_id).stop(None).await
-				{
-					log::error!(
-						"Error while stopping the container. Error => {:?}",
-						container_stop_error
-					);
-				} else {
-					log::info!("Deleting container...");
-					// delete the container
-					if let Err(container_delete_error) =
-						docker.containers().get(&container_id).delete().await
-					{
-						log::error!(
-							"could not stop delete container. Error => {:#?}",
-							container_delete_error
-						);
-					}
-				}
-				context.status(500).json(error!(SERVER_ERROR));
-				return Ok(context);
-			};
+		log::info!("Deleting container...");
+		// delete the container
+		let container_delete_result =
+			docker.containers().get(&container_id).delete().await;
+		if let Err(err) = container_delete_result {
+			log::error!("could not delete container. Error => {:#?}", err);
 		}
-	}
 
-	context.json(json!({
-		request_keys::ID : id,
-		request_keys::TUNNEL_NAME : &generated_tunnel_name,
-		request_keys::SUCCESS : true,
-		request_keys::USERNAME : &username,
-		request_keys::PASSWORD : &generated_password,
-		request_keys::SERVER_IP_ADDRESS : &server_ip_address,
-		request_keys::SSH_PORT : host_ssh_port,
-		request_keys::CREATED : created_time,
-		request_keys::EXPOSED_PORT : vec![exposed_port],
-	}));
+		context.status(500).json(error!(SERVER_ERROR));
+		let err_message =
+			format!("Error creating container for portus tunnel: {:?}", err);
+		return Err(Error::new(None, err_message, 500, err));
+	};
+
 	// on success, return ssh port, username,  exposed port, server ip address, password
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ID: resource_id,
+		request_keys::TUNNEL_NAME: &tunnel_name,
+		request_keys::USERNAME: &username,
+		request_keys::PASSWORD: &generated_password,
+		request_keys::SERVER_IP_ADDRESS: &server_ip_address,
+		request_keys::SSH_PORT: ssh_port,
+		request_keys::CREATED: created,
+		request_keys::EXPOSED_PORT: vec![exposed_port],
+	}));
 	Ok(context)
 }
 
@@ -386,28 +358,24 @@ async fn get_bash_script(
 
 ///generates random password of given length.
 fn generate_password(length: u16) -> String {
-	let password: String = thread_rng()
+	thread_rng()
 		.sample_iter(&Alphanumeric)
 		.take(length.into())
-		.map(char::from)
-		.collect();
-
-	return password;
+		.collect()
 }
 
 /// generates random username of given length
 fn generate_username(length: u16) -> String {
 	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
-	let username: String = (0..length)
+	(0..length)
 		.map(|_| {
 			let idx = thread_rng().gen_range(0, CHARSET.len());
 			CHARSET[idx] as char
 		})
-		.collect();
-
-	return username;
+		.collect()
 }
+
 ///reads the script file, replaces given data and returns file content as String.
 async fn bash_script_formatter(
 	local_port: &String,
@@ -439,60 +407,39 @@ fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("connect-pi-to-server.sh"))
 }
 
-fn get_port() -> u32 {
-	return generate_port();
-}
-
 fn get_ssh_port_for_server() -> u32 {
 	return 2222;
 }
 
 fn get_container_name(username: &str) -> String {
-	let mut container_name = String::from(username);
-	container_name.push_str("-container");
-	return container_name;
-}
-
-fn get_docker_image_name() -> String {
-	let image = "portus_image:1.0";
-	return String::from(image);
+	format!("{}-container", username)
 }
 
 // generates valid port
-pub fn generate_port() -> u32 {
+async fn assign_available_port(
+	transaction: &mut Transaction<'_, MySql>,
+) -> Result<u32, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;
-	let port = rand::thread_rng().gen_range(low, high);
+	let restricted_ports = [5800, 8080, 9000];
 
-	if !is_valid_port(port, low, high) {
-		return generate_port();
+	loop {
+		let port = rand::thread_rng().gen_range(low, high);
+		if restricted_ports.contains(&port) {
+			continue;
+		}
+		if port >= 5900 && port <= 5910 {
+			continue;
+		}
+		let port_available =
+			db::is_portus_port_available(transaction, port).await?;
+		if !port_available {
+			continue;
+		}
+		return Ok(port);
 	}
-
-	return port as u32;
 }
 
-/// returns true if port is valid
-pub fn is_valid_port(generated_port: i32, low: i32, high: i32) -> bool {
-	let restricted_ports = vec![5800, 8080, 9000];
-	if restricted_ports.iter().any(|&port| port == generated_port) {
-		return false;
-	}
-	// check port between 1-1024 && 5900 - 5910s
-	if generated_port <= low ||
-		(generated_port >= 5900 && generated_port <= 5910)
-	{
-		return false;
-	}
-	return true; // valid port
-}
-
-pub fn get_server_ip_address() -> String {
-	return String::from("143.110.179.80");
-}
-
-pub fn get_tunnel_name(tunnel_name: &str) -> String {
-	let mut generated_tunnel_name = String::from("PiTunnel-container-");
-	generated_tunnel_name.push_str(tunnel_name);
-
-	return generated_tunnel_name;
+fn get_server_ip_address() -> &'static str {
+	"143.110.179.80"
 }

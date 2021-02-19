@@ -40,6 +40,7 @@ pub mod permissions {
 		pub mod portus {
 			pub const ADD: &str = "organisation::portus::add";
 			pub const VIEW: &str = "organisation::portus::view";
+			pub const LIST: &str = "organisation::portus::list";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
