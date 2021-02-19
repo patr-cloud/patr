@@ -9,7 +9,7 @@ mod utils;
 use api_macros::{query, query_as};
 use app::App;
 use eve_rs::handlebars::Handlebars;
-use tokio::fs;
+use tokio::{fs, runtime::Builder};
 use utils::{constants, logger};
 
 use std::{error::Error, sync::Arc};
@@ -18,8 +18,20 @@ use clap::{App as ClapApp, Arg, ArgMatches};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+	Builder::new_multi_thread()
+		.enable_io()
+		.enable_time()
+		.thread_name(format!("{}-worker-thread", constants::APP_NAME))
+		// Each CPU gets at least 2 workers to avoid idling
+		.worker_threads(num_cpus::get() * 2)
+		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overage
+		.build()
+		.unwrap()
+		.block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
 	let args = parse_cli_args();
 
 	let config = utils::settings::parse_config();

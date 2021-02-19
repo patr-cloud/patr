@@ -28,6 +28,7 @@ jsonwebtoken = "7.2.0"
 lazy_static = "1.4.0"
 lettre = "=0.10.0-alpha.2"
 log = "0.4.8"
+num_cpus = "1.13.0"
 once_cell = "1.4.1"
 rand = "0.7.3"
 redis = {version = "0.19", features = ["tokio-comp"]}
