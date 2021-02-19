@@ -1,11 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, EveContext, EveMiddleware,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -372,12 +375,12 @@ fn generate_username(length: u16) -> String {
 
 ///reads the script file, replaces given data and returns file content as String.
 async fn bash_script_formatter(
-	local_port: &String,
-	local_host_name: &String,
-	exposed_server_port: &String,
-	server_ip_address: &String,
-	server_user_name: &String,
-	server_ssh_port: &String,
+	local_port: &str,
+	local_host_name: &str,
+	exposed_server_port: &str,
+	server_ip_address: &str,
+	server_user_name: &str,
+	server_ssh_port: &str,
 ) -> std::io::Result<String> {
 	// get script file path
 	let path = get_bash_script_path()?;
