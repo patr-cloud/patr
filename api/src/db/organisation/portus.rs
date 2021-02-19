@@ -91,6 +91,28 @@ pub async fn get_portus_tunnel_by_name(
 	Ok(rows.into_iter().next())
 }
 
+pub async fn get_portus_tunnel_by_tunnel_id(
+	connection: &mut Transaction<'_, MySql>,
+	tunnel_id: &[u8],
+) -> Result<Option<PortusTunnel>, sqlx::Error> {
+	let rows = query_as!(
+		PortusTunnel,
+		r#"
+		SELECT
+			*
+		FROM
+			portus_tunnels
+		WHERE
+			id = ?;
+		"#,
+		tunnel_id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
 pub async fn is_portus_port_available(
 	connection: &mut Transaction<'_, MySql>,
 	port: u32,
@@ -112,4 +134,28 @@ pub async fn is_portus_port_available(
 	.await?;
 
 	Ok(rows.is_empty())
+}
+
+pub async fn get_portus_tunnels_for_organisation(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
+) -> Result<Vec<PortusTunnel>, sqlx::Error> {
+	query_as!(
+		PortusTunnel,
+		r#"
+		SELECT 
+			portus_tunnels.*
+		FROM 
+			portus_tunnels
+		INNER JOIN 
+			resource 
+		ON 
+			resource.id = portus_tunnels.id
+		WHERE
+			resource.owner_id = ?;
+		"#,
+		organisation_id
+	)
+	.fetch_all(connection)
+	.await
 }

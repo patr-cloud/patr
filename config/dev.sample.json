@@ -1,5 +1,5 @@
 {
-	"port": 3000,
+	"port": 3050,
 	"basePath": "/",
 	"passwordSalt": "keyboard cat",
 	"jwtSecret": "keyboard cat",
@@ -13,8 +13,8 @@
 	"mysql": {
 		"host": "localhost",
 		"port": 3306,
-		"user": "root",
-		"password": "mysql",
+		"user": "manjeet",
+		"password": "mydb",
 		"database": "api",
 		"connectionLimit": 10
 	},

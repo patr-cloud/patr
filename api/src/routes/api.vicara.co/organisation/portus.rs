@@ -1,18 +1,16 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time,
-		EveContext,
-		EveMiddleware,
+		get_current_time, EveContext, EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use request_keys::TUNNEL_ID;
 use serde_json::{json, Value};
 use shiplift::{ContainerOptions, Docker};
 use sqlx::{MySql, Transaction};
@@ -22,6 +20,49 @@ use tokio::fs;
 
 pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
+
+	// list tunnels under an org
+	sub_app.get(
+		"/",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::portus::LIST,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let org_id =
+						context.get_param(request_keys::ORGANISATION_ID);
+
+					if org_id.is_none() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+
+					let org_id = org_id.unwrap();
+					let organisation_id = hex::decode(&org_id);
+					if organisation_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let organisation_id = organisation_id.unwrap();
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&organisation_id,
+					)
+					.await?;
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_tunnels_for_organisation
+			)),
+		],
+	);
 
 	sub_app.post(
 		"/create",
@@ -102,7 +143,118 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::CustomFunction(pin_fn!(get_bash_script)),
 		],
 	);
+
+	sub_app.get(
+		"/:tunnelId/info",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::portus::VIEW,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
+
+					if tunnel_id.is_none() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let tunnel_id = tunnel_id.unwrap();
+
+					let tunnel_id = hex::decode(&tunnel_id);
+					if tunnel_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let tunnel_id = tunnel_id.unwrap();
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&tunnel_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_info_for_tunnel)),
+		],
+	);
+
 	sub_app
+}
+
+async fn get_tunnels_for_organisation(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+
+	let tunnels = db::get_portus_tunnels_for_organisation(
+		context.get_mysql_connection(),
+		&organisation_id,
+	)
+	.await?
+	.into_iter()
+	.map(|tunnel| {
+		let id = hex::encode(tunnel.id);
+		json!({
+			request_keys::ID: id,
+			request_keys::USERNAME: tunnel.username,
+			request_keys::SSH_PORT: tunnel.ssh_port,
+			request_keys::EXPOSED_PORT: tunnel.exposed_port,
+			request_keys::CREATED: tunnel.created,
+			request_keys::TUNNEL_NAME: tunnel.tunnel_name
+		})
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::TUNNELS: tunnels,
+	}));
+
+	Ok(context)
+}
+
+// fn to get information for given tunnel/tunnelId
+async fn get_info_for_tunnel(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	// get tunnel id form parameter
+	// since tunnel id will already ge authenticated in resource token authenticator,
+	// we can safely unwrap tunnel id.
+	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
+	let tunnel_id = hex::decode(&tunnel_id).unwrap();
+
+	//  get tunnel info  using tunnel id
+	let tunnel = db::get_portus_tunnel_by_tunnel_id(
+		context.get_mysql_connection(),
+		&tunnel_id,
+	)
+	.await?;
+	if tunnel.is_none() {
+		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+	}
+	let tunnel = tunnel.unwrap();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::TUNNEL_ID: tunnel.id,
+		request_keys::USERNAME: tunnel.username,
+		request_keys::SSH_PORT: tunnel.ssh_port,
+		request_keys::EXPOSED_PORT:tunnel.exposed_port,
+		request_keys::CREATED:tunnel.created,
+		request_keys::TUNNEL_NAME:tunnel.tunnel_name
+	}));
+
+	Ok(context)
 }
 
 async fn create(
