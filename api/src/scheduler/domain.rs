@@ -1,4 +1,8 @@
-use crate::{db, scheduler::Job, utils::mailer};
+use crate::{
+	db,
+	scheduler::Job,
+	utils::{mailer, validator},
+};
 
 use cloudflare::{
 	endpoints::zone::{self, Status, Zone},
@@ -27,6 +31,48 @@ pub(super) fn reverify_verified_domains_job() -> Job {
 		"0 0 4 * * *".parse().unwrap(),
 		|| Box::pin(reverify_verified_domains()),
 	)
+}
+
+// Every day at 4 am
+pub(super) fn refresh_domain_tld_list_job() -> Job {
+	Job::new(
+		String::from("Refresh domain TLD list"),
+		"0 0 4 * * *".parse().unwrap(),
+		|| Box::pin(refresh_domain_tld_list()),
+	)
+}
+
+pub async fn refresh_domain_tld_list() -> crate::Result<()> {
+	let response =
+		surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt").await;
+	let mut response = match response {
+		Ok(response) => response,
+		Err(err) => {
+			return Err(err);
+		}
+	};
+
+	let data = response.body_string().await;
+	let data = match data {
+		Ok(data) => data,
+		Err(err) => {
+			return Err(err);
+		}
+	};
+
+	let mut tlds = data
+		.split('\n')
+		.map(String::from)
+		.filter(|tld| {
+			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
+		})
+		.collect::<Vec<String>>();
+
+	let mut tld_list = validator::DOMAIN_TLD_LIST.write().await;
+	tld_list.clear();
+	tld_list.append(&mut tlds);
+	drop(tld_list);
+	Ok(())
 }
 
 async fn verify_unverified_domains() -> crate::Result<()> {

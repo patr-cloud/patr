@@ -36,10 +36,10 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 	app.get(
-		"/:userId/info",
+		"/:username/info",
 		&[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
 		],
 	);
 	app.post(
@@ -74,26 +74,22 @@ async fn get_user_info(
 	let mut data = serde_json::to_value(
 		context.get_token_data().as_ref().unwrap().user.clone(),
 	)?;
-	data.as_object_mut().unwrap().remove("id");
+	let object = data.as_object_mut().unwrap();
+	object.remove(request_keys::ID);
+	object.insert(request_keys::SUCCESS.to_string(), true.into());
 
 	context.json(data);
 	Ok(context)
 }
 
-async fn get_user_info_by_user_id(
+async fn get_user_info_by_username(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let user_id = context.get_param(request_keys::USER_ID).unwrap();
-	let user_id = if let Ok(user_id) = hex::decode(user_id) {
-		user_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
 
 	let user_data =
-		db::get_user_by_user_id(context.get_mysql_connection(), &user_id)
+		db::get_user_by_username(context.get_mysql_connection(), &username)
 			.await?;
 
 	if user_data.is_none() {
@@ -102,12 +98,17 @@ async fn get_user_info_by_user_id(
 	}
 	let user_data = user_data.unwrap();
 	let data = ExposedUserData {
-		id: user_id,
+		id: vec![],
 		username: user_data.username,
 		first_name: user_data.first_name,
 		last_name: user_data.last_name,
 		created: user_data.created,
 	};
+
+	let mut data = serde_json::to_value(data)?;
+	let object = data.as_object_mut().unwrap();
+	object.remove(request_keys::ID);
+	object.insert(request_keys::SUCCESS.to_string(), true.into());
 
 	context.json(json!(data));
 	Ok(context)

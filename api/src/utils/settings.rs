@@ -12,7 +12,7 @@ pub fn parse_config() -> Settings {
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
-		env::var("APP_ENV").unwrap_or_else(|_| "dev".into())
+		env::var("APP_ENV").unwrap_or_else(|_| "prod".into())
 	};
 
 	match env.as_ref() {
@@ -53,8 +53,8 @@ pub struct Settings {
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
-	pub mysql: MySQLSettings,
-	pub mongodb: MongoDBSettings,
+	pub mysql: MysqlSettings,
+	pub mongodb: MongoDbSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
@@ -73,7 +73,7 @@ pub struct S3Settings {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct MySQLSettings {
+pub struct MysqlSettings {
 	pub host: String,
 	pub port: u16,
 	pub user: String,
@@ -84,7 +84,7 @@ pub struct MySQLSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct MongoDBSettings {
+pub struct MongoDbSettings {
 	pub host: String,
 	pub port: u16,
 	pub user: Option<String>,
