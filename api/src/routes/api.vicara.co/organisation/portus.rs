@@ -336,21 +336,15 @@ async fn get_bash_script(
 		server_user_name,
 		server_ssh_port,
 	)
-	.await;
-	if let Err(_error) = bash_script_file_content {
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let bash_script_file_content = bash_script_file_content.unwrap();
+	.await?;
 
 	// set attachment type
 	// context.attachment(Some(&"connect-pi-to-server.sh".to_owned()[..]));
 	// context.body(&bash_script_file_content[..]);
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::SCRIPT : bash_script_file_content,
+		request_keys::SCRIPT: bash_script_file_content,
 	}));
-
 	Ok(context)
 }
 
