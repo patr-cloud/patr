@@ -1,14 +1,11 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time,
-		EveContext,
-		EveMiddleware,
+		get_current_time, EveContext, EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -212,7 +209,8 @@ async fn get_tunnels_for_organisation(
 			request_keys::SSH_PORT: tunnel.ssh_port,
 			request_keys::EXPOSED_PORT: tunnel.exposed_port,
 			request_keys::CREATED: tunnel.created,
-			request_keys::TUNNEL_NAME: tunnel.tunnel_name
+			request_keys::TUNNEL_NAME: tunnel.tunnel_name,
+			request_keys::SERVER_IP_ADDRESS: get_server_ip_address(),
 		})
 	})
 	.collect::<Vec<_>>();
@@ -230,7 +228,7 @@ async fn get_info_for_tunnel(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	// get tunnel id form parameter
+	// get tunnel id from parameter
 	// since tunnel id will already ge authenticated in resource token authenticator,
 	// we can safely unwrap tunnel id.
 	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
@@ -244,6 +242,7 @@ async fn get_info_for_tunnel(
 	.await?;
 	if tunnel.is_none() {
 		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+		return Ok(context);
 	}
 	let tunnel = tunnel.unwrap();
 
@@ -254,7 +253,8 @@ async fn get_info_for_tunnel(
 		request_keys::SSH_PORT: tunnel.ssh_port,
 		request_keys::EXPOSED_PORT:tunnel.exposed_port,
 		request_keys::CREATED:tunnel.created,
-		request_keys::TUNNEL_NAME:tunnel.tunnel_name
+		request_keys::TUNNEL_NAME:tunnel.tunnel_name,
+		request_keys::SERVER_IP_ADDRESS: get_server_ip_address()
 	}));
 
 	Ok(context)

@@ -60,8 +60,9 @@ pub async fn add_user_for_portus(
 		username,
 		ssh_port,
 		exposed_port,
-		created,
 		tunnel_name,
+		created,
+		
 	)
 	.execute(connection)
 	.await?;
