@@ -1,11 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, EveContext, EveMiddleware,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
