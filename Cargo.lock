@@ -1409,7 +1409,7 @@ dependencies = [
  "once_cell",
  "openssl",
  "openssl-sys",
- "parking_lot 0.11.1",
+ "parking_lot",
  "tokio",
  "tokio-openssl",
  "tower-layer",

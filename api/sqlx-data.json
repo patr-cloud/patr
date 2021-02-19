@@ -155,6 +155,96 @@
       ]
     }
   },
+  "1607faf87c874d2d72609e54a90463b6a621b66d1dea12b225e9b81e61e2578e": {
+    "query": "SELECT * FROM portus_tunnels WHERE ssh_port = ? OR exposed_port = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "tunnel_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "182255c41edae8b0b148bf98e3f3bab99849d85b425960b0afbb08bff9b4a8b2": {
     "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = TRUE;",
     "describe": {
@@ -352,6 +442,16 @@
         false,
         false
       ]
+    }
+  },
+  "1c6b10c795f98303efb3cd3ffb7f3184e709ca56a0f70f21cc81c89ea8046c52": {
+    "query": "CREATE TABLE IF NOT EXISTS portus_tunnels ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, tunnel_name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "1db8bafdde3f2fa4402ed243659f68717f97843536f9ad0e09ff0ffc3d40c5c1": {
@@ -1114,6 +1214,16 @@
       "nullable": []
     }
   },
+  "6c8f8effafad31c22a0722f2b1e614a326670a26315afcd1f40a2cbd76677485": {
+    "query": "ALTER TABLE portus_tunnels ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "6e632ad702a45d78f36bcdf2a71d4573c1c0d20645526a150ff9cf843b563c4c": {
     "query": "SELECT user.* FROM user LEFT JOIN user_email_address_view ON user_email_address_view.user_id = user.id WHERE user_email_address_view.email = ?",
     "describe": {
@@ -1757,6 +1867,96 @@
       ]
     }
   },
+  "8d129ae002d55d11b8323b7ea962b4333681006222d166ec309731733d4f3dba": {
+    "query": "SELECT * FROM portus_tunnels WHERE tunnel_name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "tunnel_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
     "query": "CREATE TABLE IF NOT EXISTS application ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL );",
     "describe": {
@@ -1773,16 +1973,6 @@
       "columns": [],
       "parameters": {
         "Right": 19
-      },
-      "nullable": []
-    }
-  },
-  "94e84df16cd545686926e2b0709d5d8056620d2276ba33f808cf848cbc9b1774": {
-    "query": "ALTER TABLE portus ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -2095,16 +2285,6 @@
       ]
     }
   },
-  "b179e72f0f2993fa2971127aba9ee374505bff05489e64d9c0bdca27572a4317": {
-    "query": "CREATE TABLE IF NOT EXISTS portus ( id BINARY(16) PRIMARY KEY, username VARCHAR(100), sshPort INTEGER, exposedPort INTEGER, created BIGINT UNSIGNED, tunnelName VARCHAR(50) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "b57be83f666c81c38197c96f4f9b845e520144d3295f4fb1218a3c34ca7cd1b2": {
     "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up ( username VARCHAR(100) PRIMARY KEY, account_type ENUM('personal', 'organisation') NOT NULL, /* Personal email address OR backup email */ email_address VARCHAR(320) NOT NULL, /* Organisation email address */ email_local VARCHAR(160), domain_name VARCHAR(100), password BINARY(64) NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, organisation_name VARCHAR(100), otp_hash BINARY(64) UNIQUE NOT NULL, otp_expiry BIGINT UNSIGNED NOT NULL, CONSTRAINT CHECK ( ( account_type = 'personal' AND ( email_local IS NULL AND domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( email_local IS NOT NULL AND domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ) );",
     "describe": {
@@ -2415,8 +2595,8 @@
       ]
     }
   },
-  "b9ede8a255c5db455a6a734540537bb29415efe6da81927ba8c6f92b2928de8f": {
-    "query": "INSERT INTO portus VALUES (?,?,?,?,?,?);",
+  "bc68b53ad35793e81487805ffec2e139286c2d9658494e86d15e09da59c843c3": {
+    "query": "INSERT INTO portus_tunnels VALUES (?, ?, ?, ?, ?, ?);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2888,96 +3068,6 @@
       "nullable": []
     }
   },
-  "e39ab00b98f19b7be992acc133799623188c04ddf171e43eb09dbf1a4ee06dc9": {
-    "query": "SELECT * FROM portus WHERE tunnelName = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "sshPort",
-          "type_info": {
-            "type": "Long",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 63,
-            "max_size": 11
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposedPort",
-          "type_info": {
-            "type": "Long",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 63,
-            "max_size": 11
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 32
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "tunnelName",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
     "query": "CREATE TABLE IF NOT EXISTS permission ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
     "describe": {
@@ -3166,7 +3256,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_api",
+          "name": "Tables_in_bytesonus_api",
           "type_info": {
             "type": "VarString",
             "flags": {
