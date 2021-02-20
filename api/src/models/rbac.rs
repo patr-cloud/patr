@@ -41,6 +41,7 @@ pub mod permissions {
 			pub const ADD: &str = "organisation::portus::add";
 			pub const VIEW: &str = "organisation::portus::view";
 			pub const LIST: &str = "organisation::portus::list";
+			pub const DELETE: &str = "organisation::portus::delete";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";

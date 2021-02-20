@@ -1,16 +1,18 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, EveContext, EveMiddleware,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use request_keys::TUNNEL_ID;
 use serde_json::{json, Value};
 use shiplift::{ContainerOptions, Docker};
 use sqlx::{MySql, Transaction};
@@ -65,7 +67,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 
 	sub_app.post(
-		"/create",
+		"/",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::ADD,
@@ -145,7 +147,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 
 	sub_app.get(
-		"/:tunnelId/info",
+		"/:tunnelId/",
 		&[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
@@ -184,6 +186,46 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		],
 	);
 
+	sub_app.delete(
+		"/:tunnelId/",
+		&[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::portus::DELETE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
+
+					if tunnel_id.is_none() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let tunnel_id = tunnel_id.unwrap();
+
+					let tunnel_id = hex::decode(&tunnel_id);
+					if tunnel_id.is_err() {
+						context.status(400).json(error!(WRONG_PARAMETERS));
+						return Ok((context, None));
+					}
+					let tunnel_id = tunnel_id.unwrap();
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&tunnel_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_tunnel)),
+		],
+	);
+
 	sub_app
 }
 
@@ -209,8 +251,8 @@ async fn get_tunnels_for_organisation(
 			request_keys::SSH_PORT: tunnel.ssh_port,
 			request_keys::EXPOSED_PORT: tunnel.exposed_port,
 			request_keys::CREATED: tunnel.created,
-			request_keys::TUNNEL_NAME: tunnel.tunnel_name,
-			request_keys::SERVER_IP_ADDRESS: get_server_ip_address(),
+			request_keys::NAME: tunnel.name,
+			request_keys::SERVER_IP: get_server_ip_address(),
 		})
 	})
 	.collect::<Vec<_>>();
@@ -231,8 +273,9 @@ async fn get_info_for_tunnel(
 	// get tunnel id from parameter
 	// since tunnel id will already ge authenticated in resource token authenticator,
 	// we can safely unwrap tunnel id.
-	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
-	let tunnel_id = hex::decode(&tunnel_id).unwrap();
+	let tunnel_id_string =
+		context.get_param(request_keys::TUNNEL_ID).unwrap().clone();
+	let tunnel_id = hex::decode(&tunnel_id_string).unwrap();
 
 	//  get tunnel info  using tunnel id
 	let tunnel = db::get_portus_tunnel_by_tunnel_id(
@@ -248,15 +291,72 @@ async fn get_info_for_tunnel(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::TUNNEL_ID: tunnel.id,
+		request_keys::TUNNEL_ID: tunnel_id_string,
 		request_keys::USERNAME: tunnel.username,
 		request_keys::SSH_PORT: tunnel.ssh_port,
-		request_keys::EXPOSED_PORT:tunnel.exposed_port,
-		request_keys::CREATED:tunnel.created,
-		request_keys::TUNNEL_NAME:tunnel.tunnel_name,
-		request_keys::SERVER_IP_ADDRESS: get_server_ip_address()
+		request_keys::EXPOSED_PORT: tunnel.exposed_port,
+		request_keys::CREATED: tunnel.created,
+		request_keys::NAME: tunnel.name,
+		request_keys::SERVER_IP: get_server_ip_address()
 	}));
 
+	Ok(context)
+}
+
+// fn to delete tunnel by tunnelId
+async fn delete_tunnel(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	// get tunnel id from parameter
+	// since tunnel id will already get authenticated in resource token authenticator,
+	// we can safely unwrap tunnel id.
+	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
+	let tunnel_id = &hex::decode(&tunnel_id).unwrap();
+
+	//  get tunnel info  using tunnel id
+	let tunnel = db::get_portus_tunnel_by_tunnel_id(
+		context.get_mysql_connection(),
+		&tunnel_id,
+	)
+	.await?;
+	if tunnel.is_none() {
+		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+		return Ok(context);
+	}
+	let tunnel = tunnel.unwrap();
+
+	let docker = Docker::new();
+	let container_name = get_container_name(&tunnel.username);
+
+	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
+		.await?;
+
+	let container_stop_result =
+		docker.containers().get(&container_name).stop(None).await;
+	let container_delete_result =
+		docker.containers().get(&container_name).delete().await;
+
+	if container_delete_result.is_err() {
+		let container_start_result =
+			docker.containers().get(&container_name).start().await;
+		if let Err(err) = container_start_result {
+			log::error!(
+				"Unrecoverable error while starting container: {:?}",
+				err
+			);
+		}
+	}
+
+	if let Err(err) = container_stop_result.and(container_delete_result) {
+		log::error!("Error while deleting portus tunnel: {:?}", err);
+		let err_message =
+			format!("Error while deleting portus tunnel: {:?}", err);
+		return Err(Error::new(None, err_message, 500, Box::new(err)));
+	}
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
@@ -267,7 +367,7 @@ async fn create(
 	let body = context.get_body_object().clone();
 	// get tunnel name
 	let tunnel_name = if let Some(Value::String(tunnel_name)) =
-		body.get(request_keys::TUNNEL_NAME)
+		body.get(request_keys::NAME)
 	{
 		tunnel_name
 	} else {
@@ -331,7 +431,6 @@ async fn create(
 		)
 		.await?;
 
-	log::trace!("Fetching docker information...");
 	let container_id = container_info.id;
 
 	let container_start_result =
@@ -351,7 +450,7 @@ async fn create(
 	)
 	.await;
 
-	let create_tunnel_result = db::add_user_for_portus(
+	let create_tunnel_result = db::create_new_portus_tunnel(
 		context.get_mysql_connection(),
 		resource_id,
 		&username,
@@ -404,13 +503,14 @@ async fn create(
 	};
 
 	// on success, return ssh port, username,  exposed port, server ip address, password
+	let resource_id = hex::encode(resource_id);
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: resource_id,
-		request_keys::TUNNEL_NAME: &tunnel_name,
+		request_keys::NAME: &tunnel_name,
 		request_keys::USERNAME: &username,
 		request_keys::PASSWORD: &generated_password,
-		request_keys::SERVER_IP_ADDRESS: &server_ip_address,
+		request_keys::SERVER_IP: &server_ip_address,
 		request_keys::SSH_PORT: ssh_port,
 		request_keys::CREATED: created,
 		request_keys::EXPOSED_PORT: vec![exposed_port],
@@ -460,7 +560,7 @@ async fn get_bash_script(
 	};
 
 	let server_ip_address = if let Some(Value::String(server_ip_address)) =
-		body.get(request_keys::SERVER_IP_ADDRESS)
+		body.get(request_keys::SERVER_IP)
 	{
 		server_ip_address
 	} else {

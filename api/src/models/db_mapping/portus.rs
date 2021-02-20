@@ -4,5 +4,5 @@ pub struct PortusTunnel {
 	pub ssh_port: u16,
 	pub exposed_port: u16,
 	pub created: u64,
-	pub tunnel_name: String,
+	pub name: String,
 }

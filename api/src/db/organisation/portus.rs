@@ -13,7 +13,7 @@ pub async fn initialize_portus_pre(
 			username VARCHAR(100) NOT NULL,
 			ssh_port SMALLINT UNSIGNED NOT NULL,
 			exposed_port SMALLINT UNSIGNED NOT NULL,
-			tunnel_name VARCHAR(50) NOT NULL,
+			name VARCHAR(50) NOT NULL,
 			created BIGINT UNSIGNED NOT NULL
 		);
 		"#
@@ -40,7 +40,7 @@ pub async fn initialize_portus_post(
 }
 
 // query to add user information with port and container details
-pub async fn add_user_for_portus(
+pub async fn create_new_portus_tunnel(
 	connection: &mut Transaction<'_, MySql>,
 	id: &[u8],
 	username: &str,
@@ -62,7 +62,26 @@ pub async fn add_user_for_portus(
 		exposed_port,
 		tunnel_name,
 		created,
-		
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+// query to remove portus tunnel from database
+pub async fn delete_portus_tunnel(
+	connection: &mut Transaction<'_, MySql>,
+	tunnel_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			portus_tunnels
+		WHERE
+			id = ?;
+		"#,
+		tunnel_id
 	)
 	.execute(connection)
 	.await?;
@@ -82,7 +101,7 @@ pub async fn get_portus_tunnel_by_name(
 		FROM
 			portus_tunnels
 		WHERE
-			tunnel_name = ?;
+			name = ?;
 		"#,
 		tunnel_name
 	)
