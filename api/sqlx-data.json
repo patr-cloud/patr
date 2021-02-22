@@ -209,7 +209,7 @@
         },
         {
           "ordinal": 4,
-          "name": "tunnel_name",
+          "name": "name",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -444,16 +444,6 @@
       ]
     }
   },
-  "1c6b10c795f98303efb3cd3ffb7f3184e709ca56a0f70f21cc81c89ea8046c52": {
-    "query": "CREATE TABLE IF NOT EXISTS portus_tunnels ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, tunnel_name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "1db8bafdde3f2fa4402ed243659f68717f97843536f9ad0e09ff0ffc3d40c5c1": {
     "query": "ALTER TABLE application ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -577,6 +567,96 @@
         "Right": 1
       },
       "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "302c748609e328553ddced7aab7a6480b308ca7566bc5faf5db27f670ea68050": {
+    "query": "SELECT * FROM portus_tunnels WHERE name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
         false,
         false,
         false
@@ -1094,6 +1174,16 @@
       "nullable": []
     }
   },
+  "5437856242376747c764c42523c766e24e9cc3a7c3f2fd80104792007366ae5f": {
+    "query": "CREATE TABLE IF NOT EXISTS portus_tunnels ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1168,7 +1258,7 @@
         },
         {
           "ordinal": 4,
-          "name": "tunnel_name",
+          "name": "name",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -1957,96 +2047,6 @@
       ]
     }
   },
-  "8d129ae002d55d11b8323b7ea962b4333681006222d166ec309731733d4f3dba": {
-    "query": "SELECT * FROM portus_tunnels WHERE tunnel_name = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "ssh_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposed_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "tunnel_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
     "query": "CREATE TABLE IF NOT EXISTS application ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL );",
     "describe": {
@@ -2429,7 +2429,7 @@
         },
         {
           "ordinal": 4,
-          "name": "tunnel_name",
+          "name": "name",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -3436,7 +3436,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_api",
+          "name": "Tables_in_bytesonus_api",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -3524,6 +3524,16 @@
         false,
         false
       ]
+    }
+  },
+  "ff6c187c094d14e55565bc3ee9adf11044e75ff0b82ab6437e7676e479f546e5": {
+    "query": "DELETE FROM portus_tunnels WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
     }
   }
 }
