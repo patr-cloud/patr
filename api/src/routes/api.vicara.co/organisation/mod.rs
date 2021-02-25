@@ -69,6 +69,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app("/:organisationId/drive", drive::create_sub_app(app));
 	sub_app
 		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
 

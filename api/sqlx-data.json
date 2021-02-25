@@ -1154,6 +1154,16 @@
       "nullable": []
     }
   },
+  "498318bed214a3917009c7550d6c873be3148bca32567c5c55aef11277df0d17": {
+    "query": "ALTER TABLE drive_file ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "4aaeec7fa2f65e60f34d7f6fa2981e466c3a9cdfeb129462ba506687d76a0f84": {
     "query": "INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?);",
     "describe": {
@@ -1382,6 +1392,16 @@
         false,
         true
       ]
+    }
+  },
+  "6c2dc11fa3087d0d09b3792c8d986eb1e97cffefe242688b3ee8dc2f8b9716c7": {
+    "query": "CREATE TABLE IF NOT EXISTS drive_file ( id BINARY(16) PRIMARY KEY, owner_id BINARY(16) NOT NULL, folder_id BINARY(16) NOT NULL, collection_id BINARY(16) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "6c36509fe5189947f266e4bc0258dfe1805f4c49da5fb0b22e0bc00d07eeb08c": {
@@ -3436,7 +3456,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_bytesonus_api",
+          "name": "Tables_in_api",
           "type_info": {
             "type": "VarString",
             "flags": {

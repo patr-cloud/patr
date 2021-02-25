@@ -44,6 +44,13 @@ pub mod permissions {
 			pub const DELETE: &str = "organisation::portus::delete";
 		}
 
+		pub mod drive {
+			pub const ADD: &str = "organisation::drive::add";
+			pub const VIEW: &str = "organisation::drive::view";
+			pub const LIST: &str = "organisation::drive::list";
+			pub const DELETE: &str = "organisation::drive::delete";
+		}
+
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";

@@ -17,6 +17,21 @@ pub async fn initialize_drive_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS drive_file (
+			id BINARY(16) PRIMARY KEY,
+			owner_id BINARY(16) NOT NULL,
+			folder_id BINARY(16) NOT NULL,
+			collection_id BINARY(16) NOT NULL,
+			created BIGINT UNSIGNED NOT NULL
+		
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 
@@ -26,6 +41,16 @@ pub async fn initialize_drive_post(
 	query!(
 		r#"
 		ALTER TABLE file
+		ADD CONSTRAINT
+		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE drive_file
 		ADD CONSTRAINT
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#

@@ -73,4 +73,8 @@ pub mod request_keys {
 	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
+	pub const FILE_NAME: &str = "fileName";
+	pub const SHARABLE: &str = "sharable";
+	pub const FOLDER_ID: &str = "folderId";
+	pub const COLLECTION_ID: &str = "collectionId";
 }
