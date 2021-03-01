@@ -34,7 +34,7 @@ rand = "0.7.3"
 redis = {version = "0.19", features = ["tokio-comp"]}
 regex = "1.3.9"
 rust-argon2 = "0.8.2"
-#rust-s3 = {version = "0.26.1", features = ["tokio-rustls-tls", "with-tokio"]}
+rust-s3 = {version = "0.26.1", features = ["tokio-rustls-tls", "with-tokio"]}
 futures = "0.3.8"
 multer = "1.2.2"
 semver = "0.10.0"

@@ -63,7 +63,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(list_files))],
 	);
 
-	// get file info9
+	// get file info
 	sub_app.get(
 		"file/:fileId",
 		&[EveMiddleware::CustomFunction(pin_fn!(get_file_info))],
@@ -72,6 +72,11 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app
 }
 
+// {
+// 	fileName,
+// 	folderId,
+// 	collectionId,
+// }
 async fn create_file(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
@@ -109,7 +114,15 @@ async fn create_file(
 
 	let created = get_current_time();
 
-	// upload file under the user-id folder.
+	// get s3 credentials.
+	let ACCESS_KEY = &config.s3.access_key;
+	let SECRET_KEY = &config.s3.secret_key;
+	let BUCKET = &config.s3.bucket;
+	let REGION = &config.s3.region;
+	let S3_HOST = &config.s3.host;
+	let sub_directory = &config.s3.sub_dir;
+
+	// upload file under the user-id folder on S3.
 	// if the user is part of an Organisation, then add the file under the organisation
 	// save file details to the database
 
@@ -120,7 +133,6 @@ async fn list_files(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-
 	Ok(context)
 }
 
