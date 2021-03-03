@@ -9,8 +9,17 @@ use crate::{
 	},
 };
 
+use s3::region::Region;
+// use s3::S3Error;
+use s3::{bucket::Bucket, creds::Credentials};
+use std::fs;
+use std::path::Path;
+use tokio::fs::File;
+use tokio::io::AsyncRead;
+// use tokio::prelude::{AsyncRead, Future};
+
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
@@ -114,17 +123,77 @@ async fn create_file(
 
 	let created = get_current_time();
 
-	// get s3 credentials.
-	let ACCESS_KEY = &config.s3.access_key;
-	let SECRET_KEY = &config.s3.secret_key;
-	let BUCKET = &config.s3.bucket;
-	let REGION = &config.s3.region;
-	let S3_HOST = &config.s3.host;
-	let sub_directory = &config.s3.sub_dir;
+	log::debug!(
+		"Received s3 config details is {:#?}",
+		&context.get_state().config.s3
+	);
 
-	// upload file under the user-id folder on S3.
-	// if the user is part of an Organisation, then add the file under the organisation
-	// save file details to the database
+	// get s3 credentials.
+	let ACCESS_KEY = &context.get_state().config.s3.key;
+	let SECRET_KEY = &context.get_state().config.s3.secret;
+	let BUCKET = &context.get_state().config.s3.bucket;
+	let REGION = &context.get_state().config.s3.region;
+	let S3_HOST = &context.get_state().config.s3.endpoint;
+
+	// init credentials for s3
+	let credentials =
+		Credentials::new(Some(ACCESS_KEY), Some(SECRET_KEY), None, None, None);
+	if let Err(err) = credentials {
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+	let credentials = credentials.unwrap();
+
+	let region = REGION.parse().unwrap();
+	let bucket = Bucket::new(&BUCKET, region, credentials);
+	if let Err(err) = bucket {
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+	let bucket = bucket.unwrap();
+
+	// init bucket
+
+	// create a temp file, and upload it to s3
+
+	// generate path to temp file
+	let mut file =
+		fs::write(format!("./temp/{}", &file_name), format!("{}", &file_name));
+
+	if let Err(err) = file {
+		log::error!("Error creating the file. Error {:?}", err);
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+	let file = file.unwrap();
+
+	let file = File::open(format!("./temp/{}", &file_name)).await?;
+
+	let path_string = format!("./temp/{}", &file_name);
+	let file_path = Path::new(&path_string);
+
+	log::debug!("Here before status creation");
+	// let status = bucket
+	// 	.put_object_stream(file_path, format!("araciv-test/"))
+	// 	.await;
+	let status = bucket
+		.put_object(path_string, b"this is my test file")
+		.await;
+
+	log::debug!("Here after status creation");
+	if let Err(err) = status {
+		context.status(500).json(error!(SERVER_ERROR));
+		return Ok(context);
+	}
+
+	let status = status.unwrap();
+	log::debug!("Status for upload is {:?}", &status);
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::MESSAGE: "File created",
+		"S3-status" : &status
+	}));
 
 	Ok(context)
 }
