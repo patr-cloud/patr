@@ -77,4 +77,5 @@ pub mod request_keys {
 	pub const SHARABLE: &str = "sharable";
 	pub const FOLDER_ID: &str = "folderId";
 	pub const COLLECTION_ID: &str = "collectionId";
+	pub const REDIRECT_URL: &str = "redirectUrl";
 }

@@ -115,12 +115,12 @@ async fn create_file(
 	let created = get_current_time();
 
 	// get s3 credentials.
-	let ACCESS_KEY = &config.s3.access_key;
-	let SECRET_KEY = &config.s3.secret_key;
-	let BUCKET = &config.s3.bucket;
-	let REGION = &config.s3.region;
-	let S3_HOST = &config.s3.host;
-	let sub_directory = &config.s3.sub_dir;
+	// let ACCESS_KEY = &config.s3.access_key;
+	// let SECRET_KEY = &config.s3.secret_key;
+	// let BUCKET = &config.s3.bucket;
+	// let REGION = &config.s3.region;
+	// let S3_HOST = &config.s3.host;
+	// let sub_directory = &config.s3.sub_dir;
 
 	// upload file under the user-id folder on S3.
 	// if the user is part of an Organisation, then add the file under the organisation

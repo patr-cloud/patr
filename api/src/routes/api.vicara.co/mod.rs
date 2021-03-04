@@ -5,6 +5,7 @@ use crate::{
 use eve_rs::App as EveApp;
 
 mod auth;
+mod oauth;
 mod organisation;
 mod user;
 
@@ -14,6 +15,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/organisation", organisation::create_sub_app(app));
+	sub_app.use_sub_app("/oauth", oauth::create_sub_app(app));
 
 	sub_app
 }
