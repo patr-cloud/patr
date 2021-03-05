@@ -129,6 +129,7 @@ async fn register(
 		return Ok(context);
 	};
 
+	// generate client id
 	let client_id =
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let client_id = client_id.as_bytes();
