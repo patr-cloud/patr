@@ -16,6 +16,7 @@ use crate::{
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 
 use base64::decode;
+use log4rs::append::rolling_file::policy;
 use openidconnect::core::{
 	CoreClaimName, CoreJwsSigningAlgorithm, CoreProviderMetadata,
 	CoreResponseType, CoreSubjectIdentifierType,
@@ -32,10 +33,8 @@ use rsa::{PaddingScheme, PublicKey, RSAPrivateKey, RSAPublicKey};
 use serde_json::{json, Value};
 use surf::url::Url;
 
-// sign up
-// sign-in
-// register client, and give secret key
-//
+// todo
+// 1) reset secret key endpoint
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
@@ -79,6 +78,7 @@ async fn auth(
 	// ask user for consent
 	// share the status(bool) and one time use code (Exchange Code) to the client.
 	// also add api url, where the client can make calls to get information.
+
 	Ok(context)
 }
 
@@ -102,17 +102,17 @@ async fn get_user_info(
 // This middleware could also take care of things like
 // 1) storing the scope of access the client gets on the resource
 // 2) name of the app
+// 3) description for the app (optional)
+// 4) link to client homepage url
+// 5) list of redirect url
 async fn register(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	// get call back url
-	// get key for encryption
-	// generate client id
 	let body = context.get_body_object().clone();
 
 	// callback url
-	let redirect_url = if let Some(Value::String(redirect_url)) =
+	let redirect_url = if let Some(Value::Array(redirect_url)) =
 		body.get(request_keys::REDIRECT_URL)
 	{
 		redirect_url
@@ -121,7 +121,6 @@ async fn register(
 		return Ok(context);
 	};
 
-	// name of the client.
 	let name = if let Some(Value::String(name)) = body.get(request_keys::NAME) {
 		name
 	} else {
@@ -134,6 +133,7 @@ async fn register(
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let client_id = client_id.as_bytes();
 
+	// generate private key
 	let mut rng = OsRng;
 	let bits = 2048;
 	let private_key = RSAPrivateKey::new(&mut rng, bits);
@@ -143,20 +143,6 @@ async fn register(
 		return Ok(context);
 	}
 	let private_key = private_key.unwrap();
-
-	// try taking out private key components and encode it to base64
-	// exponent
-	let exponent = private_key.d();
-
-	// prime factors of N
-	let primes = private_key.primes();
-
-	// log::debug!("extracted exponent is {:#?}", exponent);
-	// log::debug!("extracted primes is {:#?}", primes);
-	log::debug!("private key {:#?}", private_key);
-	// encode the private key
-
-	// log::debug!("Generated private key is {:#?}", private_key);
 
 	//once client is registered, add details to database
 	context.json(json!({
