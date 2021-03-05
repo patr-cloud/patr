@@ -49,7 +49,8 @@ surf = "1.0.3"
 tokio = {version = "1", features = ["full"]}
 trust-dns-client = "0.20"
 uuid = "0.8.1"
-rust-s3 = {git = "https://github.com/durch/rust-s3.git", branch = "master"}
+rust-s3 = "0.27.0-beta11"
+# rust-s3 = {git = "https://github.com/durch/rust-s3.git", branch }
 
 [dependencies.log4rs]
 default-features = false
