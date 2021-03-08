@@ -64,9 +64,9 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 
 		// Initialize data
 		// If a god UUID already exists, set it
-		let mut connection = app.mysql.begin().await?;
+		let mut transaction = app.mysql.begin().await?;
 
-		let god_uuid = db::get_god_user_id(&mut connection).await?;
+		let god_uuid = db::get_god_user_id(&mut transaction).await?;
 		if let Some(uuid) = god_uuid {
 			rbac::GOD_USER_ID
 				.set(uuid)
@@ -74,7 +74,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		}
 
 		let resource_types =
-			db::get_all_resource_types(&mut connection).await?;
+			db::get_all_resource_types(&mut transaction).await?;
 		let resource_types = resource_types
 			.into_iter()
 			.map(|resource_type| (resource_type.name, resource_type.id))
@@ -83,7 +83,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 			.set(resource_types)
 			.expect("RESOURCE_TYPES is already set");
 
-		drop(connection);
+		drop(transaction);
 
 		Ok(())
 	}
