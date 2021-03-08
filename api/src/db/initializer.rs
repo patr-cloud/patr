@@ -40,7 +40,6 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		Ok(())
 	} else {
 		// If it already exists, perform a migration with the known values
-
 		let version = get_database_version(app).await?;
 
 		match version.cmp(&constants::DATABASE_VERSION) {
