@@ -6,7 +6,7 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
-		get_current_time,
+		get_current_time_millis,
 		validator,
 		EveContext,
 		EveMiddleware,
@@ -16,6 +16,7 @@ use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::{json, Value};
 
 mod application;
+mod deployer;
 mod domain;
 mod portus;
 #[path = "./rbac.rs"]
@@ -69,8 +70,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/:organisationId/application",
 		application::create_sub_app(app),
 	);
-	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
+	sub_app.use_sub_app(
+		"/:organisationId/deployer",
+		deployer::create_sub_app(app),
+	);
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
 	sub_app
 		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
 
@@ -230,7 +235,7 @@ async fn create_new_organisation(
 		organisation_id,
 		&organisation_name,
 		&user_id,
-		get_current_time(),
+		get_current_time_millis(),
 	)
 	.await?;
 	db::set_resource_owner_id(

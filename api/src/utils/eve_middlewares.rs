@@ -2,7 +2,7 @@ use crate::{
 	app::App,
 	error,
 	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{get_current_time, EveContext},
+	utils::{get_current_time_millis, EveContext},
 };
 
 use async_trait::async_trait;
@@ -75,14 +75,14 @@ impl Middleware<EveContext> for EveMiddleware {
 				Ok(context)
 			}
 			EveMiddleware::JsonParser => {
-				if let Some(value) = json_parser(&context)? {
+				if let Some(value) = json_parser(&mut context)? {
 					context.set_body_object(value);
 				}
 
 				next(context).await
 			}
 			EveMiddleware::UrlEncodedParser => {
-				if let Some(value) = url_encoded_parser(&context)? {
+				if let Some(value) = url_encoded_parser(&mut context)? {
 					context.set_body_object(value);
 				}
 
@@ -250,7 +250,7 @@ async fn is_access_token_valid(
 	// - Specific tokens
 	// - User IDs whose tokens after a given timestamp is invalid
 	// - Global timestamp after which all tokens are invalid
-	if token.exp < get_current_time() {
+	if token.exp < get_current_time_millis() {
 		// If current time is more than expiry, return false
 		return Ok(false);
 	}
@@ -266,7 +266,7 @@ async fn is_access_token_valid(
 		.get(format!("user-{}-exp", hex::encode(&token.user.id)))
 		.await?;
 	if let Some(exp) = user_exp {
-		if exp < get_current_time() {
+		if exp < get_current_time_millis() {
 			// This user needs an exp greater than user-userid-exp
 			return Ok(false);
 		}
@@ -274,7 +274,7 @@ async fn is_access_token_valid(
 
 	let global_exp: Option<u64> = app.redis.get("global-user-exp").await?;
 	if let Some(exp) = global_exp {
-		if exp < get_current_time() {
+		if exp < get_current_time_millis() {
 			// This user needs an exp greater than global-user-exp
 			return Ok(false);
 		}

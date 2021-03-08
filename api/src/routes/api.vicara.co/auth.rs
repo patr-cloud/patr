@@ -7,12 +7,14 @@ use crate::{
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
 		self,
 		constants::request_keys,
-		get_current_time,
+		get_current_time_millis,
 		mailer,
 		validator,
 		EveContext,
@@ -57,6 +59,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	app.post(
 		"/reset-password",
 		&[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
+	);
+	app.get(
+		"/docker-registry-token",
+		&[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
 	);
 
 	app
@@ -114,7 +122,7 @@ async fn sign_in(
 	}
 
 	// generate JWT
-	let iat = get_current_time();
+	let iat = get_current_time_millis();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
@@ -294,7 +302,7 @@ async fn sign_up(
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 	let password = argon2::hash_raw(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
@@ -408,7 +416,7 @@ async fn join(
 		return Ok(context);
 	}
 
-	if user_data.otp_expiry < get_current_time() {
+	if user_data.otp_expiry < get_current_time_millis() {
 		context.json(error!(OTP_EXPIRED));
 		return Ok(context);
 	}
@@ -435,7 +443,7 @@ async fn join(
 
 	let user_uuid = Uuid::new_v4();
 	let user_id = user_uuid.as_bytes();
-	let created = get_current_time();
+	let created = get_current_time_millis();
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
@@ -490,7 +498,7 @@ async fn join(
 				organisation_id,
 				&organisation_name,
 				user_id,
-				get_current_time(),
+				get_current_time_millis(),
 			)
 			.await?;
 			db::set_resource_owner_id(
@@ -556,7 +564,7 @@ async fn join(
 		organisation_id,
 		&organisation_name,
 		user_id,
-		get_current_time(),
+		get_current_time_millis(),
 	)
 	.await?;
 	db::set_resource_owner_id(
@@ -575,7 +583,7 @@ async fn join(
 	.await?;
 
 	// generate JWT
-	let iat = get_current_time();
+	let iat = get_current_time_millis();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
@@ -656,7 +664,7 @@ async fn get_access_token(
 	}
 	let user_login = user_login.unwrap();
 
-	if user_login.token_expiry < get_current_time() {
+	if user_login.token_expiry < get_current_time_millis() {
 		// Token has expired
 		context.status(401).json(error!(UNAUTHORIZED));
 		return Ok(context);
@@ -665,7 +673,7 @@ async fn get_access_token(
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
 
-	let iat = get_current_time();
+	let iat = get_current_time_millis();
 	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
@@ -790,7 +798,7 @@ async fn forgot_password(
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 	let token_hash = argon2::hash_raw(
 		otp.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
@@ -934,4 +942,345 @@ async fn reset_password(
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
+}
+
+async fn docker_registry_token_endpoint(
+	context: EveContext,
+	next: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let query = context.get_request().get_query();
+
+	if query.get(request_keys::SCOPE).is_some() {
+		// Authenticating an existing login
+		docker_registry_authenticate(context, next).await
+	} else {
+		// Logging in
+		docker_registry_login(context, next).await
+	}
+}
+
+async fn docker_registry_login(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let query = context.get_request().get_query().clone();
+	let config = context.get_state().config.clone();
+
+	let _client_id = if let Some(client_id) =
+		query.get(request_keys::SNAKE_CASE_CLIENT_ID)
+	{
+		client_id
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Could not find client_id.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let offline_token = if let Some(offline_token) =
+		query.get(request_keys::SNAKE_CASE_OFFLINE_TOKEN)
+	{
+		offline_token
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Could not find offline_token.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let _offline_token = if let Ok(value) = offline_token.parse::<bool>() {
+		value
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. offline_token is not a boolean",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let service = if let Some(service) = query.get(request_keys::SERVICE) {
+		service
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Could not find service.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	if service != &config.docker_registry.service_name {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Service is not valid.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	if context.get_header("Authorization").is_none() {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header not found.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+	let authorization = context.get_header("Authorization").unwrap();
+	let authorization = authorization.replace("Basic ", "");
+	let authorization = if let Ok(data) = base64::decode(authorization) {
+		if let Ok(data) = String::from_utf8(data) {
+			data
+		} else {
+			context.status(400).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::MESSAGE: "Invalid request sent by the client. Authorization data could not be converted to a string.",
+					request_keys::DETAIL: []
+				}]
+			}));
+			return Ok(context);
+		}
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header could not be base64 decoded.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let mut splitter = authorization.split(':');
+	let (username, password) = {
+		let username = if let Some(username) = splitter.next() {
+			username
+		} else {
+			context.status(400).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
+					request_keys::DETAIL: []
+				}]
+			}));
+			return Ok(context);
+		};
+
+		let password = if let Some(password) = splitter.next() {
+			password
+		} else {
+			context.status(400).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
+					request_keys::DETAIL: []
+				}]
+			}));
+			return Ok(context);
+		};
+		(username, password)
+	};
+
+	let user = if let Some(user) =
+		db::get_user_by_username(context.get_mysql_connection(), &username)
+			.await?
+	{
+		user
+	} else {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "User not found.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let success = argon2::verify_raw(
+		password.as_bytes(),
+		config.password_salt.as_bytes(),
+		&user.password,
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	if !success {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Password invalid",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let token = RegistryToken::new(
+		if cfg!(debug_assertions) {
+			format!("localhost:{}", config.port)
+		} else {
+			format!("api.vicara.co")
+		},
+		username.to_string(),
+		&config,
+		vec![],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	context.json(json!({
+		request_keys::TOKEN: token,
+		request_keys::REFRESH_TOKEN: "test",
+	}));
+	return Ok(context);
+}
+
+async fn docker_registry_authenticate(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let query = context.get_request().get_query().clone();
+	let config = context.get_state().config.clone();
+
+	let authorization = if let Some(token) = context.get_header("Authorization")
+	{
+		token
+	} else {
+		context.status(401).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::MESSAGE: format!("Please login to {} first", config.docker_registry.issuer),
+					request_keys::DETAIL: []
+				}]
+			}));
+		return Ok(context);
+	};
+
+	let token = authorization.replace("Basic ", "");
+
+	// TODO fix this crap
+	let auth = String::from_utf8(base64::decode(token)?)?;
+
+	let mut splitter = auth.split(':');
+	let (username, password) = {
+		let username = if let Some(username) = splitter.next() {
+			username
+		} else {
+			context.status(400).json(json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: "UNAUTHORIZED",
+						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
+						request_keys::DETAIL: []
+					}]
+				}));
+			return Ok(context);
+		};
+
+		let password = if let Some(password) = splitter.next() {
+			password
+		} else {
+			context.status(400).json(json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: "UNAUTHORIZED",
+						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
+						request_keys::DETAIL: []
+					}]
+				}));
+			return Ok(context);
+		};
+		(username, password)
+	};
+
+	let user = if let Some(user) =
+		db::get_user_by_username(context.get_mysql_connection(), &username)
+			.await?
+	{
+		user
+	} else {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "User not found.",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let success = argon2::verify_raw(
+		password.as_bytes(),
+		config.password_salt.as_bytes(),
+		&user.password,
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
+	if !success {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "UNAUTHORIZED",
+				request_keys::MESSAGE: "Password invalid",
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let scope = query.get(request_keys::SCOPE).unwrap();
+	let mut splitter = scope.split(':');
+	let access_type = splitter.next().unwrap();
+	let repo = splitter.next().unwrap();
+	let action = splitter.next().unwrap();
+
+	let token = RegistryToken::new(
+		if cfg!(debug_assertions) {
+			format!("localhost:{}", config.port)
+		} else {
+			format!("api.vicara.co")
+		},
+		username.to_string(),
+		&config,
+		vec![RegistryTokenAccess {
+			r#type: access_type.to_string(),
+			name: repo.to_string(),
+			actions: vec![action.to_string()],
+		}],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	context.json(json!({
+		request_keys::TOKEN: token,
+		request_keys::REFRESH_TOKEN: "test",
+	}));
+	return Ok(context);
 }

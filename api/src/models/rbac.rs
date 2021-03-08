@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
@@ -44,6 +44,10 @@ pub mod permissions {
 			pub const DELETE: &str = "organisation::portus::delete";
 		}
 
+		pub mod deployer {
+			pub const LIST: &str = "organisation::deployer::list";
+		}
+
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";
@@ -54,10 +58,6 @@ pub mod permissions {
 	pub mod docker {
 		pub const PUSH: &str = "docker::push";
 		pub const PULL: &str = "docker::pull";
-	}
-
-	pub mod deployer {
-		pub const DEPLOY: &str = "deployer::deploy";
 	}
 }
 

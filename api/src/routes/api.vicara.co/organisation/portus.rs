@@ -6,7 +6,7 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time,
+		get_current_time_millis,
 		EveContext,
 		EveMiddleware,
 	},
@@ -399,7 +399,7 @@ async fn create(
 		assign_available_port(context.get_mysql_connection()).await?;
 	let image_ssh_port = get_ssh_port_for_server();
 	let server_ip_address = get_server_ip_address();
-	let created = get_current_time();
+	let created = get_current_time_millis();
 
 	// check if container name already exists
 	let portus_tunnel = db::get_portus_tunnel_by_name(

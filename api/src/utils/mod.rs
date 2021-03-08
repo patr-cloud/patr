@@ -11,13 +11,16 @@ pub mod validator;
 
 pub use eve_context::*;
 pub use eve_middlewares::*;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub fn get_current_time() -> u64 {
+pub fn get_current_time() -> Duration {
 	SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.expect("Time went backwards. Wtf?")
-		.as_millis() as u64
+}
+
+pub fn get_current_time_millis() -> u64 {
+	get_current_time().as_millis() as u64
 }
 
 #[cfg(not(feature = "sample-data"))]

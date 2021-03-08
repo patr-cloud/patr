@@ -16,6 +16,7 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
+#[allow(dead_code)]
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";
@@ -23,10 +24,14 @@ pub mod request_keys {
 	pub const PASSWORD: &str = "password";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
+	pub const ERRORS: &str = "errors";
 	pub const MESSAGE: &str = "message";
 	pub const ACCESS_TOKEN: &str = "accessToken";
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	pub const VERIFICATION_TOKEN: &str = "verificationToken";
+	pub const CODE: &str = "code";
+	pub const DETAIL: &str = "detail";
+	pub const TOKEN: &str = "token";
 	pub const AVAILABLE: &str = "available";
 	pub const FIRST_NAME: &str = "firstName";
 	pub const LAST_NAME: &str = "lastName";
@@ -73,4 +78,9 @@ pub mod request_keys {
 	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
+	pub const ACCOUNT: &str = "account";
+	pub const SCOPE: &str = "scope";
+	pub const SERVICE: &str = "service";
+	pub const SNAKE_CASE_CLIENT_ID: &str = "client_id";
+	pub const SNAKE_CASE_OFFLINE_TOKEN: &str = "offline_token";
 }

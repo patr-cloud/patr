@@ -7,7 +7,7 @@ use crate::{
 	utils::{
 		self,
 		constants::request_keys,
-		get_current_time,
+		get_current_time_millis,
 		validator,
 		EveContext,
 		EveMiddleware,
@@ -223,7 +223,7 @@ async fn add_email_address(
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 	let verification_token = argon2::hash_raw(
 		otp.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
@@ -303,7 +303,9 @@ async fn verify_email_address(
 		return Ok(context);
 	}
 
-	if email_verification_data.verification_token_expiry < get_current_time() {
+	if email_verification_data.verification_token_expiry <
+		get_current_time_millis()
+	{
 		context.json(error!(EMAIL_TOKEN_EXPIRED));
 		return Ok(context);
 	}
