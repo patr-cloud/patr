@@ -75,14 +75,14 @@ impl Middleware<EveContext> for EveMiddleware {
 				Ok(context)
 			}
 			EveMiddleware::JsonParser => {
-				if let Some(value) = json_parser(&mut context)? {
+				if let Some(value) = json_parser(&context)? {
 					context.set_body_object(value);
 				}
 
 				next(context).await
 			}
 			EveMiddleware::UrlEncodedParser => {
-				if let Some(value) = url_encoded_parser(&mut context)? {
+				if let Some(value) = url_encoded_parser(&context)? {
 					context.set_body_object(value);
 				}
 

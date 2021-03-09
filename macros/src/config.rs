@@ -183,6 +183,6 @@ fn parse_values(object_name: &str, object: &Map<String, Value>) -> String {
 			}
 		}
 	}
-	values.push_str("}");
+	values.push('}');
 	values
 }

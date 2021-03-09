@@ -22,9 +22,11 @@ use sqlx::mysql::MySqlPool;
 use std::{
 	error::Error as StdError,
 	fmt::{Debug, Formatter},
+	process,
 	sync::Arc,
-	time::Instant,
+	time::{Duration, Instant},
 };
+use tokio::{signal, time};
 
 #[derive(Clone)]
 pub struct App {
@@ -71,12 +73,32 @@ pub async fn start_server(app: App) {
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
-	let shutdown_signal = Some(futures::future::pending());
+	let shutdown_signal = Some(get_shutdown_signal());
 	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
 pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	EveApp::create(EveContext::new, app.clone())
+}
+
+async fn get_shutdown_signal() {
+	signal::ctrl_c()
+		.await
+		.expect("Unable to install signal handler");
+	println!();
+	log::warn!("Recieved stop signal. Gracefully shutting down server");
+	tokio::spawn(async {
+		time::sleep(Duration::from_millis(2000)).await;
+		log::info!("Server taking too long to quit...");
+		log::info!("Press Ctrl+C again to force quit application");
+		signal::ctrl_c()
+			.await
+			.expect("Unable to install signal handler");
+		println!();
+		log::warn!("Recieved stop signal again. Force shutting down server");
+		log::info!("Bye");
+		process::exit(-1);
+	});
 }
 
 fn eve_error_handler(

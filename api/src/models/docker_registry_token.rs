@@ -60,12 +60,9 @@ impl RegistryToken {
 		for i in 0..encoded.len() {
 			let character = encoded.chars().nth(i).unwrap();
 			kid.push(character);
-			if i % 4 == 3 {
+			if i % 4 == 3 && i != (encoded.len() - 1) {
 				kid.push(':');
 			}
-		}
-		if kid.ends_with(':') {
-			kid.remove(kid.len() - 1);
 		}
 		jsonwebtoken::encode(
 			&Header {

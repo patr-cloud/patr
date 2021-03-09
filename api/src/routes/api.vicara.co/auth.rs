@@ -1141,7 +1141,7 @@ async fn docker_registry_login(
 		if cfg!(debug_assertions) {
 			format!("localhost:{}", config.port)
 		} else {
-			format!("api.vicara.co")
+			"api.vicara.co".to_string()
 		},
 		username.to_string(),
 		&config,
@@ -1263,7 +1263,7 @@ async fn docker_registry_authenticate(
 		if cfg!(debug_assertions) {
 			format!("localhost:{}", config.port)
 		} else {
-			format!("api.vicara.co")
+			"api.vicara.co".to_string()
 		},
 		username.to_string(),
 		&config,

@@ -91,6 +91,7 @@ impl Component for App {
 	}
 }
 
+#[allow(clippy::unnecessary_lazy_evaluations)]
 fn get_user_data(storage: &StorageService) -> Option<UserData> {
 	let is_logged_in = storage
 		.restore::<Result<String, _>>(keys::IS_LOGGED_IN)
