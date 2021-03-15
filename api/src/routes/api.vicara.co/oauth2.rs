@@ -35,8 +35,7 @@ use surf::url::Url;
 use trust_dns_client::client;
 
 // todo
-// 1) reset secret key endpoint
-
+// 1) delete an application, and revoke access of the client
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
@@ -133,6 +132,7 @@ async fn register(
 	let client_id =
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let client_id = client_id.as_bytes();
+	let client_id = hex::encode(client_id);
 
 	// generate secret key for the client
 	let mut secret_key = [0; 256];
