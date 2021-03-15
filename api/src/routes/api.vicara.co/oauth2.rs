@@ -53,6 +53,11 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(get_user_info))],
 	);
 
+	sub_app.delete(
+		"/:clientId",
+		&[EveMiddleware::CustomFunction(pin_fn!(delete_client))],
+	);
+
 	// ================ testing middleware
 	sub_app.get(
 		"/openssl",
@@ -243,6 +248,15 @@ async fn register(
 		request_keys::ID: client_id,
 		request_keys::SECRET_KEY: secret_key,
 	}));
+	Ok(context)
+}
+
+// delete client.
+// revoke all access for the users signed in maybe?
+async fn delete_client(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
 	Ok(context)
 }
 

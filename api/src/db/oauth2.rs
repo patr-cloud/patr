@@ -8,13 +8,13 @@ pub async fn initialize_oauth_pre(
 	log::info!("Initializing Portus tables");
 	query!(
 		r#"
-        CREATE TABLE IF NOT EXISTS oauth_client(
-            id BINARY(16) PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            secret_key BINARY(64) NOT NULL,
-            redirect_url VARCHAR(100) NOT NULL
-        );
-        "#
+		CREATE TABLE IF NOT EXISTS oauth_client(
+			id BINARY(16) PRIMARY KEY,
+			name VARCHAR(100) NOT NULL,
+			secret_key BINARY(64) NOT NULL,
+			redirect_url VARCHAR(100) NOT NULL
+		);
+		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
@@ -31,11 +31,11 @@ pub async fn oauth_register_client(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-        INSERT INTO 
-            oauth_client
-        VALUES
-            (?,?,?,?);
-        "#,
+		INSERT INTO 
+			oauth_client
+		VALUES
+			(?,?,?,?);
+		"#,
 		id,
 		name,
 		secret_key,
