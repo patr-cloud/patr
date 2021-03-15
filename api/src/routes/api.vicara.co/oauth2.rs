@@ -15,8 +15,6 @@ use crate::{
 
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 
-use base64::decode;
-use log4rs::append::rolling_file::policy;
 use openidconnect::core::{
 	CoreClaimName, CoreJwsSigningAlgorithm, CoreProviderMetadata,
 	CoreResponseType, CoreSubjectIdentifierType,
@@ -25,6 +23,8 @@ use openidconnect::{
 	AuthUrl, EmptyAdditionalProviderMetadata, IssuerUrl, JsonWebKeySetUrl,
 	ResponseTypes, Scope, TokenUrl, UserInfoUrl,
 };
+use openssl::base64::encode_block;
+use openssl::rand::rand_bytes;
 use openssl::rsa::{Padding, Rsa};
 use openssl::symm::Cipher;
 use pem::{encode, parse, Pem};
@@ -32,6 +32,7 @@ use rand::rngs::OsRng;
 use rsa::{PaddingScheme, PublicKey, RSAPrivateKey, RSAPublicKey};
 use serde_json::{json, Value};
 use surf::url::Url;
+use trust_dns_client::client;
 
 // todo
 // 1) reset secret key endpoint
@@ -133,22 +134,16 @@ async fn register(
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let client_id = client_id.as_bytes();
 
-	// generate private key
-	let mut rng = OsRng;
-	let bits = 2048;
-	let private_key = RSAPrivateKey::new(&mut rng, bits);
-	if let Err(err) = private_key {
-		log::error!("Failed to generate a key. Error {:#?}", err);
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let private_key = private_key.unwrap();
+	// generate secret key for the client
+	let mut secret_key = [0; 256];
+	rand_bytes(&mut secret_key).unwrap();
+	let secret_key = encode_block(&secret_key);
 
 	//once client is registered, add details to database
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: client_id,
-		"private key": "yolo",
+		"secretKey": secret_key,
 	}));
 	Ok(context)
 }
