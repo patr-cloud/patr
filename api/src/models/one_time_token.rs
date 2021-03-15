@@ -1,4 +1,3 @@
-
 use jsonwebtoken::{
 	errors::Error, DecodingKey, EncodingKey, TokenData, Validation,
 };
@@ -12,13 +11,11 @@ use crate::models::rbac::OrgPermissions;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OneTimeToken {
-	pub iss: String,
-	pub aud: String,
 	pub iat: u64,
-	pub typ: String,
 	pub exp: u64,
-	pub status: bool,
-	pub token: String,
+	pub unique_id: &[u8],
+	pub id: &[u8],
+	pub typ: String,
 }
 
 impl OneTimeToken {
@@ -46,16 +43,15 @@ impl OneTimeToken {
 	pub fn new(
 		iat: u64,
 		exp: u64,
-		user: ExposedUserData,
+		unique_id: &'static [u8],
+		id: &'static [u8],
 	) -> Self {
 		OneTimeToken {
-			iss: String::from("https://api.vicara.co"),
-			aud: String::from("https://*.vicara.co"),
 			iat,
-			typ: String::from("accessToken"),
+			typ: String::from("authorizationCode"),
 			exp,
-			orgs,
-			user,
+			unique_id,
+			id,
 		}
 	}
 }

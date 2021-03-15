@@ -1,5 +1,6 @@
 mod initializer;
 mod meta_data;
+mod oauth2;
 mod organisation;
 mod rbac;
 mod user;
@@ -14,6 +15,7 @@ use tokio::task;
 
 pub use initializer::initialize;
 pub use meta_data::*;
+pub use oauth2::*;
 pub use organisation::*;
 pub use rbac::*;
 pub use user::*;

@@ -91,6 +91,16 @@
       "nullable": []
     }
   },
+  "12d23372d1fe5b3dfda81ae1bc4de6fc70877a58e8670e61ab9f86bb064e1935": {
+    "query": "INSERT INTO oauth_client VALUES (?,?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 4
+      },
+      "nullable": []
+    }
+  },
   "14fdbb15b2dfa4d6db05bab5a04402ddb188d7a89c270dccf98b3f4feb1ab1eb": {
     "query": "SELECT * FROM role WHERE id = ?;",
     "describe": {
@@ -460,6 +470,16 @@
       "columns": [],
       "parameters": {
         "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "21fd1ab72337120ff1d6b9b1de3bf2f6223c6b054627e812d0da140a1de49a0e": {
+    "query": "CREATE TABLE IF NOT EXISTS oauth_client( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, secret_key BINARY(64) NOT NULL, redirect_url VARCHAR(100) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }

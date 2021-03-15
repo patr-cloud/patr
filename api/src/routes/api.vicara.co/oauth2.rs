@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use crate::{
 	app::{create_eve_app, App},
 	db::{self, generate_new_resource_id},
@@ -5,6 +7,7 @@ use crate::{
 	models::{
 		error,
 		rbac::{self, permissions},
+		OneTimeToken,
 	},
 	pin_fn,
 	utils::{
@@ -12,17 +15,10 @@ use crate::{
 		get_current_time, EveContext, EveMiddleware,
 	},
 };
-
+use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use uuid::Uuid;
 
-use openidconnect::core::{
-	CoreClaimName, CoreJwsSigningAlgorithm, CoreProviderMetadata,
-	CoreResponseType, CoreSubjectIdentifierType,
-};
-use openidconnect::{
-	AuthUrl, EmptyAdditionalProviderMetadata, IssuerUrl, JsonWebKeySetUrl,
-	ResponseTypes, Scope, TokenUrl, UserInfoUrl,
-};
 use openssl::base64::encode_block;
 use openssl::rand::rand_bytes;
 use openssl::rsa::{Padding, Rsa};
@@ -67,6 +63,14 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 }
 
 // handles user login and consent
+
+// expected format for the request url
+// https://api.vicara.com/oauth2?
+// response_type=code ==> Right now onely code is supported
+// &client_id=29352735982374239857
+// &redirect_uri=https://example-app.com/callback
+// &scope=create+delete
+// &state=xcoivjuywkdkhvusuye3kch
 async fn auth(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
@@ -78,6 +82,78 @@ async fn auth(
 	// ask user for consent
 	// share the status(bool) and one time use code (Exchange Code) to the client.
 	// also add api url, where the client can make calls to get information.
+	let query_map = context.get_request().get_query().clone();
+	log::debug!("received querry {:?}", &query_map);
+
+	let response_type = query_map.get(request_keys::RESPONSE_TYPE);
+	if response_type.is_none() {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
+	let response_type = response_type.unwrap();
+
+	let id = query_map.get(request_keys::ID);
+	if id.is_none() {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
+	let id = id.unwrap();
+	let id = id.as_bytes();
+	//NOTE: If the client_id is invalid, the server should reject the request immediately and display the error to the user.
+
+	let redirect_url = query_map.get(request_keys::REDIRECT_URL);
+	if redirect_url.is_none() {
+		// first check if only one url is registered in the database. if yes, then use that value, else, return an error.
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
+	let redirect_url = redirect_url.unwrap();
+
+	let scope = query_map.get(request_keys::SCOPE);
+	if scope.is_none() {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
+	let scope = scope.unwrap();
+	let mut scope: Vec<&str> = scope.split("+").collect();
+	// let scope: Vec<&str> = scope.collect();
+
+	let state = query_map.get(request_keys::STATE);
+	if state.is_none() {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
+	let state = state.unwrap();
+
+	// TODO: check if the given redirect url exists in the db
+
+	//TODO: ask user for consent
+
+	// generate one time access token
+	let unique_id = Uuid::new_v4();
+	let unique_id = unique_id.as_bytes();
+	let iat = get_current_time();
+	let exp = iat + (1000 * 600); // 10 minutes
+
+	let one_time_token = OneTimeToken::new(iat, exp, unique_id, id);
+	let jwt = one_time_token
+		.to_string(context.get_state().config.jwt_secret.as_str())?;
+	let refresh_token = Uuid::new_v4();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ACCESS_TOKEN: jwt,
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+	}));
+
+	// log::debug!(
+	// 	"received query is {}, {}, {}, {:#?}, {}",
+	// 	&response_type,
+	// 	id,
+	// 	redirect_url,
+	// 	scope,
+	// 	state
+	// );
 
 	Ok(context)
 }
@@ -132,18 +208,40 @@ async fn register(
 	let client_id =
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let client_id = client_id.as_bytes();
-	let client_id = hex::encode(client_id);
 
 	// generate secret key for the client
 	let mut secret_key = [0; 256];
 	rand_bytes(&mut secret_key).unwrap();
 	let secret_key = encode_block(&secret_key);
 
+	// hash secret key before storing
+	let secret_key_hash = argon2::hash_raw(
+		secret_key.as_bytes(),
+		context.get_state().config.password_salt.as_bytes(),
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)?;
+
 	//once client is registered, add details to database
+	// for url in redirect_url.iter() {
+	// 	let url = url.as_str().unwrap();
+	// 	db::oauth_register_client(
+	// 		context.get_mysql_connection(),
+	// 		client_id,
+	// 		name,
+	// 		url,
+	// 		&secret_key_hash,
+	// 	)
+	// 	.await?;
+	// }
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: client_id,
-		"secretKey": secret_key,
+		request_keys::SECRET_KEY: secret_key,
 	}));
 	Ok(context)
 }

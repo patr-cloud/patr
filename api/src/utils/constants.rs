@@ -78,4 +78,8 @@ pub mod request_keys {
 	pub const FOLDER_ID: &str = "folderId";
 	pub const COLLECTION_ID: &str = "collectionId";
 	pub const REDIRECT_URL: &str = "redirectUrl";
+	pub const RESPONSE_TYPE: &str = "responseType";
+	pub const SCOPE: &str = "scope";
+	pub const STATE: &str = "state";
+	pub const SECRET_KEY: &str = "secretKey";
 }
