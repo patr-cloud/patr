@@ -16,6 +16,10 @@ use crate::{
 	},
 };
 use argon2::Variant;
+use db::{
+	oauth_insert_into_table_oauth_client,
+	oauth_insert_into_table_oauth_client_url,
+};
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use uuid::Uuid;
 
@@ -183,10 +187,10 @@ async fn get_user_info(
 
 // This middleware could also take care of things like
 // 1) storing the scope of access the client gets on the resource
-// 2) name of the app
+// 2) name of the app (done)
 // 3) description for the app (optional)
 // 4) link to client homepage url
-// 5) list of redirect url
+// 5) list of redirect url (done)
 async fn register(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
@@ -232,17 +236,24 @@ async fn register(
 	)?;
 
 	//once client is registered, add details to database
-	// for url in redirect_url.iter() {
-	// 	let url = url.as_str().unwrap();
-	// 	db::oauth_register_client(
-	// 		context.get_mysql_connection(),
-	// 		client_id,
-	// 		name,
-	// 		url,
-	// 		&secret_key_hash,
-	// 	)
-	// 	.await?;
-	// }
+	db::oauth_insert_into_table_oauth_client(
+		context.get_mysql_connection(),
+		client_id,
+		name,
+		&secret_key_hash,
+	)
+	.await?;
+
+	// add url to table `oatuh_client_url`
+	for url in redirect_url.iter() {
+		let url = url.as_str().unwrap();
+		db::oauth_insert_into_table_oauth_client_url(
+			context.get_mysql_connection(),
+			url.to_string(),
+			client_id,
+		)
+		.await?;
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -281,3 +292,7 @@ async fn openssl(
 
 	Ok(context)
 }
+
+// HELPER FUNCTIONS
+
+// function to check if given url is a valid url

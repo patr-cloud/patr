@@ -91,12 +91,12 @@
       "nullable": []
     }
   },
-  "12d23372d1fe5b3dfda81ae1bc4de6fc70877a58e8670e61ab9f86bb064e1935": {
-    "query": "INSERT INTO oauth_client VALUES (?,?,?,?);",
+  "107e9286f092269837db19c4f9e9cba95a6a4dfa3b11ba82e624abe29e58c919": {
+    "query": "CREATE TABLE IF NOT EXISTS oauth_client( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, secret_key BINARY(64) NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 4
+        "Right": 0
       },
       "nullable": []
     }
@@ -464,22 +464,22 @@
       "nullable": []
     }
   },
+  "200304be21c2fbeecefa66371ac0ff8a6a7172db03994a0f693016f29f2ed17e": {
+    "query": "CREATE TABLE IF NOT EXISTS oauth_client_url( id BINARY(16), url VARCHAR(500), PRIMARY KEY (id, url) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "2170f039ddb46624f010285cbd21fe3a4b8d233da09ef51569b17157657329ac": {
     "query": "INSERT INTO user_email_address VALUES ('organisation', NULL, ?, ?, ?);",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 3
-      },
-      "nullable": []
-    }
-  },
-  "21fd1ab72337120ff1d6b9b1de3bf2f6223c6b054627e812d0da140a1de49a0e": {
-    "query": "CREATE TABLE IF NOT EXISTS oauth_client( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, secret_key BINARY(64) NOT NULL, redirect_url VARCHAR(100) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -2415,6 +2415,16 @@
       ]
     }
   },
+  "b3335a036e9b32732862ace31d1f683ea9af7658753f1a448d44bf43922149fe": {
+    "query": "INSERT INTO oauth_client VALUES (?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "b46cbc87d1619c33392a9b59afec8e16c267cab2f60c1c17283cc0ad5e053079": {
     "query": "SELECT * FROM portus_tunnels WHERE id = ?;",
     "describe": {
@@ -2821,6 +2831,16 @@
       "columns": [],
       "parameters": {
         "Right": 6
+      },
+      "nullable": []
+    }
+  },
+  "be62f9829ba2208b9a88476781dae309a43ae349910660370ca178446126e2da": {
+    "query": "INSERT INTO oauth_client_url VALUES (?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
       },
       "nullable": []
     }
