@@ -21,6 +21,7 @@ use db::{
 	oauth_insert_into_table_oauth_client_url,
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use surf::url::{ParseError, Url};
 use uuid::Uuid;
 
 use openssl::base64::encode_block;
@@ -31,7 +32,6 @@ use pem::{encode, parse, Pem};
 use rand::rngs::OsRng;
 use rsa::{PaddingScheme, PublicKey, RSAPrivateKey, RSAPublicKey};
 use serde_json::{json, Value};
-use surf::url::Url;
 use trust_dns_client::client;
 
 // todo
@@ -117,7 +117,6 @@ async fn auth(
 		return Ok(context);
 	}
 	let redirect_url = redirect_url.unwrap();
-
 	let scope = query_map.get(request_keys::SCOPE);
 	if scope.is_none() {
 		context.status(400).json(error!(WRONG_PARAMETERS));
@@ -161,15 +160,6 @@ async fn auth(
 		request_keys::ACCESS_TOKEN: jwt,
 		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
 	}));
-
-	// log::debug!(
-	// 	"received query is {}, {}, {}, {:#?}, {}",
-	// 	&response_type,
-	// 	id,
-	// 	redirect_url,
-	// 	scope,
-	// 	state
-	// );
 
 	Ok(context)
 }
@@ -253,6 +243,8 @@ async fn register(
 	// add url to table `oatuh_client_url`
 	for url in redirect_url.iter() {
 		let url = url.as_str().unwrap();
+		// throw an error if not a valid url
+		let _valid_result = is_valid_url(url)?;
 		db::oauth_insert_into_table_oauth_client_url(
 			context.get_mysql_connection(),
 			url.to_string(),
@@ -302,3 +294,7 @@ async fn openssl(
 // HELPER FUNCTIONS
 
 // function to check if given url is a valid url
+fn is_valid_url(url: &str) -> Result<Url, ParseError> {
+	let parse_result = Url::parse(&url)?;
+	Ok(parse_result)
+}
