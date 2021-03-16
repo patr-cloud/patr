@@ -13,8 +13,8 @@ use crate::models::rbac::OrgPermissions;
 pub struct OneTimeToken {
 	pub iat: u64,
 	pub exp: u64,
-	pub unique_id: &[u8],
-	pub id: &[u8],
+	pub unique_id: Vec<u8>,
+	pub id: Vec<u8>,
 	pub typ: String,
 }
 
@@ -40,12 +40,7 @@ impl OneTimeToken {
 		)
 	}
 
-	pub fn new(
-		iat: u64,
-		exp: u64,
-		unique_id: &'static [u8],
-		id: &'static [u8],
-	) -> Self {
+	pub fn new(iat: u64, exp: u64, unique_id: Vec<u8>, id: Vec<u8>) -> Self {
 		OneTimeToken {
 			iat,
 			typ: String::from("authorizationCode"),

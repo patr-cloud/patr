@@ -140,7 +140,8 @@ async fn auth(
 	let iat = get_current_time();
 	let exp = iat + (1000 * 600); // 10 minutes
 
-	let one_time_token = OneTimeToken::new(iat, exp, unique_id, id);
+	let one_time_token =
+		OneTimeToken::new(iat, exp, unique_id.to_vec(), id.to_vec());
 	let jwt = one_time_token
 		.to_string(context.get_state().config.jwt_secret.as_str())?;
 	let refresh_token = Uuid::new_v4();
