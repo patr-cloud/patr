@@ -16,6 +16,8 @@ pub struct OneTimeToken {
 	pub unique_id: Vec<u8>,
 	pub id: Vec<u8>,
 	pub typ: String,
+	pub redirect_url: String,
+	pub state: String,
 }
 
 impl OneTimeToken {
@@ -40,13 +42,22 @@ impl OneTimeToken {
 		)
 	}
 
-	pub fn new(iat: u64, exp: u64, unique_id: Vec<u8>, id: Vec<u8>) -> Self {
+	pub fn new(
+		iat: u64,
+		exp: u64,
+		unique_id: Vec<u8>,
+		id: Vec<u8>,
+		redirect_url: String,
+		state: String,
+	) -> Self {
 		OneTimeToken {
 			iat,
 			typ: String::from("authorizationCode"),
 			exp,
 			unique_id,
 			id,
+			redirect_url,
+			state,
 		}
 	}
 }
