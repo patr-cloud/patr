@@ -1,6 +1,8 @@
+use std::convert::TryInto;
+
 use sqlx::{MySql, Transaction};
 
-use crate::{query, query_as};
+use crate::{models::db_mapping::OauthClientUrl, query, query_as};
 
 pub async fn initialize_oauth_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -76,5 +78,49 @@ pub async fn oauth_insert_into_table_oauth_client(
 	Ok(())
 }
 
+pub async fn oauth_is_url_registered(
+	connection: &mut Transaction<'_, MySql>,
+	id: &[u8],
+) -> Result<Option<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			url
+		FROM
+			oauth_client_url
+		WHERE
+			id = ?
+		"#,
+		id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	// if rows.is_empty() {
+	// 	return Ok(None);
+	// }
+	// Ok(rows.into_iter().map(|row| row.url).next())
+	Ok(rows.into_iter().map(|row| row.url).next())
+}
+
+// pub async fn oauth_is_url_registered(
+// 	connection: &mut Transaction<'_, MySql>,
+// 	id: &[u8],
+// ) -> Result<Vec<OauthClientUrl>, sqlx::Error> {
+// 	query_as!(
+// 		OauthClientUrl,
+// 		r#"
+// 		SELECT
+// 			*
+// 		FROM
+// 			oauth_client_url
+// 		WHERE
+// 			id = ?
+// 		"#,
+// 		id
+// 	)
+// 	.fetch_all(connection)
+// 	.await?;
+// }
 // query to check if redirect url exists in the database
 // query to check if client exists in the database

@@ -62,12 +62,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(delete_client))],
 	);
 
-	// ================ testing middleware
-	sub_app.get(
-		"/openssl",
-		&[EveMiddleware::CustomFunction(pin_fn!(openssl))],
-	);
-
 	sub_app
 }
 
@@ -107,16 +101,30 @@ async fn auth(
 		return Ok(context);
 	}
 	let id = id.unwrap();
-	let id = id.as_bytes();
+	// let id = id.as_bytes();
+	let id = hex::decode(id)?;
+	log::debug!("Received ID is {:?}", &id);
 	//NOTE: If the client_id is invalid, the server should reject the request immediately and display the error to the user.
 
-	let redirect_url = query_map.get(request_keys::REDIRECT_URL);
+	let mut redirect_url = query_map.get(request_keys::REDIRECT_URL);
 	if redirect_url.is_none() {
-		// first check if only one url is registered in the database. if yes, then use that value, else, return an error.
+		// if not url is present, check if there is only one url present? if no url is present in db AND no url is sent
+		// on as query parameter, then return an error.
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	}
 	let redirect_url = redirect_url.unwrap();
+
+	// ======================
+	log::info!("inside url check...");
+	let url_result =
+		db::oauth_is_url_registered(context.get_mysql_connection(), &id)
+			.await?;
+	let url_result = url_result.unwrap();
+	log::debug!("db query result {:#?}", url_result);
+
+	// ======================
+
 	let scope = query_map.get(request_keys::SCOPE);
 	if scope.is_none() {
 		context.status(400).json(error!(WRONG_PARAMETERS));
@@ -149,7 +157,6 @@ async fn auth(
 		unique_id.to_vec(),
 		id.to_vec(),
 		redirect_url.to_string(),
-		state.to_string(),
 	);
 	let jwt = one_time_token
 		.to_string(context.get_state().config.jwt_secret.as_str())?;
@@ -267,27 +274,6 @@ async fn delete_client(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	Ok(context)
-}
-
-// testing middleware
-async fn openssl(
-	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
-	let rsa = Rsa::generate(1024).unwrap();
-	let passphrase = "rust_by_example";
-	let private_key: Vec<u8> = rsa
-		.private_key_to_pem_passphrase(
-			Cipher::aes_128_cbc(),
-			passphrase.as_bytes(),
-		)
-		.unwrap();
-	let public_key: Vec<u8> = rsa.public_key_to_pem().unwrap();
-
-	log::debug!("Private key: {}", String::from_utf8(private_key).unwrap());
-	log::debug!("Public key: {}", String::from_utf8(public_key).unwrap());
-
 	Ok(context)
 }
 

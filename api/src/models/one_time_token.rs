@@ -17,7 +17,6 @@ pub struct OneTimeToken {
 	pub id: Vec<u8>,
 	pub typ: String,
 	pub redirect_url: String,
-	pub state: String,
 }
 
 impl OneTimeToken {
@@ -48,7 +47,6 @@ impl OneTimeToken {
 		unique_id: Vec<u8>,
 		id: Vec<u8>,
 		redirect_url: String,
-		state: String,
 	) -> Self {
 		OneTimeToken {
 			iat,
@@ -57,7 +55,6 @@ impl OneTimeToken {
 			unique_id,
 			id,
 			redirect_url,
-			state,
 		}
 	}
 }

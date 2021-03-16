@@ -1214,6 +1214,31 @@
       "nullable": []
     }
   },
+  "5b1b8fdee6a2088e709fdde3e14d00dc3f459b52a85cc90221b629c49dec622a": {
+    "query": "SELECT url FROM oauth_client_url WHERE id = ?",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "url",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4099
+            },
+            "char_set": 224,
+            "max_size": 2000
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
