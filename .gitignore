@@ -1,6 +1,9 @@
 /target
 /log
 
+# temp files for Drive testing
+/temp
+
 /config/*
 !/config/*.sample.*
 .env

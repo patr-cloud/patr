@@ -46,6 +46,7 @@ pub mod permissions {
 
 		pub mod deployer {
 			pub const LIST: &str = "organisation::deployer::list";
+			pub const CREATE: &str = "organisation::deployer::create";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";

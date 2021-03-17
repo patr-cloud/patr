@@ -1,24 +1,15 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-		RegistryToken,
+		rbac, AccessTokenData, ExposedUserData, RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time_millis,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time_millis, mailer,
+		validator, EveContext, EveMiddleware,
 	},
 };
 
@@ -66,7 +57,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			docker_registry_token_endpoint
 		))],
 	);
-
 	app
 }
 
@@ -264,8 +254,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);

@@ -24,7 +24,7 @@ pub async fn initialize_deployer_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS docker_registry_image (
+		CREATE TABLE IF NOT EXISTS docker_registry_repository (
 			id BINARY(16) PRIMARY KEY,
 			organisation_id BINARY(16) NOT NULL,
 			name VARCHAR(255) NOT NULL,
@@ -53,7 +53,7 @@ pub async fn initialize_deployer_post(
 
 	query!(
 		r#"
-		ALTER TABLE docker_registry_image
+		ALTER TABLE docker_registry_repository
 		ADD CONSTRAINT
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
@@ -61,5 +61,29 @@ pub async fn initialize_deployer_post(
 	.execute(&mut *transaction)
 	.await?;
 
+	Ok(())
+}
+
+// function to add new repositorys
+
+pub async fn add_repository(
+	transaction: &mut Transaction<'_, MySql>,
+	resource_id: &[u8],
+	name: &str,
+	organisation_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			docker_registry_repository
+		VALUES
+			(?,?,?)
+		"#,
+		resource_id,
+		organisation_id,
+		name
+	)
+	.execute(&mut *transaction)
+	.await?;
 	Ok(())
 }
