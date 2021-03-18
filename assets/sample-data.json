@@ -237,21 +237,59 @@
 			},
 			"superUser": "rakshith-ravi",
 			"roles": {
-				"developer": [
-					""
+				"employee": [
+					"organisation::portus::view",
+					"organisation::portus::list",
+					"organisation::application::list",
+					"organisation::application::viewDetails",
+					"organisation::application::listVersions",
+					"organisation::domain::list",
+					"organisation::domain::viewDetails",
+					"organisation::viewRoles"
 				],
-				"software-team": [
-					""
+				"developer": [
+					"organisation::portus::view",
+					"organisation::portus::list",
+					"organisation::portus::add",
+					"organisation::application::list",
+					"organisation::application::add",
+					"organisation::application::viewDetails",
+					"organisation::application::listVersions",
+					"organisation::domain::list",
+					"organisation::domain::viewDetails",
+					"organisation::viewRoles"
 				]
 			},
 			"users": {
+				"adarsh-warrier": [
+					"employee"
+				],
+				"abhishek-satish": [
+					"employee",
+					"developer"
+				],
+				"manan-barjatya": [
+					"employee"
+				],
+				"anupama-nair": [
+					"employee"
+				],
+				"adityaraj-bhatt": [
+					"employee"
+				],
 				"manjeet-arneja": [
-					"developer",
-					"software-team"
+					"employee",
+					"developer"
 				],
 				"aniket-jain": [
-					"devloper",
-					"software-team"
+					"employee",
+					"developer"
+				],
+				"manasva-bhargava": [
+					"employee"
+				],
+				"aditi-shah": [
+					"employee"
 				]
 			}
 		},
@@ -323,14 +361,7 @@
 				]
 			},
 			"superUser": "prajwal-ajay",
-			"roles": {
-				"developer": [
-					""
-				],
-				"software-team": [
-					""
-				]
-			},
+			"roles": {},
 			"users": {}
 		}
 	]

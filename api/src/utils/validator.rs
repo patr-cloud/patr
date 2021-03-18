@@ -13,6 +13,8 @@ lazy_static! {
 	//static ref PASSWORD_REGEX: Regex = Regex::new("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-+=()])(?=\\S+$).{8,}$").unwrap();
 	// Needs to begin with personal-organisation- and follow up with a 128 bit hex
 	static ref PERSONAL_ORGANISATION_NAME_REGEX: Regex = Regex::new("personal-organisation-[a-z0-9]{32}").unwrap();
+	// Can only contain lowercase letters, numbers, hyphens and underscores
+	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("[a-z0-9_-]{2,255}").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	pub(crate) static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
@@ -58,6 +60,10 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 
 pub fn is_organisation_name_valid(organisation_name: &str) -> bool {
 	!PERSONAL_ORGANISATION_NAME_REGEX.is_match(organisation_name)
+}
+
+pub fn is_docker_repo_name_valid(repo_name: &str) -> bool {
+	DOCKER_REPO_NAME_REGEX.is_match(repo_name)
 }
 
 pub async fn is_domain_name_valid(domain: &str) -> bool {
