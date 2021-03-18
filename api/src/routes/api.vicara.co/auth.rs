@@ -13,12 +13,12 @@ use crate::{
 	},
 };
 use argon2::Variant;
-use db::get_all_organisation_roles;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rbac::GOD_USER_ID;
 use serde_json::{json, Value};
 // use once_cell::sync::OnceCell;
 use tokio::task;
+use utils::validator::is_docker_repo_name_valid;
 use uuid::Uuid;
 // pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 
@@ -1253,6 +1253,34 @@ async fn docker_registry_authenticate(
 	let action = splitter.next().unwrap();
 	let required_permissions: Vec<String> =
 		action.split(",").map(String::from).collect();
+
+	// check if repo name is valid
+	let is_repo_name_valid = is_docker_repo_name_valid(&repo);
+	if !is_repo_name_valid {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "invalid repository name."
+		}));
+
+		return Ok(context);
+	}
+	log::debug!("repo name is {}", &repo);
+	let org_name: Vec<&str> = repo.split("/").collect();
+	let org_name = org_name.get(0).unwrap();
+	let org =
+		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
+			.await?;
+
+	if org.is_none() {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "Organisation does not exist"
+		}));
+
+		return Ok(context);
+	}
+	let org = org.unwrap();
+
 	// insert scope validating here
 	// get resource for given repo name
 	let repository =
@@ -1287,10 +1315,7 @@ async fn docker_registry_authenticate(
 	}
 
 	let resource = resource.unwrap();
-	let org_id = resource.owner_id;
-
-	// convert org_id to string and then encode it, so get role for the given org id
-	let org_id = hex::encode(org_id);
+	let org_id = hex::encode(org.id);
 
 	// get all org roles for the user usign the id
 	let user_id = user.id;

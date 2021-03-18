@@ -5,8 +5,7 @@ use crate::{
 		db_mapping::{Permission, Resource, ResourceType, Role},
 		rbac::{self, OrgPermissions},
 	},
-	query,
-	query_as,
+	query, query_as,
 };
 
 use sqlx::{MySql, Transaction};
