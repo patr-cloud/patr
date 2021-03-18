@@ -3,7 +3,7 @@ use crate::{
 	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac, AccessTokenData, ExposedUserData, RegistryToken,
+		error, rbac, AccessTokenData, ExposedUserData, RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
@@ -12,12 +12,15 @@ use crate::{
 		validator, EveContext, EveMiddleware,
 	},
 };
-
 use argon2::Variant;
+use db::get_all_organisation_roles;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use rbac::GOD_USER_ID;
 use serde_json::{json, Value};
+// use once_cell::sync::OnceCell;
 use tokio::task;
 use uuid::Uuid;
+// pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);
@@ -1248,6 +1251,98 @@ async fn docker_registry_authenticate(
 	let access_type = splitter.next().unwrap();
 	let repo = splitter.next().unwrap();
 	let action = splitter.next().unwrap();
+	let required_permissions: Vec<String> =
+		action.split(",").map(String::from).collect();
+	// insert scope validating here
+	// get resource for given repo name
+	let repository =
+		db::get_repository_by_name(context.get_mysql_connection(), &repo)
+			.await?;
+
+	// reject request if repository does not exist
+	if repository.is_none() {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "resourceDoesNotExist",
+				request_keys::MESSAGE: "The given repository does not exist. TODO prompt URL to create",
+			}]
+		}));
+		return Ok(context);
+	}
+	let repository = repository.unwrap();
+
+	// get repo id inorder to get resource details
+	let resource =
+		db::get_resource_by_id(context.get_mysql_connection(), &repository.id)
+			.await?;
+
+	if resource.is_none() {
+		context.status(500).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "serverError",
+				request_keys::MESSAGE: "The given resource does not exist.",
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let resource = resource.unwrap();
+	let org_id = resource.owner_id;
+
+	// convert org_id to string and then encode it, so get role for the given org id
+	let org_id = hex::encode(org_id);
+
+	// get all org roles for the user usign the id
+	let user_id = user.id;
+	let user_roles = db::get_all_organisation_roles_for_user(
+		context.get_mysql_connection(),
+		&user_id,
+	)
+	.await?;
+
+	let required_role_for_user = user_roles.get(&org_id);
+	if required_role_for_user.is_none() {
+		context.status(500).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: "serverError",
+				request_keys::MESSAGE: "No role for the user found.",
+			}]
+		}));
+		return Ok(context);
+	}
+	// org-name/repo-name
+
+	let required_role_for_user = required_role_for_user.unwrap();
+
+	for permission in required_permissions {
+		let allowed = {
+			if let Some(permissions) = required_role_for_user
+				.resource_types
+				.get(&resource.resource_type_id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			if let Some(permissions) =
+				required_role_for_user.resources.get(&resource.id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			required_role_for_user.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
+				user_id == god_user_id
+			}
+		};
+		if !allowed {
+			context.status(401).json(error!(UNPRIVILEGED));
+			return Ok(context);
+		}
+	}
 
 	let token = RegistryToken::new(
 		if cfg!(debug_assertions) {

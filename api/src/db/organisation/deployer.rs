@@ -1,4 +1,4 @@
-use crate::query;
+use crate::{models::db_mapping::DockerRepository, query, query_as};
 use sqlx::{MySql, Transaction};
 
 pub async fn initialize_deployer_pre(
@@ -86,4 +86,26 @@ pub async fn add_repository(
 	.execute(&mut *transaction)
 	.await?;
 	Ok(())
+}
+
+pub async fn get_repository_by_name(
+	connection: &mut Transaction<'_, MySql>,
+	repository_name: &str,
+) -> Result<Option<DockerRepository>, sqlx::Error> {
+	let rows = query_as!(
+		DockerRepository,
+		r#"
+		SELECT
+			*
+		FROM
+			docker_registry_repository
+		WHERE
+			name = ?
+		"#,
+		&repository_name
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
 }
