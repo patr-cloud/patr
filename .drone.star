@@ -3,7 +3,14 @@ def main(ctx):
         "kind": "pipeline",
         "type": "docker",
         "name": "Default",
-        "steps": get_pipeline(ctx)
+        "steps": get_pipeline(ctx),
+
+        "trigger": {
+            "event": [
+                "push",
+                "pull_request"
+            ]
+        }
     }
 
 def get_pipeline(ctx):
@@ -17,7 +24,7 @@ def get_pipeline(ctx):
         return []
 
 def is_pr(ctx):
-    return ctx.build.event == "pull_request"
+    return ctx.build.event == "pull_request" | ctx.build.event == "push"
 
 def check_code():
     return {
