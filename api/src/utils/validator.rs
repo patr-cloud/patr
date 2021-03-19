@@ -43,7 +43,7 @@ pub fn is_password_valid(password: &str) -> bool {
 			has_number = true;
 		}
 		if "~`!@#$%^&*()-_+=[]{};':\",./<>?".contains(ch) {
-			has_special_character = true
+			has_special_character = true;
 		}
 	});
 	password.len() >= 8 &&
