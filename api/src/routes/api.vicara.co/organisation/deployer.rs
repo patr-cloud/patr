@@ -1,12 +1,13 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use validator::is_docker_repo_name_valid;
 
 use crate::{
 	app::{create_eve_app, App},
 	db, error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{constants::request_keys, validator, EveContext, EveMiddleware},
 };
 use serde_json::{json, Value};
 
@@ -110,14 +111,68 @@ async fn create_docker_repository(
 ) -> Result<EveContext, Error<EveContext>> {
 	// check if the token is valid
 	let body = context.get_body_object().clone();
-	let repository_name = if let Some(Value::String(repository_name)) =
-		body.get(request_keys::REPOSITORY_NAME)
+	let repository = if let Some(Value::String(repository)) =
+		body.get(request_keys::REPOSITORY)
 	{
-		repository_name
+		repository
 	} else {
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
+
+	let split_array: Vec<String> =
+		repository.split("/").map(String::from).collect();
+
+	if split_array.len() != 2 {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "ivalid repository name."
+		}));
+
+		return Ok(context);
+	}
+
+	let org_name = &split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = &split_array.get(1).unwrap();
+
+	log::debug!("repo name is {}", &repo_name);
+	// check if repo name is valid
+	let is_repo_name_valid = is_docker_repo_name_valid(repo_name);
+	if !is_repo_name_valid {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "invalid repository name."
+		}));
+
+		return Ok(context);
+	}
+
+	let org =
+		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
+			.await?;
+
+	if org.is_none() {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "Organisation does not exist"
+		}));
+
+		return Ok(context);
+	}
+
+	// check if repository already exists
+	let check =
+		db::get_repository_by_name(context.get_mysql_connection(), &repository)
+			.await?;
+	if check.is_some() {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "Repository already exists."
+		}));
+
+		return Ok(context);
+	}
+	// split the repo nam in 2 halfs, and validate org, and repo name
 
 	let resource_id =
 		db::generate_new_resource_id(context.get_mysql_connection()).await?;
@@ -129,10 +184,24 @@ async fn create_docker_repository(
 	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	// call function to add repo details to the table `docker_registry_repository`
+	// add a new resource
+	db::create_resource(
+		context.get_mysql_connection(),
+		resource_id,
+		&repository,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DOCKER_REPOSITORY)
+			.unwrap(),
+		&organisation_id,
+	)
+	.await?;
+
 	db::add_repository(
 		context.get_mysql_connection(),
 		resource_id,
-		&repository_name,
+		&repository,
 		&organisation_id,
 	)
 	.await?;
