@@ -31,9 +31,8 @@ def check_code():
         "name": "Check code",
         "image": "rust:1",
         "command": [
-            "rustup target add x86_64-unknown-linux-gnu",
-            "rustup toolchain install nightly",
-            "cargo check"
+            "/usr/local/cargo/bin/rustup toolchain install nightly",
+            "/usr/local/cargo/bin/cargo +nightly check"
         ]
     }
 
@@ -42,9 +41,8 @@ def check_formatting():
         "name": "Check code formatting",
         "image": "rust:1",
         "command": [
-            "rustup target add x86_64-unknown-linux-gnu",
-            "rustup toolchain install nightly",
-            "cargo +nightly fmt -- --check"
+            "/usr/local/cargo/bin/rustup toolchain install nightly",
+            "/usr/local/cargo/bin/cargo +nightly fmt -- --check"
         ]
     }
 
@@ -53,8 +51,7 @@ def check_clippy():
         "name": "Check clippy suggestions",
         "image": "rust:1",
         "command": [
-            "rustup target add x86_64-unknown-linux-gnu",
-            "rustup toolchain install nightly",
-            "cargo +nightly clippy"
+            "/usr/local/cargo/bin/rustup toolchain install nightly",
+            "/usr/local/cargo/bin/cargo +nightly clippy"
         ]
     }
