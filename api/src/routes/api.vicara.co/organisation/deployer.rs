@@ -4,7 +4,7 @@ use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use crate::{
 	app::{create_eve_app, App},
 	db, error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{constants::request_keys, EveContext, EveMiddleware},
 };
@@ -129,6 +129,19 @@ async fn create_docker_repository(
 	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	// call function to add repo details to the table `docker_registry_repository`
+	// add a new resource
+	db::create_resource(
+		context.get_mysql_connection(),
+		resource_id,
+		&repository_name,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DOCKER_REPOSITORY)
+			.unwrap(),
+		&organisation_id,
+	)
+	.await?;
 	db::add_repository(
 		context.get_mysql_connection(),
 		resource_id,

@@ -14,7 +14,7 @@ use crate::{
 };
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use rbac::GOD_USER_ID;
+use rbac::{permissions, GOD_USER_ID};
 use serde_json::{json, Value};
 // use once_cell::sync::OnceCell;
 use tokio::task;
@@ -1248,14 +1248,75 @@ async fn docker_registry_authenticate(
 
 	let scope = query.get(request_keys::SCOPE).unwrap();
 	let mut splitter = scope.split(':');
-	let access_type = splitter.next().unwrap();
-	let repo = splitter.next().unwrap();
-	let action = splitter.next().unwrap();
-	let required_permissions: Vec<String> =
-		action.split(",").map(String::from).collect();
+
+	let a = {
+		let b = Some(10);
+		if let Some(value) = b {
+			value + 1
+		} else {
+			return Ok(context);
+		}
+	};
+
+	let access_type = {
+		if let Some(access_type) = splitter.next() {
+			access_type
+		} else {
+			context.status(400).json(json!({
+					request_keys::ERROR: "invalidRequest",
+					request_keys::MESSAGE: "Access type not present.",
+			}));
+			return Ok(context);
+		}
+	};
+
+	let repo = if let Some(repo) = splitter.next() {
+		repo
+	} else {
+		context.status(400).json(json!({
+				request_keys::ERROR: "invalidRequest",
+				request_keys::MESSAGE: "Repository name is not present.",
+		}));
+		return Ok(context);
+	};
+
+	let action = if let Some(action) = splitter.next() {
+		action
+	} else {
+		context.status(400).json(json!({
+				request_keys::ERROR: "invalidRequest",
+				request_keys::MESSAGE: "Permission does not present.",
+				request_keys::DETAIL: []
+		}));
+		return Ok(context);
+	};
+
+	let required_permissions: Vec<String> = action
+		.split(",")
+		.filter_map(|permission| match permission {
+			"push" => Some(permissions::organisation::deployer::PUSH),
+			"pull" => Some(permissions::organisation::deployer::PULL),
+			_ => None,
+		})
+		.map(String::from)
+		.collect();
+
+	let split_array: Vec<String> = repo.split("/").map(String::from).collect();
+	// reject if split array size is not equal to 2
+	if split_array.len() != 2 {
+		context.json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::MESSAGE: "ivalid repository name."
+		}));
+
+		return Ok(context);
+	}
+
+	let org_name = &split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = &split_array.get(1).unwrap();
 
 	// check if repo name is valid
-	let is_repo_name_valid = is_docker_repo_name_valid(&repo);
+	let is_repo_name_valid = is_docker_repo_name_valid(repo_name);
 	if !is_repo_name_valid {
 		context.json(json!({
 			request_keys::SUCCESS: false,
@@ -1264,9 +1325,6 @@ async fn docker_registry_authenticate(
 
 		return Ok(context);
 	}
-	log::debug!("repo name is {}", &repo);
-	let org_name: Vec<&str> = repo.split("/").collect();
-	let org_name = org_name.get(0).unwrap();
 	let org =
 		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
 			.await?;
@@ -1338,6 +1396,7 @@ async fn docker_registry_authenticate(
 	// org-name/repo-name
 
 	let required_role_for_user = required_role_for_user.unwrap();
+	let mut approved_permissions = Vec::<String>::new();
 
 	for permission in required_permissions {
 		let allowed = {
@@ -1367,6 +1426,16 @@ async fn docker_registry_authenticate(
 			context.status(401).json(error!(UNPRIVILEGED));
 			return Ok(context);
 		}
+
+		match permission.as_str() {
+			permissions::organisation::deployer::PUSH => {
+				approved_permissions.push("push".to_string());
+			}
+			permissions::organisation::deployer::PULL => {
+				approved_permissions.push("pull".to_string());
+			}
+			_ => {}
+		}
 	}
 
 	let token = RegistryToken::new(
@@ -1380,7 +1449,7 @@ async fn docker_registry_authenticate(
 		vec![RegistryTokenAccess {
 			r#type: access_type.to_string(),
 			name: repo.to_string(),
-			actions: vec![action.to_string()],
+			actions: approved_permissions,
 		}],
 	)
 	.to_string(
