@@ -3290,57 +3290,6 @@
       "nullable": []
     }
   },
-  "ee47498c2f33dc91ee65cbd74b376f27b5292f0ae472b1c39fcfcafff8347879": {
-    "query": "SELECT * FROM docker_registry_repository WHERE name = ?",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "organisation_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "f10a94d2cb6ef8ede5b0588f0825fca7641597066705d944adf7d1f902f1058a": {
     "query": "INSERT INTO organisation VALUES (?, ?, ?, ?, ?);",
     "describe": {
@@ -3470,6 +3419,57 @@
         false,
         false,
         false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "f8346d531a931dccf7104e3e1846241956bd7765a102e818ffe82cfd95b167fb": {
+    "query": "SELECT * FROM docker_registry_repository WHERE name = ? AND organisation_id = ?",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
         false,
         false,
         false

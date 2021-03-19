@@ -28,6 +28,8 @@ pub mod id {
 	pub const PROFILE_NOT_FOUND: &str = "profileNotFound";
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
+	pub const REPOSITORY_ALREADY_EXISTS: &str = "repositoryAlreadyExists";
+	pub const INVALID_REQUEST: &str = "invalidRequest";
 }
 
 #[allow(dead_code)]
@@ -77,4 +79,17 @@ pub mod message {
 		"Sorry, the email address/username is taken";
 	pub const DOMAIN_UNVERIFIED: &str =
 		"That domain is unverified. Check your verification settings";
+	pub const REPOSITORY_ALREADY_EXISTS: &str =
+		"The given repository already exists.";
+	pub const ACCESS_TYPE_NOT_PRESENT: &str =
+		"Access type not present in request.";
+	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client.";
+	pub const REPOSITORY_NOT_PRESENT: &str =
+		"Repository name not present in request.";
+	pub const ACTION_NOT_PRESENT: &str = "Action not present in request.";
+	pub const NO_ORGANISATION_OR_REPOSITORY: &str =
+		"invalid Organisation or Repository name.";
+	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name";
+	pub const USER_ROLE_NOT_FOUND: &str =
+		"No valid role for the user was found.";
 }

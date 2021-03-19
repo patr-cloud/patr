@@ -3,7 +3,8 @@ use crate::{
 	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		error, rbac, AccessTokenData, ExposedUserData, RegistryToken,
+		error::{id as ErrorId, message as ErrorMessage},
+		rbac, AccessTokenData, ExposedUserData, RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
@@ -16,11 +17,9 @@ use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rbac::{permissions, GOD_USER_ID};
 use serde_json::{json, Value};
-// use once_cell::sync::OnceCell;
 use tokio::task;
 use utils::validator::is_docker_repo_name_valid;
 use uuid::Uuid;
-// pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut app = create_eve_app(&app);
@@ -1165,7 +1164,7 @@ async fn docker_registry_authenticate(
 	} else {
 		context.status(401).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
 					request_keys::MESSAGE: format!("Please login to {} first", config.docker_registry.issuer),
 					request_keys::DETAIL: []
 				}]
@@ -1184,12 +1183,12 @@ async fn docker_registry_authenticate(
 			username
 		} else {
 			context.status(400).json(json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: "UNAUTHORIZED",
-						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
-						request_keys::DETAIL: []
-					}]
-				}));
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_USERNAME,
+					request_keys::DETAIL: []
+				}]
+			}));
 			return Ok(context);
 		};
 
@@ -1197,12 +1196,12 @@ async fn docker_registry_authenticate(
 			password
 		} else {
 			context.status(400).json(json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: "UNAUTHORIZED",
-						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
-						request_keys::DETAIL: []
-					}]
-				}));
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
+					request_keys::DETAIL: []
+				}]
+			}));
 			return Ok(context);
 		};
 		(username, password)
@@ -1216,8 +1215,8 @@ async fn docker_registry_authenticate(
 	} else {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "User not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1238,8 +1237,8 @@ async fn docker_registry_authenticate(
 	if !success {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Password invalid",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1252,20 +1251,41 @@ async fn docker_registry_authenticate(
 		if let Some(access_type) = splitter.next() {
 			access_type
 		} else {
-			context.status(400).json(json!({
-					request_keys::ERROR: "invalidRequest",
-					request_keys::MESSAGE: "Access type not present.",
+			context.status(401).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
+					request_keys::DETAIL: []
+				}]
 			}));
 			return Ok(context);
 		}
 	};
 
+	// check if access type is respository
+	match access_type == "repository" {
+		true => {}
+		_ => {
+			context.status(400).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
+					request_keys::DETAIL: []
+				}]
+			}));
+			return Ok(context);
+		}
+	}
+
 	let repo = if let Some(repo) = splitter.next() {
 		repo
 	} else {
 		context.status(400).json(json!({
-				request_keys::ERROR: "invalidRequest",
-				request_keys::MESSAGE: "Repository name is not present.",
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::REPOSITORY_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
 		}));
 		return Ok(context);
 	};
@@ -1274,9 +1294,11 @@ async fn docker_registry_authenticate(
 		action
 	} else {
 		context.status(400).json(json!({
-				request_keys::ERROR: "invalidRequest",
-				request_keys::MESSAGE: "Action not present.",
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACTION_NOT_PRESENT,
 				request_keys::DETAIL: []
+			}]
 		}));
 		return Ok(context);
 	};
@@ -1284,7 +1306,7 @@ async fn docker_registry_authenticate(
 	let required_permissions: Vec<String> = action
 		.split(",")
 		.filter_map(|permission| match permission {
-			"push" => Some(permissions::organisation::deployer::PUSH),
+			"push" | "tag" => Some(permissions::organisation::deployer::PUSH),
 			"pull" => Some(permissions::organisation::deployer::PULL),
 			_ => None,
 		})
@@ -1294,9 +1316,12 @@ async fn docker_registry_authenticate(
 	let split_array: Vec<String> = repo.split("/").map(String::from).collect();
 	// reject if split array size is not equal to 2
 	if split_array.len() != 2 {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::MESSAGE: "ivalid Organisation or Repository name."
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::NO_ORGANISATION_OR_REPOSITORY,
+				request_keys::DETAIL: []
+			}]
 		}));
 
 		return Ok(context);
@@ -1306,11 +1331,14 @@ async fn docker_registry_authenticate(
 	let repo_name = &split_array.get(1).unwrap();
 
 	// check if repo name is valid
-	let is_repo_name_valid = is_docker_repo_name_valid(repo_name);
+	let is_repo_name_valid = is_docker_repo_name_valid(&repo_name);
 	if !is_repo_name_valid {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::MESSAGE: "invalid repository name."
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::INVALID_REPOSITORY_NAME,
+				request_keys::DETAIL: []
+			}]
 		}));
 
 		return Ok(context);
@@ -1320,26 +1348,36 @@ async fn docker_registry_authenticate(
 			.await?;
 
 	if org.is_none() {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::MESSAGE: "Organisation does not exist"
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
 		}));
 
 		return Ok(context);
 	}
+
 	let org = org.unwrap();
 
-	let repository =
-		db::get_repository_by_name(context.get_mysql_connection(), &repo)
-			.await?;
+	let repository = db::get_repository_by_name(
+		context.get_mysql_connection(),
+		&repo_name,
+		&org.id,
+	)
+	.await?;
 
 	// reject request if repository does not exist
 	if repository.is_none() {
 		context.status(400).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::CODE: "resourceDoesNotExist",
-			request_keys::MESSAGE: "The given repository does not exist. TODO prompt URL to create",
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
 		}));
+
 		return Ok(context);
 	}
 	let repository = repository.unwrap();
@@ -1351,9 +1389,11 @@ async fn docker_registry_authenticate(
 
 	if resource.is_none() {
 		context.status(500).json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::CODE: "serverError",
-			request_keys::MESSAGE: "The given resource does not exist.",
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
+				request_keys::DETAIL: []
+			}]
 		}));
 		return Ok(context);
 	}
@@ -1373,8 +1413,9 @@ async fn docker_registry_authenticate(
 	if required_role_for_user.is_none() {
 		context.status(500).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "serverError",
-				request_keys::MESSAGE: "No valid role for the user was found.",
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
+				request_keys::DETAIL: []
 			}]
 		}));
 		return Ok(context);

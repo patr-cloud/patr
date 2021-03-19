@@ -66,7 +66,7 @@ pub async fn initialize_deployer_post(
 
 // function to add new repositorys
 
-pub async fn add_repository(
+pub async fn create_repository(
 	transaction: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
 	name: &str,
@@ -91,6 +91,7 @@ pub async fn add_repository(
 pub async fn get_repository_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	repository_name: &str,
+	organisation_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	let rows = query_as!(
 		DockerRepository,
@@ -101,8 +102,11 @@ pub async fn get_repository_by_name(
 			docker_registry_repository
 		WHERE
 			name = ?
+		AND
+			organisation_id = ?
 		"#,
-		&repository_name
+		&repository_name,
+		&organisation_id
 	)
 	.fetch_all(connection)
 	.await?;
