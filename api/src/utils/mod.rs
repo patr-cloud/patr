@@ -43,5 +43,5 @@ pub fn generate_new_otp() -> String {
 
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
-	format!("000000")
+	"000000".to_string()
 }
