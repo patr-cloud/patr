@@ -24,7 +24,7 @@ def get_pipeline(ctx):
         return []
 
 def is_pr(ctx):
-    return ctx.build.event == "pull_request" | ctx.build.event == "push"
+    return (ctx.build.event == "pull_request") or (ctx.build.event == "push")
 
 def check_code():
     return {
