@@ -83,5 +83,5 @@ pub mod request_keys {
 	pub const SERVICE: &str = "service";
 	pub const SNAKE_CASE_CLIENT_ID: &str = "client_id";
 	pub const SNAKE_CASE_OFFLINE_TOKEN: &str = "offline_token";
-	pub const REPOSITORY_NAME: &str = "repositoryName";
+	pub const REPOSITORY: &str = "repository";
 }
