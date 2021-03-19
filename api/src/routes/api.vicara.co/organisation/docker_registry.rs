@@ -75,11 +75,7 @@ async fn create_docker_repository(
 	// check if repo name is valid
 	let is_repo_name_valid = is_docker_repo_name_valid(&repository);
 	if !is_repo_name_valid {
-		context.json(json!({
-			request_keys::SUCCESS: false,
-			request_keys::MESSAGE: "invalid repository name."
-		}));
-
+		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
 		return Ok(context);
 	}
 
@@ -96,7 +92,7 @@ async fn create_docker_repository(
 	.await?;
 
 	if check.is_some() {
-		context.status(400).json(error!(REPOSITORY_ALREADY_EXISTS));
+		context.status(400).json(error!(RESOURCE_EXISTS));
 		return Ok(context);
 	}
 

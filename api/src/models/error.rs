@@ -30,6 +30,7 @@ pub mod id {
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
 	pub const REPOSITORY_ALREADY_EXISTS: &str = "repositoryAlreadyExists";
 	pub const INVALID_REQUEST: &str = "invalidRequest";
+	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
 }
 
 #[allow(dead_code)]
