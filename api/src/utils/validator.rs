@@ -16,7 +16,7 @@ lazy_static! {
 	// Can only contain lowercase letters, numbers, hyphens and underscores
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
-	pub(crate) static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
+	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -80,4 +80,11 @@ pub async fn is_domain_name_valid(domain: &str) -> bool {
 		return true;
 	}
 	false
+}
+
+pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
+	let mut tld_list = DOMAIN_TLD_LIST.write().await;
+	tld_list.clear();
+	tld_list.append(&mut new_tld_list);
+	drop(tld_list);
 }
