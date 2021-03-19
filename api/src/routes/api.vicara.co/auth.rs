@@ -1248,16 +1248,6 @@ async fn docker_registry_authenticate(
 
 	let scope = query.get(request_keys::SCOPE).unwrap();
 	let mut splitter = scope.split(':');
-
-	let a = {
-		let b = Some(10);
-		if let Some(value) = b {
-			value + 1
-		} else {
-			return Ok(context);
-		}
-	};
-
 	let access_type = {
 		if let Some(access_type) = splitter.next() {
 			access_type
@@ -1285,7 +1275,7 @@ async fn docker_registry_authenticate(
 	} else {
 		context.status(400).json(json!({
 				request_keys::ERROR: "invalidRequest",
-				request_keys::MESSAGE: "Permission does not present.",
+				request_keys::MESSAGE: "Action not present.",
 				request_keys::DETAIL: []
 		}));
 		return Ok(context);
@@ -1306,7 +1296,7 @@ async fn docker_registry_authenticate(
 	if split_array.len() != 2 {
 		context.json(json!({
 			request_keys::SUCCESS: false,
-			request_keys::MESSAGE: "ivalid repository name."
+			request_keys::MESSAGE: "ivalid Organisation or Repository name."
 		}));
 
 		return Ok(context);
@@ -1339,8 +1329,6 @@ async fn docker_registry_authenticate(
 	}
 	let org = org.unwrap();
 
-	// insert scope validating here
-	// get resource for given repo name
 	let repository =
 		db::get_repository_by_name(context.get_mysql_connection(), &repo)
 			.await?;
@@ -1348,10 +1336,9 @@ async fn docker_registry_authenticate(
 	// reject request if repository does not exist
 	if repository.is_none() {
 		context.status(400).json(json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: "resourceDoesNotExist",
-				request_keys::MESSAGE: "The given repository does not exist. TODO prompt URL to create",
-			}]
+			request_keys::SUCCESS: false,
+			request_keys::CODE: "resourceDoesNotExist",
+			request_keys::MESSAGE: "The given repository does not exist. TODO prompt URL to create",
 		}));
 		return Ok(context);
 	}
@@ -1364,10 +1351,9 @@ async fn docker_registry_authenticate(
 
 	if resource.is_none() {
 		context.status(500).json(json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: "serverError",
-				request_keys::MESSAGE: "The given resource does not exist.",
-			}]
+			request_keys::SUCCESS: false,
+			request_keys::CODE: "serverError",
+			request_keys::MESSAGE: "The given resource does not exist.",
 		}));
 		return Ok(context);
 	}
@@ -1388,12 +1374,11 @@ async fn docker_registry_authenticate(
 		context.status(500).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: "serverError",
-				request_keys::MESSAGE: "No role for the user found.",
+				request_keys::MESSAGE: "No valid role for the user was found.",
 			}]
 		}));
 		return Ok(context);
 	}
-	// org-name/repo-name
 
 	let required_role_for_user = required_role_for_user.unwrap();
 	let mut approved_permissions = Vec::<String>::new();

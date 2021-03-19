@@ -100,8 +100,7 @@ async fn list_deployments(
 }
 
 // middleware to create a new docker repository
-// add details regarding the repository to the db and give user push and pull access
-// possible body for repository
+// possible request body to create repository
 // {
 // 	"repoName"
 // }
@@ -135,7 +134,6 @@ async fn create_docker_repository(
 	let org_name = &split_array.get(0).unwrap(); // get first index from the vector
 	let repo_name = &split_array.get(1).unwrap();
 
-	log::debug!("repo name is {}", &repo_name);
 	// check if repo name is valid
 	let is_repo_name_valid = is_docker_repo_name_valid(repo_name);
 	if !is_repo_name_valid {
@@ -147,6 +145,7 @@ async fn create_docker_repository(
 		return Ok(context);
 	}
 
+	// check if org exists
 	let org =
 		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
 			.await?;
