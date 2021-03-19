@@ -1,12 +1,9 @@
 def main(ctx):
-    print(ctx)
     return {
         "kind": "pipeline",
         "type": "docker",
         "name": "Default",
-        "steps": [
-            get_pipeline(ctx)
-        ]
+        "steps": get_pipeline(ctx)
     }
 
 def get_pipeline(ctx):
