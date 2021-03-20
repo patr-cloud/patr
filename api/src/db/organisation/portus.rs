@@ -8,7 +8,7 @@ pub async fn initialize_portus_pre(
 	log::info!("Initializing Portus tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS portus_tunnels (
+		CREATE TABLE IF NOT EXISTS portus_tunnel (
 			id BINARY(16) PRIMARY KEY,
 			username VARCHAR(100) NOT NULL,
 			ssh_port SMALLINT UNSIGNED NOT NULL,
@@ -28,7 +28,7 @@ pub async fn initialize_portus_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		ALTER TABLE portus_tunnels
+		ALTER TABLE portus_tunnel
 		ADD CONSTRAINT 
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
@@ -52,7 +52,7 @@ pub async fn create_new_portus_tunnel(
 	query!(
 		r#"
 		INSERT INTO
-			portus_tunnels
+			portus_tunnel
 		VALUES
 			(?, ?, ?, ?, ?, ?);
 		"#,
@@ -77,7 +77,7 @@ pub async fn delete_portus_tunnel(
 	query!(
 		r#"
 		DELETE FROM
-			portus_tunnels
+			portus_tunnel
 		WHERE
 			id = ?;
 		"#,
@@ -99,7 +99,7 @@ pub async fn get_portus_tunnel_by_name(
 		SELECT
 			*
 		FROM
-			portus_tunnels
+			portus_tunnel
 		WHERE
 			name = ?;
 		"#,
@@ -121,7 +121,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		SELECT
 			*
 		FROM
-			portus_tunnels
+			portus_tunnel
 		WHERE
 			id = ?;
 		"#,
@@ -142,7 +142,7 @@ pub async fn is_portus_port_available(
 		SELECT
 			*
 		FROM
-			portus_tunnels
+			portus_tunnel
 		WHERE
 			ssh_port = ? OR
 			exposed_port = ?;
@@ -164,13 +164,13 @@ pub async fn get_portus_tunnels_for_organisation(
 		PortusTunnel,
 		r#"
 		SELECT 
-			portus_tunnels.*
+			portus_tunnel.*
 		FROM 
-			portus_tunnels
+			portus_tunnel
 		INNER JOIN 
 			resource 
 		ON 
-			resource.id = portus_tunnels.id
+			resource.id = portus_tunnel.id
 		WHERE
 			resource.owner_id = ?;
 		"#,

@@ -29,29 +29,35 @@ def is_pr(ctx):
 def check_code():
     return {
         "name": "Check code",
-        "image": "rust:1",
+        "image": "ubuntu:latest",
         "command": [
-            "/usr/local/cargo/bin/rustup toolchain install nightly",
-            "/usr/local/cargo/bin/cargo +nightly check"
+            "apt update",
+            "apt install -y curl"
+            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
+            "cargo +nightly check"
         ]
     }
 
 def check_formatting():
     return {
         "name": "Check code formatting",
-        "image": "rust:1",
+        "image": "ubuntu:latest",
         "command": [
-            "/usr/local/cargo/bin/rustup toolchain install nightly",
-            "/usr/local/cargo/bin/cargo +nightly fmt -- --check"
+            "apt update",
+            "apt install -y curl"
+            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
+            "cargo +nightly fmt -- --check"
         ]
     }
 
 def check_clippy():
     return {
         "name": "Check clippy suggestions",
-        "image": "rust:1",
+        "image": "ubuntu:latest",
         "command": [
-            "/usr/local/cargo/bin/rustup toolchain install nightly",
-            "/usr/local/cargo/bin/cargo +nightly clippy"
+            "apt update",
+            "apt install -y curl"
+            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
+            "cargo +nightly clippy"
         ]
     }
