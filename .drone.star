@@ -32,7 +32,7 @@ def check_code():
         "image": "ubuntu:latest",
         "command": [
             "apt update",
-            "apt install -y curl"
+            "apt install -y curl",
             "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
             "cargo +nightly check"
         ]
@@ -44,7 +44,7 @@ def check_formatting():
         "image": "ubuntu:latest",
         "command": [
             "apt update",
-            "apt install -y curl"
+            "apt install -y curl",
             "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
             "cargo +nightly fmt -- --check"
         ]
@@ -56,7 +56,7 @@ def check_clippy():
         "image": "ubuntu:latest",
         "command": [
             "apt update",
-            "apt install -y curl"
+            "apt install -y curl",
             "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
             "cargo +nightly clippy"
         ]
