@@ -27,18 +27,18 @@ pub struct RegistryTokenAccess {
 impl RegistryToken {
 	pub fn new(
 		iss: String,
+		iat: u64,
 		sub: String,
 		config: &Settings,
 		access: Vec<RegistryTokenAccess>,
 	) -> Self {
-		let now = utils::get_current_time().as_secs();
 		Self {
 			iss,
 			sub,
 			aud: config.docker_registry.service_name.clone(),
-			exp: now + (600), // 5 mins
-			nbf: now,
-			iat: now,
+			exp: iat + (600), // 5 mins
+			nbf: iat,
+			iat,
 			jti: thread_rng().sample_iter(Alphanumeric).take(32).collect(),
 			access,
 		}

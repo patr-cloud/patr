@@ -18,7 +18,7 @@ use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use rbac::{permissions, GOD_USER_ID};
 use serde_json::{json, Value};
 use tokio::task;
-use utils::validator::is_docker_repo_name_valid;
+use utils::{get_current_time, validator::is_docker_repo_name_valid};
 use uuid::Uuid;
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -1129,12 +1129,15 @@ async fn docker_registry_login(
 		return Ok(context);
 	}
 
+	let iat = get_current_time().as_secs();
+
 	let token = RegistryToken::new(
 		if cfg!(debug_assertions) {
 			format!("localhost:{}", config.port)
 		} else {
 			"api.vicara.co".to_string()
 		},
+		iat,
 		username.to_string(),
 		&config,
 		vec![],
@@ -1144,11 +1147,23 @@ async fn docker_registry_login(
 		config.docker_registry.public_key_der(),
 	)?;
 
+	let refresh_token = Uuid::new_v4();
+
+	db::add_user_login(
+		context.get_mysql_connection(),
+		refresh_token.as_bytes(),
+		iat + (600),
+		&user.id,
+		iat,
+		iat,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::TOKEN: token,
-		request_keys::REFRESH_TOKEN: "test",
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
 	}));
-	return Ok(context);
+	Ok(context)
 }
 
 async fn docker_registry_authenticate(
@@ -1402,7 +1417,7 @@ async fn docker_registry_authenticate(
 	let org_id = hex::encode(org.id);
 
 	// get all org roles for the user usign the id
-	let user_id = user.id;
+	let user_id = &user.id;
 	let user_roles = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
 		&user_id,
@@ -1449,7 +1464,13 @@ async fn docker_registry_authenticate(
 			}
 		};
 		if !allowed {
-			context.status(401).json(error!(UNPRIVILEGED));
+			context.status(401).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNPRIVILEGED,
+					request_keys::MESSAGE: ErrorMessage::UNPRIVILEGED,
+					request_keys::DETAIL: []
+				}]
+			}));
 			return Ok(context);
 		}
 
@@ -1464,12 +1485,16 @@ async fn docker_registry_authenticate(
 		}
 	}
 
+	let iat = get_current_time().as_secs();
+	let refresh_token = Uuid::new_v4();
+
 	let token = RegistryToken::new(
 		if cfg!(debug_assertions) {
 			format!("localhost:{}", config.port)
 		} else {
 			"api.vicara.co".to_string()
 		},
+		iat,
 		username.to_string(),
 		&config,
 		vec![RegistryTokenAccess {
@@ -1483,9 +1508,20 @@ async fn docker_registry_authenticate(
 		config.docker_registry.public_key_der(),
 	)?;
 
+	// TODO: also log refresh token type in login table
+	db::add_user_login(
+		context.get_mysql_connection(),
+		refresh_token.as_bytes(),
+		iat + (600),
+		&user.id,
+		iat,
+		iat,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::TOKEN: token,
-		request_keys::REFRESH_TOKEN: "test",
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
 	}));
-	return Ok(context);
+	Ok(context)
 }
