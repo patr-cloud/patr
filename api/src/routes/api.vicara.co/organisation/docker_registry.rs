@@ -4,7 +4,8 @@ use validator::is_docker_repo_name_valid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{constants::request_keys, validator, EveContext, EveMiddleware},

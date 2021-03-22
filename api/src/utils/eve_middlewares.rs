@@ -9,11 +9,16 @@ use async_trait::async_trait;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser, json::parser as json_parser,
+		cookie_parser::parser as cookie_parser,
+		json::parser as json_parser,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	App as EveApp, Context, Error, Middleware, NextHandler,
+	App as EveApp,
+	Context,
+	Error,
+	Middleware,
+	NextHandler,
 };
 use redis::{AsyncCommands, RedisError};
 use std::{future::Future, pin::Pin};
@@ -208,8 +213,8 @@ impl Middleware<EveContext> for EveMiddleware {
 			EveMiddleware::DomainRouter(domain, app) => {
 				let localhost =
 					format!("localhost:{}", app.get_state().config.port);
-				if &context.get_host() == domain
-					|| context.get_host() == localhost
+				if &context.get_host() == domain ||
+					context.get_host() == localhost
 				{
 					app.resolve(context).await
 				} else {
