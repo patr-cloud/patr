@@ -3,7 +3,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::{utils, utils::settings::Settings};
+use crate::utils::settings::Settings;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RegistryToken {
