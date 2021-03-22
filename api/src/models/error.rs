@@ -60,8 +60,8 @@ pub mod message {
 	pub const SERVER_ERROR: &str =
 		"An internal server error has occured. Please try again later";
 	pub const EMAIL_TAKEN: &str =
-		"Sorry. That email address is already in use.";
-	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken.";
+		"Sorry. That email address is already in use";
+	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
 		"That phone number is already in use. Did you mean to sign in?";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str =
@@ -75,38 +75,38 @@ pub mod message {
 	pub const RESOURCE_EXISTS: &str = "That resource already exists";
 	pub const RESOURCE_DOES_NOT_EXIST: &str =
 		"That resource doesn't seem to exist";
-	pub const PROFILE_NOT_FOUND: &str = "The profile doesn't seem to exist.";
+	pub const PROFILE_NOT_FOUND: &str = "The profile doesn't seem to exist";
 	pub const DUPLICATE_USER: &str =
 		"Sorry, the email address/username is taken";
 	pub const DOMAIN_UNVERIFIED: &str =
 		"That domain is unverified. Check your verification settings";
 	pub const REPOSITORY_ALREADY_EXISTS: &str =
-		"The given repository already exists.";
+		"The given repository already exists";
 	pub const ACCESS_TYPE_NOT_PRESENT: &str =
-		"Access type not present in request.";
-	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client.";
+		"Access type not present in request";
+	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client";
 	pub const REPOSITORY_NOT_PRESENT: &str =
-		"Repository name not present in request.";
-	pub const ACTION_NOT_PRESENT: &str = "Action not present in request.";
+		"Repository name not present in request";
+	pub const ACTION_NOT_PRESENT: &str = "Action not present in request";
 	pub const NO_ORGANISATION_OR_REPOSITORY: &str =
-		"Invalid Organisation or Repository name.";
-	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name.";
+		"Invalid Organisation or Repository name";
+	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name";
 	pub const USER_ROLE_NOT_FOUND: &str =
-		"No valid role for the user was found.";
+		"No valid role for the user was found";
 	pub const OFFLINE_TOKEN_NOT_FOUND: &str =
-		"Invalid request sent by the client. Could not find offline_token.";
+		"Invalid request sent by the client. Could not find offline_token";
 	pub const INVALID_OFFLINE_TOKEN: &str =
-		"Invalid request sent by the client. offline_token is not a boolean.";
+		"Invalid request sent by the client. offline_token is not a boolean";
 	pub const INVALID_CLIENT_ID: &str =
-		"Invalid request sent by the client. Could not find client_id.";
+		"Invalid request sent by the client. Could not find client_id";
 	pub const SERVICE_NOT_FOUND: &str =
-		"Invalid request sent by the client. Could not find service.";
+		"Invalid request sent by the client. Could not find service";
 	pub const INVALID_SERVICE: &str =
-		"Invalid request sent by the client. Service is not valid.";
+		"Invalid request sent by the client. Service is not valid";
 	pub const AUTHORIZATION_NOT_FOUND: &str =
-		"Invalid request sent by the client. Authorization header not found.";
-	pub const AUTHORIZATION_STRING_CONVERSION: &str = "Invalid request sent by the client. Authorization data could not be converted to a string.";
-	pub const AUTHORIZATION_DECODE: &str = "Invalid request sent by the client. Authorization header could not be base64 decoded.";
-	pub const USERNAME_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have username.";
-	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password.";
+		"Invalid request sent by the client. Authorization header not found";
+	pub const AUTHORIZATION_STRING_CONVERSION: &str = "Invalid request sent by the client. Authorization data could not be converted to a string";
+	pub const AUTHORIZATION_DECODE: &str = "Invalid request sent by the client. Authorization header could not be base64 decoded";
+	pub const USERNAME_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have username";
+	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password";
 }
