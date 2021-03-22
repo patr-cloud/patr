@@ -105,8 +105,8 @@ pub async fn get_repository_by_name(
 		AND
 			organisation_id = ?
 		"#,
-		&repository_name,
-		&organisation_id
+		repository_name,
+		organisation_id
 	)
 	.fetch_all(connection)
 	.await?;

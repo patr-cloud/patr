@@ -1271,34 +1271,29 @@ async fn docker_registry_authenticate(
 
 	let scope = query.get(request_keys::SCOPE).unwrap();
 	let mut splitter = scope.split(':');
-	let access_type = {
-		if let Some(access_type) = splitter.next() {
-			access_type
-		} else {
-			context.status(401).json(json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
-					request_keys::DETAIL: []
-				}]
-			}));
-			return Ok(context);
-		}
+	let access_type = if let Some(access_type) = splitter.next() {
+		access_type
+	} else {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
 	};
 
 	// check if access type is respository
-	match access_type == "repository" {
-		true => {}
-		_ => {
-			context.status(400).json(json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
-					request_keys::DETAIL: []
-				}]
-			}));
-			return Ok(context);
-		}
+	if access_type != "repository" {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
 	}
 
 	let repo = if let Some(repo) = splitter.next() {
@@ -1330,8 +1325,10 @@ async fn docker_registry_authenticate(
 	let required_permissions: Vec<String> = action
 		.split(",")
 		.filter_map(|permission| match permission {
-			"push" | "tag" => Some(permissions::organisation::deployer::PUSH),
-			"pull" => Some(permissions::organisation::deployer::PULL),
+			"push" | "tag" => {
+				Some(permissions::organisation::docker_registry::PUSH)
+			}
+			"pull" => Some(permissions::organisation::docker_registry::PULL),
 			_ => None,
 		})
 		.map(String::from)
@@ -1351,8 +1348,8 @@ async fn docker_registry_authenticate(
 		return Ok(context);
 	}
 
-	let org_name = &split_array.get(0).unwrap(); // get first index from the vector
-	let repo_name = &split_array.get(1).unwrap();
+	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
 	let is_repo_name_valid = is_docker_repo_name_valid(&repo_name);
@@ -1484,10 +1481,10 @@ async fn docker_registry_authenticate(
 		}
 
 		match permission.as_str() {
-			permissions::organisation::deployer::PUSH => {
+			permissions::organisation::docker_registry::PUSH => {
 				approved_permissions.push("push".to_string());
 			}
-			permissions::organisation::deployer::PULL => {
+			permissions::organisation::docker_registry::PULL => {
 				approved_permissions.push("pull".to_string());
 			}
 			_ => {}

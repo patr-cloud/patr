@@ -46,12 +46,12 @@ pub mod permissions {
 
 		pub mod deployer {
 			pub const LIST: &str = "organisation::deployer::list";
-			pub const PUSH: &str = "organisation::deployer::push";
-			pub const PULL: &str = "organisation::deployer::pull";
 		}
 
 		pub mod docker_registry {
 			pub const CREATE: &str = "organisation::docker_registry::create";
+			pub const PUSH: &str = "organisation::docker_registry::push";
+			pub const PULL: &str = "organisation::docker_registry::pull";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
