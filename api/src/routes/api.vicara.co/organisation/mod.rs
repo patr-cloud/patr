@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 
 mod application;
 mod deployer;
+mod docker_registry;
 mod domain;
 mod portus;
 #[path = "./rbac.rs"]
@@ -79,6 +80,11 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app
 		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
 
+	sub_app.use_sub_app(
+		"/:organisationId/docker-registry",
+		docker_registry::create_sub_app(app),
+	);
+
 	sub_app.get(
 		"/is-name-available",
 		&[
@@ -93,7 +99,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
 		],
 	);
-
 	sub_app
 }
 

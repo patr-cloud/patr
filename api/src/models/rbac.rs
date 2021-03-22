@@ -48,16 +48,17 @@ pub mod permissions {
 			pub const LIST: &str = "organisation::deployer::list";
 		}
 
+		pub mod docker_registry {
+			pub const CREATE: &str = "organisation::docker_registry::create";
+			pub const PUSH: &str = "organisation::docker_registry::push";
+			pub const PULL: &str = "organisation::docker_registry::pull";
+		}
+
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";
 		pub const DELETE_ROLE: &str = "organisation::deleteRole";
 		pub const EDIT_INFO: &str = "organisation::editInfo";
-	}
-
-	pub mod docker {
-		pub const PUSH: &str = "docker::push";
-		pub const PULL: &str = "docker::pull";
 	}
 }
 
@@ -68,4 +69,5 @@ pub mod resource_types {
 	pub const DOMAIN: &str = "domain";
 	pub const APPLICATION: &str = "application";
 	pub const PORTUS: &str = "portus";
+	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 }
