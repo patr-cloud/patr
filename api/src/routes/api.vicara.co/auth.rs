@@ -965,8 +965,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find client_id.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_CLIENT_ID,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -980,8 +980,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find offline_token.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::OFFLINE_TOKEN_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -993,8 +993,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. offline_token is not a boolean",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_OFFLINE_TOKEN,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1006,8 +1006,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find service.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::SERVICE_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1017,8 +1017,8 @@ async fn docker_registry_login(
 	if service != &config.docker_registry.service_name {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Service is not valid.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_SERVICE,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1028,8 +1028,8 @@ async fn docker_registry_login(
 	if context.get_header("Authorization").is_none() {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1043,8 +1043,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization data could not be converted to a string.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_STRING_CONVERSION,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1053,8 +1053,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header could not be base64 decoded.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_DECODE,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1068,8 +1068,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1081,8 +1081,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1099,8 +1099,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "User not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1121,8 +1121,8 @@ async fn docker_registry_login(
 	if !success {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Password invalid",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
 				request_keys::DETAIL: []
 			}]
 		}));
