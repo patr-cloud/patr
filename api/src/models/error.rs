@@ -59,8 +59,7 @@ pub mod message {
 		"You do not have the permission to perform that action";
 	pub const SERVER_ERROR: &str =
 		"An internal server error has occured. Please try again later";
-	pub const EMAIL_TAKEN: &str =
-		"Sorry. That email address is already in use";
+	pub const EMAIL_TAKEN: &str = "Sorry. That email address is already in use";
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
 		"That phone number is already in use. Did you mean to sign in?";

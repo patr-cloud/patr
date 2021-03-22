@@ -1422,7 +1422,7 @@ async fn docker_registry_authenticate(
 	let resource = resource.unwrap();
 	let org_id = hex::encode(org.id);
 
-	// get all org roles for the user usign the id
+	// get all org roles for the user using the id
 	let user_id = &user.id;
 	let user_roles = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
