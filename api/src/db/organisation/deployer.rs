@@ -77,7 +77,7 @@ pub async fn create_repository(
 		INSERT INTO 
 			docker_registry_repository
 		VALUES
-			(?,?,?)
+			(?,?,?);
 		"#,
 		resource_id,
 		organisation_id,
@@ -103,7 +103,7 @@ pub async fn get_repository_by_name(
 		WHERE
 			name = ?
 		AND
-			organisation_id = ?
+			organisation_id = ?;
 		"#,
 		repository_name,
 		organisation_id
@@ -112,4 +112,63 @@ pub async fn get_repository_by_name(
 	.await?;
 
 	Ok(rows.into_iter().next())
+}
+
+pub async fn get_docker_repositories_for_organisation(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
+) -> Result<Vec<DockerRepository>, sqlx::Error> {
+	query_as!(
+		DockerRepository,
+		r#"
+		SELECT
+			*
+		FROM
+			docker_registry_repository
+		WHERE
+			organisation_id = ?;
+		"#,
+		organisation_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_docker_repository_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	repository_id: &[u8],
+) -> Result<Option<DockerRepository>, sqlx::Error> {
+	query_as!(
+		DockerRepository,
+		r#"
+		SELECT
+			*
+		FROM
+			docker_registry_repository
+		WHERE
+			id = ?;
+		"#,
+		repository_id
+	)
+	.fetch_all(connection)
+	.await
+	.map(|repos| repos.into_iter().next())
+}
+
+pub async fn delete_docker_repository_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	repository_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository
+		WHERE
+			id = ?;
+		"#,
+		repository_id
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
 }
