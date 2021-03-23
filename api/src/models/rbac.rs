@@ -50,6 +50,8 @@ pub mod permissions {
 
 		pub mod docker_registry {
 			pub const CREATE: &str = "organisation::docker_registry::create";
+			pub const LIST: &str = "organisation::docker_registry::list";
+			pub const DELETE: &str = "organisation::docker_registry::delete";
 			pub const PUSH: &str = "organisation::docker_registry::push";
 			pub const PULL: &str = "organisation::docker_registry::pull";
 		}
