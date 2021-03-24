@@ -384,6 +384,57 @@
       "nullable": []
     }
   },
+  "219a89b3784f82c89200c08b51bb987cc564f05a174e92e24895a50c7538060b": {
+    "query": "SELECT * FROM docker_registry_repository WHERE name = ? AND organisation_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "query": "SELECT * FROM meta_data WHERE id = 'version_major' OR id = 'version_minor' OR id = 'version_patch';",
     "describe": {
@@ -901,6 +952,57 @@
         "Right": 0
       },
       "nullable": []
+    }
+  },
+  "3c777fe63c3c2530602b8fda3e34c8bc62f57ccd0a6c88f13c782e43077d5044": {
+    "query": "SELECT * FROM docker_registry_repository WHERE organisation_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "3dc7a4e588bdf132ecb612573c215c0f6e970c468e14b09bdaa33bdf39aec7a4": {
@@ -1810,6 +1912,57 @@
       "nullable": []
     }
   },
+  "8b22e725398b06040883dd3eb702e691de73ec8de97fd72cf687038f70151e11": {
+    "query": "SELECT * FROM docker_registry_repository WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "8c5645c36730c188bd15d5888e831e37e94ddb8bcdf8ad4bf48ca24e4138fbad": {
     "query": "SELECT * FROM user_login WHERE refresh_token = ?;",
     "describe": {
@@ -2057,12 +2210,12 @@
       ]
     }
   },
-  "9c7b90509678da9945d748ac65a5cc6901585aff8f15a0a7d99b5cd4ffab56a5": {
-    "query": "INSERT INTO docker_registry_repository VALUES (?,?,?)",
+  "9bb70d8e5768e73db39b40cd55bf5bab4dbbc592c7e2dbb80cb25d42e5d9c845": {
+    "query": "DELETE FROM docker_registry_repository WHERE id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 3
+        "Right": 1
       },
       "nullable": []
     }
@@ -3290,6 +3443,16 @@
       "nullable": []
     }
   },
+  "f0eda87bd07f36dab8d2ce25961202654985cd6e1f16b06fa5083f1ae3fd8612": {
+    "query": "INSERT INTO docker_registry_repository VALUES (?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "f10a94d2cb6ef8ede5b0588f0825fca7641597066705d944adf7d1f902f1058a": {
     "query": "INSERT INTO organisation VALUES (?, ?, ?, ?, ?);",
     "describe": {
@@ -3419,57 +3582,6 @@
         false,
         false,
         false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "f8346d531a931dccf7104e3e1846241956bd7765a102e818ffe82cfd95b167fb": {
-    "query": "SELECT * FROM docker_registry_repository WHERE name = ? AND organisation_id = ?",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "organisation_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 2
-      },
-      "nullable": [
         false,
         false,
         false
