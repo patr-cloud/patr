@@ -50,7 +50,6 @@ surf = "1.0.3"
 tokio = {version = "1", features = ["full"]}
 trust-dns-client = "0.20"
 uuid = "0.8.1"
-digest = "0.9.0"
 
 [dependencies.log4rs]
 default-features = false

@@ -83,7 +83,6 @@ dependencies = [
  "colored 1.9.3",
  "config",
  "cron",
- "digest 0.9.0",
  "eve-rs",
  "futures 0.3.13",
  "hex",
