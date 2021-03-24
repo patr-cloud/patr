@@ -1,5 +1,4 @@
 use crate::utils::get_current_time;
-use digest::Digest;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -10,18 +9,21 @@ pub struct DockerRepository {
 	pub organisation_id: Vec<u8>,
 	pub name: String,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct EventData {
+	pub events: Vec<Event>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 #[serde(default)]
 pub struct Event {
 	pub id: String,
-	pub time_stamp: String,
+	pub timestamp: String,
 	pub action: String,
 	pub target: Target,
 	pub request: Request,
-	pub actor: Actor,
-	pub source: Source,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -46,17 +48,4 @@ pub struct Request {
 	pub host: String,
 	pub method: String,
 	pub useragent: String,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
-pub struct Actor {
-	pub name: String,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
-pub struct Source {
-	pub addr: String,
-	pub instance_id: String,
 }
