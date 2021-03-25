@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
@@ -35,77 +37,77 @@ pub async fn notification_handler(
 	for event in events.events {
 		if event.action == "push" {
 			let target = event.target;
-			let tag = target.tag;
-			if tag == "develop" {
+			if target.tag == "develop" {
 				let mut repository_name = target.repository;
 
 				// pull the image
 				let host = "localhost";
-				let port = 5000;
-				let mut image_name = format!(
-					"{}:{}/{}/{}",
-					&host, &port, &repository_name, &tag
+				let port: i32 = 5000;
+				let username = "username";
+				let password = "password";
+
+				// init docker`
+				let docker = Docker::new();
+				let mut image_name =
+					format!("{}/{}", &repository_name, &target.tag);
+
+				let auth = RegistryAuth::builder()
+					.username(&username.to_string())
+					.password(&password.to_string())
+					.build();
+
+				let mut stream = docker.images().pull(
+					&PullOptions::builder()
+						.image(&image_name)
+						.auth(auth)
+						.build(),
 				);
 
-				let docker = Docker::new();
-				log::info!("Detected develop tag..");
+				while let Some(pull_request) = stream.next().await {
+					if let Err(err) = pull_request {
+						context.status(500);
+						context.json(json!({
+							"success": false,
+						}));
+						return Ok(context);
+					}
 
-				// // let image = docker.images().new(&docker);
-				// let image = Images::new(&docker);
-				// let pull_options =
-				// 	PullOptions::builder().image(&image_name).build();
+					let pull_request = pull_request.unwrap();
+					// now since the image is pulled, we can go ahead and start the container
+					let container_info = docker
+						.containers()
+						.create(&ContainerOptions::builder(&image_name).build())
+						.await?;
 
-				// pull image
-				// let mut something = image.pull(&pull_options);
+					let container_id = container_info.id;
 
-				// while let Some(value) = something.next().await {
-				// 	//TODO: handle error for this
-				// 	if let Err(err) = value {
-				// 		context.status(500);
-				// 		return Ok(context);
-				// 	}
-				// 	let result = value.unwrap();
-				// 	log::debug!("received info")
-				// }
+					// start the container
+					let container_start_result =
+						docker.containers().get(&container_id).start().await;
 
-				let container_info = docker
-					.containers()
-					.create(&ContainerOptions::builder(&image_name).build())
-					.await?;
+					if let Err(err) = container_start_result {
+						log::error!(
+							"error occured while starting the container. {}",
+							&err
+						);
+						context.status(500);
+						context.json(json!({
+							"Success": false
+						}));
 
-				let container_id = container_info.id;
-
-				log::info!("Container info created...");
-				log::info!("Starting docker container...");
-				// start the container
-				let container_start_result =
-					docker.containers().get(&container_id).start().await;
-
-				if let Err(err) = container_start_result {
-					log::error!(
-						"error occured while starting the container. {}",
-						&err
-					);
-					context.status(500);
-					context.json(json!({
-						"Success": "failed"
-					}));
-
-					return Ok(context);
+						return Ok(context);
+					}
 				}
 
-				log::info!("docker container running");
-				log::info!("DOING SOMETHING...");
+				// if here, then the container is successfully running.
+				context.status(200).json(json!({
+					"success" : true,
+					"message" : "container running"
+				}));
+				return Ok(context);
 			}
 		}
 	}
 
-	Ok(context)
-}
-
-pub async fn connect_check(
-	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
 	Ok(context)
 }
