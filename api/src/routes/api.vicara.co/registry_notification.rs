@@ -1,11 +1,11 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
-use shiplift::{Docker, Images, PullOptions};
+use shiplift::{ContainerOptions, Docker, Images, PullOptions, RegistryAuth};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	async_main, db, error,
 	models::db_mapping::EventData,
 	models::rbac::{self, permissions},
 	pin_fn,
@@ -40,32 +40,72 @@ pub async fn notification_handler(
 				let mut repository_name = target.repository;
 
 				// pull the image
-				let mut image_name = format!("{}/{}", &repository_name, &tag);
-				// repository_name.push_str(format!("/{}", &tag).as_str());
+				let host = "localhost";
+				let port = 5000;
+				let mut image_name = format!(
+					"{}:{}/{}/{}",
+					&host, &port, &repository_name, &tag
+				);
 
 				let docker = Docker::new();
+				log::info!("Detected develop tag..");
 
-				// let image = docker.images().new(&docker);
-				let image = Images::new(&docker);
-				let pull_options =
-					PullOptions::builder().image(image_name).build();
+				// // let image = docker.images().new(&docker);
+				// let image = Images::new(&docker);
+				// let pull_options =
+				// 	PullOptions::builder().image(&image_name).build();
 
 				// pull image
-				let mut something = image.pull(&pull_options);
-				while let Some(value) = something.next().await {
-					//TODO: handle error for this
-					if let Err(err) = value {
-						context.status(500);
-						return Ok(context);
-					}
-					let result = value.unwrap();
-					log::debug!("received info")
+				// let mut something = image.pull(&pull_options);
+
+				// while let Some(value) = something.next().await {
+				// 	//TODO: handle error for this
+				// 	if let Err(err) = value {
+				// 		context.status(500);
+				// 		return Ok(context);
+				// 	}
+				// 	let result = value.unwrap();
+				// 	log::debug!("received info")
+				// }
+
+				let container_info = docker
+					.containers()
+					.create(&ContainerOptions::builder(&image_name).build())
+					.await?;
+
+				let container_id = container_info.id;
+
+				log::info!("Container info created...");
+				log::info!("Starting docker container...");
+				// start the container
+				let container_start_result =
+					docker.containers().get(&container_id).start().await;
+
+				if let Err(err) = container_start_result {
+					log::error!(
+						"error occured while starting the container. {}",
+						&err
+					);
+					context.status(500);
+					context.json(json!({
+						"Success": "failed"
+					}));
+
+					return Ok(context);
 				}
-				// log::info!("generated image object {:#?}", );
+
+				log::info!("docker container running");
 				log::info!("DOING SOMETHING...");
 			}
 		}
 	}
 
+	Ok(context)
+}
+
+pub async fn connect_check(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
 	Ok(context)
 }
