@@ -1,14 +1,11 @@
-use crate::utils::get_current_time;
 use serde::{Deserialize, Serialize};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::time::Duration;
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
 	pub organisation_id: Vec<u8>,
 	pub name: String,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct EventData {
@@ -48,4 +45,14 @@ pub struct Request {
 	pub host: String,
 	pub method: String,
 	pub useragent: String,
+}
+
+pub struct Deployment {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub image_name: String,
+	pub image_tag: String,
+	pub domain_id: Vec<u8>,
+	pub sub_domain: String,
+	pub path: String,
 }

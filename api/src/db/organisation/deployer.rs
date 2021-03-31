@@ -1,4 +1,8 @@
-use crate::{models::db_mapping::DockerRepository, query, query_as};
+use crate::{
+	models::db_mapping::{Deployment, DockerRepository},
+	query,
+	query_as,
+};
 use sqlx::{MySql, Transaction};
 
 pub async fn initialize_deployer_pre(
@@ -171,4 +175,29 @@ pub async fn delete_docker_repository_by_id(
 	.execute(connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_deployment_by_image_name_and_tag(
+	connection: &mut Transaction<'_, MySql>,
+	image_name: &str,
+	tag: &str,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	let rows = query_as!(
+		Deployment,
+		r#"
+		SELECT
+			*
+		FROM
+			deployment
+		WHERE
+			image_name = ? AND
+			image_tag = ?;
+		"#,
+		image_name,
+		tag
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows)
 }
