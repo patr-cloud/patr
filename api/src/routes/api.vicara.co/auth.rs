@@ -68,6 +68,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			docker_registry_token_endpoint
 		))],
 	);
+	app.post(
+		"/docker-registry-token",
+		&[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
+	);
 	app
 }
 

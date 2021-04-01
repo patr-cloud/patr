@@ -928,8 +928,6 @@ dependencies = [
 [[package]]
 name = "eve-rs"
 version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc585c2cea9ea51f04654a47bf211878d66f0f7eb3a822bc581a30de3c15baba"
 dependencies = [
  "async-trait",
  "chrono",

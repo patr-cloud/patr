@@ -44,13 +44,13 @@ auth:
 #     enabled: true
 #     interval: 10s
 #     threshold: 3
-# notifications:
-#   endpoints:
-#     - name: bytesonus
-#       url: http://localhost:5001/registry/event
-#       timeout: 2s
-#       threshold: 5
-#       backoff: 1s
+notifications:
+  endpoints:
+    - name: bytesonus
+      url: http://localhost:3000/docker-registry/notification
+      timeout: 2s
+      threshold: 5
+      backoff: 1s
 
 # HTTP/1.1 401 Unauthorized
 # Content-Type: application/json

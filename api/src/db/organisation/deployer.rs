@@ -11,17 +11,18 @@ pub async fn initialize_deployer_pre(
 	log::info!("Initializing deployer tables");
 	query!(
 		r#"
-        CREATE TABLE IF NOT EXISTS deployment (
-            id BINARY(16) PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            image_name VARCHAR(512) NOT NULL,
-            image_tag VARCHAR(255) NOT NULL,
-            domain_id BINARY(16) NOT NULL,
-            sub_domain VARCHAR(255) NOT NULL,
-            path VARCHAR(255) NOT NULL DEFAULT "/",
-            UNIQUE(domain_id, sub_domain, path)
-        );
-        "#
+		CREATE TABLE IF NOT EXISTS deployment (
+			id BINARY(16) PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			registry ENUM("registry.hub.docker.com", "registry.vicara.co") NOT NULL DEFAULT "registry.vicara.co",
+			image_name VARCHAR(512) NOT NULL,
+			image_tag VARCHAR(255) NOT NULL,
+			domain_id BINARY(16) NOT NULL,
+			sub_domain VARCHAR(255) NOT NULL,
+			path VARCHAR(255) NOT NULL DEFAULT "/",
+			UNIQUE(domain_id, sub_domain, path)
+		);
+		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
@@ -48,7 +49,7 @@ pub async fn initialize_deployer_post(
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD CONSTRAINT 
+		ADD CONSTRAINT
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
