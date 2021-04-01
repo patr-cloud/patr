@@ -56,4 +56,5 @@ pub struct Deployment {
 	pub domain_id: Vec<u8>,
 	pub sub_domain: String,
 	pub path: String,
+	pub port: u16,
 }

@@ -48,9 +48,12 @@ notifications:
   endpoints:
     - name: bytesonus
       url: http://localhost:3000/docker-registry/notification
-      timeout: 2s
+      timeout: 30m
       threshold: 5
-      backoff: 1s
+      backoff: 1m
+      ignore:
+        actions:
+          - pull
 
 # HTTP/1.1 401 Unauthorized
 # Content-Type: application/json

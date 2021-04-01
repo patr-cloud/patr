@@ -42,7 +42,7 @@ semver = "0.10.0"
 serde = {version = "1.0.114", features = ["serde_derive"]}
 serde_json = "1.0.57"
 sha2 = "0.9.3"
-shiplift = {git = "https://github.com/softprops/shiplift.git", branch = "master"}
+shiplift = {git = "https://github.com/rakshith-ravi/shiplift.git", branch = "patch-1"}
 sqlx = {version = "0.5", features = ["mysql", "postgres", "runtime-tokio-rustls", "offline"]}
 strum = "0.19.2"
 strum_macros = "0.19.2"

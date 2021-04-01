@@ -1,16 +1,25 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
 		error::{id as ErrorId, message as ErrorMessage},
-		rbac, AccessTokenData, ExposedUserData, RegistryToken,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
+		RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		self, constants::request_keys, get_current_time_millis, mailer,
-		validator, EveContext, EveMiddleware,
+		self,
+		constants::request_keys,
+		get_current_time_millis,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use argon2::Variant;
@@ -262,8 +271,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
@@ -1228,10 +1237,30 @@ async fn docker_registry_authenticate(
 		(username, password)
 	};
 
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+	let user = db::get_user_by_user_id(
+		context.get_mysql_connection(),
+		god_user_id.as_bytes(),
+	)
+	.await?
+	.unwrap();
+	drop(god_user_id);
 	// check if user is GOD_USER then return the token
-	if (username == "god_user") {
+	if username == user.username {
 		// return token.
 		let refresh_token = Uuid::new_v4();
+		let iat = get_current_time().as_secs();
+
+		db::add_user_login(
+			context.get_mysql_connection(),
+			refresh_token.as_bytes(),
+			iat + (600),
+			&user.id,
+			iat,
+			iat,
+		)
+		.await?;
+
 		context.json(json!({
 			request_keys::TOKEN: password,
 			request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),

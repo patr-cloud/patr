@@ -14,12 +14,14 @@ pub async fn initialize_deployer_pre(
 		CREATE TABLE IF NOT EXISTS deployment (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			registry ENUM("registry.hub.docker.com", "registry.vicara.co") NOT NULL DEFAULT "registry.vicara.co",
+			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
 			image_name VARCHAR(512) NOT NULL,
 			image_tag VARCHAR(255) NOT NULL,
 			domain_id BINARY(16) NOT NULL,
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
+			/* TODO change port to port array, and take image from docker_registry_repository */
+			port SMALLINT UNSIGNED NOT NULL,
 			UNIQUE(domain_id, sub_domain, path)
 		);
 		"#
@@ -178,7 +180,7 @@ pub async fn delete_docker_repository_by_id(
 	.map(|_| ())
 }
 
-pub async fn get_deployment_by_image_name_and_tag(
+pub async fn get_deployments_by_image_name_and_tag(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
 	tag: &str,

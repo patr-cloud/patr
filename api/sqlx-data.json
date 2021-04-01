@@ -1216,6 +1216,135 @@
       "nullable": []
     }
   },
+  "5ae4b1539487d624dd92cd24adb7d2151a7614c3aaa08afdf881a02c8327fa38": {
+    "query": "SELECT * FROM deployment WHERE image_name = ? AND image_tag = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 257
+            },
+            "char_set": 224,
+            "max_size": 100
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1805,6 +1934,16 @@
       ]
     }
   },
+  "805d2e555e679b236744897b2e1ebd3d26624bc99fd15ab7f0dcf22afcf2b7a0": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ port SMALLINT UNSIGNED NOT NULL, UNIQUE(domain_id, sub_domain, path) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "80d87f55cd48c8ed559d4dd4f4f488109bd7d83c9578f5deb9369818c6f34191": {
     "query": "DELETE FROM organisation_user WHERE role_id = ?;",
     "describe": {
@@ -1890,16 +2029,6 @@
         false,
         false
       ]
-    }
-  },
-  "8802c9ef344405d641369b4420e2cea533ccc3a0651f267acffcab8d0cf0ea20": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", UNIQUE(domain_id, sub_domain, path) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "8a8bbee60fc109098b0ac29824b8f6b0a91959274cadb0aa982f4c68375c9659": {
