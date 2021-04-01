@@ -4,33 +4,22 @@ use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
 use shiplift::{
-	ContainerOptions,
-	Docker,
-	Images,
-	PullOptions,
-	RegistryAuth,
-	Uri,
+	ContainerOptions, Docker, Images, PullOptions, RegistryAuth, Uri,
 };
 use tokio::task;
 use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	async_main,
-	db,
-	error,
+	async_main, db, error,
 	models::{
 		db_mapping::EventData,
 		rbac::{self, permissions},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		validator,
-		EveContext,
+		constants::request_keys, get_current_time, validator, EveContext,
 		EveMiddleware,
 	},
 };
@@ -98,9 +87,10 @@ pub async fn notification_handler(
 			let docker = Docker::new();
 			let image_name = format!("{}:{}", &repository, &target.tag);
 
-			// generate token
+			let god_username = "god_user";
+			// generate token as password
 			let iat = get_current_time().as_secs();
-			let token = RegistryToken::new(
+			let generated_password = RegistryToken::new(
 				if cfg!(debug_assertions) {
 					format!("localhost:{}", config.port)
 				} else {
@@ -128,8 +118,8 @@ pub async fn notification_handler(
 			log::info!("Token unwrapped");
 			// get token object using the above token string
 			let registry_token = RegistryAuth::builder()
-				.username("rakshith-ravi")
-				.password("Vicara@124")
+				.username(god_username)
+				.password(generated_password)
 				.build();
 			let mut stream = docker.images().pull(
 				&PullOptions::builder()
