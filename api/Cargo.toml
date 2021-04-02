@@ -33,6 +33,7 @@ lettre = "=0.10.0-alpha.2"
 log = "0.4.8"
 num_cpus = "1.13.0"
 once_cell = "1.4.1"
+port_scanner = "0.1.5"
 rand = "0.7.3"
 redis = {version = "0.19", features = ["tokio-comp"]}
 regex = "1.3.9"

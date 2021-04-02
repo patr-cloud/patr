@@ -1,7 +1,8 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use futures::StreamExt;
+use rand::Rng;
 use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
 
 use crate::{
@@ -16,7 +17,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/notification",
+		"/docker-registry/notification",
 		&[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
 	);
 	sub_app
@@ -69,27 +70,12 @@ pub async fn notification_handler(
 			let container_name =
 				format!("deployment-{}", hex::encode(&deployment.id));
 			let full_image_name = format!(
-				"{}/{}/{}:{}",
+				"{}/{}/{}@{}",
 				config.docker_registry.registry_url,
 				org_name,
 				deployment.image_name,
-				deployment.image_tag,
+				target.digest
 			);
-
-			// If the container exists, stop it and delete it
-			// The errors will be taken care of by the `unwrap_or_default` part
-			docker
-				.containers()
-				.get(&container_name)
-				.stop(Some(Duration::from_secs(5)))
-				.await
-				.unwrap_or_default();
-			docker
-				.containers()
-				.get(&container_name)
-				.delete()
-				.await
-				.unwrap_or_default();
 
 			// Pull the latest image again
 			let god_user = db::get_user_by_user_id(
@@ -138,13 +124,95 @@ pub async fn notification_handler(
 			);
 			while let Some(_) = stream.next().await {}
 
+			let empty_vec = vec![];
+			let empty_map = HashMap::new();
+			let empty_string = String::default();
+
+			// TODO don't redeploy the image if it's already deployed
+			// let image = docker.images().get(&full_image_name).inspect().await;
+
+			// if let Err(err) = image {
+			// 	log::error!(
+			// 		"Error inspecting already pulled image: {:#?}",
+			// 		err
+			// 	);
+			// 	continue;
+			// }
+			// let image = image.unwrap();
+
+			// let digests = image.repo_digests.unwrap_or_default();
+			// let container_image =
+			// 	digests.get(0).unwrap_or_else(|| &empty_string);
+			// log::error!("{}", container_image);
+			// log::error!("{}", full_image_name);
+			// if container_image == &full_image_name {
+			// 	log::warn!("Pushed image is already deployed. Ignoring...");
+			// 	continue;
+			// }
+
+			// If the container exists, stop it and delete it
+			// The errors will be taken care of by the `unwrap_or_default` part
+			let container = docker.containers().get(&container_name);
+			let info = container.inspect().await;
+			let mut port;
+
+			if let Ok(info) = info {
+				docker
+					.containers()
+					.get(&container_name)
+					.stop(Some(Duration::from_secs(5)))
+					.await
+					.unwrap_or_default();
+				docker
+					.containers()
+					.get(&container_name)
+					.delete()
+					.await
+					.unwrap_or_default();
+				port = info
+					.host_config
+					.port_bindings
+					.unwrap_or_default()
+					.get(&format!("{}/tcp", deployment.port))
+					.unwrap_or_else(|| &empty_vec)
+					.get(0)
+					.unwrap_or_else(|| &empty_map)
+					.get("HostPort")
+					.unwrap_or_else(|| &empty_string)
+					.parse()
+					.unwrap_or(0);
+			} else {
+				port = 0;
+			}
+
+			if port == 0 {
+				// Assign a random, available port
+				let low = 1025;
+				let high = 65535;
+				let restricted_ports = [5800, 8080, 9000, 5000, 3000];
+				loop {
+					port = rand::thread_rng().gen_range(low, high);
+					if restricted_ports.contains(&port) {
+						continue;
+					}
+					let port_open = port_scanner::scan_port_addr(format!(
+						"{}:{}",
+						"0.0.0.0", port
+					));
+					if port_open {
+						continue;
+					}
+					break;
+				}
+			}
+
 			let container = docker
 				.containers()
 				.create(
 					&ContainerOptions::builder(&full_image_name)
 						.name(&container_name)
 						.privileged(false)
-						.expose(deployment.port as u32, "tcp", 8080)
+						.expose(deployment.port as u32, "tcp", port)
 						.build(),
 				)
 				.await;

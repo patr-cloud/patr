@@ -6,8 +6,8 @@ use eve_rs::App as EveApp;
 
 mod auth;
 mod organisation;
-mod registry_notification;
 mod user;
+mod webhook;
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	let mut sub_app = create_eve_app(app);
@@ -15,10 +15,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/organisation", organisation::create_sub_app(app));
-	sub_app.use_sub_app(
-		"/docker-registry",
-		registry_notification::create_sub_app(app),
-	);
+	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
 
 	sub_app
 }

@@ -46,23 +46,8 @@ auth:
 #     threshold: 3
 notifications:
   endpoints:
-    - name: bytesonus
-      url: http://localhost:3000/docker-registry/notification
+    - name: vicara
+      url: http://localhost:3000/webhook/docker-registry/notification
       timeout: 30m
       threshold: 5
       backoff: 1m
-      ignore:
-        actions:
-          - pull
-
-# HTTP/1.1 401 Unauthorized
-# Content-Type: application/json
-# Docker-Distribution-Api-Version: registry/2.0
-# Www-Authenticate: Bearer realm="http://localhost:3000/token",service="Docker registry",scope="repository:test/test:pull"
-
-# {"errors":[{"code":"UNAUTHORIZED","message":"access to the requested resource is not authorized","detail":[{"Type":"repository","Name":"samalba/my-app","Action":"pull"},{"Type":"repository","Name":"samalba/my-app","Action":"push"}]}]}
-
-# HTTP/1.1 200 OK
-# Content-Type: application/json
-
-# {"token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IkpZRk86QVRNSTpINFJJOk5DN0k6Sk1RSDo3U1Q1OlJVWFM6NEJJRzpDQktMOkJFM0I6RlNOVDpWWU42In0.eyJpc3MiOiJsb2NhbGhvc3Q6MzAwMCIsInN1YiI6InRlc3QiLCJhdWQiOiJEb2NrZXIgcmVnaXN0cnkiLCJleHAiOjE2NDU4NzQ1Nzc3NTIsIm5iZiI6MTYxNDMzODU3Nzc1MiwiaWF0IjoxNjE0MzM4NTc3NzUyLCJqdGkiOiJub3BlbG9seiIsImFjY2VzcyI6W3sidHlwZSI6InJlcG9zaXRvcnkiLCJuYW1lIjoidGVzdC90ZXN0IiwiYWN0aW9ucyI6WyJwdWxsIl19XX0.pb5yPApcKZqp2tC0KbgXvH8tGU4I1aiBs4QmSkZpF_H900McBES3fHnwDQUzxeAR0HCTH5MRrAyDPir6R7fZFA"}
