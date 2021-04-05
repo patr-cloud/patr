@@ -4,6 +4,7 @@ mod macros;
 mod models;
 mod routes;
 mod scheduler;
+mod service;
 mod utils;
 
 use api_macros::{query, query_as};
