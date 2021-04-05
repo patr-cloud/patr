@@ -1,8 +1,9 @@
 // SERVICE FOR PORTUS
-use std::{env, path::PathBuf};
-
+use crate::db;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use shiplift::{Docker, Error};
+use sqlx::{MySql, Transaction};
+use std::{env, path::PathBuf};
 use tokio::fs;
 
 // function to stop a container
@@ -44,6 +45,7 @@ pub fn generate_password(length: u16) -> String {
 		.collect()
 }
 
+// generates username for portus user
 pub fn generate_username(length: u16) -> String {
 	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
@@ -55,6 +57,7 @@ pub fn generate_username(length: u16) -> String {
 		.collect()
 }
 
+// formats bash script with given parameters
 pub async fn bash_script_formatter(
 	local_port: &str,
 	local_host_name: &str,
@@ -95,4 +98,29 @@ pub fn get_container_name(username: &str) -> String {
 
 pub fn get_server_ip_address() -> &'static str {
 	"143.110.179.80"
+}
+
+// generates valid port
+pub async fn assign_available_port(
+	transaction: &mut Transaction<'_, MySql>,
+) -> Result<u32, sqlx::Error> {
+	let low = 1025;
+	let high = 65535;
+	let restricted_ports = [5800, 8080, 9000];
+
+	loop {
+		let port = rand::thread_rng().gen_range(low, high);
+		if restricted_ports.contains(&port) {
+			continue;
+		}
+		if port >= 5900 && port <= 5910 {
+			continue;
+		}
+		let port_available =
+			db::is_portus_port_available(transaction, port).await?;
+		if !port_available {
+			continue;
+		}
+		return Ok(port);
+	}
 }
