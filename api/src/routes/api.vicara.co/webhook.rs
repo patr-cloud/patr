@@ -8,6 +8,7 @@ use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, EveContext, EveMiddleware},
@@ -27,6 +28,12 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
+	if context.get_content_type().as_str() !=
+		"application/vnd.docker.distribution.events.v1+json"
+	{
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	}
 	let body = context.get_body()?;
 	let events: EventData = serde_json::from_str(&body)?;
 	let config = context.get_state().clone().config;
@@ -139,7 +146,9 @@ pub async fn notification_handler(
 			if let Ok(info) = info {
 				// don't redeploy the image if it's already deployed
 				if info.config.image == full_image_name {
-					log::debug!("Pushed image is already deployed. Ignoring...");
+					log::debug!(
+						"Pushed image is already deployed. Ignoring..."
+					);
 					continue;
 				}
 				docker

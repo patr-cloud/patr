@@ -16,7 +16,7 @@ use eve_rs::{App as EveApp, Context, Error, NextHandler};
 use serde_json::{json, Value};
 
 mod application;
-mod deployer;
+mod deployment;
 mod docker_registry;
 mod domain;
 mod portus;
@@ -72,8 +72,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		application::create_sub_app(app),
 	);
 	sub_app.use_sub_app(
-		"/:organisationId/deployer",
-		deployer::create_sub_app(app),
+		"/:organisationId/deployment",
+		deployment::create_sub_app(app),
 	);
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
 	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));

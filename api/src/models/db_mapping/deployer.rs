@@ -13,8 +13,7 @@ pub struct EventData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Event {
 	pub id: String,
 	pub timestamp: String,
@@ -24,8 +23,7 @@ pub struct Event {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Target {
 	pub media_type: String,
 	pub size: i64,
@@ -37,8 +35,7 @@ pub struct Target {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Request {
 	pub id: String,
 	pub addr: String,

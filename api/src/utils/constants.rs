@@ -86,4 +86,13 @@ pub mod request_keys {
 	pub const REPOSITORY: &str = "repository";
 	pub const REPOSITORIES: &str = "repositories";
 	pub const REPOSITORY_ID: &str = "repositoryId";
+	pub const DEPLOYMENT_ID: &str = "deploymentId";
+	pub const DEPLOYMENTS: &str = "deployments";
+	pub const DEPLOYMENT: &str = "deployment";
+	pub const REGISTRY: &str = "registry";
+	pub const IMAGE_NAME: &str = "imageName";
+	pub const IMAGE_TAG: &str = "imageTag";
+	pub const SUB_DOMAIN: &str = "subDomain";
+	pub const PATH: &str = "path";
+	pub const PORT: &str = "port";
 }

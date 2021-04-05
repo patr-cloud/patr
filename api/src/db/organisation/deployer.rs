@@ -180,12 +180,46 @@ pub async fn delete_docker_repository_by_id(
 	.map(|_| ())
 }
 
+pub async fn create_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	name: &str,
+	registry: &str,
+	image_name: &str,
+	image_tag: &str,
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+	port: u16,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment
+		VALUES
+			(?, ?, ?, ?, ?, ?, ?, ?, ?);
+		"#,
+		deployment_id,
+		name,
+		registry,
+		image_name,
+		image_tag,
+		domain_id,
+		sub_domain,
+		path,
+		port
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn get_deployments_by_image_name_and_tag(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
-	tag: &str,
+	image_tag: &str,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -197,10 +231,98 @@ pub async fn get_deployments_by_image_name_and_tag(
 			image_tag = ?;
 		"#,
 		image_name,
-		tag
+		image_tag
 	)
 	.fetch_all(connection)
-	.await?;
+	.await
+}
 
-	Ok(rows)
+pub async fn get_deployments_for_organisation(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_id: &[u8],
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			deployment.*
+		FROM
+			deployment,
+			resource
+		WHERE
+			resource.id = deployment.id AND
+			resource.owner_id = ?;
+		"#,
+		organisation_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_deployment_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Option<Deployment>, sqlx::Error> {
+	Ok(query_as!(
+		Deployment,
+		r#"
+			SELECT
+				*
+			FROM
+				deployment
+			WHERE
+				id = ?;
+			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await?
+	.into_iter()
+	.next())
+}
+
+pub async fn get_deployment_by_entry_point(
+	connection: &mut Transaction<'_, MySql>,
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+) -> Result<Option<Deployment>, sqlx::Error> {
+	Ok(query_as!(
+		Deployment,
+		r#"
+			SELECT
+				*
+			FROM
+				deployment
+			WHERE
+				domain_id = ? AND
+				sub_domain = ? AND
+				path = ?;
+			"#,
+		domain_id,
+		sub_domain,
+		path
+	)
+	.fetch_all(connection)
+	.await?
+	.into_iter()
+	.next())
+}
+
+pub async fn delete_deployment_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment
+		WHERE
+			id = ?;
+		"#,
+		deployment_id
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
 }
