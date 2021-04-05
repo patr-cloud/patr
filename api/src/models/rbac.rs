@@ -44,12 +44,17 @@ pub mod permissions {
 			pub const DELETE: &str = "organisation::portus::delete";
 		}
 
-		pub mod deployer {
-			pub const LIST: &str = "organisation::deployer::list";
+		pub mod deployment {
+			pub const LIST: &str = "organisation::deployment::list";
+			pub const CREATE: &str = "organisation::deployment::create";
+			pub const INFO: &str = "organisation::deployment::info";
+			pub const DELETE: &str = "organisation::deployment::delete";
 		}
 
 		pub mod docker_registry {
 			pub const CREATE: &str = "organisation::docker_registry::create";
+			pub const LIST: &str = "organisation::docker_registry::list";
+			pub const DELETE: &str = "organisation::docker_registry::delete";
 			pub const PUSH: &str = "organisation::docker_registry::push";
 			pub const PULL: &str = "organisation::docker_registry::pull";
 		}
@@ -70,4 +75,5 @@ pub mod resource_types {
 	pub const APPLICATION: &str = "application";
 	pub const PORTUS: &str = "portus";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
+	pub const DEPLOYMENT: &str = "deployment";
 }

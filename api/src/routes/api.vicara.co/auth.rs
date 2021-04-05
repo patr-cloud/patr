@@ -68,6 +68,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			docker_registry_token_endpoint
 		))],
 	);
+	app.post(
+		"/docker-registry-token",
+		&[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
+	);
 	app
 }
 
@@ -1230,6 +1236,37 @@ async fn docker_registry_authenticate(
 		};
 		(username, password)
 	};
+
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+	let user = db::get_user_by_user_id(
+		context.get_mysql_connection(),
+		god_user_id.as_bytes(),
+	)
+	.await?
+	.unwrap();
+	drop(god_user_id);
+	// check if user is GOD_USER then return the token
+	if username == user.username {
+		// return token.
+		let refresh_token = Uuid::new_v4();
+		let iat = get_current_time().as_secs();
+
+		db::add_user_login(
+			context.get_mysql_connection(),
+			refresh_token.as_bytes(),
+			iat + (600),
+			&user.id,
+			iat,
+			iat,
+		)
+		.await?;
+
+		context.json(json!({
+			request_keys::TOKEN: password,
+			request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		}));
+		return Ok(context);
+	}
 
 	let user = if let Some(user) =
 		db::get_user_by_username(context.get_mysql_connection(), &username)
