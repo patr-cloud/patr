@@ -1,14 +1,11 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
-	pin_fn,
+	pin_fn, service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time,
-		EveContext,
-		EveMiddleware,
+		get_current_time, EveContext, EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -332,28 +329,15 @@ async fn delete_tunnel(
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
 		.await?;
 
-	let container_stop_result =
-		docker.containers().get(&container_name).stop(None).await;
-	let container_delete_result =
-		docker.containers().get(&container_name).delete().await;
+	let delete_container_result =
+		service::delete_container(docker, &container_name).await;
 
-	if container_delete_result.is_err() {
-		let container_start_result =
-			docker.containers().get(&container_name).start().await;
-		if let Err(err) = container_start_result {
-			log::error!(
-				"Unrecoverable error while starting container: {:?}",
-				err
-			);
-		}
-	}
-
-	if let Err(err) = container_stop_result.and(container_delete_result) {
-		log::error!("Error while deleting portus tunnel: {:?}", err);
+	if let Err(err) = delete_container_result {
 		let err_message =
-			format!("Error while deleting portus tunnel: {:?}", err);
+			format!("Error while deleting the container: {:?}", err);
 		return Err(Error::new(None, err_message, 500, Box::new(err)));
 	}
+
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
