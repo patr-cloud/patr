@@ -249,7 +249,7 @@ async fn get_tunnels_for_organisation(
 			request_keys::EXPOSED_PORT: tunnel.exposed_port,
 			request_keys::CREATED: tunnel.created,
 			request_keys::NAME: tunnel.name,
-			request_keys::SERVER_IP: get_server_ip_address(),
+			request_keys::SERVER_IP: service::get_server_ip_address(),
 		})
 	})
 	.collect::<Vec<_>>();
@@ -294,7 +294,7 @@ async fn get_info_for_tunnel(
 		request_keys::EXPOSED_PORT: tunnel.exposed_port,
 		request_keys::CREATED: tunnel.created,
 		request_keys::NAME: tunnel.name,
-		request_keys::SERVER_IP: get_server_ip_address()
+		request_keys::SERVER_IP: service::get_server_ip_address()
 	}));
 
 	Ok(context)
@@ -324,7 +324,7 @@ async fn delete_tunnel(
 	let tunnel = tunnel.unwrap();
 
 	let docker = Docker::new();
-	let container_name = get_container_name(&tunnel.username);
+	let container_name = service::get_container_name(&tunnel.username);
 
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
 		.await?;
@@ -360,7 +360,7 @@ async fn create(
 	};
 
 	// get user name and user id from tokendata
-	let username = generate_username(10);
+	let username = service::generate_username(10);
 	let organisation_id =
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(&organisation_id).unwrap();
@@ -371,18 +371,18 @@ async fn create(
 	let resource_id = resource_id.as_bytes(); // convert to byte array
 
 	// generate unique password
-	let generated_password = generate_password(10);
+	let generated_password = service::generate_password(10);
 
 	// create container
 	let docker = Docker::new();
 	let image = constants::PORTUS_DOCKER_IMAGE;
-	let container_name = get_container_name(username.as_str());
+	let container_name = service::get_container_name(username.as_str());
 	let ssh_port =
 		assign_available_port(context.get_mysql_connection()).await?;
 	let exposed_port =
 		assign_available_port(context.get_mysql_connection()).await?;
-	let image_ssh_port = get_ssh_port_for_server();
-	let server_ip_address = get_server_ip_address();
+	let image_ssh_port = service::get_ssh_port_for_server();
+	let server_ip_address = service::get_server_ip_address();
 	let created = get_current_time();
 
 	// check if container name already exists
@@ -570,7 +570,7 @@ async fn get_bash_script(
 		return Ok(context);
 	};
 
-	let bash_script_file_content = bash_script_formatter(
+	let bash_script_file_content = service::bash_script_formatter(
 		local_port,
 		local_host_name,
 		exposed_server_port,
@@ -674,8 +674,4 @@ async fn assign_available_port(
 		}
 		return Ok(port);
 	}
-}
-
-fn get_server_ip_address() -> &'static str {
-	"143.110.179.80"
 }
