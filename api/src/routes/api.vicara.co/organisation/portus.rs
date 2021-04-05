@@ -378,9 +378,9 @@ async fn create(
 	let image = constants::PORTUS_DOCKER_IMAGE;
 	let container_name = service::get_container_name(username.as_str());
 	let ssh_port =
-		assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_mysql_connection()).await?;
 	let exposed_port =
-		assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_mysql_connection()).await?;
 	let image_ssh_port = service::get_ssh_port_for_server();
 	let server_ip_address = service::get_server_ip_address();
 	let created = get_current_time();
@@ -461,24 +461,13 @@ async fn create(
 		log::error!("Error while adding data to portus table. {:#?}", err);
 
 		// if there is an error in database query, stop the container which just started.
-		log::info!("Stopping container {} ...", &container_name);
-		let container_stop_result =
-			docker.containers().get(&container_id).stop(None).await;
-
-		if let Err(err) = container_stop_result {
-			log::error!(
-				"Error while stopping the container. Error => {:?}",
-				err
-			);
-		}
-
-		log::info!("Deleting container...");
-		// delete the container
+		log::info!("Stopping and Deleting container {} ...", &container_name);
 		let container_delete_result =
-			docker.containers().get(&container_id).delete().await;
+			service::delete_container(docker, &container_name).await;
 		if let Err(err) = container_delete_result {
 			log::error!("could not delete container. Error => {:#?}", err);
 		}
+		log::error!("could not delete container. Error => {:#?}", err);
 
 		context.status(500).json(error!(SERVER_ERROR));
 		let err_message =
