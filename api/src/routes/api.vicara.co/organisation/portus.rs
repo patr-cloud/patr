@@ -330,7 +330,7 @@ async fn delete_tunnel(
 		.await?;
 
 	let delete_container_result =
-		service::delete_container(docker, &container_name).await;
+		service::delete_container(&docker, &container_name).await;
 
 	if let Err(err) = delete_container_result {
 		let err_message =
@@ -418,8 +418,7 @@ async fn create(
 	let container_id = container_info.id;
 
 	let container_start_result =
-		docker.containers().get(&container_id).start().await;
-
+		service::start_container(&docker, &container_id).await;
 	// create resource in db
 	let create_resource_result = db::create_resource(
 		context.get_mysql_connection(),
@@ -463,7 +462,7 @@ async fn create(
 		// if there is an error in database query, stop the container which just started.
 		log::info!("Stopping and Deleting container {} ...", &container_name);
 		let container_delete_result =
-			service::delete_container(docker, &container_name).await;
+			service::delete_container(&docker, &container_name).await;
 		if let Err(err) = container_delete_result {
 			log::error!("could not delete container. Error => {:#?}", err);
 		}
