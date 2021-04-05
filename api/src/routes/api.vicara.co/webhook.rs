@@ -106,7 +106,8 @@ pub async fn notification_handler(
 				config.docker_registry.private_key.as_ref(),
 				config.docker_registry.public_key_der(),
 			);
-			if generated_password.is_err() {
+			if let Err(err) = generated_password {
+				log::error!("Error generating docker CLI token: {}", err);
 				continue;
 			}
 			let token = generated_password.unwrap();
@@ -128,35 +129,19 @@ pub async fn notification_handler(
 			let empty_map = HashMap::new();
 			let empty_string = String::default();
 
-			// TODO don't redeploy the image if it's already deployed
-			// let image = docker.images().get(&full_image_name).inspect().await;
-
-			// if let Err(err) = image {
-			// 	log::error!(
-			// 		"Error inspecting already pulled image: {:#?}",
-			// 		err
-			// 	);
-			// 	continue;
-			// }
-			// let image = image.unwrap();
-
-			// let digests = image.repo_digests.unwrap_or_default();
-			// let container_image =
-			// 	digests.get(0).unwrap_or_else(|| &empty_string);
-			// log::error!("{}", container_image);
-			// log::error!("{}", full_image_name);
-			// if container_image == &full_image_name {
-			// 	log::warn!("Pushed image is already deployed. Ignoring...");
-			// 	continue;
-			// }
-
 			// If the container exists, stop it and delete it
 			// The errors will be taken care of by the `unwrap_or_default` part
 			let container = docker.containers().get(&container_name);
 			let info = container.inspect().await;
+
 			let mut port;
 
 			if let Ok(info) = info {
+				// don't redeploy the image if it's already deployed
+				if info.config.image == full_image_name {
+					log::debug!("Pushed image is already deployed. Ignoring...");
+					continue;
+				}
 				docker
 					.containers()
 					.get(&container_name)
