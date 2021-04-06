@@ -1,16 +1,16 @@
 use crate::{
-	db, error,
-	models::db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
+	db,
+	error,
+	models::db_mapping::UserEmailAddressSignUp,
 	utils::{self, settings::Settings, validator},
 };
 use argon2::{Error, Variant};
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
 use utils::get_current_time;
-use uuid::Uuid;
 
 /// function to get token hash
-pub fn get_hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
+pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 	return argon2::hash_raw(
 		pwd,
 		salt,
@@ -22,22 +22,31 @@ pub fn get_hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 	);
 }
 
-pub async fn does_user_exists(
+pub async fn is_username_allowed(
 	transaction: &mut Transaction<'_, MySql>,
 	username: &str,
-	email: &str,
-) -> Result<Option<Value>, sqlx::Error> {
-	// check if username is taken
-	if db::get_user_by_username(transaction, username)
-		.await?
-		.is_some()
-	{
-		return Ok(Some(error!(USERNAME_TAKEN)));
-	} else if db::get_user_by_email(transaction, email).await?.is_some() {
-		return Ok(Some(error!(EMAIL_TAKEN)));
-	} else {
-		Ok(None)
+) -> Result<(), Value> {
+	if !validator::is_username_valid(&username) {
+		return Err(error!(INVALID_USERNAME));
 	}
+	db::get_user_by_username(transaction, username)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))
+		.map(|_| ())
+}
+
+pub async fn is_email_allowed(
+	transaction: &mut Transaction<'_, MySql>,
+	email: &str,
+) -> Result<(), Value> {
+	if !validator::is_email_valid(&email) {
+		return Err(error!(INVALID_EMAIL));
+	}
+
+	db::get_user_by_email(transaction, email)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))
+		.map(|_| ())
 }
 
 /// function to create new user
@@ -54,16 +63,11 @@ pub async fn create_user_to_be_signed_up(
 	first_name: &String,
 	last_name: &String,
 ) -> Result<String, Value> {
-	if !validator::is_username_valid(&username) {
-		return Err(error!(INVALID_USERNAME));
-	}
+	is_username_allowed(transaction, username).await?;
+	is_email_allowed(transaction, email).await?;
 
-	if !validator::is_email_valid(&email) {
-		return Err(error!(INVALID_EMAIL));
-	}
-
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		return Err(error!(INVALID_EMAIL));
 	}
@@ -78,27 +82,15 @@ pub async fn create_user_to_be_signed_up(
 		}
 	}
 
-	let is_username_or_email_taken =
-		does_user_exists(transaction, &username, &email)
-			.await
-			.map_err(|_| error!(SERVER_ERROR));
-	let user_exists = is_username_or_email_taken.unwrap();
-	if user_exists.is_some() {
-		return Err(user_exists.unwrap());
-	}
-
 	let otp = utils::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 
-	let password =
-		get_hash(password.as_bytes(), config.password_salt.as_bytes())
-			.map_err(|_| error!(SERVER_ERROR));
-	let password = password.unwrap();
+	let password = hash(password.as_bytes(), config.password_salt.as_bytes())
+		.map_err(|_| error!(SERVER_ERROR))?;
 
-	let token_hash = get_hash(otp.as_bytes(), config.password_salt.as_bytes())
-		.map_err(|_| error!(SERVER_ERROR));
-	let token_hash = token_hash.unwrap();
+	let token_hash = hash(otp.as_bytes(), config.password_salt.as_bytes())
+		.map_err(|_| error!(SERVER_ERROR))?;
 
 	let email = if account_type == "organisation" {
 		UserEmailAddressSignUp::Organisation {

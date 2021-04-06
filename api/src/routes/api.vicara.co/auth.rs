@@ -238,10 +238,9 @@ async fn sign_up(
 		}
 	};
 
-	let config = context.get_state().config.clone();
 	let user_to_be_signed_up = service::create_user_to_be_signed_up(
 		context.get_mysql_connection(),
-		&config,
+		&context.get_state().config,
 		&username,
 		&email,
 		&password,
@@ -260,7 +259,9 @@ async fn sign_up(
 	}
 	let otp = user_to_be_signed_up.unwrap();
 
+	let config = context.get_state().config.clone();
 	let email = email.clone();
+
 	task::spawn_blocking(|| {
 		mailer::send_email_verification_mail(config, email, otp);
 	});
@@ -704,7 +705,7 @@ async fn forgot_password(
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 
-	let token_hash = service::get_hash(
+	let token_hash = service::hash(
 		otp.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
 	)?;
