@@ -1,4 +1,3 @@
-// DOCKER SERVICE
 use shiplift::{Docker, Error};
 
 /// function to start a container
