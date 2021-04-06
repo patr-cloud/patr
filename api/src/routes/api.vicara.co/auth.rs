@@ -1,22 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
-	pin_fn,
+	pin_fn, service,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time, mailer, validator,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -246,111 +238,31 @@ async fn sign_up(
 		}
 	};
 
-	if !validator::is_username_valid(&username) {
-		context.json(error!(INVALID_USERNAME));
-		return Ok(context);
-	}
-
-	if !validator::is_email_valid(&email) {
-		context.json(error!(INVALID_EMAIL));
-		return Ok(context);
-	}
-
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
-	{
-		context.json(error!(INVALID_EMAIL));
-		return Ok(context);
-	}
-
-	if !validator::is_password_valid(&password) {
-		context.json(error!(PASSWORD_TOO_WEAK));
-		return Ok(context);
-	}
-
-	if let Some(domain) = domain_name {
-		if !validator::is_domain_name_valid(domain.as_str()).await {
-			context.json(error!(INVALID_DOMAIN_NAME));
-			return Ok(context);
-		}
-	}
-
-	if db::get_user_by_username(context.get_mysql_connection(), &username)
-		.await?
-		.is_some()
-	{
-		context.json(error!(USERNAME_TAKEN));
-		return Ok(context);
-	}
-
-	if db::get_user_by_email(context.get_mysql_connection(), &email)
-		.await?
-		.is_some()
-	{
-		context.json(error!(EMAIL_TAKEN));
-		return Ok(context);
-	}
-
-	let otp = utils::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
-	let password = argon2::hash_raw(
-		password.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
-	)?;
-	let token_hash = argon2::hash_raw(
-		otp.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
-	)?;
-
-	let email = if account_type == "organisation" {
-		UserEmailAddressSignUp::Organisation {
-			email_local: email
-				.replace(&format!("@{}", domain_name.unwrap()), ""),
-			domain_name: domain_name.unwrap().clone(),
-			organisation_name: organisation_name.unwrap().clone(),
-			backup_email: backup_email.unwrap().clone(),
-		}
-	} else if account_type == "personal" {
-		UserEmailAddressSignUp::Personal(email.clone())
-	} else {
-		panic!("email type is neither personal, nor organisation. How did you even get here?")
-	};
-
-	db::set_user_to_be_signed_up(
-		context.get_mysql_connection(),
-		email.clone(),
-		&username,
-		&password,
-		(&first_name, &last_name),
-		&token_hash,
-		token_expiry,
-	)
-	.await?;
-
 	let config = context.get_state().config.clone();
+	let user_to_be_signed_up = service::create_user_to_be_signed_up(
+		context.get_mysql_connection(),
+		&config,
+		&username,
+		&email,
+		&password,
+		&account_type,
+		domain_name,
+		organisation_name,
+		backup_email,
+		&first_name,
+		&last_name,
+	)
+	.await;
+
+	if let Err(err) = user_to_be_signed_up {
+		context.json(err);
+		return Ok(context);
+	}
+	let otp = user_to_be_signed_up.unwrap();
+
+	let email = email.clone();
 	task::spawn_blocking(|| {
-		mailer::send_email_verification_mail(
-			config,
-			match email {
-				UserEmailAddressSignUp::Organisation {
-					backup_email, ..
-				} => backup_email,
-				UserEmailAddressSignUp::Personal(email) => email,
-			},
-			otp,
-		);
+		mailer::send_email_verification_mail(config, email, otp);
 	});
 
 	context.json(json!({
@@ -791,14 +703,10 @@ async fn forgot_password(
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
-	let token_hash = argon2::hash_raw(
+
+	let token_hash = service::get_hash(
 		otp.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
 	)?;
 
 	db::add_password_reset_request(
