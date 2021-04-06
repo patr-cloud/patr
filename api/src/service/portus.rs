@@ -1,29 +1,21 @@
 // SERVICE FOR PORTUS
-use crate::db;
+use crate::{db, service};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use shiplift::{Docker, Error};
 use sqlx::{MySql, Transaction};
 use std::{env, path::PathBuf};
 use tokio::fs;
 
-/// function to start a container
-pub async fn start_container(
-	docker: &Docker,
-	container_id: &str,
-) -> Result<(), Error> {
-	docker.containers().get(&container_id).start().await
-}
-
 /// function to stop and delete a container
-pub async fn delete_container(
+pub async fn portus_stop_and_delete(
 	docker: &Docker,
 	container_name: &str,
 ) -> Result<(), Error> {
 	let container_stop_result =
-		docker.containers().get(&container_name).stop(None).await;
+		service::stop_container(docker, container_name).await;
 
 	let container_delete_result =
-		docker.containers().get(&container_name).delete().await;
+		service::delete_container(docker, container_name).await;
 
 	if container_delete_result.is_err() {
 		let container_start_result =
