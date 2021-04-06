@@ -237,10 +237,11 @@ async fn sign_up(
 			return Ok(context);
 		}
 	};
+	let config = context.get_state().config.clone();
 
 	let user_to_be_signed_up = service::create_user_to_be_signed_up(
 		context.get_mysql_connection(),
-		&context.get_state().config,
+		&config,
 		&username,
 		&email,
 		&password,
@@ -258,8 +259,6 @@ async fn sign_up(
 		return Ok(context);
 	}
 	let otp = user_to_be_signed_up.unwrap();
-
-	let config = context.get_state().config.clone();
 	let email = email.clone();
 
 	task::spawn_blocking(|| {
