@@ -64,8 +64,8 @@ pub mod message {
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
 		"That phone number is already in use. Did you mean to sign in?";
-	pub const TOKEN_NOT_FOUND: &str = 
-		"your account has been logged out due to inactivity, please login again.";  
+	pub const TOKEN_NOT_FOUND: &str =
+		"your account has been logged out due to inactivity, please login again.";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str =
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
