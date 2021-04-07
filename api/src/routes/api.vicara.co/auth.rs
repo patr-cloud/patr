@@ -1,14 +1,23 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
-		self, constants::request_keys, get_current_time, mailer, validator,
-		EveContext, EveMiddleware,
+		self,
+		constants::request_keys,
+		get_current_time,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
