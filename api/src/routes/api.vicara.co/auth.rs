@@ -1210,7 +1210,7 @@ async fn docker_registry_authenticate(
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_DECODE,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1225,7 +1225,7 @@ async fn docker_registry_authenticate(
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_STRING_CONVERSION,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 				request_keys::DETAIL: []
 			}]
 		}));
