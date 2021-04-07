@@ -17,7 +17,7 @@ pub async fn stop_container(
 }
 
 /// delete container
-/// this function will take care of stopping a container if it is running and then deleting it.
+/// this function will stop and delete a container.
 pub async fn delete_container(
 	docker: &Docker,
 	container_name: &str,
