@@ -666,7 +666,7 @@ async fn get_access_token(
 			.await?;
 
 	if user_login.is_none() {
-		context.json(error!(EMAIL_TOKEN_NOT_FOUND));
+		context.json(error!(TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 	let user_login = user_login.unwrap();
