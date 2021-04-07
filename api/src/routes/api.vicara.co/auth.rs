@@ -1204,8 +1204,34 @@ async fn docker_registry_authenticate(
 
 	let token = authorization.replace("Basic ", "");
 
-	// TODO fix this crap
-	let auth = String::from_utf8(base64::decode(token)?)?;
+	let utf8_token = base64::decode(token);
+
+	if let Err(_) = utf8_token {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let base_decode = utf8_token.unwrap();
+
+	let auth_string = String::from_utf8(base_decode);
+	if let Err(_) = auth_string {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let auth = auth_string.unwrap();
 
 	let mut splitter = auth.split(':');
 	let (username, password) = {
