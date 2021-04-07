@@ -1,11 +1,15 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, EveContext, EveMiddleware,
+		get_current_time,
+		EveContext,
+		EveMiddleware,
 	},
 };
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
@@ -329,10 +333,10 @@ async fn delete_tunnel(
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
 		.await?;
 
-	let delete_container_result =
-		service::portus_stop_and_delete(&docker, &container_name).await;
+	let container_delete_result =
+		service::delete_container(&docker, &container_name).await;
 
-	if let Err(err) = delete_container_result {
+	if let Err(err) = container_delete_result {
 		let err_message =
 			format!("Error while deleting the container: {:?}", err);
 		return Err(Error::new(None, err_message, 500, Box::new(err)));
@@ -462,7 +466,7 @@ async fn create(
 		// if there is an error in database query, stop the container which just started.
 		log::info!("Stopping and Deleting container {} ...", &container_name);
 		let container_delete_result =
-			service::portus_stop_and_delete(&docker, &container_name).await;
+			service::delete_container(&docker, &container_name).await;
 		if let Err(err) = container_delete_result {
 			log::error!("could not delete container. Error => {:#?}", err);
 		}

@@ -6,37 +6,6 @@ use sqlx::{MySql, Transaction};
 use std::{env, path::PathBuf};
 use tokio::fs;
 
-/// function to stop and delete a container
-pub async fn portus_stop_and_delete(
-	docker: &Docker,
-	container_name: &str,
-) -> Result<(), Error> {
-	let container_stop_result =
-		service::stop_container(docker, container_name).await;
-
-	let container_delete_result =
-		service::delete_container(docker, container_name).await;
-
-	if container_delete_result.is_err() {
-		let container_start_result =
-			docker.containers().get(&container_name).start().await;
-		if let Err(err) = container_start_result {
-			log::error!(
-				"Unrecoverable error while starting container: {:?}",
-				err
-			);
-
-			return Err(err);
-		}
-	}
-	if let Err(err) = container_stop_result.and(container_delete_result) {
-		log::error!("Error while the container {:?}", err);
-		return Err(err);
-	}
-
-	Ok(())
-}
-
 /// function to assign available port
 pub fn generate_password(length: u16) -> String {
 	thread_rng()
