@@ -1,23 +1,14 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time, mailer, validator,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -98,15 +89,10 @@ async fn sign_in(
 		return Ok(context);
 	};
 
-	let success = argon2::verify_raw(
+	let success = service::verify_hash(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
 		&user.password,
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
 	)?;
 
 	if !success {
@@ -314,16 +300,12 @@ async fn join(
 		return Ok(context);
 	};
 
-	let success = argon2::verify_raw(
+	let success = service::verify_hash(
 		otp.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
 		&user_data.otp_hash,
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
 	)?;
+
 	if !success {
 		context.json(error!(INVALID_OTP));
 		return Ok(context);
@@ -789,15 +771,10 @@ async fn reset_password(
 	}
 	let reset_request = reset_request.unwrap();
 
-	let success = argon2::verify_raw(
+	let success = service::verify_hash(
 		token.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
 		&reset_request.token,
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
 	)?;
 
 	if !success {
