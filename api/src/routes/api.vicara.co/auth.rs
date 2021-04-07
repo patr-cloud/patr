@@ -1205,33 +1205,35 @@ async fn docker_registry_authenticate(
 	let token = authorization.replace("Basic ", "");
 
 	// TODO: optimize it to prevent the use of clone() 
-	let utf8_token = if base64::decode(token.clone()).is_ok() {
-		base64::decode(token).unwrap()
-	} else {
-		// Sample error message NOT final
-		context.status(400).json(json!({
+	let utf8_token = base64::decode(token);
+
+	if let Err(ref err) = utf8_token {
+		context.status(406).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
 				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_DECODE,
 				request_keys::DETAIL: []
 			}]
 		}));
 		return Ok(context);
-	};
+	}
 
-	let auth = if String::from_utf8(utf8_token.clone()).is_ok() {
-		String::from_utf8(utf8_token).unwrap()
-	} else {
-		context.status(400).json(json!({
+	let base_decode = utf8_token.unwrap();
+
+	let auth = String::from_utf8(base_decode);
+	
+	if let Err(ref err) = auth {
+		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				// Sample error message NOT final
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
 				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_STRING_CONVERSION,
 				request_keys::DETAIL: []
 			}]
 		}));
 		return Ok(context);
-	};
+	}
+		
 
 	let mut splitter = auth.split(':');
 	let (username, password) = {
