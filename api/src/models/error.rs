@@ -104,8 +104,7 @@ pub mod message {
 		"Invalid request sent by the client. Service is not valid";
 	pub const AUTHORIZATION_NOT_FOUND: &str =
 		"Invalid request sent by the client. Authorization header not found";
-	pub const AUTHORIZATION_STRING_CONVERSION: &str = "Invalid request sent by the client. Authorization data could not be converted to a string";
-	pub const AUTHORIZATION_DECODE: &str = "Invalid request sent by the client. Authorization header could not be base64 decoded";
+	pub const AUTHORIZATION_PARSE_ERROR: &str = "Invalid request sent by the client. Authorization data could not be parsed as expected";
 	pub const USERNAME_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have username";
 	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password";
 }

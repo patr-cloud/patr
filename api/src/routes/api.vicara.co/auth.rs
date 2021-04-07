@@ -1059,7 +1059,7 @@ async fn docker_registry_login(
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
 					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_STRING_CONVERSION,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1069,7 +1069,7 @@ async fn docker_registry_login(
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_DECODE,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 				request_keys::DETAIL: []
 			}]
 		}));
