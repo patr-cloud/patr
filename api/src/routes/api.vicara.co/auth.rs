@@ -1204,10 +1204,9 @@ async fn docker_registry_authenticate(
 
 	let token = authorization.replace("Basic ", "");
 
-	// TODO: optimize it to prevent the use of clone() 
 	let utf8_token = base64::decode(token);
 
-	if let Err(ref err) = utf8_token {
+	if let Err(err) = utf8_token {
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
@@ -1222,10 +1221,9 @@ async fn docker_registry_authenticate(
 
 	let auth = String::from_utf8(base_decode);
 	
-	if let Err(ref err) = auth {
+	if let Err(err) = auth {
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
-				// Sample error message NOT final
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
 				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_STRING_CONVERSION,
 				request_keys::DETAIL: []
