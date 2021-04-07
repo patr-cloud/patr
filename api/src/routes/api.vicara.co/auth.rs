@@ -1206,7 +1206,7 @@ async fn docker_registry_authenticate(
 
 	let utf8_token = base64::decode(token);
 
-	if let Err(err) = utf8_token {
+	if let Err(_err) = utf8_token {
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
@@ -1219,9 +1219,9 @@ async fn docker_registry_authenticate(
 
 	let base_decode = utf8_token.unwrap();
 
-	let auth = String::from_utf8(base_decode);
+	let auth_string = String::from_utf8(base_decode);
 	
-	if let Err(err) = auth {
+	if let Err(_err) = auth_string {
 		context.status(406).json(json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
@@ -1232,6 +1232,7 @@ async fn docker_registry_authenticate(
 		return Ok(context);
 	}
 		
+	let auth = auth_string.unwrap();
 
 	let mut splitter = auth.split(':');
 	let (username, password) = {
