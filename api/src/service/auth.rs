@@ -1,17 +1,34 @@
 use crate::{
-	db,
-	error,
+	db, error,
 	models::db_mapping::UserEmailAddressSignUp,
 	utils::{self, settings::Settings, validator},
 };
 use argon2::{Error, Variant};
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
+use std::error::Error as StdError;
 use utils::get_current_time;
+
+pub fn verify_hash(
+	pwd: &[u8],
+	salt: &[u8],
+	otp_hash: &[u8],
+) -> Result<bool, Error> {
+	argon2::verify_raw(
+		pwd,
+		salt,
+		otp_hash,
+		&argon2::Config {
+			variant: Variant::Argon2i,
+			hash_length: 64,
+			..Default::default()
+		},
+	)
+}
 
 /// function to get token hash
 pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
-	return argon2::hash_raw(
+	argon2::hash_raw(
 		pwd,
 		salt,
 		&argon2::Config {
@@ -19,7 +36,7 @@ pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 			hash_length: 64,
 			..Default::default()
 		},
-	);
+	)
 }
 
 pub async fn is_username_allowed(
@@ -66,8 +83,8 @@ pub async fn create_user_to_be_signed_up(
 	is_username_allowed(transaction, username).await?;
 	is_email_allowed(transaction, email).await?;
 
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		return Err(error!(INVALID_EMAIL));
 	}
