@@ -100,36 +100,14 @@ async fn sign_in(
 		return Ok(context);
 	}
 
-	// generate JWT
-	let iat = get_current_time();
-	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_mysql_connection(),
-		&user.id,
-	)
-	.await?;
-	let user = ExposedUserData {
-		id: user.id,
-		username: user.username,
-		first_name: user.first_name,
-		last_name: user.last_name,
-		created: user.created,
-	};
-
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-	let jwt =
-		token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
-	let refresh_token = Uuid::new_v4();
-
-	db::add_user_login(
-		context.get_mysql_connection(),
-		refresh_token.as_bytes(),
-		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
-		&token_data.user.id,
-		iat,
-		iat,
-	)
-	.await?;
+	let config = context.get_state().config.clone();
+	let status =
+		service::sign_in(context.get_mysql_connection(), user, config).await;
+	if let Err(err) = status {
+		context.json(err);
+		return Ok(context);
+	}
+	let (jwt, refresh_token) = status.unwrap();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

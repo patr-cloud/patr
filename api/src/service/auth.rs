@@ -1,13 +1,20 @@
+use std::collections::HashMap;
+
 use crate::{
 	db, error,
-	models::db_mapping::UserEmailAddressSignUp,
+	models::{
+		db_mapping::{User, UserEmailAddressSignUp},
+		rbac::OrgPermissions,
+		AccessTokenData, ExposedUserData,
+	},
 	utils::{self, settings::Settings, validator},
 };
 use argon2::{Error, Variant};
+use jsonwebtoken::errors::Error as JWTError;
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
-use std::error::Error as StdError;
 use utils::get_current_time;
+use uuid::Uuid;
 
 pub fn verify_hash(
 	pwd: &[u8],
@@ -66,7 +73,7 @@ pub async fn is_email_allowed(
 		.map(|_| ())
 }
 
-/// function to create new user
+/// this function creates a new user to be signed up and returns a OTP
 pub async fn create_user_to_be_signed_up(
 	transaction: &mut Transaction<'_, MySql>,
 	config: &Settings,
@@ -136,4 +143,67 @@ pub async fn create_user_to_be_signed_up(
 	.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(otp)
+}
+
+/// function to create a jwt token and return it's string value
+pub fn get_jwt_token(
+	iat: u64,
+	exp: u64,
+	orgs: HashMap<String, OrgPermissions>,
+	user: ExposedUserData,
+	config: &Settings,
+) -> Result<String, JWTError> {
+	let token_data = AccessTokenData::new(iat, exp, orgs, user);
+	token_data.to_string(config.jwt_secret.as_str())
+}
+
+/// function to sign in a user
+/// Returns: JWT (String), Refresh Token (Uuid)
+pub async fn sign_in(
+	transaction: &mut Transaction<'_, MySql>,
+	user: User,
+	config: Settings,
+) -> Result<(String, Uuid), Value> {
+	// generate JWT
+	let iat = get_current_time();
+	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
+	let orgs =
+		db::get_all_organisation_roles_for_user(transaction, &user.id).await;
+
+	// return server error.
+	if let Err(_) = orgs {
+		return Err(error!(SERVER_ERROR));
+	}
+	let orgs = orgs.unwrap();
+
+	let user = ExposedUserData {
+		id: user.id,
+		username: user.username,
+		first_name: user.first_name,
+		last_name: user.last_name,
+		created: user.created,
+	};
+
+	let jwt = get_jwt_token(iat, exp, orgs, user.clone(), &config);
+	if let Err(_) = jwt {
+		return Err(error!(SERVER_ERROR));
+	}
+	let jwt = jwt.unwrap();
+
+	let refresh_token = Uuid::new_v4();
+
+	let add_user_login_result = db::add_user_login(
+		transaction,
+		refresh_token.as_bytes(),
+		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
+		&user.id,
+		iat,
+		iat,
+	)
+	.await;
+	if let Err(err) = add_user_login_result {
+		return Err(error!(SERVER_ERROR));
+	}
+
+	Ok((jwt, refresh_token))
 }
