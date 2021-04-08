@@ -673,7 +673,7 @@ async fn get_access_token(
 
 	if user_login.token_expiry < get_current_time_millis() {
 		// Token has expired
-		context.status(401).json(error!(UNAUTHORIZED));
+		context.status(410).json(error!(EXPIRED));
 		return Ok(context);
 	}
 
