@@ -18,6 +18,7 @@ pub mod id {
 	pub const EMAIL_TAKEN: &str = "emailTaken";
 	pub const USERNAME_TAKEN: &str = "usernameTaken";
 	pub const PHONE_NUMBER_TAKEN: &str = "phoneNumberTaken";
+	pub const TOKEN_NOT_FOUND: &str = "tokenNotFound";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
 	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
 	pub const INVALID_OTP: &str = "invalidOtp";
@@ -63,6 +64,8 @@ pub mod message {
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
 		"That phone number is already in use. Did you mean to sign in?";
+	pub const TOKEN_NOT_FOUND: &str =
+		"Your account has been logged out due to inactivity. Please login again";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str =
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
