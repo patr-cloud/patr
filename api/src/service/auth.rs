@@ -201,9 +201,72 @@ pub async fn sign_in(
 		iat,
 	)
 	.await;
-	if let Err(err) = add_user_login_result {
+	if let Err(_) = add_user_login_result {
 		return Err(error!(SERVER_ERROR));
 	}
 
 	Ok((jwt, refresh_token))
+}
+
+pub async fn get_access_token_data(
+	transaction: &mut Transaction<'_, MySql>,
+	config: Settings,
+	refresh_token: &str,
+) -> Result<String, Value> {
+	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
+		uuid
+	} else {
+		return Err(error!(WRONG_PARAMETERS));
+	};
+	let refresh_token = refresh_token.as_bytes();
+
+	let user_login = db::get_user_login(transaction, refresh_token)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	if user_login.is_none() {
+		// context.json(error!(EMAIL_TOKEN_NOT_FOUND));
+		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
+	}
+	let user_login = user_login.unwrap();
+
+	if user_login.token_expiry < get_current_time() {
+		// Token has expired
+		return Err(error!(EXPIRED));
+	}
+
+	// get roles and permissions of user for rbac here
+	// use that info to populate the data in the token_data
+
+	let iat = get_current_time();
+	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
+	let orgs = db::get_all_organisation_roles_for_user(
+		transaction,
+		&user_login.user_id,
+	)
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
+
+	let user_id = user_login.user_id;
+	let user_data = db::get_user_by_user_id(transaction, &user_id)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?
+		.unwrap();
+
+	let user = ExposedUserData {
+		id: user_id,
+		username: user_data.username,
+		first_name: user_data.first_name,
+		last_name: user_data.last_name,
+		created: user_data.created,
+	};
+
+	let jwt = get_jwt_token(iat, exp, orgs, user, &config)
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	db::set_refresh_token_expiry(transaction, refresh_token, iat, exp)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	Ok(jwt)
 }

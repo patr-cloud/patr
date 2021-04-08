@@ -519,64 +519,20 @@ async fn get_access_token(
 			return Ok(context);
 		};
 
-	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
-		uuid
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let refresh_token = refresh_token.as_bytes();
+	let config = context.get_state().config.clone();
+	let status = service::get_access_token_data(
+		context.get_mysql_connection(),
+		config,
+		&refresh_token,
+	)
+	.await;
 
-	let user_login =
-		db::get_user_login(context.get_mysql_connection(), refresh_token)
-			.await?;
-
-	if user_login.is_none() {
-		context.json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Ok(context);
-	}
-	let user_login = user_login.unwrap();
-
-	if user_login.token_expiry < get_current_time() {
-		// Token has expired
-		context.status(401).json(error!(UNAUTHORIZED));
+	if let Err(err) = status {
+		context.json(err);
 		return Ok(context);
 	}
 
-	// get roles and permissions of user for rbac here
-	// use that info to populate the data in the token_data
-
-	let iat = get_current_time();
-	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
-	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_mysql_connection(),
-		&user_login.user_id,
-	)
-	.await?;
-	let user_id = user_login.user_id;
-	let user_data =
-		db::get_user_by_user_id(context.get_mysql_connection(), &user_id)
-			.await?
-			.unwrap();
-	let user = ExposedUserData {
-		id: user_id,
-		username: user_data.username,
-		first_name: user_data.first_name,
-		last_name: user_data.last_name,
-		created: user_data.created,
-	};
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-
-	let access_token =
-		token_data.to_string(&context.get_state().config.jwt_secret)?;
-
-	db::set_refresh_token_expiry(
-		context.get_mysql_connection(),
-		refresh_token,
-		iat,
-		exp,
-	)
-	.await?;
+	let access_token = status.unwrap();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
