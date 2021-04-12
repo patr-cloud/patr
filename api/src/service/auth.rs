@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::{
 	db, error,
 	models::{
-		db_mapping::{User, UserEmailAddressSignUp},
+		db_mapping::{User, UserEmailAddress, UserEmailAddressSignUp},
+		rbac,
 		rbac::OrgPermissions,
 		AccessTokenData, ExposedUserData,
 	},
@@ -359,4 +360,231 @@ pub async fn reset_password(
 			.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(())
+}
+
+pub async fn join(
+	transaction: &mut Transaction<'_, MySql>,
+	config: Settings,
+	otp: &str,
+	username: &str,
+) -> Result<(String, Uuid, String, Option<String>), Value> {
+	let user_data = if let Some(user_data) =
+		db::get_user_email_to_sign_up(transaction, &username)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?
+	{
+		user_data
+	} else {
+		return Err(error!(INVALID_OTP));
+	};
+
+	log::debug!("received otp {}", &otp);
+	let success = verify_hash(
+		otp.as_bytes(),
+		config.password_salt.as_bytes(),
+		&user_data.otp_hash,
+	)
+	.map_err(|_| error!(SERVER_ERROR))?;
+
+	if !success {
+		return Err(error!(INVALID_OTP));
+	}
+
+	if user_data.otp_expiry < get_current_time() {
+		return Err(error!(OTP_EXPIRED));
+	}
+
+	// For a personal account, get:
+	// - username
+	// - email
+	// - password
+	// - account_type
+	// - first_name
+	// - last_name
+
+	// For an organisation account, also get:
+	// - domain_name
+	// - organisation_name
+	// - backup_email
+
+	// First create user,
+	// Then create an organisation if an org account,
+	// Then add the domain if org account,
+	// Then create personal org regardless,
+	// Then set email to backup email if personal account,
+	// And finally send the token, along with the email to the user
+
+	let user_uuid = Uuid::new_v4();
+	let user_id = user_uuid.as_bytes();
+	let created = get_current_time();
+
+	if rbac::GOD_USER_ID.get().is_none() {
+		rbac::GOD_USER_ID
+			.set(user_uuid)
+			.expect("GOD_USER_ID was already set");
+	}
+
+	db::create_user(
+		transaction,
+		user_id,
+		&user_data.username,
+		&user_data.password,
+		&user_data.backup_email,
+		(&user_data.first_name, &user_data.last_name),
+		created,
+	)
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
+
+	// For an organisation, create the organisation and domain
+	let email;
+	let welcome_email_to;
+	let backup_email_notification_to;
+	match user_data.email {
+		UserEmailAddressSignUp::Personal(email_address) => {
+			email = UserEmailAddress::Personal(email_address.clone());
+			backup_email_notification_to = None;
+			welcome_email_to = email_address;
+		}
+		UserEmailAddressSignUp::Organisation {
+			domain_name,
+			email_local,
+			backup_email,
+			organisation_name,
+		} => {
+			let organisation_id = db::generate_new_resource_id(transaction)
+				.await
+				.map_err(|_| error!(SERVER_ERROR))?;
+			let organisation_id = organisation_id.as_bytes();
+			db::create_orphaned_resource(
+				transaction,
+				organisation_id,
+				&format!("Organiation: {}", organisation_name),
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::ORGANISATION)
+					.unwrap(),
+			)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+			db::create_organisation(
+				transaction,
+				organisation_id,
+				&organisation_name,
+				user_id,
+				get_current_time(),
+			)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+			db::set_resource_owner_id(
+				transaction,
+				organisation_id,
+				organisation_id,
+			)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+
+			let domain_id = db::generate_new_resource_id(transaction)
+				.await
+				.map_err(|_| error!(SERVER_ERROR))?;
+			let domain_id = domain_id.as_bytes().to_vec();
+
+			db::create_resource(
+				transaction,
+				&domain_id,
+				&format!("Domain: {}", domain_name),
+				rbac::RESOURCE_TYPES
+					.get()
+					.unwrap()
+					.get(rbac::resource_types::DOMAIN)
+					.unwrap(),
+				organisation_id,
+			)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+			db::add_domain_to_organisation(
+				transaction,
+				&domain_id,
+				&domain_name,
+			)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+
+			welcome_email_to = format!("{}@{}", email_local, domain_name);
+			email = UserEmailAddress::Organisation {
+				domain_id,
+				email_local,
+			};
+			backup_email_notification_to = Some(backup_email);
+		}
+	}
+
+	// add personal organisation
+	let organisation_id = db::generate_new_resource_id(transaction)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+	let organisation_id = organisation_id.as_bytes();
+	let organisation_name =
+		format!("personal-organisation-{}", hex::encode(user_id));
+
+	db::create_orphaned_resource(
+		transaction,
+		organisation_id,
+		&organisation_name,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::ORGANISATION)
+			.unwrap(),
+	)
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
+
+	db::create_organisation(
+		transaction,
+		organisation_id,
+		&organisation_name,
+		user_id,
+		get_current_time(),
+	)
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
+	db::set_resource_owner_id(transaction, organisation_id, organisation_id)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	db::add_email_for_user(transaction, user_id, email)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+	db::delete_user_to_be_signed_up(transaction, &user_data.username)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	// sign in user
+	// TODO: fix this unwrap
+	let user_id_string = std::str::from_utf8(user_id).unwrap();
+	let user = if let Some(user) =
+		db::get_user_by_username_or_email(transaction, &user_id_string)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?
+	{
+		user
+	} else {
+		return Err(error!(USER_NOT_FOUND));
+	};
+
+	let status = sign_in(transaction, user, config).await;
+	if let Err(err) = status {
+		return Err(err);
+	}
+
+	let (jwt, refresh_token) = status.unwrap();
+
+	Ok((
+		jwt,
+		refresh_token,
+		welcome_email_to,
+		backup_email_notification_to,
+	))
 }
