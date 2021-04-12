@@ -13,7 +13,8 @@ use argon2::{Error, Variant};
 use jsonwebtoken::errors::Error as JWTError;
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
-use utils::get_current_time;
+use tokio::task;
+use utils::{get_current_time, mailer};
 use uuid::Uuid;
 
 pub fn verify_hash(
@@ -269,4 +270,77 @@ pub async fn get_access_token_data(
 		.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(jwt)
+}
+
+// function to reset password
+// TODO: Remove otp from response
+pub async fn forgot_password(
+	transaction: &mut Transaction<'_, MySql>,
+	config: Settings,
+	user_id: &str,
+) -> Result<String, Value> {
+	let user = db::get_user_by_username_or_email(transaction, &user_id)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
+	let user = user.unwrap();
+
+	let otp = utils::generate_new_otp();
+	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+
+	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+
+	let token_hash = hash(otp.as_bytes(), config.password_salt.as_bytes())
+		.map_err(|_| error!(SERVER_ERROR))?;
+
+	db::add_password_reset_request(
+		transaction,
+		&user.id,
+		&token_hash,
+		token_expiry,
+	)
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
+	let otp_clone = otp.clone();
+	task::spawn_blocking(|| {
+		mailer::send_password_reset_requested_mail(
+			config,
+			user.backup_email,
+			otp,
+		);
+	});
+
+	Ok(otp_clone)
+}
+
+pub async fn reset_password(
+	transaction: &mut Transaction<'_, MySql>,
+	config: &Settings,
+	new_password: &str,
+	token: &str,
+	user_id: &str,
+) -> Result<(), Value> {
+	let user_id = if let Ok(user_id) = hex::decode(user_id) {
+		user_id
+	} else {
+		return Err(error!(WRONG_PARAMETERS));
+	};
+
+	let reset_request =
+		db::get_password_reset_request_for_user(transaction, &user_id)
+			.await
+			.map_err(|err| error!(SERVER_ERROR))?;
+
+	if reset_request.is_none() {
+		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
+		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
+	}
+	let reset_request = reset_request.unwrap();
+
+	let success = verify_hash(
+		token.as_bytes(),
+		config.password_salt.as_bytes(),
+		&reset_request.token,
+	);
+
+	Ok(())
 }
