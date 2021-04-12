@@ -582,14 +582,14 @@ async fn is_username_valid(
 		return Ok(context);
 	};
 
-	if !validator::is_username_valid(&username) {
-		context.status(400).json(error!(INVALID_USERNAME));
+	let status =
+		service::is_username_allowed(context.get_mysql_connection(), username)
+			.await;
+	if let Err(err) = status {
+		context.json(json!(err));
 		return Ok(context);
 	}
-
-	let user =
-		db::get_user_by_username(context.get_mysql_connection(), &username)
-			.await?;
+	let user = status.unwrap();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
