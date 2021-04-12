@@ -63,7 +63,7 @@ pub async fn is_username_allowed(
 pub async fn is_email_allowed(
 	transaction: &mut Transaction<'_, MySql>,
 	email: &str,
-) -> Result<(), Value> {
+) -> Result<Option<User>, Value> {
 	if !validator::is_email_valid(&email) {
 		return Err(error!(INVALID_EMAIL));
 	}
@@ -71,7 +71,7 @@ pub async fn is_email_allowed(
 	db::get_user_by_email(transaction, email)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))
-		.map(|_| ())
+		.map(|user| user)
 }
 
 /// this function creates a new user to be signed up and returns a OTP
