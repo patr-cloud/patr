@@ -272,8 +272,6 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
-	log::error!("calling join function ...");
-	log::error!("received otp is {}", &otp);
 	let status =
 		service::join(context.get_mysql_connection(), config, otp, username)
 			.await;
