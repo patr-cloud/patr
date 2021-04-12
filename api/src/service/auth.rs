@@ -50,14 +50,14 @@ pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 pub async fn is_username_allowed(
 	transaction: &mut Transaction<'_, MySql>,
 	username: &str,
-) -> Result<(), Value> {
+) -> Result<Option<User>, Value> {
 	if !validator::is_username_valid(&username) {
 		return Err(error!(INVALID_USERNAME));
 	}
 	db::get_user_by_username(transaction, username)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))
-		.map(|_| ())
+		.map(|user| user)
 }
 
 pub async fn is_email_allowed(
