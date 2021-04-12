@@ -612,47 +612,55 @@ async fn forgot_password(
 			return Ok(context);
 		};
 
-	let user = db::get_user_by_username_or_email(
-		context.get_mysql_connection(),
-		&user_id,
-	)
-	.await?;
+	// let user = db::get_user_by_username_or_email(
+	// 	context.get_mysql_connection(),
+	// 	&user_id,
+	// )
+	// .await?;
 
-	if user.is_none() {
-		context.json(error!(USER_NOT_FOUND));
-		return Ok(context);
-	}
-	let user = user.unwrap();
+	// if user.is_none() {
+	// 	context.json(error!(USER_NOT_FOUND));
+	// 	return Ok(context);
+	// }
+	// let user = user.unwrap();
 
-	let otp = utils::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+	// let otp = utils::generate_new_otp();
+	// let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	// let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 
-	let token_hash = service::hash(
-		otp.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-	)?;
+	// let token_hash = service::hash(
+	// 	otp.as_bytes(),
+	// 	context.get_state().config.password_salt.as_bytes(),
+	// )?;
 
-	db::add_password_reset_request(
-		context.get_mysql_connection(),
-		&user.id,
-		&token_hash,
-		token_expiry,
-	)
-	.await?;
+	// db::add_password_reset_request(
+	// 	context.get_mysql_connection(),
+	// 	&user.id,
+	// 	&token_hash,
+	// 	token_expiry,
+	// )
+	// .await?;
+
+	// let config = context.get_state().config.clone();
 
 	let config = context.get_state().config.clone();
-	task::spawn_blocking(|| {
-		mailer::send_password_reset_requested_mail(
-			config,
-			user.backup_email,
-			otp,
-		);
-	});
+	let status = service::forgot_password(
+		context.get_mysql_connection(),
+		config,
+		user_id,
+	)
+	.await;
+
+	if let Err(err) = status {
+		context.json(err);
+		return Ok(context);
+	}
+	let otp = status.unwrap();
 
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		"otp" : otp
 	}));
 	Ok(context)
 }
@@ -668,6 +676,7 @@ async fn reset_password(
 	{
 		password
 	} else {
+		log::debug!("password");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -676,6 +685,7 @@ async fn reset_password(
 	{
 		token
 	} else {
+		log::debug!("token");
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
@@ -683,6 +693,7 @@ async fn reset_password(
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
 			user_id
 		} else {
+			log::debug!("id");
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
@@ -716,14 +727,9 @@ async fn reset_password(
 		return Ok(context);
 	}
 
-	let new_password = argon2::hash_raw(
+	let new_password = service::hash(
 		new_password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
 	)?;
 
 	db::update_user_password(
