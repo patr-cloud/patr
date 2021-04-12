@@ -232,6 +232,7 @@ async fn sign_up(
 		return Ok(context);
 	}
 	let otp = user_to_be_signed_up.unwrap();
+	let otp_response = otp.clone();
 	let email = email.clone();
 
 	task::spawn_blocking(|| {
@@ -239,7 +240,8 @@ async fn sign_up(
 	});
 
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		"otp" : otp_response,
 	}));
 	Ok(context)
 }
@@ -268,223 +270,19 @@ async fn join(
 		return Ok(context);
 	};
 
-	let user_data = if let Some(user_data) =
-		db::get_user_email_to_sign_up(context.get_mysql_connection(), &username)
-			.await?
-	{
-		user_data
-	} else {
-		context.json(error!(INVALID_OTP));
-		return Ok(context);
-	};
+	let config = context.get_state().config.clone();
 
-	let success = service::verify_hash(
-		otp.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&user_data.otp_hash,
-	)?;
-
-	if !success {
-		context.json(error!(INVALID_OTP));
+	log::error!("calling join function ...");
+	log::error!("received otp is {}", &otp);
+	let status =
+		service::join(context.get_mysql_connection(), config, otp, username)
+			.await;
+	if let Err(err) = status {
+		context.json(json!(err));
 		return Ok(context);
 	}
-
-	if user_data.otp_expiry < get_current_time() {
-		context.json(error!(OTP_EXPIRED));
-		return Ok(context);
-	}
-
-	// For a personal account, get:
-	// - username
-	// - email
-	// - password
-	// - account_type
-	// - first_name
-	// - last_name
-
-	// For an organisation account, also get:
-	// - domain_name
-	// - organisation_name
-	// - backup_email
-
-	// First create user,
-	// Then create an organisation if an org account,
-	// Then add the domain if org account,
-	// Then create personal org regardless,
-	// Then set email to backup email if personal account,
-	// And finally send the token, along with the email to the user
-
-	let user_uuid = Uuid::new_v4();
-	let user_id = user_uuid.as_bytes();
-	let created = get_current_time();
-
-	if rbac::GOD_USER_ID.get().is_none() {
-		rbac::GOD_USER_ID
-			.set(user_uuid)
-			.expect("GOD_USER_ID was already set");
-	}
-
-	db::create_user(
-		context.get_mysql_connection(),
-		user_id,
-		&user_data.username,
-		&user_data.password,
-		&user_data.backup_email,
-		(&user_data.first_name, &user_data.last_name),
-		created,
-	)
-	.await?;
-
-	// For an organisation, create the organisation and domain
-	let email;
-	let welcome_email_to;
-	let backup_email_notification_to;
-	match user_data.email {
-		UserEmailAddressSignUp::Personal(email_address) => {
-			email = UserEmailAddress::Personal(email_address.clone());
-			backup_email_notification_to = None;
-			welcome_email_to = email_address;
-		}
-		UserEmailAddressSignUp::Organisation {
-			domain_name,
-			email_local,
-			backup_email,
-			organisation_name,
-		} => {
-			let organisation_id =
-				db::generate_new_resource_id(context.get_mysql_connection())
-					.await?;
-			let organisation_id = organisation_id.as_bytes();
-			db::create_orphaned_resource(
-				context.get_mysql_connection(),
-				organisation_id,
-				&format!("Organiation: {}", organisation_name),
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::ORGANISATION)
-					.unwrap(),
-			)
-			.await?;
-			db::create_organisation(
-				context.get_mysql_connection(),
-				organisation_id,
-				&organisation_name,
-				user_id,
-				get_current_time(),
-			)
-			.await?;
-			db::set_resource_owner_id(
-				context.get_mysql_connection(),
-				organisation_id,
-				organisation_id,
-			)
-			.await?;
-
-			let domain_id =
-				db::generate_new_resource_id(context.get_mysql_connection())
-					.await?;
-			let domain_id = domain_id.as_bytes().to_vec();
-
-			db::create_resource(
-				context.get_mysql_connection(),
-				&domain_id,
-				&format!("Domain: {}", domain_name),
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::DOMAIN)
-					.unwrap(),
-				organisation_id,
-			)
-			.await?;
-			db::add_domain_to_organisation(
-				context.get_mysql_connection(),
-				&domain_id,
-				&domain_name,
-			)
-			.await?;
-
-			welcome_email_to = format!("{}@{}", email_local, domain_name);
-			email = UserEmailAddress::Organisation {
-				domain_id,
-				email_local,
-			};
-			backup_email_notification_to = Some(backup_email);
-		}
-	}
-
-	// add personal organisation
-	let organisation_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
-	let organisation_id = organisation_id.as_bytes();
-	let organisation_name =
-		format!("personal-organisation-{}", hex::encode(user_id));
-
-	db::create_orphaned_resource(
-		context.get_mysql_connection(),
-		organisation_id,
-		&organisation_name,
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::ORGANISATION)
-			.unwrap(),
-	)
-	.await?;
-	db::create_organisation(
-		context.get_mysql_connection(),
-		organisation_id,
-		&organisation_name,
-		user_id,
-		get_current_time(),
-	)
-	.await?;
-	db::set_resource_owner_id(
-		context.get_mysql_connection(),
-		organisation_id,
-		organisation_id,
-	)
-	.await?;
-
-	db::add_email_for_user(context.get_mysql_connection(), user_id, email)
-		.await?;
-	db::delete_user_to_be_signed_up(
-		context.get_mysql_connection(),
-		&user_data.username,
-	)
-	.await?;
-
-	// generate JWT
-	let iat = get_current_time();
-	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-	let orgs = db::get_all_organisation_roles_for_user(
-		context.get_mysql_connection(),
-		user_id,
-	)
-	.await?;
-	let user = ExposedUserData {
-		id: user_id.to_vec(),
-		username: user_data.username,
-		first_name: user_data.first_name,
-		last_name: user_data.last_name,
-		created,
-	};
-
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-	let jwt =
-		token_data.to_string(context.get_state().config.jwt_secret.as_str())?;
-	let refresh_token = Uuid::new_v4();
-
-	db::add_user_login(
-		context.get_mysql_connection(),
-		refresh_token.as_bytes(),
-		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
-		user_id,
-		iat,
-		iat,
-	)
-	.await?;
+	let (jwt, refresh_token, welcome_email_to, backup_email_notification_to) =
+		status.unwrap();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -611,38 +409,6 @@ async fn forgot_password(
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
-
-	// let user = db::get_user_by_username_or_email(
-	// 	context.get_mysql_connection(),
-	// 	&user_id,
-	// )
-	// .await?;
-
-	// if user.is_none() {
-	// 	context.json(error!(USER_NOT_FOUND));
-	// 	return Ok(context);
-	// }
-	// let user = user.unwrap();
-
-	// let otp = utils::generate_new_otp();
-	// let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-
-	// let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
-
-	// let token_hash = service::hash(
-	// 	otp.as_bytes(),
-	// 	context.get_state().config.password_salt.as_bytes(),
-	// )?;
-
-	// db::add_password_reset_request(
-	// 	context.get_mysql_connection(),
-	// 	&user.id,
-	// 	&token_hash,
-	// 	token_expiry,
-	// )
-	// .await?;
-
-	// let config = context.get_state().config.clone();
 
 	let config = context.get_state().config.clone();
 	let status = service::forgot_password(
