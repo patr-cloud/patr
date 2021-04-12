@@ -12,7 +12,7 @@ use crate::{
 use argon2::{Error, Variant};
 use jsonwebtoken::errors::Error as JWTError;
 use serde_json::Value;
-use sqlx::{MySql, Transaction};
+use sqlx::{MySql, Pool, Transaction};
 use tokio::task;
 use utils::{get_current_time, mailer};
 use uuid::Uuid;
@@ -315,16 +315,11 @@ pub async fn forgot_password(
 pub async fn reset_password(
 	transaction: &mut Transaction<'_, MySql>,
 	config: &Settings,
+	// pool: Pool<MySql>,
 	new_password: &str,
 	token: &str,
-	user_id: &str,
+	user_id: &[u8],
 ) -> Result<(), Value> {
-	let user_id = if let Ok(user_id) = hex::decode(user_id) {
-		user_id
-	} else {
-		return Err(error!(WRONG_PARAMETERS));
-	};
-
 	let reset_request =
 		db::get_password_reset_request_for_user(transaction, &user_id)
 			.await
@@ -340,7 +335,28 @@ pub async fn reset_password(
 		token.as_bytes(),
 		config.password_salt.as_bytes(),
 		&reset_request.token,
-	);
+	)
+	.map_err(|_| error!(SERVER_ERROR))?;
+
+	if !success {
+		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
+		// return Ok(context);
+		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
+	}
+
+	let new_password =
+		hash(new_password.as_bytes(), config.password_salt.as_bytes())
+			.map_err(|_| error!(SERVER_ERROR))?;
+
+	let password_update_status =
+		db::update_user_password(transaction, &user_id, &new_password)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
+
+	let delete_password_reset_request_status =
+		db::delete_password_reset_request_for_user(transaction, &user_id)
+			.await
+			.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(())
 }

@@ -704,48 +704,22 @@ async fn reset_password(
 		return Ok(context);
 	};
 
-	let reset_request = db::get_password_reset_request_for_user(
-		context.get_mysql_connection(),
-		&user_id,
-	)
-	.await?;
-
-	if reset_request.is_none() {
-		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Ok(context);
-	}
-	let reset_request = reset_request.unwrap();
-
-	let success = service::verify_hash(
-		token.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&reset_request.token,
-	)?;
-
-	if !success {
-		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Ok(context);
-	}
-
-	let new_password = service::hash(
-		new_password.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-	)?;
-
-	db::update_user_password(
-		context.get_mysql_connection(),
-		&user_id,
-		&new_password,
-	)
-	.await?;
-	db::delete_password_reset_request_for_user(
-		context.get_mysql_connection(),
-		&user_id,
-	)
-	.await?;
-
 	let config = context.get_state().config.clone();
 	let pool = context.get_state().mysql.clone();
+
+	let status = service::reset_password(
+		context.get_mysql_connection(),
+		&config,
+		new_password,
+		token,
+		&user_id,
+	)
+	.await;
+	if let Err(err) = status {
+		context.json(json!(err));
+		return Ok(context);
+	}
+
 	task::spawn(async move {
 		let mut connection = pool
 			.begin()
