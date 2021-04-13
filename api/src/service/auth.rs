@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{User, UserEmailAddress, UserEmailAddressSignUp},
 		rbac,
 		rbac::OrgPermissions,
-		AccessTokenData, ExposedUserData,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	utils::{self, settings::Settings, validator},
 };
@@ -92,8 +94,8 @@ pub async fn create_user_to_be_signed_up(
 	is_username_allowed(transaction, username).await?;
 	is_email_allowed(transaction, email).await?;
 
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		return Err(error!(INVALID_EMAIL));
 	}
