@@ -132,7 +132,6 @@ pub async fn create_user_to_be_signed_up(
 		panic!("email type is neither personal, nor organisation. How did you even get here?")
 	};
 
-	log::debug!("Adding sign up data to db with username {}", &username);
 	db::set_user_to_be_signed_up(
 		transaction,
 		email.clone(),
@@ -369,8 +368,6 @@ pub async fn join(
 	otp: &str,
 	username: &str,
 ) -> Result<(String, Uuid, String, Option<String>), Value> {
-	log::debug!("username {}", &username);
-	log::debug!("otp {}", &otp);
 	let user_data = if let Some(user_data) =
 		db::get_user_email_to_sign_up(transaction, &username)
 			.await
@@ -378,16 +375,8 @@ pub async fn join(
 	{
 		user_data
 	} else {
-		log::error!("here");
 		return Err(error!(INVALID_OTP));
 	};
-
-	log::debug!(
-		"user data {:?} {:?} {:?}",
-		&user_data.username,
-		&user_data.password,
-		&user_data.backup_email,
-	);
 
 	let success = verify_hash(
 		otp.as_bytes(),
@@ -399,7 +388,6 @@ pub async fn join(
 	if !success {
 		return Err(error!(INVALID_OTP));
 	}
-	log::debug!("done verifying opt hash {}", success);
 
 	if user_data.otp_expiry < get_current_time() {
 		return Err(error!(OTP_EXPIRED));
@@ -435,19 +423,7 @@ pub async fn join(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	// db::create_user(
-	// 	transaction,
-	// 	user_id,
-	// 	&user_data.username,
-	// 	&user_data.password,
-	// 	&user_data.backup_email,
-	// 	(&user_data.first_name, &user_data.last_name),
-	// 	created,
-	// )
-	// .await
-	// .map_err(|_| error!(SERVER_ERROR))?;
-
-	let create = db::create_user(
+	db::create_user(
 		transaction,
 		user_id,
 		&user_data.username,
@@ -456,14 +432,8 @@ pub async fn join(
 		(&user_data.first_name, &user_data.last_name),
 		created,
 	)
-	.await;
-
-	if let Err(err) = create {
-		log::debug!("error creating user");
-		log::error!("{:?}", err);
-		return Err(error!(SERVER_ERROR));
-	}
-	log::debug!("user created");
+	.await
+	.map_err(|_| error!(SERVER_ERROR))?;
 
 	// For an organisation, create the organisation and domain
 	let email;
@@ -590,15 +560,8 @@ pub async fn join(
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
-	// sign in user
-	let user_id_string = std::str::from_utf8(user_id);
-	if let Err(err) = user_id_string {
-		log::error!("error {:?}", err);
-		return Err(error!(SERVER_ERROR));
-	}
-	let user_id_string = user_id_string.unwrap();
 	let user = if let Some(user) =
-		db::get_user_by_username_or_email(transaction, &user_id_string)
+		db::get_user_by_username_or_email(transaction, &user_data.username)
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?
 	{
