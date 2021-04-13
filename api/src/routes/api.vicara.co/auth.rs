@@ -232,7 +232,6 @@ async fn sign_up(
 		return Ok(context);
 	}
 	let otp = user_to_be_signed_up.unwrap();
-	let otp_response = otp.clone();
 	let email = email.clone();
 
 	task::spawn_blocking(|| {
@@ -241,7 +240,6 @@ async fn sign_up(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		"otp" : otp_response,
 	}));
 	Ok(context)
 }
