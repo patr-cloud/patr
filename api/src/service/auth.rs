@@ -349,15 +349,13 @@ pub async fn reset_password(
 		hash(new_password.as_bytes(), config.password_salt.as_bytes())
 			.map_err(|_| error!(SERVER_ERROR))?;
 
-	let password_update_status =
-		db::update_user_password(transaction, &user_id, &new_password)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
+	db::update_user_password(transaction, &user_id, &new_password)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
 
-	let delete_password_reset_request_status =
-		db::delete_password_reset_request_for_user(transaction, &user_id)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
+	db::delete_password_reset_request_for_user(transaction, &user_id)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(())
 }
