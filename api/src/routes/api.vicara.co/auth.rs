@@ -41,6 +41,13 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		"/sign-up",
 		&[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
+	app.post(
+		"/sign-out",
+		&[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
+		]
+	);
 	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
 		"/access-token",
@@ -164,6 +171,36 @@ async fn sign_in(
 		request_keys::ACCESS_TOKEN: jwt,
 		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
 	}));
+	Ok(context)
+}
+
+// Temporary fix for sign_out, can be done more efficiently using redis, 
+// i did not touch the PTA and RTA middlewares on purpose
+async fn sign_out(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let user_id = context.get_token_data().as_ref().unwrap().user.id.clone();
+
+	let user_id: &[u8] = &user_id;
+
+	let user_login =
+		db::check_user_login(context.get_mysql_connection(), user_id)
+			.await?;
+
+	if user_login == 0 {
+		context.json(error!(EXPIRED));
+		return Ok(context);
+	}
+
+	db::delete_user_login(context.get_mysql_connection(), user_id)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS:true,
+		request_keys::MESSAGE:"Successfully logged out!"
+	}));	
+
 	Ok(context)
 }
 

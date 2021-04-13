@@ -686,6 +686,47 @@ pub async fn get_user_login(
 	Ok(rows.into_iter().next())
 }
 
+pub async fn delete_user_login(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_login
+		WHERE
+			user_id = ?;
+		"#,
+		user_id,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn check_user_login(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: &[u8],
+) -> Result<usize, sqlx::Error> {
+	let rows = query_as!(
+		UserLogin,
+		r#"
+		SELECT * FROM 
+			user_login 
+		WHERE 
+			user_id = ? 
+		LIMIT 
+			1;
+		"#,
+		user_id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.len())
+}
+
 pub async fn set_refresh_token_expiry(
 	connection: &mut Transaction<'_, MySql>,
 	refresh_token: &[u8],
