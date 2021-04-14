@@ -43,10 +43,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	app.post(
 		"/sign-out",
-		&[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
-		]
+		&[EveMiddleware::CustomFunction(pin_fn!(sign_out)),]
 	);
 	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
@@ -180,25 +177,36 @@ async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext>,
 ) -> Result<EveContext, Error<EveContext>> {
-	let user_id = context.get_token_data().as_ref().unwrap().user.id.clone();
+	let refresh_token =
+		if let Some(header) = context.get_header("Authorization") {
+			header
+		} else {
+			context.status(400).json(error!(WRONG_PARAMETERS));
+			return Ok(context);
+		};
 
-	let user_id: &[u8] = &user_id;
+	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
+		uuid
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+	let refresh_token = refresh_token.as_bytes();
 
 	let user_login =
-		db::check_user_login(context.get_mysql_connection(), user_id)
+		db::get_user_login(context.get_mysql_connection(), refresh_token)
 			.await?;
 
-	if user_login == 0 {
-		context.json(error!(EXPIRED));
+	if user_login.is_none() {
+		context.json(error!(TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 
-	db::delete_user_login(context.get_mysql_connection(), user_id)
+	db::delete_user_login(context.get_mysql_connection(), refresh_token)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS:true,
-		request_keys::MESSAGE:"Successfully logged out!"
 	}));	
 
 	Ok(context)
