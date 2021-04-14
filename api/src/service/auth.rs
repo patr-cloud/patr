@@ -10,12 +10,13 @@ use crate::{
 		AccessTokenData,
 		ExposedUserData,
 	},
-	utils::{self, settings::Settings, validator},
+	utils::{self, settings::Settings, validator, EveError as Error},
 };
-use argon2::{Error, Variant};
+use argon2::Variant;
+use eve_rs::AsError;
 use jsonwebtoken::errors::Error as JWTError;
 use serde_json::Value;
-use sqlx::{MySql, Pool, Transaction};
+use sqlx::{MySql, Transaction};
 use tokio::task;
 use utils::{get_current_time, mailer};
 use uuid::Uuid;
@@ -35,6 +36,7 @@ pub fn verify_hash(
 			..Default::default()
 		},
 	)
+	.status(500)
 }
 
 /// function to get token hash
@@ -48,6 +50,7 @@ pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 			..Default::default()
 		},
 	)
+	.status(500)
 }
 
 pub async fn is_username_allowed(
@@ -60,7 +63,6 @@ pub async fn is_username_allowed(
 	db::get_user_by_username(transaction, username)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))
-		.map(|user| user)
 }
 
 pub async fn is_email_allowed(
@@ -74,7 +76,6 @@ pub async fn is_email_allowed(
 	db::get_user_by_email(transaction, email)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))
-		.map(|user| user)
 }
 
 /// this function creates a new user to be signed up and returns a OTP
@@ -167,18 +168,12 @@ pub async fn sign_in(
 	transaction: &mut Transaction<'_, MySql>,
 	user: User,
 	config: Settings,
-) -> Result<(String, Uuid), Value> {
+) -> Result<(String, Uuid), Error> {
 	// generate JWT
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
 	let orgs =
-		db::get_all_organisation_roles_for_user(transaction, &user.id).await;
-
-	// return server error.
-	if let Err(_) = orgs {
-		return Err(error!(SERVER_ERROR));
-	}
-	let orgs = orgs.unwrap();
+		db::get_all_organisation_roles_for_user(transaction, &user.id).await?;
 
 	let user = ExposedUserData {
 		id: user.id,
@@ -188,15 +183,11 @@ pub async fn sign_in(
 		created: user.created,
 	};
 
-	let jwt = get_jwt_token(iat, exp, orgs, user.clone(), &config);
-	if let Err(_) = jwt {
-		return Err(error!(SERVER_ERROR));
-	}
-	let jwt = jwt.unwrap();
+	let jwt = get_jwt_token(iat, exp, orgs, user.clone(), &config)?;
 
 	let refresh_token = Uuid::new_v4();
 
-	let add_user_login_result = db::add_user_login(
+	db::add_user_login(
 		transaction,
 		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
@@ -204,10 +195,7 @@ pub async fn sign_in(
 		iat,
 		iat,
 	)
-	.await;
-	if let Err(_) = add_user_login_result {
-		return Err(error!(SERVER_ERROR));
-	}
+	.await?;
 
 	Ok((jwt, refresh_token))
 }
@@ -326,7 +314,7 @@ pub async fn reset_password(
 	let reset_request =
 		db::get_password_reset_request_for_user(transaction, &user_id)
 			.await
-			.map_err(|err| error!(SERVER_ERROR))?;
+			.map_err(|_| error!(SERVER_ERROR))?;
 
 	if reset_request.is_none() {
 		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
@@ -570,12 +558,9 @@ pub async fn join(
 		return Err(error!(USER_NOT_FOUND));
 	};
 
-	let status = sign_in(transaction, user, config).await;
-	if let Err(err) = status {
-		return Err(err);
-	}
-
-	let (jwt, refresh_token) = status.unwrap();
+	let (jwt, refresh_token) = sign_in(transaction, user, config)
+		.await
+		.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok((
 		jwt,

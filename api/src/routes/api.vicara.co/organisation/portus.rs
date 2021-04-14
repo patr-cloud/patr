@@ -8,26 +8,26 @@ use crate::{
 	utils::{
 		constants::{self, request_keys},
 		get_current_time,
+		ErrorData,
 		EveContext,
+		EveError as Error,
 		EveMiddleware,
 	},
 };
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Value};
 use shiplift::{ContainerOptions, Docker};
-use sqlx::{MySql, Transaction};
-use std::{env, error::Error as StdError, path::PathBuf};
+use std::error::Error as StdError;
 
-use tokio::fs;
-
-pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn creare_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
 	// list tunnels under an org
 	sub_app.get(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -51,7 +51,9 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 					if resource.is_none() {
 						context
 							.status(404)
@@ -69,7 +71,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.post(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -93,7 +95,9 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 					if resource.is_none() {
 						context
 							.status(404)
@@ -109,7 +113,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.post(
 		"/:tunnelId/get-bash-script",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -132,7 +136,9 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -149,7 +155,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.get(
 		"/:tunnelId/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -172,7 +178,9 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -189,7 +197,7 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.delete(
 		"/:tunnelId/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -212,7 +220,9 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -232,8 +242,8 @@ pub fn creare_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn get_tunnels_for_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -269,8 +279,8 @@ async fn get_tunnels_for_organisation(
 // fn to get information for given tunnel/tunnelId
 async fn get_info_for_tunnel(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	// get tunnel id from parameter
 	// since tunnel id will already ge authenticated in resource token authenticator,
 	// we can safely unwrap tunnel id.
@@ -307,8 +317,8 @@ async fn get_info_for_tunnel(
 // fn to delete tunnel by tunnelId
 async fn delete_tunnel(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	// get tunnel id from parameter
 	// since tunnel id will already get authenticated in resource token authenticator,
 	// we can safely unwrap tunnel id.
@@ -331,7 +341,9 @@ async fn delete_tunnel(
 	let container_name = service::get_container_name(&tunnel.username);
 
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
-		.await?;
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	let container_delete_result =
 		service::delete_container(&docker, &container_name).await;
@@ -339,7 +351,7 @@ async fn delete_tunnel(
 	if let Err(err) = container_delete_result {
 		let err_message =
 			format!("Error while deleting the container: {:?}", err);
-		return Err(Error::new(None, err_message, 500, Box::new(err)));
+		return Err(Error::new(Box::new(err)).status(500).body(err_message));
 	}
 
 	context.json(json!({
@@ -350,8 +362,8 @@ async fn delete_tunnel(
 
 async fn create(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 	// get tunnel name
 	let tunnel_name = if let Some(Value::String(tunnel_name)) =
@@ -371,7 +383,10 @@ async fn create(
 
 	// generate new resource id for the generated container.
 	let resource_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let resource_id = resource_id.as_bytes(); // convert to byte array
 
 	// generate unique password
@@ -382,9 +397,15 @@ async fn create(
 	let image = constants::PORTUS_DOCKER_IMAGE;
 	let container_name = service::get_container_name(username.as_str());
 	let ssh_port =
-		service::assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let exposed_port =
-		service::assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let image_ssh_port = service::get_ssh_port_for_server();
 	let server_ip_address = service::get_server_ip_address();
 	let created = get_current_time();
@@ -417,7 +438,9 @@ async fn create(
 				.expose(exposed_port, "tcp", exposed_port)
 				.build(),
 		)
-		.await?;
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	let container_id = container_info.id;
 
@@ -449,7 +472,7 @@ async fn create(
 	.await;
 
 	//  add container information in portus table
-	type StdErrorType = Box<dyn StdError + Send + 'static>;
+	type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 	let tunnel_register_result = container_start_result
 		.map_err::<StdErrorType, _>(|err| Box::new(err))
 		.and(
@@ -475,7 +498,7 @@ async fn create(
 		context.status(500).json(error!(SERVER_ERROR));
 		let err_message =
 			format!("Error creating container for portus tunnel: {:?}", err);
-		return Err(Error::new(None, err_message, 500, err));
+		return Err(Error::new(err).status(500).body(err_message));
 	};
 
 	// on success, return ssh port, username,  exposed port, server ip address, password
@@ -504,8 +527,8 @@ async fn create(
 // }
 async fn get_bash_script(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	// get request body
 	let body = context.get_body_object().clone();
 	let local_port = if let Some(Value::String(local_port)) =

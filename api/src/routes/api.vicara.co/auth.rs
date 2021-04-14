@@ -2,62 +2,55 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{
-		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-	},
 	pin_fn,
 	service,
 	utils::{
-		self,
 		constants::request_keys,
-		get_current_time,
 		mailer,
-		validator,
+		ErrorData,
 		EveContext,
+		EveError as Error,
 		EveMiddleware,
 	},
 };
 
-use argon2::Variant;
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Value};
 use tokio::task;
-use uuid::Uuid;
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut app = create_eve_app(&app);
 
 	app.post(
 		"/sign-in",
-		&[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
+		[EveMiddleware::CustomFunction(pin_fn!(sign_in))],
 	);
 	app.post(
 		"/sign-up",
-		&[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
+		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
 	);
-	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
+	app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
 		"/access-token",
-		&[EveMiddleware::CustomFunction(pin_fn!(get_access_token))],
+		[EveMiddleware::CustomFunction(pin_fn!(get_access_token))],
 	);
 	app.get(
 		"/email-valid",
-		&[EveMiddleware::CustomFunction(pin_fn!(is_email_valid))],
+		[EveMiddleware::CustomFunction(pin_fn!(is_email_valid))],
 	);
 	app.get(
 		"/username-valid",
-		&[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
+		[EveMiddleware::CustomFunction(pin_fn!(is_username_valid))],
 	);
 	app.post(
 		"/forgot-password",
-		&[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
+		[EveMiddleware::CustomFunction(pin_fn!(forgot_password))],
 	);
 	app.post(
 		"/reset-password",
-		&[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
+		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
 
 	app
@@ -65,38 +58,31 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn sign_in(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id =
-		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
-			user_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let user_id = body
+		.get(request_keys::USER_ID)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let password = if let Some(Value::String(password)) =
-		body.get(request_keys::PASSWORD)
-	{
-		password
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let password = body
+		.get(request_keys::PASSWORD)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = if let Some(user) = db::get_user_by_username_or_email(
+	let user = db::get_user_by_username_or_email(
 		context.get_mysql_connection(),
 		&user_id,
 	)
 	.await?
-	{
-		user
-	} else {
-		context.json(error!(USER_NOT_FOUND));
-		return Ok(context);
-	};
+	.status(200)
+	.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let success = service::verify_hash(
 		password.as_bytes(),
@@ -110,13 +96,8 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let status =
-		service::sign_in(context.get_mysql_connection(), user, config).await;
-	if let Err(err) = status {
-		context.json(err);
-		return Ok(context);
-	}
-	let (jwt, refresh_token) = status.unwrap();
+	let (jwt, refresh_token) =
+		service::sign_in(context.get_mysql_connection(), user, config).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -128,8 +109,8 @@ async fn sign_in(
 
 async fn sign_up(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let username = if let Some(Value::String(username)) =
@@ -255,8 +236,8 @@ async fn sign_up(
 
 async fn join(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let otp = if let Some(Value::String(token)) =
@@ -312,8 +293,8 @@ async fn join(
 
 async fn get_access_token(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let refresh_token =
 		if let Some(header) = context.get_header("Authorization") {
 			header
@@ -346,8 +327,8 @@ async fn get_access_token(
 
 async fn is_email_valid(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 
 	let email = if let Some(email) = query.get(request_keys::EMAIL) {
@@ -374,8 +355,8 @@ async fn is_email_valid(
 
 async fn is_username_valid(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 
 	let username = if let Some(username) = query.get(request_keys::USERNAME) {
@@ -403,8 +384,8 @@ async fn is_username_valid(
 
 async fn forgot_password(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let user_id =
@@ -438,8 +419,8 @@ async fn forgot_password(
 
 async fn reset_password(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let new_password = if let Some(Value::String(password)) =

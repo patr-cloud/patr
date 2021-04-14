@@ -8,11 +8,13 @@ use crate::{
 		constants::request_keys,
 		get_current_time,
 		validator,
+		ErrorData,
 		EveContext,
+		EveError as Error,
 		EveMiddleware,
 	},
 };
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Value};
 
 mod application;
@@ -21,19 +23,21 @@ mod portus;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
 		"/:organisationId/info",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_organisation_info)),
 		],
 	);
 	sub_app.post(
 		"/:organisationId/info",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::EDIT_INFO,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -51,7 +55,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -76,14 +82,14 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	sub_app.get(
 		"/is-name-available",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(is_name_available)),
 		],
 	);
 	sub_app.post(
 		"/",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
 		],
@@ -94,8 +100,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn get_organisation_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let org_id_string = context
 		.get_param(request_keys::ORGANISATION_ID)
 		.unwrap()
@@ -139,8 +145,8 @@ async fn get_organisation_info(
 
 async fn is_name_available(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let organisation_name =
@@ -171,8 +177,8 @@ async fn is_name_available(
 
 async fn create_new_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let domain_name =
@@ -209,7 +215,10 @@ async fn create_new_organisation(
 	}
 
 	let organisation_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let organisation_id = organisation_id.as_bytes();
 	let org_id_string = hex::encode(organisation_id);
 	let user_id = context.get_token_data().unwrap().user.id.clone();
@@ -241,7 +250,10 @@ async fn create_new_organisation(
 	.await?;
 
 	let domain_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let domain_id = domain_id.as_bytes().to_vec();
 
 	db::create_resource(
@@ -272,8 +284,8 @@ async fn create_new_organisation(
 
 async fn update_organisation_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let organisation_id =
