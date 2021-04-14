@@ -1,4 +1,4 @@
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -6,17 +6,25 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		ErrorData,
+		EveContext,
+		EveError as Error,
+		EveMiddleware,
+	},
 };
 use serde_json::json;
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut app = create_eve_app(&app);
 
 	// List all applications
 	app.get(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::application::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -34,7 +42,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -52,7 +62,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// get details for an application
 	app.get(
 		"/:applicationId",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::application::VIEW_DETAILS,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -70,7 +80,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&application_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -90,7 +102,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// get list of versions for an application
 	app.get(
 		"/:applicationId/versions",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::application::LIST_VERSIONS,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -109,7 +121,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&application_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -132,8 +146,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 /// Function to list out all the application in an organisation.
 async fn get_applications(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -163,8 +177,8 @@ async fn get_applications(
 /// get details for an application
 async fn get_application_info_in_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let application_id =
 		context.get_param(request_keys::APPLICATION_ID).unwrap();
 	let application_id = hex::decode(application_id).unwrap();
@@ -191,8 +205,8 @@ async fn get_application_info_in_organisation(
 /// List out all the versions of an application.
 async fn get_all_versions_for_application(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let application_id_string = context
 		.get_param(request_keys::APPLICATION_ID)
 		.unwrap()

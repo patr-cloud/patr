@@ -1,7 +1,6 @@
 // SERVICE FOR PORTUS
-use crate::{db, service};
+use crate::db;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use shiplift::{Docker, Error};
 use sqlx::{MySql, Transaction};
 use std::{env, path::PathBuf};
 use tokio::fs;

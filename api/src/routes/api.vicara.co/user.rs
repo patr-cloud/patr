@@ -9,56 +9,60 @@ use crate::{
 		constants::request_keys,
 		get_current_time,
 		validator,
+		ErrorData,
 		EveContext,
+		EveError as Error,
 		EveMiddleware,
 	},
 };
 
 use argon2::Variant;
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Value};
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut app = create_eve_app(app);
 
 	app.get(
 		"/info",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info)),
 		],
 	);
 	app.post(
 		"/info",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
 	app.get(
 		"/:username/info",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
 		],
 	);
 	app.post(
 		"/add-email-address",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
 		],
 	);
 	app.post(
 		"/verify-email-address",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(verify_email_address)),
 		],
 	);
 	app.get(
 		"/organisations",
-		&[
+		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_organisations_for_user)),
 		],
@@ -69,8 +73,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn get_user_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let mut data = serde_json::to_value(
 		context.get_token_data().as_ref().unwrap().user.clone(),
 	)?;
@@ -84,13 +88,15 @@ async fn get_user_info(
 
 async fn get_user_info_by_username(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
 
 	let user_data =
 		db::get_user_by_username(context.get_mysql_connection(), &username)
-			.await?;
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
 	if user_data.is_none() {
 		context.status(400).json(error!(PROFILE_NOT_FOUND));
@@ -105,7 +111,9 @@ async fn get_user_info_by_username(
 		created: user_data.created,
 	};
 
-	let mut data = serde_json::to_value(data)?;
+	let mut data = serde_json::to_value(data)
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 	let object = data.as_object_mut().unwrap();
 	object.remove(request_keys::ID);
 	object.insert(request_keys::SUCCESS.to_string(), true.into());
@@ -116,8 +124,8 @@ async fn get_user_info_by_username(
 
 async fn update_user_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let first_name: Option<&str> = match body.get(request_keys::FIRST_NAME) {
@@ -195,8 +203,8 @@ async fn update_user_info(
 
 async fn add_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let email_address =
@@ -213,7 +221,9 @@ async fn add_email_address(
 	}
 
 	if db::get_user_by_email(context.get_mysql_connection(), &email_address)
-		.await?
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
 		.is_some()
 	{
 		context.json(error!(EMAIL_TAKEN));
@@ -252,8 +262,8 @@ async fn add_email_address(
 
 async fn verify_email_address(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
 	let email =
@@ -280,7 +290,9 @@ async fn verify_email_address(
 			&user_id,
 			&email,
 		)
-		.await?;
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	if email_verification_data.is_none() {
 		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
@@ -326,8 +338,8 @@ async fn verify_email_address(
 
 async fn get_organisations_for_user(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let organisations = db::get_all_organisations_for_user(
 		context.get_mysql_connection(),

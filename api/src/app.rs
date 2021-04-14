@@ -2,17 +2,22 @@ use crate::{
 	error,
 	pin_fn,
 	routes,
-	utils::{settings::Settings, EveContext, EveMiddleware},
+	utils::{
+		settings::Settings,
+		ErrorData,
+		EveContext,
+		EveError as Error,
+		EveMiddleware,
+	},
 };
 
 use colored::Colorize;
 use eve_rs::{
-	default_middlewares::compression,
 	handlebars::Handlebars,
 	listen,
 	App as EveApp,
+	AsError,
 	Context,
-	Error,
 	HttpMethod,
 	NextHandler,
 	Response,
@@ -20,7 +25,6 @@ use eve_rs::{
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::mysql::MySqlPool;
 use std::{
-	error::Error as StdError,
 	fmt::{Debug, Formatter},
 	sync::Arc,
 	time::Instant,
@@ -46,28 +50,7 @@ pub async fn start_server(app: App) {
 	let mut eve_app = create_eve_app(&app);
 
 	eve_app.set_error_handler(eve_error_handler);
-	eve_app.use_middleware(
-		"/",
-		if cfg!(debug_assertions) {
-			&[
-				EveMiddleware::CustomFunction(pin_fn!(init_states)),
-				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
-				EveMiddleware::JsonParser,
-				EveMiddleware::UrlEncodedParser,
-			]
-		} else {
-			&[
-				EveMiddleware::CustomFunction(pin_fn!(init_states)),
-				EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
-				EveMiddleware::Compression(
-					compression::DEFAULT_COMPRESSION_LEVEL,
-				),
-				EveMiddleware::JsonParser,
-				EveMiddleware::UrlEncodedParser,
-				EveMiddleware::CookieParser,
-			]
-		},
-	);
+	eve_app.use_middleware("/", get_basic_middlewares());
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
@@ -75,28 +58,53 @@ pub async fn start_server(app: App) {
 	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
-pub fn create_eve_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_eve_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	EveApp::create(EveContext::new, app.clone())
 }
 
-fn eve_error_handler(
-	mut response: Response,
-	error: Box<dyn StdError>,
-) -> Response {
+#[cfg(debug_assertions)]
+fn get_basic_middlewares() -> [EveMiddleware; 4] {
+	[
+		EveMiddleware::CustomFunction(pin_fn!(init_states)),
+		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
+		EveMiddleware::JsonParser,
+		EveMiddleware::UrlEncodedParser,
+	]
+}
+
+#[cfg(not(debug_assertions))]
+fn get_basic_middlewares() -> [EveMiddleware; 6] {
+	[
+		EveMiddleware::CustomFunction(pin_fn!(init_states)),
+		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),
+		EveMiddleware::Compression(compression::DEFAULT_COMPRESSION_LEVEL),
+		EveMiddleware::JsonParser,
+		EveMiddleware::UrlEncodedParser,
+		EveMiddleware::CookieParser,
+	]
+}
+
+fn eve_error_handler(mut response: Response, error: Error) -> Response {
 	log::error!(
 		"Error occured while processing request: {}",
-		error.to_string()
+		error.get_error().to_string()
 	);
 	response.set_content_type("application/json");
-	response.set_status(500);
-	response.set_body(&error!(SERVER_ERROR).to_string());
+	response.set_status(error.get_status().unwrap_or(500));
+	response.set_body_bytes(
+		error
+			.get_body_bytes()
+			.unwrap_or(error!(SERVER_ERROR).to_string().as_bytes()),
+	);
 	response
 }
 
 async fn init_states(
 	mut context: EveContext,
-	next: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	next: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	// Start measuring time to check how long a route takes to execute
 	let start_time = Instant::now();
 
@@ -137,23 +145,19 @@ async fn init_states(
 		context.get_response().get_body().len()
 	);
 
-	if let Err(err) = context.take_mysql_connection().commit().await {
-		log::error!("Unable to commit transaction: {}", err);
-		return Err(Error::new(
-			Some(context),
-			String::from("Unable to commit transaction"),
-			500,
-			Box::new(err),
-		));
-	}
+	context
+		.take_mysql_connection()
+		.commit()
+		.await
+		.body("Unable to commit transaction")?;
 
 	Ok(context)
 }
 
 async fn add_cors_headers(
 	mut context: EveContext,
-	next: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	next: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	context
 		.header("Access-Control-Allow-Origin", "*")
 		.header("Access-Control-Allow-Methods", "*")

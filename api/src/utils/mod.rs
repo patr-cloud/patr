@@ -1,3 +1,4 @@
+mod error_data;
 mod eve_context;
 mod eve_middlewares;
 
@@ -9,6 +10,7 @@ pub mod settings;
 pub mod sms;
 pub mod validator;
 
+pub use error_data::*;
 pub use eve_context::*;
 pub use eve_middlewares::*;
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -4,11 +4,18 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{constants::request_keys, validator, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		validator,
+		ErrorData,
+		EveContext,
+		EveError as Error,
+		EveMiddleware,
+	},
 };
 
 use argon2::Variant;
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Value};
 use trust_dns_client::{
 	client::{Client, SyncClient},
@@ -16,13 +23,15 @@ use trust_dns_client::{
 	tcp::TcpClientConnection,
 };
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut app = create_eve_app(&app);
 
 	// Get all domains
 	app.get(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -40,7 +49,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -60,7 +71,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Add a domain
 	app.post(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -78,7 +89,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -96,7 +109,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Verify a domain
 	app.post(
 		"/:domainId/verify",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::VERIFY,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -113,7 +126,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -133,7 +148,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Get details of a domain
 	app.get(
 		"/:domainId",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::VIEW_DETAILS,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -149,7 +164,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -169,7 +186,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Delete a domain
 	app.delete(
 		"/:domainId",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::domain::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
@@ -185,7 +202,9 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await?;
+					.await
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
 
 					if resource.is_none() {
 						context
@@ -209,8 +228,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn get_domains_for_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -240,8 +259,8 @@ async fn get_domains_for_organisation(
 
 async fn add_domain_to_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let organisation_id =
 		hex::decode(&context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -280,7 +299,10 @@ async fn add_domain_to_organisation(
 	}
 
 	let domain_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let domain_id = domain_id.as_bytes();
 
 	db::create_resource(
@@ -312,8 +334,8 @@ async fn add_domain_to_organisation(
 
 async fn verify_domain_in_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
 	// hex::decode throws an error for a wrong string
@@ -324,7 +346,9 @@ async fn verify_domain_in_organisation(
 
 	let domain =
 		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await?;
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -351,11 +375,14 @@ async fn verify_domain_in_organisation(
 	let client = SyncClient::new(
 		TcpClientConnection::new("1.1.1.1:53".parse().unwrap()).unwrap(),
 	);
-	let mut response = client.query(
-		&Name::from_utf8(format!("vceVerify.{}", domain.name)).unwrap(),
-		DNSClass::IN,
-		RecordType::CNAME,
-	)?;
+	let mut response = client
+		.query(
+			&Name::from_utf8(format!("vceVerify.{}", domain.name)).unwrap(),
+			DNSClass::IN,
+			RecordType::CNAME,
+		)
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!("{}.vicara.co", domain_hash)).unwrap(),
@@ -376,8 +403,8 @@ async fn verify_domain_in_organisation(
 
 async fn get_domain_info_in_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
 	// hex::decode throws an error for a wrong string
@@ -388,7 +415,9 @@ async fn get_domain_info_in_organisation(
 
 	let domain =
 		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await?;
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -419,7 +448,9 @@ async fn get_domain_info_in_organisation(
 					hash_length: 64,
 					..Default::default()
 				},
-			)?;
+			)
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 			let domain_hash = hex::encode(domain_hash);
 
 			json!({
@@ -436,8 +467,8 @@ async fn get_domain_info_in_organisation(
 
 async fn delete_domain_in_organisation(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
 	// hex::decode throws an error for a wrong string
@@ -453,7 +484,10 @@ async fn delete_domain_in_organisation(
 		&domain_id,
 	)
 	.await?;
-	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
+	db::delete_resource(context.get_mysql_connection(), &domain_id)
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

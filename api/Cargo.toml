@@ -22,7 +22,7 @@ cloudflare = "0.7.3"
 colored = "1.9.3"
 config_rs = {version = "0.10.1", package = "config"}
 cron = "0.6.1"
-eve-rs = "0.2.3"
+eve-rs = {path = "../../eve-rs"}
 hex = "0.4.2"
 jsonwebtoken = "7.2.0"
 lazy_static = "1.4.0"
