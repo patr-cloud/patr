@@ -185,13 +185,13 @@ async fn sign_out(
 			return Ok(context);
 		};
 
-	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
-		uuid
+	let refresh_token = if let Ok(hex_code) = hex::decode(&refresh_token) {
+		hex_code
 	} else {
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
-	let refresh_token = refresh_token.as_bytes();
+	let refresh_token: &[u8] = &refresh_token;
 
 	let user_login =
 		db::get_user_login(context.get_mysql_connection(), refresh_token)
