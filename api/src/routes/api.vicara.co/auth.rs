@@ -43,7 +43,7 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	app.post(
 		"/sign-out",
-		&[EveMiddleware::CustomFunction(pin_fn!(sign_out)),]
+		&[EveMiddleware::CustomFunction(pin_fn!(sign_out))],
 	);
 	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
@@ -171,7 +171,7 @@ async fn sign_in(
 	Ok(context)
 }
 
-// Temporary fix for sign_out, can be done more efficiently using redis, 
+// Temporary fix for sign_out, can be done more efficiently using redis,
 // i did not touch the PTA and RTA middlewares on purpose
 async fn sign_out(
 	mut context: EveContext,
@@ -203,11 +203,11 @@ async fn sign_out(
 	}
 
 	db::delete_user_login(context.get_mysql_connection(), refresh_token)
-	.await?;
+		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS:true,
-	}));	
+	}));
 
 	Ok(context)
 }

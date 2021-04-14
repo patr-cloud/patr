@@ -712,11 +712,11 @@ pub async fn delete_user_login(
 // 	let rows = query_as!(
 // 		UserLogin,
 // 		r#"
-// 		SELECT * FROM 
-// 			user_login 
-// 		WHERE 
-// 			refresh_token = ? 
-// 		LIMIT 
+// 		SELECT * FROM
+// 			user_login
+// 		WHERE
+// 			refresh_token = ?
+// 		LIMIT
 // 			1;
 // 		"#,
 // 		refresh_token
