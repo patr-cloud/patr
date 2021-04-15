@@ -2,7 +2,6 @@ use eve_rs::AsError;
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
 use tokio::task;
-use utils::{get_current_time, mailer};
 use uuid::Uuid;
 
 use crate::{
@@ -16,8 +15,9 @@ use crate::{
 	},
 	service,
 	utils::{
-		self,
 		constants::AccountType,
+		get_current_time,
+		mailer,
 		settings::Settings,
 		validator,
 		AsErrorData,
@@ -74,53 +74,91 @@ pub async fn create_user_join_request(
 	),
 ) -> Result<String, Error> {
 	if !is_username_allowed(transaction, username).await? {
-		return None.status(200).body(error!(USERNAME_TAKEN).to_string());
+		Error::as_result()
+			.status(200)
+			.body(error!(USERNAME_TAKEN).to_string())?;
 	}
 
 	if !is_email_allowed(transaction, email).await? {
-		return None.status(200).body(error!(EMAIL_TAKEN).to_string());
-	}
-
-	if let Some(backup_email) = backup_email {
-		if !validator::is_email_valid(backup_email) {
-			return None.status(200).body(error!(INVALID_EMAIL).to_string());
-		}
+		Error::as_result()
+			.status(200)
+			.body(error!(EMAIL_TAKEN).to_string())?;
 	}
 
 	if !validator::is_password_valid(&password) {
-		return None.status(200).body(error!(PASSWORD_TOO_WEAK).to_string());
+		Error::as_result()
+			.status(200)
+			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
-
-	if let Some(domain) = domain_name {
-		if !validator::is_domain_name_valid(domain).await {
-			return None
-				.status(200)
-				.body(error!(INVALID_DOMAIN_NAME).to_string());
-		}
-	}
-
-	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
-
-	let password =
-		service::hash(password.as_bytes(), config.password_salt.as_bytes())?;
-	let token_hash =
-		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
 
 	let email = match account_type {
 		AccountType::Organisation => {
-			let domain_name = domain_name.unwrap();
-			if !email.ends_with(&format!("@{}", domain_name)) {
-				return None
+			let domain_name = domain_name
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?
+				.to_string();
+			let organisation_name = organisation_name
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?
+				.to_string();
+			let backup_email = backup_email
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?
+				.to_string();
+
+			if !validator::is_domain_name_valid(&domain_name).await {
+				Error::as_result()
 					.status(200)
-					.body(error!(INVALID_EMAIL).to_string());
+					.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+			}
+
+			if !validator::is_organisation_name_valid(&organisation_name) {
+				Error::as_result()
+					.status(200)
+					.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
+			}
+
+			if db::get_organisation_by_name(transaction, &organisation_name)
+				.await
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.is_some()
+			{
+				Error::as_result()
+					.status(200)
+					.body(error!(ORGANISATION_EXISTS).to_string())?;
+			}
+
+			if db::get_user_to_sign_up_by_organisation_name(
+				transaction,
+				&organisation_name,
+			)
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
+			.is_some()
+			{
+				Error::as_result()
+					.status(200)
+					.body(error!(ORGANISATION_EXISTS).to_string())?;
+			}
+
+			if !validator::is_email_valid(&backup_email) {
+				Error::as_result()
+					.status(200)
+					.body(error!(INVALID_EMAIL).to_string())?;
+			}
+
+			if !email.ends_with(&format!("@{}", domain_name)) {
+				Error::as_result()
+					.status(200)
+					.body(error!(INVALID_EMAIL).to_string())?;
 			}
 			UserEmailAddressSignUp::Organisation {
 				email_local: email.replace(&format!("@{}", domain_name), ""),
-				domain_name: domain_name.to_string(),
-				organisation_name: organisation_name.unwrap().to_string(),
-				backup_email: backup_email.unwrap().to_string(),
+				domain_name,
+				organisation_name,
+				backup_email,
 			}
 		}
 		AccountType::Personal => {
@@ -128,9 +166,18 @@ pub async fn create_user_join_request(
 		}
 	};
 
+	let otp = service::generate_new_otp();
+	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+	let token_expiry = get_current_time() + service::get_join_token_expiry();
+
+	let password =
+		service::hash(password.as_bytes(), config.password_salt.as_bytes())?;
+	let token_hash =
+		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
+
 	db::set_user_to_be_signed_up(
 		transaction,
-		email.clone(),
+		email,
 		&username,
 		&password,
 		(&first_name, &last_name),
@@ -346,7 +393,7 @@ pub async fn join(
 	username: &str,
 ) -> Result<(String, Uuid, String, Option<String>), Value> {
 	let user_data = if let Some(user_data) =
-		db::get_user_email_to_sign_up(transaction, &username)
+		db::get_user_to_sign_up_by_username(transaction, &username)
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?
 	{

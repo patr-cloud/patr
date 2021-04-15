@@ -14,6 +14,7 @@ use crate::{
 	},
 	query,
 	query_as,
+	utils,
 };
 
 pub async fn initialize_users_pre(
@@ -447,7 +448,7 @@ pub async fn set_user_to_be_signed_up(
 	Ok(())
 }
 
-pub async fn get_user_email_to_sign_up(
+pub async fn get_user_to_sign_up_by_username(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
@@ -483,6 +484,53 @@ pub async fn get_user_email_to_sign_up(
 			}
 		} else {
 			panic!("Unknown account_type");
+		},
+		backup_email: row.email_address,
+		password: row.password,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry,
+		first_name: row.first_name,
+		last_name: row.last_name,
+	}))
+}
+
+pub async fn get_user_to_sign_up_by_organisation_name(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_name: &str,
+) -> Result<Option<UserToSignUp>, sqlx::Error> {
+	let now = utils::get_current_time();
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			user_to_sign_up
+		WHERE
+			organisation_name = ? AND
+			otp_expiry < ?
+		"#,
+		organisation_name,
+		now,
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+
+	Ok(Some(UserToSignUp {
+		username: row.username,
+		email: if row.account_type == "organisation" {
+			UserEmailAddressSignUp::Organisation {
+				email_local: row.email_local.unwrap(),
+				domain_name: row.domain_name.unwrap(),
+				organisation_name: row.organisation_name.unwrap(),
+				backup_email: row.email_address.clone(),
+			}
+		} else {
+			panic!("account_type wasn't organisation for an organisation");
 		},
 		backup_email: row.email_address,
 		password: row.password,
