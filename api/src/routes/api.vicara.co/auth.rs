@@ -1,22 +1,33 @@
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
-		rbac, AccessTokenData, ExposedUserData, RegistryToken,
+		error::{id as ErrorId, message as ErrorMessage},
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
+		RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		self, constants::request_keys, get_current_time_millis, mailer,
-		validator, EveContext, EveMiddleware,
+		self,
+		constants::request_keys,
+		get_current_time_millis,
+		mailer,
+		validator,
+		EveContext,
+		EveMiddleware,
 	},
 };
-
 use argon2::Variant;
 use eve_rs::{App as EveApp, Context, Error, NextHandler};
+use rbac::{permissions, GOD_USER_ID};
 use serde_json::{json, Value};
 use tokio::task;
+use utils::{get_current_time, validator::is_docker_repo_name_valid};
 use uuid::Uuid;
 
 pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
@@ -29,6 +40,10 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	app.post(
 		"/sign-up",
 		&[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
+	);
+	app.post(
+		"/sign-out",
+		&[EveMiddleware::CustomFunction(pin_fn!(sign_out))],
 	);
 	app.post("/join", &[EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
@@ -52,6 +67,12 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
 	app.get(
+		"/docker-registry-token",
+		&[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
+	);
+	app.post(
 		"/docker-registry-token",
 		&[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
@@ -147,6 +168,46 @@ async fn sign_in(
 		request_keys::ACCESS_TOKEN: jwt,
 		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
 	}));
+	Ok(context)
+}
+
+// Temporary fix for sign_out, can be done more efficiently using redis,
+// i did not touch the PTA and RTA middlewares on purpose
+async fn sign_out(
+	mut context: EveContext,
+	_: NextHandler<EveContext>,
+) -> Result<EveContext, Error<EveContext>> {
+	let refresh_token =
+		if let Some(header) = context.get_header("Authorization") {
+			header
+		} else {
+			context.status(400).json(error!(WRONG_PARAMETERS));
+			return Ok(context);
+		};
+
+	let refresh_token = if let Ok(hex_code) = hex::decode(&refresh_token) {
+		hex_code
+	} else {
+		context.status(400).json(error!(WRONG_PARAMETERS));
+		return Ok(context);
+	};
+
+	let user_login =
+		db::get_user_login(context.get_mysql_connection(), &refresh_token)
+			.await?;
+
+	if user_login.is_none() {
+		context.json(error!(TOKEN_NOT_FOUND));
+		return Ok(context);
+	}
+
+	db::delete_user_login(context.get_mysql_connection(), refresh_token)
+		.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS:true,
+	}));
+
 	Ok(context)
 }
 
@@ -254,8 +315,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some()
-		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some() &&
+		!validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
@@ -649,14 +710,14 @@ async fn get_access_token(
 			.await?;
 
 	if user_login.is_none() {
-		context.json(error!(EMAIL_TOKEN_NOT_FOUND));
+		context.json(error!(TOKEN_NOT_FOUND));
 		return Ok(context);
 	}
 	let user_login = user_login.unwrap();
 
 	if user_login.token_expiry < get_current_time_millis() {
 		// Token has expired
-		context.status(401).json(error!(UNAUTHORIZED));
+		context.status(410).json(error!(EXPIRED));
 		return Ok(context);
 	}
 
@@ -963,8 +1024,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find client_id.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_CLIENT_ID,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -978,8 +1039,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find offline_token.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::OFFLINE_TOKEN_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -991,8 +1052,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. offline_token is not a boolean",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_OFFLINE_TOKEN,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1004,8 +1065,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Could not find service.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::SERVICE_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1015,8 +1076,8 @@ async fn docker_registry_login(
 	if service != &config.docker_registry.service_name {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Service is not valid.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_SERVICE,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1026,8 +1087,8 @@ async fn docker_registry_login(
 	if context.get_header("Authorization").is_none() {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1041,8 +1102,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization data could not be converted to a string.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1051,8 +1112,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(400).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Invalid request sent by the client. Authorization header could not be base64 decoded.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1066,8 +1127,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1079,8 +1140,8 @@ async fn docker_registry_login(
 		} else {
 			context.status(400).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
-					request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
 					request_keys::DETAIL: []
 				}]
 			}));
@@ -1097,8 +1158,8 @@ async fn docker_registry_login(
 	} else {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "User not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1119,13 +1180,15 @@ async fn docker_registry_login(
 	if !success {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Password invalid",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
 				request_keys::DETAIL: []
 			}]
 		}));
 		return Ok(context);
 	}
+
+	let iat = get_current_time().as_secs();
 
 	let token = RegistryToken::new(
 		if cfg!(debug_assertions) {
@@ -1133,6 +1196,7 @@ async fn docker_registry_login(
 		} else {
 			"api.vicara.co".to_string()
 		},
+		iat,
 		username.to_string(),
 		&config,
 		vec![],
@@ -1142,11 +1206,23 @@ async fn docker_registry_login(
 		config.docker_registry.public_key_der(),
 	)?;
 
+	let refresh_token = Uuid::new_v4();
+
+	db::add_user_login(
+		context.get_mysql_connection(),
+		refresh_token.as_bytes(),
+		iat + (600),
+		&user.id,
+		iat,
+		iat,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::TOKEN: token,
-		request_keys::REFRESH_TOKEN: "test",
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
 	}));
-	return Ok(context);
+	Ok(context)
 }
 
 async fn docker_registry_authenticate(
@@ -1162,7 +1238,7 @@ async fn docker_registry_authenticate(
 	} else {
 		context.status(401).json(json!({
 				request_keys::ERRORS: [{
-					request_keys::CODE: "UNAUTHORIZED",
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
 					request_keys::MESSAGE: format!("Please login to {} first", config.docker_registry.issuer),
 					request_keys::DETAIL: []
 				}]
@@ -1172,8 +1248,34 @@ async fn docker_registry_authenticate(
 
 	let token = authorization.replace("Basic ", "");
 
-	// TODO fix this crap
-	let auth = String::from_utf8(base64::decode(token)?)?;
+	let utf8_token = base64::decode(token);
+
+	if let Err(_) = utf8_token {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let base_decode = utf8_token.unwrap();
+
+	let auth_string = String::from_utf8(base_decode);
+	if let Err(_) = auth_string {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::WRONG_PARAMETERS,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let auth = auth_string.unwrap();
 
 	let mut splitter = auth.split(':');
 	let (username, password) = {
@@ -1181,12 +1283,12 @@ async fn docker_registry_authenticate(
 			username
 		} else {
 			context.status(400).json(json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: "UNAUTHORIZED",
-						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have username.",
-						request_keys::DETAIL: []
-					}]
-				}));
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_USERNAME,
+					request_keys::DETAIL: []
+				}]
+			}));
 			return Ok(context);
 		};
 
@@ -1194,16 +1296,47 @@ async fn docker_registry_authenticate(
 			password
 		} else {
 			context.status(400).json(json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: "UNAUTHORIZED",
-						request_keys::MESSAGE: "Invalid request sent by the client. Authorization header did not have password.",
-						request_keys::DETAIL: []
-					}]
-				}));
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
+					request_keys::DETAIL: []
+				}]
+			}));
 			return Ok(context);
 		};
 		(username, password)
 	};
+
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+	let user = db::get_user_by_user_id(
+		context.get_mysql_connection(),
+		god_user_id.as_bytes(),
+	)
+	.await?
+	.unwrap();
+	drop(god_user_id);
+	// check if user is GOD_USER then return the token
+	if username == user.username {
+		// return token.
+		let refresh_token = Uuid::new_v4();
+		let iat = get_current_time().as_secs();
+
+		db::add_user_login(
+			context.get_mysql_connection(),
+			refresh_token.as_bytes(),
+			iat + (600),
+			&user.id,
+			iat,
+			iat,
+		)
+		.await?;
+
+		context.json(json!({
+			request_keys::TOKEN: password,
+			request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		}));
+		return Ok(context);
+	}
 
 	let user = if let Some(user) =
 		db::get_user_by_username(context.get_mysql_connection(), &username)
@@ -1213,8 +1346,8 @@ async fn docker_registry_authenticate(
 	} else {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "User not found.",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1235,8 +1368,8 @@ async fn docker_registry_authenticate(
 	if !success {
 		context.status(401).json(json!({
 			request_keys::ERRORS: [{
-				request_keys::CODE: "UNAUTHORIZED",
-				request_keys::MESSAGE: "Password invalid",
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
 				request_keys::DETAIL: []
 			}]
 		}));
@@ -1245,9 +1378,228 @@ async fn docker_registry_authenticate(
 
 	let scope = query.get(request_keys::SCOPE).unwrap();
 	let mut splitter = scope.split(':');
-	let access_type = splitter.next().unwrap();
-	let repo = splitter.next().unwrap();
-	let action = splitter.next().unwrap();
+	let access_type = if let Some(access_type) = splitter.next() {
+		access_type
+	} else {
+		context.status(401).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	// check if access type is respository
+	if access_type != "repository" {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let repo = if let Some(repo) = splitter.next() {
+		repo
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::REPOSITORY_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let action = if let Some(action) = splitter.next() {
+		action
+	} else {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACTION_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	};
+
+	let required_permissions: Vec<String> = action
+		.split(",")
+		.filter_map(|permission| match permission {
+			"push" | "tag" => {
+				Some(permissions::organisation::docker_registry::PUSH)
+			}
+			"pull" => Some(permissions::organisation::docker_registry::PULL),
+			_ => None,
+		})
+		.map(String::from)
+		.collect();
+
+	let split_array: Vec<String> = repo.split("/").map(String::from).collect();
+	// reject if split array size is not equal to 2
+	if split_array.len() != 2 {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::NO_ORGANISATION_OR_REPOSITORY,
+				request_keys::DETAIL: []
+			}]
+		}));
+
+		return Ok(context);
+	}
+
+	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = split_array.get(1).unwrap();
+
+	// check if repo name is valid
+	let is_repo_name_valid = is_docker_repo_name_valid(&repo_name);
+	if !is_repo_name_valid {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::INVALID_REPOSITORY_NAME,
+				request_keys::DETAIL: []
+			}]
+		}));
+
+		return Ok(context);
+	}
+	let org =
+		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
+			.await?;
+
+	if org.is_none() {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
+		}));
+
+		return Ok(context);
+	}
+
+	let org = org.unwrap();
+
+	let repository = db::get_repository_by_name(
+		context.get_mysql_connection(),
+		&repo_name,
+		&org.id,
+	)
+	.await?;
+
+	// reject request if repository does not exist
+	if repository.is_none() {
+		context.status(400).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
+		}));
+
+		return Ok(context);
+	}
+	let repository = repository.unwrap();
+
+	// get repo id inorder to get resource details
+	let resource =
+		db::get_resource_by_id(context.get_mysql_connection(), &repository.id)
+			.await?;
+
+	if resource.is_none() {
+		context.status(500).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let resource = resource.unwrap();
+	let org_id = hex::encode(org.id);
+
+	// get all org roles for the user using the id
+	let user_id = &user.id;
+	let user_roles = db::get_all_organisation_roles_for_user(
+		context.get_mysql_connection(),
+		&user_id,
+	)
+	.await?;
+
+	let required_role_for_user = user_roles.get(&org_id);
+	if required_role_for_user.is_none() {
+		context.status(500).json(json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		}));
+		return Ok(context);
+	}
+
+	let required_role_for_user = required_role_for_user.unwrap();
+	let mut approved_permissions = Vec::<String>::new();
+
+	for permission in required_permissions {
+		let allowed = {
+			if let Some(permissions) = required_role_for_user
+				.resource_types
+				.get(&resource.resource_type_id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			if let Some(permissions) =
+				required_role_for_user.resources.get(&resource.id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			required_role_for_user.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
+				user_id == god_user_id
+			}
+		};
+		if !allowed {
+			context.status(401).json(json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNPRIVILEGED,
+					request_keys::MESSAGE: ErrorMessage::UNPRIVILEGED,
+					request_keys::DETAIL: []
+				}]
+			}));
+			return Ok(context);
+		}
+
+		match permission.as_str() {
+			permissions::organisation::docker_registry::PUSH => {
+				approved_permissions.push("push".to_string());
+			}
+			permissions::organisation::docker_registry::PULL => {
+				approved_permissions.push("pull".to_string());
+			}
+			_ => {}
+		}
+	}
+
+	let iat = get_current_time().as_secs();
+	let refresh_token = Uuid::new_v4();
 
 	let token = RegistryToken::new(
 		if cfg!(debug_assertions) {
@@ -1255,12 +1607,13 @@ async fn docker_registry_authenticate(
 		} else {
 			"api.vicara.co".to_string()
 		},
+		iat,
 		username.to_string(),
 		&config,
 		vec![RegistryTokenAccess {
 			r#type: access_type.to_string(),
 			name: repo.to_string(),
-			actions: vec![action.to_string()],
+			actions: approved_permissions,
 		}],
 	)
 	.to_string(
@@ -1268,9 +1621,20 @@ async fn docker_registry_authenticate(
 		config.docker_registry.public_key_der(),
 	)?;
 
+	// TODO: also log refresh token type in login table
+	db::add_user_login(
+		context.get_mysql_connection(),
+		refresh_token.as_bytes(),
+		iat + (600),
+		&user.id,
+		iat,
+		iat,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::TOKEN: token,
-		request_keys::REFRESH_TOKEN: "test",
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
 	}));
-	return Ok(context);
+	Ok(context)
 }

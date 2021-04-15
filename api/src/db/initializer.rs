@@ -105,6 +105,7 @@ async fn migrate_database(
 		if !migrating {
 			continue;
 		}
+		#[allow(clippy::single_match)]
 		match migration_version {
 			"0.0.0" => (),
 			_ => (),

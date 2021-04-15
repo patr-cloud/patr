@@ -18,6 +18,7 @@ pub mod id {
 	pub const EMAIL_TAKEN: &str = "emailTaken";
 	pub const USERNAME_TAKEN: &str = "usernameTaken";
 	pub const PHONE_NUMBER_TAKEN: &str = "phoneNumberTaken";
+	pub const TOKEN_NOT_FOUND: &str = "tokenNotFound";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
 	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
 	pub const INVALID_OTP: &str = "invalidOtp";
@@ -28,6 +29,9 @@ pub mod id {
 	pub const PROFILE_NOT_FOUND: &str = "profileNotFound";
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
+	pub const REPOSITORY_ALREADY_EXISTS: &str = "repositoryAlreadyExists";
+	pub const INVALID_REQUEST: &str = "invalidRequest";
+	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
 }
 
 #[allow(dead_code)]
@@ -56,11 +60,12 @@ pub mod message {
 		"You do not have the permission to perform that action";
 	pub const SERVER_ERROR: &str =
 		"An internal server error has occured. Please try again later";
-	pub const EMAIL_TAKEN: &str =
-		"Sorry. That email address is already in use.";
-	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken.";
+	pub const EMAIL_TAKEN: &str = "Sorry. That email address is already in use";
+	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
 		"That phone number is already in use. Did you mean to sign in?";
+	pub const TOKEN_NOT_FOUND: &str =
+		"Your account has been logged out due to inactivity. Please login again";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str =
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
@@ -77,4 +82,32 @@ pub mod message {
 		"Sorry, the email address/username is taken";
 	pub const DOMAIN_UNVERIFIED: &str =
 		"That domain is unverified. Check your verification settings";
+	pub const REPOSITORY_ALREADY_EXISTS: &str =
+		"The given repository already exists";
+	pub const ACCESS_TYPE_NOT_PRESENT: &str =
+		"Access type not present in request";
+	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client";
+	pub const REPOSITORY_NOT_PRESENT: &str =
+		"Repository name not present in request";
+	pub const ACTION_NOT_PRESENT: &str = "Action not present in request";
+	pub const NO_ORGANISATION_OR_REPOSITORY: &str =
+		"Invalid Organisation or Repository name";
+	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name";
+	pub const USER_ROLE_NOT_FOUND: &str =
+		"No valid role for the user was found";
+	pub const OFFLINE_TOKEN_NOT_FOUND: &str =
+		"Invalid request sent by the client. Could not find offline_token";
+	pub const INVALID_OFFLINE_TOKEN: &str =
+		"Invalid request sent by the client. offline_token is not a boolean";
+	pub const INVALID_CLIENT_ID: &str =
+		"Invalid request sent by the client. Could not find client_id";
+	pub const SERVICE_NOT_FOUND: &str =
+		"Invalid request sent by the client. Could not find service";
+	pub const INVALID_SERVICE: &str =
+		"Invalid request sent by the client. Service is not valid";
+	pub const AUTHORIZATION_NOT_FOUND: &str =
+		"Invalid request sent by the client. Authorization header not found";
+	pub const AUTHORIZATION_PARSE_ERROR: &str = "Invalid request sent by the client. Authorization data could not be parsed as expected";
+	pub const USERNAME_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have username";
+	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password";
 }

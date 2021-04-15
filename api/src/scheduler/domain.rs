@@ -60,7 +60,7 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 		}
 	};
 
-	let mut tlds = data
+	let tlds = data
 		.split('\n')
 		.map(String::from)
 		.filter(|tld| {
@@ -68,10 +68,7 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 		})
 		.collect::<Vec<String>>();
 
-	let mut tld_list = validator::DOMAIN_TLD_LIST.write().await;
-	tld_list.clear();
-	tld_list.append(&mut tlds);
-	drop(tld_list);
+	validator::update_domain_tld_list(tlds).await;
 	Ok(())
 }
 
