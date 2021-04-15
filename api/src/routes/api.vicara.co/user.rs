@@ -1,11 +1,15 @@
+use argon2::Variant;
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Value};
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::{db_mapping::UserEmailAddress, ExposedUserData},
 	pin_fn,
+	service,
 	utils::{
-		self,
 		constants::request_keys,
 		get_current_time,
 		validator,
@@ -15,10 +19,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-
-use argon2::Variant;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
 
 pub fn create_sub_app(
 	app: &App,
@@ -230,7 +230,7 @@ async fn add_email_address(
 		return Ok(context);
 	}
 
-	let otp = utils::generate_new_otp();
+	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours

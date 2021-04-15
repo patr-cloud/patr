@@ -10,12 +10,28 @@ pub struct ErrorData {
 
 #[allow(dead_code)]
 impl ErrorData {
-	pub fn commit_transaction(&mut self, commit: bool) -> &mut Self {
+	fn set_commit_transaction(&mut self, commit: bool) -> &mut Self {
 		self.commit_transaction = commit;
 		self
 	}
 
-	pub fn should_commit_transaction(&self) -> bool {
+	fn should_commit_transaction(&self) -> bool {
 		self.commit_transaction
+	}
+}
+
+pub trait AsErrorData {
+	fn commit_transaction(self, commit: bool) -> Self;
+}
+
+impl<Value> AsErrorData for Result<Value, Error<ErrorData>> {
+	fn commit_transaction(self, commit: bool) -> Self {
+		match self {
+			Ok(value) => Ok(value),
+			Err(mut err) => {
+				err.set_commit_transaction(commit);
+				Err(err)
+			}
+		}
 	}
 }

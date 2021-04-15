@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use sqlx::{MySql, Transaction};
+use uuid::Uuid;
+
 use crate::{
 	models::{
 		db_mapping::{Permission, Resource, ResourceType, Role},
@@ -8,9 +11,6 @@ use crate::{
 	query,
 	query_as,
 };
-
-use sqlx::{MySql, Transaction};
-use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<'_, MySql>,

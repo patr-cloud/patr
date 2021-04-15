@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Map, Value};
+use uuid::Uuid;
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
@@ -14,10 +18,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Map, Value};
-use uuid::Uuid;
 
 pub fn create_sub_app(
 	app: &App,

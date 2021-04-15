@@ -1,8 +1,9 @@
+use serde_json::Value;
+
 use crate::{
 	models::{error, SmsRequest},
 	utils::settings::Settings,
 };
-use serde_json::Value;
 
 #[allow(dead_code)]
 pub async fn send_otp_sms(

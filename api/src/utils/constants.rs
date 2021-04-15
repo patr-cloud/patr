@@ -1,5 +1,10 @@
+use std::{fmt::Display, str::FromStr};
+
 use clap::{crate_authors, crate_description, crate_name, crate_version};
+use eve_rs::AsError;
 use semver::Version;
+
+use crate::{error, utils::EveError};
 
 pub const DATABASE_VERSION: Version = Version {
 	major: 0,
@@ -15,6 +20,34 @@ pub const APP_AUTHORS: &str = crate_authors!();
 pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
+
+pub enum AccountType {
+	Personal,
+	Organisation,
+}
+
+impl Display for AccountType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			AccountType::Personal => write!(f, "personal"),
+			AccountType::Organisation => write!(f, "organisation"),
+		}
+	}
+}
+
+impl FromStr for AccountType {
+	type Err = EveError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"personal" => Ok(AccountType::Personal),
+			"organisation" => Ok(AccountType::Organisation),
+			_ => EveError::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
 
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";

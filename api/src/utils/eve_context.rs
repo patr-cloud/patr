@@ -1,4 +1,8 @@
-use crate::{app::App, models::AccessTokenData};
+use std::{
+	fmt::{Debug, Formatter},
+	sync::Arc,
+};
+
 use eve_rs::{
 	handlebars::Handlebars,
 	Context,
@@ -8,10 +12,8 @@ use eve_rs::{
 };
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
-use std::{
-	fmt::{Debug, Formatter},
-	sync::Arc,
-};
+
+use crate::{app::App, models::AccessTokenData};
 
 pub struct EveContext {
 	request: Request,

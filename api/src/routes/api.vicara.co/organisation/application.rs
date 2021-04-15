@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -14,7 +15,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-use serde_json::json;
 
 pub fn create_sub_app(
 	app: &App,
@@ -188,9 +188,10 @@ async fn get_application_info_in_organisation(
 	)
 	.await?;
 
-	// since the resource/application is already been checked in ResourceTokenAuthenticator,
-	// application cannot be null, else, the code would not reach at this point
-	// Hence, it is safe to unwrap the application.
+	// since the resource/application is already been checked in
+	// ResourceTokenAuthenticator, application cannot be null, else, the code
+	// would not reach at this point Hence, it is safe to unwrap the
+	// application.
 	let application = application.unwrap();
 
 	// add response to context json
@@ -212,7 +213,8 @@ async fn get_all_versions_for_application(
 		.unwrap()
 		.clone();
 
-	// it is safe to unwrap as the a resource for the given application already exists.
+	// it is safe to unwrap as the a resource for the given application already
+	// exists.
 	let application_id = hex::decode(&application_id_string).unwrap();
 
 	// call fetch query for the given application id.

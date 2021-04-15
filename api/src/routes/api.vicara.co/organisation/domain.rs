@@ -1,3 +1,12 @@
+use argon2::Variant;
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Value};
+use trust_dns_client::{
+	client::{Client, SyncClient},
+	rr::{DNSClass, Name, RData, RecordType},
+	tcp::TcpClientConnection,
+};
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
@@ -12,15 +21,6 @@ use crate::{
 		EveError as Error,
 		EveMiddleware,
 	},
-};
-
-use argon2::Variant;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
-use trust_dns_client::{
-	client::{Client, SyncClient},
-	rr::{DNSClass, Name, RData, RecordType},
-	tcp::TcpClientConnection,
 };
 
 pub fn create_sub_app(
@@ -352,10 +352,11 @@ async fn verify_domain_in_organisation(
 
 	if domain.is_none() {
 		// Domain cannot be null.
-		// This function wouldn't run unless the resource middleware executes successfully
-		// The resource middleware checks if a resource with that name exists.
-		// If the domain is null but the resource exists, then you have a dangling resource.
-		// This is a big problem. Make sure it's logged and investigated into
+		// This function wouldn't run unless the resource middleware executes
+		// successfully The resource middleware checks if a resource with that
+		// name exists. If the domain is null but the resource exists, then you
+		// have a dangling resource. This is a big problem. Make sure it's
+		// logged and investigated into
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
@@ -421,10 +422,11 @@ async fn get_domain_info_in_organisation(
 
 	if domain.is_none() {
 		// Domain cannot be null.
-		// This function wouldn't run unless the resource middleware executes successfully
-		// The resource middleware checks if a resource with that name exists.
-		// If the domain is null but the resource exists, then you have a dangling resource.
-		// This is a big problem. Make sure it's logged and investigated into
+		// This function wouldn't run unless the resource middleware executes
+		// successfully The resource middleware checks if a resource with that
+		// name exists. If the domain is null but the resource exists, then you
+		// have a dangling resource. This is a big problem. Make sure it's
+		// logged and investigated into
 		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}

@@ -1,9 +1,11 @@
 // SERVICE FOR PORTUS
-use crate::db;
+use std::{env, path::PathBuf};
+
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use sqlx::{MySql, Transaction};
-use std::{env, path::PathBuf};
 use tokio::fs;
+
+use crate::db;
 
 /// function to assign available port
 pub fn generate_password(length: u16) -> String {
