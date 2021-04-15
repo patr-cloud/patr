@@ -169,6 +169,16 @@
       "nullable": []
     }
   },
+  "0b0d653d0d214444420792b341cdcda4c8b88e2313719d213d643a4cfb058880": {
+    "query": "CREATE TABLE IF NOT EXISTS volume( id BINARY(16), name VARCHAR(50) NOT NULL, path VARCHAR(255) NOT NULL, PRIMARY KEY (id, name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "0cd0154b524b65dee7e5d7f2de9f8e21a2047b94ac9f02a2ecb66b3400c9dcbd": {
     "query": "SELECT * FROM password_reset_request WHERE user_id = ?;",
     "describe": {
@@ -973,6 +983,16 @@
       ]
     }
   },
+  "35939cec84f0cf6089e6d2e5bd152f63cf07ba90083661bbac8ec6edaf1f9d7c": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ port_id BINARY(16) NOT NULL, volume_id BINARY(16) NOT NULL, var_id BINARY(16) NOT NULL, persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "36af3782ba352d2f4f126cbeeba0eba53ecb03fbb4eb94dfadb90f333121fac6": {
     "query": "INSERT INTO user_email_address VALUES ('personal', ?, NULL, NULL, ?);",
     "describe": {
@@ -1331,6 +1351,16 @@
       "columns": [],
       "parameters": {
         "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "4954871520e1227f2f0dd0685d82d3527725bd70e47b252a043f2ac4b3809712": {
+    "query": "CREATE TABLE IF NOT EXISTS environment_variable ( id BINARY(16), name VARCHAR(50) NOT NULL, value VARCHAR(50) NOT NULL, PRIMARY KEY (id, name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -2202,16 +2232,6 @@
       ]
     }
   },
-  "805d2e555e679b236744897b2e1ebd3d26624bc99fd15ab7f0dcf22afcf2b7a0": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ port SMALLINT UNSIGNED NOT NULL, UNIQUE(domain_id, sub_domain, path) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "80d87f55cd48c8ed559d4dd4f4f488109bd7d83c9578f5deb9369818c6f34191": {
     "query": "DELETE FROM organisation_user WHERE role_id = ?;",
     "describe": {
@@ -2228,6 +2248,16 @@
       "columns": [],
       "parameters": {
         "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "850a36848cb2c9dba15ecb0647d0c1dbcd9ea92e953ae97d592d117a8589c5d9": {
+    "query": "CREATE TABLE IF NOT EXISTS port ( id BINARY(16), port SMALLINT UNSIGNED NOT NULL, PRIMARY KEY (id, port) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }

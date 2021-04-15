@@ -1,7 +1,6 @@
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query,
-	query_as,
+	query, query_as,
 };
 use sqlx::{MySql, Transaction};
 
@@ -21,8 +20,13 @@ pub async fn initialize_deployer_pre(
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
-			port SMALLINT UNSIGNED NOT NULL,
-			UNIQUE(domain_id, sub_domain, path)
+			port_id BINARY(16) NOT NULL,
+			volume_id BINARY(16) NOT NULL,
+			var_id BINARY(16) NOT NULL,
+			persistence BOOL NOT NULL,
+			datacenter VARCHAR(255) NOT NULL,
+			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id)
+
 		);
 		"#
 	)
@@ -41,6 +45,45 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS port (
+			id BINARY(16),
+			port SMALLINT UNSIGNED NOT NULL,
+			PRIMARY KEY (id, port)
+		);
+	"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+	CREATE TABLE IF NOT EXISTS environment_variable (
+		id BINARY(16),
+		name VARCHAR(50) NOT NULL,
+		value VARCHAR(50) NOT NULL,
+		PRIMARY KEY (id, name)
+	);"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS volume(
+			id BINARY(16),
+			name VARCHAR(50) NOT NULL,
+			path VARCHAR(255) NOT NULL,
+			PRIMARY KEY (id, name)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	// TODO: create tabel for maching type and  upgrade path
 
 	Ok(())
 }
