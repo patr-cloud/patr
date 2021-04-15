@@ -1,3 +1,7 @@
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Value};
+use tokio::task;
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
@@ -5,18 +9,15 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
-		constants::request_keys,
+		constants::{request_keys, AccountType},
 		mailer,
+		AsErrorData,
 		ErrorData,
 		EveContext,
 		EveError as Error,
 		EveMiddleware,
 	},
 };
-
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
-use tokio::task;
 
 pub fn create_sub_app(
 	app: &App,
@@ -76,7 +77,7 @@ async fn sign_in(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = db::get_user_by_username_or_email(
+	let user_data = db::get_user_by_username_or_email(
 		context.get_mysql_connection(),
 		&user_id,
 	)
@@ -84,10 +85,10 @@ async fn sign_in(
 	.status(200)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::verify_hash(
+	let success = service::validate_hash(
 		password.as_bytes(),
 		context.get_state().config.password_salt.as_bytes(),
-		&user.password,
+		&user_data.password,
 	)?;
 
 	if !success {
@@ -95,9 +96,14 @@ async fn sign_in(
 		return Ok(context);
 	}
 
-	let config = context.get_state().config.clone();
-	let (jwt, refresh_token) =
-		service::sign_in(context.get_mysql_connection(), user, config).await?;
+	let app_config = context.get_state().config.clone();
+	let (jwt, refresh_token) = service::sign_in(
+		context.get_mysql_connection(),
+		user_data,
+		&app_config,
+	)
+	.await
+	.commit_transaction(false)?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -113,116 +119,94 @@ async fn sign_up(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let username = if let Some(Value::String(username)) =
-		body.get(request_keys::USERNAME)
-	{
-		username
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let username = body
+		.get(request_keys::USERNAME)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let email =
-		if let Some(Value::String(email)) = body.get(request_keys::EMAIL) {
-			email
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let email = body
+		.get(request_keys::EMAIL)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let password = if let Some(Value::String(password)) =
-		body.get(request_keys::PASSWORD)
-	{
-		password
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let password = body
+		.get(request_keys::PASSWORD)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let account_type = if let Some(Value::String(account_type)) =
-		body.get(request_keys::ACCOUNT_TYPE)
-	{
-		account_type
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let account_type = body
+		.get(request_keys::ACCOUNT_TYPE)
+		.map(|param| param.as_str())
+		.flatten()
+		.map(|a| a.parse::<AccountType>().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let first_name = if let Some(Value::String(first_name)) =
-		body.get(request_keys::FIRST_NAME)
-	{
-		first_name
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let first_name = body
+		.get(request_keys::FIRST_NAME)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let last_name = if let Some(Value::String(last_name)) =
-		body.get(request_keys::LAST_NAME)
-	{
-		last_name
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let last_name = body
+		.get(request_keys::LAST_NAME)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let (domain_name, organisation_name, backup_email) = match account_type
-		.as_ref()
-	{
-		"organisation" => (
-			if let Some(Value::String(domain)) = body.get(request_keys::DOMAIN)
-			{
-				Some(domain)
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			},
-			if let Some(Value::String(organisation_name)) =
-				body.get(request_keys::ORGANISATION_NAME)
-			{
-				Some(organisation_name)
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			},
-			if let Some(Value::String(backup_email)) =
-				body.get(request_keys::BACKUP_EMAIL)
-			{
-				Some(backup_email)
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			},
-		),
-		"personal" => (None, None, None),
-		_ => {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		}
-	};
+	let domain_name = body
+		.get(request_keys::DOMAIN)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let organisation_name = body
+		.get(request_keys::ORGANISATION_NAME)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let backup_email = body
+		.get(request_keys::BACKUP_EMAIL)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
 	let config = context.get_state().config.clone();
 
-	let user_to_be_signed_up = service::create_user_to_be_signed_up(
+	let otp = service::create_user_join_request(
 		context.get_mysql_connection(),
 		&config,
-		&username,
-		&email,
-		&password,
-		&account_type,
-		domain_name,
-		organisation_name,
-		backup_email,
-		&first_name,
-		&last_name,
+		username,
+		email,
+		password,
+		account_type,
+		(first_name, last_name),
+		(domain_name, organisation_name, backup_email),
 	)
-	.await;
-
-	if let Err(err) = user_to_be_signed_up {
-		context.json(err);
-		return Ok(context);
-	}
-	let otp = user_to_be_signed_up.unwrap();
-	let email = email.clone();
+	.await?;
+	let email = email.to_string();
 
 	task::spawn_blocking(|| {
 		mailer::send_email_verification_mail(config, email, otp);
@@ -304,19 +288,12 @@ async fn get_access_token(
 		};
 
 	let config = context.get_state().config.clone();
-	let status = service::get_access_token_data(
+	let access_token = service::get_access_token_data(
 		context.get_mysql_connection(),
 		config,
 		&refresh_token,
 	)
-	.await;
-
-	if let Err(err) = status {
-		context.json(err);
-		return Ok(context);
-	}
-
-	let access_token = status.unwrap();
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -331,24 +308,22 @@ async fn is_email_valid(
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 
-	let email = if let Some(email) = query.get(request_keys::EMAIL) {
+	let email_address = if let Some(email) = query.get(request_keys::EMAIL) {
 		email
 	} else {
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 
-	let status =
-		service::is_email_allowed(context.get_mysql_connection(), email).await;
-	if let Err(err) = status {
-		context.json(json!(err));
-		return Ok(context);
-	}
-	let user = status.unwrap();
+	let allowed = service::is_email_allowed(
+		context.get_mysql_connection(),
+		email_address,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::AVAILABLE: user.is_none()
+		request_keys::AVAILABLE: allowed
 	}));
 	Ok(context)
 }
@@ -366,18 +341,15 @@ async fn is_username_valid(
 		return Ok(context);
 	};
 
-	let status =
-		service::is_username_allowed(context.get_mysql_connection(), username)
-			.await;
-	if let Err(err) = status {
-		context.json(json!(err));
-		return Ok(context);
-	}
-	let user = status.unwrap();
+	let allowed = service::is_username_allowed(
+		context.get_mysql_connection(),
+		username,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::AVAILABLE: user.is_none()
+		request_keys::AVAILABLE: allowed
 	}));
 	Ok(context)
 }

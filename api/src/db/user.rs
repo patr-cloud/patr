@@ -1,3 +1,6 @@
+use sqlx::{MySql, Transaction};
+use uuid::Uuid;
+
 use crate::{
 	models::db_mapping::{
 		Organisation,
@@ -12,8 +15,6 @@ use crate::{
 	query,
 	query_as,
 };
-use sqlx::{MySql, Transaction};
-use uuid::Uuid;
 
 pub async fn initialize_users_pre(
 	transaction: &mut Transaction<'_, MySql>,

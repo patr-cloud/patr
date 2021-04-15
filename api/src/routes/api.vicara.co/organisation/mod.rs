@@ -1,3 +1,6 @@
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Value};
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
@@ -14,8 +17,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
 
 mod application;
 mod domain;

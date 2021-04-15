@@ -1,9 +1,11 @@
+use std::collections::HashSet;
+
+use yew::prelude::*;
+
 use crate::{
 	models::File,
 	ui::{FileList, Sidebar},
 };
-use std::collections::HashSet;
-use yew::prelude::*;
 
 #[allow(dead_code)]
 pub struct App {

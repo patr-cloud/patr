@@ -1,5 +1,3 @@
-use crate::utils::settings::Settings;
-
 use lettre::{
 	header,
 	message::{MultiPart, SinglePart},
@@ -8,6 +6,8 @@ use lettre::{
 	SmtpTransport,
 	Transport,
 };
+
+use crate::utils::settings::Settings;
 
 /*
 api_macros::email_template!("test");

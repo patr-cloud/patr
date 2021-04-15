@@ -1,9 +1,4 @@
-use crate::{
-	app::App,
-	error,
-	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{get_current_time, ErrorData, EveContext, EveError as Error},
-};
+use std::{future::Future, pin::Pin};
 
 use async_trait::async_trait;
 use eve_rs::{
@@ -20,7 +15,13 @@ use eve_rs::{
 	NextHandler,
 };
 use redis::{AsyncCommands, RedisError};
-use std::{future::Future, pin::Pin};
+
+use crate::{
+	app::App,
+	error,
+	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
+	utils::{get_current_time, ErrorData, EveContext, EveError as Error},
+};
 
 pub type MiddlewareHandlerFunction =
 	fn(

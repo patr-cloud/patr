@@ -1,3 +1,9 @@
+use std::error::Error as StdError;
+
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::{json, Value};
+use shiplift::{ContainerOptions, Docker};
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
@@ -14,10 +20,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
-use shiplift::{ContainerOptions, Docker};
-use std::error::Error as StdError;
 
 pub fn creare_sub_app(
 	app: &App,
@@ -282,8 +284,8 @@ async fn get_info_for_tunnel(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	// get tunnel id from parameter
-	// since tunnel id will already ge authenticated in resource token authenticator,
-	// we can safely unwrap tunnel id.
+	// since tunnel id will already ge authenticated in resource token
+	// authenticator, we can safely unwrap tunnel id.
 	let tunnel_id_string =
 		context.get_param(request_keys::TUNNEL_ID).unwrap().clone();
 	let tunnel_id = hex::decode(&tunnel_id_string).unwrap();
@@ -320,8 +322,8 @@ async fn delete_tunnel(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	// get tunnel id from parameter
-	// since tunnel id will already get authenticated in resource token authenticator,
-	// we can safely unwrap tunnel id.
+	// since tunnel id will already get authenticated in resource token
+	// authenticator, we can safely unwrap tunnel id.
 	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
 	let tunnel_id = &hex::decode(&tunnel_id).unwrap();
 
@@ -486,7 +488,8 @@ async fn create(
 	if let Err(err) = tunnel_register_result {
 		log::error!("Error while adding data to portus table. {:#?}", err);
 
-		// if there is an error in database query, stop the container which just started.
+		// if there is an error in database query, stop the container which just
+		// started.
 		log::info!("Stopping and Deleting container {} ...", &container_name);
 		let container_delete_result =
 			service::delete_container(&docker, &container_name).await;
@@ -501,7 +504,8 @@ async fn create(
 		return Err(Error::new(err).status(500).body(err_message));
 	};
 
-	// on success, return ssh port, username,  exposed port, server ip address, password
+	// on success, return ssh port, username,  exposed port, server ip address,
+	// password
 	let resource_id = hex::encode(resource_id);
 	context.json(json!({
 		request_keys::SUCCESS: true,

@@ -96,10 +96,11 @@ Resources:
 pub async fn initialize_sample_data(config: crate::app::App) {
 	use std::{collections::HashMap, time::Duration};
 
-	use crate::constants::request_keys;
 	use serde::Deserialize;
 	use serde_json::{json, Value};
 	use surf::{http::Method, url::Url, Request};
+
+	use crate::constants::request_keys;
 
 	#[derive(Debug, Deserialize)]
 	#[serde(rename_all = "camelCase")]

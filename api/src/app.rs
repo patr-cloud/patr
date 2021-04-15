@@ -1,14 +1,7 @@
-use crate::{
-	error,
-	pin_fn,
-	routes,
-	utils::{
-		settings::Settings,
-		ErrorData,
-		EveContext,
-		EveError as Error,
-		EveMiddleware,
-	},
+use std::{
+	fmt::{Debug, Formatter},
+	sync::Arc,
+	time::Instant,
 };
 
 use colored::Colorize;
@@ -24,10 +17,18 @@ use eve_rs::{
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::mysql::MySqlPool;
-use std::{
-	fmt::{Debug, Formatter},
-	sync::Arc,
-	time::Instant,
+
+use crate::{
+	error,
+	pin_fn,
+	routes,
+	utils::{
+		settings::Settings,
+		ErrorData,
+		EveContext,
+		EveError as Error,
+		EveMiddleware,
+	},
 };
 
 #[derive(Clone)]
@@ -108,7 +109,8 @@ async fn init_states(
 	// Start measuring time to check how long a route takes to execute
 	let start_time = Instant::now();
 
-	// Get a connection from the connection pool and begin a transaction on that connection
+	// Get a connection from the connection pool and begin a transaction on that
+	// connection
 	let transaction = context.get_state().mysql.begin().await?;
 
 	// Set the mysql transaction
@@ -117,7 +119,8 @@ async fn init_states(
 	// Execute the next route and handle the result
 	context = next(context).await?;
 
-	// Log how long the request took, then either commit or rollback the transaction
+	// Log how long the request took, then either commit or rollback the
+	// transaction
 	let elapsed_time = start_time.elapsed();
 
 	log::info!(

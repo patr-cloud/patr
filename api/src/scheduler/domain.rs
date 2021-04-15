@@ -1,9 +1,3 @@
-use crate::{
-	db,
-	scheduler::Job,
-	utils::{mailer, validator},
-};
-
 use cloudflare::{
 	endpoints::zone::{self, Status, Zone},
 	framework::{
@@ -14,6 +8,12 @@ use cloudflare::{
 	},
 };
 use surf::mime::APPLICATION_JSON;
+
+use crate::{
+	db,
+	scheduler::Job,
+	utils::{mailer, validator},
+};
 
 // Every two hours
 pub(super) fn verify_unverified_domains_job() -> Job {
