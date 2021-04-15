@@ -62,12 +62,12 @@
           "ordinal": 2,
           "name": "registry",
           "type_info": {
-            "type": "String",
+            "type": "VarString",
             "flags": {
-              "bits": 257
+              "bits": 1
             },
             "char_set": 224,
-            "max_size": 100
+            "max_size": 1020
           }
         },
         {
@@ -1073,6 +1073,16 @@
       ]
     }
   },
+  "3b7311b9a837ff51d7f4258751c84734eb0aa75c1b2766b75d8098071cb53617": {
+    "query": "DELETE FROM user_login WHERE refresh_token = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
     "query": "CREATE TABLE IF NOT EXISTS meta_data ( id VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -1377,12 +1387,12 @@
           "ordinal": 2,
           "name": "registry",
           "type_info": {
-            "type": "String",
+            "type": "VarString",
             "flags": {
-              "bits": 257
+              "bits": 1
             },
             "char_set": 224,
-            "max_size": 100
+            "max_size": 1020
           }
         },
         {
@@ -1616,12 +1626,12 @@
           "ordinal": 2,
           "name": "registry",
           "type_info": {
-            "type": "String",
+            "type": "VarString",
             "flags": {
-              "bits": 257
+              "bits": 1
             },
             "char_set": 224,
-            "max_size": 100
+            "max_size": 1020
           }
         },
         {
@@ -3548,12 +3558,12 @@
           "ordinal": 2,
           "name": "registry",
           "type_info": {
-            "type": "String",
+            "type": "VarString",
             "flags": {
-              "bits": 257
+              "bits": 1
             },
             "char_set": 224,
-            "max_size": 100
+            "max_size": 1020
           }
         },
         {

@@ -1,16 +1,9 @@
 use crate::{
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		User,
-		UserEmailAddress,
-		UserEmailAddressSignUp,
-		UserLogin,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified, User,
+		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
+	query, query_as,
 };
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;

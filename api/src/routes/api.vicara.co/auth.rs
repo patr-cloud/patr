@@ -1,25 +1,16 @@
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{UserEmailAddress, UserEmailAddressSignUp},
 		error::{id as ErrorId, message as ErrorMessage},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-		RegistryToken,
+		rbac, AccessTokenData, ExposedUserData, RegistryToken,
 		RegistryTokenAccess,
 	},
 	pin_fn,
 	utils::{
-		self,
-		constants::request_keys,
-		get_current_time_millis,
-		mailer,
-		validator,
-		EveContext,
-		EveMiddleware,
+		self, constants::request_keys, get_current_time_millis, mailer,
+		validator, EveContext, EveMiddleware,
 	},
 };
 use argon2::Variant;
@@ -201,7 +192,7 @@ async fn sign_out(
 		return Ok(context);
 	}
 
-	db::delete_user_login(context.get_mysql_connection(), refresh_token)
+	db::delete_user_login(context.get_mysql_connection(), &refresh_token)
 		.await?;
 
 	context.json(json!({
@@ -315,8 +306,8 @@ async fn sign_up(
 		return Ok(context);
 	}
 
-	if backup_email.is_some() &&
-		!validator::is_email_valid(backup_email.as_ref().unwrap())
+	if backup_email.is_some()
+		&& !validator::is_email_valid(backup_email.as_ref().unwrap())
 	{
 		context.json(error!(INVALID_EMAIL));
 		return Ok(context);
