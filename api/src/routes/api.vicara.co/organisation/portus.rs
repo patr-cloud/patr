@@ -53,9 +53,7 @@ pub fn creare_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 					if resource.is_none() {
 						context
 							.status(404)
@@ -97,9 +95,7 @@ pub fn creare_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 					if resource.is_none() {
 						context
 							.status(404)
@@ -138,9 +134,7 @@ pub fn creare_sub_app(
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -180,9 +174,7 @@ pub fn creare_sub_app(
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -222,9 +214,7 @@ pub fn creare_sub_app(
 						context.get_mysql_connection(),
 						&tunnel_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -343,9 +333,7 @@ async fn delete_tunnel(
 	let container_name = service::get_container_name(&tunnel.username);
 
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let container_delete_result =
 		service::delete_container(&docker, &container_name).await;
@@ -385,10 +373,7 @@ async fn create(
 
 	// generate new resource id for the generated container.
 	let resource_id =
-		db::generate_new_resource_id(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let resource_id = resource_id.as_bytes(); // convert to byte array
 
 	// generate unique password
@@ -399,15 +384,9 @@ async fn create(
 	let image = constants::PORTUS_DOCKER_IMAGE;
 	let container_name = service::get_container_name(username.as_str());
 	let ssh_port =
-		service::assign_available_port(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		service::assign_available_port(context.get_mysql_connection()).await?;
 	let exposed_port =
-		service::assign_available_port(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		service::assign_available_port(context.get_mysql_connection()).await?;
 	let image_ssh_port = service::get_ssh_port_for_server();
 	let server_ip_address = service::get_server_ip_address();
 	let created = get_current_time();
@@ -440,9 +419,7 @@ async fn create(
 				.expose(exposed_port, "tcp", exposed_port)
 				.build(),
 		)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let container_id = container_info.id;
 

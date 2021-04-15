@@ -43,7 +43,8 @@ pub mod message {
 		"Your phone number seems to be incorrect";
 	pub const INVALID_ORGANISATION_NAME: &str =
 		"That organisation name is not valid";
-	pub const ORGANISATION_EXISTS: &str = "That organisation name is already taken";
+	pub const ORGANISATION_EXISTS: &str =
+		"That organisation name is already taken";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
 	pub const WRONG_PARAMETERS: &str =

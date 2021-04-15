@@ -1,23 +1,19 @@
 use argon2::Variant;
 use eve_rs::AsError;
 
-use crate::{error, utils::EveError as Error};
+use crate::utils::EveError as Error;
 
 pub fn validate_hash(
 	pwd: &[u8],
 	salt: &[u8],
 	hashed: &[u8],
 ) -> Result<bool, Error> {
-	argon2::verify_raw(pwd, salt, hashed, &get_hash_config())
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())
+	argon2::verify_raw(pwd, salt, hashed, &get_hash_config()).status(500)
 }
 
 /// function to get token hash
 pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
-	argon2::hash_raw(pwd, salt, &get_hash_config())
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())
+	argon2::hash_raw(pwd, salt, &get_hash_config()).status(500)
 }
 
 // 2 hours

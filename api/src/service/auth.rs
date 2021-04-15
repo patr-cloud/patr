@@ -26,7 +26,7 @@ use crate::{
 };
 
 pub async fn is_username_allowed(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(&username) {
@@ -34,15 +34,14 @@ pub async fn is_username_allowed(
 			.status(200)
 			.body(error!(INVALID_USERNAME).to_string())?;
 	}
-	db::get_user_by_username(transaction, username)
+	db::get_user_by_username(connection, username)
 		.await
 		.map(|user| user.is_none())
 		.status(500)
-		.body(error!(SERVER_ERROR).to_string())
 }
 
 pub async fn is_email_allowed(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(&email) {
@@ -51,16 +50,15 @@ pub async fn is_email_allowed(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	db::get_user_by_email(transaction, email)
+	db::get_user_by_email(connection, email)
 		.await
 		.map(|user| user.is_none())
 		.status(500)
-		.body(error!(SERVER_ERROR).to_string())
 }
 
 /// this function creates a new user to be signed up and returns a OTP
 pub async fn create_user_join_request(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	config: &Settings,
 	username: &str,
 	email: &str,
@@ -73,13 +71,13 @@ pub async fn create_user_join_request(
 		Option<&str>,
 	),
 ) -> Result<String, Error> {
-	if !is_username_allowed(transaction, username).await? {
+	if !is_username_allowed(connection, username).await? {
 		Error::as_result()
 			.status(200)
 			.body(error!(USERNAME_TAKEN).to_string())?;
 	}
 
-	if !is_email_allowed(transaction, email).await? {
+	if !is_email_allowed(connection, email).await? {
 		Error::as_result()
 			.status(200)
 			.body(error!(EMAIL_TAKEN).to_string())?;
@@ -118,10 +116,8 @@ pub async fn create_user_join_request(
 					.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
 			}
 
-			if db::get_organisation_by_name(transaction, &organisation_name)
-				.await
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
+			if db::get_organisation_by_name(connection, &organisation_name)
+				.await?
 				.is_some()
 			{
 				Error::as_result()
@@ -130,12 +126,10 @@ pub async fn create_user_join_request(
 			}
 
 			if db::get_user_to_sign_up_by_organisation_name(
-				transaction,
+				connection,
 				&organisation_name,
 			)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?
+			.await?
 			.is_some()
 			{
 				Error::as_result()
@@ -176,7 +170,7 @@ pub async fn create_user_join_request(
 		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
 
 	db::set_user_to_be_signed_up(
-		transaction,
+		connection,
 		email,
 		&username,
 		&password,
@@ -184,27 +178,23 @@ pub async fn create_user_join_request(
 		&token_hash,
 		token_expiry,
 	)
-	.await
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
+	.await?;
 
 	Ok(otp)
 }
 
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
-pub async fn sign_in(
-	transaction: &mut Transaction<'_, MySql>,
+pub async fn sign_in_user(
+	connection: &mut Transaction<'_, MySql>,
 	user: User,
 	config: &Settings,
 ) -> Result<(String, Uuid), Error> {
 	// generate JWT
 	let iat = get_current_time();
 	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-	let orgs = db::get_all_organisation_roles_for_user(transaction, &user.id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let orgs =
+		db::get_all_organisation_roles_for_user(connection, &user.id).await?;
 
 	let user = ExposedUserData {
 		id: user.id,
@@ -217,29 +207,23 @@ pub async fn sign_in(
 	let refresh_token = Uuid::new_v4();
 
 	db::add_user_login(
-		transaction,
+		connection,
 		refresh_token.as_bytes(),
 		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
 		&user.id,
 		iat,
 		iat,
 	)
-	.await
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())
-	.commit_transaction(false)?;
+	.await?;
 
 	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-	let jwt = token_data
-		.to_string(config.jwt_secret.as_str())
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	Ok((jwt, refresh_token))
 }
 
 pub async fn get_access_token_data(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	config: Settings,
 	refresh_token: &str,
 ) -> Result<String, Error> {
@@ -250,7 +234,7 @@ pub async fn get_access_token_data(
 	};
 	let refresh_token = refresh_token.as_bytes();
 
-	let user_login = db::get_user_login(transaction, refresh_token).await?;
+	let user_login = db::get_user_login(connection, refresh_token).await?;
 
 	if user_login.is_none() {
 		// context.json(error!(EMAIL_TOKEN_NOT_FOUND));
@@ -269,13 +253,13 @@ pub async fn get_access_token_data(
 	let iat = get_current_time();
 	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
-		transaction,
+		connection,
 		&user_login.user_id,
 	)
 	.await?;
 
 	let user_id = user_login.user_id;
-	let user_data = db::get_user_by_user_id(transaction, &user_id)
+	let user_data = db::get_user_by_user_id(connection, &user_id)
 		.await?
 		.unwrap();
 
@@ -288,12 +272,9 @@ pub async fn get_access_token_data(
 	};
 
 	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-	let jwt = token_data
-		.to_string(config.jwt_secret.as_str())
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
-	db::set_refresh_token_expiry(transaction, refresh_token, iat, exp).await?;
+	db::set_refresh_token_expiry(connection, refresh_token, iat, exp).await?;
 
 	Ok(jwt)
 }
@@ -301,11 +282,11 @@ pub async fn get_access_token_data(
 // function to reset password
 // TODO: Remove otp from response
 pub async fn forgot_password(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	config: Settings,
 	user_id: &str,
 ) -> Result<String, Value> {
-	let user = db::get_user_by_username_or_email(transaction, &user_id)
+	let user = db::get_user_by_username_or_email(connection, &user_id)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 	let user = user.unwrap();
@@ -320,7 +301,7 @@ pub async fn forgot_password(
 			.map_err(|_| error!(SERVER_ERROR))?;
 
 	db::add_password_reset_request(
-		transaction,
+		connection,
 		&user.id,
 		&token_hash,
 		token_expiry,
@@ -340,7 +321,7 @@ pub async fn forgot_password(
 }
 
 pub async fn reset_password(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, MySql>,
 	config: &Settings,
 	// pool: Pool<MySql>,
 	new_password: &str,
@@ -348,7 +329,7 @@ pub async fn reset_password(
 	user_id: &[u8],
 ) -> Result<(), Value> {
 	let reset_request =
-		db::get_password_reset_request_for_user(transaction, &user_id)
+		db::get_password_reset_request_for_user(connection, &user_id)
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?;
 
@@ -375,46 +356,44 @@ pub async fn reset_password(
 		service::hash(new_password.as_bytes(), config.password_salt.as_bytes())
 			.map_err(|_| error!(SERVER_ERROR))?;
 
-	db::update_user_password(transaction, &user_id, &new_password)
+	db::update_user_password(connection, &user_id, &new_password)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
-	db::delete_password_reset_request_for_user(transaction, &user_id)
+	db::delete_password_reset_request_for_user(connection, &user_id)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
 	Ok(())
 }
 
-pub async fn join(
-	transaction: &mut Transaction<'_, MySql>,
-	config: Settings,
+pub async fn join_user(
+	connection: &mut Transaction<'_, MySql>,
+	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<(String, Uuid, String, Option<String>), Value> {
-	let user_data = if let Some(user_data) =
-		db::get_user_to_sign_up_by_username(transaction, &username)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?
-	{
-		user_data
-	} else {
-		return Err(error!(INVALID_OTP));
-	};
+) -> Result<(String, Uuid, String, Option<String>), Error> {
+	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
+		.await?
+		.status(200)
+		.body(error!(INVALID_OTP).to_string())?;
 
 	let success = service::validate_hash(
 		otp.as_bytes(),
 		config.password_salt.as_bytes(),
 		&user_data.otp_hash,
-	)
-	.map_err(|_| error!(SERVER_ERROR))?;
+	)?;
 
 	if !success {
-		return Err(error!(INVALID_OTP));
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_OTP).to_string())?;
 	}
 
 	if user_data.otp_expiry < get_current_time() {
-		return Err(error!(OTP_EXPIRED));
+		Error::as_result()
+			.status(200)
+			.body(error!(OTP_EXPIRED).to_string())?;
 	}
 
 	// For a personal account, get:
@@ -448,7 +427,7 @@ pub async fn join(
 	}
 
 	db::create_user(
-		transaction,
+		connection,
 		user_id,
 		&user_data.username,
 		&user_data.password,
@@ -456,8 +435,7 @@ pub async fn join(
 		(&user_data.first_name, &user_data.last_name),
 		created,
 	)
-	.await
-	.map_err(|_| error!(SERVER_ERROR))?;
+	.await?;
 
 	// For an organisation, create the organisation and domain
 	let email;
@@ -475,12 +453,12 @@ pub async fn join(
 			backup_email,
 			organisation_name,
 		} => {
-			let organisation_id = db::generate_new_resource_id(transaction)
+			let organisation_id = db::generate_new_resource_id(connection)
 				.await
 				.map_err(|_| error!(SERVER_ERROR))?;
 			let organisation_id = organisation_id.as_bytes();
 			db::create_orphaned_resource(
-				transaction,
+				connection,
 				organisation_id,
 				&format!("Organiation: {}", organisation_name),
 				rbac::RESOURCE_TYPES
@@ -492,7 +470,7 @@ pub async fn join(
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?;
 			db::create_organisation(
-				transaction,
+				connection,
 				organisation_id,
 				&organisation_name,
 				user_id,
@@ -501,20 +479,20 @@ pub async fn join(
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?;
 			db::set_resource_owner_id(
-				transaction,
+				connection,
 				organisation_id,
 				organisation_id,
 			)
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?;
 
-			let domain_id = db::generate_new_resource_id(transaction)
+			let domain_id = db::generate_new_resource_id(connection)
 				.await
 				.map_err(|_| error!(SERVER_ERROR))?;
 			let domain_id = domain_id.as_bytes().to_vec();
 
 			db::create_resource(
-				transaction,
+				connection,
 				&domain_id,
 				&format!("Domain: {}", domain_name),
 				rbac::RESOURCE_TYPES
@@ -527,7 +505,7 @@ pub async fn join(
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?;
 			db::add_domain_to_organisation(
-				transaction,
+				connection,
 				&domain_id,
 				&domain_name,
 			)
@@ -544,7 +522,7 @@ pub async fn join(
 	}
 
 	// add personal organisation
-	let organisation_id = db::generate_new_resource_id(transaction)
+	let organisation_id = db::generate_new_resource_id(connection)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 	let organisation_id = organisation_id.as_bytes();
@@ -552,7 +530,7 @@ pub async fn join(
 		format!("personal-organisation-{}", hex::encode(user_id));
 
 	db::create_orphaned_resource(
-		transaction,
+		connection,
 		organisation_id,
 		&organisation_name,
 		rbac::RESOURCE_TYPES
@@ -565,7 +543,7 @@ pub async fn join(
 	.map_err(|_| error!(SERVER_ERROR))?;
 
 	db::create_organisation(
-		transaction,
+		connection,
 		organisation_id,
 		&organisation_name,
 		user_id,
@@ -573,19 +551,19 @@ pub async fn join(
 	)
 	.await
 	.map_err(|_| error!(SERVER_ERROR))?;
-	db::set_resource_owner_id(transaction, organisation_id, organisation_id)
+	db::set_resource_owner_id(connection, organisation_id, organisation_id)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
-	db::add_email_for_user(transaction, user_id, email)
+	db::add_email_for_user(connection, user_id, email)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
-	db::delete_user_to_be_signed_up(transaction, &user_data.username)
+	db::delete_user_to_be_signed_up(connection, &user_data.username)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
 	let user = if let Some(user) =
-		db::get_user_by_username_or_email(transaction, &user_data.username)
+		db::get_user_by_username_or_email(connection, &user_data.username)
 			.await
 			.map_err(|_| error!(SERVER_ERROR))?
 	{
@@ -594,7 +572,7 @@ pub async fn join(
 		return Err(error!(USER_NOT_FOUND));
 	};
 
-	let (jwt, refresh_token) = sign_in(transaction, user, &config)
+	let (jwt, refresh_token) = sign_in_user(connection, user, &config)
 		.await
 		.map_err(|_| error!(SERVER_ERROR))?;
 
@@ -604,4 +582,12 @@ pub async fn join(
 		welcome_email_to,
 		backup_email_notification_to,
 	))
+}
+
+pub async fn create_organisation(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_name: &str,
+	super_admin_id: &[u8],
+) -> Result<Uuid, Error> {
+	todo!("create organisation and return org id")
 }

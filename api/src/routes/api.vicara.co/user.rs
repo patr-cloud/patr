@@ -94,9 +94,7 @@ async fn get_user_info_by_username(
 
 	let user_data =
 		db::get_user_by_username(context.get_mysql_connection(), &username)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.await?;
 
 	if user_data.is_none() {
 		context.status(400).json(error!(PROFILE_NOT_FOUND));
@@ -111,9 +109,7 @@ async fn get_user_info_by_username(
 		created: user_data.created,
 	};
 
-	let mut data = serde_json::to_value(data)
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let mut data = serde_json::to_value(data)?;
 	let object = data.as_object_mut().unwrap();
 	object.remove(request_keys::ID);
 	object.insert(request_keys::SUCCESS.to_string(), true.into());
@@ -221,9 +217,7 @@ async fn add_email_address(
 	}
 
 	if db::get_user_by_email(context.get_mysql_connection(), &email_address)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
+		.await?
 		.is_some()
 	{
 		context.json(error!(EMAIL_TAKEN));
@@ -290,9 +284,7 @@ async fn verify_email_address(
 			&user_id,
 			&email,
 		)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	if email_verification_data.is_none() {
 		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));

@@ -56,9 +56,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -216,10 +214,7 @@ async fn create_new_organisation(
 	}
 
 	let organisation_id =
-		db::generate_new_resource_id(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let organisation_id = organisation_id.as_bytes();
 	let org_id_string = hex::encode(organisation_id);
 	let user_id = context.get_token_data().unwrap().user.id.clone();
@@ -251,10 +246,7 @@ async fn create_new_organisation(
 	.await?;
 
 	let domain_id =
-		db::generate_new_resource_id(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let domain_id = domain_id.as_bytes().to_vec();
 
 	db::create_resource(

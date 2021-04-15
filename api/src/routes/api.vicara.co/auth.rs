@@ -96,11 +96,11 @@ async fn sign_in(
 		return Ok(context);
 	}
 
-	let app_config = context.get_state().config.clone();
-	let (jwt, refresh_token) = service::sign_in(
+	let config = context.get_state().config.clone();
+	let (jwt, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
 		user_data,
-		&app_config,
+		&config,
 	)
 	.await
 	.commit_transaction(false)?;
@@ -224,54 +224,47 @@ async fn join(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let otp = if let Some(Value::String(token)) =
-		body.get(request_keys::VERIFICATION_TOKEN)
-	{
-		token
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let otp = body
+		.get(request_keys::VERIFICATION_TOKEN)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let username = if let Some(Value::String(username)) =
-		body.get(request_keys::USERNAME)
-	{
-		username
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let username = body
+		.get(request_keys::USERNAME)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
 
-	let status =
-		service::join(context.get_mysql_connection(), config, otp, username)
-			.await;
-	if let Err(err) = status {
-		context.json(json!(err));
-		return Ok(context);
-	}
-	let (jwt, refresh_token, welcome_email_to, backup_email_notification_to) =
-		status.unwrap();
+	let result = service::join_user(
+		context.get_mysql_connection(),
+		&config,
+		otp,
+		username,
+	)
+	.await?;
+	let (jwt, refresh_token, welcome_email_to, backup_email_to) = result;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
-	}));
-
-	let config = context.get_state().config.clone();
 	task::spawn_blocking(|| {
 		mailer::send_sign_up_completed_mail(config, welcome_email_to);
 	});
 
-	if let Some(backup_email) = backup_email_notification_to {
+	if let Some(backup_email) = backup_email_to {
 		let config = context.get_state().config.clone();
 		task::spawn_blocking(|| {
 			mailer::send_backup_registration_mail(config, backup_email);
 		});
 	}
 
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ACCESS_TOKEN: jwt,
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+	}));
 	Ok(context)
 }
 
@@ -341,11 +334,9 @@ async fn is_username_valid(
 		return Ok(context);
 	};
 
-	let allowed = service::is_username_allowed(
-		context.get_mysql_connection(),
-		username,
-	)
-	.await?;
+	let allowed =
+		service::is_username_allowed(context.get_mysql_connection(), username)
+			.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
