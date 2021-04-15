@@ -213,7 +213,7 @@ async fn sign_up(
 	});
 
 	context.json(json!({
-		request_keys::SUCCESS: true,
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

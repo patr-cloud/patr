@@ -20,6 +20,15 @@ pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
 		.body(error!(SERVER_ERROR).to_string())
 }
 
+// 2 hours
+pub fn get_join_token_expiry() -> u64 {
+	1000 * 60 * 60 * 2
+}
+
+pub fn get_access_token_expiry() -> u64 {
+	0
+}
+
 pub fn get_hash_config() -> argon2::Config<'static> {
 	argon2::Config {
 		variant: Variant::Argon2i,
