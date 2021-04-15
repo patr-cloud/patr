@@ -686,6 +686,25 @@ pub async fn get_user_login(
 	Ok(rows.into_iter().next())
 }
 
+pub async fn delete_user_login(
+	connection: &mut Transaction<'_, MySql>,
+	refresh_token: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_login
+		WHERE
+			refresh_token = ?;
+		"#,
+		refresh_token,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn set_refresh_token_expiry(
 	connection: &mut Transaction<'_, MySql>,
 	refresh_token: &[u8],
