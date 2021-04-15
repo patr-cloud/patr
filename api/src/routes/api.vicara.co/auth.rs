@@ -191,10 +191,9 @@ async fn sign_out(
 		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
-	let refresh_token: &[u8] = &refresh_token;
 
 	let user_login =
-		db::get_user_login(context.get_mysql_connection(), refresh_token)
+		db::get_user_login(context.get_mysql_connection(), &refresh_token)
 			.await?;
 
 	if user_login.is_none() {
