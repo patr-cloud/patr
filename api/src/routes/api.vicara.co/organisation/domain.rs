@@ -49,9 +49,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -89,9 +87,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -126,9 +122,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -164,9 +158,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -202,9 +194,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&domain_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -299,10 +289,7 @@ async fn add_domain_to_organisation(
 	}
 
 	let domain_id =
-		db::generate_new_resource_id(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		db::generate_new_resource_id(context.get_mysql_connection()).await?;
 	let domain_id = domain_id.as_bytes();
 
 	db::create_resource(
@@ -346,9 +333,7 @@ async fn verify_domain_in_organisation(
 
 	let domain =
 		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.await?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -376,14 +361,11 @@ async fn verify_domain_in_organisation(
 	let client = SyncClient::new(
 		TcpClientConnection::new("1.1.1.1:53".parse().unwrap()).unwrap(),
 	);
-	let mut response = client
-		.query(
-			&Name::from_utf8(format!("vceVerify.{}", domain.name)).unwrap(),
-			DNSClass::IN,
-			RecordType::CNAME,
-		)
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let mut response = client.query(
+		&Name::from_utf8(format!("vceVerify.{}", domain.name)).unwrap(),
+		DNSClass::IN,
+		RecordType::CNAME,
+	)?;
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!("{}.vicara.co", domain_hash)).unwrap(),
@@ -416,9 +398,7 @@ async fn get_domain_info_in_organisation(
 
 	let domain =
 		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.await?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -450,9 +430,7 @@ async fn get_domain_info_in_organisation(
 					hash_length: 64,
 					..Default::default()
 				},
-			)
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			)?;
 			let domain_hash = hex::encode(domain_hash);
 
 			json!({
@@ -486,10 +464,7 @@ async fn delete_domain_in_organisation(
 		&domain_id,
 	)
 	.await?;
-	db::delete_resource(context.get_mysql_connection(), &domain_id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

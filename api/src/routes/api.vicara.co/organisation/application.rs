@@ -42,9 +42,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -80,9 +78,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&application_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context
@@ -121,9 +117,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&application_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					if resource.is_none() {
 						context

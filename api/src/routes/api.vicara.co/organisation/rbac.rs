@@ -44,9 +44,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -73,9 +71,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -102,9 +98,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -133,9 +127,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -163,9 +155,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -193,9 +183,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -222,9 +210,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -253,9 +239,7 @@ pub fn create_sub_app(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
-					.await
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?;
+					.await?;
 
 					Ok((context, resource))
 				}),
@@ -310,10 +294,8 @@ async fn list_all_permissions(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let permissions = db::get_all_permissions(context.get_mysql_connection())
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let permissions =
+		db::get_all_permissions(context.get_mysql_connection()).await?;
 	let permissions = permissions
 		.into_iter()
 		.map(|permission| {
@@ -345,10 +327,7 @@ async fn list_all_resource_types(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let resource_types =
-		db::get_all_resource_types(context.get_mysql_connection())
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+		db::get_all_resource_types(context.get_mysql_connection()).await?;
 	let resource_types = resource_types
 		.into_iter()
 		.map(|resource_type| {
@@ -387,10 +366,8 @@ async fn get_permissions_for_role(
 		return Ok(context);
 	};
 
-	let role = db::get_role_by_id(context.get_mysql_connection(), &role_id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let role =
+		db::get_role_by_id(context.get_mysql_connection(), &role_id).await?;
 
 	if role.is_none() {
 		context.status(400).json(error!(WRONG_PARAMETERS));
@@ -407,9 +384,7 @@ async fn get_permissions_for_role(
 			context.get_mysql_connection(),
 			&role_id,
 		)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let mut resource_map = Map::new();
 	let mut resource_type_map = Map::new();
@@ -655,14 +630,9 @@ async fn delete_role(
 
 	// Remove all users who belong to this role
 	db::remove_all_users_from_role(context.get_mysql_connection(), &role_id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 	// Delete role
-	db::delete_role(context.get_mysql_connection(), &role_id)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	db::delete_role(context.get_mysql_connection(), &role_id).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -688,9 +658,7 @@ async fn get_resource_info(
 
 	let resource =
 		db::get_resource_by_id(context.get_mysql_connection(), &resource_id)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.await?;
 	if resource.is_none() {
 		context.status(400).json(error!(RESOURCE_DOES_NOT_EXIST));
 		return Ok(context);
