@@ -22,13 +22,7 @@ use crate::{
 	error,
 	pin_fn,
 	routes,
-	utils::{
-		settings::Settings,
-		ErrorData,
-		EveContext,
-		EveError as Error,
-		EveMiddleware,
-	},
+	utils::{settings::Settings, Error, ErrorData, EveContext, EveMiddleware},
 };
 
 #[derive(Clone)]

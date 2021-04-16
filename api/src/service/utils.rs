@@ -1,7 +1,7 @@
 use argon2::Variant;
 use eve_rs::AsError;
 
-use crate::utils::EveError as Error;
+use crate::utils::Error;
 
 pub fn validate_hash(
 	pwd: &[u8],

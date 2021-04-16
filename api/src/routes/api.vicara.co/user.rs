@@ -1,5 +1,5 @@
 use argon2::Variant;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 
 use crate::{
@@ -13,9 +13,9 @@ use crate::{
 		constants::request_keys,
 		get_current_time,
 		validator,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };

@@ -1,4 +1,4 @@
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::json;
 
 use crate::{
@@ -9,9 +9,9 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };

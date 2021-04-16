@@ -20,7 +20,7 @@ use crate::{
 	app::App,
 	error,
 	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{get_current_time, ErrorData, EveContext, EveError as Error},
+	utils::{get_current_time, Error, ErrorData, EveContext},
 };
 
 pub type MiddlewareHandlerFunction =

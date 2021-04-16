@@ -1,5 +1,5 @@
 use argon2::Variant;
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 use trust_dns_client::{
 	client::{Client, SyncClient},
@@ -16,9 +16,9 @@ use crate::{
 	utils::{
 		constants::request_keys,
 		validator,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };
@@ -304,12 +304,8 @@ async fn add_domain_to_organisation(
 		&organisation_id,
 	)
 	.await?;
-	db::add_domain_to_organisation(
-		context.get_mysql_connection(),
-		domain_id,
-		domain_name,
-	)
-	.await?;
+	db::add_domain(context.get_mysql_connection(), domain_id, domain_name)
+		.await?;
 
 	let domain_id = hex::encode(domain_id);
 	context.json(json!({

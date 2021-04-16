@@ -8,7 +8,12 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{User, UserEmailAddress, UserEmailAddressSignUp},
+		db_mapping::{
+			User,
+			UserEmailAddress,
+			UserEmailAddressSignUp,
+			UserLogin,
+		},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -20,8 +25,7 @@ use crate::{
 		mailer,
 		settings::Settings,
 		validator,
-		AsErrorData,
-		EveError as Error,
+		Error,
 	},
 };
 
@@ -206,6 +210,7 @@ pub async fn sign_in_user(
 
 	let refresh_token = Uuid::new_v4();
 
+	// TODO make loginId and refresh_token as separate things
 	db::add_user_login(
 		connection,
 		refresh_token.as_bytes(),
@@ -222,34 +227,38 @@ pub async fn sign_in_user(
 	Ok((jwt, refresh_token))
 }
 
-pub async fn get_access_token_data(
+// TODO later change this to loginId
+pub async fn get_user_login_for_refresh_token(
 	connection: &mut Transaction<'_, MySql>,
-	config: Settings,
 	refresh_token: &str,
-) -> Result<String, Error> {
-	let refresh_token = if let Ok(uuid) = Uuid::parse_str(&refresh_token) {
-		uuid
-	} else {
-		return Err(error!(WRONG_PARAMETERS));
-	};
+) -> Result<UserLogin, Error> {
+	let refresh_token = Uuid::parse_str(&refresh_token)
+		.status(500)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let refresh_token = refresh_token.as_bytes();
 
-	let user_login = db::get_user_login(connection, refresh_token).await?;
-
-	if user_login.is_none() {
-		// context.json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
-	}
-	let user_login = user_login.unwrap();
+	let user_login = db::get_user_login(connection, refresh_token)
+		.await?
+		.status(200)
+		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
 	if user_login.token_expiry < get_current_time() {
 		// Token has expired
-		return Err(error!(EXPIRED));
+		Error::as_result()
+			.status(200)
+			.body(error!(EXPIRED).to_string())?;
 	}
 
+	Ok(user_login)
+}
+
+pub async fn generate_access_token(
+	connection: &mut Transaction<'_, MySql>,
+	config: &Settings,
+	user_login: &UserLogin,
+) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
-
 	let iat = get_current_time();
 	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
@@ -258,23 +267,37 @@ pub async fn get_access_token_data(
 	)
 	.await?;
 
-	let user_id = user_login.user_id;
-	let user_data = db::get_user_by_user_id(connection, &user_id)
+	let user_id = &user_login.user_id;
+	let User {
+		username,
+		first_name,
+		last_name,
+		created,
+		id,
+		..
+	} = db::get_user_by_user_id(connection, user_id)
 		.await?
-		.unwrap();
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	let user = ExposedUserData {
-		id: user_id,
-		username: user_data.username,
-		first_name: user_data.first_name,
-		last_name: user_data.last_name,
-		created: user_data.created,
+		id,
+		username,
+		first_name,
+		last_name,
+		created,
 	};
 
 	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
-	db::set_refresh_token_expiry(connection, refresh_token, iat, exp).await?;
+	db::set_refresh_token_expiry(
+		connection,
+		&user_login.refresh_token,
+		iat,
+		exp,
+	)
+	.await?;
 
 	Ok(jwt)
 }
@@ -416,7 +439,7 @@ pub async fn join_user(
 	// Then set email to backup email if personal account,
 	// And finally send the token, along with the email to the user
 
-	let user_uuid = Uuid::new_v4();
+	let user_uuid = db::generate_new_user_id(connection).await?;
 	let user_id = user_uuid.as_bytes();
 	let created = get_current_time();
 
@@ -440,11 +463,11 @@ pub async fn join_user(
 	// For an organisation, create the organisation and domain
 	let email;
 	let welcome_email_to;
-	let backup_email_notification_to;
+	let backup_email_to;
 	match user_data.email {
 		UserEmailAddressSignUp::Personal(email_address) => {
 			email = UserEmailAddress::Personal(email_address.clone());
-			backup_email_notification_to = None;
+			backup_email_to = None;
 			welcome_email_to = email_address;
 		}
 		UserEmailAddressSignUp::Organisation {
@@ -453,141 +476,50 @@ pub async fn join_user(
 			backup_email,
 			organisation_name,
 		} => {
-			let organisation_id = db::generate_new_resource_id(connection)
-				.await
-				.map_err(|_| error!(SERVER_ERROR))?;
-			let organisation_id = organisation_id.as_bytes();
-			db::create_orphaned_resource(
+			let organisation_id = service::create_organisation(
 				connection,
-				organisation_id,
-				&format!("Organiation: {}", organisation_name),
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::ORGANISATION)
-					.unwrap(),
-			)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
-			db::create_organisation(
-				connection,
-				organisation_id,
 				&organisation_name,
 				user_id,
-				get_current_time(),
 			)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
-			db::set_resource_owner_id(
-				connection,
-				organisation_id,
-				organisation_id,
-			)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
+			.await?;
+			let organisation_id = organisation_id.as_bytes();
 
-			let domain_id = db::generate_new_resource_id(connection)
-				.await
-				.map_err(|_| error!(SERVER_ERROR))?;
-			let domain_id = domain_id.as_bytes().to_vec();
-
-			db::create_resource(
+			let domain_id = service::add_domain_to_organisation(
 				connection,
-				&domain_id,
-				&format!("Domain: {}", domain_name),
-				rbac::RESOURCE_TYPES
-					.get()
-					.unwrap()
-					.get(rbac::resource_types::DOMAIN)
-					.unwrap(),
-				organisation_id,
-			)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
-			db::add_domain_to_organisation(
-				connection,
-				&domain_id,
 				&domain_name,
+				organisation_id,
 			)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
+			.await?
+			.as_bytes()
+			.to_vec();
 
 			welcome_email_to = format!("{}@{}", email_local, domain_name);
 			email = UserEmailAddress::Organisation {
 				domain_id,
 				email_local,
 			};
-			backup_email_notification_to = Some(backup_email);
+			backup_email_to = Some(backup_email);
 		}
 	}
 
 	// add personal organisation
-	let organisation_id = db::generate_new_resource_id(connection)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
-	let organisation_id = organisation_id.as_bytes();
-	let organisation_name =
-		format!("personal-organisation-{}", hex::encode(user_id));
-
-	db::create_orphaned_resource(
+	let personal_organisation_name = service::get_personal_org_name(username);
+	service::create_organisation(
 		connection,
-		organisation_id,
-		&organisation_name,
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::ORGANISATION)
-			.unwrap(),
-	)
-	.await
-	.map_err(|_| error!(SERVER_ERROR))?;
-
-	db::create_organisation(
-		connection,
-		organisation_id,
-		&organisation_name,
+		&personal_organisation_name,
 		user_id,
-		get_current_time(),
 	)
-	.await
-	.map_err(|_| error!(SERVER_ERROR))?;
-	db::set_resource_owner_id(connection, organisation_id, organisation_id)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
+	.await?;
 
-	db::add_email_for_user(connection, user_id, email)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
-	db::delete_user_to_be_signed_up(connection, &user_data.username)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
+	db::add_email_for_user(connection, user_id, email).await?;
+	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-	let user = if let Some(user) =
-		db::get_user_by_username_or_email(connection, &user_data.username)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?
-	{
-		user
-	} else {
-		return Err(error!(USER_NOT_FOUND));
-	};
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(200)
+		.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let (jwt, refresh_token) = sign_in_user(connection, user, &config)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
+	let (jwt, refresh_token) = sign_in_user(connection, user, &config).await?;
 
-	Ok((
-		jwt,
-		refresh_token,
-		welcome_email_to,
-		backup_email_notification_to,
-	))
-}
-
-pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
-	organisation_name: &str,
-	super_admin_id: &[u8],
-) -> Result<Uuid, Error> {
-	todo!("create organisation and return org id")
+	Ok((jwt, refresh_token, welcome_email_to, backup_email_to))
 }

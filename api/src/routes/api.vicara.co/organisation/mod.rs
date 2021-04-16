@@ -1,4 +1,4 @@
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 
 use crate::{
@@ -11,9 +11,9 @@ use crate::{
 		constants::request_keys,
 		get_current_time,
 		validator,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };
@@ -261,12 +261,8 @@ async fn create_new_organisation(
 		organisation_id,
 	)
 	.await?;
-	db::add_domain_to_organisation(
-		context.get_mysql_connection(),
-		&domain_id,
-		&domain_name,
-	)
-	.await?;
+	db::add_domain(context.get_mysql_connection(), &domain_id, &domain_name)
+		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

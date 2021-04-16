@@ -242,6 +242,47 @@ pub async fn get_user_by_username_or_email(
 	Ok(rows.into_iter().next())
 }
 
+pub async fn generate_new_user_id(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		User,
+		r#"
+		SELECT
+			*
+		FROM
+			user
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			User,
+			r#"
+			SELECT
+				*
+			FROM
+				user
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
+}
+
 pub async fn get_god_user_id(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Option<Uuid>, sqlx::Error> {
