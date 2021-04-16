@@ -4,7 +4,7 @@ use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
 use semver::Version;
 
-use crate::{error, utils::EveError};
+use crate::{error, utils::Error};
 
 pub const DATABASE_VERSION: Version = Version {
 	major: 0,
@@ -36,13 +36,13 @@ impl Display for AccountType {
 }
 
 impl FromStr for AccountType {
-	type Err = EveError;
+	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"personal" => Ok(AccountType::Personal),
 			"organisation" => Ok(AccountType::Organisation),
-			_ => EveError::as_result()
+			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}

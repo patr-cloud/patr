@@ -37,7 +37,7 @@ pub async fn initialize_domain_post(
 	Ok(())
 }
 
-pub async fn add_domain_to_organisation(
+pub async fn add_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 	domain_name: &str,
@@ -241,6 +241,30 @@ pub async fn get_domain_by_id(
 			id = ?
 		"#,
 		domain_id
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+pub async fn get_domain_by_name(
+	connection: &mut Transaction<'_, MySql>,
+	domain_name: &str,
+) -> Result<Option<Domain>, sqlx::Error> {
+	let rows = query_as!(
+		Domain,
+		r#"
+		SELECT
+			id,
+			name,
+			is_verified as `is_verified: bool`
+		FROM
+			domain
+		WHERE
+			name = ?;
+		"#,
+		domain_name
 	)
 	.fetch_all(connection)
 	.await?;

@@ -11,10 +11,9 @@ use crate::{
 	utils::{
 		constants::{request_keys, AccountType},
 		mailer,
-		AsErrorData,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };
@@ -102,8 +101,7 @@ async fn sign_in(
 		user_data,
 		&config,
 	)
-	.await
-	.commit_transaction(false)?;
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -272,19 +270,21 @@ async fn get_access_token(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let refresh_token =
-		if let Some(header) = context.get_header("Authorization") {
-			header
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let refresh_token = context
+		.get_header("Authorization")
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let access_token = service::get_access_token_data(
+	let user_login = service::get_user_login_for_refresh_token(
 		context.get_mysql_connection(),
-		config,
 		&refresh_token,
+	)
+	.await?;
+	let access_token = service::generate_access_token(
+		context.get_mysql_connection(),
+		&config,
+		&user_login,
 	)
 	.await?;
 

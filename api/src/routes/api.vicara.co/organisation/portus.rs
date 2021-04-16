@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
 
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 use shiplift::{ContainerOptions, Docker};
 
@@ -14,9 +14,9 @@ use crate::{
 	utils::{
 		constants::{self, request_keys},
 		get_current_time,
+		Error,
 		ErrorData,
 		EveContext,
-		EveError as Error,
 		EveMiddleware,
 	},
 };
