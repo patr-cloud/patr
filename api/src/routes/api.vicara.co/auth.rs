@@ -4,17 +4,10 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
-	pin_fn,
-	service,
+	db, error, pin_fn, service,
 	utils::{
 		constants::{request_keys, AccountType},
-		mailer,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		mailer, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -274,13 +267,33 @@ async fn get_access_token(
 		.get_header("Authorization")
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let login_id = hex::decode(
+		context
+			.get_param(request_keys::LOGIN_ID)
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+	)
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let user_login = service::get_user_login_for_refresh_token(
+	let user_login = service::get_user_login_for_login_id(
 		context.get_mysql_connection(),
-		&refresh_token,
+		&login_id,
 	)
 	.await?;
+	let success = service::validate_hash(
+		refresh_token.as_bytes(),
+		config.password_salt.as_bytes(),
+		&user_login.refresh_token,
+	)?;
+
+	if !success {
+		Error::as_result()
+			.status(200)
+			.body(error!(UNAUTHORIZED).to_string())?;
+	}
+
 	let access_token = service::generate_access_token(
 		context.get_mysql_connection(),
 		&config,
@@ -301,12 +314,10 @@ async fn is_email_valid(
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 
-	let email_address = if let Some(email) = query.get(request_keys::EMAIL) {
-		email
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let email_address = query
+		.get(request_keys::EMAIL)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let allowed = service::is_email_allowed(
 		context.get_mysql_connection(),
@@ -327,12 +338,10 @@ async fn is_username_valid(
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query().clone();
 
-	let username = if let Some(username) = query.get(request_keys::USERNAME) {
-		username
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let username = query
+		.get(request_keys::USERNAME)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let allowed =
 		service::is_username_allowed(context.get_mysql_connection(), username)
@@ -351,31 +360,27 @@ async fn forgot_password(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id =
-		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
-			user_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let user_id = body
+		.get(request_keys::USER_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let status = service::forgot_password(
+	let (otp, backup_email) = service::forgot_password(
 		context.get_mysql_connection(),
-		config,
+		&config,
 		user_id,
 	)
-	.await;
+	.await?;
 
-	if let Err(err) = status {
-		context.json(err);
-		return Ok(context);
-	}
-	let otp = status.unwrap();
+	task::spawn_blocking(|| {
+		mailer::send_password_reset_requested_mail(config, backup_email, otp);
+	});
 
 	context.json(json!({
-		request_keys::SUCCESS: true,
-		"otp" : otp
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }
