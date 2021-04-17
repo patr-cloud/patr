@@ -1,33 +1,24 @@
 use eve_rs::AsError;
 use serde_json::Value;
 use sqlx::{MySql, Transaction};
-use tokio::task;
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{
-			User,
-			UserEmailAddress,
-			UserEmailAddressSignUp,
-			UserLogin,
+			User, UserEmailAddress, UserEmailAddressSignUp, UserLogin,
 		},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType,
-		get_current_time,
-		mailer,
-		settings::Settings,
-		validator,
-		Error,
+		constants::AccountType, get_current_time, settings::Settings,
+		validator, Error,
 	},
 };
+
+use super::get_refresh_token_expiry;
 
 pub async fn is_username_allowed(
 	connection: &mut Transaction<'_, MySql>,
@@ -187,6 +178,45 @@ pub async fn create_user_join_request(
 	Ok(otp)
 }
 
+// Creates a login in the db and returns it
+// loginId and refresh_token are separate things
+pub async fn create_login_for_user(
+	connection: &mut Transaction<'_, MySql>,
+	config: &Settings,
+	user_id: &[u8],
+) -> Result<UserLogin, Error> {
+	let login_id = db::generate_new_login_id(connection).await?;
+	let refresh_token =
+		db::generate_new_refresh_token_for_user(connection, user_id).await?;
+	let iat = get_current_time();
+
+	let hashed_refresh_token = service::hash(
+		hex::encode(refresh_token.as_bytes()).as_bytes(),
+		config.password_salt.as_bytes(),
+	)?;
+
+	db::add_user_login(
+		connection,
+		login_id.as_bytes(),
+		&hashed_refresh_token,
+		iat + get_refresh_token_expiry(),
+		user_id,
+		iat,
+		iat,
+	)
+	.await?;
+	let user_login = UserLogin {
+		login_id: login_id.as_bytes().to_vec(),
+		user_id: user_id.to_vec(),
+		last_activity: iat,
+		last_login: iat,
+		refresh_token: refresh_token.as_bytes().to_vec(),
+		token_expiry: iat + get_refresh_token_expiry(),
+	};
+
+	Ok(user_login)
+}
+
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
 pub async fn sign_in_user(
@@ -194,50 +224,21 @@ pub async fn sign_in_user(
 	user: User,
 	config: &Settings,
 ) -> Result<(String, Uuid), Error> {
-	// generate JWT
-	let iat = get_current_time();
-	let exp = iat + (1000 * 3600 * 24 * 3); // 3 days
-	let orgs =
-		db::get_all_organisation_roles_for_user(connection, &user.id).await?;
-
-	let user = ExposedUserData {
-		id: user.id,
-		username: user.username,
-		first_name: user.first_name,
-		last_name: user.last_name,
-		created: user.created,
-	};
-
 	let refresh_token = Uuid::new_v4();
 
-	// TODO make loginId and refresh_token as separate things
-	db::add_user_login(
-		connection,
-		refresh_token.as_bytes(),
-		iat + (1000 * 60 * 60 * 24 * 30), // 30 days
-		&user.id,
-		iat,
-		iat,
-	)
-	.await?;
+	let user_login =
+		create_login_for_user(connection, config, &user.id).await?;
 
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
-	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
+	let jwt = generate_access_token(connection, &config, &user_login).await?;
 
 	Ok((jwt, refresh_token))
 }
 
-// TODO later change this to loginId
-pub async fn get_user_login_for_refresh_token(
+pub async fn get_user_login_for_login_id(
 	connection: &mut Transaction<'_, MySql>,
-	refresh_token: &str,
+	login_id: &[u8],
 ) -> Result<UserLogin, Error> {
-	let refresh_token = Uuid::parse_str(&refresh_token)
-		.status(500)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let refresh_token = refresh_token.as_bytes();
-
-	let user_login = db::get_user_login(connection, refresh_token)
+	let user_login = db::get_user_login(connection, login_id)
 		.await?
 		.status(200)
 		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
@@ -260,14 +261,13 @@ pub async fn generate_access_token(
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
 	let iat = get_current_time();
-	let exp = iat + (1000 * 60 * 60 * 24 * 3); // 3 days
+	let exp = iat + service::get_access_token_expiry(); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
 		connection,
 		&user_login.user_id,
 	)
 	.await?;
 
-	let user_id = &user_login.user_id;
 	let User {
 		username,
 		first_name,
@@ -275,7 +275,7 @@ pub async fn generate_access_token(
 		created,
 		id,
 		..
-	} = db::get_user_by_user_id(connection, user_id)
+	} = db::get_user_by_user_id(connection, &user_login.user_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
@@ -306,13 +306,13 @@ pub async fn generate_access_token(
 // TODO: Remove otp from response
 pub async fn forgot_password(
 	connection: &mut Transaction<'_, MySql>,
-	config: Settings,
+	config: &Settings,
 	user_id: &str,
-) -> Result<String, Value> {
+) -> Result<(String, String), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
-	let user = user.unwrap();
+		.await?
+		.status(200)
+		.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
@@ -320,8 +320,7 @@ pub async fn forgot_password(
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 
 	let token_hash =
-		service::hash(otp.as_bytes(), config.password_salt.as_bytes())
-			.map_err(|_| error!(SERVER_ERROR))?;
+		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
 
 	db::add_password_reset_request(
 		connection,
@@ -329,24 +328,14 @@ pub async fn forgot_password(
 		&token_hash,
 		token_expiry,
 	)
-	.await
-	.map_err(|_| error!(SERVER_ERROR))?;
-	let otp_clone = otp.clone();
-	task::spawn_blocking(|| {
-		mailer::send_password_reset_requested_mail(
-			config,
-			user.backup_email,
-			otp,
-		);
-	});
+	.await?;
 
-	Ok(otp_clone)
+	Ok((otp, user.backup_email))
 }
 
 pub async fn reset_password(
 	connection: &mut Transaction<'_, MySql>,
 	config: &Settings,
-	// pool: Pool<MySql>,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],

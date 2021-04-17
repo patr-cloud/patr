@@ -106,4 +106,5 @@ pub mod request_keys {
 	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
+	pub const LOGIN_ID: &str = "loginId";
 }

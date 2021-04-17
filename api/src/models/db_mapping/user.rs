@@ -1,7 +1,7 @@
 pub struct User {
 	pub id: Vec<u8>,
 	pub username: String,
-	pub password: Vec<u8>,
+	pub password: String,
 	pub backup_email: String,
 	pub first_name: String,
 	pub last_name: String,
@@ -12,7 +12,8 @@ pub struct User {
 }
 
 pub struct UserLogin {
-	pub refresh_token: Vec<u8>,
+	pub login_id: Vec<u8>,
+	pub refresh_token: String,
 	pub token_expiry: u64,
 	pub user_id: Vec<u8>,
 	pub last_login: u64,
@@ -43,8 +44,8 @@ pub struct UserToSignUp {
 	pub username: String,
 	pub backup_email: String,
 	pub email: UserEmailAddressSignUp,
-	pub password: Vec<u8>,
-	pub otp_hash: Vec<u8>,
+	pub password: String,
+	pub otp_hash: String,
 	pub otp_expiry: u64,
 	pub first_name: String,
 	pub last_name: String,
@@ -52,7 +53,7 @@ pub struct UserToSignUp {
 
 pub struct PasswordResetRequest {
 	pub user_id: Vec<u8>,
-	pub token: Vec<u8>,
+	pub token: String,
 	pub token_expiry: u64,
 }
 
