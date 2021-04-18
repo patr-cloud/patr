@@ -4,10 +4,17 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error, pin_fn, service,
+	db,
+	error,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, AccountType},
-		mailer, Error, ErrorData, EveContext, EveMiddleware,
+		mailer,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -77,11 +84,7 @@ async fn sign_in(
 	.status(200)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(
-		password.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&user_data.password,
-	)?;
+	let success = service::validate_hash(&password, &user_data.password)?;
 
 	if !success {
 		context.json(error!(INVALID_PASSWORD));
@@ -282,11 +285,8 @@ async fn get_access_token(
 		&login_id,
 	)
 	.await?;
-	let success = service::validate_hash(
-		refresh_token.as_bytes(),
-		config.password_salt.as_bytes(),
-		&user_login.refresh_token,
-	)?;
+	let success =
+		service::validate_hash(&refresh_token, &user_login.refresh_token)?;
 
 	if !success {
 		Error::as_result()

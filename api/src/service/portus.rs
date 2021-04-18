@@ -1,7 +1,7 @@
 // SERVICE FOR PORTUS
-use std::{env, path::PathBuf};
+use std::{env, iter, path::PathBuf};
 
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{distributions::Alphanumeric, prelude::*};
 use sqlx::{MySql, Transaction};
 use tokio::fs;
 
@@ -9,9 +9,11 @@ use crate::db;
 
 /// function to assign available port
 pub fn generate_password(length: u16) -> String {
-	thread_rng()
-		.sample_iter(&Alphanumeric)
-		.take(length.into())
+	let mut rng = thread_rng();
+	iter::repeat(())
+		.map(|()| rng.sample(Alphanumeric))
+		.map(char::from)
+		.take(7)
 		.collect()
 }
 
@@ -21,7 +23,7 @@ pub fn generate_username(length: u16) -> String {
 
 	(0..length)
 		.map(|_| {
-			let idx = thread_rng().gen_range(0, CHARSET.len());
+			let idx = thread_rng().gen_range(0..CHARSET.len());
 			CHARSET[idx] as char
 		})
 		.collect()
@@ -79,7 +81,7 @@ pub async fn assign_available_port(
 	let restricted_ports = [5800, 8080, 9000, 3000];
 
 	loop {
-		let port = rand::thread_rng().gen_range(low, high);
+		let port = rand::thread_rng().gen_range(low..high);
 		if restricted_ports.contains(&port) {
 			continue;
 		}

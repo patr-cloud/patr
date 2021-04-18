@@ -17,29 +17,22 @@ pub async fn send_otp_sms(
 		config.twilio.access_token,
 		config.twilio.username
 	))
-	.body_form(&SmsRequest {
-		body: format!(
-			"Welcome to Vicara! The OTP to verify your account is {}",
-			otp
-		),
-		from: config.twilio.from_number,
-		to: to_number.clone(),
-	});
-
-	let request = if let Ok(request) = request {
-		request
-	} else {
-		return Err(String::from(error::id::SERVER_ERROR));
-	};
+	.body(
+		serde_json::to_value(SmsRequest {
+			body: format!(
+				"Welcome to Vicara! The OTP to verify your account is {}",
+				otp
+			),
+			from: config.twilio.from_number,
+			to: to_number.clone(),
+		})
+		.map_err(|err| err.to_string())?,
+	)
+	.recv_string();
 
 	// Send the email
 	match request.await {
-		Ok(mut data) => {
-			let data = if let Ok(string) = data.body_string().await {
-				string
-			} else {
-				return Err(String::from(error::id::SERVER_ERROR));
-			};
+		Ok(data) => {
 			let result = serde_json::from_str(&data);
 			let data: Value = if let Ok(data) = result {
 				data

@@ -98,7 +98,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 
 	use serde::Deserialize;
 	use serde_json::{json, Value};
-	use surf::{http::Method, url::Url, Request};
+	use surf::{http::Method, Request, Url};
 
 	use crate::constants::request_keys;
 
