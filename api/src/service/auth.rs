@@ -1,30 +1,20 @@
 use eve_rs::AsError;
-use serde_json::Value;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 use super::get_refresh_token_expiry;
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{
-			User,
-			UserEmailAddress,
-			UserEmailAddressSignUp,
-			UserLogin,
+			User, UserEmailAddress, UserEmailAddressSignUp, UserLogin,
 		},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType,
-		get_current_time,
-		settings::Settings,
-		validator,
-		Error,
+		constants::AccountType, get_current_time, settings::Settings,
+		validator, Error,
 	},
 };
 
@@ -334,41 +324,33 @@ pub async fn forgot_password(
 
 pub async fn reset_password(
 	connection: &mut Transaction<'_, MySql>,
-	config: &Settings,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],
-) -> Result<(), Value> {
+) -> Result<(), Error> {
 	let reset_request =
-		db::get_password_reset_request_for_user(connection, &user_id)
-			.await
-			.map_err(|_| error!(SERVER_ERROR))?;
+		db::get_password_reset_request_for_user(connection, &user_id).await?;
 
 	if reset_request.is_none() {
-		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
+		Error::as_result()
+			.status(400)
+			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 	let reset_request = reset_request.unwrap();
 
-	let success = service::validate_hash(token, &reset_request.token)
-		.map_err(|_| error!(SERVER_ERROR))?;
+	let success = service::validate_hash(token, &reset_request.token)?;
 
 	if !success {
-		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
-		// return Ok(context);
-		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
+		Error::as_result()
+			.status(400)
+			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 
-	let new_password = service::hash(new_password.as_bytes())
-		.map_err(|_| error!(SERVER_ERROR))?;
+	let new_password = service::hash(new_password.as_bytes())?;
 
-	db::update_user_password(connection, &user_id, &new_password)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
+	db::update_user_password(connection, &user_id, &new_password).await?;
 
-	db::delete_password_reset_request_for_user(connection, &user_id)
-		.await
-		.map_err(|_| error!(SERVER_ERROR))?;
+	db::delete_password_reset_request_for_user(connection, &user_id).await?;
 
 	Ok(())
 }

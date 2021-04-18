@@ -1,20 +1,13 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Value};
+use serde_json::json;
 use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
-	pin_fn,
-	service,
+	db, error, pin_fn, service,
 	utils::{
 		constants::{request_keys, AccountType},
-		mailer,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		mailer, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -391,71 +384,46 @@ async fn reset_password(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let new_password = if let Some(Value::String(password)) =
-		body.get(request_keys::PASSWORD)
-	{
-		password
-	} else {
-		log::debug!("password");
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let token = if let Some(Value::String(token)) =
-		body.get(request_keys::VERIFICATION_TOKEN)
-	{
-		token
-	} else {
-		log::debug!("token");
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let user_id =
-		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
-			user_id
-		} else {
-			log::debug!("id");
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-	let user_id = if let Ok(user_id) = hex::decode(user_id) {
-		user_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let new_password = body
+		.get(request_keys::PASSWORD)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let token = body
+		.get(request_keys::VERIFICATION_TOKEN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let username = body
+		.get(request_keys::USERNAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user =
+		db::get_user_by_username(context.get_mysql_connection(), username)
+			.await?
+			.status(400)
+			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let pool = context.get_state().mysql.clone();
 
-	let status = service::reset_password(
+	service::reset_password(
 		context.get_mysql_connection(),
-		&config,
 		new_password,
 		token,
-		&user_id,
+		&user.id,
 	)
-	.await;
-	if let Err(err) = status {
-		context.json(json!(err));
-		return Ok(context);
-	}
+	.await?;
 
-	task::spawn(async move {
-		let mut connection = pool
-			.begin()
-			.await
-			.expect("unable to begin transaction from connection");
-		let user = db::get_user_by_user_id(&mut connection, &user_id)
-			.await
-			.expect("unable to get user data")
-			.expect("user data for that user_id was None");
-
-		task::spawn_blocking(|| {
-			mailer::send_password_changed_notification_mail(
-				config,
-				user.backup_email,
-			);
-		});
+	task::spawn_blocking(|| {
+		mailer::send_password_changed_notification_mail(
+			config,
+			user.backup_email,
+		);
 	});
 
 	context.json(json!({
