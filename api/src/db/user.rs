@@ -3,10 +3,18 @@ use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{
-		Organisation, PasswordResetRequest, PersonalEmailToBeVerified, User,
-		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
+		Organisation,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		User,
+		UserEmailAddress,
+		UserEmailAddressSignUp,
+		UserLogin,
+		UserToSignUp,
 	},
-	query, query_as, utils,
+	query,
+	query_as,
+	utils,
 };
 
 pub async fn initialize_users_pre(
@@ -379,9 +387,9 @@ pub async fn set_user_to_be_signed_up(
 	connection: &mut Transaction<'_, MySql>,
 	email: UserEmailAddressSignUp,
 	username: &str,
-	password: &[u8],
+	password: &str,
 	(first_name, last_name): (&str, &str),
-	otp_hash: &[u8],
+	otp_hash: &str,
 	otp_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	match email {
@@ -579,7 +587,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 	user_id: &[u8],
-	verification_token: &[u8],
+	verification_token: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -696,7 +704,7 @@ pub async fn create_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	username: &str,
-	password: &[u8],
+	password: &str,
 	backup_email: &str,
 	(first_name, last_name): (&str, &str),
 	created: u64,
@@ -725,7 +733,7 @@ pub async fn create_user(
 pub async fn add_user_login(
 	connection: &mut Transaction<'_, MySql>,
 	login_id: &[u8],
-	refresh_token: &[u8],
+	refresh_token: &str,
 	token_expiry: u64,
 	user_id: &[u8],
 	last_login: u64,
@@ -901,7 +909,7 @@ pub async fn update_user_data(
 pub async fn update_user_password(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-	password: &[u8],
+	password: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -924,7 +932,7 @@ pub async fn update_user_password(
 pub async fn add_password_reset_request(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-	token_hash: &[u8],
+	token_hash: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(

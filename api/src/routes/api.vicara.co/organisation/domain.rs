@@ -1,4 +1,3 @@
-use argon2::Variant;
 use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 use trust_dns_client::{
@@ -345,7 +344,7 @@ async fn verify_domain_in_organisation(
 
 	let domain_hash = argon2::hash_raw(
 		domain.name.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
+		context.get_state().config.password_pepper.as_bytes(),
 		&argon2::Config {
 			variant: Variant::Argon2i,
 			hash_length: 64,
@@ -420,7 +419,7 @@ async fn get_domain_info_in_organisation(
 		} else {
 			let domain_hash = argon2::hash_raw(
 				domain.name.as_bytes(),
-				context.get_state().config.password_salt.as_bytes(),
+				context.get_state().config.password_pepper.as_bytes(),
 				&argon2::Config {
 					variant: Variant::Argon2i,
 					hash_length: 64,

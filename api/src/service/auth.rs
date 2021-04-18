@@ -3,22 +3,30 @@ use serde_json::Value;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
+use super::get_refresh_token_expiry;
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{
-			User, UserEmailAddress, UserEmailAddressSignUp, UserLogin,
+			User,
+			UserEmailAddress,
+			UserEmailAddressSignUp,
+			UserLogin,
 		},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType, get_current_time, settings::Settings,
-		validator, Error,
+		constants::AccountType,
+		get_current_time,
+		settings::Settings,
+		validator,
+		Error,
 	},
 };
-
-use super::get_refresh_token_expiry;
 
 pub async fn is_username_allowed(
 	connection: &mut Transaction<'_, MySql>,
@@ -159,10 +167,8 @@ pub async fn create_user_join_request(
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 	let token_expiry = get_current_time() + service::get_join_token_expiry();
 
-	let password =
-		service::hash(password.as_bytes(), config.password_salt.as_bytes())?;
-	let token_hash =
-		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
+	let password = service::hash(password.as_bytes())?;
+	let token_hash = service::hash(otp.as_bytes())?;
 
 	db::set_user_to_be_signed_up(
 		connection,
@@ -187,13 +193,12 @@ pub async fn create_login_for_user(
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
 	let refresh_token =
-		db::generate_new_refresh_token_for_user(connection, user_id).await?;
+		service::generate_new_refresh_token_for_user(connection, user_id)
+			.await?;
 	let iat = get_current_time();
 
-	let hashed_refresh_token = service::hash(
-		hex::encode(refresh_token.as_bytes()).as_bytes(),
-		config.password_salt.as_bytes(),
-	)?;
+	let hashed_refresh_token =
+		service::hash(hex::encode(refresh_token.as_bytes()).as_bytes())?;
 
 	db::add_user_login(
 		connection,
@@ -210,7 +215,7 @@ pub async fn create_login_for_user(
 		user_id: user_id.to_vec(),
 		last_activity: iat,
 		last_login: iat,
-		refresh_token: refresh_token.as_bytes().to_vec(),
+		refresh_token,
 		token_expiry: iat + get_refresh_token_expiry(),
 	};
 
@@ -291,13 +296,8 @@ pub async fn generate_access_token(
 	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
-	db::set_refresh_token_expiry(
-		connection,
-		&user_login.refresh_token,
-		iat,
-		exp,
-	)
-	.await?;
+	db::set_refresh_token_expiry(connection, &user_login.login_id, iat, exp)
+		.await?;
 
 	Ok(jwt)
 }
@@ -319,8 +319,7 @@ pub async fn forgot_password(
 
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 
-	let token_hash =
-		service::hash(otp.as_bytes(), config.password_salt.as_bytes())?;
+	let token_hash = service::hash(otp.as_bytes())?;
 
 	db::add_password_reset_request(
 		connection,
@@ -351,12 +350,8 @@ pub async fn reset_password(
 	}
 	let reset_request = reset_request.unwrap();
 
-	let success = service::validate_hash(
-		token.as_bytes(),
-		config.password_salt.as_bytes(),
-		&reset_request.token,
-	)
-	.map_err(|_| error!(SERVER_ERROR))?;
+	let success = service::validate_hash(token, &reset_request.token)
+		.map_err(|_| error!(SERVER_ERROR))?;
 
 	if !success {
 		// context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
@@ -364,9 +359,8 @@ pub async fn reset_password(
 		return Err(error!(EMAIL_TOKEN_NOT_FOUND));
 	}
 
-	let new_password =
-		service::hash(new_password.as_bytes(), config.password_salt.as_bytes())
-			.map_err(|_| error!(SERVER_ERROR))?;
+	let new_password = service::hash(new_password.as_bytes())
+		.map_err(|_| error!(SERVER_ERROR))?;
 
 	db::update_user_password(connection, &user_id, &new_password)
 		.await
@@ -390,11 +384,7 @@ pub async fn join_user(
 		.status(200)
 		.body(error!(INVALID_OTP).to_string())?;
 
-	let success = service::validate_hash(
-		otp.as_bytes(),
-		config.password_salt.as_bytes(),
-		&user_data.otp_hash,
-	)?;
+	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
 	if !success {
 		Error::as_result()

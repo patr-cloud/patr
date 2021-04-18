@@ -1,27 +1,58 @@
-use argon2::{Argon2, Version};
-use eve_rs::AsError;
+use argon2::{
+	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
+	Argon2,
+	PasswordHash,
+	Version,
+};
+use once_cell::sync::OnceCell;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
-use crate::{db, utils::Error};
+use crate::{
+	db,
+	utils::{settings::Settings, Error},
+};
 
 lazy_static::lazy_static! {
-	static ref ARGON_CONFIG: Argon2<'static> = Argon2::new(
-		secret,
-		t_cost,
-		m_cost,
-		parallelism,
-		Version::default()
+	static ref ARGON: Argon2<'static> = Argon2::new(
+		None,
+		4,
+		8192,
+		4,
+		Version::V0x13
 	).unwrap();
+}
+static APP_SETTINGS: OnceCell<Settings> = OnceCell::new();
+
+pub fn initialize(config: &Settings) {
+	APP_SETTINGS
+		.set(config.clone())
+		.expect("unable to set app settings")
 }
 
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
-	argon2::verify_raw(pwd, salt, hashed, &get_hash_config()).status(500)
+	Ok(ARGON
+		.verify_password(
+			pwd.as_bytes(),
+			&PasswordHash::new(hashed).map_err(|_| Error::empty())?,
+		)
+		.is_ok())
 }
 
 /// function to get token hash
-pub fn hash(pwd: &[u8], salt: &[u8]) -> Result<Vec<u8>, Error> {
-	argon2::hash_raw(pwd, salt, &get_hash_config()).status(500)
+pub fn hash(pwd: &[u8]) -> Result<String, Error> {
+	let salt = format!(
+		"{}{}",
+		APP_SETTINGS
+			.get()
+			.expect("unable to get app settings")
+			.password_pepper,
+		SaltString::generate(&mut rand::thread_rng()).as_str()
+	);
+	ARGON
+		.hash_password_simple(pwd, &salt)
+		.map(|hash| hash.to_string())
+		.map_err(|_| Error::empty())
 }
 
 // 2 hours
@@ -43,84 +74,40 @@ pub fn get_refresh_token_expiry() -> u64 {
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-) -> Result<Uuid, Error> {
-	let mut uuid = Uuid::new_v4();
-	let logins = db::get_all_logins_for_user(connection, user_id).await?;
-
-	let mut login = query_as!(
-		UserLogin,
-		r#"
-		SELECT
-			*
-		FROM
-			user_login
-		WHERE
-			user_id = ?;
-		"#,
-		user_id
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.filter_map(|login| {
-		// TODO check salt and pepper for hashes
-		if let Ok(same) = service::validate_hash(
-			uuid.as_bytes(),
-			b"salt",
-			&login.refresh_token,
-		) {
-			Some((same, login))
+) -> Result<String, Error> {
+	let mut refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
+	let mut login = logins.iter().find(|login| {
+		if let Ok(result) = validate_hash(&refresh_token, &login.refresh_token)
+		{
+			result
 		} else {
-			None
+			false
 		}
-	})
-	.find(|(same, login)| *same);
+	});
 
 	while login.is_some() {
-		uuid = Uuid::new_v4();
-		login = query_as!(
-			UserLogin,
-			r#"
-			SELECT
-				*
-			FROM
-				user_login
-			WHERE
-				login_id = ?;
-			"#,
-			uuid.as_bytes().as_ref()
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.filter_map(|login| {
-			// TODO check salt and pepper for hashes
-			service::validate_hash(
-				uuid.as_bytes(),
-				b"salt",
-				&login.refresh_token,
-			)
-			.ok()
-		})
-		.find(|login| *login);
+		refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+		logins = db::get_all_logins_for_user(connection, user_id).await?;
+		login = logins.iter().find(|login| {
+			if let Ok(result) =
+				validate_hash(&refresh_token, &login.refresh_token)
+			{
+				result
+			} else {
+				false
+			}
+		});
 	}
 
-	Ok(uuid)
-}
-
-pub fn get_hash_config() -> argon2::Config<'static> {
-	argon2::Config {
-		variant: Variant::Argon2i,
-		hash_length: 64,
-		..Default::default()
-	}
+	Ok(refresh_token)
 }
 
 #[cfg(not(feature = "sample-data"))]
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)

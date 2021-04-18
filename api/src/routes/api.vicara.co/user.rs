@@ -1,4 +1,3 @@
-use argon2::Variant;
 use eve_rs::{App as EveApp, Context, NextHandler};
 use serde_json::{json, Value};
 
@@ -230,7 +229,7 @@ async fn add_email_address(
 	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
 	let verification_token = argon2::hash_raw(
 		otp.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
+		context.get_state().config.password_pepper.as_bytes(),
 		&argon2::Config {
 			variant: Variant::Argon2i,
 			hash_length: 64,
@@ -294,7 +293,7 @@ async fn verify_email_address(
 
 	let success = argon2::verify_raw(
 		otp.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
+		context.get_state().config.password_pepper.as_bytes(),
 		&email_verification_data.verification_token_hash,
 		&argon2::Config {
 			variant: Variant::Argon2i,

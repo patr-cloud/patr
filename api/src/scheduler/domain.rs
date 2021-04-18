@@ -7,7 +7,6 @@ use cloudflare::{
 		HttpApiClientConfig,
 	},
 };
-use surf::mime::APPLICATION_JSON;
 
 use crate::{
 	db,
@@ -43,22 +42,10 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 pub async fn refresh_domain_tld_list() -> crate::Result<()> {
-	let response =
-		surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt").await;
-	let mut response = match response {
-		Ok(response) => response,
-		Err(err) => {
-			return Err(err);
-		}
-	};
-
-	let data = response.body_string().await;
-	let data = match data {
-		Ok(data) => data,
-		Err(err) => {
-			return Err(err);
-		}
-	};
+	let data = surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+		.await?
+		.body_string()
+		.await?;
 
 	let tlds = data
 		.split('\n')
@@ -157,11 +144,10 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 			"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
 			response.result.id
 		))
-		.set_header(
+		.header(
 			"Authorization",
 			format!("Bearer {}", config.config.cloudflare.api_token),
 		)
-		.set_mime(APPLICATION_JSON)
 		.await;
 		if let Err(err) = response {
 			log::error!("Cannot initiate zone activation check: {}", err);
