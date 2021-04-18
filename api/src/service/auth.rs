@@ -4,17 +4,26 @@ use uuid::Uuid;
 
 use super::get_refresh_token_expiry;
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{
-			User, UserEmailAddress, UserEmailAddressSignUp, UserLogin,
+			User,
+			UserEmailAddress,
+			UserEmailAddressSignUp,
+			UserLogin,
 		},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType, get_current_time, settings::Settings,
-		validator, Error,
+		constants::AccountType,
+		get_current_time,
+		settings::Settings,
+		validator,
+		Error,
 	},
 };
 
