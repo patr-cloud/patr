@@ -1,12 +1,21 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
 	pub id: Vec<u8>,
 	pub username: String,
+	#[serde(skip)]
 	pub password: String,
+	#[serde(skip)]
 	pub backup_email: String,
 	pub first_name: String,
 	pub last_name: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub dob: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub bio: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub location: Option<String>,
 	pub created: u64,
 }
@@ -60,6 +69,6 @@ pub struct PasswordResetRequest {
 pub struct PersonalEmailToBeVerified {
 	pub email_address: String,
 	pub user_id: Vec<u8>,
-	pub verification_token_hash: Vec<u8>,
+	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,
 }

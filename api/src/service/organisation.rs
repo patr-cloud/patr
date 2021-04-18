@@ -6,18 +6,31 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{get_current_time, Error},
+	utils::{get_current_time, validator, Error},
 };
+
+pub async fn is_organisation_name_allowed(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_name: &str,
+) -> Result<bool, Error> {
+	if !validator::is_organisation_name_valid(&organisation_name) {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
+	}
+
+	db::get_organisation_by_name(connection, organisation_name)
+		.await
+		.map(|user| user.is_none())
+		.status(500)
+}
 
 pub async fn create_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_name: &str,
 	super_admin_id: &[u8],
 ) -> Result<Uuid, Error> {
-	if db::get_organisation_by_name(connection, organisation_name)
-		.await?
-		.is_some()
-	{
+	if !is_organisation_name_allowed(connection, organisation_name).await? {
 		Error::as_result()
 			.status(400)
 			.body(error!(ORGANISATION_EXISTS).to_string())?;
