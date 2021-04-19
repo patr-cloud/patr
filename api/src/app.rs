@@ -1,7 +1,7 @@
 use std::{
 	fmt::{Debug, Formatter},
 	sync::Arc,
-	time::Instant,
+	time::{Duration, Instant},
 };
 
 use colored::Colorize;
@@ -109,46 +109,72 @@ async fn init_states(
 
 	// Set the mysql transaction
 	context.set_mysql_connection(transaction);
+	let path = context.get_path();
+	let method = context.get_method().clone();
 
 	// Execute the next route and handle the result
-	context = next(context).await?;
+	let result = next(context).await;
 
 	// Log how long the request took, then either commit or rollback the
 	// transaction
 	let elapsed_time = start_time.elapsed();
 
+	match result {
+		Ok(mut context) => {
+			context
+				.take_mysql_connection()
+				.commit()
+				.await
+				.body("Unable to commit transaction")?;
+			log_request(
+				&method,
+				elapsed_time,
+				&path,
+				&context.get_status(),
+				context.get_response().get_body().len(),
+			);
+
+			Ok(context)
+		}
+		Err(err) => {
+			log_request(
+				&method,
+				elapsed_time,
+				&path,
+				&err.get_status(),
+				err.get_body_bytes().len(),
+			);
+			Err(err)
+		}
+	}
+}
+
+fn log_request(
+	method: &HttpMethod,
+	elapsed_time: Duration,
+	path: &str,
+	status: &u16,
+	length: &usize,
+) {
 	log::info!(
 		"{} {} {} {} - {}",
-		context.get_method(),
-		context.get_path(),
-		match context.get_response().get_status() {
-			100..=199 =>
-				format!("{}", context.get_response().get_status()).normal(),
-			200..=299 =>
-				format!("{}", context.get_response().get_status()).green(),
-			300..=399 =>
-				format!("{}", context.get_response().get_status()).cyan(),
-			400..=499 =>
-				format!("{}", context.get_response().get_status()).yellow(),
-			500..=599 =>
-				format!("{}", context.get_response().get_status()).red(),
-			_ => format!("{}", context.get_response().get_status()).purple(),
+		method,
+		path,
+		match *status {
+			100..=199 => format!("{}", status).normal(),
+			200..=299 => format!("{}", status).green(),
+			300..=399 => format!("{}", status).cyan(),
+			400..=499 => format!("{}", status).yellow(),
+			500..=599 => format!("{}", status).red(),
+			_ => format!("{}", status).purple(),
 		},
 		if elapsed_time.as_millis() > 0 {
 			format!("{} ms", elapsed_time.as_millis())
 		} else {
 			format!("{} μs", elapsed_time.as_micros())
 		},
-		context.get_response().get_body().len()
+		length
 	);
-
-	context
-		.take_mysql_connection()
-		.commit()
-		.await
-		.body("Unable to commit transaction")?;
-
-	Ok(context)
 }
 
 async fn add_cors_headers(
