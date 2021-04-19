@@ -131,7 +131,7 @@ async fn init_states(
 				elapsed_time,
 				&path,
 				&context.get_status(),
-				context.get_response().get_body().len(),
+				&context.get_response().get_body().len(),
 			);
 
 			Ok(context)
@@ -141,8 +141,8 @@ async fn init_states(
 				&method,
 				elapsed_time,
 				&path,
-				&err.get_status(),
-				err.get_body_bytes().len(),
+				&err.get_status().unwrap_or(500),
+				&err.get_body_bytes().unwrap_or(&[]).len(),
 			);
 			Err(err)
 		}
