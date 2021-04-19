@@ -61,7 +61,6 @@ pub async fn is_email_allowed(
 /// this function creates a new user to be signed up and returns a OTP
 pub async fn create_user_join_request(
 	connection: &mut Transaction<'_, MySql>,
-	config: &Settings,
 	username: &str,
 	email: &str,
 	password: &str,
@@ -187,7 +186,6 @@ pub async fn create_user_join_request(
 // loginId and refresh_token are separate things
 pub async fn create_login_for_user(
 	connection: &mut Transaction<'_, MySql>,
-	config: &Settings,
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
@@ -230,8 +228,7 @@ pub async fn sign_in_user(
 ) -> Result<(String, Uuid), Error> {
 	let refresh_token = Uuid::new_v4();
 
-	let user_login =
-		create_login_for_user(connection, config, &user.id).await?;
+	let user_login = create_login_for_user(connection, &user.id).await?;
 
 	let jwt = generate_access_token(connection, &config, &user_login).await?;
 
@@ -305,7 +302,6 @@ pub async fn generate_access_token(
 // TODO: Remove otp from response
 pub async fn forgot_password(
 	connection: &mut Transaction<'_, MySql>,
-	config: &Settings,
 	user_id: &str,
 ) -> Result<(String, String), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)

@@ -8,12 +8,12 @@ use tokio::fs;
 use crate::db;
 
 /// function to assign available port
-pub fn generate_password(length: u16) -> String {
+pub fn generate_password(length: usize) -> String {
 	let mut rng = thread_rng();
 	iter::repeat(())
 		.map(|()| rng.sample(Alphanumeric))
 		.map(char::from)
-		.take(7)
+		.take(length)
 		.collect()
 }
 

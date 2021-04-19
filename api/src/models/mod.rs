@@ -98,7 +98,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 
 	use serde::Deserialize;
 	use serde_json::{json, Value};
-	use surf::{http::Method, Request, Url};
+	use surf::Url;
 
 	use crate::constants::request_keys;
 
@@ -153,15 +153,14 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 
 	// Create all users
 	for user in &data.users {
-		let response: Value = Request::new(
-			Method::POST,
+		let response: Value = surf::post(
 			Url::parse(
 				format!("http://localhost:{}/auth/sign-up", config.config.port)
 					.as_ref(),
 			)
 			.unwrap(),
 		)
-		.body_json(&json!({
+		.body(json!({
 			"username": user.username,
 			"email": user.backup_email,
 			"password": user.password,
@@ -169,7 +168,6 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 			"firstName": user.first_name,
 			"lastName": user.last_name
 		}))
-		.unwrap()
 		.await
 		.unwrap()
 		.body_json()
@@ -185,19 +183,17 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 			continue;
 		}
 
-		let response: Value = Request::new(
-			Method::POST,
+		let response: Value = surf::post(
 			Url::parse(
 				format!("http://localhost:{}/auth/join", config.config.port)
 					.as_ref(),
 			)
 			.unwrap(),
 		)
-		.body_json(&json!({
+		.body(json!({
 			"username": user.username,
 			"verificationToken": "000-000"
 		}))
-		.unwrap()
 		.await
 		.unwrap()
 		.body_json()
@@ -214,19 +210,17 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 	for organisation in &data.organisations {
 		let super_user =
 			get_user_by_username(&data.users, &organisation.super_user);
-		let response: Value = Request::new(
-			Method::POST,
+		let response: Value = surf::post(
 			Url::parse(
 				format!("http://localhost:{}/auth/sign-in", config.config.port)
 					.as_ref(),
 			)
 			.unwrap(),
 		)
-		.body_json(&json!({
+		.body(json!({
 			"userId": super_user.username,
 			"password": super_user.password
 		}))
-		.unwrap()
 		.await
 		.unwrap()
 		.body_json()
@@ -243,20 +237,18 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		}
 		let token = response[request_keys::ACCESS_TOKEN].as_str().unwrap();
 
-		let response: Value = Request::new(
-			Method::POST,
+		let response: Value = surf::post(
 			Url::parse(
 				format!("http://localhost:{}/organisation", config.config.port)
 					.as_ref(),
 			)
 			.unwrap(),
 		)
-		.set_header("Authorization", token)
-		.body_json(&json!({
+		.header("Authorization", token)
+		.body(json!({
 			"domain": organisation.domains.get(0).unwrap(),
 			"organisationName": organisation.name
 		}))
-		.unwrap()
 		.await
 		.unwrap()
 		.body_json()
