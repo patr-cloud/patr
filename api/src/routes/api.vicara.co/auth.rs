@@ -187,11 +187,8 @@ async fn sign_up(
 		})
 		.transpose()?;
 
-	let config = context.get_state().config.clone();
-
 	let otp = service::create_user_join_request(
 		context.get_mysql_connection(),
-		&config,
 		username,
 		email,
 		password,
@@ -201,6 +198,8 @@ async fn sign_up(
 	)
 	.await?;
 	let email = email.to_string();
+
+	let config = context.get_state().config.clone();
 
 	task::spawn_blocking(|| {
 		mailer::send_email_verification_mail(config, email, otp);
@@ -368,12 +367,9 @@ async fn forgot_password(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let (otp, backup_email) = service::forgot_password(
-		context.get_mysql_connection(),
-		&config,
-		user_id,
-	)
-	.await?;
+	let (otp, backup_email) =
+		service::forgot_password(context.get_mysql_connection(), user_id)
+			.await?;
 
 	task::spawn_blocking(|| {
 		mailer::send_password_reset_requested_mail(config, backup_email, otp);

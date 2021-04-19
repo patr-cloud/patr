@@ -1,4 +1,4 @@
-use eve_rs::{App as EveApp, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
 use crate::{
@@ -31,12 +31,9 @@ pub fn create_sub_app(
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&org_id_string);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -67,12 +64,9 @@ pub fn create_sub_app(
 					let application_id_string = context
 						.get_param(request_keys::APPLICATION_ID)
 						.unwrap();
-					let application_id = hex::decode(&application_id_string);
-					if application_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let application_id = application_id.unwrap();
+					let application_id = hex::decode(&application_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -105,12 +99,9 @@ pub fn create_sub_app(
 					let application_id_string = context
 						.get_param(request_keys::APPLICATION_ID)
 						.unwrap();
-					let application_id = hex::decode(&application_id_string);
-					if application_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let application_id = application_id.unwrap();
+					let application_id = hex::decode(&application_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					// check if resource with the given application id exists.
 					let resource = db::get_resource_by_id(

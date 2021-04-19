@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 
-use eve_rs::{App as EveApp, Context, NextHandler};
-use serde_json::{json, Value};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::json;
 use shiplift::{ContainerOptions, Docker};
 
 use crate::{
@@ -33,21 +33,12 @@ pub fn creare_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id =
-						context.get_param(request_keys::ORGANISATION_ID);
-
-					if org_id.is_none() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-
-					let org_id = org_id.unwrap();
-					let organisation_id = hex::decode(&org_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let org_id = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -75,21 +66,12 @@ pub fn creare_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id =
-						context.get_param(request_keys::ORGANISATION_ID);
-
-					if org_id.is_none() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-
-					let org_id = org_id.unwrap();
-					let organisation_id = hex::decode(&org_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let org_id = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -115,20 +97,12 @@ pub fn creare_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
+					let tunnel_id =
+						context.get_param(request_keys::TUNNEL_ID).unwrap();
 
-					if tunnel_id.is_none() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
-
-					let tunnel_id = hex::decode(&tunnel_id);
-					if tunnel_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
+					let tunnel_id = hex::decode(&tunnel_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -155,20 +129,12 @@ pub fn creare_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::VIEW,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
+					let tunnel_id =
+						context.get_param(request_keys::TUNNEL_ID).unwrap();
 
-					if tunnel_id.is_none() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
-
-					let tunnel_id = hex::decode(&tunnel_id);
-					if tunnel_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
+					let tunnel_id = hex::decode(&tunnel_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -195,20 +161,12 @@ pub fn creare_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::portus::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let tunnel_id = context.get_param(request_keys::TUNNEL_ID);
+					let tunnel_id =
+						context.get_param(request_keys::TUNNEL_ID).unwrap();
 
-					if tunnel_id.is_none() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
-
-					let tunnel_id = hex::decode(&tunnel_id);
-					if tunnel_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let tunnel_id = tunnel_id.unwrap();
+					let tunnel_id = hex::decode(&tunnel_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -285,12 +243,9 @@ async fn get_info_for_tunnel(
 		context.get_mysql_connection(),
 		&tunnel_id,
 	)
-	.await?;
-	if tunnel.is_none() {
-		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
-		return Ok(context);
-	}
-	let tunnel = tunnel.unwrap();
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -302,7 +257,6 @@ async fn get_info_for_tunnel(
 		request_keys::NAME: tunnel.name,
 		request_keys::SERVER_IP: service::get_server_ip_address()
 	}));
-
 	Ok(context)
 }
 
@@ -315,19 +269,16 @@ async fn delete_tunnel(
 	// since tunnel id will already get authenticated in resource token
 	// authenticator, we can safely unwrap tunnel id.
 	let tunnel_id = context.get_param(request_keys::TUNNEL_ID).unwrap();
-	let tunnel_id = &hex::decode(&tunnel_id).unwrap();
+	let tunnel_id = hex::decode(&tunnel_id).unwrap();
 
 	//  get tunnel info  using tunnel id
 	let tunnel = db::get_portus_tunnel_by_tunnel_id(
 		context.get_mysql_connection(),
 		&tunnel_id,
 	)
-	.await?;
-	if tunnel.is_none() {
-		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
-		return Ok(context);
-	}
-	let tunnel = tunnel.unwrap();
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let docker = Docker::new();
 	let container_name = service::get_container_name(&tunnel.username);
@@ -335,14 +286,7 @@ async fn delete_tunnel(
 	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
 		.await?;
 
-	let container_delete_result =
-		service::delete_container(&docker, &container_name).await;
-
-	if let Err(err) = container_delete_result {
-		let err_message =
-			format!("Error while deleting the container: {:?}", err);
-		return Err(Error::new(Box::new(err)).status(500).body(err_message));
-	}
+	service::delete_container(&docker, &container_name).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -356,14 +300,12 @@ async fn create(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 	// get tunnel name
-	let tunnel_name = if let Some(Value::String(tunnel_name)) =
-		body.get(request_keys::NAME)
-	{
-		tunnel_name
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let tunnel_name = body
+		.get(request_keys::NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// get user name and user id from tokendata
 	let username = service::generate_username(10);
@@ -399,9 +341,9 @@ async fn create(
 	.await?;
 
 	if portus_tunnel.is_some() {
-		log::info!("Container with the name already exists");
-		context.status(500).json(error!(RESOURCE_EXISTS));
-		return Ok(context);
+		Error::as_result()
+			.status(500)
+			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
 	let container_info = docker
@@ -475,11 +417,10 @@ async fn create(
 		}
 		log::error!("could not delete container. Error => {:#?}", err);
 
-		context.status(500).json(error!(SERVER_ERROR));
-		let err_message =
-			format!("Error creating container for portus tunnel: {:?}", err);
-		return Err(Error::new(err).status(500).body(err_message));
-	};
+		Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
 	// on success, return ssh port, username,  exposed port, server ip address,
 	// password
@@ -512,59 +453,47 @@ async fn get_bash_script(
 ) -> Result<EveContext, Error> {
 	// get request body
 	let body = context.get_body_object().clone();
-	let local_port = if let Some(Value::String(local_port)) =
-		body.get(request_keys::LOCAL_PORT)
-	{
-		local_port
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let local_port = body
+		.get(request_keys::LOCAL_PORT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let local_host_name = if let Some(Value::String(local_host_name)) =
-		body.get(request_keys::LOCAL_HOST_NAME)
-	{
-		local_host_name
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let local_host_name = body
+		.get(request_keys::LOCAL_HOST_NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let exposed_server_port = if let Some(Value::String(exposed_server_port)) =
-		body.get(request_keys::EXPOSED_SERVER_PORT)
-	{
-		exposed_server_port
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let exposed_server_port = body
+		.get(request_keys::EXPOSED_SERVER_PORT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let server_ip_address = if let Some(Value::String(server_ip_address)) =
-		body.get(request_keys::SERVER_IP)
-	{
-		server_ip_address
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let server_ip_address = body
+		.get(request_keys::SERVER_IP)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let server_user_name = if let Some(Value::String(server_user_name)) =
-		body.get(request_keys::SERVER_USER_NAME)
-	{
-		server_user_name
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let server_user_name = body
+		.get(request_keys::SERVER_USER_NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let server_ssh_port = if let Some(Value::String(server_ssh_port)) =
-		body.get(request_keys::SERVER_SSH_PORT)
-	{
-		server_ssh_port
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let server_ssh_port = body
+		.get(request_keys::SERVER_SSH_PORT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let bash_script_file_content = service::bash_script_formatter(
 		local_port,
