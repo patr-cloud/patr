@@ -1,8 +1,6 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2,
-	PasswordHash,
-	Version,
+	Argon2, PasswordHash, Version,
 };
 use once_cell::sync::OnceCell;
 use sqlx::{MySql, Transaction};
@@ -25,8 +23,10 @@ lazy_static::lazy_static! {
 static APP_SETTINGS: OnceCell<Settings> = OnceCell::new();
 
 pub fn initialize(config: &Settings) {
+	let mut config = config.clone();
+	config.password_pepper = base64::encode(&config.password_pepper);
 	APP_SETTINGS
-		.set(config.clone())
+		.set(config)
 		.expect("unable to set app settings")
 }
 

@@ -145,7 +145,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 
 	// Wait for a second before starting
 	log::warn!("Giving server time to initalize before populating data");
-	tokio::time::sleep(Duration::from_secs(2)).await;
+	tokio::time::sleep(Duration::from_secs(5)).await;
 	log::info!("Populating database with sample data...");
 
 	let content = include_str!("../../../assets/sample-data.json");
