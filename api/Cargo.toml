@@ -23,7 +23,7 @@ cloudflare = "0.8.0"
 colored = "2.0.0"
 config_rs = {version = "0.11.0", package = "config"}
 cron = "0.9.0"
-eve-rs = {path = "../../eve-rs"}
+eve-rs = {git = "https://github.com/vicara-hq/eve-rs", branch = "develop"}
 futures = "0.3.8"
 hex = "0.4.2"
 jsonwebtoken = "7.2.0"
