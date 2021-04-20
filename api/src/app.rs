@@ -71,6 +71,7 @@ fn get_basic_middlewares() -> [EveMiddleware; 4] {
 
 #[cfg(not(debug_assertions))]
 fn get_basic_middlewares() -> [EveMiddleware; 6] {
+	use eve_rs::default_middlewares::compression;
 	[
 		EveMiddleware::CustomFunction(pin_fn!(init_states)),
 		EveMiddleware::CustomFunction(pin_fn!(add_cors_headers)),

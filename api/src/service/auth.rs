@@ -4,26 +4,17 @@ use uuid::Uuid;
 
 use super::get_refresh_token_expiry;
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{
-			User,
-			UserEmailAddress,
-			UserEmailAddressSignUp,
-			UserLogin,
+			User, UserEmailAddress, UserEmailAddressSignUp, UserLogin,
 		},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType,
-		get_current_time,
-		settings::Settings,
-		validator,
-		Error,
+		constants::AccountType, get_current_time, settings::Settings,
+		validator, Error,
 	},
 };
 
@@ -189,13 +180,10 @@ pub async fn create_login_for_user(
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
-	let refresh_token =
+	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
 			.await?;
 	let iat = get_current_time();
-
-	let hashed_refresh_token =
-		service::hash(hex::encode(refresh_token.as_bytes()).as_bytes())?;
 
 	db::add_user_login(
 		connection,

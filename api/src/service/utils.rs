@@ -74,33 +74,24 @@ pub fn get_refresh_token_expiry() -> u64 {
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-) -> Result<String, Error> {
+) -> Result<(String, String), Error> {
 	let mut refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+	let mut hashed = hash(refresh_token.as_bytes())?;
 	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
 	let mut login = logins.iter().find(|login| {
-		if let Ok(result) = validate_hash(&refresh_token, &login.refresh_token)
-		{
-			result
-		} else {
-			false
-		}
+		login.refresh_token == hashed
 	});
 
 	while login.is_some() {
 		refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+		hashed = hash(refresh_token.as_bytes())?;
 		logins = db::get_all_logins_for_user(connection, user_id).await?;
 		login = logins.iter().find(|login| {
-			if let Ok(result) =
-				validate_hash(&refresh_token, &login.refresh_token)
-			{
-				result
-			} else {
-				false
-			}
+			login.refresh_token == hashed
 		});
 	}
 
-	Ok(refresh_token)
+	Ok((refresh_token, hashed))
 }
 
 #[cfg(not(feature = "sample-data"))]
