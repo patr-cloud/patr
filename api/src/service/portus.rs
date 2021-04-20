@@ -61,7 +61,7 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 }
 
 pub fn get_ssh_port_for_server() -> u32 {
-	return 2222;
+	2222
 }
 
 pub fn get_container_name(username: &str) -> String {
@@ -85,7 +85,7 @@ pub async fn assign_available_port(
 		if restricted_ports.contains(&port) {
 			continue;
 		}
-		if port >= 5900 && port <= 5910 {
+		if (5900..=5910).contains(&port) {
 			continue;
 		}
 		let port_available =

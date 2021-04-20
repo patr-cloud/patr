@@ -6,18 +6,12 @@ use shiplift::{ContainerOptions, Docker};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::rbac::{self, permissions},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		get_current_time, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -513,90 +507,4 @@ async fn get_bash_script(
 		request_keys::SCRIPT: bash_script_file_content,
 	}));
 	Ok(context)
-}
-
-// UTIL FUNCTIONS
-
-///generates random password of given length.
-fn generate_password(length: u16) -> String {
-	thread_rng()
-		.sample_iter(&Alphanumeric)
-		.take(length.into())
-		.collect()
-}
-
-/// generates random username of given length
-fn generate_username(length: u16) -> String {
-	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
-
-	(0..length)
-		.map(|_| {
-			let idx = thread_rng().gen_range(0, CHARSET.len());
-			CHARSET[idx] as char
-		})
-		.collect()
-}
-
-///reads the script file, replaces given data and returns file content as String.
-async fn bash_script_formatter(
-	local_port: &str,
-	local_host_name: &str,
-	exposed_server_port: &str,
-	server_ip_address: &str,
-	server_user_name: &str,
-	server_ssh_port: &str,
-) -> std::io::Result<String> {
-	// get script file path
-	let path = get_bash_script_path()?;
-	let mut contents = fs::read_to_string(path).await?;
-	contents = contents
-		.replace("localPortVariable", local_port)
-		.replace("localHostNameVaribale", local_host_name)
-		.replace("exposedServerPortVariable", exposed_server_port)
-		.replace("serverHostNameOrIpAddressVariable", server_ip_address)
-		.replace("serverUserNameVariable", server_user_name)
-		.replace("serverSSHPortVariable", server_ssh_port);
-
-	Ok(contents)
-}
-
-/// returns path to the script file.
-fn get_bash_script_path() -> std::io::Result<PathBuf> {
-	Ok(env::current_dir()?
-		.join("assets")
-		.join("portus")
-		.join("connect-pi-to-server.sh"))
-}
-
-fn get_ssh_port_for_server() -> u32 {
-	2222
-}
-
-fn get_container_name(username: &str) -> String {
-	format!("{}-container", username)
-}
-
-// generates valid port
-async fn assign_available_port(
-	transaction: &mut Transaction<'_, MySql>,
-) -> Result<u32, sqlx::Error> {
-	let low = 1025;
-	let high = 65535;
-	let restricted_ports = [5800, 8080, 9000];
-
-	loop {
-		let port = rand::thread_rng().gen_range(low, high);
-		if restricted_ports.contains(&port) {
-			continue;
-		}
-		if (5900..=5910).contains(&port) {
-			continue;
-		}
-		let port_available =
-			db::is_portus_port_available(transaction, port).await?;
-		if !port_available {
-			continue;
-		}
-		return Ok(port);
-	}
 }

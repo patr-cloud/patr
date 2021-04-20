@@ -88,10 +88,11 @@ fn eve_error_handler(mut response: Response, error: Error) -> Response {
 	);
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
+	let default_error = error!(SERVER_ERROR).to_string();
 	response.set_body_bytes(
 		error
 			.get_body_bytes()
-			.unwrap_or(error!(SERVER_ERROR).to_string().as_bytes()),
+			.unwrap_or_else(|| default_error.as_bytes()),
 	);
 	response
 }

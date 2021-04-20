@@ -107,7 +107,7 @@ pub async fn generate_new_refresh_token_for_user(
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)
@@ -126,5 +126,5 @@ pub fn generate_new_otp() -> String {
 
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
-	format!("000000")
+	"000000".to_string()
 }
