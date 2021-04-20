@@ -1,8 +1,3 @@
-use crate::{
-	utils::settings::{RunningEnvironment, Settings},
-	Result,
-};
-
 use log::LevelFilter;
 use log4rs::{
 	append::{
@@ -20,6 +15,11 @@ use log4rs::{
 	encode::pattern::PatternEncoder,
 	filter::threshold::ThresholdFilter,
 	Handle,
+};
+
+use crate::{
+	utils::settings::{RunningEnvironment, Settings},
+	Result,
 };
 
 pub async fn initialize(config: &Settings) -> Result<Handle> {

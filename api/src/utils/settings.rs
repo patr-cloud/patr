@@ -49,7 +49,7 @@ pub fn parse_config() -> Settings {
 pub struct Settings {
 	pub port: u16,
 	pub base_path: String,
-	pub password_salt: String,
+	pub password_pepper: String,
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,

@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use sqlx::{MySql, Transaction};
+use uuid::Uuid;
+
 use crate::{
 	models::{
 		db_mapping::{Permission, Resource, ResourceType, Role},
@@ -8,9 +11,6 @@ use crate::{
 	query,
 	query_as,
 };
-
-use sqlx::{MySql, Transaction};
-use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -337,6 +337,47 @@ pub async fn get_all_organisation_roles_for_user(
 	Ok(orgs)
 }
 
+pub async fn generate_new_role_id(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		Role,
+		r#"
+		SELECT
+			*
+		FROM
+			role
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			Role,
+			r#"
+			SELECT
+				*
+			FROM
+				role
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
+}
+
 pub async fn get_all_resource_types(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<ResourceType>, sqlx::Error> {
@@ -399,7 +440,7 @@ pub async fn create_role(
 	connection: &mut Transaction<'_, MySql>,
 	role_id: &[u8],
 	name: &str,
-	description: &Option<String>,
+	description: Option<&str>,
 	owner_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

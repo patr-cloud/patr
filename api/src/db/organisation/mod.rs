@@ -1,6 +1,6 @@
-use crate::{models::db_mapping::Organisation, query, query_as};
-
 use sqlx::{MySql, Transaction};
+
+use crate::{models::db_mapping::Organisation, query, query_as};
 
 mod application;
 mod domain;

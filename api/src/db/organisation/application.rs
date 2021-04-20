@@ -1,10 +1,10 @@
-use crate::query;
+use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{Application, ApplicationVersion},
+	query,
 	query_as,
 };
-use sqlx::{MySql, Transaction};
 
 pub async fn initialize_application_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -117,7 +117,8 @@ pub async fn get_application_by_id(
 }
 
 /// query to fetch versions for an application.
-/// this query checks versions for an application from TABLE application_versions.
+/// this query checks versions for an application from TABLE
+/// application_versions.
 pub async fn get_all_versions_for_application(
 	connection: &mut Transaction<'_, MySql>,
 	appliction_id: &[u8],

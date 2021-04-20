@@ -1,8 +1,7 @@
-use crate::app::App;
-
-use crate::query;
 use semver::Version;
 use sqlx::{MySql, Transaction};
+
+use crate::{app::App, query};
 
 pub async fn initialize_meta_pre(
 	transaction: &mut Transaction<'_, MySql>,
