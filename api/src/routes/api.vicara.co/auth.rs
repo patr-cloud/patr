@@ -102,7 +102,7 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let (jwt, refresh_token) = service::sign_in_user(
+	let (jwt, login_id, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
 		user_data,
 		&config,
@@ -112,7 +112,8 @@ async fn sign_in(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
@@ -237,9 +238,9 @@ async fn sign_out(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	db::get_user_login(context.get_mysql_connection(), &login_id)
-			.await?
-			.status(200)
-			.body(error!(TOKEN_NOT_FOUND).to_string())?;
+		.await?
+		.status(200)
+		.body(error!(TOKEN_NOT_FOUND).to_string())?;
 
 	db::delete_user_login_by_id(context.get_mysql_connection(), &login_id)
 		.await?;
@@ -279,7 +280,8 @@ async fn join(
 		username,
 	)
 	.await?;
-	let (jwt, refresh_token, welcome_email_to, backup_email_to) = result;
+	let (jwt, login_id, refresh_token, welcome_email_to, backup_email_to) =
+		result;
 
 	task::spawn_blocking(|| {
 		mailer::send_sign_up_completed_mail(config, welcome_email_to);
@@ -295,7 +297,8 @@ async fn join(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
@@ -931,7 +934,7 @@ async fn docker_registry_authenticate(
 	let user_id = &user.id;
 	let user_roles = db::get_all_organisation_roles_for_user(
 		context.get_mysql_connection(),
-		&user_id,
+		&user.id,
 	)
 	.await?;
 

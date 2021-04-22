@@ -21,9 +21,9 @@ use sqlx::mysql::MySqlPool;
 use tokio::{signal, time};
 
 use crate::{
-	error,
 	pin_fn,
 	routes,
+	error,
 	utils::{settings::Settings, Error, ErrorData, EveContext, EveMiddleware},
 };
 

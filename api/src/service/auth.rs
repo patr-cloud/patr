@@ -154,7 +154,8 @@ pub async fn create_user_join_request(
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-	let token_expiry = get_current_time_millis() + service::get_join_token_expiry();
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
@@ -213,14 +214,18 @@ pub async fn sign_in_user(
 	connection: &mut Transaction<'_, MySql>,
 	user: User,
 	config: &Settings,
-) -> Result<(String, Uuid), Error> {
+) -> Result<(String, Uuid, Uuid), Error> {
 	let refresh_token = Uuid::new_v4();
 
 	let user_login = create_login_for_user(connection, &user.id).await?;
 
 	let jwt = generate_access_token(connection, &config, &user_login).await?;
 
-	Ok((jwt, refresh_token))
+	Ok((
+		jwt,
+		Uuid::from_slice(&user_login.login_id).unwrap(),
+		refresh_token,
+	))
 }
 
 pub async fn get_user_login_for_login_id(
@@ -352,7 +357,7 @@ pub async fn join_user(
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<(String, Uuid, String, Option<String>), Error> {
+) -> Result<(String, Uuid, Uuid, String, Option<String>), Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
@@ -472,7 +477,14 @@ pub async fn join_user(
 		.status(200)
 		.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let (jwt, refresh_token) = sign_in_user(connection, user, &config).await?;
+	let (jwt, login_id, refresh_token) =
+		sign_in_user(connection, user, &config).await?;
 
-	Ok((jwt, refresh_token, welcome_email_to, backup_email_to))
+	Ok((
+		jwt,
+		login_id,
+		refresh_token,
+		welcome_email_to,
+		backup_email_to,
+	))
 }
