@@ -4,19 +4,19 @@ mod organisation;
 mod rbac;
 mod user;
 
-use crate::utils::settings::Settings;
+pub use initializer::initialize;
+pub use meta_data::*;
+pub use organisation::*;
+pub use rbac::*;
 use redis::{aio::MultiplexedConnection, Client, RedisError};
 use sqlx::{
 	mysql::{MySqlConnectOptions, MySqlPoolOptions},
 	MySqlPool,
 };
 use tokio::task;
-
-pub use initializer::initialize;
-pub use meta_data::*;
-pub use organisation::*;
-pub use rbac::*;
 pub use user::*;
+
+use crate::utils::settings::Settings;
 
 pub async fn create_mysql_connection(
 	config: &Settings,

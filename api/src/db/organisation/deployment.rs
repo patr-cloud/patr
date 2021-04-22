@@ -8,7 +8,7 @@ use sqlx::{MySql, Transaction};
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing deployer tables");
+	log::info!("Initializing deployment tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment (
@@ -214,24 +214,29 @@ pub async fn create_deployment(
 	.map(|_| ())
 }
 
-pub async fn get_deployments_by_image_name_and_tag(
+pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
 	image_tag: &str,
+    organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			*
+			deployment.*
 		FROM
-			deployment
+			deployment,
+            resource
 		WHERE
+            deployment.id = resource.id AND
 			image_name = ? AND
-			image_tag = ?;
+			image_tag = ? AND
+            resource.owner_id = ?;
 		"#,
 		image_name,
-		image_tag
+		image_tag,
+        organisation_id
 	)
 	.fetch_all(connection)
 	.await

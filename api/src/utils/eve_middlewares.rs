@@ -1,9 +1,4 @@
-use crate::{
-	app::App,
-	error,
-	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{get_current_time_millis, EveContext},
-};
+use std::{future::Future, pin::Pin};
 
 use async_trait::async_trait;
 use eve_rs::{
@@ -16,30 +11,30 @@ use eve_rs::{
 	},
 	App as EveApp,
 	Context,
-	Error,
 	Middleware,
 	NextHandler,
 };
 use redis::{AsyncCommands, RedisError};
-use std::{future::Future, pin::Pin};
 
-pub type MiddlewareHandlerFunction = fn(
-	EveContext,
-	NextHandler<EveContext>,
-) -> Pin<
-	Box<dyn Future<Output = Result<EveContext, Error<EveContext>>> + Send>,
->;
+use crate::{
+	app::App,
+	error,
+	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
+	utils::{get_current_time_millis, Error, ErrorData, EveContext},
+};
+
+pub type MiddlewareHandlerFunction =
+	fn(
+		EveContext,
+		NextHandler<EveContext, ErrorData>,
+	) -> Pin<Box<dyn Future<Output = Result<EveContext, Error>> + Send>>;
 
 pub type ResourceRequiredFunction = fn(
 	EveContext,
 ) -> Pin<
 	Box<
-		dyn Future<
-				Output = Result<
-					(EveContext, Option<Resource>),
-					Error<EveContext>,
-				>,
-			> + Send,
+		dyn Future<Output = Result<(EveContext, Option<Resource>), Error>>
+			+ Send,
 	>,
 >;
 
@@ -54,16 +49,19 @@ pub enum EveMiddleware {
 	PlainTokenAuthenticator,
 	ResourceTokenAuthenticator(&'static str, ResourceRequiredFunction), /* (permission, resource_required) */
 	CustomFunction(MiddlewareHandlerFunction),
-	DomainRouter(String, Box<EveApp<EveContext, EveMiddleware, App>>),
+	DomainRouter(
+		String,
+		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
+	),
 }
 
 #[async_trait]
-impl Middleware<EveContext> for EveMiddleware {
+impl Middleware<EveContext, ErrorData> for EveMiddleware {
 	async fn run_middleware(
 		&self,
 		mut context: EveContext,
-		next: NextHandler<EveContext>,
-	) -> Result<EveContext, Error<EveContext>> {
+		next: NextHandler<EveContext, ErrorData>,
+	) -> Result<EveContext, Error> {
 		match self {
 			EveMiddleware::Compression(compression_level) => {
 				let mut compressor =

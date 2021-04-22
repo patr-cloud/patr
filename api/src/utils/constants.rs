@@ -1,5 +1,10 @@
+use std::{fmt::Display, str::FromStr};
+
 use clap::{crate_authors, crate_description, crate_name, crate_version};
+use eve_rs::AsError;
 use semver::Version;
+
+use crate::{error, utils::Error};
 
 pub const DATABASE_VERSION: Version = Version {
 	major: 0,
@@ -16,7 +21,34 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
-#[allow(dead_code)]
+pub enum AccountType {
+	Personal,
+	Organisation,
+}
+
+impl Display for AccountType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			AccountType::Personal => write!(f, "personal"),
+			AccountType::Organisation => write!(f, "organisation"),
+		}
+	}
+}
+
+impl FromStr for AccountType {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"personal" => Ok(AccountType::Personal),
+			"organisation" => Ok(AccountType::Organisation),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";
@@ -78,7 +110,7 @@ pub mod request_keys {
 	pub const SERVER_SSH_PORT: &str = "serverSSHPort";
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
-	pub const ACCOUNT: &str = "account";
+	pub const LOGIN_ID: &str = "loginId";
 	pub const SCOPE: &str = "scope";
 	pub const SERVICE: &str = "service";
 	pub const SNAKE_CASE_CLIENT_ID: &str = "client_id";

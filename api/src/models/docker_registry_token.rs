@@ -39,7 +39,11 @@ impl RegistryToken {
 			exp: iat + (600), // 5 mins
 			nbf: iat,
 			iat,
-			jti: thread_rng().sample_iter(Alphanumeric).take(32).collect(),
+			jti: thread_rng()
+				.sample_iter(Alphanumeric)
+				.map(char::from)
+				.take(32)
+				.collect(),
 			access,
 		}
 	}
