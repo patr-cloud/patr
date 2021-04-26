@@ -1,19 +1,28 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, AccountType},
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		mailer,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -928,7 +937,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_id = hex::encode(org.id);
+	let org_id = org.id.encode_hex::<String>();
 
 	// get all org roles for the user using the id
 	let user_id = &user.id;
@@ -938,20 +947,17 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id);
-	if required_role_for_user.is_none() {
-		context.status(500).json(json!({
+	let required_role_for_user = user_roles.get(&org_id).status(500).body(
+		json!({
 			request_keys::ERRORS: [{
 				request_keys::CODE: ErrorId::SERVER_ERROR,
 				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
 				request_keys::DETAIL: []
 			}]
-		}));
-		return Ok(context);
-	}
-
-	let required_role_for_user = required_role_for_user.unwrap();
-	let mut approved_permissions = Vec::<String>::new();
+		})
+		.to_string(),
+	)?;
+	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
 		let allowed = {

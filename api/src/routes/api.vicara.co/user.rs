@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -259,7 +260,7 @@ async fn get_organisations_for_user(
 	.into_iter()
 	.map(|org| {
 		json!({
-			request_keys::ID: hex::encode(org.id),
+			request_keys::ID: org.id.encode_hex::<String>(),
 			request_keys::NAME: org.name,
 			request_keys::ACTIVE: org.active,
 			request_keys::CREATED: org.created

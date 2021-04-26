@@ -1,17 +1,24 @@
 use std::error::Error as StdError;
 
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 use shiplift::{ContainerOptions, Docker};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time_millis, Error, ErrorData, EveContext, EveMiddleware,
+		get_current_time_millis,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -199,7 +206,7 @@ async fn get_tunnels_for_organisation(
 	.await?
 	.into_iter()
 	.map(|tunnel| {
-		let id = hex::encode(tunnel.id);
+		let id = tunnel.id.encode_hex::<String>();
 		json!({
 			request_keys::ID: id,
 			request_keys::USERNAME: tunnel.username,
@@ -418,7 +425,7 @@ async fn create(
 
 	// on success, return ssh port, username,  exposed port, server ip address,
 	// password
-	let resource_id = hex::encode(resource_id);
+	let resource_id = resource_id.encode_hex::<String>();
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: resource_id,

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use hex::ToHex;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
@@ -202,7 +203,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_role in org_roles {
-		let org_id = hex::encode(org_role.organisation_id);
+		let org_id = org_role.organisation_id.encode_hex();
 
 		let resources = query!(
 			r#"
@@ -234,7 +235,7 @@ pub async fn get_all_organisation_roles_for_user(
 
 		if let Some(permission) = orgs.get_mut(&org_id) {
 			for resource in resources {
-				let permission_id = hex::encode(&resource.permission_id);
+				let permission_id = resource.permission_id.encode_hex();
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -248,7 +249,7 @@ pub async fn get_all_organisation_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = hex::encode(&resource_type.permission_id);
+				let permission_id = resource_type.permission_id.encode_hex();
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -270,7 +271,7 @@ pub async fn get_all_organisation_roles_for_user(
 				resource_types: HashMap::new(),
 			};
 			for resource in resources {
-				let permission_id = hex::encode(&resource.permission_id);
+				let permission_id = resource.permission_id.encode_hex();
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -284,7 +285,7 @@ pub async fn get_all_organisation_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = hex::encode(&resource_type.permission_id);
+				let permission_id = resource_type.permission_id.encode_hex();
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -319,7 +320,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_details in orgs_details {
-		let org_id = hex::encode(org_details.id);
+		let org_id = org_details.id.encode_hex();
 		if let Some(org) = orgs.get_mut(&org_id) {
 			org.is_super_admin = true;
 		} else {

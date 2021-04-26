@@ -1,16 +1,22 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
+use serde_json::{json, Value};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
-use serde_json::{json, Value};
 
 pub fn create_sub_app(
 	app: &App,
@@ -165,12 +171,12 @@ async fn list_deployments(
 	.into_iter()
 	.map(|deployment| {
 		json!({
-			request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
 			request_keys::NAME: deployment.name,
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: hex::encode(deployment.domain_id),
+			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
 			request_keys::SUB_DOMAIN: deployment.sub_domain,
 			request_keys::PATH: deployment.path,
 			request_keys::PORT: deployment.port,
@@ -320,7 +326,7 @@ async fn create_deployment(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id)
+		request_keys::DEPLOYMENT_ID: deployment_id.encode_hex::<String>()
 	}));
 	Ok(context)
 }
@@ -343,12 +349,12 @@ async fn get_deployment_info(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DEPLOYMENT: {
-			request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
 			request_keys::NAME: deployment.name,
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: hex::encode(deployment.domain_id),
+			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
 			request_keys::SUB_DOMAIN: deployment.sub_domain,
 			request_keys::PATH: deployment.path,
 			request_keys::PORT: deployment.port,
@@ -364,13 +370,10 @@ async fn delete_deployment(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(
-		context.get_mysql_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_deployment_by_id(context.get_mysql_connection(), &deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	db::delete_deployment_by_id(context.get_mysql_connection(), &deployment_id)
 		.await?;

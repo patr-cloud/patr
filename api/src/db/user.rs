@@ -3,10 +3,18 @@ use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{
-		Organisation, PasswordResetRequest, PersonalEmailToBeVerified, User,
-		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
+		Organisation,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		User,
+		UserEmailAddress,
+		UserEmailAddressSignUp,
+		UserLogin,
+		UserToSignUp,
 	},
-	query, query_as, utils,
+	query,
+	query_as,
+	utils,
 };
 
 pub async fn initialize_users_pre(

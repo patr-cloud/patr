@@ -242,7 +242,7 @@ pub async fn get_zone_for_domain(
 	client: &Client,
 	domain: &str,
 ) -> Option<Zone> {
-	let response = if let Ok(response) = client
+	client
 		.request(&zone::ListZones {
 			params: zone::ListZonesParams {
 				name: Some(domain.to_string()),
@@ -250,11 +250,7 @@ pub async fn get_zone_for_domain(
 			},
 		})
 		.await
-	{
-		response
-	} else {
-		return None;
-	};
-
-	response.result.into_iter().next()
+		.ok()
+		.map(|zones| zones.result.into_iter().next())
+		.flatten()
 }

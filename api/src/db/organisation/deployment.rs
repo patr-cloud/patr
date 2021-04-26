@@ -1,9 +1,10 @@
+use sqlx::{MySql, Transaction};
+
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
 	query,
 	query_as,
 };
-use sqlx::{MySql, Transaction};
 
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -218,7 +219,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
 	image_tag: &str,
-    organisation_id: &[u8],
+	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -236,7 +237,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		"#,
 		image_name,
 		image_tag,
-        organisation_id
+		organisation_id
 	)
 	.fetch_all(connection)
 	.await

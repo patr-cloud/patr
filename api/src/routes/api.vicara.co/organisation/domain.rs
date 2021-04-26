@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -210,7 +211,7 @@ async fn get_domains_for_organisation(
 	.await?
 	.into_iter()
 	.map(|domain| {
-		let id = hex::encode(domain.id);
+		let id = domain.id.encode_hex::<String>();
 		json!({
 			request_keys::ID: id,
 			request_keys::NAME: domain.name,
@@ -249,7 +250,7 @@ async fn add_domain_to_organisation(
 		&organisation_id,
 	)
 	.await?;
-	let domain_id = hex::encode(domain_id.as_bytes());
+	let domain_id = domain_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -325,7 +326,7 @@ async fn get_domain_info_in_organisation(
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
-	let domain_id = hex::encode(domain.id);
+	let domain_id = domain.id.encode_hex::<String>();
 
 	context.json(
 		if domain.is_verified {

@@ -2,12 +2,14 @@ use std::{collections::HashMap, time::Duration};
 
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use futures::StreamExt;
+use hex::ToHex;
 use rand::Rng;
 use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
@@ -29,8 +31,8 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context.get_content_type().as_str()
-		!= "application/vnd.docker.distribution.events.v1+json"
+	if context.get_content_type().as_str() !=
+		"application/vnd.docker.distribution.events.v1+json"
 	{
 		Error::as_result()
 			.status(400)
@@ -89,7 +91,7 @@ pub async fn notification_handler(
 
 		for deployment in deployments {
 			let container_name =
-				format!("deployment-{}", hex::encode(&deployment.id));
+				format!("deployment-{}", deployment.id.encode_hex::<String>());
 			let full_image_name = format!(
 				"{}/{}/{}@{}",
 				config.docker_registry.registry_url,

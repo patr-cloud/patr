@@ -1,17 +1,23 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys, validator, Error, ErrorData, EveContext,
+		constants::request_keys,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
-use serde_json::json;
 
 pub fn create_sub_app(
 	app: &App,
@@ -170,8 +176,8 @@ async fn create_docker_repository(
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(&organisation_id).unwrap();
 
-	// call function to add repo details to the table `docker_registry_repository`
-	// add a new resource
+	// call function to add repo details to the table
+	// `docker_registry_repository` add a new resource
 	db::create_resource(
 		context.get_mysql_connection(),
 		resource_id,
@@ -217,7 +223,7 @@ async fn list_docker_repositories(
 	.into_iter()
 	.map(|repository| {
 		json!({
-			request_keys::ID: hex::encode(repository.id),
+			request_keys::ID: repository.id.encode_hex::<String>(),
 			request_keys::NAME: repository.name,
 		})
 	})

@@ -14,6 +14,7 @@ use eve_rs::{
 	Middleware,
 	NextHandler,
 };
+use hex::ToHex;
 use redis::{AsyncCommands, RedisError};
 
 use crate::{
@@ -161,7 +162,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				}
 				let resource = resource.unwrap();
 
-				let org_id = hex::encode(&resource.owner_id);
+				let org_id = resource.owner_id.encode_hex::<String>();
 				let org_permission = access_data.orgs.get(&org_id);
 
 				if org_permission.is_none() {
@@ -261,7 +262,7 @@ async fn is_access_token_valid(
 
 	let user_exp: Option<u64> = app
 		.redis
-		.get(format!("user-{}-exp", hex::encode(&token.user.id)))
+		.get(format!("user-{}-exp", token.user.id.encode_hex::<String>()))
 		.await?;
 	if let Some(exp) = user_exp {
 		if exp < get_current_time_millis() {

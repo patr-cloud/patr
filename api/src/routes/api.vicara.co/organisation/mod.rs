@@ -1,13 +1,20 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -110,8 +117,8 @@ async fn get_organisation_info(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
-	if !access_token_data.orgs.contains_key(&org_id_string)
-		&& access_token_data.user.id != god_user_id
+	if !access_token_data.orgs.contains_key(&org_id_string) &&
+		access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -181,7 +188,7 @@ async fn create_new_organisation(
 		&user_id,
 	)
 	.await?;
-	let org_id_string = hex::encode(org_id.as_bytes());
+	let org_id_string = org_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
