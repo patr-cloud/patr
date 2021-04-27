@@ -118,13 +118,13 @@ pub async fn initialize_users_post(
 
 	// 		/* Personal email address */
 	// 		email_address VARCHAR(320),
-			
+
 	// 		/* Organisation email address */
 	// 		email_local VARCHAR(160),
 	// 		domain_id BINARY(16),
 
 	// 		user_id BINARY(16) NOT NULL,
-			
+
 	// 		UNIQUE(email_address, email_local, domain_id, user_id),
 	// 		FOREIGN KEY(user_id) REFERENCES user(id),
 	// 		FOREIGN KEY(domain_id) REFERENCES domain(id),
@@ -184,7 +184,7 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	// we might need to add contraints for every country because every country 
+	// we might need to add contraints for every country because every country
 	// has a different length of mobile number and coutnry code
 	query!(
 		r#"
@@ -255,7 +255,7 @@ pub async fn initialize_users_post(
 	// 		user_email_address_view
 	// 	AS
 	// 		SELECT CONCAT(personal)
-	// 			FROM personal_email WHERE 
+	// 			FROM personal_email WHERE
 	// 	"#
 	// )
 	// .execute(&mut *transaction)
@@ -414,7 +414,6 @@ pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-
 	let email_local_domain: Vec<&str> = email.split('@').collect();
 
 	let rows = query_as!(
@@ -747,11 +746,7 @@ pub async fn add_email_for_user(
 	email: UserEmailAddress,
 ) -> Result<(), sqlx::Error> {
 	match email {
-		UserEmailAddress::Personal{
-			email,
-			domain_id,
-		} => {
-
+		UserEmailAddress::Personal { email, domain_id } => {
 			let email_local_domain: Vec<&str> = email.split('@').collect();
 
 			query!(
@@ -772,7 +767,7 @@ pub async fn add_email_for_user(
 		UserEmailAddress::Organisation {
 			email_local,
 			domain_id,
-			domain_name
+			domain_name,
 		} => {
 			query!(
 				r#"
@@ -823,9 +818,7 @@ pub async fn create_user(
 	(first_name, last_name): (&str, &str),
 	created: u64,
 ) -> Result<(), sqlx::Error> {
-
 	let email_local_domain: Vec<&str> = backup_email.split('@').collect();
-	
 
 	query!(
 		r#"

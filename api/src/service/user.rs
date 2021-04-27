@@ -79,21 +79,18 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let email_domain_local: Vec<&str> = email_verification_data.email_address.split('@').collect();
+	let email_domain_local: Vec<&str> =
+		email_verification_data.email_address.split('@').collect();
 
-	let domain_id = db::get_domain_by_name(
-		connection, 
-		email_domain_local[1]
-	)
-	.await?
-	.status(404)
-	.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	let domain_id = db::get_domain_by_name(connection, email_domain_local[1])
+		.await?
+		.status(404)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	let email_address =
-		UserEmailAddress::Personal{
-			email: email_verification_data.email_address,
-			domain_id: domain_id.id
-		};
+	let email_address = UserEmailAddress::Personal {
+		email: email_verification_data.email_address,
+		domain_id: domain_id.id,
+	};
 
 	db::add_email_for_user(connection, user_id, email_address).await?;
 

@@ -6,12 +6,18 @@ use shiplift::{ContainerOptions, Docker};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, Error, ErrorData, EveContext, EveMiddleware,
+		get_current_time,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 

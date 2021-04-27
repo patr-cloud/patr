@@ -34,7 +34,7 @@ pub struct UserLogin {
 
 #[derive(Clone)]
 pub enum UserEmailAddress {
-	Personal{
+	Personal {
 		email: String,
 		domain_id: Vec<u8>,
 	},

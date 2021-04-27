@@ -222,7 +222,6 @@ pub async fn set_domain_as_unverified(
 	Ok(())
 }
 
-
 // TODO get the correct email based on organisation or personal
 // pub async fn get_notification_email_for_domain(
 // 	connection: &mut Transaction<'_, MySql>,
@@ -234,7 +233,7 @@ pub async fn set_domain_as_unverified(
 // 			user.id,
 // 			user.username,
 // 			user.password,
-// 			CONCAT(user.backup_email_local,'@',user.backup_email_domain) 
+// 			CONCAT(user.backup_email_local,'@',user.backup_email_domain)
 // 			AS
 // 			'backup_email',
 // 			u

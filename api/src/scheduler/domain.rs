@@ -224,8 +224,8 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 // 			)
 // 			.await?;
 // 			if notification_email.is_none() {
-// 				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
-// 				continue;
+// 				log::error!("Notification email for domain `{}` is None. You might have a
+// dangling resource for the domain", verified_domain.name); 				continue;
 // 			}
 // 			mailer::send_domain_unverified_mail(
 // 				config.config.clone(),
