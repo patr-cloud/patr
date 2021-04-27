@@ -4,17 +4,17 @@ mod macros;
 mod models;
 mod routes;
 mod scheduler;
+mod service;
 mod utils;
-
-use api_macros::{query, query_as};
-use app::App;
-use eve_rs::handlebars::Handlebars;
-use tokio::{fs, runtime::Builder};
-use utils::{constants, logger};
 
 use std::{error::Error, sync::Arc};
 
+use api_macros::{query, query_as};
+use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
+use eve_rs::handlebars::Handlebars;
+use tokio::{fs, runtime::Builder};
+use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
@@ -67,6 +67,9 @@ async fn async_main() -> Result<()> {
 		);
 		return Ok(());
 	}
+
+	service::initialize(&app.config);
+	log::debug!("Service initialized");
 
 	scheduler::domain::refresh_domain_tld_list().await?;
 	log::info!("Domain TLD list initialized");

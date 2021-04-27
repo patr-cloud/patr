@@ -1,13 +1,15 @@
+use sqlx::{MySql, Transaction};
+
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query, query_as,
+	query,
+	query_as,
 };
-use sqlx::{MySql, Transaction};
 
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing deployer tables");
+	log::info!("Initializing deployment tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment (
@@ -20,13 +22,12 @@ pub async fn initialize_deployer_pre(
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
-			port_id BINARY(16) NOT NULL,
+			port SMALLINT UNSIGNED NOT NULL,
 			volume_id BINARY(16) NOT NULL,
 			var_id BINARY(16) NOT NULL,
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id)
-
 		);
 		"#
 	)
@@ -53,19 +54,20 @@ pub async fn initialize_deployer_pre(
 			port SMALLINT UNSIGNED NOT NULL,
 			PRIMARY KEY (id, port)
 		);
-	"#
+		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
 
 	query!(
 		r#"
-	CREATE TABLE IF NOT EXISTS environment_variable (
-		id BINARY(16),
-		name VARCHAR(50) NOT NULL,
-		value VARCHAR(50) NOT NULL,
-		PRIMARY KEY (id, name)
-	);"#
+		CREATE TABLE IF NOT EXISTS environment_variable (
+			id BINARY(16),
+			name VARCHAR(50) NOT NULL,
+			value VARCHAR(50) NOT NULL,
+			PRIMARY KEY (id, name)
+		);
+		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
@@ -257,24 +259,29 @@ pub async fn create_deployment(
 	.map(|_| ())
 }
 
-pub async fn get_deployments_by_image_name_and_tag(
+pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
 	image_tag: &str,
+	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			*
+			deployment.*
 		FROM
-			deployment
+			deployment,
+            resource
 		WHERE
+            deployment.id = resource.id AND
 			image_name = ? AND
-			image_tag = ?;
+			image_tag = ? AND
+            resource.owner_id = ?;
 		"#,
 		image_name,
-		image_tag
+		image_tag,
+		organisation_id
 	)
 	.fetch_all(connection)
 	.await

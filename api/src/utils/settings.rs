@@ -55,7 +55,7 @@ pub fn parse_config() -> Settings {
 pub struct Settings {
 	pub port: u16,
 	pub base_path: String,
-	pub password_salt: String,
+	pub password_pepper: String,
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
@@ -139,6 +139,13 @@ pub struct CloudflareSettings {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(into = "String", rename_all = "camelCase")]
+pub enum RunningEnvironment {
+	Development,
+	Production,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistrySettings {
 	pub service_name: String,
@@ -153,13 +160,6 @@ impl DockerRegistrySettings {
 	pub fn public_key_der(&self) -> &[u8] {
 		self.public_key_der.as_ref().unwrap().as_ref()
 	}
-}
-
-#[derive(Debug, Deserialize, Clone)]
-#[serde(into = "String", rename_all = "camelCase")]
-pub enum RunningEnvironment {
-	Development,
-	Production,
 }
 
 impl Display for RunningEnvironment {

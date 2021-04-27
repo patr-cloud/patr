@@ -11,8 +11,13 @@ pub static RESOURCE_TYPES: OnceCell<HashMap<String, Vec<u8>>> = OnceCell::new();
 #[serde(rename_all = "camelCase")]
 pub struct OrgPermissions {
 	pub is_super_admin: bool,
-	pub resources: HashMap<Vec<u8>, Vec<String>>, /* Given a resource, what and all permissions do you have on it */
-	pub resource_types: HashMap<Vec<u8>, Vec<String>>, /* Given a resource type, what and all permissions do you have on it */
+	pub resources: HashMap<Vec<u8>, Vec<String>>, /* Given a resource, what
+	                                               * and all permissions do
+	                                               * you have on it */
+	pub resource_types: HashMap<Vec<u8>, Vec<String>>, /* Given a resource
+	                                                    * type, what and all
+	                                                    * permissions do you
+	                                                    * have on it */
 }
 
 #[allow(dead_code)]

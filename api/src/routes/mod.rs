@@ -5,18 +5,21 @@ mod assets_vicara_co;
 #[path = "auth.vicara.co/mod.rs"]
 mod auth_vicara_co;
 
-use crate::{
-	app::{create_eve_app, App},
-	utils::{EveContext, EveMiddleware},
-};
 use eve_rs::App as EveApp;
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+use crate::{
+	app::{create_eve_app, App},
+	utils::{ErrorData, EveContext, EveMiddleware},
+};
+
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.use_middleware(
 		"/",
-		&[
+		[
 			EveMiddleware::DomainRouter(
 				String::from("api.vicara.co"),
 				Box::new(api_vicara_co::create_sub_app(app)),
