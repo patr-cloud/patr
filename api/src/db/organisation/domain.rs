@@ -222,55 +222,49 @@ pub async fn set_domain_as_unverified(
 	Ok(())
 }
 
+//work in progress
 // TODO get the correct email based on organisation or personal
-// pub async fn get_notification_email_for_domain(
-// 	connection: &mut Transaction<'_, MySql>,
-// 	domain_id: &[u8],
-// ) -> Result<Option<String>, sqlx::Error> {
-// 	let rows = query!(
-// 		r#"
-// 		SELECT
-// 			user.id,
-// 			user.username,
-// 			user.password,
-// 			CONCAT(user.backup_email_local,'@',user.backup_email_domain)
-// 			AS
-// 			'backup_email',
-// 			u
-// 			user.first_name,
-// 			user.last_name,
-// 			user.dob,
-// 			user.bio,
-// 			user.
-// 		FROM
-// 			domain
-// 		INNER JOIN
-// 			resource
-// 		ON
-// 			domain.id = resource.id
-// 		INNER JOIN
-// 			organisation
-// 		ON
-// 			resource.owner_id = organisation.id
-// 		INNER JOIN
-// 			user
-// 		ON
-// 			organisation.super_admin_id = user.id
-// 		WHERE
-// 			domain.id = ?;
-// 		"#,
-// 		domain_id
-// 	)
-// 	.fetch_all(connection)
-// 	.await?;
+pub async fn get_notification_email_for_domain(
+	connection: &mut Transaction<'_, MySql>,
+	domain_id: &[u8],
+) -> Result<Option<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			user.*
 
-// 	if rows.is_empty() {
-// 		return Ok(None);
-// 	}
-// 	let row = rows.into_iter().next().unwrap();
+		FROM
+			domain
+		INNER JOIN
+			resource
+		ON
+			domain.id = resource.id
+		INNER JOIN
+			organisation
+		ON
+			resource.owner_id = organisation.id
+		INNER JOIN
+			user
+		ON
+			organisation.super_admin_id = user.id
+		WHERE
+			domain.id = ?;
+		"#,
+		domain_id
+	)
+	.fetch_all(connection)
+	.await?;
 
-// 	Ok(Some(row.backup_email))
-// }
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+
+	let backup_email = row.backup_email_local.unwrap() +
+		"@" + &row.backup_email_domain.unwrap();
+
+	Ok(Some(backup_email))
+}
 
 pub async fn delete_domain_from_organisation(
 	connection: &mut Transaction<'_, MySql>,

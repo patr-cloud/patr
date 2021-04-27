@@ -422,10 +422,14 @@ async fn reset_password(
 	)
 	.await?;
 
+	//add error handling
+	let user_backup_email = user.backup_email_local.unwrap() +
+		"@" + &user.backup_email_domain.unwrap();
+
 	task::spawn_blocking(|| {
 		mailer::send_password_changed_notification_mail(
 			config,
-			user.backup_email,
+			user_backup_email,
 		);
 	});
 

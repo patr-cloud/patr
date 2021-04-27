@@ -8,10 +8,10 @@ pub struct User {
 	#[serde(skip)]
 	pub password: String,
 	#[serde(skip)]
-	pub backup_email_local: String,
-	pub backup_email_domain: String,
-	pub backup_email_type: String,
-	pub recovery_phone_number: String,
+	pub backup_email_local: Option<String>,
+	pub backup_email_domain: Option<String>,
+	pub backup_email_type: Option<String>,
+	pub recovery_phone_number: Option<String>,
 	pub first_name: String,
 	pub last_name: String,
 	#[serde(skip_serializing_if = "Option::is_none")]

@@ -321,7 +321,14 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	Ok((otp, user.backup_email))
+	let backup_email = [
+		user.backup_email_local.unwrap(),
+		String::from("@"),
+		user.backup_email_domain.unwrap(),
+	]
+	.concat();
+
+	Ok((otp, backup_email))
 }
 
 pub async fn reset_password(
@@ -490,6 +497,7 @@ pub async fn join_user(
 			email = UserEmailAddress::Organisation {
 				domain_id,
 				email_local,
+				domain_name,
 			};
 			backup_email_to = Some(backup_email);
 
