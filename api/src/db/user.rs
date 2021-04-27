@@ -27,13 +27,44 @@ pub async fn initialize_users_pre(
 			id BINARY(16) PRIMARY KEY,
 			username VARCHAR(100) UNIQUE NOT NULL,
 			password TEXT NOT NULL,
-			backup_email VARCHAR(320) UNIQUE NOT NULL,
+			backup_email_local VARCHAR(54),
+			backup_email_domain VARCHAR(255),
+			recovery_phone_number VARCHAR(15),
+			backup_email_type ENUM('personal','organisation'),
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
 			dob BIGINT UNSIGNED DEFAULT NULL,
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
-			created BIGINT UNSIGNED NOT NULL
+			created BIGINT UNSIGNED NOT NULL,
+			CONSTRAINT email_always_personal CHECK (
+				backup_email_type='personal'
+			),
+			CONSTRAINT recovery CHECK (
+				(
+					backup_email_local IS NULL 
+					AND
+					backup_email_domain IS NULL
+					AND
+					recovery_phone_number IS NOT NULL
+				)
+				OR
+				(
+					backup_email_local IS NOT NULL 
+					AND
+					backup_email_domain IS NOT NULL
+					AND
+					recovery_phone_number IS NULL
+				)
+				OR
+				(
+					backup_email_local IS NOT NULL 
+					AND
+					backup_email_domain IS NOT NULL
+					AND
+					recovery_phone_number IS NOT NULL
+				)
+			)
 		);
 		"#
 	)
@@ -80,43 +111,103 @@ pub async fn initialize_users_post(
 	// and one for organisation emails
 	// We can have a complicated constraint like so:
 	// Ref: https://stackoverflow.com/a/10273951/3393442
+	// query!(
+	// 	r#"
+	// 	CREATE TABLE IF NOT EXISTS user_email_address (
+	// 		type ENUM('personal', 'organisation') NOT NULL,
+
+	// 		/* Personal email address */
+	// 		email_address VARCHAR(320),
+			
+	// 		/* Organisation email address */
+	// 		email_local VARCHAR(160),
+	// 		domain_id BINARY(16),
+
+	// 		user_id BINARY(16) NOT NULL,
+			
+	// 		UNIQUE(email_address, email_local, domain_id, user_id),
+	// 		FOREIGN KEY(user_id) REFERENCES user(id),
+	// 		FOREIGN KEY(domain_id) REFERENCES domain(id),
+	// 		CONSTRAINT CHECK
+	// 		(
+	// 			(
+	// 				type = 'personal' AND
+	// 				(
+	// 					email_address IS NOT NULL AND
+	// 					email_local IS NULL AND
+	// 					domain_id IS NULL
+	// 				)
+	// 			) OR
+	// 			(
+	// 				type = 'organisation' AND
+	// 				(
+	// 					email_address IS NULL AND
+	// 					email_local IS NOT NULL AND
+	// 					domain_id IS NOT NULL
+	// 				)
+	// 			)
+	// 		)
+	// 	);
+	// 	"#
+	// )
+	// .execute(&mut *transaction)
+	// .await?;
+
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_email_address (
-			type ENUM('personal', 'organisation') NOT NULL,
-
-			/* Personal email address */
-			email_address VARCHAR(320),
-			
-			/* Organisation email address */
-			email_local VARCHAR(160),
-			domain_id BINARY(16),
-
+		CREATE TABLE IF NOT EXISTS personal_email (
 			user_id BINARY(16) NOT NULL,
-			
-			UNIQUE(email_address, email_local, domain_id, user_id),
-			FOREIGN KEY(user_id) REFERENCES user(id),
-			FOREIGN KEY(domain_id) REFERENCES domain(id),
-			CONSTRAINT CHECK
-			(
-				(
-					type = 'personal' AND
-					(
-						email_address IS NOT NULL AND
-						email_local IS NULL AND
-						domain_id IS NULL
-					)
-				) OR
-				(
-					type = 'organisation' AND
-					(
-						email_address IS NULL AND
-						email_local IS NOT NULL AND
-						domain_id IS NOT NULL
-					)
-				)
-			)
+			email_local VARCHAR(54),
+			email_domain VARCHAR(255),
+			domain_id BINARY(16),
+			PRIMARY KEY(email_local, email_domain)
+			/*Foreign key constraint is in domain.rs */
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	// more details can be added here in the organisation table
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS organisation_email (
+			user_id BINARY(16) NOT NULL,
+			email_local VARCHAR(54),
+			email_domain VARCHAR(255),
+			domain_id BINARY(16),
+			PRIMARY KEY(email_local, email_domain)
+			/*Foreign key constraint is in domain.rs */
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	// we might need to add contraints for every country because every country 
+	// has a different length of mobile number and coutnry code
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS user_contact_number (
+			user_id BINARY(16) NOT NULL,
+			country_code VARCHAR(4) NOT NULL,
+			number VARCHAR(15) PRIMARY KEY,
+			CONSTRAINT num_user_fk FOREIGN KEY(user_id) REFERENCES user(id),
+			CONSTRAINT country_code_check CHECK(CHAR_LENGTH(country_code) >= 2 AND CHAR_LENGTH(country_code) <= 4),
+			CONSTRAINT phone_number_check CHECK(CHAR_LENGTH(number) >= 7 AND CHAR_LENGTH(number) <= 15)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user
+		ADD CONSTRAINT 
+		user_fk FOREIGN KEY(backup_email_local, backup_email_domain) REFERENCES personal_email_address(email_local,email_domain),
+		ADD CONSTRAINT 
+		phone_num FOREIGN KEY(recovery_phone_number) REFERENCES user_contact_number(number);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -139,31 +230,36 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	query!(
-		r#"
-		CREATE VIEW
-			user_email_address_view
-		AS
-			SELECT
-				CASE WHEN (user_email_address.type = 'personal') THEN
-					user_email_address.email_address
-				ELSE
-					CONCAT(user_email_address.email_local, '@', domain.name)
-				END AS email,
-				user_email_address.user_id AS user_id,
-				user_email_address.type AS type,
-				domain.id AS domain_id,
-				domain.name AS domain_name
-			FROM
-				user_email_address
-			LEFT JOIN
-				domain
-			ON
-				user_email_address.domain_id = domain.id;
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
+	// query!(
+	// 	r#"
+	// 	/*CREATE VIEW
+	// 		user_email_address_view
+	// 	AS
+	// 		SELECT
+	// 			CASE WHEN (user_email_address.type = 'personal') THEN
+	// 				user_email_address.email_address
+	// 			ELSE
+	// 				CONCAT(user_email_address.email_local, '@', domain.name)
+	// 			END AS email,
+	// 			user_email_address.user_id AS user_id,
+	// 			user_email_address.type AS type,
+	// 			domain.id AS domain_id,
+	// 			domain.name AS domain_name
+	// 		FROM
+	// 			user_email_address
+	// 		LEFT JOIN
+	// 			domain
+	// 		ON
+	// 			user_email_address.domain_id = domain.id;*/
+	// 	CREATE VIEW
+	// 		user_email_address_view
+	// 	AS
+	// 		SELECT CONCAT(personal)
+	// 			FROM personal_email WHERE 
+	// 	"#
+	// )
+	// .execute(&mut *transaction)
+	// .await?;
 
 	query!(
 		r#"
@@ -227,12 +323,12 @@ pub async fn get_user_by_username_or_email(
 		FROM
 			user
 		LEFT JOIN
-			user_email_address_view
+			personal_email
 		ON
-			user_email_address_view.user_id = user.id
+			personal_email.user_id = user.id
 		WHERE
 			user.username = ? OR
-			user_email_address_view.email = ?;
+			CONCAT(personal_email.email_local,'@',personal_email.email_domain) = ?;
 		"#,
 		user_id,
 		user_id
@@ -313,10 +409,14 @@ pub async fn get_god_user_id(
 	Ok(Some(id))
 }
 
+// This only retreives user using personal email address/backup email address
 pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
+
+	let email_local_domain: Vec<&str> = email.split('@').collect();
+
 	let rows = query_as!(
 		User,
 		r#"
@@ -325,13 +425,16 @@ pub async fn get_user_by_email(
 		FROM
 			user
 		LEFT JOIN
-			user_email_address_view
+			personal_email
 		ON
-			user_email_address_view.user_id = user.id
+		personal_email.user_id = user.id
 		WHERE
-			user_email_address_view.email = ?
+			personal_email.email_local = ?
+		AND
+			personal_email.email_domain = ?
 		"#,
-		email
+		email_local_domain[0],
+		email_local_domain[1]
 	)
 	.fetch_all(connection)
 	.await?;
@@ -644,16 +747,24 @@ pub async fn add_email_for_user(
 	email: UserEmailAddress,
 ) -> Result<(), sqlx::Error> {
 	match email {
-		UserEmailAddress::Personal(email) => {
+		UserEmailAddress::Personal{
+			email,
+			domain_id,
+		} => {
+
+			let email_local_domain: Vec<&str> = email.split('@').collect();
+
 			query!(
 				r#"
 				INSERT INTO
-					user_email_address
+					personal_email
 				VALUES
-					('personal', ?, NULL, NULL, ?);
+					(?, ?, ?, ?);
 				"#,
-				email,
-				user_id
+				user_id,
+				email_local_domain[0],
+				email_local_domain[1],
+				domain_id
 			)
 			.execute(connection)
 			.await?;
@@ -661,17 +772,19 @@ pub async fn add_email_for_user(
 		UserEmailAddress::Organisation {
 			email_local,
 			domain_id,
+			domain_name
 		} => {
 			query!(
 				r#"
 				INSERT INTO
-					user_email_address
+					organisation_email
 				VALUES
-					('organisation', NULL, ?, ?, ?);
+					(?, ?, ?, ?);
 				"#,
+				user_id,
 				email_local,
-				domain_id,
-				user_id
+				domain_name,
+				domain_id
 			)
 			.execute(connection)
 			.await?;
@@ -706,20 +819,27 @@ pub async fn create_user(
 	username: &str,
 	password: &str,
 	backup_email: &str,
+	recovery_phone_number: &str,
 	(first_name, last_name): (&str, &str),
 	created: u64,
 ) -> Result<(), sqlx::Error> {
+
+	let email_local_domain: Vec<&str> = backup_email.split('@').collect();
+	
+
 	query!(
 		r#"
 		INSERT INTO
 			user
 		VALUES
-			(?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?);
+			(?, ?, ?, ?, ?, ?, 'personal', ?, ?, NULL, NULL, NULL, ?);
 		"#,
 		user_id,
 		username,
 		password,
-		backup_email,
+		email_local_domain[0],
+		email_local_domain[1],
+		recovery_phone_number,
 		first_name,
 		last_name,
 		created

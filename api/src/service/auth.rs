@@ -409,6 +409,8 @@ pub async fn join_user(
 		&user_data.username,
 		&user_data.password,
 		&user_data.backup_email,
+		// ADD phone number here
+		"NULL",
 		(&user_data.first_name, &user_data.last_name),
 		created,
 	)
@@ -420,7 +422,33 @@ pub async fn join_user(
 	let backup_email_to;
 	match user_data.email {
 		UserEmailAddressSignUp::Personal(email_address) => {
-			email = UserEmailAddress::Personal(email_address.clone());
+
+			let personal_organisation_name = service::get_personal_org_name(username);
+			let organisation_id = service::create_organisation(
+				connection,
+				&personal_organisation_name,
+				user_id,
+			)
+			.await?;
+			let organisation_id = organisation_id.as_bytes();
+
+			let email_local_domain: Vec<&str> = email_address.split('@').collect();
+
+			let domain_id = service::add_domain_to_organisation(
+				connection,
+				email_local_domain[1],
+				organisation_id,
+				"personal"
+			)
+			.await?
+			.as_bytes()
+			.to_vec();
+
+			email = UserEmailAddress::Personal{
+				email: email_address.clone(),
+				domain_id: domain_id
+			};
+
 			backup_email_to = None;
 			welcome_email_to = email_address;
 		}
@@ -442,6 +470,7 @@ pub async fn join_user(
 				connection,
 				&domain_name,
 				organisation_id,
+				"organisation"
 			)
 			.await?
 			.as_bytes()
@@ -453,17 +482,21 @@ pub async fn join_user(
 				email_local,
 			};
 			backup_email_to = Some(backup_email);
+
+		// add personal organisation
+		let personal_organisation_name = service::get_personal_org_name(username);
+		service::create_organisation(
+			connection,
+			&personal_organisation_name,
+			user_id,
+		)
+		.await?;
 		}
+
+		
 	}
 
-	// add personal organisation
-	let personal_organisation_name = service::get_personal_org_name(username);
-	service::create_organisation(
-		connection,
-		&personal_organisation_name,
-		user_id,
-	)
-	.await?;
+	
 
 	db::add_email_for_user(connection, user_id, email).await?;
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;

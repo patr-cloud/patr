@@ -247,6 +247,7 @@ async fn add_domain_to_organisation(
 		context.get_mysql_connection(),
 		domain_name,
 		&organisation_id,
+		"organisation"
 	)
 	.await?;
 	let domain_id = hex::encode(domain_id.as_bytes());

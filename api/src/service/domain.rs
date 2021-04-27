@@ -19,6 +19,7 @@ pub async fn add_domain_to_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
 	organisation_id: &[u8],
+	domain_type: &str
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -49,7 +50,7 @@ pub async fn add_domain_to_organisation(
 		organisation_id,
 	)
 	.await?;
-	db::add_domain(connection, domain_id, &domain_name).await?;
+	db::add_domain(connection, domain_id, &domain_name,domain_type).await?;
 
 	Ok(domain_uuid)
 }
