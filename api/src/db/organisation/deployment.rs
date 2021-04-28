@@ -87,6 +87,47 @@ pub async fn initialize_deployer_pre(
 
 	// TODO: create tabel for maching type and  upgrade path
 
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS deployment_gpu_type (
+			id BINARY(16) PRIMARY KEY,
+			name VARCHAR(255) NOT NULL UNIQUE
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS default_deployment_machine_type (
+			name VARCHAR(100) NOT NULL UNIQUE,
+			cpu_count SMALLINT UNSIGNED NOT NULL,
+			memory_count FLOAT UNSIGNED NOT NULL,
+			gpu_type_id BINARY(16) NOT NULL,
+			PRIMARY KEY(cpu_count, memory_count, gpu_type_id),
+			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS deployment_machine_type (
+			name VARCHAR(100) NOT NULL UNIQUE,
+			cpu_count SMALLINT UNSIGNED NOT NULL,
+			memory_count FLOAT UNSIGNED NOT NULL,
+			gpu_type_id BINARY(16) NOT NULL,
+			PRIMARY KEY(cpu_count, memory_count, gpu_type_id),
+			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 
