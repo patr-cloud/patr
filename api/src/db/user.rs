@@ -27,9 +27,6 @@ pub async fn initialize_users_pre(
 			id BINARY(16) PRIMARY KEY,
 			username VARCHAR(100) UNIQUE NOT NULL,
 			password TEXT NOT NULL,
-			backup_email_local VARCHAR(54),
-			backup_email_domain VARCHAR(255),
-			recovery_phone_number VARCHAR(15),
 			backup_email_type ENUM('personal','organisation'),
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
@@ -37,6 +34,10 @@ pub async fn initialize_users_pre(
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
 			created BIGINT UNSIGNED NOT NULL,
+			backup_email_local VARCHAR(54),
+			backup_email_domain_id BINARY(16),
+			backup_phone_number_country_code VARCHAR(4),
+			backup_phone_number VARCHAR(15),
 			CONSTRAINT email_always_personal CHECK (
 				backup_email_type='personal'
 			),
@@ -45,26 +46,15 @@ pub async fn initialize_users_pre(
 					backup_email_local IS NULL 
 					AND
 					backup_email_domain IS NULL
-					AND
-					recovery_phone_number IS NOT NULL
 				)
 				OR
 				(
-					backup_email_local IS NOT NULL 
-					AND
-					backup_email_domain IS NOT NULL
-					AND
 					recovery_phone_number IS NULL
-				)
-				OR
-				(
-					backup_email_local IS NOT NULL 
 					AND
-					backup_email_domain IS NOT NULL
-					AND
-					recovery_phone_number IS NOT NULL
+					recovery_phone_number_country_code IS NULL
 				)
-			)
+			),
+			FOREIGN KEY(id, backup_email_local, backup_email_domain_id) REFERENCES personal_email(user_id, email_local, domain_id)
 		);
 		"#
 	)
@@ -79,8 +69,7 @@ pub async fn initialize_users_pre(
 			token_expiry BIGINT UNSIGNED NOT NULL,
 			user_id BINARY(16) NOT NULL,
 			last_login BIGINT UNSIGNED NOT NULL,
-			last_activity BIGINT UNSIGNED NOT NULL,
-			FOREIGN KEY(user_id) REFERENCES user(id)
+			last_activity BIGINT UNSIGNED NOT NULL
 		);
 		"#
 	)
@@ -92,8 +81,7 @@ pub async fn initialize_users_pre(
 		CREATE TABLE IF NOT EXISTS password_reset_request (
 			user_id BINARY(16) PRIMARY KEY,
 			token TEXT NOT NULL,
-			token_expiry BIGINT UNSIGNED NOT NULL,
-			FOREIGN KEY(user_id) REFERENCES user(id)
+			token_expiry BIGINT UNSIGNED NOT NULL
 		);
 		"#
 	)
@@ -158,10 +146,9 @@ pub async fn initialize_users_post(
 		CREATE TABLE IF NOT EXISTS personal_email (
 			user_id BINARY(16) NOT NULL,
 			email_local VARCHAR(54),
-			email_domain VARCHAR(255),
 			domain_id BINARY(16),
-			PRIMARY KEY(email_local, email_domain)
-			/*Foreign key constraint is in domain.rs */
+			PRIMARY KEY(email_local, domain_id),
+			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id)
 		);
 		"#
 	)
@@ -174,11 +161,32 @@ pub async fn initialize_users_post(
 		CREATE TABLE IF NOT EXISTS organisation_email (
 			user_id BINARY(16) NOT NULL,
 			email_local VARCHAR(54),
-			email_domain VARCHAR(255),
 			domain_id BINARY(16),
-			PRIMARY KEY(email_local, email_domain)
-			/*Foreign key constraint is in domain.rs */
+			PRIMARY KEY(email_local, domain_id),
+			CONSTRAINT FOREIGN KEY(user_id) REFERENCES USER(id)
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+
+	// altering the table to add the foreign key reference of 
+	query!(
+		r#"
+		ALTER TABLE personal_email
+		ADD CONSTRAINT 
+		FOREIGN KEY(domain_id) REFERENCES personal_domain(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE organisation_email
+		ADD CONSTRAINT 
+		FOREIGN KEY(domain_id) REFERENCES organisation_domain(id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -192,7 +200,8 @@ pub async fn initialize_users_post(
 			user_id BINARY(16) NOT NULL,
 			country_code VARCHAR(4) NOT NULL,
 			number VARCHAR(15) PRIMARY KEY,
-			CONSTRAINT num_user_fk FOREIGN KEY(user_id) REFERENCES user(id),
+			PRIMARY KEY(country_code, number),
+			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id),
 			CONSTRAINT country_code_check CHECK(CHAR_LENGTH(country_code) >= 2 AND CHAR_LENGTH(country_code) <= 4),
 			CONSTRAINT phone_number_check CHECK(CHAR_LENGTH(number) >= 7 AND CHAR_LENGTH(number) <= 15)
 		);
@@ -205,9 +214,9 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE user
 		ADD CONSTRAINT 
-		user_fk FOREIGN KEY(backup_email_local, backup_email_domain) REFERENCES personal_email_address(email_local,email_domain),
+		FOREIGN KEY(backup_email_local, backup_email_domain_id) REFERENCES personal_email_address(email_local,domain_id),
 		ADD CONSTRAINT 
-		phone_num FOREIGN KEY(recovery_phone_number) REFERENCES user_contact_number(number);
+		FOREIGN KEY(recovery_phone_number, recovery_phone_number_country_code) REFERENCES user_contact_number(number, country_code);
 		"#
 	)
 	.execute(&mut *transaction)

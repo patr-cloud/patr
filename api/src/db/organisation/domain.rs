@@ -1,6 +1,8 @@
+use std::fmt::Display;
+
 use sqlx::{MySql, Transaction};
 
-use crate::{models::db_mapping::Domain, query, query_as};
+use crate::{models::db_mapping::Domain, query, query_as, utils::constants::AccountType};
 
 pub async fn initialize_domain_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -8,12 +10,11 @@ pub async fn initialize_domain_pre(
 	log::info!("Initializing domain tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain (
+		CREATE TABLE IF NOT EXISTS generic_domain (
 			id BINARY(16),
 			name VARCHAR(255) UNIQUE NOT NULL,
 			type ENUM('personal','organisation'),
-			is_verified BOOL NOT NULL DEFAULT FALSE,
-			PRIMARY KEY(id, name ,type)
+			PRIMARY KEY(id ,type)
 		);
 		"#
 	)
@@ -25,9 +26,9 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE IF NOT EXISTS personal_domain (
 			id BINARY(16) NOT NULL,
 			domain_type ENUM('personal','organisation') NOT NULL,
-			domain_name VARCHAR(255) NOT NULL,
-			PRIMARY KEY(id, name),
-			CONSTRAINT p_fk FOREIGN KEY(id,domain_name, domain_type) REFERENCES domain(id,name, type),
+			PRIMARY KEY(id),
+			/* Change name of the constraint */
+			CONSTRAINT p_fk FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
 			CONSTRAINT type_domain CHECK(domain_type='personal')
 		);
 		"#
@@ -40,10 +41,10 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE IF NOT EXISTS organisation_domain (
 			id BINARY(16) NOT NULL,
 			domain_type ENUM('personal','organisation') NOT NULL,
-			domain_name VARCHAR(255) NOT NULL,
-			PRIMARY KEY(id, name),
-			CONSTRAINT o_fk FOREIGN KEY(id,domain_name, domain_type) REFERENCES domain(id,type),
-			CONSTRAINT type_domain CHECK(domain_type='organisation')
+			is_verified BOOL NOT NULL DEFAULT FALSE,
+			PRIMARY KEY(id),
+			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id,type),
+			CONSTRAINT CHECK(domain_type='organisation')
 		);
 		"#
 	)
@@ -51,26 +52,7 @@ pub async fn initialize_domain_pre(
 	.await?;
 
 	// wasn't sure about where to put this query, so for now i am adding it here
-	// i plan to create a function simialr to initialize_domain_post
-	query!(
-		r#"
-		ALTER TABLE personal_email
-		ADD CONSTRAINT 
-		dom_p_fk FOREIGN KEY(email_domain,domain_id) REFERENCES personal_domain(domain_name,id);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE organisation_email
-		ADD CONSTRAINT 
-		dom_o_fk FOREIGN KEY(email_domain,domain_id) REFERENCES organisation_domain(domain_name,id);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
+	// i plan to create a function similar to initialize_domain_post
 
 	Ok(())
 }
@@ -95,14 +77,17 @@ pub async fn add_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 	domain_name: &str,
-	domain_type: &str,
+	domain_type: AccountType,
 ) -> Result<(), sqlx::Error> {
+
+	let domain_type = domain_type.to_string();
+
 	query!(
 		r#"
 		INSERT INTO
-			domain
+			generic_domain
 		VALUES
-			(?, ?, ?, FALSE);
+			(?, ?, ?);
 		"#,
 		domain_id,
 		domain_name,
@@ -122,15 +107,18 @@ pub async fn get_domains_for_organisation(
 		Domain,
 		r#"
 		SELECT
-			domain.id,
-			domain.name,
-			is_verified as `is_verified: bool`
+			generic_domain.name,
+			organisation_domain.is_verified as 'is_verified: bool'
 		FROM
-			domain
+			generic_domain
 		INNER JOIN
-			resource
+			organisation_domain
 		ON
-			domain.id = resource.id
+			organisation_domain.id = generic_domain.id
+		INNER JOIN
+			resource 
+		ON
+			generic_domain.id = resource.id
 		WHERE
 			resource.owner_id = ?;
 		"#,
@@ -148,10 +136,9 @@ pub async fn get_all_unverified_domains(
 		r#"
 		SELECT
 			id,
-			name,
 			is_verified as `is_verified: bool`
 		FROM
-			domain
+			organisation_domain
 		WHERE
 			is_verified = FALSE;
 		"#
@@ -167,7 +154,7 @@ pub async fn set_domain_as_verified(
 	query!(
 		r#"
 		UPDATE
-			domain
+			organisation_domain
 		SET
 			is_verified = TRUE
 		WHERE
@@ -188,13 +175,17 @@ pub async fn get_all_verified_domains(
 		Domain,
 		r#"
 		SELECT
-			id,
-			name,
-			is_verified as `is_verified: bool`
+			generic_domain.id,
+			generic_domain.name,
+			organisation_domain.is_verified as `is_verified: bool`
 		FROM
-			domain
+			generic_domain
+		INNER JOIN
+			organisation_domain
+		ON
+			generic_domain.id = organisation_domain.id
 		WHERE
-			is_verified = TRUE;
+			organisation_domain.is_verified = TRUE;
 		"#
 	)
 	.fetch_all(connection)
@@ -208,7 +199,7 @@ pub async fn set_domain_as_unverified(
 	query!(
 		r#"
 		UPDATE
-			domain
+			organisation_domain
 		SET
 			is_verified = FALSE
 		WHERE
@@ -231,14 +222,18 @@ pub async fn get_notification_email_for_domain(
 	let rows = query!(
 		r#"
 		SELECT
-			user.*
-
+			user.*,
+			generic_domain.name
 		FROM
-			domain
+			personal_domain
+		INNER JOIN
+			generic_domain
+		ON
+			generic_domain.id = personal_domain.id
 		INNER JOIN
 			resource
 		ON
-			domain.id = resource.id
+			personal_domain.id = resource.id
 		INNER JOIN
 			organisation
 		ON
@@ -248,7 +243,7 @@ pub async fn get_notification_email_for_domain(
 		ON
 			organisation.super_admin_id = user.id
 		WHERE
-			domain.id = ?;
+			generic_domain.id = ?;
 		"#,
 		domain_id
 	)
@@ -261,7 +256,7 @@ pub async fn get_notification_email_for_domain(
 	let row = rows.into_iter().next().unwrap();
 
 	let backup_email = row.backup_email_local.unwrap() +
-		"@" + &row.backup_email_domain.unwrap();
+		"@" + &row.name;
 
 	Ok(Some(backup_email))
 }
@@ -273,7 +268,7 @@ pub async fn delete_domain_from_organisation(
 	query!(
 		r#"
 		DELETE FROM
-			domain
+			organisation_domain
 		WHERE
 			id = ?;
 		"#,
@@ -293,13 +288,17 @@ pub async fn get_domain_by_id(
 		Domain,
 		r#"
 		SELECT
-			id,
-			name,
-			is_verified as `is_verified: bool`
+			generic_domain.id,
+			generic_domain.name,
+			organisation_domain.is_verified as `is_verified: bool`
 		FROM
-			domain
+			generic_domain
+		INNER JOIN
+			organisation_domain
+		ON
+			organisation_domain.id = generic_domain.id
 		WHERE
-			id = ?
+			generic_domain.id = ?
 		"#,
 		domain_id
 	)
@@ -317,13 +316,17 @@ pub async fn get_domain_by_name(
 		Domain,
 		r#"
 		SELECT
-			id,
-			name,
-			is_verified as `is_verified: bool`
+			generic_domain.id,
+			generic_domain.name,
+			organisation_domain.is_verified as `is_verified: bool`
 		FROM
-			domain
+			generic_domain
+		INNER JOIN
+			organisation_domain
+		ON
+			generic_domain.id = organisation_domain.id
 		WHERE
-			name = ?;
+			generic_domain.name = ?;
 		"#,
 		domain_name
 	)

@@ -224,6 +224,7 @@ async fn join(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	
 	let username = body
 		.get(request_keys::USERNAME)
 		.map(|param| param.as_str())

@@ -82,6 +82,7 @@ pub async fn verify_personal_email_address_for_user(
 	let email_domain_local: Vec<&str> =
 		email_verification_data.email_address.split('@').collect();
 
+
 	let domain_id = db::get_domain_by_name(connection, email_domain_local[1])
 		.await?
 		.status(404)

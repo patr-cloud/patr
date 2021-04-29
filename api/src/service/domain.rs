@@ -21,6 +21,7 @@ pub async fn add_domain_to_organisation(
 	organisation_id: &[u8],
 	domain_type: &str,
 ) -> Result<Uuid, Error> {
+	println!("TEST! in service/domain.rs");
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
 			.status(400)
