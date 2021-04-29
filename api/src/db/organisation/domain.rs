@@ -2,7 +2,12 @@ use std::fmt::Display;
 
 use sqlx::{MySql, Transaction};
 
-use crate::{models::db_mapping::Domain, query, query_as, utils::constants::AccountType};
+use crate::{
+	models::db_mapping::Domain,
+	query,
+	query_as,
+	utils::constants::AccountType,
+};
 
 pub async fn initialize_domain_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -79,7 +84,6 @@ pub async fn add_domain(
 	domain_name: &str,
 	domain_type: AccountType,
 ) -> Result<(), sqlx::Error> {
-
 	let domain_type = domain_type.to_string();
 
 	query!(
@@ -255,8 +259,7 @@ pub async fn get_notification_email_for_domain(
 	}
 	let row = rows.into_iter().next().unwrap();
 
-	let backup_email = row.backup_email_local.unwrap() +
-		"@" + &row.name;
+	let backup_email = row.backup_email_local.unwrap() + "@" + &row.name;
 
 	Ok(Some(backup_email))
 }

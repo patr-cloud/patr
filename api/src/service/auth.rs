@@ -105,7 +105,6 @@ pub async fn create_user_join_request(
 				.body(error!(WRONG_PARAMETERS).to_string())?
 				.to_string();
 
-
 			if !validator::is_domain_name_valid(&domain_name).await {
 				Error::as_result()
 					.status(200)
@@ -420,8 +419,6 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	
-
 	db::create_user(
 		connection,
 		user_id,
@@ -434,7 +431,6 @@ pub async fn join_user(
 		created,
 	)
 	.await?;
-
 
 	// For an organisation, create the organisation and domain
 	let email;

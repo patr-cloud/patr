@@ -170,8 +170,7 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-
-	// altering the table to add the foreign key reference of 
+	// altering the table to add the foreign key reference of
 	query!(
 		r#"
 		ALTER TABLE personal_email
