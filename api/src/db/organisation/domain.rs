@@ -1,11 +1,7 @@
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::{
-		DomainsForOrganisation,
-		OrganisationDomain,
-		VerifiedDomains,
-	},
+	models::db_mapping::{OrganisationDomain, VerifiedDomains},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -31,9 +27,8 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_domain (
-			id BINARY(16) NOT NULL,
+			id BINARY(16) PRIMARY KEY,
 			domain_type ENUM('personal','organisation') NOT NULL,
-			PRIMARY KEY(id),
 			/* Change name of the constraint */
 			CONSTRAINT p_fk FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
 			CONSTRAINT type_domain CHECK(domain_type='personal')
@@ -46,10 +41,9 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS organisation_domain (
-			id BINARY(16) NOT NULL,
+			id BINARY(16) PRIMARY KEY,
 			domain_type ENUM('personal','organisation') NOT NULL,
 			is_verified BOOL NOT NULL DEFAULT FALSE,
-			PRIMARY KEY(id),
 			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id,type),
 			CONSTRAINT CHECK(domain_type='organisation')
 		);
@@ -105,14 +99,40 @@ pub async fn add_domain(
 	Ok(())
 }
 
+// pub async fn add_domain_to_personal(
+// 	connection: &mut Transaction<'_, MySql>,
+// 	domain_id: &[u8],
+// 	domain_name: &str,
+// 	domain_type: AccountType,
+// ) -> Result<(), sqlx::Error> {
+// 	let domain_type = domain_type.to_string();
+
+// 	query!(
+// 		r#"
+// 		INSERT INTO
+// 			generic_domain
+// 		VALUES
+// 			(?, ?, ?);
+// 		"#,
+// 		domain_id,
+// 		domain_name,
+// 		domain_type
+// 	)
+// 	.execute(connection)
+// 	.await?;
+
+// 	Ok(())
+// }
+
 pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
-) -> Result<Vec<DomainsForOrganisation>, sqlx::Error> {
+) -> Result<Vec<VerifiedDomains>, sqlx::Error> {
 	query_as!(
-		DomainsForOrganisation,
+		VerifiedDomains,
 		r#"
 		SELECT
+			generic_domain.id,
 			generic_domain.name,
 			organisation_domain.is_verified as 'is_verified: bool'
 		FROM

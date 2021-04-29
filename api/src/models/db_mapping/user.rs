@@ -41,7 +41,6 @@ pub enum UserEmailAddress {
 	Organisation {
 		email_local: String,
 		domain_id: Vec<u8>,
-		domain_name: String,
 	},
 }
 

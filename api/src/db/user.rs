@@ -27,7 +27,6 @@ pub async fn initialize_users_pre(
 			id BINARY(16) PRIMARY KEY,
 			username VARCHAR(100) UNIQUE NOT NULL,
 			password TEXT NOT NULL,
-			backup_email_type ENUM('personal','organisation'),
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
 			dob BIGINT UNSIGNED DEFAULT NULL,
@@ -36,22 +35,22 @@ pub async fn initialize_users_pre(
 			created BIGINT UNSIGNED NOT NULL,
 			backup_email_local VARCHAR(54),
 			backup_email_domain_id BINARY(16),
-			backup_phone_number_country_code INT,
-			backup_phone_number BIGINT,
+			backup_phone_number_country_code varchar(4),
+			backup_phone_number BIGINT UNSIGNED,
 			CONSTRAINT email_always_personal CHECK (
 				backup_email_type='personal'
 			),
 			CONSTRAINT recovery CHECK (
 				(
-					backup_email_local IS NULL 
+					backup_email_local IS NOT NULL 
 					AND
-					backup_email_domain IS NULL
+					backup_email_domain_id IS NOT NULL
 				)
 				OR
 				(
-					recovery_phone_number IS NULL
+					recovery_phone_number IS NOT NULL
 					AND
-					recovery_phone_number_country_code IS NULL
+					recovery_phone_number_country_code IS NOT NULL
 				)
 			),
 			FOREIGN KEY(id, backup_email_local, backup_email_domain_id) REFERENCES personal_email(user_id, email_local, domain_id)
@@ -69,7 +68,8 @@ pub async fn initialize_users_pre(
 			token_expiry BIGINT UNSIGNED NOT NULL,
 			user_id BINARY(16) NOT NULL,
 			last_login BIGINT UNSIGNED NOT NULL,
-			last_activity BIGINT UNSIGNED NOT NULL
+			last_activity BIGINT UNSIGNED NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES user(id)
 		);
 		"#
 	)
@@ -81,7 +81,8 @@ pub async fn initialize_users_pre(
 		CREATE TABLE IF NOT EXISTS password_reset_request (
 			user_id BINARY(16) PRIMARY KEY,
 			token TEXT NOT NULL,
-			token_expiry BIGINT UNSIGNED NOT NULL
+			token_expiry BIGINT UNSIGNED NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES user(id)
 		);
 		"#
 	)
@@ -197,8 +198,8 @@ pub async fn initialize_users_post(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_contact_number (
 			user_id BINARY(16) NOT NULL,
-			country_code INT NOT NULL,
-			number BIGINT PRIMARY KEY,
+			country_code varchar(4) NOT NULL,
+			number BIGINT UNSIGNED PRIMARY KEY,
 			PRIMARY KEY(country_code, number),
 			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id),
 			CONSTRAINT country_code_check CHECK(country_code >= 1 AND country_code <= 1877),
@@ -213,7 +214,15 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE user
 		ADD CONSTRAINT 
-		FOREIGN KEY(backup_email_local, backup_email_domain_id) REFERENCES personal_email_address(email_local,domain_id),
+		FOREIGN KEY(backup_email_local, backup_email_domain_id) REFERENCES personal_email_address(email_local,domain_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user
 		ADD CONSTRAINT 
 		FOREIGN KEY(recovery_phone_number, recovery_phone_number_country_code) REFERENCES user_contact_number(number, country_code);
 		"#

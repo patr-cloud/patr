@@ -28,11 +28,6 @@ pub struct VerifiedDomains {
 	pub is_verified: bool,
 }
 
-pub struct DomainsForOrganisation {
-	pub name: String,
-	pub is_verified: bool,
-}
-
 pub struct Application {
 	pub id: Vec<u8>,
 	pub name: String,
