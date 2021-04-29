@@ -12,14 +12,13 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{validator, Error},
+	utils::{constants::AccountType, validator, Error},
 };
 
 pub async fn add_domain_to_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
 	organisation_id: &[u8],
-	domain_type: &str,
 ) -> Result<Uuid, Error> {
 	println!("TEST! in service/domain.rs");
 	if !validator::is_domain_name_valid(domain_name).await {
@@ -51,7 +50,13 @@ pub async fn add_domain_to_organisation(
 		organisation_id,
 	)
 	.await?;
-	db::add_domain(connection, domain_id, &domain_name, domain_type).await?;
+	db::add_domain(
+		connection,
+		domain_id,
+		&domain_name,
+		AccountType::Organisation,
+	)
+	.await?;
 
 	Ok(domain_uuid)
 }

@@ -1,9 +1,11 @@
-use std::fmt::Display;
-
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::Domain,
+	models::db_mapping::{
+		DomainsForOrganisation,
+		OrganisationDomain,
+		VerifiedDomains,
+	},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -106,9 +108,9 @@ pub async fn add_domain(
 pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
-) -> Result<Vec<Domain>, sqlx::Error> {
+) -> Result<Vec<DomainsForOrganisation>, sqlx::Error> {
 	query_as!(
-		Domain,
+		DomainsForOrganisation,
 		r#"
 		SELECT
 			generic_domain.name,
@@ -134,9 +136,9 @@ pub async fn get_domains_for_organisation(
 
 pub async fn get_all_unverified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<Domain>, sqlx::Error> {
+) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
-		Domain,
+		OrganisationDomain,
 		r#"
 		SELECT
 			id,
@@ -174,9 +176,9 @@ pub async fn set_domain_as_verified(
 
 pub async fn get_all_verified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<Domain>, sqlx::Error> {
+) -> Result<Vec<VerifiedDomains>, sqlx::Error> {
 	query_as!(
-		Domain,
+		VerifiedDomains,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -286,9 +288,9 @@ pub async fn delete_domain_from_organisation(
 pub async fn get_domain_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
-) -> Result<Option<Domain>, sqlx::Error> {
+) -> Result<Option<VerifiedDomains>, sqlx::Error> {
 	let rows = query_as!(
-		Domain,
+		VerifiedDomains,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -314,9 +316,9 @@ pub async fn get_domain_by_id(
 pub async fn get_domain_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Option<Domain>, sqlx::Error> {
+) -> Result<Option<VerifiedDomains>, sqlx::Error> {
 	let rows = query_as!(
-		Domain,
+		VerifiedDomains,
 		r#"
 		SELECT
 			generic_domain.id,

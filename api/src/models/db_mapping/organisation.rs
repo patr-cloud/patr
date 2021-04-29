@@ -9,6 +9,27 @@ pub struct Organisation {
 pub struct Domain {
 	pub id: Vec<u8>,
 	pub name: String,
+}
+
+pub struct OrganisationDomain {
+	pub id: Vec<u8>,
+	pub is_verified: bool,
+}
+
+pub struct PersonalDomain {
+	pub id: Vec<u8>,
+}
+
+// the following structs are for querying the db after initialisation
+// Name can be changed for this struct because it is used in multiple queries
+pub struct VerifiedDomains {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub is_verified: bool,
+}
+
+pub struct DomainsForOrganisation {
+	pub name: String,
 	pub is_verified: bool,
 }
 
