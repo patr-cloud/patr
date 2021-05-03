@@ -35,7 +35,7 @@ pub async fn initialize_users_pre(
 			created BIGINT UNSIGNED NOT NULL,
 			backup_email_local VARCHAR(54),
 			backup_email_domain_id BINARY(16),
-			backup_phone_number_country_code varchar(4),
+			backup_phone_number_country_code_id INT(11),
 			backup_phone_number BIGINT UNSIGNED,
 			CONSTRAINT email_always_personal CHECK (
 				backup_email_type='personal'
@@ -52,8 +52,8 @@ pub async fn initialize_users_pre(
 					AND
 					recovery_phone_number_country_code IS NOT NULL
 				)
-			),
-			FOREIGN KEY(id, backup_email_local, backup_email_domain_id) REFERENCES personal_email(user_id, email_local, domain_id)
+				/*Foreign key added later */
+			)
 		);
 		"#
 	)
@@ -171,7 +171,7 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	// altering the table to add the foreign key reference of
+	// altering the table to add the foreign key reference of email
 	query!(
 		r#"
 		ALTER TABLE personal_email
@@ -192,17 +192,30 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	// we might need to add contraints for every country because every country
-	// has a different length of mobile number and coutnry code
+	// table for storing country codes, might prove more helpful in analytics
+	// since i am also adding country name
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS countries (
+			id int(11) PRIMARY KEY AUTO_INCREMENT,
+			phone_code INT(5) NOT NULL,
+			country_name varchar(80) NOT NULL,
+			UNIQUE(phone_code, country_name)
+		);	
+	"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_contact_number (
 			user_id BINARY(16) NOT NULL,
-			country_code varchar(4) NOT NULL,
+			country_code_id INT(11) NOT NULL,
 			number BIGINT UNSIGNED PRIMARY KEY,
-			PRIMARY KEY(country_code, number),
+			PRIMARY KEY(country_code_id, number),
 			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id),
-			CONSTRAINT country_code_check CHECK(country_code >= 1 AND country_code <= 1877),
+			CONSTRAINT FOREIGN KEY(contry_code_id) REFERENCES countries(id),
 			CONSTRAINT phone_number_check CHECK(number >= 1000000 AND number <= 100000000000000)
 		);
 		"#
@@ -222,9 +235,9 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		ALTER TABLE user
+		ALTER TABLE users
 		ADD CONSTRAINT 
-		FOREIGN KEY(recovery_phone_number, recovery_phone_number_country_code) REFERENCES user_contact_number(number, country_code);
+		FOREIGN KEY(backup_phone_number,backup_phone_number_country_code_id) REFERENCES user_contact_number(number, country_code_id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -784,18 +797,16 @@ pub async fn add_email_for_user(
 		UserEmailAddress::Organisation {
 			email_local,
 			domain_id,
-			domain_name,
 		} => {
 			query!(
 				r#"
 				INSERT INTO
 					organisation_email
 				VALUES
-					(?, ?, ?, ?);
+					(?, ?, ?);
 				"#,
 				user_id,
 				email_local,
-				domain_name,
 				domain_id
 			)
 			.execute(connection)

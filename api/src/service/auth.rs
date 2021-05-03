@@ -455,7 +455,6 @@ pub async fn join_user(
 				connection,
 				email_local_domain[1],
 				organisation_id,
-				"personal",
 			)
 			.await?
 			.as_bytes()
