@@ -16,8 +16,8 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE IF NOT EXISTS generic_domain (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) UNIQUE NOT NULL,
-			type ENUM('personal','organisation'),
-			KEY(id ,type)
+			type ENUM('personal', 'organisation'),
+			KEY(id, type)
 		);
 		"#
 	)
@@ -31,7 +31,7 @@ pub async fn initialize_domain_pre(
 			domain_type ENUM('personal','organisation') NOT NULL,
 			/* Change name of the constraint */
 			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
-			CONSTRAINT type_domain CHECK(domain_type='personal')
+			CONSTRAINT type_domain CHECK(domain_type = 'personal')
 		);
 		"#
 	)
@@ -45,7 +45,7 @@ pub async fn initialize_domain_pre(
 			domain_type ENUM('personal','organisation') NOT NULL,
 			is_verified BOOL NOT NULL DEFAULT FALSE,
 			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id,type),
-			CONSTRAINT CHECK(domain_type='organisation')
+			CONSTRAINT CHECK(domain_type = 'organisation')
 		);
 		"#
 	)

@@ -37,10 +37,7 @@ pub async fn initialize_users_pre(
 			backup_email_domain_id BINARY(16),
 			backup_phone_number_country_code_id INT(11),
 			backup_phone_number BIGINT UNSIGNED,
-			CONSTRAINT email_always_personal CHECK (
-				backup_email_type='personal'
-			),
-			CONSTRAINT recovery CHECK (
+			CONSTRAINT CHECK (
 				(
 					backup_email_local IS NOT NULL 
 					AND
@@ -212,7 +209,7 @@ pub async fn initialize_users_post(
 		CREATE TABLE IF NOT EXISTS user_contact_number (
 			user_id BINARY(16) NOT NULL,
 			country_code_id INT(11) NOT NULL,
-			number BIGINT UNSIGNED PRIMARY KEY,
+			number BIGINT UNSIGNED,
 			PRIMARY KEY(country_code_id, number),
 			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id),
 			CONSTRAINT FOREIGN KEY(contry_code_id) REFERENCES countries(id),
