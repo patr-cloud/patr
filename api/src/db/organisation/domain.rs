@@ -42,9 +42,9 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS organisation_domain (
 			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal','organisation') NOT NULL,
+			domain_type ENUM('personal', 'organisation') NOT NULL,
 			is_verified BOOL NOT NULL DEFAULT FALSE,
-			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id,type),
+			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
 			CONSTRAINT CHECK(domain_type = 'organisation')
 		);
 		"#

@@ -485,7 +485,7 @@ pub async fn join_user(
 			let domain_id = service::add_domain_to_organisation(
 				connection,
 				&domain_name,
-				organisation_id
+				organisation_id,
 			)
 			.await?
 			.as_bytes()
@@ -494,7 +494,7 @@ pub async fn join_user(
 			welcome_email_to = format!("{}@{}", email_local, domain_name);
 			email = UserEmailAddress::Organisation {
 				domain_id,
-				email_local
+				email_local,
 			};
 			backup_email_to = Some(backup_email);
 

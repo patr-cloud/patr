@@ -45,9 +45,9 @@ pub async fn initialize_users_pre(
 				)
 				OR
 				(
-					recovery_phone_number IS NOT NULL
+					backup_phone_number IS NOT NULL
 					AND
-					recovery_phone_number_country_code IS NOT NULL
+					backup_phone_number_country_code IS NOT NULL
 				)
 				/*Foreign key added later */
 			)
@@ -92,53 +92,6 @@ pub async fn initialize_users_pre(
 pub async fn initialize_users_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	// have two different kinds of email address.
-	// One for external email (for personal accounts)
-	// and one for organisation emails
-	// We can have a complicated constraint like so:
-	// Ref: https://stackoverflow.com/a/10273951/3393442
-	// query!(
-	// 	r#"
-	// 	CREATE TABLE IF NOT EXISTS user_email_address (
-	// 		type ENUM('personal', 'organisation') NOT NULL,
-
-	// 		/* Personal email address */
-	// 		email_address VARCHAR(320),
-
-	// 		/* Organisation email address */
-	// 		email_local VARCHAR(160),
-	// 		domain_id BINARY(16),
-
-	// 		user_id BINARY(16) NOT NULL,
-
-	// 		UNIQUE(email_address, email_local, domain_id, user_id),
-	// 		FOREIGN KEY(user_id) REFERENCES user(id),
-	// 		FOREIGN KEY(domain_id) REFERENCES domain(id),
-	// 		CONSTRAINT CHECK
-	// 		(
-	// 			(
-	// 				type = 'personal' AND
-	// 				(
-	// 					email_address IS NOT NULL AND
-	// 					email_local IS NULL AND
-	// 					domain_id IS NULL
-	// 				)
-	// 			) OR
-	// 			(
-	// 				type = 'organisation' AND
-	// 				(
-	// 					email_address IS NULL AND
-	// 					email_local IS NOT NULL AND
-	// 					domain_id IS NOT NULL
-	// 				)
-	// 			)
-	// 		)
-	// 	);
-	// 	"#
-	// )
-	// .execute(&mut *transaction)
-	// .await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_email (
@@ -193,10 +146,10 @@ pub async fn initialize_users_post(
 	// since i am also adding country name
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS countries (
-			id int(11) PRIMARY KEY AUTO_INCREMENT,
+		CREATE TABLE IF NOT EXISTS phone_number_country_code (
 			phone_code INT(5) NOT NULL,
-			country_name varchar(80) NOT NULL,
+			country_code VARCHAR(2) NOT NULL,
+			country_name VARCHAR(80) NOT NULL,
 			UNIQUE(phone_code, country_name)
 		);	
 	"#
@@ -224,7 +177,7 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE user
 		ADD CONSTRAINT 
-		FOREIGN KEY(backup_email_local, backup_email_domain_id) REFERENCES personal_email_address(email_local,domain_id);
+		FOREIGN KEY(backup_email_local, backup_email_domain_id, id) REFERENCES personal_email_address(email_local, domain_id, user_id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -234,7 +187,7 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE users
 		ADD CONSTRAINT 
-		FOREIGN KEY(backup_phone_number,backup_phone_number_country_code_id) REFERENCES user_contact_number(number, country_code_id);
+		FOREIGN KEY(backup_phone_number, backup_phone_number_country_code_id, id) REFERENCES user_contact_number(number, country_code_id, user_id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -257,37 +210,7 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	// query!(
-	// 	r#"
-	// 	/*CREATE VIEW
-	// 		user_email_address_view
-	// 	AS
-	// 		SELECT
-	// 			CASE WHEN (user_email_address.type = 'personal') THEN
-	// 				user_email_address.email_address
-	// 			ELSE
-	// 				CONCAT(user_email_address.email_local, '@', domain.name)
-	// 			END AS email,
-	// 			user_email_address.user_id AS user_id,
-	// 			user_email_address.type AS type,
-	// 			domain.id AS domain_id,
-	// 			domain.name AS domain_name
-	// 		FROM
-	// 			user_email_address
-	// 		LEFT JOIN
-	// 			domain
-	// 		ON
-	// 			user_email_address.domain_id = domain.id;*/
-	// 	CREATE VIEW
-	// 		user_email_address_view
-	// 	AS
-	// 		SELECT CONCAT(personal)
-	// 			FROM personal_email WHERE
-	// 	"#
-	// )
-	// .execute(&mut *transaction)
-	// .await?;
-
+	
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_to_sign_up (
