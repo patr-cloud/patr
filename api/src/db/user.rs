@@ -1,12 +1,21 @@
-use crate::{
-	models::db_mapping::{
-		Organisation, PasswordResetRequest, PersonalEmailToBeVerified, User,
-		UserEmailAddress, UserEmailAddressSignUp, UserLogin, UserToSignUp,
-	},
-	query, query_as,
-};
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
+
+use crate::{
+	models::db_mapping::{
+		Organisation,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		User,
+		UserEmailAddress,
+		UserEmailAddressSignUp,
+		UserLogin,
+		UserToSignUp,
+	},
+	query,
+	query_as,
+	utils,
+};
 
 pub async fn initialize_users_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -17,7 +26,7 @@ pub async fn initialize_users_pre(
 		CREATE TABLE IF NOT EXISTS user (
 			id BINARY(16) PRIMARY KEY,
 			username VARCHAR(100) UNIQUE NOT NULL,
-			password BINARY(64) NOT NULL,
+			password TEXT NOT NULL,
 			backup_email VARCHAR(320) UNIQUE NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
@@ -34,7 +43,8 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_login (
-			refresh_token BINARY(16) PRIMARY KEY,
+			login_id BINARY(16) PRIMARY KEY,
+			refresh_token TEXT NOT NULL,
 			token_expiry BIGINT UNSIGNED NOT NULL,
 			user_id BINARY(16) NOT NULL,
 			last_login BIGINT UNSIGNED NOT NULL,
@@ -50,7 +60,7 @@ pub async fn initialize_users_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS password_reset_request (
 			user_id BINARY(16) PRIMARY KEY,
-			token BINARY(64) UNIQUE NOT NULL,
+			token TEXT NOT NULL,
 			token_expiry BIGINT UNSIGNED NOT NULL,
 			FOREIGN KEY(user_id) REFERENCES user(id)
 		);
@@ -118,7 +128,7 @@ pub async fn initialize_users_post(
 			/* Personal email address */
 			email_address VARCHAR(320),
 			user_id BINARY(16) NOT NULL,
-			verification_token_hash BINARY(64) UNIQUE NOT NULL,
+			verification_token_hash TEXT NOT NULL,
 			verification_token_expiry BIGINT UNSIGNED NOT NULL,
 			
 			PRIMARY KEY(email_address, user_id),
@@ -168,13 +178,13 @@ pub async fn initialize_users_post(
 			email_local VARCHAR(160),
 			domain_name VARCHAR(100),
 
-			password BINARY(64) NOT NULL,
+			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
 
 			organisation_name VARCHAR(100),
 
-			otp_hash BINARY(64) UNIQUE NOT NULL,
+			otp_hash TEXT NOT NULL,
 			otp_expiry BIGINT UNSIGNED NOT NULL,
 
 			CONSTRAINT CHECK
@@ -231,6 +241,47 @@ pub async fn get_user_by_username_or_email(
 	.await?;
 
 	Ok(rows.into_iter().next())
+}
+
+pub async fn generate_new_user_id(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		User,
+		r#"
+		SELECT
+			*
+		FROM
+			user
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			User,
+			r#"
+			SELECT
+				*
+			FROM
+				user
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
 }
 
 pub async fn get_god_user_id(
@@ -336,9 +387,9 @@ pub async fn set_user_to_be_signed_up(
 	connection: &mut Transaction<'_, MySql>,
 	email: UserEmailAddressSignUp,
 	username: &str,
-	password: &[u8],
+	password: &str,
 	(first_name, last_name): (&str, &str),
-	otp_hash: &[u8],
+	otp_hash: &str,
 	otp_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	match email {
@@ -439,7 +490,7 @@ pub async fn set_user_to_be_signed_up(
 	Ok(())
 }
 
-pub async fn get_user_email_to_sign_up(
+pub async fn get_user_to_sign_up_by_username(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
@@ -485,11 +536,58 @@ pub async fn get_user_email_to_sign_up(
 	}))
 }
 
+pub async fn get_user_to_sign_up_by_organisation_name(
+	connection: &mut Transaction<'_, MySql>,
+	organisation_name: &str,
+) -> Result<Option<UserToSignUp>, sqlx::Error> {
+	let now = utils::get_current_time_millis();
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			user_to_sign_up
+		WHERE
+			organisation_name = ? AND
+			otp_expiry < ?
+		"#,
+		organisation_name,
+		now,
+	)
+	.fetch_all(connection)
+	.await?;
+
+	if rows.is_empty() {
+		return Ok(None);
+	}
+	let row = rows.into_iter().next().unwrap();
+
+	Ok(Some(UserToSignUp {
+		username: row.username,
+		email: if row.account_type == "organisation" {
+			UserEmailAddressSignUp::Organisation {
+				email_local: row.email_local.unwrap(),
+				domain_name: row.domain_name.unwrap(),
+				organisation_name: row.organisation_name.unwrap(),
+				backup_email: row.email_address.clone(),
+			}
+		} else {
+			panic!("account_type wasn't organisation for an organisation");
+		},
+		backup_email: row.email_address,
+		password: row.password,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry,
+		first_name: row.first_name,
+		last_name: row.last_name,
+	}))
+}
+
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
 	user_id: &[u8],
-	verification_token: &[u8],
+	verification_token: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -606,7 +704,7 @@ pub async fn create_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	username: &str,
-	password: &[u8],
+	password: &str,
 	backup_email: &str,
 	(first_name, last_name): (&str, &str),
 	created: u64,
@@ -634,7 +732,8 @@ pub async fn create_user(
 
 pub async fn add_user_login(
 	connection: &mut Transaction<'_, MySql>,
-	refresh_token: &[u8],
+	login_id: &[u8],
+	refresh_token: &str,
 	token_expiry: u64,
 	user_id: &[u8],
 	last_login: u64,
@@ -645,8 +744,9 @@ pub async fn add_user_login(
 		INSERT INTO
 			user_login
 		VALUES
-			(?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?, ?);
 		"#,
+		login_id,
 		refresh_token,
 		token_expiry,
 		user_id,
@@ -661,7 +761,7 @@ pub async fn add_user_login(
 
 pub async fn get_user_login(
 	connection: &mut Transaction<'_, MySql>,
-	refresh_token: &[u8],
+	login_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let rows = query_as!(
 		UserLogin,
@@ -669,9 +769,9 @@ pub async fn get_user_login(
 		SELECT * FROM
 			user_login
 		WHERE
-			refresh_token = ?;
+			login_id = ?;
 		"#,
-		refresh_token
+		login_id
 	)
 	.fetch_all(connection)
 	.await?;
@@ -679,28 +779,88 @@ pub async fn get_user_login(
 	Ok(rows.into_iter().next())
 }
 
-pub async fn delete_user_login(
+pub async fn generate_new_login_id(
 	connection: &mut Transaction<'_, MySql>,
-	refresh_token: &[u8],
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		UserLogin,
+		r#"
+		SELECT
+			*
+		FROM
+			user_login
+		WHERE
+			login_id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			UserLogin,
+			r#"
+			SELECT
+				*
+			FROM
+				user_login
+			WHERE
+				login_id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
+}
+
+pub async fn get_all_logins_for_user(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: &[u8],
+) -> Result<Vec<UserLogin>, sqlx::Error> {
+	query_as!(
+		UserLogin,
+		r#"
+		SELECT
+			*
+		FROM
+			user_login
+		WHERE
+			user_id = ?;
+		"#,
+		user_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn delete_user_login_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	login_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		DELETE FROM
 			user_login
 		WHERE
-			refresh_token = ?;
+			login_id = ?;
 		"#,
-		refresh_token,
+		login_id,
 	)
 	.execute(connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
-pub async fn set_refresh_token_expiry(
+pub async fn set_login_expiry(
 	connection: &mut Transaction<'_, MySql>,
-	refresh_token: &[u8],
+	login_id: &[u8],
 	last_activity: u64,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -712,11 +872,11 @@ pub async fn set_refresh_token_expiry(
 			token_expiry = ?,
 			last_activity = ?
 		WHERE
-			refresh_token = ?;
+			login_id = ?;
 		"#,
 		token_expiry,
 		last_activity,
-		refresh_token
+		login_id
 	)
 	.execute(connection)
 	.await?;
@@ -767,7 +927,7 @@ pub async fn update_user_data(
 pub async fn update_user_password(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-	password: &[u8],
+	password: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -790,7 +950,7 @@ pub async fn update_user_password(
 pub async fn add_password_reset_request(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
-	token_hash: &[u8],
+	token_hash: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(

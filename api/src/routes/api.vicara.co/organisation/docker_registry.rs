@@ -1,6 +1,7 @@
 use api_macros::closure_as_pinned_box;
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use validator::is_docker_repo_name_valid;
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -8,29 +9,34 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	utils::{constants::request_keys, validator, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
+	},
 };
-use serde_json::{json, Value};
 
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut app = create_eve_app(&app);
 
 	// create new repository
 	app.post(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::docker_registry::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&org_id_string);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -53,19 +59,16 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	app.get(
 		"/",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::docker_registry::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&org_id_string);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -88,18 +91,15 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 	app.delete(
 		"/:repositoryId",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::docker_registry::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string);
-					if repository_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let repository_id = repository_id.unwrap();
+					let repository_id = hex::decode(&repo_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
@@ -130,21 +130,19 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 // }
 async fn create_docker_repository(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	// check if the token is valid
 	let body = context.get_body_object().clone();
-	let repository = if let Some(Value::String(repository)) =
-		body.get(request_keys::REPOSITORY)
-	{
-		repository
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let repository = body
+		.get(request_keys::REPOSITORY)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// check if repo name is valid
-	let is_repo_name_valid = is_docker_repo_name_valid(&repository);
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repository);
 	if !is_repo_name_valid {
 		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
 		return Ok(context);
@@ -163,8 +161,9 @@ async fn create_docker_repository(
 	.await?;
 
 	if check.is_some() {
-		context.status(400).json(error!(RESOURCE_EXISTS));
-		return Ok(context);
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
 	// split the repo nam in 2 halfs, and validate org, and repo name
@@ -177,8 +176,8 @@ async fn create_docker_repository(
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(&organisation_id).unwrap();
 
-	// call function to add repo details to the table `docker_registry_repository`
-	// add a new resource
+	// call function to add repo details to the table
+	// `docker_registry_repository` add a new resource
 	db::create_resource(
 		context.get_mysql_connection(),
 		resource_id,
@@ -210,8 +209,8 @@ async fn create_docker_repository(
 
 async fn list_docker_repositories(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let org_id_string =
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(&org_id_string).unwrap();
@@ -224,7 +223,7 @@ async fn list_docker_repositories(
 	.into_iter()
 	.map(|repository| {
 		json!({
-			request_keys::ID: hex::encode(repository.id),
+			request_keys::ID: repository.id.encode_hex::<String>(),
 			request_keys::NAME: repository.name,
 		})
 	})
@@ -240,22 +239,19 @@ async fn list_docker_repositories(
 
 async fn delete_docker_repository(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
 	let repository_id = hex::decode(&repo_id_string).unwrap();
 
-	let repository = db::get_docker_repository_by_id(
+	db::get_docker_repository_by_id(
 		context.get_mysql_connection(),
 		&repository_id,
 	)
-	.await?;
-
-	if repository.is_none() {
-		context.json(error!(RESOURCE_DOES_NOT_EXIST));
-		return Ok(context);
-	}
+	.await?
+	.status(200)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// TODO delete from docker registry using its API
 

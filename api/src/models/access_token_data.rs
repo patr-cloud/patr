@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::rbac::OrgPermissions;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
 	pub iss: String,

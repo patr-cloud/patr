@@ -1,5 +1,9 @@
 use std::collections::HashMap;
 
+use hex::ToHex;
+use sqlx::{MySql, Transaction};
+use uuid::Uuid;
+
 use crate::{
 	models::{
 		db_mapping::{Permission, Resource, ResourceType, Role},
@@ -8,9 +12,6 @@ use crate::{
 	query,
 	query_as,
 };
-
-use sqlx::{MySql, Transaction};
-use uuid::Uuid;
 
 pub async fn initialize_rbac_pre(
 	transaction: &mut Transaction<'_, MySql>,
@@ -202,7 +203,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_role in org_roles {
-		let org_id = hex::encode(org_role.organisation_id);
+		let org_id = org_role.organisation_id.encode_hex();
 
 		let resources = query!(
 			r#"
@@ -234,7 +235,7 @@ pub async fn get_all_organisation_roles_for_user(
 
 		if let Some(permission) = orgs.get_mut(&org_id) {
 			for resource in resources {
-				let permission_id = hex::encode(&resource.permission_id);
+				let permission_id = resource.permission_id.encode_hex();
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -248,7 +249,7 @@ pub async fn get_all_organisation_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = hex::encode(&resource_type.permission_id);
+				let permission_id = resource_type.permission_id.encode_hex();
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -270,7 +271,7 @@ pub async fn get_all_organisation_roles_for_user(
 				resource_types: HashMap::new(),
 			};
 			for resource in resources {
-				let permission_id = hex::encode(&resource.permission_id);
+				let permission_id = resource.permission_id.encode_hex();
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -284,7 +285,7 @@ pub async fn get_all_organisation_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = hex::encode(&resource_type.permission_id);
+				let permission_id = resource_type.permission_id.encode_hex();
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -319,7 +320,7 @@ pub async fn get_all_organisation_roles_for_user(
 	.await?;
 
 	for org_details in orgs_details {
-		let org_id = hex::encode(org_details.id);
+		let org_id = org_details.id.encode_hex();
 		if let Some(org) = orgs.get_mut(&org_id) {
 			org.is_super_admin = true;
 		} else {
@@ -335,6 +336,47 @@ pub async fn get_all_organisation_roles_for_user(
 	}
 
 	Ok(orgs)
+}
+
+pub async fn generate_new_role_id(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		Role,
+		r#"
+		SELECT
+			*
+		FROM
+			role
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			Role,
+			r#"
+			SELECT
+				*
+			FROM
+				role
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
 }
 
 pub async fn get_all_resource_types(
@@ -399,7 +441,7 @@ pub async fn create_role(
 	connection: &mut Transaction<'_, MySql>,
 	role_id: &[u8],
 	name: &str,
-	description: &Option<String>,
+	description: Option<&str>,
 	owner_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
