@@ -210,7 +210,6 @@ pub async fn initialize_users_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_to_sign_up (
