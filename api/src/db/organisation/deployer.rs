@@ -83,7 +83,11 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// TODO: create tabel for maching type and  upgrade path
+	// TODO: create table for maching type and  upgrade path
+	// id, graphic card, cpu, memory
+
+	// upgrade path
+	// deployment id,
 
 	Ok(())
 }
