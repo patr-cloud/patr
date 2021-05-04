@@ -99,31 +99,6 @@ pub async fn add_domain(
 	Ok(())
 }
 
-// pub async fn add_domain_to_personal(
-// 	connection: &mut Transaction<'_, MySql>,
-// 	domain_id: &[u8],
-// 	domain_name: &str,
-// 	domain_type: AccountType,
-// ) -> Result<(), sqlx::Error> {
-// 	let domain_type = domain_type.to_string();
-
-// 	query!(
-// 		r#"
-// 		INSERT INTO
-// 			generic_domain
-// 		VALUES
-// 			(?, ?, ?);
-// 		"#,
-// 		domain_id,
-// 		domain_name,
-// 		domain_type
-// 	)
-// 	.execute(connection)
-// 	.await?;
-
-// 	Ok(())
-// }
-
 pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
