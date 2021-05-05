@@ -2,8 +2,7 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query,
-	query_as,
+	query, query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -105,6 +104,7 @@ pub async fn initialize_deployer_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS default_deployment_machine_type (
+			id BINARY(16) NOT NULL,
 			name VARCHAR(100) NOT NULL UNIQUE,
 			cpu_count SMALLINT UNSIGNED NOT NULL,
 			memory_count FLOAT UNSIGNED NOT NULL,
@@ -120,12 +120,27 @@ pub async fn initialize_deployer_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_machine_type (
+			id BINARY(16) NOT NULL,
 			name VARCHAR(100) NOT NULL UNIQUE,
 			cpu_count SMALLINT UNSIGNED NOT NULL,
 			memory_count FLOAT UNSIGNED NOT NULL,
 			gpu_type_id BINARY(16) NOT NULL,
 			PRIMARY KEY(cpu_count, memory_count, gpu_type_id),
 			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS deployment_upgrade_path (
+			deployment_id BINARY(16) NOT NULL,
+			machine_type_id BINARY(16) NOT NULL,
+			PRIMARY KEY (deployment_id, machine_type_id),
+			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
+			FOREIGN KEY(machine_type_id) REFERENCES deployment_machine_type(id),
 		);
 		"#
 	)
