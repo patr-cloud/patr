@@ -15,10 +15,54 @@ use crate::{
 	utils::{constants::AccountType, validator, Error},
 };
 
-pub async fn add_domain_to_personal(
+// pub async fn add_domain_to_personal(
+// 	connection: &mut Transaction<'_, MySql>,
+// 	domain_name: &str,
+// 	organisation_id: &[u8],
+// ) -> Result<Uuid, Error> {
+// 	if !validator::is_domain_name_valid(domain_name).await {
+// 		Error::as_result()
+// 			.status(400)
+// 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+// 	}
+
+// 	if db::get_domain_by_name(connection, domain_name)
+// 		.await?
+// 		.is_some()
+// 	{
+// 		Error::as_result()
+// 			.status(400)
+// 			.body(error!(RESOURCE_EXISTS).to_string())?;
+// 	}
+
+// 	let domain_uuid = db::generate_new_resource_id(connection).await?;
+// 	let domain_id = domain_uuid.as_bytes();
+// 	db::create_resource(
+// 		connection,
+// 		domain_id,
+// 		&format!("Domain: {}", domain_name),
+// 		rbac::RESOURCE_TYPES
+// 			.get()
+// 			.unwrap()
+// 			.get(rbac::resource_types::DOMAIN)
+// 			.unwrap(),
+// 		organisation_id,
+// 	)
+// 	.await?;
+// 	db::add_domain(
+// 		connection,
+// 		domain_id,
+// 		&domain_name,
+// 		AccountType::Organisation,
+// 	)
+// 	.await?;
+
+// 	Ok(domain_uuid)
+// }
+
+pub async fn add_personal_domain_to_generic_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-	organisation_id: &[u8],
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -35,9 +79,10 @@ pub async fn add_domain_to_personal(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	let domain_uuid = db::generate_new_resource_id(connection).await?;
+	let domain_uuid = db::generate_new_domain_id(connection).await?;
 	let domain_id = domain_uuid.as_bytes();
-	db::create_resource(
+
+	db::create_orphaned_resource(
 		connection,
 		domain_id,
 		&format!("Domain: {}", domain_name),
@@ -46,14 +91,16 @@ pub async fn add_domain_to_personal(
 			.unwrap()
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
-		organisation_id,
 	)
 	.await?;
-	db::add_domain(
+
+	db::add_domain(connection, domain_id, &domain_name, AccountType::Personal)
+		.await?;
+
+	db::add_to_personal_domain(
 		connection,
-		domain_id,
-		&domain_name,
-		AccountType::Organisation,
+		domain_id.to_vec(),
+		AccountType::Personal,
 	)
 	.await?;
 

@@ -92,7 +92,7 @@ pub async fn verify_personal_email_address_for_user(
 		domain_id: domain_id.id,
 	};
 
-	db::add_email_for_user(connection, user_id, email_address).await?;
+	db::add_email_for_user(connection, Some(user_id), email_address).await?;
 
 	Ok(())
 }

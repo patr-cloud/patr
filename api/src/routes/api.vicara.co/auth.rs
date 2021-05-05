@@ -6,6 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
+	models::db_mapping::User,
 	pin_fn,
 	service,
 	utils::{
@@ -90,11 +91,38 @@ async fn sign_in(
 		context.json(error!(INVALID_PASSWORD));
 		return Ok(context);
 	}
+	let local_domain = user_data.backup_email_id.unwrap();
+	let email_local_domain: Vec<&str> = local_domain.split('@').collect();
+
+	let domain_info = db::get_domain_by_name(
+		context.get_mysql_connection(),
+		email_local_domain[1],
+	)
+	.await?;
+
+	let domain_info = domain_info.unwrap();
+
+	let user_data1 = User {
+		id: user_data.id,
+		username: user_data.username,
+		password: user_data.password,
+		first_name: user_data.first_name,
+		last_name: user_data.last_name,
+		dob: user_data.dob,
+		bio: user_data.bio,
+		location: user_data.location,
+		created: user_data.created,
+		backup_email_local: Some(email_local_domain[0].to_string()),
+		backup_email_domain_id: Some(domain_info.id),
+		backup_phone_number_country_code: None,
+		backup_country_code: None,
+		backup_phone_number: None,
+	};
 
 	let config = context.get_state().config.clone();
 	let (jwt, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
-		user_data,
+		user_data1,
 		&config,
 	)
 	.await?;
@@ -418,13 +446,11 @@ async fn reset_password(
 		context.get_mysql_connection(),
 		new_password,
 		token,
-		&user.id,
+		&user.id.unwrap(),
 	)
 	.await?;
 
-	//add error handling
-	let user_backup_email = user.backup_email_local.unwrap() +
-		"@" + &user.backup_email_domain.unwrap();
+	let user_backup_email = user.backup_email_id.unwrap();
 
 	task::spawn_blocking(|| {
 		mailer::send_password_changed_notification_mail(

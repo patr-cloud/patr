@@ -41,7 +41,25 @@ pub struct UserByUsernameOrEmail {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub location: Option<String>,
 	pub created: u64,
-	pub backup_email_id: Option<Vec<u8>>,
+	pub backup_email_id: Option<String>,
+	pub backup_phone_number: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UserByEmail {
+	pub id: Option<Vec<u8>>,
+	pub username: Option<String>,
+	pub first_name: Option<String>,
+	pub last_name: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub dob: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub bio: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub location: Option<String>,
+	pub created: Option<u64>,
+	pub backup_email_id: Option<String>,
 	pub backup_phone_number: Option<String>,
 }
 

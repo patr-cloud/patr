@@ -321,12 +321,7 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	let backup_email = [
-		user.backup_email_local.unwrap(),
-		String::from("@"),
-		user.backup_email_domain.unwrap(),
-	]
-	.concat();
+	let backup_email = user.backup_email_id.unwrap();
 
 	Ok((otp, backup_email))
 }
@@ -419,46 +414,25 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	db::create_user(
-		connection,
-		user_id,
-		&user_data.username,
-		&user_data.password,
-		&user_data.backup_email,
-		// ADD phone number here
-		"NULL",
-		(&user_data.first_name, &user_data.last_name),
-		created,
-	)
-	.await?;
-
 	// For an organisation, create the organisation and domain
 	let email;
 	let welcome_email_to;
 	let backup_email_to;
+	let mut email_domain_id: Vec<u8> = Vec::new();
 	match user_data.email {
 		UserEmailAddressSignUp::Personal(email_address) => {
-			let personal_organisation_name =
-				service::get_personal_org_name(username);
-			let organisation_id = service::create_organisation(
-				connection,
-				&personal_organisation_name,
-				user_id,
-			)
-			.await?;
-			let organisation_id = organisation_id.as_bytes();
-
 			let email_local_domain: Vec<&str> =
 				email_address.split('@').collect();
 
-			let domain_id = service::add_domain_to_organisation(
+			let domain_id = service::add_personal_domain_to_generic_domain(
 				connection,
-				email_local_domain[1],
-				organisation_id,
+				&email_local_domain[1],
 			)
 			.await?
 			.as_bytes()
 			.to_vec();
+
+			email_domain_id = domain_id.clone();
 
 			email = UserEmailAddress::Personal {
 				email: email_address.clone(),
@@ -497,20 +471,41 @@ pub async fn join_user(
 				email_local,
 			};
 			backup_email_to = Some(backup_email);
-
-			// add personal organisation
-			let personal_organisation_name =
-				service::get_personal_org_name(username);
-			service::create_organisation(
-				connection,
-				&personal_organisation_name,
-				user_id,
-			)
-			.await?;
 		}
 	}
 
-	db::add_email_for_user(connection, user_id, email).await?;
+	let backup_email_local_domain: Vec<&str> =
+		user_data.backup_email.split('@').collect();
+
+	db::add_email_for_user(connection, None, email).await?;
+
+	// add domain_id
+
+	db::create_user(
+		connection,
+		user_id,
+		&user_data.username,
+		&user_data.password,
+		backup_email_local_domain[0],
+		email_domain_id,
+		// Add phone number country code etc
+		None,
+		None,
+		None,
+		(&user_data.first_name, &user_data.last_name),
+		created,
+	)
+	.await?;
+
+	// add personal organisation
+	let personal_organisation_name = service::get_personal_org_name(username);
+	service::create_organisation(
+		connection,
+		&personal_organisation_name,
+		user_id,
+	)
+	.await?;
+
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
 	let user = db::get_user_by_user_id(connection, user_id)

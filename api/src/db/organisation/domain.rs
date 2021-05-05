@@ -1,7 +1,8 @@
 use sqlx::{MySql, Transaction};
+use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::AllDomains,
+	models::db_mapping::{AllDomains, GenericDomain},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -16,7 +17,7 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE IF NOT EXISTS generic_domain (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) UNIQUE NOT NULL,
-			type ENUM('personal', 'organisation'),
+			type ENUM('personal', 'organisation') NOT NULL,
 			KEY(id, type)
 		);
 		"#
@@ -91,6 +92,29 @@ pub async fn add_domain(
 		"#,
 		domain_id,
 		domain_name,
+		domain_type
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn add_to_personal_domain(
+	connection: &mut Transaction<'_, MySql>,
+	domain_id: Vec<u8>,
+	domain_type: AccountType,
+) -> Result<(), sqlx::Error> {
+	let domain_type = domain_type.to_string();
+
+	query!(
+		r#"
+		INSERT INTO
+			personal_domain
+		VALUES
+			(?, ?);
+		"#,
+		domain_id,
 		domain_type
 	)
 	.execute(connection)
@@ -339,4 +363,49 @@ pub async fn get_domain_by_name(
 	.await?;
 
 	Ok(rows.into_iter().next())
+}
+
+pub async fn generate_new_domain_id(
+	connection: &mut Transaction<'_, MySql>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		GenericDomain,
+		r#"
+		SELECT 
+			id,
+			name,
+			type as 'domain_type'
+		FROM 
+			generic_domain
+		WHERE
+			id = ?;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			GenericDomain,
+			r#"
+			SELECT
+				id,
+				name,
+				type as 'domain_type'
+			FROM
+				generic_domain
+			WHERE
+				id = ?;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
 }

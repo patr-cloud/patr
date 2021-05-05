@@ -7,6 +7,7 @@ use crate::{
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		User,
+		UserByEmail,
 		UserByUsernameOrEmail,
 		UserEmailAddress,
 		UserEmailAddressSignUp,
@@ -99,7 +100,7 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_email (
-			user_id BINARY(16) NOT NULL,
+			user_id BINARY(16),
 			email_local VARCHAR(54),
 			domain_id BINARY(16),
 			PRIMARY KEY(email_local, domain_id),
@@ -282,10 +283,20 @@ pub async fn get_user_by_username_or_email(
 	user_id: &str,
 ) -> Result<Option<UserByUsernameOrEmail>, sqlx::Error> {
 	let rows = query_as!(
-		Option<UserByUsernameOrEmail>,
+		UserByUsernameOrEmail,
 		r#"
 		SELECT
-			user.*
+			user.id,
+			user.username,
+			user.password,
+			user.first_name,
+			user.last_name,
+			user.bio,
+			user.dob,
+			user.location,
+			user.created,
+			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
+			user.backup_phone_number
 		FROM
 			user
 		LEFT JOIN
@@ -383,23 +394,33 @@ pub async fn get_god_user_id(
 pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
-) -> Result<Option<UserByUsernameOrEmail>, sqlx::Error> {
+) -> Result<Option<UserByEmail>, sqlx::Error> {
 	let email_local_domain: Vec<&str> = email.split('@').collect();
 
 	let rows = query_as!(
-		Option<UserByUsernameOrEmail>,
+		UserByEmail,
 		r#"
 		SELECT
-			user.*
+			user.id,
+			user.username,
+			user.first_name,
+			user.last_name,
+			user.bio,
+			user.dob,
+			user.location,
+			user.created,
+			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
+			user.backup_phone_number
 		FROM
 			user
 		LEFT JOIN
 			personal_email
 		ON
 			personal_email.user_id = user.id
-		LEFT JOIN
+		RIGHT JOIN
+			generic_domain
 		ON
-			generic_domain.id = personal_domain.domain_id
+			personal_email.domain_id = generic_domain.id
 		WHERE
 			personal_email.email_local = ?
 		AND
@@ -417,14 +438,31 @@ pub async fn get_user_by_email(
 pub async fn get_user_by_username(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
-) -> Result<Option<User>, sqlx::Error> {
+) -> Result<Option<UserByEmail>, sqlx::Error> {
 	let rows = query_as!(
-		User,
+		UserByEmail,
 		r#"
 		SELECT
-			*
+			user.id,
+			user.username,
+			user.first_name,
+			user.last_name,
+			user.bio,
+			user.dob,
+			user.location,
+			user.created,
+			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
+			user.backup_phone_number
 		FROM
 			user
+		LEFT JOIN
+			personal_email
+		ON
+			personal_email.user_id = user.id
+		RIGHT JOIN
+			generic_domain
+		ON
+			personal_email.domain_id = generic_domain.id
 		WHERE
 			username = ?
 		"#,
@@ -715,7 +753,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 
 pub async fn add_email_for_user(
 	connection: &mut Transaction<'_, MySql>,
-	user_id: &[u8],
+	user_id: Option<&[u8]>,
 	email: UserEmailAddress,
 ) -> Result<(), sqlx::Error> {
 	match email {
@@ -727,11 +765,10 @@ pub async fn add_email_for_user(
 				INSERT INTO
 					personal_email
 				VALUES
-					(?, ?, ?, ?);
+					(?, ?, ?);
 				"#,
 				user_id,
 				email_local_domain[0],
-				email_local_domain[1],
 				domain_id
 			)
 			.execute(connection)
@@ -784,29 +821,32 @@ pub async fn create_user(
 	user_id: &[u8],
 	username: &str,
 	password: &str,
-	backup_email: &str,
-	recovery_phone_number: &str,
+	backup_email_local: &str,
+	backup_email_domain_id: Vec<u8>,
+	backup_phone_number_country_code: Option<&str>,
+	backup_country_code: Option<&str>,
+	backup_phone_number: Option<&str>,
 	(first_name, last_name): (&str, &str),
 	created: u64,
 ) -> Result<(), sqlx::Error> {
-	let email_local_domain: Vec<&str> = backup_email.split('@').collect();
-
 	query!(
 		r#"
 		INSERT INTO
 			user
 		VALUES
-			(?, ?, ?, ?, ?, ?, 'personal', ?, ?, NULL, NULL, NULL, ?);
+			(?, ?, ?, ?, ?,NULL, NULL, NULL, ?, ?, ?, ?, ?, ?);
 		"#,
 		user_id,
 		username,
 		password,
-		email_local_domain[0],
-		email_local_domain[1],
-		recovery_phone_number,
 		first_name,
 		last_name,
-		created
+		created,
+		backup_email_local,
+		backup_email_domain_id,
+		backup_phone_number_country_code,
+		backup_country_code,
+		backup_phone_number,
 	)
 	.execute(connection)
 	.await?;
