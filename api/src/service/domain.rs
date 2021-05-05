@@ -64,12 +64,6 @@ pub async fn add_personal_domain_to_generic_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
-	if !validator::is_domain_name_valid(domain_name).await {
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-	}
-
 	if db::get_domain_by_name(connection, domain_name)
 		.await?
 		.is_some()

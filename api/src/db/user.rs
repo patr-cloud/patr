@@ -695,6 +695,28 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 		last_name: row.last_name,
 	}))
 }
+pub async fn add_to_personal_email(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: Vec<u8>,
+	email_local: &str,
+	domain_id: Vec<u8>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			personal_email
+		VALUES
+			(?, ?, ?);
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
 
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut Transaction<'_, MySql>,
@@ -749,6 +771,29 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	.await?;
 
 	Ok(rows.into_iter().next())
+}
+
+pub async fn add_user_id_to_email(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: Vec<u8>,
+	email_domain_id: Vec<u8>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			UPDATE  
+				personal_email
+			SET
+				user_id = ?
+			WHERE
+				domain_id = ?
+		"#,
+		user_id,
+		email_domain_id
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
 }
 
 pub async fn add_email_for_user(

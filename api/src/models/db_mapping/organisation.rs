@@ -12,15 +12,14 @@ pub struct GenericDomain {
 	pub domain_type: String,
 }
 
-// some queries are remaining related to adding organisation domain
-// pub struct OrganisationDomain {
-// 	pub id: Vec<u8>,
-// 	pub is_verified: bool,
-// }
+pub struct OrganisationDomain {
+	pub id: Vec<u8>,
+	pub is_verified: bool,
+}
 
-// pub struct PersonalDomain {
-// 	pub id: Vec<u8>,
-// }
+pub struct PersonalDomain {
+	pub id: Vec<u8>,
+}
 
 // the following structs are for querying the db after initialisation
 // Name can be changed for this struct because it is used in multiple queries

@@ -497,6 +497,8 @@ pub async fn join_user(
 	)
 	.await?;
 
+	db::add_user_id_to_email(connection, user_id, email_domain_id).await?;
+
 	// add personal organisation
 	let personal_organisation_name = service::get_personal_org_name(username);
 	service::create_organisation(

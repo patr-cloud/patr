@@ -100,6 +100,31 @@ pub async fn add_domain(
 	Ok(())
 }
 
+pub async fn add_to_organisation_domain(
+	connection: &mut Transaction<'_, MySql>,
+	domain_id: &[u8],
+	domain_type: AccountType,
+	is_verified: bool,
+) -> Result<(), sqlx::Error> {
+	let domain_type = domain_type.to_string();
+
+	query!(
+		r#"
+		INSERT INTO
+			organisation_domain
+		VALUES
+			(?, ?, ?);
+		"#,
+		domain_id,
+		domain_type,
+		is_verified
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn add_to_personal_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: Vec<u8>,
