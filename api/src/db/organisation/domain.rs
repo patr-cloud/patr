@@ -1,7 +1,7 @@
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::{OrganisationDomain, VerifiedDomains},
+	models::db_mapping::AllDomains,
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -63,7 +63,7 @@ pub async fn initialize_domain_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		ALTER TABLE domain
+		ALTER TABLE generic_domain
 		ADD CONSTRAINT
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
@@ -102,9 +102,9 @@ pub async fn add_domain(
 pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
-) -> Result<Vec<VerifiedDomains>, sqlx::Error> {
+) -> Result<Vec<AllDomains>, sqlx::Error> {
 	query_as!(
-		VerifiedDomains,
+		AllDomains,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -131,15 +131,20 @@ pub async fn get_domains_for_organisation(
 
 pub async fn get_all_unverified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
+) -> Result<Vec<AllDomains>, sqlx::Error> {
 	query_as!(
-		OrganisationDomain,
+		AllDomains,
 		r#"
 		SELECT
-			id,
-			is_verified as `is_verified: bool`
+			organisation_domain.id,
+			organisation_domain.is_verified as `is_verified: bool`,
+			generic_domain.name
 		FROM
 			organisation_domain
+		INNER JOIN
+			generic_domain
+		ON
+			generic_domain.id = organisation_domain.id
 		WHERE
 			is_verified = FALSE;
 		"#
@@ -171,9 +176,9 @@ pub async fn set_domain_as_verified(
 
 pub async fn get_all_verified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<VerifiedDomains>, sqlx::Error> {
+) -> Result<Vec<AllDomains>, sqlx::Error> {
 	query_as!(
-		VerifiedDomains,
+		AllDomains,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -283,9 +288,9 @@ pub async fn delete_domain_from_organisation(
 pub async fn get_domain_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
-) -> Result<Option<VerifiedDomains>, sqlx::Error> {
+) -> Result<Option<AllDomains>, sqlx::Error> {
 	let rows = query_as!(
-		VerifiedDomains,
+		AllDomains,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -311,9 +316,9 @@ pub async fn get_domain_by_id(
 pub async fn get_domain_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Option<VerifiedDomains>, sqlx::Error> {
+) -> Result<Option<AllDomains>, sqlx::Error> {
 	let rows = query_as!(
-		VerifiedDomains,
+		AllDomains,
 		r#"
 		SELECT
 			generic_domain.id,

@@ -8,10 +8,6 @@ pub struct User {
 	#[serde(skip)]
 	pub password: String,
 	#[serde(skip)]
-	pub backup_email_local: Option<String>,
-	pub backup_email_domain: Option<String>,
-	pub backup_email_type: Option<String>,
-	pub recovery_phone_number: Option<String>,
 	pub first_name: String,
 	pub last_name: String,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -21,6 +17,32 @@ pub struct User {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub location: Option<String>,
 	pub created: u64,
+	pub backup_email_local: Option<String>,
+	pub backup_email_domain_id: Option<Vec<u8>>,
+	pub backup_phone_number_country_code: Option<String>,
+	pub backup_country_code: Option<String>,
+	pub backup_phone_number: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UserByUsernameOrEmail {
+	pub id: Vec<u8>,
+	pub username: String,
+	#[serde(skip)]
+	pub password: String,
+	#[serde(skip)]
+	pub first_name: String,
+	pub last_name: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub dob: Option<u64>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub bio: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub location: Option<String>,
+	pub created: u64,
+	pub backup_email_id: Option<Vec<u8>>,
+	pub backup_phone_number: Option<String>,
 }
 
 pub struct UserLogin {
