@@ -155,96 +155,6 @@
       ]
     }
   },
-  "1607faf87c874d2d72609e54a90463b6a621b66d1dea12b225e9b81e61e2578e": {
-    "query": "SELECT * FROM portus_tunnels WHERE ssh_port = ? OR exposed_port = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "ssh_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposed_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 2
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "182255c41edae8b0b148bf98e3f3bab99849d85b425960b0afbb08bff9b4a8b2": {
     "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = TRUE;",
     "describe": {
@@ -573,94 +483,14 @@
       ]
     }
   },
-  "302c748609e328553ddced7aab7a6480b308ca7566bc5faf5db27f670ea68050": {
-    "query": "SELECT * FROM portus_tunnels WHERE name = ?;",
+  "2e73a0e3ddc5425711ac7d47d4bc4d793a993e3d8031ccb0eac3470af0ed775c": {
+    "query": "DELETE FROM portus_tunnel WHERE id = ?;",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "ssh_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposed_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Right": 1
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "32b30194b7c8a2630470eba3330fdcdd184c011ffa2ff0565f73e7ec7420c68e": {
@@ -1053,6 +883,96 @@
       "nullable": []
     }
   },
+  "3dc7a4e588bdf132ecb612573c215c0f6e970c468e14b09bdaa33bdf39aec7a4": {
+    "query": "SELECT * FROM portus_tunnel WHERE name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "3e9c3969fef4dbd846ee2e9e5f0c572737f1d8dfbb29e890486fefe09a8bda5f": {
     "query": "SELECT * FROM organisation_user WHERE user_id = ? ORDER BY organisation_id;",
     "describe": {
@@ -1174,16 +1094,6 @@
       "nullable": []
     }
   },
-  "5437856242376747c764c42523c766e24e9cc3a7c3f2fd80104792007366ae5f": {
-    "query": "CREATE TABLE IF NOT EXISTS portus_tunnels ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1202,96 +1112,6 @@
         "Right": 0
       },
       "nullable": []
-    }
-  },
-  "601ef2dd2d50a1fc10a337ff4698111934b17f09a50955ccef3e20828a98be87": {
-    "query": "SELECT portus_tunnels.* FROM portus_tunnels INNER JOIN resource ON resource.id = portus_tunnels.id WHERE resource.owner_id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "ssh_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "exposed_port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 200
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "63e41055c49bcc16c270cc4dd906c4a1f2c0176228ad9b6f974d8d426e814a28": {
@@ -1386,16 +1206,6 @@
   },
   "6c36509fe5189947f266e4bc0258dfe1805f4c49da5fb0b22e0bc00d07eeb08c": {
     "query": "CREATE VIEW user_email_address_view AS SELECT CASE WHEN (user_email_address.type = 'personal') THEN user_email_address.email_address ELSE CONCAT(user_email_address.email_local, '@', domain.name) END AS email, user_email_address.user_id AS user_id, user_email_address.type AS type, domain.id AS domain_id, domain.name AS domain_name FROM user_email_address LEFT JOIN domain ON user_email_address.domain_id = domain.id;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "6c8f8effafad31c22a0722f2b1e614a326670a26315afcd1f40a2cbd76677485": {
-    "query": "ALTER TABLE portus_tunnels ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2375,8 +2185,8 @@
       ]
     }
   },
-  "b46cbc87d1619c33392a9b59afec8e16c267cab2f60c1c17283cc0ad5e053079": {
-    "query": "SELECT * FROM portus_tunnels WHERE id = ?;",
+  "ad6002853dd49f16db9502a04399e53e402302ddd975009c40dd0951ec30f538": {
+    "query": "SELECT * FROM portus_tunnel WHERE id = ?;",
     "describe": {
       "columns": [
         {
@@ -2463,6 +2273,16 @@
         false,
         false
       ]
+    }
+  },
+  "b37436a94bc6c50a821c0ab0b04266208194734aaab71bee5ef1b552b3bf03e0": {
+    "query": "ALTER TABLE portus_tunnel ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "b57be83f666c81c38197c96f4f9b845e520144d3295f4fb1218a3c34ca7cd1b2": {
@@ -2773,16 +2593,6 @@
         true,
         false
       ]
-    }
-  },
-  "bc68b53ad35793e81487805ffec2e139286c2d9658494e86d15e09da59c843c3": {
-    "query": "INSERT INTO portus_tunnels VALUES (?, ?, ?, ?, ?, ?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 6
-      },
-      "nullable": []
     }
   },
   "c057024a48f7f44b924ee20c14458f43b5798ab122c4f0adf70246a0640200ea": {
@@ -3248,6 +3058,16 @@
       "nullable": []
     }
   },
+  "e23aa701eee9f9caeebf736e1cdc6cde9ea42a082eb31bd44eac5cedb7f16fd9": {
+    "query": "CREATE TABLE IF NOT EXISTS portus_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
     "query": "CREATE TABLE IF NOT EXISTS permission ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
     "describe": {
@@ -3436,7 +3256,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_bytesonus_api",
+          "name": "Tables_in_api",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -3463,6 +3283,96 @@
         "Right": 1
       },
       "nullable": []
+    }
+  },
+  "f57e5719d61530f8066baef69b1170d122e028a85fa4936bf6578bd38ba8c682": {
+    "query": "SELECT * FROM portus_tunnel WHERE ssh_port = ? OR exposed_port = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "f8ef316753f63e41cb293ae11a2a4bf8d5367c2b4fdb790726d5d881afc49395": {
@@ -3526,12 +3436,102 @@
       ]
     }
   },
-  "ff6c187c094d14e55565bc3ee9adf11044e75ff0b82ab6437e7676e479f546e5": {
-    "query": "DELETE FROM portus_tunnels WHERE id = ?;",
+  "fd5013df5bb3d03308f709b021942aeecfe581821ac0911fc05db8d90bb67b2f": {
+    "query": "SELECT portus_tunnel.* FROM portus_tunnel INNER JOIN resource ON resource.id = portus_tunnel.id WHERE resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "ff65c21de42357bd3eb28ac6ac44fad8b2dca5862319563433fa092b85dbcc30": {
+    "query": "INSERT INTO portus_tunnel VALUES (?, ?, ?, ?, ?, ?);",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 1
+        "Right": 6
       },
       "nullable": []
     }
