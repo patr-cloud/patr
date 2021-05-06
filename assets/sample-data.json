@@ -225,42 +225,28 @@
 				"adityaraj-bhatt": [
 					"adityaraj.bhatt@vicara.co"
 				],
-				"manjeet-arneja": [
-					"manjeet.arneja@vicara.co"
-				],
-				"aniket-jain": [
-					"aniket.jain@vicara.co"
-				],
+				"manjeet-arneja": ["manjeet.arneja@vicara.co"],
+				"aniket-jain": ["aniket.jain@vicara.co"],
 				"manasva-bhargava": [
 					"manasva.bhargava@vicara.co"
 				]
 			},
 			"superUser": "rakshith-ravi",
 			"roles": {
-				"developer": [
-					""
-				],
-				"software-team": [
-					""
-				]
+				"developer": [""],
+				"software-team": [""]
 			},
 			"users": {
 				"manjeet-arneja": [
 					"developer",
 					"software-team"
 				],
-				"aniket-jain": [
-					"devloper",
-					"software-team"
-				]
+				"aniket-jain": ["devloper", "software-team"]
 			}
 		},
 		{
 			"name": "Gordian",
-			"domains": [
-				"gordian.in",
-				"gordain.com"
-			],
+			"domains": ["gordian.in", "gordain.com"],
 			"applications": [
 				{
 					"name": "delivery-device-firmware",
@@ -309,27 +295,15 @@
 				}
 			],
 			"emails": {
-				"rakshith-ravi": [
-					"rakshith@gordian.in"
-				],
-				"prajwal-ajay": [
-					"prajwal@gordian.in"
-				],
-				"dhanush-gowda": [
-					"dhanush@gordian.in"
-				],
-				"sagar-rs": [
-					"sagar@gordian.in"
-				]
+				"rakshith-ravi": ["rakshith@gordian.in"],
+				"prajwal-ajay": ["prajwal@gordian.in"],
+				"dhanush-gowda": ["dhanush@gordian.in"],
+				"sagar-rs": ["sagar@gordian.in"]
 			},
 			"superUser": "prajwal-ajay",
 			"roles": {
-				"developer": [
-					""
-				],
-				"software-team": [
-					""
-				]
+				"developer": [""],
+				"software-team": [""]
 			},
 			"users": {}
 		}
