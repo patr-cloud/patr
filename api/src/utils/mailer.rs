@@ -1,5 +1,3 @@
-use crate::utils::settings::Settings;
-
 use lettre::{
 	header,
 	message::{MultiPart, SinglePart},
@@ -8,6 +6,8 @@ use lettre::{
 	SmtpTransport,
 	Transport,
 };
+
+use crate::utils::settings::Settings;
 
 /*
 api_macros::email_template!("test");
@@ -45,6 +45,7 @@ pub fn send_test_email(config: Settings) -> bool {
 }
 */
 
+#[allow(clippy::useless_format)]
 pub fn send_email_verification_mail(
 	config: Settings,
 	email: String,
@@ -118,6 +119,7 @@ pub fn send_email_verification_mail(
 	*/
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_backup_registration_mail(config: Settings, email: String) {
 	let from = format!("Bytesonus <{}>", config.email.from)
 		.parse()
@@ -173,6 +175,7 @@ pub fn send_backup_registration_mail(config: Settings, email: String) {
 	*/
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_sign_up_completed_mail(config: Settings, email: String) {
 	let from = format!("Bytesonus <{}>", config.email.from)
 		.parse()
@@ -224,6 +227,7 @@ pub fn send_sign_up_completed_mail(config: Settings, email: String) {
 	*/
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_password_reset_requested_mail(
 	config: Settings,
 	email: String,
@@ -279,6 +283,7 @@ pub fn send_password_reset_requested_mail(
 	*/
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_password_changed_notification_mail(
 	config: Settings,
 	email: String,
@@ -331,6 +336,7 @@ pub fn send_password_changed_notification_mail(
 	}
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_domain_verified_mail(
 	config: Settings,
 	email: String,
@@ -386,6 +392,7 @@ pub fn send_domain_verified_mail(
 	*/
 }
 
+#[allow(clippy::useless_format)]
 pub fn send_domain_unverified_mail(
 	config: Settings,
 	email: String,

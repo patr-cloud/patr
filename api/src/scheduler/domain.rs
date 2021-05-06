@@ -1,9 +1,3 @@
-use crate::{
-	db,
-	scheduler::Job,
-	utils::{mailer, validator},
-};
-
 use cloudflare::{
 	endpoints::zone::{self, Status, Zone},
 	framework::{
@@ -13,7 +7,12 @@ use cloudflare::{
 		HttpApiClientConfig,
 	},
 };
-use surf::mime::APPLICATION_JSON;
+
+use crate::{
+	db,
+	scheduler::Job,
+	utils::{mailer, validator},
+};
 
 // Every two hours
 pub(super) fn verify_unverified_domains_job() -> Job {
@@ -43,24 +42,12 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 pub async fn refresh_domain_tld_list() -> crate::Result<()> {
-	let response =
-		surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt").await;
-	let mut response = match response {
-		Ok(response) => response,
-		Err(err) => {
-			return Err(err);
-		}
-	};
+	let data = surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+		.await?
+		.body_string()
+		.await?;
 
-	let data = response.body_string().await;
-	let data = match data {
-		Ok(data) => data,
-		Err(err) => {
-			return Err(err);
-		}
-	};
-
-	let mut tlds = data
+	let tlds = data
 		.split('\n')
 		.map(String::from)
 		.filter(|tld| {
@@ -68,10 +55,7 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 		})
 		.collect::<Vec<String>>();
 
-	let mut tld_list = validator::DOMAIN_TLD_LIST.write().await;
-	tld_list.clear();
-	tld_list.append(&mut tlds);
-	drop(tld_list);
+	validator::update_domain_tld_list(tlds).await;
 	Ok(())
 }
 
@@ -160,11 +144,10 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 			"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
 			response.result.id
 		))
-		.set_header(
+		.header(
 			"Authorization",
 			format!("Bearer {}", config.config.cloudflare.api_token),
 		)
-		.set_mime(APPLICATION_JSON)
 		.await;
 		if let Err(err) = response {
 			log::error!("Cannot initiate zone activation check: {}", err);

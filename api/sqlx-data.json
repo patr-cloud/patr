@@ -50,12 +50,12 @@
           "ordinal": 1,
           "name": "token",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4229
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -206,16 +206,6 @@
       ]
     }
   },
-  "18b66fbcb4b034f46e5e0a5146213a45396b6b893e3e5ece8fc74fdca937ef63": {
-    "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password BINARY(64) NOT NULL, backup_email VARCHAR(320) UNIQUE NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "18dab6bbd5dd9236b9cd5ef0c6ebabfb547b5766af96b22ab25b671f8c0a5514": {
     "query": "SELECT id, name, super_admin_id, active as `active: bool`, created FROM organisation WHERE id = ?;",
     "describe": {
@@ -354,6 +344,16 @@
       ]
     }
   },
+  "1c2ff6984341d1fa4a1613766133cbef384baedd155561fce616ec9c72339588": {
+    "query": "CREATE TABLE IF NOT EXISTS password_reset_request ( user_id BINARY(16) PRIMARY KEY, token TEXT NOT NULL, token_expiry BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "1db8bafdde3f2fa4402ed243659f68717f97843536f9ad0e09ff0ffc3d40c5c1": {
     "query": "ALTER TABLE application ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -432,6 +432,67 @@
       "nullable": []
     }
   },
+  "29e1aa756d725279bc3f0fa7543ea1e40ab12217d95dbb6676b7582ba0fbf247": {
+    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+<<<<<<< HEAD
+  "2e73a0e3ddc5425711ac7d47d4bc4d793a993e3d8031ccb0eac3470af0ed775c": {
+    "query": "DELETE FROM portus_tunnel WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+=======
   "2be8c5de464f3454de2f9d7841f4611b2e10717a31054b89b5a9091b6908bb48": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -481,6 +542,7 @@
         false,
         false
       ]
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
     }
   },
   "2e73a0e3ddc5425711ac7d47d4bc4d793a993e3d8031ccb0eac3470af0ed775c": {
@@ -663,12 +725,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -873,6 +935,16 @@
       ]
     }
   },
+  "3c371e005290ff7e86a0fa7d02589eaa963a6d12ef998638d70ac8a2bbea83c7": {
+    "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password TEXT NOT NULL, backup_email VARCHAR(320) UNIQUE NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
     "query": "CREATE TABLE IF NOT EXISTS meta_data ( id VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -885,6 +957,99 @@
   },
   "3dc7a4e588bdf132ecb612573c215c0f6e970c468e14b09bdaa33bdf39aec7a4": {
     "query": "SELECT * FROM portus_tunnel WHERE name = ?;",
+<<<<<<< HEAD
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "3e9c3969fef4dbd846ee2e9e5f0c572737f1d8dfbb29e890486fefe09a8bda5f": {
+    "query": "SELECT * FROM organisation_user WHERE user_id = ? ORDER BY organisation_id;",
+=======
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
     "describe": {
       "columns": [
         {
@@ -1034,32 +1199,12 @@
       "nullable": []
     }
   },
-  "44585d37e4a313691905c976c79f83137742bec03b77f6ef41f78604b5fa49a7": {
-    "query": "INSERT INTO user_login VALUES (?, ?, ?, ?, ?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 5
-      },
-      "nullable": []
-    }
-  },
   "45597f9b8e3d821096f2e4e26a496155ddb1bb23433465e471eb7f8a100196a3": {
     "query": "UPDATE user SET password = ? WHERE id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 2
-      },
-      "nullable": []
-    }
-  },
-  "47a70a52811cac523a6c979679939213c839fd3b567eed9e879e13161113787c": {
-    "query": "CREATE TABLE IF NOT EXISTS user_unverified_email_address ( /* Personal email address */ email_address VARCHAR(320), user_id BINARY(16) NOT NULL, verification_token_hash BINARY(64) UNIQUE NOT NULL, verification_token_expiry BIGINT UNSIGNED NOT NULL, PRIMARY KEY(email_address, user_id), FOREIGN KEY(user_id) REFERENCES user(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -1094,6 +1239,19 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+=======
+  "572ee1bc7c428de24baeecc05146b31607bac7390f5d960d8563bd8450c1f7f4": {
+    "query": "UPDATE user_login SET token_expiry = ?, last_activity = ? WHERE login_id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
@@ -1246,12 +1404,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -1398,12 +1556,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -1596,12 +1754,12 @@
           "ordinal": 5,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -1644,12 +1802,12 @@
           "ordinal": 9,
           "name": "otp_hash",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4229
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -1780,81 +1938,14 @@
       "nullable": []
     }
   },
-  "8c5645c36730c188bd15d5888e831e37e94ddb8bcdf8ad4bf48ca24e4138fbad": {
-    "query": "SELECT * FROM user_login WHERE refresh_token = ?;",
+  "8b77e7c7474f0c7583b90ccfcbccc259ac5c4f982f31355a9eea391839f37f7a": {
+    "query": "INSERT INTO user_login VALUES (?, ?, ?, ?, ?, ?);",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "refresh_token",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "token_expiry",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "user_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "last_login",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "last_activity",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
+      "columns": [],
       "parameters": {
-        "Right": 1
+        "Right": 6
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
@@ -2047,16 +2138,6 @@
       "nullable": []
     }
   },
-  "a7a9ff1e297f63dd61d53a96a32bfea46c4aa2f7f7ca202282ecb2d1807cddc3": {
-    "query": "CREATE TABLE IF NOT EXISTS password_reset_request ( user_id BINARY(16) PRIMARY KEY, token BINARY(64) UNIQUE NOT NULL, token_expiry BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "abc73c01e06ecb0567f992fdf42fd74fcdb9e084178eab52980b95cdc62e7184": {
     "query": "SELECT id, name, resource_type_id, owner_id as `owner_id!` FROM resource WHERE id = ?;",
     "describe": {
@@ -2153,12 +2234,12 @@
           "ordinal": 2,
           "name": "verification_token_hash",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4229
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -2275,6 +2356,7 @@
       ]
     }
   },
+<<<<<<< HEAD
   "b37436a94bc6c50a821c0ab0b04266208194734aaab71bee5ef1b552b3bf03e0": {
     "query": "ALTER TABLE portus_tunnel ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -2287,6 +2369,100 @@
   },
   "b57be83f666c81c38197c96f4f9b845e520144d3295f4fb1218a3c34ca7cd1b2": {
     "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up ( username VARCHAR(100) PRIMARY KEY, account_type ENUM('personal', 'organisation') NOT NULL, /* Personal email address OR backup email */ email_address VARCHAR(320) NOT NULL, /* Organisation email address */ email_local VARCHAR(160), domain_name VARCHAR(100), password BINARY(64) NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, organisation_name VARCHAR(100), otp_hash BINARY(64) UNIQUE NOT NULL, otp_expiry BIGINT UNSIGNED NOT NULL, CONSTRAINT CHECK ( ( account_type = 'personal' AND ( email_local IS NULL AND domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( email_local IS NOT NULL AND domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ) );",
+=======
+  "b1d492f3f3b2f64d9d6ddaed49d29fc6aa0245054ed717d462142662596a2d23": {
+    "query": "SELECT * FROM user_login WHERE user_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "b37436a94bc6c50a821c0ab0b04266208194734aaab71bee5ef1b552b3bf03e0": {
+    "query": "ALTER TABLE portus_tunnel ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
     "describe": {
       "columns": [],
       "parameters": {
@@ -2485,12 +2661,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -2595,6 +2771,19 @@
       ]
     }
   },
+<<<<<<< HEAD
+=======
+  "bac04b47777bccc88ced8cdb296aae251094b36c384bf5e57cfee94df2e5deb6": {
+    "query": "CREATE TABLE IF NOT EXISTS user_login ( login_id BINARY(16) PRIMARY KEY, refresh_token TEXT NOT NULL, token_expiry BIGINT UNSIGNED NOT NULL, user_id BINARY(16) NOT NULL, last_login BIGINT UNSIGNED NOT NULL, last_activity BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
   "c057024a48f7f44b924ee20c14458f43b5798ab122c4f0adf70246a0640200ea": {
     "query": "INSERT INTO password_reset_request VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, token_expiry = ?;",
     "describe": {
@@ -2708,12 +2897,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -2916,6 +3105,148 @@
       "nullable": []
     }
   },
+  "d4d2ecce5a9761a66d35ad64a28fa27cf0ec6caebfe8ffc21cb88c4139110f56": {
+    "query": "SELECT * FROM user WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "backup_email",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1280
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "dob",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "bio",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "location",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "d5afdc451676c5d7982f7c8aca2ec96ffda9238858136bf1b263d6a6ae8aa27b": {
     "query": "CREATE TABLE IF NOT EXISTS organisation ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, super_admin_id BINARY(16) NOT NULL, active BOOL NOT NULL DEFAULT FALSE, created BIGINT UNSIGNED NOT NULL, FOREIGN KEY(super_admin_id) REFERENCES user(id) );",
     "describe": {
@@ -2926,14 +3257,94 @@
       "nullable": []
     }
   },
-  "d6401cd7f6ec9aaa0c4f33649e8de449447ff408f059aa0e88b9e0fa4358668d": {
-    "query": "CREATE TABLE IF NOT EXISTS user_login ( refresh_token BINARY(16) PRIMARY KEY, token_expiry BIGINT UNSIGNED NOT NULL, user_id BINARY(16) NOT NULL, last_login BIGINT UNSIGNED NOT NULL, last_activity BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
+  "d71480eb28452448e2773a9848c5ed050d3610c505c6731bc60a8f1ba0491358": {
+    "query": "SELECT * FROM user_login WHERE login_id = ?;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
       "parameters": {
-        "Right": 0
+        "Right": 1
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "d85b169f94a97d1e8ab470deb5373e31723fa1dd872ecb9edbcb1461243e7be2": {
@@ -3038,6 +3449,192 @@
       ]
     }
   },
+  "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
+    "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "e23aa701eee9f9caeebf736e1cdc6cde9ea42a082eb31bd44eac5cedb7f16fd9": {
+    "query": "CREATE TABLE IF NOT EXISTS portus_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
+    "query": "CREATE TABLE IF NOT EXISTS permission ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e5f317bd1b3c4fa016d200d43f7c7b000c3a6298b86f266932ca3310691cbe3d": {
+    "query": "SELECT * FROM user_to_sign_up WHERE organisation_name = ? AND otp_expiry < ?",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4099
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4353
+            },
+            "char_set": 224,
+            "max_size": 48
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "email_address",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1280
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 640
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "domain_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "organisation_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "otp_hash",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "otp_expiry",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
+    }
+  },
+<<<<<<< HEAD
   "dcb001a506be9d77bbb944507b2634f1bcc77cc0edfe14337d8d3b3c0cc281c9": {
     "query": "UPDATE user_login SET token_expiry = ?, last_activity = ? WHERE refresh_token = ?;",
     "describe": {
@@ -3078,6 +3675,8 @@
       "nullable": []
     }
   },
+=======
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
   "e6ca3a70fe08bad0f61d4f84b1f83d651912dd175931a0d2ec2786de87064a76": {
     "query": "CREATE TABLE IF NOT EXISTS resource ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BINARY(16) NOT NULL, owner_id BINARY(16), FOREIGN KEY(owner_id) REFERENCES organisation(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
     "describe": {
@@ -3120,12 +3719,12 @@
           "ordinal": 2,
           "name": "password",
           "type_info": {
-            "type": "String",
+            "type": "Blob",
             "flags": {
-              "bits": 4225
+              "bits": 4113
             },
-            "char_set": 63,
-            "max_size": 64
+            "char_set": 224,
+            "max_size": 262140
           }
         },
         {
@@ -3246,6 +3845,16 @@
       "columns": [],
       "parameters": {
         "Right": 5
+      },
+      "nullable": []
+    }
+  },
+  "f2283cdd93f27a7dcc2f6d7d279b90f1196f4252e4ebce11924872798af6d398": {
+    "query": "CREATE TABLE IF NOT EXISTS user_unverified_email_address ( /* Personal email address */ email_address VARCHAR(320), user_id BINARY(16) NOT NULL, verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT UNSIGNED NOT NULL, PRIMARY KEY(email_address, user_id), FOREIGN KEY(user_id) REFERENCES user(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -3526,6 +4135,19 @@
       ]
     }
   },
+<<<<<<< HEAD
+=======
+  "fd6b815f692f7c3e06643971d37f8b130a0a2500885459d31a7ee40bbd1ae6ef": {
+    "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up ( username VARCHAR(100) PRIMARY KEY, account_type ENUM('personal', 'organisation') NOT NULL, /* Personal email address OR backup email */ email_address VARCHAR(320) NOT NULL, /* Organisation email address */ email_local VARCHAR(160), domain_name VARCHAR(100), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT UNSIGNED NOT NULL, CONSTRAINT CHECK ( ( account_type = 'personal' AND ( email_local IS NULL AND domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( email_local IS NOT NULL AND domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+>>>>>>> d5048298b2268f8fbe6e464c019af7ab5083e808
   "ff65c21de42357bd3eb28ac6ac44fad8b2dca5862319563433fa092b85dbcc30": {
     "query": "INSERT INTO portus_tunnel VALUES (?, ?, ?, ?, ?, ?);",
     "describe": {

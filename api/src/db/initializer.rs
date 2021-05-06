@@ -1,3 +1,7 @@
+use std::cmp::Ordering;
+
+use semver::Version;
+
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
@@ -5,9 +9,6 @@ use crate::{
 	query,
 	utils::constants,
 };
-
-use semver::Version;
-use std::cmp::Ordering;
 
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
@@ -106,6 +107,7 @@ async fn migrate_database(
 		if !migrating {
 			continue;
 		}
+		#[allow(clippy::single_match)]
 		match migration_version {
 			"0.0.0" => (),
 			_ => (),
