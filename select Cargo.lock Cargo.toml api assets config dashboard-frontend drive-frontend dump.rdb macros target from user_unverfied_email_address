@@ -1,0 +1,33 @@
++--------------------------------+
+| Tables_in_vicaraDB             |
++--------------------------------+
+| application                    |
+| application_version            |
+| application_version_platform   |
+| deployment                     |
+| docker_registry_repository     |
+| file                           |
+| generic_domain                 |
+| meta_data                      |
+| organisation                   |
+| organisation_domain            |
+| organisation_email             |
+| organisation_user              |
+| password_reset_request         |
+| permission                     |
+| personal_domain                |
+| personal_email                 |
+| phone_number_country_code      |
+| portus_tunnel                  |
+| resource                       |
+| resource_type                  |
+| role                           |
+| role_permissions_resource      |
+| role_permissions_resource_type |
+| user                           |
+| user_contact_number            |
+| user_email_address_view        |
+| user_login                     |
+| user_to_sign_up                |
+| user_unverified_email_address  |
++--------------------------------+

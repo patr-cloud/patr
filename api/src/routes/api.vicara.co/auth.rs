@@ -91,16 +91,16 @@ async fn sign_in(
 		context.json(error!(INVALID_PASSWORD));
 		return Ok(context);
 	}
-	let local_domain = user_data.backup_email_id.unwrap();
-	let email_local_domain: Vec<&str> = local_domain.split('@').collect();
 
-	let domain_info = db::get_domain_by_name(
-		context.get_mysql_connection(),
-		email_local_domain[1],
-	)
-	.await?;
+	let email_local = user_data
+		.backup_email_local
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
 
-	let domain_info = domain_info.unwrap();
+	let email_domain_id = user_data
+		.backup_email_domain_id
+		.status(500)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
 	let user_data1 = User {
 		id: user_data.id,
@@ -112,8 +112,8 @@ async fn sign_in(
 		bio: user_data.bio,
 		location: user_data.location,
 		created: user_data.created,
-		backup_email_local: Some(email_local_domain[0].to_string()),
-		backup_email_domain_id: Some(domain_info.id),
+		backup_email_local: Some(email_local.to_string()),
+		backup_email_domain_id: Some(email_domain_id),
 		backup_phone_number_country_code: None,
 		backup_country_code: None,
 		backup_phone_number: None,
@@ -446,16 +446,37 @@ async fn reset_password(
 		context.get_mysql_connection(),
 		new_password,
 		token,
-		&user.id.unwrap(),
+		&user.id,
 	)
 	.await?;
 
-	let user_backup_email = user.backup_email_id.unwrap();
+	let user_backup_email_local = user
+		.backup_email_local
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let backup_domain_id = user
+		.backup_email_domain_id
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	let user_backup_domain =
+		db::get_domain_by_id(context.get_mysql_connection(), &backup_domain_id)
+			.await?;
+
+	let user_backup_domain = user_backup_domain
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
 	task::spawn_blocking(|| {
 		mailer::send_password_changed_notification_mail(
 			config,
-			user_backup_email,
+			[
+				user_backup_email_local,
+				"@".to_string(),
+				user_backup_domain.name,
+			]
+			.concat(),
 		);
 	});
 

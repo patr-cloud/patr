@@ -6,7 +6,7 @@ use crate::{
 	error,
 	models::db_mapping::UserEmailAddress,
 	service,
-	utils::{get_current_time, validator, Error},
+	utils::{constants::AccountType, get_current_time, validator, Error},
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -20,7 +20,19 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	if db::get_user_by_email(connection, &email_address)
+	let mut email_local_domain = email_address.split('@');
+
+	let email_local = email_local_domain
+		.next()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let email_domain = email_local_domain
+		.next()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	if db::get_user_by_email(connection, email_local, email_domain)
 		.await?
 		.is_some()
 	{
@@ -79,20 +91,31 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let email_domain_local: Vec<&str> =
-		email_verification_data.email_address.split('@').collect();
+	let mut email_domain_local =
+		email_verification_data.email_address.split('@');
 
-	let domain_id = db::get_domain_by_name(connection, email_domain_local[1])
+	let email_domain = email_domain_local
+		.nth(1)
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	let domain_id = db::get_domain_by_name(connection, email_domain)
 		.await?
 		.status(404)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	let email_address = UserEmailAddress::Personal {
-		email: email_verification_data.email_address,
+	let email_address = UserEmailAddress {
+		email_local: email_verification_data.email_address,
 		domain_id: domain_id.id,
 	};
 
-	db::add_email_for_user(connection, Some(user_id), email_address).await?;
+	db::add_email_for_user(
+		connection,
+		Some(user_id),
+		email_address,
+		AccountType::Personal,
+	)
+	.await?;
 
 	Ok(())
 }

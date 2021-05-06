@@ -24,45 +24,6 @@ pub struct User {
 	pub backup_phone_number: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UserByUsernameOrEmail {
-	pub id: Vec<u8>,
-	pub username: String,
-	#[serde(skip)]
-	pub password: String,
-	#[serde(skip)]
-	pub first_name: String,
-	pub last_name: String,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub dob: Option<u64>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub bio: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub location: Option<String>,
-	pub created: u64,
-	pub backup_email_id: Option<String>,
-	pub backup_phone_number: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UserByEmail {
-	pub id: Option<Vec<u8>>,
-	pub username: Option<String>,
-	pub first_name: Option<String>,
-	pub last_name: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub dob: Option<u64>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub bio: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub location: Option<String>,
-	pub created: Option<u64>,
-	pub backup_email_id: Option<String>,
-	pub backup_phone_number: Option<String>,
-}
-
 pub struct UserLogin {
 	pub login_id: Vec<u8>,
 	pub refresh_token: String,
@@ -73,15 +34,9 @@ pub struct UserLogin {
 }
 
 #[derive(Clone)]
-pub enum UserEmailAddress {
-	Personal {
-		email: String,
-		domain_id: Vec<u8>,
-	},
-	Organisation {
-		email_local: String,
-		domain_id: Vec<u8>,
-	},
+pub struct UserEmailAddress {
+	pub email_local: String,
+	pub domain_id: Vec<u8>,
 }
 
 #[derive(Clone)]

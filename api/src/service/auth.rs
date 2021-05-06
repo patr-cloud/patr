@@ -52,7 +52,18 @@ pub async fn is_email_allowed(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	db::get_user_by_email(connection, email)
+	let mut email_local_domain = email.split('@');
+	let email_local = email_local_domain
+		.next()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let email_domain = email_local_domain
+		.next()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::get_user_by_email(connection, email_local, email_domain)
 		.await
 		.map(|user| user.is_none())
 		.status(500)
@@ -321,9 +332,27 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	let backup_email = user.backup_email_id.unwrap();
+	let backup_email = user
+		.backup_email_local
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
 
-	Ok((otp, backup_email))
+	let domain_id = user
+		.backup_email_domain_id
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let backup_email_domain =
+		db::get_domain_by_id(connection, &domain_id).await?;
+
+	let backup_email_domain = backup_email_domain
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	Ok((
+		otp,
+		[backup_email, "@".to_string(), backup_email_domain.name].concat(),
+	))
 }
 
 pub async fn reset_password(
@@ -415,29 +444,42 @@ pub async fn join_user(
 	}
 
 	// For an organisation, create the organisation and domain
-	let email;
+	let mut email = UserEmailAddress {
+		email_local: "abc@xyz.com".to_string(),
+		domain_id: Vec::new(),
+	};
 	let welcome_email_to;
 	let backup_email_to;
 	let mut email_domain_id: Vec<u8> = Vec::new();
 	match user_data.email {
 		UserEmailAddressSignUp::Personal(email_address) => {
-			let email_local_domain: Vec<&str> =
-				email_address.split('@').collect();
+			let mut email_local_domain = email_address.split('@');
 
-			let domain_id = service::add_personal_domain_to_generic_domain(
-				connection,
-				&email_local_domain[1],
-			)
-			.await?
-			.as_bytes()
-			.to_vec();
+			let email_local = email_local_domain
+				.next()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+			let email_domain = email_local_domain
+				.next()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+			let domain_id =
+				service::create_personal_domain(connection, &email_domain)
+					.await?
+					.as_bytes()
+					.to_vec();
 
 			email_domain_id = domain_id.clone();
 
-			email = UserEmailAddress::Personal {
-				email: email_address.clone(),
-				domain_id,
-			};
+			email.email_local = email_local.to_string();
+			email.domain_id = domain_id;
+
+			// email = UserEmailAddress::Personal {
+			// 	email: email_address.clone(),
+			// 	domain_id,
+			// };
 
 			backup_email_to = None;
 			welcome_email_to = email_address;
@@ -466,18 +508,26 @@ pub async fn join_user(
 			.to_vec();
 
 			welcome_email_to = format!("{}@{}", email_local, domain_name);
-			email = UserEmailAddress::Organisation {
-				domain_id,
-				email_local,
-			};
+
+			email.email_local = email_local;
+			email.domain_id = domain_id;
 			backup_email_to = Some(backup_email);
 		}
 	}
 
-	let backup_email_local_domain: Vec<&str> =
-		user_data.backup_email.split('@').collect();
+	let mut backup_email_local_domain = user_data.backup_email.split('@');
 
-	db::add_email_for_user(connection, None, email).await?;
+	let email_local = backup_email_local_domain
+		.next()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	// let email_domain = backup_email_local_domain.next()
+	// .status(500)
+	// .body(error!(SERVER_ERROR).to_string())?;
+
+	db::add_email_for_user(connection, None, email, AccountType::Personal)
+		.await?;
 
 	// add domain_id
 
@@ -486,8 +536,8 @@ pub async fn join_user(
 		user_id,
 		&user_data.username,
 		&user_data.password,
-		backup_email_local_domain[0],
-		email_domain_id,
+		email_local,
+		email_domain_id.clone(),
 		// Add phone number country code etc
 		None,
 		None,
@@ -497,8 +547,8 @@ pub async fn join_user(
 	)
 	.await?;
 
-	db::add_user_id_to_email(connection, user_id, email_domain_id).await?;
-
+	db::add_user_id_to_email(connection, user_id.to_vec(), email_domain_id)
+		.await?;
 	// add personal organisation
 	let personal_organisation_name = service::get_personal_org_name(username);
 	service::create_organisation(

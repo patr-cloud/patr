@@ -7,8 +7,6 @@ use crate::{
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		User,
-		UserByEmail,
-		UserByUsernameOrEmail,
 		UserEmailAddress,
 		UserEmailAddressSignUp,
 		UserLogin,
@@ -16,7 +14,7 @@ use crate::{
 	},
 	query,
 	query_as,
-	utils,
+	utils::{self, constants::AccountType},
 };
 
 pub async fn initialize_users_pre(
@@ -35,9 +33,8 @@ pub async fn initialize_users_pre(
 			bio VARCHAR(128) DEFAULT NULL,
 			location VARCHAR(128) DEFAULT NULL,
 			created BIGINT UNSIGNED NOT NULL,
-			backup_email_local VARCHAR(54),
+			backup_email_local VARCHAR(64),
 			backup_email_domain_id BINARY(16),
-			backup_phone_number_country_code VARCHAR(5),
 			backup_country_code VARCHAR(2),
 			backup_phone_number VARCHAR(15),
 			CONSTRAINT CHECK (
@@ -101,10 +98,12 @@ pub async fn initialize_users_post(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_email (
 			user_id BINARY(16),
-			email_local VARCHAR(54),
+			email_local VARCHAR(64),
 			domain_id BINARY(16),
 			PRIMARY KEY(email_local, domain_id),
-			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id)
+			UNIQUE(user_id,email_local,domain_id),
+			FOREIGN KEY(user_id) REFERENCES user(id),
+			FOREIGN KEY(domain_id) REFERENCES personal_domain(id)
 		);
 		"#
 	)
@@ -115,33 +114,13 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS organisation_email (
-			user_id BINARY(16) NOT NULL,
+			user_id BINARY(16),
 			email_local VARCHAR(54),
 			domain_id BINARY(16),
 			PRIMARY KEY(email_local, domain_id),
-			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id)
+			FOREIGN KEY(user_id) REFERENCES user(id),
+			FOREIGN KEY(domain_id) REFERENCES organisation_domain(id)
 		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	// altering the table to add the foreign key reference of email
-	query!(
-		r#"
-		ALTER TABLE personal_email
-		ADD CONSTRAINT 
-		FOREIGN KEY(domain_id) REFERENCES personal_domain(id);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE organisation_email
-		ADD CONSTRAINT 
-		FOREIGN KEY(domain_id) REFERENCES organisation_domain(id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -164,16 +143,16 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_contact_number (
-			user_id BINARY(16) NOT NULL,
-			country_phone_code VARCHAR(5) NOT NULL,
-			country_code VARCHAR(2) NOT NULL,
-			number VARCHAR(15),
-			PRIMARY KEY(country_phone_code, number, country_code),
-			CONSTRAINT FOREIGN KEY(user_id) REFERENCES user(id),
-			CONSTRAINT FOREIGN KEY(country_phone_code, country_code) REFERENCES phone_number_country_code(phone_code, country_code),
-			CONSTRAINT phone_number_check CHECK(number >= 1000000 AND number <= 100000000000000)
-		);
+			CREATE TABLE IF NOT EXISTS user_contact_number (
+				user_id BINARY(16),
+				country_phone_code VARCHAR(5) NOT NULL,
+				country_code VARCHAR(2) NOT NULL,
+				number VARCHAR(15),
+				PRIMARY KEY(country_code, number),
+				FOREIGN KEY(user_id) REFERENCES user(id),
+				FOREIGN KEY(country_phone_code, country_code) REFERENCES phone_number_country_code(phone_code, country_code),
+				CONSTRAINT phone_number_check CHECK(LENGTH(number) >= 7 AND LENGTH(number) <= 15)
+			);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -184,7 +163,7 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE user
 		ADD CONSTRAINT 
-		FOREIGN KEY(backup_email_local, backup_email_domain_id) REFERENCES personal_email(email_local, domain_id);
+		FOREIGN KEY(id, backup_email_local, backup_email_domain_id) REFERENCES personal_email(user_id, email_local, domain_id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -196,13 +175,10 @@ pub async fn initialize_users_post(
 		ALTER TABLE user
 		ADD CONSTRAINT 
 		FOREIGN KEY ( 
-			backup_phone_number_country_code, 
 			backup_phone_number,
 			backup_country_code
 		) 
-		REFERENCES 
-		user_contact_number ( 
-			country_phone_code, 
+		REFERENCES user_contact_number ( 
 			number,
 			country_code
 		);
@@ -281,22 +257,12 @@ pub async fn initialize_users_post(
 pub async fn get_user_by_username_or_email(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &str,
-) -> Result<Option<UserByUsernameOrEmail>, sqlx::Error> {
+) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
-		UserByUsernameOrEmail,
+		User,
 		r#"
 		SELECT
-			user.id,
-			user.username,
-			user.password,
-			user.first_name,
-			user.last_name,
-			user.bio,
-			user.dob,
-			user.location,
-			user.created,
-			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
-			user.backup_phone_number
+			user.*
 		FROM
 			user
 		LEFT JOIN
@@ -391,26 +357,17 @@ pub async fn get_god_user_id(
 }
 
 // This only retreives user using personal email address/backup email address
+// getting a compile time error here
 pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, MySql>,
-	email: &str,
-) -> Result<Option<UserByEmail>, sqlx::Error> {
-	let email_local_domain: Vec<&str> = email.split('@').collect();
-
+	email_local: &str,
+	email_domain: &str,
+) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
-		UserByEmail,
+		User,
 		r#"
 		SELECT
-			user.id,
-			user.username,
-			user.first_name,
-			user.last_name,
-			user.bio,
-			user.dob,
-			user.location,
-			user.created,
-			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
-			user.backup_phone_number
+			user.*
 		FROM
 			user
 		LEFT JOIN
@@ -426,8 +383,8 @@ pub async fn get_user_by_email(
 		AND
 			generic_domain.name = ?
 		"#,
-		email_local_domain[0],
-		email_local_domain[1]
+		email_local,
+		email_domain
 	)
 	.fetch_all(connection)
 	.await?;
@@ -438,21 +395,12 @@ pub async fn get_user_by_email(
 pub async fn get_user_by_username(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
-) -> Result<Option<UserByEmail>, sqlx::Error> {
+) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
-		UserByEmail,
+		User,
 		r#"
 		SELECT
-			user.id,
-			user.username,
-			user.first_name,
-			user.last_name,
-			user.bio,
-			user.dob,
-			user.location,
-			user.created,
-			CONCAT(personal_email.email_local,'@',generic_domain.name) as backup_email_id,
-			user.backup_phone_number
+			user.*
 		FROM
 			user
 		LEFT JOIN
@@ -800,11 +748,10 @@ pub async fn add_email_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: Option<&[u8]>,
 	email: UserEmailAddress,
+	email_type: AccountType,
 ) -> Result<(), sqlx::Error> {
-	match email {
-		UserEmailAddress::Personal { email, domain_id } => {
-			let email_local_domain: Vec<&str> = email.split('@').collect();
-
+	match email_type {
+		AccountType::Personal => {
 			query!(
 				r#"
 				INSERT INTO
@@ -813,16 +760,13 @@ pub async fn add_email_for_user(
 					(?, ?, ?);
 				"#,
 				user_id,
-				email_local_domain[0],
-				domain_id
+				email.email_local,
+				email.domain_id
 			)
 			.execute(connection)
 			.await?;
 		}
-		UserEmailAddress::Organisation {
-			email_local,
-			domain_id,
-		} => {
+		AccountType::Organisation => {
 			query!(
 				r#"
 				INSERT INTO
@@ -831,8 +775,8 @@ pub async fn add_email_for_user(
 					(?, ?, ?);
 				"#,
 				user_id,
-				email_local,
-				domain_id
+				email.email_local,
+				email.domain_id
 			)
 			.execute(connection)
 			.await?;

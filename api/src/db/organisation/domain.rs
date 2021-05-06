@@ -29,9 +29,9 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_domain (
 			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal','organisation') NOT NULL,
+			domain_type ENUM('personal', 'organisation') NOT NULL,
 			/* Change name of the constraint */
-			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
+			FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
 			CONSTRAINT type_domain CHECK(domain_type = 'personal')
 		);
 		"#
@@ -45,7 +45,7 @@ pub async fn initialize_domain_pre(
 			id BINARY(16) PRIMARY KEY,
 			domain_type ENUM('personal', 'organisation') NOT NULL,
 			is_verified BOOL NOT NULL DEFAULT FALSE,
-			CONSTRAINT FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
+			FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type),
 			CONSTRAINT CHECK(domain_type = 'organisation')
 		);
 		"#
@@ -75,7 +75,7 @@ pub async fn initialize_domain_post(
 	Ok(())
 }
 
-pub async fn add_domain(
+pub async fn add_to_generic_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 	domain_name: &str,
