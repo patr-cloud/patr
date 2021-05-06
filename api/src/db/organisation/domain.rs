@@ -2,7 +2,7 @@ use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::{AllDomains, GenericDomain},
+	models::db_mapping::{GenericDomain, OrganisationDomain, PersonalDomain},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -106,8 +106,6 @@ pub async fn add_to_organisation_domain(
 	domain_type: AccountType,
 	is_verified: bool,
 ) -> Result<(), sqlx::Error> {
-	let domain_type = domain_type.to_string();
-
 	query!(
 		r#"
 		INSERT INTO
@@ -116,7 +114,7 @@ pub async fn add_to_organisation_domain(
 			(?, ?, ?);
 		"#,
 		domain_id,
-		domain_type,
+		domain_type.to_string(),
 		is_verified
 	)
 	.execute(connection)
@@ -127,11 +125,9 @@ pub async fn add_to_organisation_domain(
 
 pub async fn add_to_personal_domain(
 	connection: &mut Transaction<'_, MySql>,
-	domain_id: Vec<u8>,
+	domain_id: &[u8],
 	domain_type: AccountType,
 ) -> Result<(), sqlx::Error> {
-	let domain_type = domain_type.to_string();
-
 	query!(
 		r#"
 		INSERT INTO
@@ -140,7 +136,7 @@ pub async fn add_to_personal_domain(
 			(?, ?);
 		"#,
 		domain_id,
-		domain_type
+		domain_type.to_string()
 	)
 	.execute(connection)
 	.await?;
@@ -148,12 +144,39 @@ pub async fn add_to_personal_domain(
 	Ok(())
 }
 
+pub async fn get_personal_domain_by_name(
+	connection: &mut Transaction<'_, MySql>,
+	domain_name: &str,
+) -> Result<Option<PersonalDomain>, sqlx::Error> {
+	let rows = query_as!(
+		PersonalDomain,
+		r#"
+		SELECT
+			personal_domain.id,
+			generic_domain.name
+		FROM
+			generic_domain
+		INNER JOIN
+			personal_domain
+		ON
+			personal_domain.id = generic_domain.id
+		WHERE
+			generic_domain.name = ?;
+		"#,
+		domain_name
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
 pub async fn get_domains_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
-) -> Result<Vec<AllDomains>, sqlx::Error> {
+) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
-		AllDomains,
+		OrganisationDomain,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -180,9 +203,9 @@ pub async fn get_domains_for_organisation(
 
 pub async fn get_all_unverified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<AllDomains>, sqlx::Error> {
+) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
-		AllDomains,
+		OrganisationDomain,
 		r#"
 		SELECT
 			organisation_domain.id,
@@ -225,9 +248,9 @@ pub async fn set_domain_as_verified(
 
 pub async fn get_all_verified_domains(
 	connection: &mut Transaction<'_, MySql>,
-) -> Result<Vec<AllDomains>, sqlx::Error> {
+) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
-		AllDomains,
+		OrganisationDomain,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -337,9 +360,9 @@ pub async fn delete_domain_from_organisation(
 pub async fn get_domain_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
-) -> Result<Option<AllDomains>, sqlx::Error> {
+) -> Result<Option<OrganisationDomain>, sqlx::Error> {
 	let rows = query_as!(
-		AllDomains,
+		OrganisationDomain,
 		r#"
 		SELECT
 			generic_domain.id,
@@ -365,9 +388,9 @@ pub async fn get_domain_by_id(
 pub async fn get_domain_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Option<AllDomains>, sqlx::Error> {
+) -> Result<Option<OrganisationDomain>, sqlx::Error> {
 	let rows = query_as!(
-		AllDomains,
+		OrganisationDomain,
 		r#"
 		SELECT
 			generic_domain.id,

@@ -14,20 +14,17 @@ pub struct GenericDomain {
 
 pub struct OrganisationDomain {
 	pub id: Vec<u8>,
+	pub name: String,
 	pub is_verified: bool,
 }
 
 pub struct PersonalDomain {
 	pub id: Vec<u8>,
+	pub name: String,
 }
 
 // the following structs are for querying the db after initialisation
 // Name can be changed for this struct because it is used in multiple queries
-pub struct AllDomains {
-	pub id: Vec<u8>,
-	pub name: String,
-	pub is_verified: bool,
-}
 
 pub struct Application {
 	pub id: Vec<u8>,

@@ -1,5 +1,6 @@
 use eve_rs::AsError;
 use sqlx::{MySql, Transaction};
+use tokio::task;
 use uuid::Uuid;
 
 use super::get_refresh_token_expiry;
@@ -8,6 +9,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
+			PersonalDomain,
 			User,
 			UserEmailAddress,
 			UserEmailAddressSignUp,
@@ -21,6 +23,7 @@ use crate::{
 	utils::{
 		constants::AccountType,
 		get_current_time,
+		mailer,
 		settings::Settings,
 		validator,
 		Error,
@@ -52,18 +55,7 @@ pub async fn is_email_allowed(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	let mut email_local_domain = email.split('@');
-	let email_local = email_local_domain
-		.next()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let email_domain = email_local_domain
-		.next()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	db::get_user_by_email(connection, email_local, email_domain)
+	db::get_user_by_email(connection, email)
 		.await
 		.map(|user| user.is_none())
 		.status(500)
@@ -310,6 +302,7 @@ pub async fn generate_access_token(
 // TODO: Remove otp from response
 pub async fn forgot_password(
 	connection: &mut Transaction<'_, MySql>,
+	config: Settings,
 	user_id: &str,
 ) -> Result<(String, String), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
@@ -332,27 +325,28 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	let backup_email = user
-		.backup_email_local
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
+	let backup_email =
+		db::get_backup_email_for_user(connection, &user.id).await?;
 
-	let domain_id = user
-		.backup_email_domain_id
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
+	// let backup_email_data = backup_email.clone();
 
-	let backup_email_domain =
-		db::get_domain_by_id(connection, &domain_id).await?;
+	// let backup_email_data = backup_email_data
+	// 	.status(400)
+	// 	.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let backup_email_domain = backup_email_domain
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	let mut email_address = String::new();
 
-	Ok((
-		otp,
-		[backup_email, "@".to_string(), backup_email_domain.name].concat(),
-	))
+	if let Some((email_local, PersonalDomain { id: _, name })) = backup_email {
+		email_address = format!("{}@{}", email_local.clone(), name.clone());
+		task::spawn_blocking(move || {
+			mailer::send_password_changed_notification_mail(
+				config,
+				format!("{}@{}", email_local, name),
+			);
+		});
+	}
+
+	Ok((otp, email_address))
 }
 
 pub async fn reset_password(
@@ -443,44 +437,56 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
+	// change this please
+	// see get personal doamin by name
+	// if it is some resuse if none create domain id
 	// For an organisation, create the organisation and domain
+	// i have to initialise this inorder to remove the on this line
+	// email.email_local = email_local;
 	let mut email = UserEmailAddress {
-		email_local: "abc@xyz.com".to_string(),
+		email_local: String::new(),
 		domain_id: Vec::new(),
 	};
 	let welcome_email_to;
 	let backup_email_to;
-	let mut email_domain_id: Vec<u8> = Vec::new();
+	let email_domain_id: Vec<u8> = Vec::new();
 	match user_data.email {
 		UserEmailAddressSignUp::Personal(email_address) => {
-			let mut email_local_domain = email_address.split('@');
+			// i forgot the alternative for this so i had to split the
+			// email_address
+			let mut email_address_split = email_address.split('@');
 
-			let email_local = email_local_domain
+			let email_local = email_address_split
 				.next()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
+				.status(400)
+				.body(error!(INVALID_EMAIL).to_string())?;
 
-			let email_domain = email_local_domain
+			let email_domain = email_address_split
 				.next()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-			let domain_id =
-				service::create_personal_domain(connection, &email_domain)
-					.await?
-					.as_bytes()
-					.to_vec();
+			let domain_info =
+				db::get_personal_domain_by_name(connection, email_domain)
+					.await?;
 
-			email_domain_id = domain_id.clone();
+			let domain_id;
 
-			email.email_local = email_local.to_string();
-			email.domain_id = domain_id;
+			if domain_info.is_none() {
+				domain_id =
+					service::create_personal_domain(connection, &email_domain)
+						.await?
+						.as_bytes()
+						.to_vec();
+			} else {
+				let domain_info = domain_info.unwrap();
+				domain_id = domain_info.id;
+			}
 
-			// email = UserEmailAddress::Personal {
-			// 	email: email_address.clone(),
-			// 	domain_id,
-			// };
-
+			email = UserEmailAddress {
+				email_local: email_local.to_string(),
+				domain_id,
+			};
 			backup_email_to = None;
 			welcome_email_to = email_address;
 		}
@@ -509,6 +515,9 @@ pub async fn join_user(
 
 			welcome_email_to = format!("{}@{}", email_local, domain_name);
 
+			// i am getting an error of
+			// assign to part of possibly-uninitialized variable: `email`
+			// use of possibly-uninitialized `email`
 			email.email_local = email_local;
 			email.domain_id = domain_id;
 			backup_email_to = Some(backup_email);
@@ -519,15 +528,19 @@ pub async fn join_user(
 
 	let email_local = backup_email_local_domain
 		.next()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// let email_domain = backup_email_local_domain.next()
 	// .status(500)
 	// .body(error!(SERVER_ERROR).to_string())?;
 
-	db::add_email_for_user(connection, None, email, AccountType::Personal)
-		.await?;
+	db::add_orphaned__personal_email_for_user(
+		connection,
+		&email,
+		AccountType::Personal,
+	)
+	.await?;
 
 	// add domain_id
 
@@ -537,9 +550,8 @@ pub async fn join_user(
 		&user_data.username,
 		&user_data.password,
 		email_local,
-		email_domain_id.clone(),
+		&email_domain_id,
 		// Add phone number country code etc
-		None,
 		None,
 		None,
 		(&user_data.first_name, &user_data.last_name),
@@ -547,8 +559,7 @@ pub async fn join_user(
 	)
 	.await?;
 
-	db::add_user_id_to_email(connection, user_id.to_vec(), email_domain_id)
-		.await?;
+	db::set_user_id_for_email(connection, user_id, &email_domain_id).await?;
 	// add personal organisation
 	let personal_organisation_name = service::get_personal_org_name(username);
 	service::create_organisation(

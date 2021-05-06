@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::User,
+	models::db_mapping::PersonalDomain,
 	pin_fn,
 	service,
 	utils::{
@@ -92,37 +92,10 @@ async fn sign_in(
 		return Ok(context);
 	}
 
-	let email_local = user_data
-		.backup_email_local
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
-
-	let email_domain_id = user_data
-		.backup_email_domain_id
-		.status(500)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	let user_data1 = User {
-		id: user_data.id,
-		username: user_data.username,
-		password: user_data.password,
-		first_name: user_data.first_name,
-		last_name: user_data.last_name,
-		dob: user_data.dob,
-		bio: user_data.bio,
-		location: user_data.location,
-		created: user_data.created,
-		backup_email_local: Some(email_local.to_string()),
-		backup_email_domain_id: Some(email_domain_id),
-		backup_phone_number_country_code: None,
-		backup_country_code: None,
-		backup_phone_number: None,
-	};
-
 	let config = context.get_state().config.clone();
 	let (jwt, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
-		user_data1,
+		user_data,
 		&config,
 	)
 	.await?;
@@ -395,9 +368,12 @@ async fn forgot_password(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let (otp, backup_email) =
-		service::forgot_password(context.get_mysql_connection(), user_id)
-			.await?;
+	let (otp, backup_email) = service::forgot_password(
+		context.get_mysql_connection(),
+		config.clone(),
+		user_id,
+	)
+	.await?;
 
 	task::spawn_blocking(|| {
 		mailer::send_password_reset_requested_mail(config, backup_email, otp);
@@ -450,35 +426,19 @@ async fn reset_password(
 	)
 	.await?;
 
-	let user_backup_email_local = user
-		.backup_email_local
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
-
-	let backup_domain_id = user
-		.backup_email_domain_id
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	let user_backup_domain =
-		db::get_domain_by_id(context.get_mysql_connection(), &backup_domain_id)
+	let backup_email =
+		db::get_backup_email_for_user(context.get_mysql_connection(), &user.id)
 			.await?;
 
-	let user_backup_domain = user_backup_domain
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	task::spawn_blocking(|| {
-		mailer::send_password_changed_notification_mail(
-			config,
-			[
-				user_backup_email_local,
-				"@".to_string(),
-				user_backup_domain.name,
-			]
-			.concat(),
-		);
-	});
+	if let Some((email_local, PersonalDomain { id: _, name })) = backup_email {
+		task::spawn_blocking(move || {
+			mailer::send_password_changed_notification_mail(
+				config,
+				format!("{}@{}", email_local, name),
+			);
+		});
+	}
+	// TODO notify by phone later
 
 	context.json(json!({
 		request_keys::SUCCESS: true

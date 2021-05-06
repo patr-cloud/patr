@@ -20,19 +20,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	let mut email_local_domain = email_address.split('@');
-
-	let email_local = email_local_domain
-		.next()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let email_domain = email_local_domain
-		.next()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	if db::get_user_by_email(connection, email_local, email_domain)
+	if db::get_user_by_email(connection, email_address)
 		.await?
 		.is_some()
 	{
@@ -99,6 +87,8 @@ pub async fn verify_personal_email_address_for_user(
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
+	// check if the doamin exists if not then add new else use the old one
+
 	let domain_id = db::get_domain_by_name(connection, email_domain)
 		.await?
 		.status(404)
@@ -111,8 +101,8 @@ pub async fn verify_personal_email_address_for_user(
 
 	db::add_email_for_user(
 		connection,
-		Some(user_id),
-		email_address,
+		user_id,
+		&email_address,
 		AccountType::Personal,
 	)
 	.await?;

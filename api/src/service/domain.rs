@@ -14,51 +14,50 @@ use crate::{
 	models::rbac,
 	utils::{constants::AccountType, validator, Error},
 };
-
+// remove geenrate personal domain
 pub async fn create_personal_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
-	if db::get_domain_by_name(connection, domain_name)
-		.await?
-		.is_some()
-	{
-		Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_EXISTS).to_string())?;
+	let domain_info = db::get_domain_by_name(connection, domain_name).await?;
+
+	if domain_info.is_none() {
+		let domain_uuid = db::generate_new_resource_id(connection).await?;
+		let domain_id = domain_uuid.as_bytes();
+
+		db::create_orphaned_resource(
+			connection,
+			domain_id,
+			&format!("Domain: {}", domain_name),
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::DOMAIN)
+				.unwrap(),
+		)
+		.await?;
+
+		db::add_to_generic_domain(
+			connection,
+			domain_id,
+			&domain_name,
+			AccountType::Personal,
+		)
+		.await?;
+
+		db::add_to_personal_domain(
+			connection,
+			domain_id,
+			AccountType::Personal,
+		)
+		.await?;
+
+		Ok(domain_uuid)
+	} else {
+		// i am unable to figure out how to convert from vec<u8> to uuid
+		let domain_uuid = domain_info.unwrap().id.chunks_exact(16);
+		Ok(Uuid::from_bytes(bytes: domain_uuid))
 	}
-
-	let domain_uuid = db::generate_new_domain_id(connection).await?;
-	let domain_id = domain_uuid.as_bytes();
-
-	db::create_orphaned_resource(
-		connection,
-		domain_id,
-		&format!("Domain: {}", domain_name),
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::DOMAIN)
-			.unwrap(),
-	)
-	.await?;
-
-	db::add_to_generic_domain(
-		connection,
-		domain_id,
-		&domain_name,
-		AccountType::Personal,
-	)
-	.await?;
-
-	db::add_to_personal_domain(
-		connection,
-		domain_id.to_vec(),
-		AccountType::Personal,
-	)
-	.await?;
-
-	Ok(domain_uuid)
 }
 
 pub async fn add_domain_to_organisation(
@@ -100,6 +99,14 @@ pub async fn add_domain_to_organisation(
 		domain_id,
 		&domain_name,
 		AccountType::Organisation,
+	)
+	.await?;
+
+	db::add_to_organisation_domain(
+		connection,
+		domain_id,
+		AccountType::Organisation,
+		false,
 	)
 	.await?;
 

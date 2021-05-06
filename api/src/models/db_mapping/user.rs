@@ -19,7 +19,6 @@ pub struct User {
 	pub created: u64,
 	pub backup_email_local: Option<String>,
 	pub backup_email_domain_id: Option<Vec<u8>>,
-	pub backup_phone_number_country_code: Option<String>,
 	pub backup_country_code: Option<String>,
 	pub backup_phone_number: Option<String>,
 }
