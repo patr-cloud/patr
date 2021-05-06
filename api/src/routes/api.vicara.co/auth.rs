@@ -59,11 +59,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 		&[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
 
-	app.post(
-		"/change-password",
-		&[EveMiddleware::CustomFunction(pin_fn!(change_password))],
-	);
-
 	app
 }
 
@@ -892,114 +887,6 @@ async fn reset_password(
 
 	if !success {
 		context.status(400).json(error!(EMAIL_TOKEN_NOT_FOUND));
-		return Ok(context);
-	}
-
-	let new_password = argon2::hash_raw(
-		new_password.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
-	)?;
-
-	db::update_user_password(
-		context.get_mysql_connection(),
-		&user.id,
-		&new_password,
-	)
-	.await?;
-	db::delete_password_reset_request_for_user(
-		context.get_mysql_connection(),
-		&user.id,
-	)
-	.await?;
-
-	let config = context.get_state().config.clone();
-	let pool = context.get_state().mysql.clone();
-	task::spawn(async move {
-		let mut connection = pool
-			.begin()
-			.await
-			.expect("unable to begin transaction from connection");
-		let user = db::get_user_by_user_id(&mut connection, &user.id)
-			.await
-			.expect("unable to get user data")
-			.expect("user data for that user_id was None");
-
-		task::spawn_blocking(|| {
-			mailer::send_password_changed_notification_mail(
-				config,
-				user.backup_email,
-			);
-		});
-	});
-
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
-}
-
-async fn change_password(
-	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
-	let body = context.get_body_object().clone();
-
-	let new_password = if let Some(Value::String(new_password)) =
-		body.get(request_keys::NEWPASSWORD)
-	{
-		new_password
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-
-	let user_id =
-		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
-			user_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-
-	let password = if let Some(Value::String(password)) =
-		body.get(request_keys::PASSWORD)
-	{
-		password
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-
-	let user = if let Some(user) = db::get_user_by_username_or_email(
-		context.get_mysql_connection(),
-		&user_id,
-	)
-	.await?
-	{
-		user
-	} else {
-		context.json(error!(USER_NOT_FOUND));
-		return Ok(context);
-	};
-
-	let success = argon2::verify_raw(
-		password.as_bytes(),
-		context.get_state().config.password_salt.as_bytes(),
-		&user.password,
-		&argon2::Config {
-			variant: Variant::Argon2i,
-			hash_length: 64,
-			..Default::default()
-		},
-	)?;
-
-	if !success {
-		context.json(error!(INVALID_PASSWORD));
 		return Ok(context);
 	}
 
