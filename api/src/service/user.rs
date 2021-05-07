@@ -79,24 +79,20 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let mut email_domain_local =
+	let mut email_address_split =
 		email_verification_data.email_address.split('@');
 
-	let email_domain = email_domain_local
+	let email_domain = email_address_split
 		.nth(1)
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	// check if the doamin exists if not then add new else use the old one
-
-	let domain_id = db::get_domain_by_name(connection, email_domain)
-		.await?
-		.status(404)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	let domain_id =
+		service::create_personal_domain(connection, email_domain).await?;
 
 	let email_address = UserEmailAddress {
 		email_local: email_verification_data.email_address,
-		domain_id: domain_id.id,
+		domain_id,
 	};
 
 	db::add_email_for_user(

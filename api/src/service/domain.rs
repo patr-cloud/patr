@@ -55,6 +55,7 @@ pub async fn create_personal_domain(
 		Ok(domain_id.to_vec())
 	} else {
 		// i am unable to figure out how to convert from vec<u8> to uuid
+		// so i made the function get_domain_by_name return vec<u8>
 		let domain_uuid = domain_info.unwrap().id;
 		Ok(domain_uuid)
 	}

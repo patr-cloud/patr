@@ -328,12 +328,6 @@ pub async fn forgot_password(
 	let backup_email =
 		db::get_backup_email_for_user(connection, &user.id).await?;
 
-	// let backup_email_data = backup_email.clone();
-
-	// let backup_email_data = backup_email_data
-	// 	.status(400)
-	// 	.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let mut email_address = String::new();
 
 	if let Some((email_local, PersonalDomain { id: _, name })) = backup_email {
@@ -437,16 +431,7 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	// change this please
-	// see get personal doamin by name
-	// if it is some resuse if none create domain id
-	// For an organisation, create the organisation and domain
-	// i have to initialise this inorder to remove the on this line
-	// email.email_local = email_local;
-	let mut email = UserEmailAddress {
-		email_local: String::new(),
-		domain_id: Vec::new(),
-	};
+	let email;
 	let welcome_email_to;
 	let backup_email_to;
 	let email_domain_id: Vec<u8> = Vec::new();
@@ -513,11 +498,10 @@ pub async fn join_user(
 
 			welcome_email_to = format!("{}@{}", email_local, domain_name);
 
-			// i am getting an error of
-			// assign to part of possibly-uninitialized variable: `email`
-			// use of possibly-uninitialized `email`
-			email.email_local = email_local;
-			email.domain_id = domain_id;
+			email = UserEmailAddress {
+				email_local: email_local.to_string(),
+				domain_id,
+			};
 			backup_email_to = Some(backup_email);
 		}
 	}
@@ -529,13 +513,7 @@ pub async fn join_user(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// let email_domain = backup_email_local_domain.next()
-	// .status(500)
-	// .body(error!(SERVER_ERROR).to_string())?;
-
 	db::add_orphaned_personal_email_for_user(connection, &email).await?;
-
-	// add domain_id
 
 	db::create_user(
 		connection,

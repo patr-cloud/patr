@@ -6,11 +6,12 @@ pub struct Organisation {
 	pub created: u64,
 }
 
-pub struct GenericDomain {
-	pub id: Vec<u8>,
-	pub name: String,
-	pub domain_type: String,
-}
+// Uncomment this when generic_domain realted query is in use
+// pub struct GenericDomain {
+// 	pub id: Vec<u8>,
+// 	pub name: String,
+// 	pub domain_type: String,
+// }
 
 pub struct OrganisationDomain {
 	pub id: Vec<u8>,
@@ -22,9 +23,6 @@ pub struct PersonalDomain {
 	pub id: Vec<u8>,
 	pub name: String,
 }
-
-// the following structs are for querying the db after initialisation
-// Name can be changed for this struct because it is used in multiple queries
 
 pub struct Application {
 	pub id: Vec<u8>,
