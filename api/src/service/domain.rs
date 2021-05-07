@@ -55,8 +55,8 @@ pub async fn create_personal_domain(
 		Ok(domain_uuid)
 	} else {
 		// i am unable to figure out how to convert from vec<u8> to uuid
-		let domain_uuid = domain_info.unwrap().id.chunks_exact(16);
-		Ok(Uuid::from_bytes(bytes: domain_uuid))
+		let domain_uuid = domain_info.unwrap().id;
+		Ok(domain_uuid)
 	}
 }
 
