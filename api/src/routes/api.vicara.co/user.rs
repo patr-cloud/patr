@@ -73,7 +73,6 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
-
 	app
 }
 
@@ -378,7 +377,6 @@ async fn change_password(
 	};
 
 	//creating a var user_id to store either the username or email that is been recieved in the request
-
 	let user_id =
 		if let Some(Value::String(user_id)) = body.get(request_keys::USER_ID) {
 			user_id
