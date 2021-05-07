@@ -155,8 +155,18 @@
       ]
     }
   },
-  "182255c41edae8b0b148bf98e3f3bab99849d85b425960b0afbb08bff9b4a8b2": {
-    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = TRUE;",
+  "150a7e6792904cb35c438aed51302884e9b1d85f6438491d6b289db03566918c": {
+    "query": "CREATE TABLE IF NOT EXISTS phone_number_country_code ( country_code VARCHAR(2) NOT NULL, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL, PRIMARY KEY(country_code) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "184792c4a99f3ba6e32c1aa6e72eb6f45d6f58b6989786b85bc03ea98c1ca0ff": {
+    "query": "SELECT generic_domain.id, generic_domain.name, organisation_domain.is_verified as `is_verified: bool` FROM generic_domain INNER JOIN organisation_domain ON generic_domain.id = organisation_domain.id WHERE organisation_domain.is_verified = TRUE;",
     "describe": {
       "columns": [
         {
@@ -165,7 +175,7 @@
           "type_info": {
             "type": "String",
             "flags": {
-              "bits": 4227
+              "bits": 4235
             },
             "char_set": 63,
             "max_size": 16
@@ -180,7 +190,7 @@
               "bits": 4101
             },
             "char_set": 224,
-            "max_size": 400
+            "max_size": 1020
           }
         },
         {
@@ -293,57 +303,6 @@
       "nullable": []
     }
   },
-  "1a896b4c2994e2cf150f5d0cdac886e958d8f12f1b48b876851449783c7ee73a": {
-    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE id = ?",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "1c2ff6984341d1fa4a1613766133cbef384baedd155561fce616ec9c72339588": {
     "query": "CREATE TABLE IF NOT EXISTS password_reset_request ( user_id BINARY(16) PRIMARY KEY, token TEXT NOT NULL, token_expiry BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
     "describe": {
@@ -364,12 +323,12 @@
       "nullable": []
     }
   },
-  "2170f039ddb46624f010285cbd21fe3a4b8d233da09ef51569b17157657329ac": {
-    "query": "INSERT INTO user_email_address VALUES ('organisation', NULL, ?, ?, ?);",
+  "20e3867acedbd6bd3151150d77309c3b73f70487d0254d30d9447132e2211915": {
+    "query": "CREATE TABLE IF NOT EXISTS personal_domain ( id BINARY(16) PRIMARY KEY, domain_type ENUM('personal', 'organisation') NOT NULL, /* Change name of the constraint */ FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type), CONSTRAINT type_domain CHECK(domain_type = 'personal') );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 3
+        "Right": 0
       },
       "nullable": []
     }
@@ -422,6 +381,16 @@
       "nullable": []
     }
   },
+  "27d35dfc589eae3353773ea600a17ff374bd2e6e87d78db41833dc9b639f994e": {
+    "query": "INSERT INTO organisation_domain VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "2800638e0b9b0a15ed2f97715f6b16eee1f5ecd998fbeea9ace67289a8a09643": {
     "query": "DELETE FROM role_permissions_resource WHERE role_id = ?;",
     "describe": {
@@ -430,57 +399,6 @@
         "Right": 1
       },
       "nullable": []
-    }
-  },
-  "29e1aa756d725279bc3f0fa7543ea1e40ab12217d95dbb6676b7582ba0fbf247": {
-    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE name = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "2be8c5de464f3454de2f9d7841f4611b2e10717a31054b89b5a9091b6908bb48": {
@@ -540,6 +458,16 @@
       "columns": [],
       "parameters": {
         "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "315c7d55765d5484420872df4f1a390f92459bc0299d3d2bf6384dfabb36df21": {
+    "query": "INSERT INTO personal_email VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
       },
       "nullable": []
     }
@@ -682,158 +610,6 @@
       ]
     }
   },
-  "34725b1bba891ee860fbdbc88ff8b85b92a930fb5104cb779fa9dada00ab9366": {
-    "query": "SELECT user.* FROM user LEFT JOIN user_email_address_view ON user_email_address_view.user_id = user.id WHERE user.username = ? OR user_email_address_view.email = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": {
-            "type": "Blob",
-            "flags": {
-              "bits": 4113
-            },
-            "char_set": 224,
-            "max_size": 262140
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "first_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "last_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "dob",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 32
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "bio",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "location",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 2
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false
-      ]
-    }
-  },
-  "36af3782ba352d2f4f126cbeeba0eba53ecb03fbb4eb94dfadb90f333121fac6": {
-    "query": "INSERT INTO user_email_address VALUES ('personal', ?, NULL, NULL, ?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 2
-      },
-      "nullable": []
-    }
-  },
   "371d5aa97e791ac2ea5007444c5383183135698ed3baca2f010c88499bf9cfb2": {
     "query": "SELECT * FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = ?;",
     "describe": {
@@ -922,16 +698,6 @@
         false,
         true
       ]
-    }
-  },
-  "3c371e005290ff7e86a0fa7d02589eaa963a6d12ef998638d70ac8a2bbea83c7": {
-    "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password TEXT NOT NULL, backup_email VARCHAR(320) UNIQUE NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
@@ -1085,12 +851,22 @@
       ]
     }
   },
-  "4381c233c7c762f95acd31726c1afab88e926b797bc3ab22e22228a3b2ac96e4": {
-    "query": "DELETE FROM domain WHERE id = ?;",
+  "40330dd0ac4f4e29494182085ccac806b74ab23b99d509425c01d7465b904ce6": {
+    "query": "CREATE TABLE IF NOT EXISTS organisation_domain ( id BINARY(16) PRIMARY KEY, domain_type ENUM('personal', 'organisation') NOT NULL, is_verified BOOL NOT NULL DEFAULT FALSE, FOREIGN KEY(id, domain_type) REFERENCES generic_domain(id, type), CONSTRAINT CHECK(domain_type = 'organisation') );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 1
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "42a8abdc40baeb89dd7c69b17323d6905945e43239f696216fb8cdc7f3120587": {
+    "query": "INSERT INTO user VALUES (?, ?, ?, ?, ?,NULL, NULL, NULL, ?, ?, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 10
       },
       "nullable": []
     }
@@ -1105,6 +881,16 @@
       "nullable": []
     }
   },
+  "46d64a64b2e457f3e0f1f5d4de3409d22a00910bf437cea226a440a8e466d3ac": {
+    "query": "CREATE TABLE IF NOT EXISTS organisation_email ( user_id BINARY(16) NOT NULL, email_local VARCHAR(54), domain_id BINARY(16), PRIMARY KEY(email_local, domain_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES organisation_domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "48abb42c3402fb054e4b5afa35f35b891c56ba49b91c0bbdacc4e7e306706efb": {
     "query": "DELETE FROM role WHERE id = ?;",
     "describe": {
@@ -1115,18 +901,273 @@
       "nullable": []
     }
   },
-  "4aaeec7fa2f65e60f34d7f6fa2981e466c3a9cdfeb129462ba506687d76a0f84": {
-    "query": "INSERT INTO user VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?);",
+  "4b0dca5dae968bbc279445aef8283b82d3d8ebd7960a9e9c732be28de2f1baf0": {
+    "query": "SELECT generic_domain.id, generic_domain.name, organisation_domain.is_verified as `is_verified: bool` FROM generic_domain INNER JOIN organisation_domain ON organisation_domain.id = generic_domain.id WHERE generic_domain.id = ?",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
       "parameters": {
-        "Right": 7
+        "Right": 1
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "4f6e7535ab071b0910a06269bc765549449729470f299316474f304583736d66": {
     "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource ( role_id BINARY(16), permission_id BINARY(16), resource_id BINARY(16), PRIMARY KEY(role_id, permission_id, resource_id), FOREIGN KEY(role_id) REFERENCES role(id), FOREIGN KEY(permission_id) REFERENCES permission(id), FOREIGN KEY(resource_id) REFERENCES resource(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "508d1c7bdf5baf09363b5c04c7e59d9569c44297541c1ffc1c58b992ae40afd8": {
+    "query": "UPDATE organisation_domain SET is_verified = FALSE WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "552964f97b41f199f29b334a8476b17911b2a92466453639d7c39c0b503ec519": {
+    "query": "SELECT user.*, generic_domain.name FROM personal_domain INNER JOIN generic_domain ON generic_domain.id = personal_domain.id INNER JOIN resource ON personal_domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN user ON organisation.super_admin_id = user.id WHERE generic_domain.id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
+          }
+        },
+        {
+          "ordinal": 13,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
+  "566ad2e2115faf295a5b6b5ab31895ba0a120dd5291794a37228067ee9cdcb9f": {
+    "query": "CREATE TABLE IF NOT EXISTS user_contact_number ( user_id BINARY(16), country_code VARCHAR(2) NOT NULL, number VARCHAR(15), PRIMARY KEY(country_code, number), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(country_phone_code, country_code) REFERENCES phone_number_country_code(phone_code, country_code), CONSTRAINT phone_number_check CHECK(LENGTH(number) >= 7 AND LENGTH(number) <= 15) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1151,16 +1192,6 @@
       "columns": [],
       "parameters": {
         "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "5cd0a78fcf69ed853bc49d1efd8afa8cabc699d0ce35fad11b95a256d6571779": {
-    "query": "ALTER TABLE domain ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -1255,156 +1286,14 @@
       ]
     }
   },
-  "6c36509fe5189947f266e4bc0258dfe1805f4c49da5fb0b22e0bc00d07eeb08c": {
-    "query": "CREATE VIEW user_email_address_view AS SELECT CASE WHEN (user_email_address.type = 'personal') THEN user_email_address.email_address ELSE CONCAT(user_email_address.email_local, '@', domain.name) END AS email, user_email_address.user_id AS user_id, user_email_address.type AS type, domain.id AS domain_id, domain.name AS domain_name FROM user_email_address LEFT JOIN domain ON user_email_address.domain_id = domain.id;",
+  "6eecb17a9839244815f0828f5c6100a22ea94e2496407014fb0d9cb2239ca7ef": {
+    "query": "CREATE TABLE IF NOT EXISTS personal_email ( user_id BINARY(16), email_local VARCHAR(64), domain_id BINARY(16), PRIMARY KEY(email_local, domain_id), UNIQUE(user_id, email_local, domain_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES personal_domain(id) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 0
       },
       "nullable": []
-    }
-  },
-  "6e632ad702a45d78f36bcdf2a71d4573c1c0d20645526a150ff9cf843b563c4c": {
-    "query": "SELECT user.* FROM user LEFT JOIN user_email_address_view ON user_email_address_view.user_id = user.id WHERE user_email_address_view.email = ?",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": {
-            "type": "Blob",
-            "flags": {
-              "bits": 4113
-            },
-            "char_set": 224,
-            "max_size": 262140
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "first_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "last_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "dob",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 32
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "bio",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "location",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false
-      ]
     }
   },
   "6fa2444bb63e13a9590e092c01ba865ce21d7b2c4a5b434272bda49d9c2ea729": {
@@ -1415,148 +1304,6 @@
         "Right": 2
       },
       "nullable": []
-    }
-  },
-  "72d233edd83ef70f809909acafef81bb9b0d22834e6568fa909e852c95d82b6e": {
-    "query": "SELECT user.* FROM domain INNER JOIN resource ON domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN user ON organisation.super_admin_id = user.id WHERE domain.id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": {
-            "type": "Blob",
-            "flags": {
-              "bits": 4113
-            },
-            "char_set": 224,
-            "max_size": 262140
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "first_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "last_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "dob",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 32
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "bio",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "location",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false
-      ]
     }
   },
   "74552dd3887b7800f00b007dbd6b8362d041a7d0c3157bc1073837435d6098a7": {
@@ -1734,12 +1481,213 @@
       ]
     }
   },
+  "80158ce1b5b2b836b2fd8578704c9291516ad6444cc91e83cb6bc71cba57c202": {
+    "query": "UPDATE personal_email SET user_id = ? WHERE domain_id = ?",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "80ac8d4aa81a265cf5aaff877a86c37986ccfa5aa7725d135672609dc056704a": {
+    "query": "SELECT user.* FROM user LEFT JOIN personal_email ON personal_email.user_id = user.id LEFT JOIN organisation_email ON organisation_email.user_id = user.id LEFT JOIN generic_domain ON personal_email.domain_id = generic_domain.id OR organisation_email.domain_id = generic_domain.id WHERE CONCAT(personal_email.email_local, '@', generic_domain.name) = ? OR CONCAT(organisation_email.email_local, '@', generic_domain.name) = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "80d87f55cd48c8ed559d4dd4f4f488109bd7d83c9578f5deb9369818c6f34191": {
     "query": "DELETE FROM organisation_user WHERE role_id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "85b082b393bf881bfe11d98405ac78b89d61033e0aad64305dfea7f820c5c1bd": {
+    "query": "ALTER TABLE user ADD CONSTRAINT FOREIGN KEY( backup_email_local, backup_email_domain_id ) REFERENCES personal_email( email_local, domain_id );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -1841,6 +1789,245 @@
       "nullable": []
     }
   },
+  "8cba0449e8c76e47b7ace659488cfaf09fcc65e07a1e919823c9209065963980": {
+    "query": "INSERT INTO phone_number_country_code VALUES (93, 'AF', 'Afghanistan'), (358, 'AX', 'Aland Islands'), (355, 'AL', 'Albania'), (213, 'DZ', 'Algeria'), (1684, 'AS', 'American Samoa'), (376, 'AD', 'Andorra'), (244, 'AO', 'Angola'), (1264, 'AI', 'Anguilla'), (672, 'AQ', 'Antarctica'), (1268, 'AG', 'Antigua and Barbuda'), (54, 'AR', 'Argentina'), (374, 'AM', 'Armenia'), (297, 'AW', 'Aruba'), (61, 'AU', 'Australia'), (43, 'AT', 'Austria'), (994, 'AZ', 'Azerbaijan'), (1242, 'BS', 'Bahamas'), (973, 'BH', 'Bahrain'), (880, 'BD', 'Bangladesh'), (1246, 'BB', 'Barbados'), (375, 'BY', 'Belarus'), (32, 'BE', 'Belgium'), (501, 'BZ', 'Belize'), (229, 'BJ', 'Benin'), (1441, 'BM', 'Bermuda'), (975, 'BT', 'Bhutan'), (591, 'BO', 'Bolivia'), (599, 'BQ', 'Bonaire, Sint Eustatius and Saba'), (387, 'BA', 'Bosnia and Herzegovina'), (267, 'BW', 'Botswana'), (55, 'BV', 'Bouvet Island'), (55, 'BR', 'Brazil'), (246, 'IO', 'British Indian Ocean Territory'), (673, 'BN', 'Brunei Darussalam'), (359, 'BG', 'Bulgaria'), (226, 'BF', 'Burkina Faso'), (257, 'BI', 'Burundi'), (855, 'KH', 'Cambodia'), (237, 'CM', 'Cameroon'), (1, 'CA', 'Canada'), (238, 'CV', 'Cape Verde'), (1345, 'KY', 'Cayman Islands'), (236, 'CF', 'Central African Republic'), (235, 'TD', 'Chad'), (56, 'CL', 'Chile'), (86, 'CN', 'China'), (61, 'CX', 'Christmas Island'), (672, 'CC', 'Cocos (Keeling) Islands'), (57, 'CO', 'Colombia'), (269, 'KM', 'Comoros'), (242, 'CG', 'Congo'), ( 242, 'CD', 'Congo, Democratic Republic of the Congo' ), (682, 'CK', 'Cook Islands'), (506, 'CR', 'Costa Rica'), (225, 'CI', 'Cote D\\'Ivoire'), (385, 'HR', 'Croatia'), (53, 'CU', 'Cuba'), (599, 'CW', 'Curacao'), (357, 'CY', 'Cyprus'), (420, 'CZ', 'Czech Republic'), (45, 'DK', 'Denmark'), (253, 'DJ', 'Djibouti'), (1767, 'DM', 'Dominica'), (1809, 'DO', 'Dominican Republic'), (593, 'EC', 'Ecuador'), (20, 'EG', 'Egypt'), (503, 'SV', 'El Salvador'), (240, 'GQ', 'Equatorial Guinea'), (291, 'ER', 'Eritrea'), (372, 'EE', 'Estonia'), (251, 'ET', 'Ethiopia'), (500, 'FK', 'Falkland Islands (Malvinas)'), (298, 'FO', 'Faroe Islands'), (679, 'FJ', 'Fiji'), (358, 'FI', 'Finland'), (33, 'FR', 'France'), (594, 'GF', 'French Guiana'), (689, 'PF', 'French Polynesia'), (262, 'TF', 'French Southern Territories'), (241, 'GA', 'Gabon'), (220, 'GM', 'Gambia'), (995, 'GE', 'Georgia'), (49, 'DE', 'Germany'), (233, 'GH', 'Ghana'), (350, 'GI', 'Gibraltar'), (30, 'GR', 'Greece'), (299, 'GL', 'Greenland'), (1473, 'GD', 'Grenada'), (590, 'GP', 'Guadeloupe'), (1671, 'GU', 'Guam'), (502, 'GT', 'Guatemala'), (44, 'GG', 'Guernsey'), (224, 'GN', 'Guinea'), (245, 'GW', 'Guinea-Bissau'), (592, 'GY', 'Guyana'), (509, 'HT', 'Haiti'), (0, 'HM', 'Heard Island and Mcdonald Islands'), (39, 'VA', 'Holy See (Vatican City State)'), (504, 'HN', 'Honduras'), (852, 'HK', 'Hong Kong'), (36, 'HU', 'Hungary'), (354, 'IS', 'Iceland'), (91, 'IN', 'India'), (62, 'ID', 'Indonesia'), (98, 'IR', 'Iran, Islamic Republic of'), (964, 'IQ', 'Iraq'), (353, 'IE', 'Ireland'), (44, 'IM', 'Isle of Man'), (972, 'IL', 'Israel'), (39, 'IT', 'Italy'), (1876, 'JM', 'Jamaica'), (81, 'JP', 'Japan'), (44, 'JE', 'Jersey'), (962, 'JO', 'Jordan'), (7, 'KZ', 'Kazakhstan'), (254, 'KE', 'Kenya'), (686, 'KI', 'Kiribati'), ( 850, 'KP', 'Korea, Democratic People\\'s Republic of' ), (82, 'KR', 'Korea, Republic of'), (381, 'XK', 'Kosovo'), (965, 'KW', 'Kuwait'), (996, 'KG', 'Kyrgyzstan'), (856, 'LA', 'Lao People\\'s Democratic Republic'), (371, 'LV', 'Latvia'), (961, 'LB', 'Lebanon'), (266, 'LS', 'Lesotho'), (231, 'LR', 'Liberia'), (218, 'LY', 'Libyan Arab Jamahiriya'), (423, 'LI', 'Liechtenstein'), (370, 'LT', 'Lithuania'), (352, 'LU', 'Luxembourg'), (853, 'MO', 'Macao'), ( 389, 'MK', 'Macedonia, the Former Yugoslav Republic of' ), (261, 'MG', 'Madagascar'), (265, 'MW', 'Malawi'), (60, 'MY', 'Malaysia'), (960, 'MV', 'Maldives'), (223, 'ML', 'Mali'), (356, 'MT', 'Malta'), (692, 'MH', 'Marshall Islands'), (596, 'MQ', 'Martinique'), (222, 'MR', 'Mauritania'), (230, 'MU', 'Mauritius'), (269, 'YT', 'Mayotte'), (52, 'MX', 'Mexico'), (691, 'FM', 'Micronesia, Federated States of'), (373, 'MD', 'Moldova, Republic of'), (377, 'MC', 'Monaco'), (976, 'MN', 'Mongolia'), (382, 'ME', 'Montenegro'), (1664, 'MS', 'Montserrat'), (212, 'MA', 'Morocco'), (258, 'MZ', 'Mozambique'), (95, 'MM', 'Myanmar'), (264, 'NA', 'Namibia'), (674, 'NR', 'Nauru'), (977, 'NP', 'Nepal'), (31, 'NL', 'Netherlands'), (599, 'AN', 'Netherlands Antilles'), (687, 'NC', 'New Caledonia'), (64, 'NZ', 'New Zealand'), (505, 'NI', 'Nicaragua'), (227, 'NE', 'Niger'), (234, 'NG', 'Nigeria'), (683, 'NU', 'Niue'), (672, 'NF', 'Norfolk Island'), (1670, 'MP', 'Northern Mariana Islands'), (47, 'NO', 'Norway'), (968, 'OM', 'Oman'), (92, 'PK', 'Pakistan'), (680, 'PW', 'Palau'), (970, 'PS', 'Palestinian Territory, Occupied'), (507, 'PA', 'Panama'), (675, 'PG', 'Papua New Guinea'), (595, 'PY', 'Paraguay'), (51, 'PE', 'Peru'), (63, 'PH', 'Philippines'), (64, 'PN', 'Pitcairn'), (48, 'PL', 'Poland'), (351, 'PT', 'Portugal'), (1787, 'PR', 'Puerto Rico'), (974, 'QA', 'Qatar'), (262, 'RE', 'Reunion'), (40, 'RO', 'Romania'), (70, 'RU', 'Russian Federation'), (250, 'RW', 'Rwanda'), (590, 'BL', 'Saint Barthelemy'), (290, 'SH', 'Saint Helena'), (1869, 'KN', 'Saint Kitts and Nevis'), (1758, 'LC', 'Saint Lucia'), (590, 'MF', 'Saint Martin'), (508, 'PM', 'Saint Pierre and Miquelon'), (1784, 'VC', 'Saint Vincent and the Grenadines'), (684, 'WS', 'Samoa'), (378, 'SM', 'San Marino'), (239, 'ST', 'Sao Tome and Principe'), (966, 'SA', 'Saudi Arabia'), (221, 'SN', 'Senegal'), (381, 'RS', 'Serbia'), (381, 'CS', 'Serbia and Montenegro'), (248, 'SC', 'Seychelles'), (232, 'SL', 'Sierra Leone'), (65, 'SG', 'Singapore'), (1, 'SX', 'Sint Maarten'), (421, 'SK', 'Slovakia'), (386, 'SI', 'Slovenia'), (677, 'SB', 'Solomon Islands'), (252, 'SO', 'Somalia'), (27, 'ZA', 'South Africa'), ( 500, 'GS', 'South Georgia and the South Sandwich Islands' ), (211, 'SS', 'South Sudan'), (34, 'ES', 'Spain'), (94, 'LK', 'Sri Lanka'), (249, 'SD', 'Sudan'), (597, 'SR', 'Suriname'), (47, 'SJ', 'Svalbard and Jan Mayen'), (268, 'SZ', 'Swaziland'), (46, 'SE', 'Sweden'), (41, 'CH', 'Switzerland'), (963, 'SY', 'Syrian Arab Republic'), (886, 'TW', 'Taiwan, Province of China'), (992, 'TJ', 'Tajikistan'), (255, 'TZ', 'Tanzania, United Republic of'), (66, 'TH', 'Thailand'), (670, 'TL', 'Timor-Leste'), (228, 'TG', 'Togo'), (690, 'TK', 'Tokelau'), (676, 'TO', 'Tonga'), (1868, 'TT', 'Trinidad and Tobago'), (216, 'TN', 'Tunisia'), (90, 'TR', 'Turkey'), (7370, 'TM', 'Turkmenistan'), (1649, 'TC', 'Turks and Caicos Islands'), (688, 'TV', 'Tuvalu'), (256, 'UG', 'Uganda'), (380, 'UA', 'Ukraine'), (971, 'AE', 'United Arab Emirates'), (44, 'GB', 'United Kingdom'), (1, 'US', 'United States'), (1, 'UM', 'United States Minor Outlying Islands'), (598, 'UY', 'Uruguay'), (998, 'UZ', 'Uzbekistan'), (678, 'VU', 'Vanuatu'), (58, 'VE', 'Venezuela'), (84, 'VN', 'Viet Nam'), (1284, 'VG', 'Virgin Islands, British'), (1340, 'VI', 'Virgin Islands, U.s.'), (681, 'WF', 'Wallis and Futuna'), (212, 'EH', 'Western Sahara'), (967, 'YE', 'Yemen'), (260, 'ZM', 'Zambia'), (263, 'ZW', 'Zimbabwe');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "8ecacd6ec6328dc04c1b4ea4f82182944eb101f6563144057784e8e24c36b40c": {
+    "query": "INSERT INTO personal_domain VALUES (?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "91191101d6acbe9bc2ebd8b1db04898f14db2198dbbdadc907c879197b87897e": {
+    "query": "SELECT * FROM user WHERE username = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "92481f437c89e581cde54c959e51b7399e7ae0cfe7f1a6f40cfd2f6abb95a184": {
+    "query": "SELECT personal_domain.id, generic_domain.name FROM generic_domain INNER JOIN personal_domain ON personal_domain.id = generic_domain.id WHERE generic_domain.name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
     "query": "CREATE TABLE IF NOT EXISTS application ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL );",
     "describe": {
@@ -1894,57 +2081,6 @@
         "Right": 1
       },
       "nullable": [
-        false,
-        false
-      ]
-    }
-  },
-  "9a6d60a224be2211ef20f30a47ea65f729e640b423fc66d6b866e8ff4b22131f": {
-    "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": [
-        false,
         false,
         false
       ]
@@ -2011,24 +2147,185 @@
       ]
     }
   },
-  "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
-    "query": "CREATE TABLE IF NOT EXISTS user_email_address ( type ENUM('personal', 'organisation') NOT NULL, /* Personal email address */ email_address VARCHAR(320), /* Organisation email address */ email_local VARCHAR(160), domain_id BINARY(16), user_id BINARY(16) NOT NULL, UNIQUE(email_address, email_local, domain_id, user_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES domain(id), CONSTRAINT CHECK ( ( type = 'personal' AND ( email_address IS NOT NULL AND email_local IS NULL AND domain_id IS NULL ) ) OR ( type = 'organisation' AND ( email_address IS NULL AND email_local IS NOT NULL AND domain_id IS NOT NULL ) ) ) );",
+  "a4b32532cc43d30851114549b35427590dc4b8eb5f7ab203315a6d62a651149a": {
+    "query": "SELECT user.* FROM user LEFT JOIN personal_email ON personal_email.user_id = user.id LEFT JOIN organisation_email ON organisation_email.user_id = user.id LEFT JOIN generic_domain ON personal_email.domain_id = generic_domain.id OR organisation_email.domain_id = generic_domain.id WHERE user.username = ? OR CONCAT(personal_email.email_local, '@', generic_domain.name) = ? OR CONCAT(organisation_email.email_local, '@', generic_domain.name) = ?;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": {
+            "type": "Blob",
+            "flags": {
+              "bits": 4113
+            },
+            "char_set": 224,
+            "max_size": 262140
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 32
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 512
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": {
+            "type": "LongLong",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
+          }
+        }
+      ],
       "parameters": {
-        "Right": 0
+        "Right": 3
       },
-      "nullable": []
-    }
-  },
-  "a6045492fd4f4ff914dc8fa67215934b8c6bb644c99a9c887550694109390126": {
-    "query": "UPDATE domain SET is_verified = TRUE WHERE id = ?;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "abc73c01e06ecb0567f992fdf42fd74fcdb9e084178eab52980b95cdc62e7184": {
@@ -2157,6 +2454,16 @@
         false,
         false
       ]
+    }
+  },
+  "ad598f2dde3e3fe93bdfab67aca0cd2ed816d918775f69e3028d51462f0e97de": {
+    "query": "INSERT INTO personal_email VALUES (NULL, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
     }
   },
   "ad6002853dd49f16db9502a04399e53e402302ddd975009c40dd0951ec30f538": {
@@ -2349,6 +2656,57 @@
       "nullable": []
     }
   },
+  "b3824c52bd1e9d9892d930361786e00d84dcf381c1019ee82f014b79499d4bac": {
+    "query": "SELECT user.backup_email_local, user.backup_email_domain_id, generic_domain.name FROM user LEFT JOIN personal_domain ON personal_domain.id = user.backup_email_domain_id LEFT JOIN generic_domain ON personal_domain.id = generic_domain.id WHERE user.id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4100
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "b5a46edf59414b8ff2594c37e329621f5578dcdde0cedc389be2122ce179aaf4": {
     "query": "INSERT INTO role_permissions_resource VALUES (?, ?, ?);",
     "describe": {
@@ -2436,59 +2794,18 @@
       ]
     }
   },
-  "b8db8b23ba2514928e24c5d221a4dcbb5ccc819852a8131fb362e77b615d60ee": {
-    "query": "SELECT domain.id, domain.name, is_verified as `is_verified: bool` FROM domain INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = ?;",
+  "b98f6ad11050eb79fed881ff45dfabde14271b91f1eab617ba8f055d4a189f5b": {
+    "query": "DELETE FROM user_to_sign_up WHERE username = ?;",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Right": 1
       },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
-  "b98f6ad11050eb79fed881ff45dfabde14271b91f1eab617ba8f055d4a189f5b": {
-    "query": "DELETE FROM user_to_sign_up WHERE username = ?;",
+  "b99d59757cb2e230e61e53822265101e3798808403ad5cb7f07d13b65d6c893e": {
+    "query": "UPDATE organisation_domain SET is_verified = TRUE WHERE id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2549,18 +2866,6 @@
         },
         {
           "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
           "name": "first_name",
           "type_info": {
             "type": "VarString",
@@ -2572,7 +2877,7 @@
           }
         },
         {
-          "ordinal": 5,
+          "ordinal": 4,
           "name": "last_name",
           "type_info": {
             "type": "VarString",
@@ -2584,7 +2889,7 @@
           }
         },
         {
-          "ordinal": 6,
+          "ordinal": 5,
           "name": "dob",
           "type_info": {
             "type": "LongLong",
@@ -2596,7 +2901,7 @@
           }
         },
         {
-          "ordinal": 7,
+          "ordinal": 6,
           "name": "bio",
           "type_info": {
             "type": "VarString",
@@ -2608,7 +2913,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 7,
           "name": "location",
           "type_info": {
             "type": "VarString",
@@ -2620,7 +2925,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 8,
           "name": "created",
           "type_info": {
             "type": "LongLong",
@@ -2629,6 +2934,54 @@
             },
             "char_set": 63,
             "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
           }
         }
       ],
@@ -2641,11 +2994,14 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
         false,
         true,
         true,
         true,
-        false
+        true
       ]
     }
   },
@@ -2657,6 +3013,57 @@
         "Right": 0
       },
       "nullable": []
+    }
+  },
+  "bac5d44b8da5fabecfd56ae4d5d52133eadc8d457e8d155b5d4e4e2f87152586": {
+    "query": "SELECT generic_domain.id, generic_domain.name, organisation_domain.is_verified as 'is_verified: bool' FROM generic_domain INNER JOIN organisation_domain ON organisation_domain.id = generic_domain.id INNER JOIN resource ON generic_domain.id = resource.id WHERE resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "c057024a48f7f44b924ee20c14458f43b5798ab122c4f0adf70246a0640200ea": {
@@ -2671,16 +3078,6 @@
   },
   "c05f2b360a302d1b3fe52bb37e80a8bc57e2618c05a4040d3657ec852fd09cc4": {
     "query": "CREATE TABLE IF NOT EXISTS resource_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, description VARCHAR(500) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "c16ef2a1d5294754262b0c77e596bb523c27ddbed94da43617285203dd95959d": {
-    "query": "CREATE TABLE IF NOT EXISTS domain ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, is_verified BOOL NOT NULL DEFAULT FALSE );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2740,146 +3137,14 @@
       ]
     }
   },
-  "c6fd001247a7d00ff678efaf200f373293cedc44182733e05af9f7c743b6ab3d": {
-    "query": "SELECT * FROM user WHERE username = ?",
+  "c5c940e3990a1e6ee65506fc52f1c870a5926eadb77236605e35921073237040": {
+    "query": "DELETE FROM organisation_domain WHERE id = ?;",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": {
-            "type": "Blob",
-            "flags": {
-              "bits": 4113
-            },
-            "char_set": 224,
-            "max_size": 262140
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "first_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "last_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 400
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "dob",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 32
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "bio",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "location",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 512
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "created",
-          "type_info": {
-            "type": "LongLong",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 20
-          }
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Right": 1
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false
-      ]
+      "nullable": []
     }
   },
   "c72f443e3f15c221a223b0fe388e34e25fb583068b6a0034f68ca0b06cb391d6": {
@@ -2940,6 +3205,26 @@
       "nullable": []
     }
   },
+  "c94a6ffa7c89f020c64ef77e2aa50e469e8e4c53b07436558cee1068c670f011": {
+    "query": "ALTER TABLE user ADD CONSTRAINT FOREIGN KEY ( backup_phone_number, backup_country_code ) REFERENCES user_contact_number ( number, country_code );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "c969829f0552a88fb939c701f27e440cdc4a89dbe701514ae6bcef6597184784": {
+    "query": "INSERT INTO generic_domain VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "ca81844373fa9941691d926a125d282680f84008bc3bb780bea8b05ad595a66f": {
     "query": "UPDATE resource SET owner_id = ? WHERE id = ?;",
     "describe": {
@@ -2950,12 +3235,12 @@
       "nullable": []
     }
   },
-  "cebce49fbac635b253575a841bae02bca13a53323b655259c2bea4312f9860fc": {
-    "query": "UPDATE domain SET is_verified = FALSE WHERE id = ?;",
+  "cbb10cc006c7edc4ee2b79b849356a3fc4fce3bc556e9458f59f9e100523cd38": {
+    "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL, backup_email_local VARCHAR(64), backup_email_domain_id BINARY(16), backup_country_code VARCHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT CHECK ( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_number IS NOT NULL AND backup_country_code IS NOT NULL ) /*Foreign key added later */ ) );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 1
+        "Right": 0
       },
       "nullable": []
     }
@@ -2966,6 +3251,16 @@
       "columns": [],
       "parameters": {
         "Right": 13
+      },
+      "nullable": []
+    }
+  },
+  "d2e72a30ec64e00e7af5b62c91ea6d8ee4c0d1a15d7edda0cbab94ece1003b10": {
+    "query": "ALTER TABLE generic_domain ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -3022,18 +3317,6 @@
         },
         {
           "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
           "name": "first_name",
           "type_info": {
             "type": "VarString",
@@ -3045,7 +3328,7 @@
           }
         },
         {
-          "ordinal": 5,
+          "ordinal": 4,
           "name": "last_name",
           "type_info": {
             "type": "VarString",
@@ -3057,7 +3340,7 @@
           }
         },
         {
-          "ordinal": 6,
+          "ordinal": 5,
           "name": "dob",
           "type_info": {
             "type": "LongLong",
@@ -3069,7 +3352,7 @@
           }
         },
         {
-          "ordinal": 7,
+          "ordinal": 6,
           "name": "bio",
           "type_info": {
             "type": "VarString",
@@ -3081,7 +3364,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 7,
           "name": "location",
           "type_info": {
             "type": "VarString",
@@ -3093,7 +3376,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 8,
           "name": "created",
           "type_info": {
             "type": "LongLong",
@@ -3102,6 +3385,54 @@
             },
             "char_set": 63,
             "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
           }
         }
       ],
@@ -3114,11 +3445,14 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
         false,
         true,
         true,
         true,
-        false
+        true
       ]
     }
   },
@@ -3324,18 +3658,120 @@
       ]
     }
   },
-  "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
-    "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
+  "db0fa9663db47c7c4ba45ed26d376c6304e2b26b49d184febcf004c06081ea82": {
+    "query": "SELECT organisation_domain.id, organisation_domain.is_verified as `is_verified: bool`, generic_domain.name FROM organisation_domain INNER JOIN generic_domain ON generic_domain.id = organisation_domain.id WHERE is_verified = FALSE;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
       "parameters": {
-        "Right": 2
+        "Right": 0
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "db9da5667d3a7086afe6cbc8b70e24b9c0e08221196b582a5517d4893bcb7897": {
+    "query": "SELECT generic_domain.id, generic_domain.name, organisation_domain.is_verified as `is_verified: bool` FROM generic_domain INNER JOIN organisation_domain ON generic_domain.id = organisation_domain.id WHERE generic_domain.name = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified: bool",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 63,
+            "max_size": 1
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "e23aa701eee9f9caeebf736e1cdc6cde9ea42a082eb31bd44eac5cedb7f16fd9": {
     "query": "CREATE TABLE IF NOT EXISTS portus_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e26264ac8790f4fffc2414c7fe64fe98b3b5a05f81c54ab510bdcc380e038ae7": {
+    "query": "CREATE TABLE IF NOT EXISTS generic_domain ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, type ENUM('personal', 'organisation') NOT NULL, KEY(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3519,6 +3955,16 @@
       "nullable": []
     }
   },
+  "e706d3a79209fb88bb9ee3fd9a56ad110312a05e581bb238c4e042300b425ba8": {
+    "query": "INSERT INTO organisation_email VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "eca653429eddbfe6a41f012b9fad4d53554ae7b79cde8d4150b0b84ee9bf9a8b": {
     "query": "SELECT * FROM user ORDER BY created DESC LIMIT 1;",
     "describe": {
@@ -3561,18 +4007,6 @@
         },
         {
           "ordinal": 3,
-          "name": "backup_email",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1280
-          }
-        },
-        {
-          "ordinal": 4,
           "name": "first_name",
           "type_info": {
             "type": "VarString",
@@ -3584,7 +4018,7 @@
           }
         },
         {
-          "ordinal": 5,
+          "ordinal": 4,
           "name": "last_name",
           "type_info": {
             "type": "VarString",
@@ -3596,7 +4030,7 @@
           }
         },
         {
-          "ordinal": 6,
+          "ordinal": 5,
           "name": "dob",
           "type_info": {
             "type": "LongLong",
@@ -3608,7 +4042,7 @@
           }
         },
         {
-          "ordinal": 7,
+          "ordinal": 6,
           "name": "bio",
           "type_info": {
             "type": "VarString",
@@ -3620,7 +4054,7 @@
           }
         },
         {
-          "ordinal": 8,
+          "ordinal": 7,
           "name": "location",
           "type_info": {
             "type": "VarString",
@@ -3632,7 +4066,7 @@
           }
         },
         {
-          "ordinal": 9,
+          "ordinal": 8,
           "name": "created",
           "type_info": {
             "type": "LongLong",
@@ -3641,6 +4075,54 @@
             },
             "char_set": 63,
             "max_size": 20
+          }
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 256
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 128
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_country_code",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 8
+            },
+            "char_set": 224,
+            "max_size": 8
+          }
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 60
           }
         }
       ],
@@ -3653,11 +4135,14 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
         false,
         true,
         true,
         true,
-        false
+        true
       ]
     }
   },
@@ -3697,7 +4182,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_api",
+          "name": "Tables_in_vicaraDB",
           "type_info": {
             "type": "VarString",
             "flags": {

@@ -80,8 +80,6 @@ pub async fn add_to_generic_domain(
 	domain_name: &str,
 	domain_type: AccountType,
 ) -> Result<(), sqlx::Error> {
-	let domain_type = domain_type.to_string();
-
 	query!(
 		r#"
 		INSERT INTO
@@ -91,7 +89,7 @@ pub async fn add_to_generic_domain(
 		"#,
 		domain_id,
 		domain_name,
-		domain_type
+		domain_type.to_string()
 	)
 	.execute(connection)
 	.await?;

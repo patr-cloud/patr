@@ -506,22 +506,14 @@ pub async fn join_user(
 		}
 	}
 
-	let mut backup_email_local_domain = user_data.backup_email.split('@');
-
-	let email_local = backup_email_local_domain
-		.next()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	db::add_orphaned_personal_email_for_user(connection, &email).await?;
-
 	db::create_user(
 		connection,
 		user_id,
 		&user_data.username,
 		&user_data.password,
-		email_local,
-		&email_domain_id,
+		&email.email_local,
+		&email.domain_id,
 		// Add phone number country code etc
 		None,
 		None,
