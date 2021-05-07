@@ -1033,10 +1033,9 @@ pub async fn set_user_id_for_email(
 	Ok(())
 }
 
-pub async fn add_orphaned__personal_email_for_user(
+pub async fn add_orphaned_personal_email_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	email: &UserEmailAddress,
-	email_type: AccountType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

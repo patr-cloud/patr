@@ -14,11 +14,11 @@ use crate::{
 	models::rbac,
 	utils::{constants::AccountType, validator, Error},
 };
-// remove geenrate personal domain
+
 pub async fn create_personal_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Uuid, Error> {
+) -> Result<Vec<u8>, Error> {
 	let domain_info = db::get_domain_by_name(connection, domain_name).await?;
 
 	if domain_info.is_none() {
@@ -52,7 +52,7 @@ pub async fn create_personal_domain(
 		)
 		.await?;
 
-		Ok(domain_uuid)
+		Ok(domain_id.to_vec())
 	} else {
 		// i am unable to figure out how to convert from vec<u8> to uuid
 		let domain_uuid = domain_info.unwrap().id;

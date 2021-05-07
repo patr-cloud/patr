@@ -1,8 +1,7 @@
 use sqlx::{MySql, Transaction};
-use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::{GenericDomain, OrganisationDomain, PersonalDomain},
+	models::db_mapping::{OrganisationDomain, PersonalDomain},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -411,49 +410,4 @@ pub async fn get_domain_by_name(
 	.await?;
 
 	Ok(rows.into_iter().next())
-}
-
-pub async fn generate_new_domain_id(
-	connection: &mut Transaction<'_, MySql>,
-) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
-
-	let mut rows = query_as!(
-		GenericDomain,
-		r#"
-		SELECT 
-			id,
-			name,
-			type as 'domain_type'
-		FROM 
-			generic_domain
-		WHERE
-			id = ?;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	while !rows.is_empty() {
-		uuid = Uuid::new_v4();
-		rows = query_as!(
-			GenericDomain,
-			r#"
-			SELECT
-				id,
-				name,
-				type as 'domain_type'
-			FROM
-				generic_domain
-			WHERE
-				id = ?;
-			"#,
-			uuid.as_bytes().as_ref()
-		)
-		.fetch_all(&mut *connection)
-		.await?;
-	}
-
-	Ok(uuid)
 }

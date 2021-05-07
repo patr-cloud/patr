@@ -476,8 +476,6 @@ pub async fn join_user(
 				domain_id =
 					service::create_personal_domain(connection, &email_domain)
 						.await?
-						.as_bytes()
-						.to_vec();
 			} else {
 				let domain_info = domain_info.unwrap();
 				domain_id = domain_info.id;
@@ -535,12 +533,7 @@ pub async fn join_user(
 	// .status(500)
 	// .body(error!(SERVER_ERROR).to_string())?;
 
-	db::add_orphaned__personal_email_for_user(
-		connection,
-		&email,
-		AccountType::Personal,
-	)
-	.await?;
+	db::add_orphaned_personal_email_for_user(connection, &email).await?;
 
 	// add domain_id
 
