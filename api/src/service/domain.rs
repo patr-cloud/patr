@@ -9,19 +9,31 @@ use trust_dns_client::{
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::rbac,
 	utils::{constants::AccountType, validator, Error},
 };
 
-pub async fn create_personal_domain(
+pub async fn get_or_create_personal_domain_id(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Uuid, Error> {
 	let domain_info = db::get_domain_by_name(connection, domain_name).await?;
 
-	if domain_info.is_none() {
+	if let Some(domain) = domain_info {
+		if domain.r#type == "organisation" {
+			Error::as_result()
+				.status(500)
+				.body(error!(RESOURCE_EXISTS).to_string())?;
+		}
+		Ok(Uuid::from_slice(domain.id.as_ref()).expect(
+			format!(
+				"unable to product UUID from domain ID for domain {}",
+				domain.name
+			)
+			.as_str(),
+		))
+	} else {
 		let domain_uuid = db::generate_new_resource_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
 
@@ -45,18 +57,8 @@ pub async fn create_personal_domain(
 		)
 		.await?;
 
-		db::add_to_personal_domain(
-			connection,
-			domain_id,
-			AccountType::Personal,
-		)
-		.await?;
+		db::add_to_personal_domain(connection, domain_id).await?;
 
-		Ok(domain_id.to_vec())
-	} else {
-		// i am unable to figure out how to convert from vec<u8> to uuid
-		// so i made the function get_domain_by_name return vec<u8>
-		let domain_uuid = domain_info.unwrap().id;
 		Ok(domain_uuid)
 	}
 }
@@ -103,13 +105,7 @@ pub async fn add_domain_to_organisation(
 	)
 	.await?;
 
-	db::add_to_organisation_domain(
-		connection,
-		domain_id,
-		AccountType::Organisation,
-		false,
-	)
-	.await?;
+	db::add_to_organisation_domain(connection, domain_id, false).await?;
 
 	Ok(domain_uuid)
 }
@@ -120,7 +116,7 @@ pub async fn is_domain_verified(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
-	let domain = db::get_domain_by_id(connection, &domain_id)
+	let domain = db::get_organisation_domain_by_id(connection, &domain_id)
 		.await?
 		.status(200)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;

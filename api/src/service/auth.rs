@@ -5,28 +5,18 @@ use uuid::Uuid;
 
 use super::get_refresh_token_expiry;
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{
-			PersonalDomain,
-			User,
-			UserEmailAddress,
-			UserEmailAddressSignUp,
+			PersonalDomain, User, UserEmailAddress, UserEmailAddressSignUp,
 			UserLogin,
 		},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service,
 	utils::{
-		constants::AccountType,
-		get_current_time,
-		mailer,
-		settings::Settings,
-		validator,
-		Error,
+		constants::AccountType, get_current_time, mailer, settings::Settings,
+		validator, Error,
 	},
 };
 
@@ -458,9 +448,11 @@ pub async fn join_user(
 			let domain_id;
 
 			if domain_info.is_none() {
-				domain_id =
-					service::create_personal_domain(connection, &email_domain)
-						.await?
+				domain_id = service::get_or_create_personal_domain_id(
+					connection,
+					&email_domain,
+				)
+				.await?
 			} else {
 				let domain_info = domain_info.unwrap();
 				domain_id = domain_info.id;

@@ -6,12 +6,11 @@ pub struct Organisation {
 	pub created: u64,
 }
 
-// Uncomment this when generic_domain realted query is in use
-// pub struct GenericDomain {
-// 	pub id: Vec<u8>,
-// 	pub name: String,
-// 	pub domain_type: String,
-// }
+pub struct GenericDomain {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub r#type: String,
+}
 
 pub struct OrganisationDomain {
 	pub id: Vec<u8>,

@@ -100,7 +100,6 @@ pub async fn initialize_users_post(
 			email_local VARCHAR(64),
 			domain_id BINARY(16),
 			PRIMARY KEY(email_local, domain_id),
-			UNIQUE(user_id, email_local, domain_id),
 			FOREIGN KEY(user_id) REFERENCES user(id),
 			FOREIGN KEY(domain_id) REFERENCES personal_domain(id)
 		);
@@ -127,31 +126,29 @@ pub async fn initialize_users_post(
 
 	// table for storing country codes, might prove more helpful in analytics
 	// since i am also adding country name
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS phone_number_country_code (
-			country_code VARCHAR(2) NOT NULL,
+			country_code CHAR(2) PRIMARY KEY,
 			phone_code VARCHAR(5) NOT NULL,
-			country_name VARCHAR(80) NOT NULL,
-			PRIMARY KEY(country_code)
+			country_name VARCHAR(80) NOT NULL
 		);	
-	"#
+		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
 
 	query!(
 		r#"
-			CREATE TABLE IF NOT EXISTS user_contact_number (
-				user_id BINARY(16),
-				country_code VARCHAR(2) NOT NULL,
-				number VARCHAR(15),
-				PRIMARY KEY(country_code, number),
-				FOREIGN KEY(user_id) REFERENCES user(id),
-				FOREIGN KEY(country_phone_code, country_code) REFERENCES phone_number_country_code(phone_code, country_code),
-				CONSTRAINT phone_number_check CHECK(LENGTH(number) >= 7 AND LENGTH(number) <= 15)
-			);
+		CREATE TABLE IF NOT EXISTS user_contact_number (
+			user_id BINARY(16),
+			country_code VARCHAR(2) NOT NULL,
+			number VARCHAR(15),
+			PRIMARY KEY(country_code, number),
+			FOREIGN KEY(user_id) REFERENCES user(id),
+			FOREIGN KEY(country_code) REFERENCES phone_number_country_code(country_code),
+			CONSTRAINT CHECK(LENGTH(number) >= 7 AND LENGTH(number) <= 15)
+		);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -162,15 +159,14 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE user
 		ADD CONSTRAINT 
-		FOREIGN KEY(
+		FOREIGN KEY (
 			backup_email_local, 
 			backup_email_domain_id
 		) 
-		REFERENCES 
-			personal_email(
-				email_local, 
-				domain_id
-			);
+		REFERENCES personal_email (
+			email_local, 
+			domain_id
+		);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -198,13 +194,15 @@ pub async fn initialize_users_post(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_unverified_email_address (
 			/* Personal email address */
-			email_address VARCHAR(320),
+			email_local VARCHAR(64),
+			email_domain_id BINARY(16) NOT NULL,
 			user_id BINARY(16) NOT NULL,
 			verification_token_hash TEXT NOT NULL,
 			verification_token_expiry BIGINT UNSIGNED NOT NULL,
 			
-			PRIMARY KEY(email_address, user_id),
-			FOREIGN KEY(user_id) REFERENCES user(id)
+			PRIMARY KEY(email_local, email_domain_id, user_id),
+			FOREIGN KEY(user_id) REFERENCES user(id),
+			FOREIGN KEY(email_domain_id) REFERENCES personal_domain(id)
 		);
 		"#
 	)
@@ -218,11 +216,12 @@ pub async fn initialize_users_post(
 			account_type ENUM('personal', 'organisation') NOT NULL,
 			
 			/* Personal email address OR backup email */
-			email_address VARCHAR(320) NOT NULL,
+			personal_email_local VARCHAR(64) NOT NULL,
+			personal_email_domain_id BINARY(16) NOT NULL,
 
 			/* Organisation email address */
-			email_local VARCHAR(160),
-			domain_name VARCHAR(100),
+			org_email_local VARCHAR(160),
+			org_domain_name VARCHAR(100),
 
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
@@ -238,20 +237,21 @@ pub async fn initialize_users_post(
 				(
 					account_type = 'personal' AND
 					(
-						email_local IS NULL AND
-						domain_name IS NULL AND
+						org_email_local IS NULL AND
+						org_domain_name IS NULL AND
 						organisation_name IS NULL
 					)
 				) OR
 				(
 					account_type = 'organisation' AND
 					(
-						email_local IS NOT NULL AND
-						domain_name IS NOT NULL AND
+						org_email_local IS NOT NULL AND
+						org_domain_name IS NOT NULL AND
 						organisation_name IS NOT NULL
 					)
 				)
-			)
+			),
+			FOREIGN KEY(personal_email_domain_id) REFERENCES personal_domain(id)
 		);
 		"#
 	)
@@ -261,277 +261,260 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		INSERT INTO
-    		phone_number_country_code
+			phone_number_country_code
 		VALUES
-    (93, 'AF', 'Afghanistan'),
-    (358, 'AX', 'Aland Islands'),
-    (355, 'AL', 'Albania'),
-    (213, 'DZ', 'Algeria'),
-    (1684, 'AS', 'American Samoa'),
-    (376, 'AD', 'Andorra'),
-    (244, 'AO', 'Angola'),
-    (1264, 'AI', 'Anguilla'),
-    (672, 'AQ', 'Antarctica'),
-    (1268, 'AG', 'Antigua and Barbuda'),
-    (54, 'AR', 'Argentina'),
-    (374, 'AM', 'Armenia'),
-    (297, 'AW', 'Aruba'),
-    (61, 'AU', 'Australia'),
-    (43, 'AT', 'Austria'),
-    (994, 'AZ', 'Azerbaijan'),
-    (1242, 'BS', 'Bahamas'),
-    (973, 'BH', 'Bahrain'),
-    (880, 'BD', 'Bangladesh'),
-    (1246, 'BB', 'Barbados'),
-    (375, 'BY', 'Belarus'),
-    (32, 'BE', 'Belgium'),
-    (501, 'BZ', 'Belize'),
-    (229, 'BJ', 'Benin'),
-    (1441, 'BM', 'Bermuda'),
-    (975, 'BT', 'Bhutan'),
-    (591, 'BO', 'Bolivia'),
-    (599, 'BQ', 'Bonaire, Sint Eustatius and Saba'),
-    (387, 'BA', 'Bosnia and Herzegovina'),
-    (267, 'BW', 'Botswana'),
-    (55, 'BV', 'Bouvet Island'),
-    (55, 'BR', 'Brazil'),
-    (246, 'IO', 'British Indian Ocean Territory'),
-    (673, 'BN', 'Brunei Darussalam'),
-    (359, 'BG', 'Bulgaria'),
-    (226, 'BF', 'Burkina Faso'),
-    (257, 'BI', 'Burundi'),
-    (855, 'KH', 'Cambodia'),
-    (237, 'CM', 'Cameroon'),
-    (1, 'CA', 'Canada'),
-    (238, 'CV', 'Cape Verde'),
-    (1345, 'KY', 'Cayman Islands'),
-    (236, 'CF', 'Central African Republic'),
-    (235, 'TD', 'Chad'),
-    (56, 'CL', 'Chile'),
-    (86, 'CN', 'China'),
-    (61, 'CX', 'Christmas Island'),
-    (672, 'CC', 'Cocos (Keeling) Islands'),
-    (57, 'CO', 'Colombia'),
-    (269, 'KM', 'Comoros'),
-    (242, 'CG', 'Congo'),
-    (
-        242,
-        'CD',
-        'Congo, Democratic Republic of the Congo'
-    ),
-    (682, 'CK', 'Cook Islands'),
-    (506, 'CR', 'Costa Rica'),
-    (225, 'CI', 'Cote D\'Ivoire'),
-    (385, 'HR', 'Croatia'),
-    (53, 'CU', 'Cuba'),
-    (599, 'CW', 'Curacao'),
-    (357, 'CY', 'Cyprus'),
-    (420, 'CZ', 'Czech Republic'),
-    (45, 'DK', 'Denmark'),
-    (253, 'DJ', 'Djibouti'),
-    (1767, 'DM', 'Dominica'),
-    (1809, 'DO', 'Dominican Republic'),
-    (593, 'EC', 'Ecuador'),
-    (20, 'EG', 'Egypt'),
-    (503, 'SV', 'El Salvador'),
-    (240, 'GQ', 'Equatorial Guinea'),
-    (291, 'ER', 'Eritrea'),
-    (372, 'EE', 'Estonia'),
-    (251, 'ET', 'Ethiopia'),
-    (500, 'FK', 'Falkland Islands (Malvinas)'),
-    (298, 'FO', 'Faroe Islands'),
-    (679, 'FJ', 'Fiji'),
-    (358, 'FI', 'Finland'),
-    (33, 'FR', 'France'),
-    (594, 'GF', 'French Guiana'),
-    (689, 'PF', 'French Polynesia'),
-    (262, 'TF', 'French Southern Territories'),
-    (241, 'GA', 'Gabon'),
-    (220, 'GM', 'Gambia'),
-    (995, 'GE', 'Georgia'),
-    (49, 'DE', 'Germany'),
-    (233, 'GH', 'Ghana'),
-    (350, 'GI', 'Gibraltar'),
-    (30, 'GR', 'Greece'),
-    (299, 'GL', 'Greenland'),
-    (1473, 'GD', 'Grenada'),
-    (590, 'GP', 'Guadeloupe'),
-    (1671, 'GU', 'Guam'),
-    (502, 'GT', 'Guatemala'),
-    (44, 'GG', 'Guernsey'),
-    (224, 'GN', 'Guinea'),
-    (245, 'GW', 'Guinea-Bissau'),
-    (592, 'GY', 'Guyana'),
-    (509, 'HT', 'Haiti'),
-    (0, 'HM', 'Heard Island and Mcdonald Islands'),
-    (39, 'VA', 'Holy See (Vatican City State)'),
-    (504, 'HN', 'Honduras'),
-    (852, 'HK', 'Hong Kong'),
-    (36, 'HU', 'Hungary'),
-    (354, 'IS', 'Iceland'),
-    (91, 'IN', 'India'),
-    (62, 'ID', 'Indonesia'),
-    (98, 'IR', 'Iran, Islamic Republic of'),
-    (964, 'IQ', 'Iraq'),
-    (353, 'IE', 'Ireland'),
-    (44, 'IM', 'Isle of Man'),
-    (972, 'IL', 'Israel'),
-    (39, 'IT', 'Italy'),
-    (1876, 'JM', 'Jamaica'),
-    (81, 'JP', 'Japan'),
-    (44, 'JE', 'Jersey'),
-    (962, 'JO', 'Jordan'),
-    (7, 'KZ', 'Kazakhstan'),
-    (254, 'KE', 'Kenya'),
-    (686, 'KI', 'Kiribati'),
-    (
-        850,
-        'KP',
-        'Korea, Democratic People\'s Republic of'
-    ),
-    (82, 'KR', 'Korea, Republic of'),
-    (381, 'XK', 'Kosovo'),
-    (965, 'KW', 'Kuwait'),
-    (996, 'KG', 'Kyrgyzstan'),
-    (856, 'LA', 'Lao People\'s Democratic Republic'),
-    (371, 'LV', 'Latvia'),
-    (961, 'LB', 'Lebanon'),
-    (266, 'LS', 'Lesotho'),
-    (231, 'LR', 'Liberia'),
-    (218, 'LY', 'Libyan Arab Jamahiriya'),
-    (423, 'LI', 'Liechtenstein'),
-    (370, 'LT', 'Lithuania'),
-    (352, 'LU', 'Luxembourg'),
-    (853, 'MO', 'Macao'),
-    (
-        389,
-        'MK',
-        'Macedonia, the Former Yugoslav Republic of'
-    ),
-    (261, 'MG', 'Madagascar'),
-    (265, 'MW', 'Malawi'),
-    (60, 'MY', 'Malaysia'),
-    (960, 'MV', 'Maldives'),
-    (223, 'ML', 'Mali'),
-    (356, 'MT', 'Malta'),
-    (692, 'MH', 'Marshall Islands'),
-    (596, 'MQ', 'Martinique'),
-    (222, 'MR', 'Mauritania'),
-    (230, 'MU', 'Mauritius'),
-    (269, 'YT', 'Mayotte'),
-    (52, 'MX', 'Mexico'),
-    (691, 'FM', 'Micronesia, Federated States of'),
-    (373, 'MD', 'Moldova, Republic of'),
-    (377, 'MC', 'Monaco'),
-    (976, 'MN', 'Mongolia'),
-    (382, 'ME', 'Montenegro'),
-    (1664, 'MS', 'Montserrat'),
-    (212, 'MA', 'Morocco'),
-    (258, 'MZ', 'Mozambique'),
-    (95, 'MM', 'Myanmar'),
-    (264, 'NA', 'Namibia'),
-    (674, 'NR', 'Nauru'),
-    (977, 'NP', 'Nepal'),
-    (31, 'NL', 'Netherlands'),
-    (599, 'AN', 'Netherlands Antilles'),
-    (687, 'NC', 'New Caledonia'),
-    (64, 'NZ', 'New Zealand'),
-    (505, 'NI', 'Nicaragua'),
-    (227, 'NE', 'Niger'),
-    (234, 'NG', 'Nigeria'),
-    (683, 'NU', 'Niue'),
-    (672, 'NF', 'Norfolk Island'),
-    (1670, 'MP', 'Northern Mariana Islands'),
-    (47, 'NO', 'Norway'),
-    (968, 'OM', 'Oman'),
-    (92, 'PK', 'Pakistan'),
-    (680, 'PW', 'Palau'),
-    (970, 'PS', 'Palestinian Territory, Occupied'),
-    (507, 'PA', 'Panama'),
-    (675, 'PG', 'Papua New Guinea'),
-    (595, 'PY', 'Paraguay'),
-    (51, 'PE', 'Peru'),
-    (63, 'PH', 'Philippines'),
-    (64, 'PN', 'Pitcairn'),
-    (48, 'PL', 'Poland'),
-    (351, 'PT', 'Portugal'),
-    (1787, 'PR', 'Puerto Rico'),
-    (974, 'QA', 'Qatar'),
-    (262, 'RE', 'Reunion'),
-    (40, 'RO', 'Romania'),
-    (70, 'RU', 'Russian Federation'),
-    (250, 'RW', 'Rwanda'),
-    (590, 'BL', 'Saint Barthelemy'),
-    (290, 'SH', 'Saint Helena'),
-    (1869, 'KN', 'Saint Kitts and Nevis'),
-    (1758, 'LC', 'Saint Lucia'),
-    (590, 'MF', 'Saint Martin'),
-    (508, 'PM', 'Saint Pierre and Miquelon'),
-    (1784, 'VC', 'Saint Vincent and the Grenadines'),
-    (684, 'WS', 'Samoa'),
-    (378, 'SM', 'San Marino'),
-    (239, 'ST', 'Sao Tome and Principe'),
-    (966, 'SA', 'Saudi Arabia'),
-    (221, 'SN', 'Senegal'),
-    (381, 'RS', 'Serbia'),
-    (381, 'CS', 'Serbia and Montenegro'),
-    (248, 'SC', 'Seychelles'),
-    (232, 'SL', 'Sierra Leone'),
-    (65, 'SG', 'Singapore'),
-    (1, 'SX', 'Sint Maarten'),
-    (421, 'SK', 'Slovakia'),
-    (386, 'SI', 'Slovenia'),
-    (677, 'SB', 'Solomon Islands'),
-    (252, 'SO', 'Somalia'),
-    (27, 'ZA', 'South Africa'),
-    (
-        500,
-        'GS',
-        'South Georgia and the South Sandwich Islands'
-    ),
-    (211, 'SS', 'South Sudan'),
-    (34, 'ES', 'Spain'),
-    (94, 'LK', 'Sri Lanka'),
-    (249, 'SD', 'Sudan'),
-    (597, 'SR', 'Suriname'),
-    (47, 'SJ', 'Svalbard and Jan Mayen'),
-    (268, 'SZ', 'Swaziland'),
-    (46, 'SE', 'Sweden'),
-    (41, 'CH', 'Switzerland'),
-    (963, 'SY', 'Syrian Arab Republic'),
-    (886, 'TW', 'Taiwan, Province of China'),
-    (992, 'TJ', 'Tajikistan'),
-    (255, 'TZ', 'Tanzania, United Republic of'),
-    (66, 'TH', 'Thailand'),
-    (670, 'TL', 'Timor-Leste'),
-    (228, 'TG', 'Togo'),
-    (690, 'TK', 'Tokelau'),
-    (676, 'TO', 'Tonga'),
-    (1868, 'TT', 'Trinidad and Tobago'),
-    (216, 'TN', 'Tunisia'),
-    (90, 'TR', 'Turkey'),
-    (7370, 'TM', 'Turkmenistan'),
-    (1649, 'TC', 'Turks and Caicos Islands'),
-    (688, 'TV', 'Tuvalu'),
-    (256, 'UG', 'Uganda'),
-    (380, 'UA', 'Ukraine'),
-    (971, 'AE', 'United Arab Emirates'),
-    (44, 'GB', 'United Kingdom'),
-    (1, 'US', 'United States'),
-    (1, 'UM', 'United States Minor Outlying Islands'),
-    (598, 'UY', 'Uruguay'),
-    (998, 'UZ', 'Uzbekistan'),
-    (678, 'VU', 'Vanuatu'),
-    (58, 'VE', 'Venezuela'),
-    (84, 'VN', 'Viet Nam'),
-    (1284, 'VG', 'Virgin Islands, British'),
-    (1340, 'VI', 'Virgin Islands, U.s.'),
-    (681, 'WF', 'Wallis and Futuna'),
-    (212, 'EH', 'Western Sahara'),
-    (967, 'YE', 'Yemen'),
-    (260, 'ZM', 'Zambia'),
-    (263, 'ZW', 'Zimbabwe');
-
+			('AF', '93', 'Afghanistan'),
+			('AX', '358', 'Aland Islands'),
+			('AL', '355', 'Albania'),
+			('DZ', '213', 'Algeria'),
+			('AS', '1684', 'American Samoa'),
+			('AD', '376', 'Andorra'),
+			('AO', '244', 'Angola'),
+			('AI', '1264', 'Anguilla'),
+			('AQ', '672', 'Antarctica'),
+			('AG', '1268', 'Antigua and Barbuda'),
+			('AR', '54', 'Argentina'),
+			('AM', '374', 'Armenia'),
+			('AW', '297', 'Aruba'),
+			('AU', '61', 'Australia'),
+			('AT', '43', 'Austria'),
+			('AZ', '994', 'Azerbaijan'),
+			('BS', '1242', 'Bahamas'),
+			('BH', '973', 'Bahrain'),
+			('BD', '880', 'Bangladesh'),
+			('BB', '1246', 'Barbados'),
+			('BY', '375', 'Belarus'),
+			('BE', '32', 'Belgium'),
+			('BZ', '501', 'Belize'),
+			('BJ', '229', 'Benin'),
+			('BM', '1441', 'Bermuda'),
+			('BT', '975', 'Bhutan'),
+			('BO', '591', 'Bolivia'),
+			('BQ', '599', 'Bonaire, Sint Eustatius and Saba'),
+			('BA', '387', 'Bosnia and Herzegovina'),
+			('BW', '267', 'Botswana'),
+			('BV', '55', 'Bouvet Island'),
+			('BR', '55', 'Brazil'),
+			('IO', '246', 'British Indian Ocean Territory'),
+			('BN', '673', 'Brunei Darussalam'),
+			('BG', '359', 'Bulgaria'),
+			('BF', '226', 'Burkina Faso'),
+			('BI', '257', 'Burundi'),
+			('KH', '855', 'Cambodia'),
+			('CM', '237', 'Cameroon'),
+			('CA', '1', 'Canada'),
+			('CV', '238', 'Cape Verde'),
+			('KY', '1345', 'Cayman Islands'),
+			('CF', '236', 'Central African Republic'),
+			('TD', '235', 'Chad'),
+			('CL', '56', 'Chile'),
+			('CN', '86', 'China'),
+			('CX', '61', 'Christmas Island'),
+			('CC', '672', 'Cocos (Keeling) Islands'),
+			('CO', '57', 'Colombia'),
+			('KM', '269', 'Comoros'),
+			('CG', '242', 'Congo'),
+			('CD', '242', 'Congo, Democratic Republic of the Congo'),
+			('CK', '682', 'Cook Islands'),
+			('CR', '506', 'Costa Rica'),
+			('CI', '225', 'Cote D\'Ivoire'),
+			('HR', '385', 'Croatia'),
+			('CU', '53', 'Cuba'),
+			('CW', '599', 'Curacao'),
+			('CY', '357', 'Cyprus'),
+			('CZ', '420', 'Czech Republic'),
+			('DK', '45', 'Denmark'),
+			('DJ', '253', 'Djibouti'),
+			('DM', '1767', 'Dominica'),
+			('DO', '1809', 'Dominican Republic'),
+			('EC', '593', 'Ecuador'),
+			('EG', '20', 'Egypt'),
+			('SV', '503', 'El Salvador'),
+			('GQ', '240', 'Equatorial Guinea'),
+			('ER', '291', 'Eritrea'),
+			('EE', '372', 'Estonia'),
+			('ET', '251', 'Ethiopia'),
+			('FK', '500', 'Falkland Islands (Malvinas)'),
+			('FO', '298', 'Faroe Islands'),
+			('FJ', '679', 'Fiji'),
+			('FI', '358', 'Finland'),
+			('FR', '33', 'France'),
+			('GF', '594', 'French Guiana'),
+			('PF', '689', 'French Polynesia'),
+			('TF', '262', 'French Southern Territories'),
+			('GA', '241', 'Gabon'),
+			('GM', '220', 'Gambia'),
+			('GE', '995', 'Georgia'),
+			('DE', '49', 'Germany'),
+			('GH', '233', 'Ghana'),
+			('GI', '350', 'Gibraltar'),
+			('GR', '30', 'Greece'),
+			('GL', '299', 'Greenland'),
+			('GD', '1473', 'Grenada'),
+			('GP', '590', 'Guadeloupe'),
+			('GU', '1671', 'Guam'),
+			('GT', '502', 'Guatemala'),
+			('GG', '44', 'Guernsey'),
+			('GN', '224', 'Guinea'),
+			('GW', '245', 'Guinea-Bissau'),
+			('GY', '592', 'Guyana'),
+			('HT', '509', 'Haiti'),
+			('HM', '0', 'Heard Island and Mcdonald Islands'),
+			('VA', '39', 'Holy See (Vatican City State)'),
+			('HN', '504', 'Honduras'),
+			('HK', '852', 'Hong Kong'),
+			('HU', '36', 'Hungary'),
+			('IS', '354', 'Iceland'),
+			('IN', '91', 'India'),
+			('ID', '62', 'Indonesia'),
+			('IR', '98', 'Iran, Islamic Republic of'),
+			('IQ', '964', 'Iraq'),
+			('IE', '353', 'Ireland'),
+			('IM', '44', 'Isle of Man'),
+			('IL', '972', 'Israel'),
+			('IT', '39', 'Italy'),
+			('JM', '1876', 'Jamaica'),
+			('JP', '81', 'Japan'),
+			('JE', '44', 'Jersey'),
+			('JO', '962', 'Jordan'),
+			('KZ', '7', 'Kazakhstan'),
+			('KE', '254', 'Kenya'),
+			('KI', '686', 'Kiribati'),
+			('KP', '850', 'Korea, Democratic People\'s Republic of'),
+			('KR', '82', 'Korea, Republic of'),
+			('XK', '381', 'Kosovo'),
+			('KW', '965', 'Kuwait'),
+			('KG', '996', 'Kyrgyzstan'),
+			('LA', '856', 'Lao People\'s Democratic Republic'),
+			('LV', '371', 'Latvia'),
+			('LB', '961', 'Lebanon'),
+			('LS', '266', 'Lesotho'),
+			('LR', '231', 'Liberia'),
+			('LY', '218', 'Libyan Arab Jamahiriya'),
+			('LI', '423', 'Liechtenstein'),
+			('LT', '370', 'Lithuania'),
+			('LU', '352', 'Luxembourg'),
+			('MO', '853', 'Macao'),
+			('MK', '389', 'Macedonia, the Former Yugoslav Republic of'),
+			('MG', '261', 'Madagascar'),
+			('MW', '265', 'Malawi'),
+			('MY', '60', 'Malaysia'),
+			('MV', '960', 'Maldives'),
+			('ML', '223', 'Mali'),
+			('MT', '356', 'Malta'),
+			('MH', '692', 'Marshall Islands'),
+			('MQ', '596', 'Martinique'),
+			('MR', '222', 'Mauritania'),
+			('MU', '230', 'Mauritius'),
+			('YT', '269', 'Mayotte'),
+			('MX', '52', 'Mexico'),
+			('FM', '691', 'Micronesia, Federated States of'),
+			('MD', '373', 'Moldova, Republic of'),
+			('MC', '377', 'Monaco'),
+			('MN', '976', 'Mongolia'),
+			('ME', '382', 'Montenegro'),
+			('MS', '1664', 'Montserrat'),
+			('MA', '212', 'Morocco'),
+			('MZ', '258', 'Mozambique'),
+			('MM', '95', 'Myanmar'),
+			('NA', '264', 'Namibia'),
+			('NR', '674', 'Nauru'),
+			('NP', '977', 'Nepal'),
+			('NL', '31', 'Netherlands'),
+			('AN', '599', 'Netherlands Antilles'),
+			('NC', '687', 'New Caledonia'),
+			('NZ', '64', 'New Zealand'),
+			('NI', '505', 'Nicaragua'),
+			('NE', '227', 'Niger'),
+			('NG', '234', 'Nigeria'),
+			('NU', '683', 'Niue'),
+			('NF', '672', 'Norfolk Island'),
+			('MP', '1670', 'Northern Mariana Islands'),
+			('NO', '47', 'Norway'),
+			('OM', '968', 'Oman'),
+			('PK', '92', 'Pakistan'),
+			('PW', '680', 'Palau'),
+			('PS', '970', 'Palestinian Territory, Occupied'),
+			('PA', '507', 'Panama'),
+			('PG', '675', 'Papua New Guinea'),
+			('PY', '595', 'Paraguay'),
+			('PE', '51', 'Peru'),
+			('PH', '63', 'Philippines'),
+			('PN', '64', 'Pitcairn'),
+			('PL', '48', 'Poland'),
+			('PT', '351', 'Portugal'),
+			('PR', '1787', 'Puerto Rico'),
+			('QA', '974', 'Qatar'),
+			('RE', '262', 'Reunion'),
+			('RO', '40', 'Romania'),
+			('RU', '70', 'Russian Federation'),
+			('RW', '250', 'Rwanda'),
+			('BL', '590', 'Saint Barthelemy'),
+			('SH', '290', 'Saint Helena'),
+			('KN', '1869', 'Saint Kitts and Nevis'),
+			('LC', '1758', 'Saint Lucia'),
+			('MF', '590', 'Saint Martin'),
+			('PM', '508', 'Saint Pierre and Miquelon'),
+			('VC', '1784', 'Saint Vincent and the Grenadines'),
+			('WS', '684', 'Samoa'),
+			('SM', '378', 'San Marino'),
+			('ST', '239', 'Sao Tome and Principe'),
+			('SA', '966', 'Saudi Arabia'),
+			('SN', '221', 'Senegal'),
+			('RS', '381', 'Serbia'),
+			('CS', '381', 'Serbia and Montenegro'),
+			('SC', '248', 'Seychelles'),
+			('SL', '232', 'Sierra Leone'),
+			('SG', '65', 'Singapore'),
+			('SX', '1', 'Sint Maarten'),
+			('SK', '421', 'Slovakia'),
+			('SI', '386', 'Slovenia'),
+			('SB', '677', 'Solomon Islands'),
+			('SO', '252', 'Somalia'),
+			('ZA', '27', 'South Africa'),
+			('GS', '500', 'South Georgia and the South Sandwich Islands'),
+			('SS', '211', 'South Sudan'),
+			('ES', '34', 'Spain'),
+			('LK', '94', 'Sri Lanka'),
+			('SD', '249', 'Sudan'),
+			('SR', '597', 'Suriname'),
+			('SJ', '47', 'Svalbard and Jan Mayen'),
+			('SZ', '268', 'Swaziland'),
+			('SE', '46', 'Sweden'),
+			('CH', '41', 'Switzerland'),
+			('SY', '963', 'Syrian Arab Republic'),
+			('TW', '886', 'Taiwan, Province of China'),
+			('TJ', '992', 'Tajikistan'),
+			('TZ', '255', 'Tanzania, United Republic of'),
+			('TH', '66', 'Thailand'),
+			('TL', '670', 'Timor-Leste'),
+			('TG', '228', 'Togo'),
+			('TK', '690', 'Tokelau'),
+			('TO', '676', 'Tonga'),
+			('TT', '1868', 'Trinidad and Tobago'),
+			('TN', '216', 'Tunisia'),
+			('TR', '90', 'Turkey'),
+			('TM', '7370', 'Turkmenistan'),
+			('TC', '1649', 'Turks and Caicos Islands'),
+			('TV', '688', 'Tuvalu'),
+			('UG', '256', 'Uganda'),
+			('UA', '380', 'Ukraine'),
+			('AE', '971', 'United Arab Emirates'),
+			('GB', '44', 'United Kingdom'),
+			('US', '1', 'United States'),
+			('UM', '1', 'United States Minor Outlying Islands'),
+			('UY', '598', 'Uruguay'),
+			('UZ', '998', 'Uzbekistan'),
+			('VU', '678', 'Vanuatu'),
+			('VE', '58', 'Venezuela'),
+			('VN', '84', 'Viet Nam'),
+			('VG', '1284', 'Virgin Islands, British'),
+			('VI', '1340', 'Virgin Islands, U.s.'),
+			('WF', '681', 'Wallis and Futuna'),
+			('EH', '212', 'Western Sahara'),
+			('YE', '967', 'Yemen'),
+			('ZM', '260', 'Zambia'),
+			('ZW', '263', 'Zimbabwe');
 		"#
 	)
 	.execute(&mut *transaction)
@@ -650,7 +633,6 @@ pub async fn get_god_user_id(
 }
 
 // This only retreives user using personal email address/backup email address
-// getting a compile time error here
 pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
@@ -932,32 +914,10 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 	}))
 }
 
-pub async fn add_to_personal_email(
-	connection: &mut Transaction<'_, MySql>,
-	user_id: &[u8],
-	email_local: &str,
-	domain_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			personal_email
-		VALUES
-			(?, ?, ?);
-		"#,
-		user_id,
-		email_local,
-		domain_id
-	)
-	.execute(connection)
-	.await?;
-
-	Ok(())
-}
-
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut Transaction<'_, MySql>,
-	email: &str,
+	email_local: &str,
+	domain_id: &[u8],
 	user_id: &[u8],
 	verification_token: &str,
 	token_expiry: u64,
@@ -967,12 +927,13 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		INSERT INTO
 			user_unverified_email_address
 		VALUES
-			(?, ?, ?, ?)
+			(?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			verification_token_hash = ?,
 			verification_token_expiry = ?;
 		"#,
-		email,
+		email_local,
+		domain_id,
 		user_id,
 		verification_token,
 		token_expiry,
@@ -994,12 +955,16 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		PersonalEmailToBeVerified,
 		r#"
 		SELECT
-			*
+			user_unverified_email_address.*
 		FROM
 			user_unverified_email_address
+		INNER JOIN
+			generic_domain
+		ON
+			user_unverified_email_address.email_domain_id = generic_domain.id
 		WHERE
 			user_id = ? AND
-			email_address = ?;
+			CONCAT(email_local, '@', generic_domain.name) = ?;
 		"#,
 		user_id,
 		email
@@ -1039,11 +1004,11 @@ pub async fn add_orphaned_personal_email_for_user(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-				INSERT INTO
-					personal_email
-				VALUES
-					(NULL, ?, ?);
-				"#,
+		INSERT INTO
+			personal_email
+		VALUES
+			(NULL, ?, ?);
+		"#,
 		email.email_local,
 		email.domain_id
 	)
@@ -1131,7 +1096,7 @@ pub async fn create_user(
 		INSERT INTO
 			user
 		VALUES
-			(?, ?, ?, ?, ?,NULL, NULL, NULL, ?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?);
 		"#,
 		user_id,
 		username,
@@ -1462,11 +1427,11 @@ pub async fn get_backup_email_for_user(
 			generic_domain.name
 		FROM
 			user
-		LEFT JOIN
+		INNER JOIN
 			personal_domain
 		ON
 			personal_domain.id = user.backup_email_domain_id
-		LEFT JOIN
+		INNER JOIN
 			generic_domain
 		ON
 			personal_domain.id = generic_domain.id
@@ -1487,15 +1452,11 @@ pub async fn get_backup_email_for_user(
 		return Ok(None);
 	}
 
-	if row.name.is_none() {
-		return Ok(None);
-	}
-
 	Ok(Some((
 		row.backup_email_local.unwrap(),
 		PersonalDomain {
 			id: row.backup_email_domain_id.unwrap(),
-			name: row.name.unwrap(),
+			name: row.name,
 		},
 	)))
 }

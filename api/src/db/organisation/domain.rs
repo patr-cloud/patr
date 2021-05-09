@@ -1,7 +1,7 @@
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::{OrganisationDomain, PersonalDomain},
+	models::db_mapping::{GenericDomain, OrganisationDomain, PersonalDomain},
 	query,
 	query_as,
 	utils::constants::AccountType,
@@ -52,9 +52,6 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// wasn't sure about where to put this query, so for now i am adding it here
-	// i plan to create a function similar to initialize_domain_post
-
 	Ok(())
 }
 
@@ -100,7 +97,6 @@ pub async fn add_to_generic_domain(
 pub async fn add_to_organisation_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
-	domain_type: AccountType,
 	is_verified: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -108,10 +104,9 @@ pub async fn add_to_organisation_domain(
 		INSERT INTO
 			organisation_domain
 		VALUES
-			(?, ?, ?);
+			(?, 'organisation', ?);
 		"#,
 		domain_id,
-		domain_type.to_string(),
 		is_verified
 	)
 	.execute(connection)
@@ -123,17 +118,15 @@ pub async fn add_to_organisation_domain(
 pub async fn add_to_personal_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
-	domain_type: AccountType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			personal_domain
 		VALUES
-			(?, ?);
+			(?, 'personal');
 		"#,
 		domain_id,
-		domain_type.to_string()
 	)
 	.execute(connection)
 	.await?;
@@ -198,7 +191,7 @@ pub async fn get_domains_for_organisation(
 	.await
 }
 
-pub async fn get_all_unverified_domains(
+pub async fn get_all_unverified_organisation_domains(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
@@ -222,7 +215,7 @@ pub async fn get_all_unverified_domains(
 	.await
 }
 
-pub async fn set_domain_as_verified(
+pub async fn set_organisation_domain_as_verified(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -231,7 +224,7 @@ pub async fn set_domain_as_verified(
 		UPDATE
 			organisation_domain
 		SET
-			is_verified = TRUE
+			is_verified = true
 		WHERE
 			id = ?;
 		"#,
@@ -243,7 +236,7 @@ pub async fn set_domain_as_verified(
 	Ok(())
 }
 
-pub async fn get_all_verified_domains(
+pub async fn get_all_verified_organisation_domains(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
@@ -267,7 +260,7 @@ pub async fn get_all_verified_domains(
 	.await
 }
 
-pub async fn set_domain_as_unverified(
+pub async fn set_organisation_domain_as_unverified(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -288,8 +281,7 @@ pub async fn set_domain_as_unverified(
 	Ok(())
 }
 
-//work in progress
-// TODO get the correct email based on organisation or personal
+// TODO make email notification permission-based
 pub async fn get_notification_email_for_domain(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
@@ -300,15 +292,15 @@ pub async fn get_notification_email_for_domain(
 			user.*,
 			generic_domain.name
 		FROM
-			personal_domain
+			organisation_domain
 		INNER JOIN
 			generic_domain
 		ON
-			generic_domain.id = personal_domain.id
+			generic_domain.id = organisation_domain.id
 		INNER JOIN
 			resource
 		ON
-			personal_domain.id = resource.id
+			organisation_domain.id = resource.id
 		INNER JOIN
 			organisation
 		ON
@@ -354,7 +346,7 @@ pub async fn delete_domain_from_organisation(
 	Ok(())
 }
 
-pub async fn get_domain_by_id(
+pub async fn get_organisation_domain_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
 ) -> Result<Option<OrganisationDomain>, sqlx::Error> {
@@ -385,22 +377,16 @@ pub async fn get_domain_by_id(
 pub async fn get_domain_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
-) -> Result<Option<OrganisationDomain>, sqlx::Error> {
+) -> Result<Option<GenericDomain>, sqlx::Error> {
 	let rows = query_as!(
-		OrganisationDomain,
+		GenericDomain,
 		r#"
 		SELECT
-			generic_domain.id,
-			generic_domain.name,
-			organisation_domain.is_verified as `is_verified: bool`
+			*
 		FROM
 			generic_domain
-		INNER JOIN
-			organisation_domain
-		ON
-			generic_domain.id = organisation_domain.id
 		WHERE
-			generic_domain.name = ?;
+			name = ?;
 		"#,
 		domain_name
 	)

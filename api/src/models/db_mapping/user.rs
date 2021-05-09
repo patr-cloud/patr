@@ -40,7 +40,10 @@ pub struct UserEmailAddress {
 
 #[derive(Clone)]
 pub enum UserEmailAddressSignUp {
-	Personal(String),
+	Personal {
+		email_local: String,
+		domain_id: Vec<u8>,
+	},
 	Organisation {
 		email_local: String,
 		domain_name: String,
@@ -67,7 +70,8 @@ pub struct PasswordResetRequest {
 }
 
 pub struct PersonalEmailToBeVerified {
-	pub email_address: String,
+	pub email_local: String,
+	pub email_domain_id: Vec<u8>,
 	pub user_id: Vec<u8>,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,

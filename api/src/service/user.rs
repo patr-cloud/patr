@@ -2,8 +2,7 @@ use eve_rs::AsError;
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::db_mapping::UserEmailAddress,
 	service,
 	utils::{constants::AccountType, get_current_time, validator, Error},
@@ -88,7 +87,8 @@ pub async fn verify_personal_email_address_for_user(
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
 	let domain_id =
-		service::create_personal_domain(connection, email_domain).await?;
+		service::get_or_create_personal_domain_id(connection, email_domain)
+			.await?;
 
 	let email_address = UserEmailAddress {
 		email_local: email_verification_data.email_address,
