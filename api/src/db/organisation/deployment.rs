@@ -138,10 +138,9 @@ pub async fn initialize_deployer_pre(
 		r#"CREATE TABLE IF NOT EXISTS deployment_upgrade_region (
 			id BINARY(16) PRIMARY KEY,
 			region VARCAR(100) NOT NULL,
-			deployment_id BINARY(16),
-			machine_type_id BINARY(16),
-			FOREIGN KEY(deployment_id, machine_type_id) REFERENCES deployment_upgrade_path(deployment_id, machine_type_id),
-			UNIQUE(region, deployment_id, machine_type_id)
+			upgrade_path_id BINARY(16),
+			FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(upgrade_path_id),
+			UNIQUE (region, upgrade_path_id)
 		);
 		"#
 	)
@@ -151,9 +150,10 @@ pub async fn initialize_deployer_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_upgrade_path (
+			id BINARY(16) PRIMARY KEY
 			deployment_id BINARY(16) NOT NULL,
 			machine_type_id BINARY(16) NOT NULL,
-			PRIMARY KEY (deployment_id, machine_type_id),
+			UNIQUE (deployment_id, machine_type_id),
 			FOREIGN KEY(deployment_id) REFERENCES deployment(id),
 			FOREIGN KEY(machine_type_id) REFERENCES deployment_machine_type(id),
 		);
