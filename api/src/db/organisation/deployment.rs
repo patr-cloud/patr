@@ -2,7 +2,8 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query, query_as,
+	query,
+	query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -127,6 +128,20 @@ pub async fn initialize_deployer_pre(
 			gpu_type_id BINARY(16) NOT NULL,
 			PRIMARY KEY(cpu_count, memory_count, gpu_type_id),
 			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"CREATE TABLE IF NOT EXISTS deployment_upgrade_region (
+			id BINARY(16) PRIMARY KEY,
+			region VARCAR(100) NOT NULL,
+			deployment_id BINARY(16),
+			machine_type_id BINARY(16),
+			FOREIGN KEY(deployment_id, machine_type_id) REFERENCES deployment_upgrade_path(deployment_id, machine_type_id),
+			UNIQUE(region, deployment_id, machine_type_id)
 		);
 		"#
 	)
