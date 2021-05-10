@@ -225,8 +225,12 @@
 				"adityaraj-bhatt": [
 					"adityaraj.bhatt@vicara.co"
 				],
-				"manjeet-arneja": ["manjeet.arneja@vicara.co"],
-				"aniket-jain": ["aniket.jain@vicara.co"],
+				"manjeet-arneja": [
+					"manjeet.arneja@vicara.co"
+				],
+				"aniket-jain": [
+					"aniket.jain@vicara.co"
+				],
 				"manasva-bhargava": [
 					"manasva.bhargava@vicara.co"
 				]
@@ -241,7 +245,10 @@
 					"developer",
 					"software-team"
 				],
-				"aniket-jain": ["devloper", "software-team"]
+				"aniket-jain": [
+					"devloper", 
+					"software-team"
+				]
 			}
 		},
 		{
