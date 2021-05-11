@@ -2,8 +2,7 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query,
-	query_as,
+	query, query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -22,7 +21,7 @@ pub async fn initialize_deployer_pre(
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
-			port SMALLINT UNSIGNED NOT NULL,
+			port_id SMALLINT UNSIGNED NOT NULL,
 			volume_id BINARY(16) NOT NULL,
 			var_id BINARY(16) NOT NULL,
 			persistence BOOL NOT NULL,
@@ -118,11 +117,6 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// CREATE TABLE IF NOT EXISTS deployment_machine_type(id BINARY(16) NOT
-	// NULL,name VARCHAR(100) NOT NULL UNIQUE,cpu_count SMALLINT UNSIGNED NOT
-	// NULL,memory_count FLOAT UNSIGNED NOT NULL,gpu_type_id BINARY(16) NOT
-	// NULL,PRIMARY KEY(cpu_count, memory_count, gpu_type_id),FOREIGN
-	// KEY(gpu_type_id) REFERENCES deployer_gpu_type(id));
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_machine_type (
