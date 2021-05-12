@@ -371,6 +371,8 @@ async fn delete_domain_in_organisation(
 		&domain_id,
 	)
 	.await?;
+	db::delete_generic_domain(context.get_mysql_connection(), &domain_id)
+		.await?;
 	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
 
 	context.json(json!({

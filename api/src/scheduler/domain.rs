@@ -65,7 +65,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 	let mut connection = db_pool.begin().await?;
 
 	let unverified_domains =
-		db::get_all_unverified_organisation_domains(&mut connection).await?;
+		db::get_all_unverified_domains(&mut connection).await?;
 
 	let credentials = Credentials::UserAuthToken {
 		token: config.config.cloudflare.api_token.clone(),
@@ -115,11 +115,8 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 
 		if let Status::Active = response.result.status {
 			// Domain is now verified
-			db::set_organisation_domain_as_verified(
-				&mut connection,
-				&unverified_domain.id,
-			)
-			.await?;
+			db::set_domain_as_verified(&mut connection, &unverified_domain.id)
+				.await?;
 			let notification_email = db::get_notification_email_for_domain(
 				&mut connection,
 				&unverified_domain.id,
@@ -166,7 +163,7 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 	let mut connection = db_pool.begin().await?;
 
 	let verified_domains =
-		db::get_all_verified_organisation_domains(&mut connection).await?;
+		db::get_all_verified_domains(&mut connection).await?;
 
 	let credentials = Credentials::UserAuthToken {
 		token: config.config.cloudflare.api_token.clone(),
@@ -219,19 +216,15 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 			continue;
 		} else {
 			// Domain is now unverified
-			db::set_organisation_domain_as_unverified(
-				&mut connection,
-				&verified_domain.id,
-			)
-			.await?;
+			db::set_domain_as_unverified(&mut connection, &verified_domain.id)
+				.await?;
 			let notification_email = db::get_notification_email_for_domain(
 				&mut connection,
 				&verified_domain.id,
 			)
 			.await?;
 			if notification_email.is_none() {
-				log::error!("Notification email for domain `{}` is None. You might have a
-dangling resource for the domain", verified_domain.name);
+				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
 				continue;
 			}
 			mailer::send_domain_unverified_mail(

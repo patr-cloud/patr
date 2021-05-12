@@ -9,38 +9,38 @@ use trust_dns_client::{
 use uuid::Uuid;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::rbac,
-	utils::{constants::AccountType, validator, Error},
+	utils::{constants::ResourceOwnerType, validator, Error},
 };
 
-pub async fn get_or_create_personal_domain_id(
+pub async fn ensure_personal_domain_exists(
 	connection: &mut Transaction<'_, MySql>,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
-	let domain_info = db::get_domain_by_name(connection, domain_name).await?;
+	if !validator::is_domain_name_valid(domain_name).await {
+		Error::as_result()
+			.status(400)
+			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	}
 
-	if let Some(domain) = domain_info {
+	let domain = db::get_domain_by_name(connection, domain_name).await?;
+	if let Some(domain) = domain {
 		if domain.r#type == "organisation" {
 			Error::as_result()
 				.status(500)
-				.body(error!(RESOURCE_EXISTS).to_string())?;
+				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())
+		} else {
+			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
-		Ok(Uuid::from_slice(domain.id.as_ref()).expect(
-			format!(
-				"unable to product UUID from domain ID for domain {}",
-				domain.name
-			)
-			.as_str(),
-		))
 	} else {
 		let domain_uuid = db::generate_new_resource_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
-
 		db::create_orphaned_resource(
 			connection,
 			domain_id,
-			&format!("Domain: {}", domain_name),
+			&format!("Personal Domain: {}", domain_name),
 			rbac::RESOURCE_TYPES
 				.get()
 				.unwrap()
@@ -48,15 +48,13 @@ pub async fn get_or_create_personal_domain_id(
 				.unwrap(),
 		)
 		.await?;
-
-		db::add_to_generic_domain(
+		db::create_generic_domain(
 			connection,
 			domain_id,
 			&domain_name,
-			AccountType::Personal,
+			&ResourceOwnerType::Personal,
 		)
 		.await?;
-
 		db::add_to_personal_domain(connection, domain_id).await?;
 
 		Ok(domain_uuid)
@@ -74,13 +72,17 @@ pub async fn add_domain_to_organisation(
 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	}
 
-	if db::get_domain_by_name(connection, domain_name)
-		.await?
-		.is_some()
-	{
-		Error::as_result()
-			.status(400)
-			.body(error!(RESOURCE_EXISTS).to_string())?;
+	let domain = db::get_domain_by_name(connection, domain_name).await?;
+	if let Some(domain) = domain {
+		if domain.r#type.as_str() == "personal" {
+			Error::as_result()
+				.status(500)
+				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
+		} else {
+			Error::as_result()
+				.status(400)
+				.body(error!(RESOURCE_EXISTS).to_string())?;
+		}
 	}
 
 	let domain_uuid = db::generate_new_resource_id(connection).await?;
@@ -97,15 +99,14 @@ pub async fn add_domain_to_organisation(
 		organisation_id,
 	)
 	.await?;
-	db::add_to_generic_domain(
+	db::create_generic_domain(
 		connection,
 		domain_id,
 		&domain_name,
-		AccountType::Organisation,
+		&ResourceOwnerType::Organisation,
 	)
 	.await?;
-
-	db::add_to_organisation_domain(connection, domain_id, false).await?;
+	db::add_to_organisation_domain(connection, domain_id).await?;
 
 	Ok(domain_uuid)
 }

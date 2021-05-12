@@ -6,21 +6,23 @@ pub struct Organisation {
 	pub created: u64,
 }
 
-pub struct GenericDomain {
+pub struct Domain {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub r#type: String,
 }
 
-pub struct OrganisationDomain {
-	pub id: Vec<u8>,
-	pub name: String,
-	pub is_verified: bool,
-}
-
 pub struct PersonalDomain {
 	pub id: Vec<u8>,
 	pub name: String,
+	pub domain_type: String,
+}
+
+pub struct OrganisationDomain {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub domain_type: String,
+	pub is_verified: bool,
 }
 
 pub struct Application {

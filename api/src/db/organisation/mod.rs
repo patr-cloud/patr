@@ -22,7 +22,7 @@ pub async fn initialize_organisations_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) UNIQUE NOT NULL,
 			super_admin_id BINARY(16) NOT NULL,
-			active BOOL NOT NULL DEFAULT FALSE,
+			active BOOLEAN NOT NULL DEFAULT FALSE,
 			created BIGINT UNSIGNED NOT NULL,
 			FOREIGN KEY(super_admin_id) REFERENCES user(id)
 		);

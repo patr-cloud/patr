@@ -2,10 +2,10 @@ use eve_rs::AsError;
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	db, error,
-	models::db_mapping::UserEmailAddress,
+	db,
+	error,
 	service,
-	utils::{constants::AccountType, get_current_time, validator, Error},
+	utils::{get_current_time, validator, Error},
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -19,7 +19,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	if db::get_user_by_email(connection, email_address)
+	if db::get_user_by_email(connection, &email_address)
 		.await?
 		.is_some()
 	{
@@ -34,9 +34,18 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	let token_expiry = get_current_time() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let personal_domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name).await?;
+
 	db::add_personal_email_to_be_verified_for_user(
 		connection,
-		&email_address,
+		&email_local,
+		personal_domain_id.as_bytes(),
 		&user_id,
 		&verification_token,
 		token_expiry,
@@ -78,28 +87,11 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let mut email_address_split =
-		email_verification_data.email_address.split('@');
-
-	let email_domain = email_address_split
-		.nth(1)
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	let domain_id =
-		service::get_or_create_personal_domain_id(connection, email_domain)
-			.await?;
-
-	let email_address = UserEmailAddress {
-		email_local: email_verification_data.email_address,
-		domain_id,
-	};
-
-	db::add_email_for_user(
+	db::add_personal_email_for_user(
 		connection,
 		user_id,
-		&email_address,
-		AccountType::Personal,
+		&email_verification_data.local,
+		&email_verification_data.domain_id,
 	)
 	.await?;
 
