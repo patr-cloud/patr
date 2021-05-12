@@ -154,10 +154,10 @@ pub async fn initialize_deployer_pre(
 			id BINARY(16) PRIMARY KEY,
 			user_id BINARY(16) NOT NULL,
 			machine_type_id BINARY(16) NOT NULL,
-			start_time time NOT NULL,
-			monthly_start_time time NOT NULL,
-			paused_time time NULL,
-			terminated_time NULL,
+			start_time BIGINT UNSIGNED NOT NULL,
+			monthly_start_time BIGINT UNSIGNED NOT NULL,
+			paused_time BIGINT UNSIGNED NULL,
+			terminated_time BIGINT UNSIGNED NULL,
 			FOREIGN KEY (user_id) REFERENCES user(id),
 			FOREIGN KEY 
 			(
@@ -170,7 +170,7 @@ pub async fn initialize_deployer_pre(
 					deployment_id, 
 					machine_type_id
 				),
-			CONSTRAINT 
+			CONSTRAINT CHECK
 			(
 				(
 					paused_time > start_time
@@ -182,7 +182,7 @@ pub async fn initialize_deployer_pre(
 					paused_time = NULL
 				)
 			),
-			CONSTRAINT 
+			CONSTRAINT CHECK
 			(
 				(
 					terminated_time > start_time
@@ -248,7 +248,7 @@ pub async fn initialize_deployer_post(
 						paused_time is NULL, 
 						IF (
 							terminated_time is NULL, 
-							SELECT CURTIME() - start_time FROM resources_used_by_user, 
+							SELECT UNIX_TIMESTAMP() - start_time FROM resources_used_by_user, 
 							SELECT terminated_time - start_time FROM resources_used_by_user
 						),
 						IF (
