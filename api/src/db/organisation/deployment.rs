@@ -147,6 +147,59 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	// table name can be changed alternative name could be resource_log
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS resources_used_by_user (
+			id BINARY(16) PRIMARY KEY,
+			user_id BINARY(16) NOT NULL,
+			machine_type_id BINARY(16) NOT NULL,
+			start_time time NOT NULL,
+			monthly_start_time time NOT NULL,
+			paused_time time NULL,
+			terminated_time NULL,
+			FOREIGN KEY (user_id) REFERENCES user(id),
+			FOREIGN KEY 
+			(
+				deployment_id, 
+				machine_type_id
+			) 
+			REFERENCES 
+				deployment_upgrade_path
+				(
+					deployment_id, 
+					machine_type_id
+				),
+			CONSTRAINT 
+			(
+				(
+					paused_time > start_time
+				) OR
+				(
+					paused_time > monthly_start_time
+				) OR
+				(
+					paused_time = NULL
+				)
+			),
+			CONSTRAINT 
+			(
+				(
+					terminated_time > start_time
+				) OR
+				(
+					terminated_time > monthly_start_time
+				) OR
+				(
+					terminated_time = NULL
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 
@@ -173,6 +226,64 @@ pub async fn initialize_deployer_post(
 		ALTER TABLE docker_registry_repository
 		ADD CONSTRAINT
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE OR REPLACE VIEW 
+    		deployment_tool_invoice 
+		AS
+			SELECT
+				resources_used_by_user.id, 
+				resources_used_by_user.user_id, 
+				resources_used_by_user.machine_type_id, 
+				deployment_machine_type.name, 
+				resources_used_by_user.deployment_id,
+				deployment.name, 
+				time_used = (
+					SELECT IF (
+						paused_time is NULL, 
+						IF (
+							terminated_time is NULL, 
+							SELECT CURTIME() - start_time FROM resources_used_by_user, 
+							SELECT terminated_time - start_time FROM resources_used_by_user
+						),
+						IF (
+							terminated_time is NULL, 
+							SELECT paused_time - start_time FROM resources_used_by_user, 
+							SELECT terminated_time - start_time FROM resources_used_by_user
+						)
+					)
+					FROM
+						resources_used_by_user
+				),
+				is_terminated = (
+					SELECT IF(
+						terminated_time is NULL, 
+						true, 
+						false
+					)
+					FROM
+						resources_used_by_user
+				),
+				amount_to_be_paid = (
+					SELECT time_used * deployment_machine_type.rate from deployment_machine_type
+				)
+			FROM
+				resources_used_by_user,
+				deployment,
+				deployment_machine_type,
+			INNER JOIN
+				deployment
+			ON
+				deployment.id = resources_used_by_user.deployment_id
+			INNER JOIN 
+				deployment_machine_type
+			ON
+				deployment_machine_type.id = resources_used_by_user.machine_type_id;
 		"#
 	)
 	.execute(&mut *transaction)
