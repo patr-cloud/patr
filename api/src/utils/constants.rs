@@ -56,10 +56,14 @@ pub mod request_keys {
 	pub const PASSWORD: &str = "password";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
+	pub const ERRORS: &str = "errors";
 	pub const MESSAGE: &str = "message";
 	pub const ACCESS_TOKEN: &str = "accessToken";
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	pub const VERIFICATION_TOKEN: &str = "verificationToken";
+	pub const CODE: &str = "code";
+	pub const DETAIL: &str = "detail";
+	pub const TOKEN: &str = "token";
 	pub const AVAILABLE: &str = "available";
 	pub const FIRST_NAME: &str = "firstName";
 	pub const LAST_NAME: &str = "lastName";
@@ -110,4 +114,20 @@ pub mod request_keys {
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
 	pub const LOGIN_ID: &str = "loginId";
+	pub const SCOPE: &str = "scope";
+	pub const SERVICE: &str = "service";
+	pub const SNAKE_CASE_CLIENT_ID: &str = "client_id";
+	pub const SNAKE_CASE_OFFLINE_TOKEN: &str = "offline_token";
+	pub const REPOSITORY: &str = "repository";
+	pub const REPOSITORIES: &str = "repositories";
+	pub const REPOSITORY_ID: &str = "repositoryId";
+	pub const DEPLOYMENT_ID: &str = "deploymentId";
+	pub const DEPLOYMENTS: &str = "deployments";
+	pub const DEPLOYMENT: &str = "deployment";
+	pub const REGISTRY: &str = "registry";
+	pub const IMAGE_NAME: &str = "imageName";
+	pub const IMAGE_TAG: &str = "imageTag";
+	pub const SUB_DOMAIN: &str = "subDomain";
+	pub const PATH: &str = "path";
+	pub const PORT: &str = "port";
 }

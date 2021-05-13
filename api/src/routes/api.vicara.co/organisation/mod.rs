@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -18,6 +19,8 @@ use crate::{
 };
 
 mod application;
+mod deployment;
+mod docker_registry;
 mod domain;
 mod portus;
 #[path = "./rbac.rs"]
@@ -70,8 +73,16 @@ pub fn create_sub_app(
 		"/:organisationId/application",
 		application::create_sub_app(app),
 	);
-	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
+	sub_app.use_sub_app(
+		"/:organisationId/deployment",
+		deployment::create_sub_app(app),
+	);
+	sub_app.use_sub_app(
+		"/:organisationId/docker-registry",
+		docker_registry::create_sub_app(app),
+	);
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
 	sub_app
 		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
 
@@ -89,7 +100,6 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
 		],
 	);
-
 	sub_app
 }
 
@@ -178,7 +188,7 @@ async fn create_new_organisation(
 		&user_id,
 	)
 	.await?;
-	let org_id_string = hex::encode(org_id.as_bytes());
+	let org_id_string = org_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

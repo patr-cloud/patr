@@ -4,6 +4,7 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use hex::ToHex;
 use once_cell::sync::OnceCell;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
@@ -77,13 +78,13 @@ pub async fn generate_new_refresh_token_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
-	let mut refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
 	let mut hashed = hash(refresh_token.as_bytes())?;
 	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
 	let mut login = logins.iter().find(|login| login.refresh_token == hashed);
 
 	while login.is_some() {
-		refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+		refresh_token = Uuid::new_v4().as_bytes().encode_hex();
 		hashed = hash(refresh_token.as_bytes())?;
 		logins = db::get_all_logins_for_user(connection, user_id).await?;
 		login = logins.iter().find(|login| login.refresh_token == hashed);

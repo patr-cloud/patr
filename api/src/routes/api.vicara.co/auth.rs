@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 use tokio::task;
 
@@ -6,11 +7,19 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
+	models::{
+		error::{id as ErrorId, message as ErrorMessage},
+		rbac::{self, permissions, GOD_USER_ID},
+		RegistryToken,
+		RegistryTokenAccess,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
+		get_current_time,
 		mailer,
+		validator,
 		Error,
 		ErrorData,
 		EveContext,
@@ -30,6 +39,10 @@ pub fn create_sub_app(
 	app.post(
 		"/sign-up",
 		[EveMiddleware::CustomFunction(pin_fn!(sign_up))],
+	);
+	app.post(
+		"/sign-out",
+		[EveMiddleware::CustomFunction(pin_fn!(sign_out))],
 	);
 	app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
@@ -51,6 +64,12 @@ pub fn create_sub_app(
 	app.post(
 		"/reset-password",
 		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
+	);
+	app.post(
+		"/docker-registry-token",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
 	);
 
 	app
@@ -92,7 +111,7 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let (jwt, refresh_token) = service::sign_in_user(
+	let (jwt, login_id, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
 		&user_data.id,
 		&config,
@@ -102,7 +121,8 @@ async fn sign_in(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
@@ -246,6 +266,35 @@ async fn sign_up(
 	Ok(context)
 }
 
+async fn sign_out(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let login_id = body
+		.get(request_keys::LOGIN_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|value| hex::decode(value).ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::get_user_login(context.get_mysql_connection(), &login_id)
+		.await?
+		.status(200)
+		.body(error!(TOKEN_NOT_FOUND).to_string())?;
+
+	db::delete_user_login_by_id(context.get_mysql_connection(), &login_id)
+		.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS:true,
+	}));
+	Ok(context)
+}
+
 async fn join(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -277,6 +326,7 @@ async fn join(
 	.await?;
 	let (
 		jwt,
+		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,
@@ -304,7 +354,8 @@ async fn join(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase()
+		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
@@ -317,14 +368,12 @@ async fn get_access_token(
 		.get_header("Authorization")
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let login_id = hex::decode(
-		context
-			.get_param(request_keys::LOGIN_ID)
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?,
-	)
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+	let login_id = context
+		.get_param(request_keys::LOGIN_ID)
+		.map(|value| hex::decode(value).ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
@@ -499,5 +548,541 @@ async fn reset_password(
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
+	Ok(context)
+}
+
+async fn docker_registry_token_endpoint(
+	context: EveContext,
+	next: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let query = context.get_request().get_query();
+
+	if query.get(request_keys::SCOPE).is_some() {
+		// Authenticating an existing login
+		docker_registry_authenticate(context, next).await
+	} else {
+		// Logging in
+		docker_registry_login(context, next).await
+	}
+}
+
+async fn docker_registry_login(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let query = context.get_request().get_query().clone();
+	let config = context.get_state().config.clone();
+
+	let _client_id = query
+		.get(request_keys::SNAKE_CASE_CLIENT_ID)
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_CLIENT_ID,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+
+	let _offline_token = query
+		.get(request_keys::SNAKE_CASE_OFFLINE_TOKEN)
+		.map(|value| {
+			value.parse::<bool>().status(400).body(
+				json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: ErrorId::UNAUTHORIZED,
+						request_keys::MESSAGE: ErrorMessage::INVALID_OFFLINE_TOKEN,
+						request_keys::DETAIL: []
+					}]
+				})
+				.to_string(),
+			)
+		})
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::OFFLINE_TOKEN_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)??;
+
+	let service = query.get(request_keys::SERVICE).status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::SERVICE_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	if service != &config.docker_registry.service_name {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_SERVICE,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let authorization = context
+		.get_header("Authorization")
+		.map(|value| value.replace("Basic ", ""))
+		.map(|value| {
+			hex::decode(value)
+				.ok()
+				.map(|value| String::from_utf8(value).ok())
+				.flatten()
+				.status(400)
+				.body(
+					json!({
+						request_keys::ERRORS: [{
+							request_keys::CODE: ErrorId::UNAUTHORIZED,
+							request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+							request_keys::DETAIL: []
+						}]
+					})
+					.to_string(),
+				)
+		})
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)??;
+
+	let mut splitter = authorization.split(':');
+	let username = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+	let password = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+	let user =
+		db::get_user_by_username(context.get_mysql_connection(), &username)
+			.await?
+			.status(401)
+			.body(
+				json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: ErrorId::UNAUTHORIZED,
+						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
+						request_keys::DETAIL: []
+					}]
+				})
+				.to_string(),
+			)?;
+
+	// TODO API token as password instead of password, for TFA.
+	// This will happen once the API token is merged in
+	let success = service::validate_hash(password, &user.password)?;
+
+	if !success {
+		Error::as_result().status(401).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let iat = get_current_time().as_secs();
+
+	let token = RegistryToken::new(
+		config.docker_registry.issuer.clone(),
+		iat,
+		username.to_string(),
+		&config,
+		vec![],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	context.json(json!({ request_keys::TOKEN: token }));
+	Ok(context)
+}
+
+async fn docker_registry_authenticate(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let query = context.get_request().get_query().clone();
+	let config = context.get_state().config.clone();
+
+	let authorization = context
+		.get_header("Authorization")
+		.map(|value| value.replace("Basic ", ""))
+		.map(|value| {
+			hex::decode(value)
+				.ok()
+				.map(|value| String::from_utf8(value).ok())
+				.flatten()
+				.status(400)
+				.body(
+					json!({
+						request_keys::ERRORS: [{
+							request_keys::CODE: ErrorId::UNAUTHORIZED,
+							request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+							request_keys::DETAIL: []
+						}]
+					})
+					.to_string(),
+				)
+		})
+		.status(400)
+		.body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)??;
+
+	let mut splitter = authorization.split(':');
+	let username = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::USERNAME_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+	let password = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::PASSWORD_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+	let user =
+		db::get_user_by_username(context.get_mysql_connection(), &username)
+			.await?
+			.status(401)
+			.body(
+				json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: ErrorId::UNAUTHORIZED,
+						request_keys::MESSAGE: ErrorMessage::USER_NOT_FOUND,
+						request_keys::DETAIL: []
+					}]
+				})
+				.to_string(),
+			)?;
+
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+	let god_user = db::get_user_by_user_id(
+		context.get_mysql_connection(),
+		god_user_id.as_bytes(),
+	)
+	.await?
+	.unwrap();
+	drop(god_user_id);
+	// check if user is GOD_USER then return the token
+	if username == god_user.username {
+		// return token.
+		context.json(json!({ request_keys::TOKEN: password }));
+		return Ok(context);
+	}
+
+	let success = service::validate_hash(password, &user.password)?;
+
+	if !success {
+		Error::as_result().status(401).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::INVALID_PASSWORD,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let scope = query.get(request_keys::SCOPE).unwrap();
+	let mut splitter = scope.split(':');
+	let access_type = splitter.next().status(401).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACCESS_TYPE_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	// check if access type is respository
+	if access_type != request_keys::REPOSITORY {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::INVALID_ACCESS_TYPE,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let repo = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::REPOSITORY_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	let action = splitter.next().status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::ACTION_NOT_PRESENT,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	let required_permissions = action
+		.split(',')
+		.filter_map(|permission| match permission {
+			"push" | "tag" => {
+				Some(permissions::organisation::docker_registry::PUSH)
+			}
+			"pull" => Some(permissions::organisation::docker_registry::PULL),
+			_ => None,
+		})
+		.map(String::from)
+		.collect::<Vec<_>>();
+
+	let split_array = repo.split('/').map(String::from).collect::<Vec<_>>();
+	// reject if split array size is not equal to 2
+	if split_array.len() != 2 {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::NO_ORGANISATION_OR_REPOSITORY,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = split_array.get(1).unwrap();
+
+	// check if repo name is valid
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repo_name);
+	if !is_repo_name_valid {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::INVALID_REQUEST,
+					request_keys::MESSAGE: ErrorMessage::INVALID_REPOSITORY_NAME,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+	let org =
+		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
+			.await?
+			.status(400)
+			.body(
+				json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: ErrorId::INVALID_REQUEST,
+						request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+						request_keys::DETAIL: []
+					}]
+				})
+				.to_string(),
+			)?;
+
+	let repository = db::get_repository_by_name(
+		context.get_mysql_connection(),
+		&repo_name,
+		&org.id,
+	)
+	.await?
+	// reject request if repository does not exist
+	.status(400)
+	.body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	// get repo id inorder to get resource details
+	let resource =
+		db::get_resource_by_id(context.get_mysql_connection(), &repository.id)
+			.await?
+			.status(500)
+			.body(
+				json!({
+					request_keys::ERRORS: [{
+						request_keys::CODE: ErrorId::SERVER_ERROR,
+						request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
+						request_keys::DETAIL: []
+					}]
+				})
+				.to_string(),
+			)?;
+
+	if resource.owner_id != org.id {
+		log::error!(
+			"Resource owner_id is not the same as org id. This is illegal"
+		);
+		Error::as_result().status(500).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::SERVER_ERROR,
+					request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let org_id = org.id.encode_hex::<String>();
+
+	// get all org roles for the user using the id
+	let user_id = &user.id;
+	let user_roles = db::get_all_organisation_roles_for_user(
+		context.get_mysql_connection(),
+		&user.id,
+	)
+	.await?;
+
+	let required_role_for_user = user_roles.get(&org_id).status(500).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+	let mut approved_permissions = vec![];
+
+	for permission in required_permissions {
+		let allowed = {
+			if let Some(permissions) = required_role_for_user
+				.resource_types
+				.get(&resource.resource_type_id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			if let Some(permissions) =
+				required_role_for_user.resources.get(&resource.id)
+			{
+				permissions.contains(&permission.to_string())
+			} else {
+				false
+			}
+		} || {
+			required_role_for_user.is_super_admin || {
+				let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
+				user_id == god_user_id
+			}
+		};
+		if !allowed {
+			continue;
+		}
+
+		match permission.as_str() {
+			permissions::organisation::docker_registry::PUSH => {
+				approved_permissions.push("push".to_string());
+			}
+			permissions::organisation::docker_registry::PULL => {
+				approved_permissions.push("pull".to_string());
+			}
+			_ => {}
+		}
+	}
+
+	let iat = get_current_time().as_secs();
+
+	let token = RegistryToken::new(
+		config.docker_registry.issuer.clone(),
+		iat,
+		username.to_string(),
+		&config,
+		vec![RegistryTokenAccess {
+			r#type: access_type.to_string(),
+			name: repo.to_string(),
+			actions: approved_permissions,
+		}],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	context.json(json!({ request_keys::TOKEN: token }));
 	Ok(context)
 }

@@ -51,5 +51,12 @@
 		"accountId": "<example-account-id>",
 		"accountEmail": "account@example.com",
 		"apiToken": "<example-api-token>"
+	},
+	"dockerRegistry": {
+		"serviceName": "Deployer Registry Service",
+		"issuer": "localhost:3000",
+		"registryUrl": "localhost:5000",
+		"privateKey": "",
+		"publicKey": ""
 	}
 }

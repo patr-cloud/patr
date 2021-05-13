@@ -1,4 +1,5 @@
 use eve_rs::AsError;
+use hex::ToHex;
 use sqlx::{MySql, Transaction};
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
@@ -136,8 +137,11 @@ pub async fn is_domain_verified(
 		.await?;
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
-			Name::from_utf8(format!("{}.vicara.co", hex::encode(domain_id)))
-				.unwrap(),
+			Name::from_utf8(format!(
+				"{}.vicara.co",
+				domain_id.encode_hex::<String>()
+			))
+			.unwrap(),
 		);
 		record.rdata() == &expected_cname
 	});

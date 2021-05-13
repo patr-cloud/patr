@@ -3,21 +3,15 @@ use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{User, UserLogin},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 };
 
@@ -177,7 +171,8 @@ pub async fn create_user_join_request(
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
-	let token_expiry = get_current_time() + service::get_join_token_expiry();
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
 
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
@@ -215,16 +210,17 @@ pub async fn create_user_join_request(
 					.body(error!(ORGANISATION_EXISTS).to_string())?;
 			}
 
-			if db::get_user_to_sign_up_by_organisation_name(
+			let user_sign_up = db::get_user_to_sign_up_by_organisation_name(
 				connection,
 				&organisation_name,
 			)
-			.await?
-			.is_some()
-			{
-				Error::as_result()
-					.status(200)
-					.body(error!(ORGANISATION_EXISTS).to_string())?;
+			.await?;
+			if let Some(user_sign_up) = user_sign_up {
+				if user_sign_up.otp_expiry < get_current_time_millis() {
+					Error::as_result()
+						.status(200)
+						.body(error!(ORGANISATION_EXISTS).to_string())?;
+				}
 			}
 
 			if !validator::is_email_valid(&format!(
@@ -283,7 +279,7 @@ pub async fn create_login_for_user(
 	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
 			.await?;
-	let iat = get_current_time();
+	let iat = get_current_time_millis();
 
 	db::add_user_login(
 		connection,
@@ -313,14 +309,18 @@ pub async fn sign_in_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 	config: &Settings,
-) -> Result<(String, Uuid), Error> {
+) -> Result<(String, Uuid, Uuid), Error> {
 	let refresh_token = Uuid::new_v4();
 
 	let user_login = create_login_for_user(connection, &user_id).await?;
 
 	let jwt = generate_access_token(connection, &config, &user_login).await?;
 
-	Ok((jwt, refresh_token))
+	Ok((
+		jwt,
+		Uuid::from_slice(&user_login.login_id).unwrap(),
+		refresh_token,
+	))
 }
 
 pub async fn get_user_login_for_login_id(
@@ -332,7 +332,7 @@ pub async fn get_user_login_for_login_id(
 		.status(200)
 		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
-	if user_login.token_expiry < get_current_time() {
+	if user_login.token_expiry < get_current_time_millis() {
 		// Token has expired
 		Error::as_result()
 			.status(200)
@@ -349,7 +349,7 @@ pub async fn generate_access_token(
 ) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
-	let iat = get_current_time();
+	let iat = get_current_time_millis();
 	let exp = iat + service::get_access_token_expiry(); // 3 days
 	let orgs = db::get_all_organisation_roles_for_user(
 		connection,
@@ -380,8 +380,7 @@ pub async fn generate_access_token(
 	let token_data = AccessTokenData::new(iat, exp, orgs, user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
-	db::set_refresh_token_expiry(connection, &user_login.login_id, iat, exp)
-		.await?;
+	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
 
 	Ok(jwt)
 }
@@ -400,7 +399,7 @@ pub async fn forgot_password(
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + (1000 * 60 * 60 * 2); // 2 hours
+	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 
 	let token_hash = service::hash(otp.as_bytes())?;
 
@@ -464,7 +463,7 @@ pub async fn join_user(
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<(String, Uuid, Option<String>, Option<String>, Option<String>), Error>
+) -> Result<(String, Uuid, Uuid, Option<String>, Option<String>, Option<String>), Error>
 {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
@@ -479,7 +478,7 @@ pub async fn join_user(
 			.body(error!(INVALID_OTP).to_string())?;
 	}
 
-	if user_data.otp_expiry < get_current_time() {
+	if user_data.otp_expiry < get_current_time_millis() {
 		Error::as_result()
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
@@ -510,7 +509,7 @@ pub async fn join_user(
 
 	let user_uuid = db::generate_new_user_id(connection).await?;
 	let user_id = user_uuid.as_bytes();
-	let created = get_current_time();
+	let created = get_current_time_millis();
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
@@ -735,11 +734,12 @@ pub async fn join_user(
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-	let (jwt, refresh_token) =
+	let (jwt, login_id, refresh_token) =
 		sign_in_user(connection, user_id, &config).await?;
 
 	Ok((
 		jwt,
+		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,

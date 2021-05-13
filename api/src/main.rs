@@ -36,7 +36,7 @@ fn main() -> Result<()> {
 		.thread_name(format!("{}-worker-thread", constants::APP_NAME))
 		// Each CPU gets at least 2 workers to avoid idling
 		.worker_threads(num_cpus::get() * 2)
-		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overage
+		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overflow
 		.build()
 		.unwrap()
 		.block_on(async_main())

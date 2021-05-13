@@ -1,5 +1,15 @@
 {
   "db": "MySQL",
+<<<<<<< HEAD
+  "02c3f1118df5a288de6c68a9e1fe0f4cda0da6cc8ef8e87100f86a6037777e73": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+=======
   "011df9f23a66603ea96c2bea79e60397feec346a5fdddb0ff3cab3db4f88581b": {
     "query": "SELECT domain.name, organisation_domain.id, organisation_domain.domain_type, organisation_domain.is_verified as `is_verified: bool` FROM domain INNER JOIN organisation_domain ON organisation_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = ?;",
     "describe": {
@@ -62,6 +72,7 @@
         false,
         false
       ]
+>>>>>>> develop
     }
   },
   "0346579f00f2674ce01f47d580460271ff00e265fb686ace54b5dcb496092fb8": {
@@ -84,35 +95,139 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "0405b243645def0bdd3c74266606e33ec850e2e1f9e771fa2b94dddea52aafd5": {
+    "query": "SELECT * FROM deployment WHERE domain_id = ? AND sub_domain = ? AND path = ?;",
+=======
   "06d91bd00423f858a2a00607b4de6f84deaec7300a8c5a4a672d56ebd9a2eee6": {
     "query": "SELECT domain.name, organisation_domain.id, organisation_domain.domain_type, organisation_domain.is_verified as `is_verified: bool` FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE domain.id = ?;",
+>>>>>>> develop
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4101
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 1,
+<<<<<<< HEAD
           "name": "id",
           "type_info": {
             "type": "String",
             "flags": {
-              "bits": 4235
+              "bits": 4227
             },
             "char_set": 63,
             "max_size": 16
           }
         },
         {
+          "ordinal": 1,
+=======
+>>>>>>> develop
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+<<<<<<< HEAD
+              "bits": 4097
+=======
+              "bits": 4101
+>>>>>>> develop
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+<<<<<<< HEAD
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+=======
+          "ordinal": 1,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+>>>>>>> develop
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+<<<<<<< HEAD
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+=======
           "ordinal": 2,
           "name": "domain_type",
           "type_info": {
@@ -134,16 +249,29 @@
             },
             "char_set": 63,
             "max_size": 1
+>>>>>>> develop
           }
         }
       ],
       "parameters": {
+<<<<<<< HEAD
+        "Right": 3
+=======
         "Right": 1
+>>>>>>> develop
       },
       "nullable": [
         false,
         false,
         false,
+<<<<<<< HEAD
+        false,
+        false,
+        false,
+        false,
+        false,
+=======
+>>>>>>> develop
         false
       ]
     }
@@ -518,6 +646,70 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "2170f039ddb46624f010285cbd21fe3a4b8d233da09ef51569b17157657329ac": {
+    "query": "INSERT INTO user_email_address VALUES ('organisation', NULL, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "219a89b3784f82c89200c08b51bb987cc564f05a174e92e24895a50c7538060b": {
+    "query": "SELECT * FROM docker_registry_repository WHERE name = ? AND organisation_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+=======
+>>>>>>> develop
   "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
     "query": "SELECT * FROM meta_data WHERE id = 'version_major' OR id = 'version_minor' OR id = 'version_patch';",
     "describe": {
@@ -566,6 +758,135 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "270607c5a5464d2dc9a24c4b1fb63dffd37a83d24f80fa5529655e82d48063d2": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE deployment.id = resource.id AND image_name = ? AND image_tag = ? AND resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+=======
   "2590c16cb786aee708555231245bcf77f707d7354ac24359b364f8c9aee29aa3": {
     "query": "INSERT INTO user_to_sign_up VALUES ( ?, 'organisation', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) ON DUPLICATE KEY UPDATE account_type = 'organisation', password = ?, first_name = ?, last_name = ?, backup_email_local = ?, backup_email_domain_id = ?, backup_phone_country_code = ?, backup_phone_number = ?, org_email_local = ?, org_domain_name = ?, organisation_name = ?, otp_hash = ?, otp_expiry = ?;",
     "describe": {
@@ -574,6 +895,7 @@
         "Right": 25
       },
       "nullable": []
+>>>>>>> develop
     }
   },
   "2800638e0b9b0a15ed2f97715f6b16eee1f5ecd998fbeea9ace67289a8a09643": {
@@ -808,8 +1130,13 @@
       ]
     }
   },
+<<<<<<< HEAD
+  "3368f0a932d8a3e5c0f94b9b390d81dd7cce6162b3a885fcae47b407f487510b": {
+    "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
+=======
   "3c563cf15443d3f27bff42bf8056a023ae71280cd6038bf84808808c76b5b6f3": {
     "query": "CREATE TABLE IF NOT EXISTS meta_data ( id VARCHAR(100) PRIMARY KEY, value TEXT NOT NULL );",
+>>>>>>> develop
     "describe": {
       "columns": [],
       "parameters": {
@@ -818,8 +1145,13 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "34725b1bba891ee860fbdbc88ff8b85b92a930fb5104cb779fa9dada00ab9366": {
+    "query": "SELECT user.* FROM user LEFT JOIN user_email_address_view ON user_email_address_view.user_id = user.id WHERE user.username = ? OR user_email_address_view.email = ?;",
+=======
   "3dc7a4e588bdf132ecb612573c215c0f6e970c468e14b09bdaa33bdf39aec7a4": {
     "query": "SELECT * FROM portus_tunnel WHERE name = ?;",
+>>>>>>> develop
     "describe": {
       "columns": [
         {
@@ -979,8 +1311,64 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "3c777fe63c3c2530602b8fda3e34c8bc62f57ccd0a6c88f13c782e43077d5044": {
+    "query": "SELECT * FROM docker_registry_repository WHERE organisation_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "3dc7a4e588bdf132ecb612573c215c0f6e970c468e14b09bdaa33bdf39aec7a4": {
+    "query": "SELECT * FROM portus_tunnel WHERE name = ?;",
+=======
   "48abb42c3402fb054e4b5afa35f35b891c56ba49b91c0bbdacc4e7e306706efb": {
     "query": "DELETE FROM role WHERE id = ?;",
+>>>>>>> develop
     "describe": {
       "columns": [],
       "parameters": {
@@ -1186,6 +1574,135 @@
         false,
         false,
         true
+      ]
+    }
+  },
+  "646b2763c95edd7db30a0eb81a9838a37f6836d31d5dcf927c40bedefb8421c3": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE resource.id = deployment.id AND resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
       ]
     }
   },
@@ -2461,8 +2978,43 @@
       ]
     }
   },
+<<<<<<< HEAD
+  "805d2e555e679b236744897b2e1ebd3d26624bc99fd15ab7f0dcf22afcf2b7a0": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ port SMALLINT UNSIGNED NOT NULL, UNIQUE(domain_id, sub_domain, path) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "80d87f55cd48c8ed559d4dd4f4f488109bd7d83c9578f5deb9369818c6f34191": {
+    "query": "DELETE FROM organisation_user WHERE role_id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "84071fcc2602af52bf7155e3c4b20c14d3213e1fb5f8aee16f281ac5dfa77e05": {
+    "query": "DELETE FROM deployment WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "8659a1c8e68476e1dd39e11fcc5a07c18f488e8f7a0d8cc81c11a5cc8270d006": {
+    "query": "SELECT * FROM organisation WHERE super_admin_id = ?;",
+=======
   "abc73c01e06ecb0567f992fdf42fd74fcdb9e084178eab52980b95cdc62e7184": {
     "query": "SELECT id, name, resource_type_id, owner_id as `owner_id!` FROM resource WHERE id = ?;",
+>>>>>>> develop
     "describe": {
       "columns": [
         {
@@ -2525,8 +3077,94 @@
       ]
     }
   },
+<<<<<<< HEAD
+  "8a8bbee60fc109098b0ac29824b8f6b0a91959274cadb0aa982f4c68375c9659": {
+    "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource_type ( role_id BINARY(16), permission_id BINARY(16), resource_type_id BINARY(16), PRIMARY KEY(role_id, permission_id, resource_type_id), FOREIGN KEY(role_id) REFERENCES role(id), FOREIGN KEY(permission_id) REFERENCES permission(id), FOREIGN KEY(resource_type_id) REFERENCES resource_type(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "8b22e725398b06040883dd3eb702e691de73ec8de97fd72cf687038f70151e11": {
+    "query": "SELECT * FROM docker_registry_repository WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "8b77e7c7474f0c7583b90ccfcbccc259ac5c4f982f31355a9eea391839f37f7a": {
+    "query": "INSERT INTO user_login VALUES (?, ?, ?, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 6
+      },
+      "nullable": []
+    }
+  },
+  "92b3f791e9aa52a16fdd721291d03093f23c67e7e228b1847512fa78169c835a": {
+    "query": "CREATE TABLE IF NOT EXISTS application ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "94b589a75b3fb8a01da02a16f38002db53287b5fff53f031b008a96b7167436c": {
+    "query": "INSERT INTO user_to_sign_up VALUES (?, 'organisation', ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE account_type = 'organisation', email_address = ?, email_local = ?, domain_name = ?, password = ?, first_name = ?, last_name = ?, organisation_name = ?, otp_hash = ?, otp_expiry = ?;",
+=======
   "ad598f2dde3e3fe93bdfab67aca0cd2ed816d918775f69e3028d51462f0e97de": {
     "query": "INSERT INTO personal_email VALUES (NULL, ?, ?);",
+>>>>>>> develop
     "describe": {
       "columns": [],
       "parameters": {
@@ -2618,11 +3256,46 @@
       "nullable": [
         false,
         false,
+<<<<<<< HEAD
+        true
+      ]
+    }
+  },
+  "9bb70d8e5768e73db39b40cd55bf5bab4dbbc592c7e2dbb80cb25d42e5d9c845": {
+    "query": "DELETE FROM docker_registry_repository WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
+    "query": "CREATE TABLE IF NOT EXISTS user_email_address ( type ENUM('personal', 'organisation') NOT NULL, /* Personal email address */ email_address VARCHAR(320), /* Organisation email address */ email_local VARCHAR(160), domain_id BINARY(16), user_id BINARY(16) NOT NULL, UNIQUE(email_address, email_local, domain_id, user_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES domain(id), CONSTRAINT CHECK ( ( type = 'personal' AND ( email_address IS NOT NULL AND email_local IS NULL AND domain_id IS NULL ) ) OR ( type = 'organisation' AND ( email_address IS NULL AND email_local IS NOT NULL AND domain_id IS NOT NULL ) ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "a6045492fd4f4ff914dc8fa67215934b8c6bb644c99a9c887550694109390126": {
+    "query": "UPDATE domain SET is_verified = TRUE WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+=======
         false,
         false,
         false,
         false
       ]
+>>>>>>> develop
     }
   },
   "b1d492f3f3b2f64d9d6ddaed49d29fc6aa0245054ed717d462142662596a2d23": {
@@ -2776,7 +3449,37 @@
             "char_set": 224,
             "max_size": 400
           }
+<<<<<<< HEAD
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "acedba795499e1a2f76bdf1fa5c89e9742f9cf00724c2dfadeb85978dbd07e5a": {
+    "query": "DELETE FROM user_login WHERE login_id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "ad6002853dd49f16db9502a04399e53e402302ddd975009c40dd0951ec30f538": {
+    "query": "SELECT * FROM portus_tunnel WHERE id = ?;",
+    "describe": {
+      "columns": [
+=======
         },
+>>>>>>> develop
         {
           "ordinal": 4,
           "name": "last_name",
@@ -2986,6 +3689,16 @@
       "columns": [],
       "parameters": {
         "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "b72999b5d95529aa6764e8ab1ef235c16a8f00e0c908ef6b81a030155cc13a5d": {
+    "query": "CREATE TABLE IF NOT EXISTS docker_registry_repository ( id BINARY(16) PRIMARY KEY, organisation_id BINARY(16) NOT NULL, name VARCHAR(255) NOT NULL, UNIQUE(organisation_id, name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -3534,6 +4247,135 @@
       "nullable": []
     }
   },
+  "d44888489c6f1b2ec6ce6dd190b49d7a629eaef2d24dc766d1997e3db2a6b187": {
+    "query": "SELECT * FROM deployment WHERE id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "d4d2ecce5a9761a66d35ad64a28fa27cf0ec6caebfe8ffc21cb88c4139110f56": {
     "query": "SELECT * FROM user WHERE id = ?;",
     "describe": {
@@ -3907,8 +4749,53 @@
       ]
     }
   },
+<<<<<<< HEAD
+  "d96261f4b6ee15ce075ca8e64067fd6d3edf4c6359b1746fec6c1acf46ac1826": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 9
+      },
+      "nullable": []
+    }
+  },
+  "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
+    "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "e23aa701eee9f9caeebf736e1cdc6cde9ea42a082eb31bd44eac5cedb7f16fd9": {
+    "query": "CREATE TABLE IF NOT EXISTS portus_tunnel ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port SMALLINT UNSIGNED NOT NULL, exposed_port SMALLINT UNSIGNED NOT NULL, name VARCHAR(50) NOT NULL, created BIGINT UNSIGNED NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e53bd14d5797f2615c52332c8825324a7f26df4f0321ded65bfbf2a694b73931": {
+    "query": "CREATE TABLE IF NOT EXISTS permission ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "e5f317bd1b3c4fa016d200d43f7c7b000c3a6298b86f266932ca3310691cbe3d": {
+    "query": "SELECT * FROM user_to_sign_up WHERE organisation_name = ? AND otp_expiry < ?",
+=======
   "d919f12b4eccb851ba887201fcb572366edbda9f17f3a0ee6a37fc7c36b42606": {
     "query": "SELECT * FROM user_to_sign_up WHERE organisation_name = ?;",
+>>>>>>> develop
     "describe": {
       "columns": [
         {
@@ -4352,8 +5239,23 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "f0eda87bd07f36dab8d2ce25961202654985cd6e1f16b06fa5083f1ae3fd8612": {
+    "query": "INSERT INTO docker_registry_repository VALUES (?,?,?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "f10a94d2cb6ef8ede5b0588f0825fca7641597066705d944adf7d1f902f1058a": {
+    "query": "INSERT INTO organisation VALUES (?, ?, ?, ?, ?);",
+=======
   "ee8c91864d60a0f9025574b0d4f2f1af014d933d88e35b97ecbff6f146509219": {
     "query": "INSERT INTO domain VALUES (?, ?, ?);",
+>>>>>>> develop
     "describe": {
       "columns": [],
       "parameters": {

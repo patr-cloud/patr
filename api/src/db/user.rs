@@ -1332,7 +1332,25 @@ pub async fn get_all_logins_for_user(
 	.await
 }
 
-pub async fn set_refresh_token_expiry(
+pub async fn delete_user_login_by_id(
+	connection: &mut Transaction<'_, MySql>,
+	login_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_login
+		WHERE
+			login_id = ?;
+		"#,
+		login_id,
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_login_expiry(
 	connection: &mut Transaction<'_, MySql>,
 	login_id: &[u8],
 	last_activity: u64,

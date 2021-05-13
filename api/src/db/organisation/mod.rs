@@ -3,11 +3,13 @@ use sqlx::{MySql, Transaction};
 use crate::{models::db_mapping::Organisation, query, query_as};
 
 mod application;
+mod deployment;
 mod domain;
 mod drive;
 mod portus;
 
 pub use application::*;
+pub use deployment::*;
 pub use domain::*;
 pub use drive::*;
 pub use portus::*;
@@ -35,6 +37,7 @@ pub async fn initialize_organisations_pre(
 	domain::initialize_domain_pre(&mut *transaction).await?;
 	drive::initialize_drive_pre(&mut *transaction).await?;
 	portus::initialize_portus_pre(&mut *transaction).await?;
+	deployment::initialize_deployer_pre(&mut *transaction).await?;
 
 	Ok(())
 }
@@ -56,6 +59,7 @@ pub async fn initialize_organisations_post(
 	domain::initialize_domain_post(&mut *transaction).await?;
 	drive::initialize_drive_post(&mut *transaction).await?;
 	portus::initialize_portus_post(&mut *transaction).await?;
+	deployment::initialize_deployer_post(&mut *transaction).await?;
 
 	Ok(())
 }

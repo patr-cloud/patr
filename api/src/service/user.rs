@@ -5,7 +5,7 @@ use crate::{
 	db,
 	error,
 	service,
-	utils::{get_current_time, validator, Error},
+	utils::{get_current_time_millis, validator, Error},
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -31,7 +31,8 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + service::get_join_token_expiry();
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	let (email_local, domain_name) = email_address
@@ -81,7 +82,9 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 
-	if email_verification_data.verification_token_expiry < get_current_time() {
+	if email_verification_data.verification_token_expiry <
+		get_current_time_millis()
+	{
 		Error::as_result()
 			.status(200)
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
