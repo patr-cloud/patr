@@ -4,7 +4,6 @@ use sqlx::{MySql, Transaction};
 use crate::{
 	db,
 	error,
-	models::db_mapping::UserEmailAddress,
 	service,
 	utils::{get_current_time_millis, validator, Error},
 };
@@ -36,9 +35,18 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		get_current_time_millis() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let personal_domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name).await?;
+
 	db::add_personal_email_to_be_verified_for_user(
 		connection,
-		&email_address,
+		&email_local,
+		personal_domain_id.as_bytes(),
 		&user_id,
 		&verification_token,
 		token_expiry,
@@ -82,10 +90,13 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let email_address =
-		UserEmailAddress::Personal(email_verification_data.email_address);
-
-	db::add_email_for_user(connection, user_id, email_address).await?;
+	db::add_personal_email_for_user(
+		connection,
+		user_id,
+		&email_verification_data.local,
+		&email_verification_data.domain_id,
+	)
+	.await?;
 
 	Ok(())
 }

@@ -16,7 +16,7 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
-		constants::{request_keys, AccountType},
+		constants::{request_keys, ResourceOwnerType},
 		get_current_time,
 		mailer,
 		validator,
@@ -113,7 +113,7 @@ async fn sign_in(
 	let config = context.get_state().config.clone();
 	let (jwt, login_id, refresh_token) = service::sign_in_user(
 		context.get_mysql_connection(),
-		user_data,
+		&user_data.id,
 		&config,
 	)
 	.await?;
@@ -140,13 +140,6 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let email = body
-		.get(request_keys::EMAIL)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let password = body
 		.get(request_keys::PASSWORD)
 		.map(|param| param.as_str())
@@ -158,7 +151,7 @@ async fn sign_up(
 		.get(request_keys::ACCOUNT_TYPE)
 		.map(|param| param.as_str())
 		.flatten()
-		.map(|a| a.parse::<AccountType>().ok())
+		.map(|a| a.parse::<ResourceOwnerType>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -177,7 +170,47 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let domain_name = body
+	let backup_email = body
+		.get(request_keys::BACKUP_EMAIL)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let backup_phone_country_code = body
+		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let backup_phone_number = body
+		.get(request_keys::BACKUP_PHONE_NUMBER)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let org_email_local = body
+		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
+		.map(|param| {
+			param
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	let org_domain_name = body
 		.get(request_keys::DOMAIN)
 		.map(|param| {
 			param
@@ -197,33 +230,35 @@ async fn sign_up(
 		})
 		.transpose()?;
 
-	let backup_email = body
-		.get(request_keys::BACKUP_EMAIL)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
 	let otp = service::create_user_join_request(
 		context.get_mysql_connection(),
 		username,
-		email,
-		password,
 		account_type,
+		password,
 		(first_name, last_name),
-		(domain_name, organisation_name, backup_email),
+		backup_email,
+		backup_phone_country_code,
+		backup_phone_number,
+		org_email_local,
+		org_domain_name,
+		organisation_name,
 	)
 	.await?;
-	let email = email.to_string();
 
-	let config = context.get_state().config.clone();
+	if let Some(email) = backup_email {
+		let config = context.get_state().config.clone();
+		let email = email.to_string();
 
-	task::spawn_blocking(|| {
-		mailer::send_email_verification_mail(config, email, otp);
-	});
+		task::spawn_blocking(|| {
+			mailer::send_email_verification_mail(config, email, otp);
+		});
+	}
+	if let Some((_country_code, _phone_number)) =
+		backup_phone_country_code.zip(backup_phone_number)
+	{
+		// TODO implement this
+		panic!("Sending OTPs through phone numbers aren't handled yet");
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -289,18 +324,31 @@ async fn join(
 		username,
 	)
 	.await?;
-	let (jwt, login_id, refresh_token, welcome_email_to, backup_email_to) =
-		result;
+	let (
+		jwt,
+		login_id,
+		refresh_token,
+		welcome_email_to,
+		backup_email_to,
+		backup_phone_number_to,
+	) = result;
 
-	task::spawn_blocking(|| {
-		mailer::send_sign_up_completed_mail(config, welcome_email_to);
-	});
+	if let Some(welcome_email_to) = welcome_email_to {
+		task::spawn_blocking(|| {
+			mailer::send_sign_up_completed_mail(config, welcome_email_to);
+		});
+	}
 
 	if let Some(backup_email) = backup_email_to {
 		let config = context.get_state().config.clone();
 		task::spawn_blocking(|| {
 			mailer::send_backup_registration_mail(config, backup_email);
 		});
+	}
+
+	if let Some(_phone_number) = backup_phone_number_to {
+		// TODO implement this
+		panic!("Sending OTPs through phone numbers aren't handled yet");
 	}
 
 	context.json(json!({
@@ -471,12 +519,31 @@ async fn reset_password(
 	)
 	.await?;
 
-	task::spawn_blocking(|| {
-		mailer::send_password_changed_notification_mail(
-			config,
-			user.backup_email,
+	if let Some((backup_email_local, backup_email_domain_id)) =
+		user.backup_email_local.zip(user.backup_email_domain_id)
+	{
+		let email = format!(
+			"{}@{}",
+			backup_email_local,
+			db::get_personal_domain_by_id(
+				context.get_mysql_connection(),
+				&backup_email_domain_id
+			)
+			.await?
+			.status(500)?
+			.name
 		);
-	});
+		task::spawn_blocking(|| {
+			mailer::send_password_changed_notification_mail(config, email);
+		});
+	}
+
+	if let Some((_phone_country_code, _phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
+	{
+		// TODO implement this
+		panic!("Sending OTPs through phone numbers aren't handled yet");
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true
