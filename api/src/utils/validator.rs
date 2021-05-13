@@ -61,13 +61,19 @@ pub fn is_organisation_name_valid(organisation_name: &str) -> bool {
 
 pub async fn is_domain_name_valid(domain: &str) -> bool {
 	let tld_list = DOMAIN_TLD_LIST.read().await;
+	let domain = domain.to_lowercase();
 	for tld in tld_list.iter() {
-		if !domain.ends_with(tld) {
+		let tld = tld.to_lowercase();
+		if !domain.ends_with(&tld) {
 			// If domain doesn't end with tld, ignore it
 			continue;
 		}
 		// If it doesn't have a . after removing the TLD and the www., ignore
-		if domain.replace(tld, "").replace("www.", "").contains('.') {
+		if domain
+			.replace(&format!(".{}", tld), "")
+			.replace("www.", "")
+			.contains('.')
+		{
 			continue;
 		}
 		return true;
@@ -76,6 +82,9 @@ pub async fn is_domain_name_valid(domain: &str) -> bool {
 }
 
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
+	new_tld_list
+		.iter_mut()
+		.for_each(|item| *item = item.to_lowercase());
 	let mut tld_list = DOMAIN_TLD_LIST.write().await;
 	tld_list.clear();
 	tld_list.append(&mut new_tld_list);
