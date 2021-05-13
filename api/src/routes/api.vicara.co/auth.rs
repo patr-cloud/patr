@@ -853,16 +853,18 @@ async fn reset_password(
 			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
-	let user_id = if let Ok(user_id) = hex::decode(user_id) {
-		user_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+
+	let user = db::get_user_by_username_or_email(
+		context.get_mysql_connection(),
+		&user_id,
+	)
+	.await?;
+
+	let user = user.unwrap();
 
 	let reset_request = db::get_password_reset_request_for_user(
 		context.get_mysql_connection(),
-		&user_id,
+		&user.id,
 	)
 	.await?;
 
@@ -900,13 +902,13 @@ async fn reset_password(
 
 	db::update_user_password(
 		context.get_mysql_connection(),
-		&user_id,
+		&user.id,
 		&new_password,
 	)
 	.await?;
 	db::delete_password_reset_request_for_user(
 		context.get_mysql_connection(),
-		&user_id,
+		&user.id,
 	)
 	.await?;
 
@@ -917,7 +919,7 @@ async fn reset_password(
 			.begin()
 			.await
 			.expect("unable to begin transaction from connection");
-		let user = db::get_user_by_user_id(&mut connection, &user_id)
+		let user = db::get_user_by_user_id(&mut connection, &user.id)
 			.await
 			.expect("unable to get user data")
 			.expect("user data for that user_id was None");
