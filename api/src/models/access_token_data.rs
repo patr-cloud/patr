@@ -7,11 +7,11 @@ use jsonwebtoken::{
 	TokenData,
 	Validation,
 };
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::models::rbac::OrgPermissions;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
 	pub iss: String,
@@ -65,7 +65,7 @@ impl AccessTokenData {
 }
 
 // Data about the user that can be exposed in the access token
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExposedUserData {
 	pub id: Vec<u8>,

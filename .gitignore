@@ -1,6 +1,10 @@
 /target
 /log
 
+# temp files for Drive testing
+/temp
+.[Dd][Ss]_[Ss]tore
+
 /config/*
 !/config/*.sample.*
 .env
