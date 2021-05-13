@@ -7,6 +7,7 @@ pub mod id {
 	pub const INVALID_CREDENTIALS: &str = "invalidCredentials";
 	pub const INVALID_USERNAME: &str = "invalidUsername";
 	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
+	pub const INVALID_COUNTRY_CODE: &str = "invalidCountryCode";
 	pub const INVALID_ORGANISATION_NAME: &str = "invalidOrganisationName";
 	pub const ORGANISATION_EXISTS: &str = "organisationExists";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
@@ -29,6 +30,10 @@ pub mod id {
 	pub const PROFILE_NOT_FOUND: &str = "profileNotFound";
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
+	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
+	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =
+		"domainBelongsToOrganisation";
+	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
 }
 
 #[allow(dead_code)]
@@ -41,6 +46,8 @@ pub mod message {
 	pub const INVALID_USERNAME: &str = "Your username is not valid";
 	pub const INVALID_PHONE_NUMBER: &str =
 		"Your phone number seems to be incorrect";
+	pub const INVALID_COUNTRY_CODE: &str =
+		"Your country code seems to be incorrect";
 	pub const INVALID_ORGANISATION_NAME: &str =
 		"That organisation name is not valid";
 	pub const ORGANISATION_EXISTS: &str =
@@ -80,4 +87,10 @@ pub mod message {
 		"Sorry, the email address/username is taken";
 	pub const DOMAIN_UNVERIFIED: &str =
 		"That domain is unverified. Check your verification settings";
+	pub const DOMAIN_IS_PERSONAL: &str =
+		"That domain seems to be used for a personal account. Please remove all personal accounts related to that domain first. If this problem persists, please contact us";
+	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =
+		"That domain seems to belong to an organisation. Please choose a personal domain instead. If this problem persists, please contact us";
+	pub const NO_RECOVERY_OPTIONS: &str =
+		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
 }

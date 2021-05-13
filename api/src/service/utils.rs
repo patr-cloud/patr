@@ -1,6 +1,8 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2, PasswordHash, Version,
+	Argon2,
+	PasswordHash,
+	Version,
 };
 use once_cell::sync::OnceCell;
 use sqlx::{MySql, Transaction};
@@ -78,17 +80,13 @@ pub async fn generate_new_refresh_token_for_user(
 	let mut refresh_token = hex::encode(Uuid::new_v4().as_bytes());
 	let mut hashed = hash(refresh_token.as_bytes())?;
 	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
-	let mut login = logins.iter().find(|login| {
-		login.refresh_token == hashed
-	});
+	let mut login = logins.iter().find(|login| login.refresh_token == hashed);
 
 	while login.is_some() {
 		refresh_token = hex::encode(Uuid::new_v4().as_bytes());
 		hashed = hash(refresh_token.as_bytes())?;
 		logins = db::get_all_logins_for_user(connection, user_id).await?;
-		login = logins.iter().find(|login| {
-			login.refresh_token == hashed
-		});
+		login = logins.iter().find(|login| login.refresh_token == hashed);
 	}
 
 	Ok((refresh_token, hashed))

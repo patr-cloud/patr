@@ -21,27 +21,27 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
-pub enum AccountType {
+pub enum ResourceOwnerType {
 	Personal,
 	Organisation,
 }
 
-impl Display for AccountType {
+impl Display for ResourceOwnerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			AccountType::Personal => write!(f, "personal"),
-			AccountType::Organisation => write!(f, "organisation"),
+			ResourceOwnerType::Personal => write!(f, "personal"),
+			ResourceOwnerType::Organisation => write!(f, "organisation"),
 		}
 	}
 }
 
-impl FromStr for AccountType {
+impl FromStr for ResourceOwnerType {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(AccountType::Personal),
-			"organisation" => Ok(AccountType::Organisation),
+			"personal" => Ok(ResourceOwnerType::Personal),
+			"organisation" => Ok(ResourceOwnerType::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -67,7 +67,10 @@ pub mod request_keys {
 	pub const DOMAIN: &str = "domain";
 	pub const DOMAIN_ID: &str = "domainId";
 	pub const ORGANISATION_NAME: &str = "organisationName";
+	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
+	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";

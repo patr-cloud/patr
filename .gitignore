@@ -1,6 +1,8 @@
 /target
 /log
 
+.[Dd][Ss]_[Ss]tore
+
 /config/*
 !/config/*.sample.*
 .env

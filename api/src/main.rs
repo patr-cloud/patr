@@ -1,3 +1,14 @@
+// #![deny(
+// 	clippy::all,
+// 	clippy::correctness,
+// 	clippy::style,
+// 	clippy::complexity,
+// 	clippy::perf,
+// 	clippy::pedantic,
+// 	clippy::nursery,
+// 	clippy::cargo
+// )]
+
 mod app;
 mod db;
 mod macros;

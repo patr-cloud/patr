@@ -9,6 +9,19 @@ pub struct Organisation {
 pub struct Domain {
 	pub id: Vec<u8>,
 	pub name: String,
+	pub r#type: String,
+}
+
+pub struct PersonalDomain {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub domain_type: String,
+}
+
+pub struct OrganisationDomain {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub domain_type: String,
 	pub is_verified: bool,
 }
 
