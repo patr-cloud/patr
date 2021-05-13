@@ -54,6 +54,7 @@ pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const EMAIL: &str = "email";
 	pub const PASSWORD: &str = "password";
+	pub const NEW_PASSWORD: &str = "newPassword";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
 	pub const ERRORS: &str = "errors";
