@@ -153,6 +153,7 @@ pub async fn initialize_deployer_pre(
 		CREATE TABLE IF NOT EXISTS resources_used_by_user (
 			id BINARY(16) PRIMARY KEY,
 			user_id BINARY(16) NOT NULL,
+			deployment_id BINARY(16) NOT NULL,
 			machine_type_id BINARY(16) NOT NULL,
 			start_time BIGINT UNSIGNED NOT NULL,
 			monthly_start_time BIGINT UNSIGNED NOT NULL,
@@ -237,53 +238,43 @@ pub async fn initialize_deployer_post(
     		deployment_tool_invoice 
 		AS
 			SELECT
-				resources_used_by_user.id, 
-				resources_used_by_user.user_id, 
-				resources_used_by_user.machine_type_id, 
-				deployment_machine_type.name, 
-				resources_used_by_user.deployment_id,
-				deployment.name, 
-				time_used = (
-					SELECT IF (
-						paused_time is NULL, 
-						IF (
-							terminated_time is NULL, 
-							SELECT UNIX_TIMESTAMP() - start_time FROM resources_used_by_user, 
-							SELECT terminated_time - start_time FROM resources_used_by_user
-						),
-						IF (
-							terminated_time is NULL, 
-							SELECT paused_time - start_time FROM resources_used_by_user, 
-							SELECT terminated_time - start_time FROM resources_used_by_user
-						)
-					)
-					FROM
-						resources_used_by_user
-				),
-				is_terminated = (
-					SELECT IF(
-						terminated_time is NULL, 
-						true, 
+					CASE WHEN 
+					(
+						resources_used_by_user.terminated_time IS NOT NULL
+					) THEN
+						resources_used_by_user.terminated_time - resources_used_by_user.monthly_start_time
+					WHEN 
+					(
+						resources_used_by_user.paused_time IS NOT NULL 
+					) THEN
+						resources_used_by_user.paused_time - resources_used_by_user.monthly_start_time
+					ELSE
+						FROM_UNIXTIME(UNIX_TIMESTAMP() - resources_used_by_user.monthly_start_time)
+					END AS time_used,
+					CASE WHEN
+					(
+						resources_used_by_user.terminated_time IS NULL
+					) THEN
+						true
+					ELSE
 						false
-					)
-					FROM
-						resources_used_by_user
-				),
-				amount_to_be_paid = (
-					SELECT time_used * deployment_machine_type.rate from deployment_machine_type
-				)
+					END AS terminated_time,
+					/* not working time_used * deployment_machine_type.rate AS amount_to_be_paid,*/
+					resources_used_by_user.user_id, 
+					resources_used_by_user.machine_type_id, 
+					deployment_machine_type.name as deployed_machine_config_name, 
+					resources_used_by_user.deployment_id,
+					deployment.name as deployment_name
 			FROM
-				resources_used_by_user,
-				deployment,
-				deployment_machine_type,
+					resources_used_by_user
 			INNER JOIN
-				deployment
+					deployment
 			ON
-				deployment.id = resources_used_by_user.deployment_id
+					deployment.id = resources_used_by_user.deployment_id
 			INNER JOIN 
-				deployment_machine_type
+					deployment_machine_type
 			ON
-				deployment_machine_type.id = resources_used_by_user.machine_type_id;
+					deployment_machine_type.id = resources_used_by_user.machine_type_id;			
 		"#
 	)
 	.execute(&mut *transaction)
