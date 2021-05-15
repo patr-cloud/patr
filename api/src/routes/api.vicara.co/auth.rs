@@ -822,7 +822,6 @@ async fn docker_registry_authenticate(
 	)
 	.await?
 	.unwrap();
-	drop(god_user_id);
 	// check if user is GOD_USER then return the token
 	if username == god_user.username {
 		// return token.

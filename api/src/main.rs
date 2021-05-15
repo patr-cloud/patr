@@ -8,6 +8,7 @@
 // 	clippy::nursery,
 // 	clippy::cargo
 // )]
+// #![allow(clippy::module_name_repetitions)]
 
 mod app;
 mod db;

@@ -187,9 +187,13 @@ pub async fn initialize_users_post(
 			CONSTRAINT CHECK (
 				(
 					backup_email_local IS NOT NULL AND
-					backup_email_domain_id IS NOT NULL
+					backup_email_domain_id IS NOT NULL AND
+					backup_phone_country_code IS NULL AND
+					backup_phone_number IS NULL
 				) OR
 				(
+					backup_email_local IS NULL AND
+					backup_email_domain_id IS NULL AND
 					backup_phone_country_code IS NOT NULL AND
 					backup_phone_number IS NOT NULL
 				)

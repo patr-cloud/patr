@@ -21,6 +21,7 @@ use crate::{
 		EveMiddleware,
 	},
 };
+type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 
 pub fn creare_sub_app(
 	app: &App,
@@ -394,7 +395,6 @@ async fn create(
 	.await;
 
 	//  add container information in portus table
-	type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 	let tunnel_register_result = container_start_result
 		.map_err::<StdErrorType, _>(|err| Box::new(err))
 		.and(

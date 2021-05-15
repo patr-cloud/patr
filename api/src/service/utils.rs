@@ -5,14 +5,10 @@ use argon2::{
 	Version,
 };
 use hex::ToHex;
-use once_cell::sync::OnceCell;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
-use crate::{
-	db,
-	utils::{settings::Settings, Error},
-};
+use crate::{db, service, utils::Error};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -22,15 +18,6 @@ lazy_static::lazy_static! {
 		4,
 		Version::V0x13
 	).unwrap();
-}
-static APP_SETTINGS: OnceCell<Settings> = OnceCell::new();
-
-pub fn initialize(config: &Settings) {
-	let mut config = config.clone();
-	config.password_pepper = base64::encode(&config.password_pepper);
-	APP_SETTINGS
-		.set(config)
-		.expect("unable to set app settings")
 }
 
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
@@ -46,10 +33,7 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 	let salt = format!(
 		"{}{}",
-		APP_SETTINGS
-			.get()
-			.expect("unable to get app settings")
-			.password_pepper,
+		service::get_config().password_pepper,
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON

@@ -2148,6 +2148,16 @@
       "nullable": []
     }
   },
+  "8481a8656fc8c0114501d16c713f759c1fcd0e369909cc1b9835919eea905704": {
+    "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up ( username VARCHAR(100) PRIMARY KEY, account_type ENUM('personal', 'organisation') NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BINARY(16), backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT UNSIGNED NOT NULL, FOREIGN KEY(backup_email_domain_id) REFERENCES personal_domain(id), CONSTRAINT CHECK ( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT CHECK ( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "8659a1c8e68476e1dd39e11fcc5a07c18f488e8f7a0d8cc81c11a5cc8270d006": {
     "query": "SELECT * FROM organisation WHERE super_admin_id = ?;",
     "describe": {
@@ -2836,16 +2846,6 @@
       "columns": [],
       "parameters": {
         "Right": 10
-      },
-      "nullable": []
-    }
-  },
-  "a0d117b90884a00fa6cfffcf4748bddbb49c78de75637b9d6773d542e67b6db1": {
-    "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up ( username VARCHAR(100) PRIMARY KEY, account_type ENUM('personal', 'organisation') NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BINARY(16), backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT UNSIGNED NOT NULL, FOREIGN KEY(backup_email_domain_id) REFERENCES personal_domain(id), CONSTRAINT CHECK ( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT CHECK ( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }

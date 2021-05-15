@@ -202,10 +202,10 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		.await
 		.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
-			log::error!("Error joining user {}: {}", user.username, response);
-		} else {
+		if response["success"].as_bool().unwrap() {
 			log::info!("User `{}` created successfully", user.username);
+		} else {
+			log::error!("Error joining user {}: {}", user.username, response);
 		}
 	}
 
@@ -257,16 +257,16 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		.await
 		.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
+		if response["success"].as_bool().unwrap() {
+			log::info!(
+				"Organisation `{}` created successfully",
+				organisation.name
+			);
+		} else {
 			log::error!(
 				"Error creating organisation {}: {}",
 				organisation.name,
 				response
-			);
-		} else {
-			log::info!(
-				"Organisation `{}` created successfully",
-				organisation.name
 			);
 		}
 	}

@@ -105,10 +105,13 @@ async fn get_shutdown_signal() {
 }
 
 fn eve_error_handler(mut response: Response, error: Error) -> Response {
-	log::error!(
-		"Error occured while processing request: {}",
-		error.get_error().to_string()
-	);
+	let error_string = error.get_error().to_string();
+	if error_string != "entity not found" {
+		log::error!(
+			"Error occured while processing request: {}",
+			error.get_error().to_string()
+		);
+	}
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
 	let default_error = error!(SERVER_ERROR).to_string();
