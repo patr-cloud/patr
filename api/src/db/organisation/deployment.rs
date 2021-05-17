@@ -283,6 +283,8 @@ pub async fn initialize_deployer_post(
 	Ok(())
 }
 
+// TODO: plan_history, current_subscription, improvement of invoice view
+
 // function to add new repositorys
 
 pub async fn create_repository(
