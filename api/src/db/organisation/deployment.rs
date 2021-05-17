@@ -255,9 +255,9 @@ pub async fn initialize_deployer_post(
 					(
 						resources_used_by_user.terminated_time IS NULL
 					) THEN
-						true
-					ELSE
 						false
+					ELSE
+						true
 					END AS terminated_time,
 					/* not working time_used * deployment_machine_type.rate AS amount_to_be_paid,*/
 					resources_used_by_user.user_id, 
