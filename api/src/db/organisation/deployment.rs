@@ -5,7 +5,7 @@ use crate::{
 	query, query_as,
 };
 
-// added repositoryId and a constraint for external registries
+
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
@@ -28,7 +28,8 @@ pub async fn initialize_deployer_pre(
 			var_id BINARY(16) NOT NULL,
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id)
+			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id),
+			FOREIGN KEY (repository_id) REFERENCES docker_registry_repository(id),
 			CONSTRAINT CHECK (
 				(
 					registry = "docker.registry.vicara.co" AND
@@ -51,10 +52,8 @@ pub async fn initialize_deployer_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS docker_registry_repository (
 			id BINARY(16) PRIMARY KEY,
-			image_name VARCHAR(512) NOT NULL,
-			image_tag VARCHAR(255) NOT NULL,
 			organisation_id BINARY(16) NOT NULL,
-			name VARCHAR(255) NOT NULL,
+			name VARCHAR(512) NOT NULL,
 			UNIQUE(organisation_id, name)
 		);
 		"#
