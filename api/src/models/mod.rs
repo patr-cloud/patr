@@ -164,11 +164,11 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		)
 		.body(json!({
 			"username": user.username,
-			"email": user.backup_email,
 			"password": user.password,
 			"accountType": "personal",
 			"firstName": user.first_name,
-			"lastName": user.last_name
+			"lastName": user.last_name,
+			"backupEmail": user.backup_email
 		}))
 		.await
 		.unwrap()
