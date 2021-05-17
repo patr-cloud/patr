@@ -5,6 +5,7 @@ use crate::{
 	query, query_as,
 };
 
+// added repositoryId and a constraint for external registries
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
@@ -15,8 +16,9 @@ pub async fn initialize_deployer_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
-			image_name VARCHAR(512) NOT NULL,
-			image_tag VARCHAR(255) NOT NULL,
+			image_name VARCHAR(512),
+			image_tag VARCHAR(255),
+			repository_id BINARY(16),
 			domain_id BINARY(16) NOT NULL,
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
@@ -27,6 +29,18 @@ pub async fn initialize_deployer_pre(
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id)
+			CONSTRAINT CHECK (
+				(
+					registry = "docker.registry.vicara.co" AND
+					image_name IS NULL AND
+					repository_id IS NOT NULL
+				) OR
+				(
+					registry != "docker.registry.vicara.co" AND
+					image_name IS NOT NULL AND
+					repository_id IS NULL
+				)
+			)
 		);
 		"#
 	)
@@ -37,6 +51,8 @@ pub async fn initialize_deployer_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS docker_registry_repository (
 			id BINARY(16) PRIMARY KEY,
+			image_name VARCHAR(512) NOT NULL,
+			image_tag VARCHAR(255) NOT NULL,
 			organisation_id BINARY(16) NOT NULL,
 			name VARCHAR(255) NOT NULL,
 			UNIQUE(organisation_id, name)
