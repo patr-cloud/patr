@@ -55,6 +55,20 @@ pub struct Deployment {
 	pub path: String,
 }
 
+pub struct DeploymentConfig {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub registry: String,
+	pub image_name: String,
+	pub image_tag: String,
+	pub domain_id: Vec<u8>,
+	pub sub_domain: String,
+	pub path: String,
+	pub port_list: Vec<u8>,
+	pub env_variable_list: Vec<EnvVariable>,
+	pub volume_mount_list: Vec<VolumeMount>,
+}
+
 pub struct MachineType {
 	pub id: Vec<u8>,
 	pub name: String,
