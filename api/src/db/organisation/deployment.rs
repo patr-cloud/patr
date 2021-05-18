@@ -25,20 +25,7 @@ pub async fn initialize_deployer_pre(
 			/* TODO change port to port array, and take image from docker_registry_repository */
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id),
-			FOREIGN KEY (repository_id) REFERENCES docker_registry_repository(id),
-			CONSTRAINT CHECK (
-				(
-					registry = "docker.registry.vicara.co" AND
-					image_name IS NULL AND
-					repository_id IS NOT NULL
-				) OR
-				(
-					registry != "docker.registry.vicara.co" AND
-					image_name IS NOT NULL AND
-					repository_id IS NULL
-				)
-			)
+			UNIQUE(domain_id, sub_domain, path, volume_id, var_id)
 		);
 		"#
 	)
@@ -569,3 +556,12 @@ pub async fn insert_deployment_environment_variables(
 	.await
 	.map(|_| ())
 }
+
+// function to return list of ports
+// pub async fn get_ports_by_deployment_id(
+// 	connection: &mut Transaction<'_, MySql>,
+// 	deployment_id: &[u8],
+// ) -> Result<Vec<u8>, sqlx::Error> {
+// }
+// function to return list of env variables
+// function to return list of volume mounts
