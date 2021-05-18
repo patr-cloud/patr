@@ -31,6 +31,7 @@ def check_code():
         "name": "Check code",
         "image": "ubuntu:latest",
         "command": [
+            "echo $PATH",
             "apt update",
             "apt install -y curl",
             "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
