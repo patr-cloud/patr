@@ -8,7 +8,8 @@ use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
@@ -27,14 +28,14 @@ pub fn create_sub_app(
 }
 
 // TODO: change hard coded port value to deployment's given port.
-// use newly refactored table to first fetch port id and then get port number from it
-// NOTE: hardcoded port is 3090
+// use newly refactored table to first fetch port id and then get port number
+// from it NOTE: hardcoded port is 3090
 pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context.get_content_type().as_str()
-		!= "application/vnd.docker.distribution.events.v1+json"
+	if context.get_content_type().as_str() !=
+		"application/vnd.docker.distribution.events.v1+json"
 	{
 		Error::as_result()
 			.status(400)

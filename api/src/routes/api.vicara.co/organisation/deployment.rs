@@ -9,12 +9,19 @@ use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
-	models::db_mapping::{EnvVariable, VolumeMount},
-	models::rbac::{self, permissions},
+	db,
+	error,
+	models::{
+		db_mapping::{EnvVariable, VolumeMount},
+		rbac::{self, permissions},
+	},
 	pin_fn,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -437,8 +444,8 @@ async fn delete_deployment(
 	Ok(context)
 }
 
-// request body might contain all the config parameters, extract them and add them to machine type id|
-// response: `id` of the created machine type
+// request body might contain all the config parameters, extract them and add
+// them to machine type id| response: `id` of the created machine type
 async fn create_machine_type(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

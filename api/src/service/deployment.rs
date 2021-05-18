@@ -2,9 +2,9 @@ use eve_rs::AsError;
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	db, error,
-	models::db_mapping::DeploymentConfig,
-	models::rbac,
+	db,
+	error,
+	models::{db_mapping::DeploymentConfig, rbac},
 	utils::{validator, Error},
 };
 

@@ -2,9 +2,14 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{
-		Deployment, DockerRepository, EnvVariable, MachineType, VolumeMount,
+		Deployment,
+		DockerRepository,
+		EnvVariable,
+		MachineType,
+		VolumeMount,
 	},
-	query, query_as,
+	query,
+	query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -130,7 +135,10 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-	// CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id) );
+	// CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16)
+	// PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT
+	// UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id)
+	// );
 
 	query!(
 		r#"
