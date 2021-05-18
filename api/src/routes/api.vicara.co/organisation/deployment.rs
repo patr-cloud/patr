@@ -1,22 +1,26 @@
+use std::convert::TryInto;
+
 use api_macros::closure_as_pinned_box;
+use chrono::naive::serde;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
+	models::db_mapping::{EnvVariable, VolumeMount},
 	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
+
+// TODO: create an end point that spins up new container with upgraded path
+// storing config data, and spinning up according to it.
+// upgrade path
 
 pub fn create_sub_app(
 	app: &App,
@@ -153,9 +157,77 @@ pub fn create_sub_app(
 		],
 	);
 
+	// endpoint to create machine type
+	// Create a new deployment
+	app.post(
+		"/machine-type",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(create_machine_type)),
+		],
+	);
+
+	// Create a new deployment
+	app.post(
+		"/:deploymentId/config",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(create_deployment_config)),
+		],
+	);
+
 	app
 }
 
+// TODO: extract port number using `port_id`
 async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -179,7 +251,6 @@ async fn list_deployments(
 			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
 			request_keys::SUB_DOMAIN: deployment.sub_domain,
 			request_keys::PATH: deployment.path,
-			request_keys::PORT: deployment.port,
 		})
 	})
 	.collect::<Vec<_>>();
@@ -249,25 +320,6 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let port = body
-		.get(request_keys::NAME)
-		.map(|value| match value {
-			Value::Number(number) => {
-				if number.is_u64() {
-					Some(number.as_u64().unwrap() as u16)
-				} else if number.is_i64() {
-					Some(number.as_i64().unwrap() as u16)
-				} else {
-					None
-				}
-			}
-			Value::String(value) => value.parse::<u16>().ok(),
-			_ => None,
-		})
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	match registry {
 		"registry.docker.vicara.co" | "registry.hub.docker.com" => (),
 		_ => {
@@ -320,7 +372,6 @@ async fn create_deployment(
 		&domain_id,
 		sub_domain,
 		path,
-		port,
 	)
 	.await?;
 
@@ -331,6 +382,7 @@ async fn create_deployment(
 	Ok(context)
 }
 
+// TODO: get port from `port_id`
 async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -357,7 +409,6 @@ async fn get_deployment_info(
 			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
 			request_keys::SUB_DOMAIN: deployment.sub_domain,
 			request_keys::PATH: deployment.path,
-			request_keys::PORT: deployment.port,
 		}
 	}));
 	Ok(context)
@@ -383,5 +434,172 @@ async fn delete_deployment(
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
+	Ok(context)
+}
+
+// request body might contain all the config parameters, extract them and add them to machine type id|
+// response: `id` of the created machine type
+async fn create_machine_type(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let name = body
+		.get(request_keys::NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let cpu_count = body
+		.get(request_keys::CPU_COUNT)
+		.map(|value| value.as_u64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let memory_count = body
+		.get(request_keys::MEMORY_COUNT)
+		.map(|value| value.as_f64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// convert to f32
+	let memory_count = memory_count as f32;
+
+	let gpu_id = body
+		.get(request_keys::GPU_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let gpu_id = hex::decode(gpu_id).unwrap();
+
+	// check if the given machine type already exists
+	// if yes, get the id from the table. else, add a new machine type
+	let is_machine_availabel = db::get_deployment_machine_type(
+		context.get_mysql_connection(),
+		&name,
+		cpu_count.try_into().unwrap(),
+		memory_count,
+		&gpu_id,
+	)
+	.await?;
+
+	let machine_type_id: Vec<u8>;
+	if is_machine_availabel.is_none() {
+		machine_type_id =
+			db::generate_new_resource_id(context.get_mysql_connection())
+				.await?
+				.as_bytes()
+				.to_vec();
+	} else {
+		// machine is already available
+		machine_type_id = is_machine_availabel.unwrap().id;
+		context.json(json!({ "machineId": &machine_type_id }));
+		return Ok(context);
+	}
+
+	// function to crate a machine type
+	db::create_deployment_machine_type(
+		context.get_mysql_connection(),
+		&machine_type_id,
+		name,
+		cpu_count.try_into().unwrap(),
+		memory_count,
+		&gpu_id,
+	)
+	.await?;
+
+	context.json(json!({ "machineId": &machine_type_id }));
+	Ok(context)
+}
+
+// function to store port, env variables and mount path
+pub async fn create_deployment_config(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	// get array of ports
+	let ports = body
+		.get(request_keys::PORT)
+		.map(|values| values.as_array())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let variable_list = body
+		.get(request_keys::VARIABLE_LIST)
+		.map(|values| values.as_array())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let volume_list = body
+		.get(request_keys::VOLUME_LIST)
+		.map(|values| values.as_array())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// check if deployment exists.
+	let deployment = db::get_deployment_by_id(
+		context.get_mysql_connection(),
+		&deployment_id,
+	)
+	.await?;
+
+	if deployment.is_none() {
+		// throw resource does not exist
+		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
+		return Ok(context);
+	}
+
+	// iterate over port array and add it to port table
+	for port_value in ports {
+		let port = serde_json::from_value(port_value.to_owned())?;
+		db::insert_deployment_port(
+			context.get_mysql_connection(),
+			&deployment_id,
+			port,
+		)
+		.await?;
+	}
+	// iterate over variable array and add it to variable table
+	for variable_value in variable_list {
+		let variable: EnvVariable =
+			serde_json::from_value(variable_value.to_owned())?;
+		db::insert_deployment_environment_variables(
+			context.get_mysql_connection(),
+			&deployment_id,
+			&variable.name,
+			&variable.value,
+		)
+		.await?;
+	}
+	// iterate over volume array and add it to volume table
+	for volume_value in volume_list {
+		let volume: VolumeMount =
+			serde_json::from_value(volume_value.to_owned())?;
+		db::insert_deployment_volumes(
+			context.get_mysql_connection(),
+			&deployment_id,
+			&volume.name,
+			&volume.path,
+		)
+		.await?;
+	}
+
+	context.json(json!({
+		"success" : true,
+		"message" : "data added successfully"
+	}));
+
 	Ok(context)
 }

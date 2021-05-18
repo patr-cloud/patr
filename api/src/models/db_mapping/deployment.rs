@@ -53,5 +53,26 @@ pub struct Deployment {
 	pub domain_id: Vec<u8>,
 	pub sub_domain: String,
 	pub path: String,
-	pub port: u16,
+}
+
+pub struct MachineType {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub cpu_count: u8,
+	pub memory_count: f32,
+	pub gpu_type_id: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct EnvVariable {
+	pub name: String,
+	pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct VolumeMount {
+	pub name: String,
+	pub path: String,
 }
