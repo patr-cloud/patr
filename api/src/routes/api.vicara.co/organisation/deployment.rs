@@ -38,7 +38,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -71,7 +71,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -103,7 +103,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -135,7 +135,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -164,7 +164,7 @@ async fn list_deployments(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 	let deployments = db::get_deployments_for_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -282,7 +282,7 @@ async fn create_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let deployment = db::get_deployment_by_entry_point(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&domain_id,
 		sub_domain,
 		path,
@@ -295,11 +295,11 @@ async fn create_deployment(
 	}
 
 	let deployment_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_database_connection()).await?;
 	let deployment_id = deployment_id.as_bytes();
 
 	db::create_resource(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		deployment_id,
 		&format!("Deployment: {}", name),
 		rbac::RESOURCE_TYPES
@@ -311,7 +311,7 @@ async fn create_deployment(
 	)
 	.await?;
 	db::create_deployment(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		deployment_id,
 		name,
 		registry,
@@ -339,7 +339,7 @@ async fn get_deployment_info(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 	let deployment = db::get_deployment_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?
@@ -370,13 +370,16 @@ async fn delete_deployment(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(context.get_mysql_connection(), &deployment_id)
+	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::delete_deployment_by_id(context.get_mysql_connection(), &deployment_id)
-		.await?;
+	db::delete_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?;
 
 	// TODO stop and delete the container running the image, if it exists
 

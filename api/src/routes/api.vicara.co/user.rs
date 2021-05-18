@@ -99,7 +99,7 @@ async fn get_user_info_by_username(
 	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
 
 	let user_data =
-		db::get_user_by_username(context.get_mysql_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(400)
 			.body(error!(PROFILE_NOT_FOUND).to_string())?;
@@ -179,7 +179,7 @@ async fn update_user_info(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	db::update_user_data(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		first_name,
 		last_name,
 		dob,
@@ -209,7 +209,7 @@ async fn add_email_address(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::add_personal_email_to_be_verified_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		email_address,
 		&user_id,
 	)
@@ -243,7 +243,7 @@ async fn verify_email_address(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::verify_personal_email_address_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 		email_address,
 		otp,
@@ -262,7 +262,7 @@ async fn get_organisations_for_user(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let organisations = db::get_all_organisations_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
@@ -307,13 +307,13 @@ async fn change_password(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user =
-		db::get_user_by_user_id(context.get_mysql_connection(), &user_id)
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 
 	service::change_password_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 		password,
 		new_password,
@@ -328,7 +328,7 @@ async fn change_password(
 			"{}@{}",
 			backup_email_local,
 			db::get_personal_domain_by_id(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				&backup_email_domain_id
 			)
 			.await?

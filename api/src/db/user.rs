@@ -1,4 +1,4 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -13,10 +13,11 @@ use crate::{
 	},
 	query,
 	query_as,
+	Database,
 };
 
 pub async fn initialize_users_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
 	query!(
@@ -90,7 +91,7 @@ pub async fn initialize_users_pre(
 }
 
 pub async fn initialize_users_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -538,7 +539,7 @@ pub async fn initialize_users_post(
 }
 
 pub async fn get_user_by_username_or_email(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -577,7 +578,7 @@ pub async fn get_user_by_username_or_email(
 }
 
 pub async fn get_user_by_email(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -614,7 +615,7 @@ pub async fn get_user_by_email(
 }
 
 pub async fn get_user_by_phone_number(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	phone_number: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -648,7 +649,7 @@ pub async fn get_user_by_phone_number(
 }
 
 pub async fn get_user_by_username(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -670,7 +671,7 @@ pub async fn get_user_by_username(
 }
 
 pub async fn get_user_by_user_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Option<User>, sqlx::Error> {
 	let rows = query_as!(
@@ -692,7 +693,7 @@ pub async fn get_user_by_user_id(
 }
 
 pub async fn generate_new_user_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -733,7 +734,7 @@ pub async fn generate_new_user_id(
 }
 
 pub async fn get_god_user_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 ) -> Result<Option<Uuid>, sqlx::Error> {
 	let rows = query_as!(
 		User,
@@ -762,7 +763,7 @@ pub async fn get_god_user_id(
 }
 
 pub async fn set_personal_user_to_be_signed_up(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 	password: &str,
 	(first_name, last_name): (&str, &str),
@@ -849,7 +850,7 @@ pub async fn set_personal_user_to_be_signed_up(
 }
 
 pub async fn set_organisation_user_to_be_signed_up(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 	password: &str,
 	(first_name, last_name): (&str, &str),
@@ -946,7 +947,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 }
 
 pub async fn get_user_to_sign_up_by_username(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let rows = query_as!(
@@ -971,7 +972,7 @@ pub async fn get_user_to_sign_up_by_username(
 }
 
 pub async fn get_user_to_sign_up_by_organisation_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let rows = query_as!(
@@ -996,7 +997,7 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 }
 
 pub async fn add_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email_local: &str,
 	domain_id: &[u8],
 	user_id: &[u8],
@@ -1030,7 +1031,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 pub async fn get_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
@@ -1059,7 +1060,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 }
 
 pub async fn add_personal_email_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	email_local: &str,
 	domain_id: &[u8],
@@ -1082,7 +1083,7 @@ pub async fn add_personal_email_for_user(
 }
 
 pub async fn create_orphaned_personal_email(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email_local: &str,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -1103,7 +1104,7 @@ pub async fn create_orphaned_personal_email(
 }
 
 pub async fn set_user_for_personal_email(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	email_local: &str,
 	domain_id: &[u8],
@@ -1129,7 +1130,7 @@ pub async fn set_user_for_personal_email(
 }
 
 pub async fn add_organisation_email_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	email_local: &str,
 	domain_id: &[u8],
@@ -1152,7 +1153,7 @@ pub async fn add_organisation_email_for_user(
 }
 
 pub async fn delete_user_to_be_signed_up(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1171,7 +1172,7 @@ pub async fn delete_user_to_be_signed_up(
 }
 
 pub async fn create_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	username: &str,
 	password: &str,
@@ -1225,7 +1226,7 @@ pub async fn create_user(
 }
 
 pub async fn add_user_login(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 	refresh_token: &str,
 	token_expiry: u64,
@@ -1254,7 +1255,7 @@ pub async fn add_user_login(
 }
 
 pub async fn get_user_login(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let rows = query_as!(
@@ -1276,7 +1277,7 @@ pub async fn get_user_login(
 }
 
 pub async fn generate_new_login_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -1317,7 +1318,7 @@ pub async fn generate_new_login_id(
 }
 
 pub async fn get_all_logins_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Vec<UserLogin>, sqlx::Error> {
 	query_as!(
@@ -1337,7 +1338,7 @@ pub async fn get_all_logins_for_user(
 }
 
 pub async fn delete_user_login_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1355,7 +1356,7 @@ pub async fn delete_user_login_by_id(
 }
 
 pub async fn set_login_expiry(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 	last_activity: u64,
 	token_expiry: u64,
@@ -1381,7 +1382,7 @@ pub async fn set_login_expiry(
 }
 
 pub async fn update_user_data(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
 	dob: Option<&str>,
@@ -1421,7 +1422,7 @@ pub async fn update_user_data(
 }
 
 pub async fn update_user_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	password: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1444,7 +1445,7 @@ pub async fn update_user_password(
 }
 
 pub async fn add_password_reset_request(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	token_hash: &str,
 	token_expiry: u64,
@@ -1472,7 +1473,7 @@ pub async fn add_password_reset_request(
 }
 
 pub async fn get_password_reset_request_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
 	let rows = query_as!(
@@ -1494,7 +1495,7 @@ pub async fn get_password_reset_request_for_user(
 }
 
 pub async fn delete_password_reset_request_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -1513,7 +1514,7 @@ pub async fn delete_password_reset_request_for_user(
 }
 
 pub async fn get_all_organisations_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Vec<Organisation>, sqlx::Error> {
 	let organisations = query_as!(
@@ -1545,7 +1546,7 @@ pub async fn get_all_organisations_for_user(
 }
 
 pub async fn get_phone_country_by_country_code(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 	country_code: &str,
 ) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
 	let rows = query_as!(
@@ -1568,7 +1569,7 @@ pub async fn get_phone_country_by_country_code(
 
 #[allow(dead_code)]
 pub async fn add_phone_number_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	phone_country_code: &str,
 	phone_number: &str,
@@ -1590,7 +1591,7 @@ pub async fn add_phone_number_for_user(
 }
 
 pub async fn create_orphaned_phone_number(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1610,7 +1611,7 @@ pub async fn create_orphaned_phone_number(
 }
 
 pub async fn set_user_for_phone_number(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	phone_country_code: &str,
 	phone_number: &str,

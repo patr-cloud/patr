@@ -1,6 +1,6 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{models::db_mapping::Organisation, query, query_as};
+use crate::{models::db_mapping::Organisation, query, query_as, Database};
 
 mod application;
 mod deployment;
@@ -15,7 +15,7 @@ pub use drive::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing organisation tables");
 	query!(
@@ -43,7 +43,7 @@ pub async fn initialize_organisations_pre(
 }
 
 pub async fn initialize_organisations_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -65,7 +65,7 @@ pub async fn initialize_organisations_post(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
@@ -91,7 +91,7 @@ pub async fn create_organisation(
 }
 
 pub async fn get_organisation_info(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Option<Organisation>, sqlx::Error> {
 	let rows = query_as!(
@@ -117,7 +117,7 @@ pub async fn get_organisation_info(
 }
 
 pub async fn get_organisation_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	name: &str,
 ) -> Result<Option<Organisation>, sqlx::Error> {
 	let rows = query_as!(
@@ -143,7 +143,7 @@ pub async fn get_organisation_by_name(
 }
 
 pub async fn update_organisation_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {

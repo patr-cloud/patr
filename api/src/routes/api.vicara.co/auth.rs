@@ -96,7 +96,7 @@ async fn sign_in(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_data = db::get_user_by_username_or_email(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
@@ -112,7 +112,7 @@ async fn sign_in(
 
 	let config = context.get_state().config.clone();
 	let (jwt, login_id, refresh_token) = service::sign_in_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_data.id,
 		&config,
 	)
@@ -231,7 +231,7 @@ async fn sign_up(
 		.transpose()?;
 
 	let otp = service::create_user_join_request(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		username,
 		account_type,
 		password,
@@ -281,12 +281,12 @@ async fn sign_out(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	db::get_user_login(context.get_mysql_connection(), &login_id)
+	db::get_user_login(context.get_database_connection(), &login_id)
 		.await?
 		.status(200)
 		.body(error!(TOKEN_NOT_FOUND).to_string())?;
 
-	db::delete_user_login_by_id(context.get_mysql_connection(), &login_id)
+	db::delete_user_login_by_id(context.get_database_connection(), &login_id)
 		.await?;
 
 	context.json(json!({
@@ -318,7 +318,7 @@ async fn join(
 	let config = context.get_state().config.clone();
 
 	let result = service::join_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&config,
 		otp,
 		username,
@@ -377,7 +377,7 @@ async fn get_access_token(
 
 	let config = context.get_state().config.clone();
 	let user_login = service::get_user_login_for_login_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&login_id,
 	)
 	.await?;
@@ -391,7 +391,7 @@ async fn get_access_token(
 	}
 
 	let access_token = service::generate_access_token(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&config,
 		&user_login,
 	)
@@ -416,7 +416,7 @@ async fn is_email_valid(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let allowed = service::is_email_allowed(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		email_address,
 	)
 	.await?;
@@ -439,9 +439,11 @@ async fn is_username_valid(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let allowed =
-		service::is_username_allowed(context.get_mysql_connection(), username)
-			.await?;
+	let allowed = service::is_username_allowed(
+		context.get_database_connection(),
+		username,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -465,7 +467,7 @@ async fn forgot_password(
 
 	let config = context.get_state().config.clone();
 	let (otp, backup_email) =
-		service::forgot_password(context.get_mysql_connection(), user_id)
+		service::forgot_password(context.get_database_connection(), user_id)
 			.await?;
 
 	task::spawn_blocking(|| {
@@ -504,7 +506,7 @@ async fn reset_password(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user =
-		db::get_user_by_username(context.get_mysql_connection(), username)
+		db::get_user_by_username(context.get_database_connection(), username)
 			.await?
 			.status(400)
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
@@ -512,7 +514,7 @@ async fn reset_password(
 	let config = context.get_state().config.clone();
 
 	service::reset_password(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		new_password,
 		token,
 		&user.id,
@@ -526,7 +528,7 @@ async fn reset_password(
 			"{}@{}",
 			backup_email_local,
 			db::get_personal_domain_by_id(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				&backup_email_domain_id
 			)
 			.await?
@@ -691,7 +693,7 @@ async fn docker_registry_login(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_mysql_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(401)
 			.body(
@@ -801,7 +803,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_mysql_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(401)
 			.body(
@@ -817,7 +819,7 @@ async fn docker_registry_authenticate(
 
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 	let god_user = db::get_user_by_user_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		god_user_id.as_bytes(),
 	)
 	.await?
@@ -937,23 +939,25 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let org =
-		db::get_organisation_by_name(context.get_mysql_connection(), org_name)
-			.await?
-			.status(400)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::INVALID_REQUEST,
-						request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
+	let org = db::get_organisation_by_name(
+		context.get_database_connection(),
+		org_name,
+	)
+	.await?
+	.status(400)
+	.body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
 
 	let repository = db::get_repository_by_name(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&repo_name,
 		&org.id,
 	)
@@ -972,20 +976,22 @@ async fn docker_registry_authenticate(
 	)?;
 
 	// get repo id inorder to get resource details
-	let resource =
-		db::get_resource_by_id(context.get_mysql_connection(), &repository.id)
-			.await?
-			.status(500)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::SERVER_ERROR,
-						request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
+	let resource = db::get_resource_by_id(
+		context.get_database_connection(),
+		&repository.id,
+	)
+	.await?
+	.status(500)
+	.body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::SERVER_ERROR,
+				request_keys::MESSAGE: ErrorMessage::SERVER_ERROR,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
 
 	if resource.owner_id != org.id {
 		log::error!(
@@ -1008,7 +1014,7 @@ async fn docker_registry_authenticate(
 	// get all org roles for the user using the id
 	let user_id = &user.id;
 	let user_roles = db::get_all_organisation_roles_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user.id,
 	)
 	.await?;

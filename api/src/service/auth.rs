@@ -1,5 +1,5 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -19,10 +19,11 @@ use crate::{
 		validator,
 		Error,
 	},
+	Database,
 };
 
 pub async fn is_username_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(&username) {
@@ -37,7 +38,7 @@ pub async fn is_username_allowed(
 }
 
 pub async fn is_email_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(&email) {
@@ -53,7 +54,7 @@ pub async fn is_email_allowed(
 }
 
 pub async fn is_phone_number_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<bool, Error> {
@@ -80,7 +81,7 @@ pub async fn is_phone_number_allowed(
 
 /// Creates a new user to be signed up and returns an OTP
 pub async fn create_user_join_request(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 	account_type: ResourceOwnerType,
 	password: &str,
@@ -272,7 +273,7 @@ pub async fn create_user_join_request(
 // Creates a login in the db and returns it
 // loginId and refresh_token are separate things
 pub async fn create_login_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
@@ -306,7 +307,7 @@ pub async fn create_login_for_user(
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
 pub async fn sign_in_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	config: &Settings,
 ) -> Result<(String, Uuid, Uuid), Error> {
@@ -324,7 +325,7 @@ pub async fn sign_in_user(
 }
 
 pub async fn get_user_login_for_login_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
@@ -343,7 +344,7 @@ pub async fn get_user_login_for_login_id(
 }
 
 pub async fn generate_access_token(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
 	user_login: &UserLogin,
 ) -> Result<String, Error> {
@@ -388,7 +389,7 @@ pub async fn generate_access_token(
 // function to reset password
 // TODO: Remove otp from response
 pub async fn forgot_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &str,
 ) -> Result<(String, String), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
@@ -426,7 +427,7 @@ pub async fn forgot_password(
 }
 
 pub async fn reset_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],
@@ -459,7 +460,7 @@ pub async fn reset_password(
 }
 
 pub async fn join_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
 	otp: &str,
 	username: &str,

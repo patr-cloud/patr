@@ -1,9 +1,9 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::query;
+use crate::{query, Database};
 
 pub async fn initialize_drive_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing drive tables");
 	query!(
@@ -21,7 +21,7 @@ pub async fn initialize_drive_pre(
 }
 
 pub async fn initialize_drive_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

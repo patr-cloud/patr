@@ -1,13 +1,14 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
 	query,
 	query_as,
+	Database,
 };
 
 pub async fn initialize_deployer_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing deployment tables");
 	query!(
@@ -47,7 +48,7 @@ pub async fn initialize_deployer_pre(
 }
 
 pub async fn initialize_deployer_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -75,7 +76,7 @@ pub async fn initialize_deployer_post(
 // function to add new repositorys
 
 pub async fn create_repository(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 	resource_id: &[u8],
 	name: &str,
 	organisation_id: &[u8],
@@ -97,7 +98,7 @@ pub async fn create_repository(
 }
 
 pub async fn get_repository_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_name: &str,
 	organisation_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
@@ -123,7 +124,7 @@ pub async fn get_repository_by_name(
 }
 
 pub async fn get_docker_repositories_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -143,7 +144,7 @@ pub async fn get_docker_repositories_for_organisation(
 }
 
 pub async fn get_docker_repository_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -164,7 +165,7 @@ pub async fn get_docker_repository_by_id(
 }
 
 pub async fn delete_docker_repository_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -182,7 +183,7 @@ pub async fn delete_docker_repository_by_id(
 }
 
 pub async fn create_deployment(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	deployment_id: &[u8],
 	name: &str,
 	registry: &str,
@@ -216,7 +217,7 @@ pub async fn create_deployment(
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	image_name: &str,
 	image_tag: &str,
 	organisation_id: &[u8],
@@ -244,7 +245,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 }
 
 pub async fn get_deployments_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
@@ -266,7 +267,7 @@ pub async fn get_deployments_for_organisation(
 }
 
 pub async fn get_deployment_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	Ok(query_as!(
@@ -288,7 +289,7 @@ pub async fn get_deployment_by_id(
 }
 
 pub async fn get_deployment_by_entry_point(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	domain_id: &[u8],
 	sub_domain: &str,
 	path: &str,
@@ -316,7 +317,7 @@ pub async fn get_deployment_by_entry_point(
 }
 
 pub async fn delete_deployment_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

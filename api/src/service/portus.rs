@@ -2,10 +2,10 @@
 use std::{env, iter, path::PathBuf};
 
 use rand::{distributions::Alphanumeric, prelude::*};
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use tokio::fs;
 
-use crate::db;
+use crate::{db, Database};
 
 /// function to assign available port
 pub fn generate_password(length: usize) -> String {
@@ -74,7 +74,7 @@ pub fn get_server_ip_address() -> &'static str {
 
 /// function to get an available port.
 pub async fn assign_available_port(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<u32, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;

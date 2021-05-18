@@ -1,5 +1,5 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -7,10 +7,11 @@ use crate::{
 	error,
 	models::rbac,
 	utils::{get_current_time_millis, validator, Error},
+	Database,
 };
 
 pub async fn is_organisation_name_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_organisation_name_valid(&organisation_name) {
@@ -26,7 +27,7 @@ pub async fn is_organisation_name_allowed(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 	super_admin_id: &[u8],
 ) -> Result<Uuid, Error> {

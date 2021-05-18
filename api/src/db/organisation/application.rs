@@ -1,13 +1,14 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
 use crate::{
 	models::db_mapping::{Application, ApplicationVersion},
 	query,
 	query_as,
+	Database,
 };
 
 pub async fn initialize_application_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing application tables");
 	query!(
@@ -53,7 +54,7 @@ pub async fn initialize_application_pre(
 }
 
 pub async fn initialize_application_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -70,7 +71,7 @@ pub async fn initialize_application_post(
 
 /// function to fetch all the application names.
 pub async fn get_applications_in_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
 	query_as!(
@@ -95,7 +96,7 @@ pub async fn get_applications_in_organisation(
 
 /// add function to get application for specific given id
 pub async fn get_application_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	application_id: &[u8],
 ) -> Result<Option<Application>, sqlx::Error> {
 	let rows = query_as!(
@@ -120,7 +121,7 @@ pub async fn get_application_by_id(
 /// this query checks versions for an application from TABLE
 /// application_versions.
 pub async fn get_all_versions_for_application(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	appliction_id: &[u8],
 ) -> Result<Vec<ApplicationVersion>, sqlx::Error> {
 	let versions = query_as!(

@@ -94,7 +94,7 @@ pub async fn notification_handler(
 		let tag = target.tag;
 
 		let organisation = db::get_organisation_by_name(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			org_name,
 		)
 		.await?;
@@ -105,7 +105,7 @@ pub async fn notification_handler(
 
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_organisation(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				image_name,
 				&tag,
 				&organisation.id,
@@ -125,7 +125,7 @@ pub async fn notification_handler(
 
 			// Pull the latest image again
 			let god_user = db::get_user_by_user_id(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				rbac::GOD_USER_ID.get().unwrap().as_bytes(),
 			)
 			.await?

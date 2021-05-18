@@ -1,9 +1,9 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{models::db_mapping::PortusTunnel, query, query_as};
+use crate::{models::db_mapping::PortusTunnel, query, query_as, Database};
 
 pub async fn initialize_portus_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing Portus tables");
 	query!(
@@ -24,7 +24,7 @@ pub async fn initialize_portus_pre(
 }
 
 pub async fn initialize_portus_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -41,7 +41,7 @@ pub async fn initialize_portus_post(
 
 // query to add user information with port and container details
 pub async fn create_new_portus_tunnel(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	id: &[u8],
 	username: &str,
 	ssh_port: u32,
@@ -71,7 +71,7 @@ pub async fn create_new_portus_tunnel(
 
 // query to remove portus tunnel from database
 pub async fn delete_portus_tunnel(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	tunnel_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -90,7 +90,7 @@ pub async fn delete_portus_tunnel(
 
 /// function to check if container exists with the given tunnel name
 pub async fn get_portus_tunnel_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	tunnel_name: &str,
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
 	let rows = query_as!(
@@ -112,7 +112,7 @@ pub async fn get_portus_tunnel_by_name(
 }
 
 pub async fn get_portus_tunnel_by_tunnel_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	tunnel_id: &[u8],
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
 	let rows = query_as!(
@@ -134,7 +134,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 }
 
 pub async fn is_portus_port_available(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	port: u32,
 ) -> Result<bool, sqlx::Error> {
 	let rows = query!(
@@ -157,7 +157,7 @@ pub async fn is_portus_port_available(
 }
 
 pub async fn get_portus_tunnels_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<PortusTunnel>, sqlx::Error> {
 	query_as!(

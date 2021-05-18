@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use semver::Version;
+use sqlx::Transaction;
 
 use crate::{
 	app::App,
@@ -8,18 +9,18 @@ use crate::{
 	models::rbac,
 	query,
 	utils::constants,
+	Database,
 };
 
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
 
-	let tables = query!("SHOW TABLES;").fetch_all(&app.mysql).await?;
+	let tables = query!("SHOW TABLES;").fetch_all(&app.database).await?;
+	let mut transaction = app.database.begin().await?;
 
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");
-
-		let mut transaction = app.mysql.begin().await?;
 
 		// Create all tables
 		db::initialize_meta_pre(&mut transaction).await?;
@@ -32,10 +33,11 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		db::initialize_users_post(&mut transaction).await?;
 		db::initialize_meta_post(&mut transaction).await?;
 
-		transaction.commit().await?;
-
 		// Set the database schema version
-		set_database_version(app, &constants::DATABASE_VERSION).await?;
+		set_database_version(&mut transaction, &constants::DATABASE_VERSION)
+			.await?;
+
+		transaction.commit().await?;
 
 		log::info!("Database created fresh");
 		Ok(())
@@ -57,7 +59,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				migrate_database(app, version).await?;
+				migrate_database(&mut transaction, version).await?;
 			}
 			Ordering::Equal => {
 				log::info!("Database already in the latest version. No migration required.");
@@ -66,7 +68,6 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 
 		// Initialize data
 		// If a god UUID already exists, set it
-		let mut transaction = app.mysql.begin().await?;
 
 		let god_uuid = db::get_god_user_id(&mut transaction).await?;
 		if let Some(uuid) = god_uuid {
@@ -92,7 +93,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 }
 
 async fn migrate_database(
-	app: &App,
+	connection: &mut Transaction<'_, Database>,
 	db_version: Version,
 ) -> Result<(), sqlx::Error> {
 	let migrations = vec!["0.0.0"];
@@ -114,7 +115,7 @@ async fn migrate_database(
 		}
 	}
 
-	set_database_version(app, &constants::DATABASE_VERSION).await?;
+	set_database_version(connection, &constants::DATABASE_VERSION).await?;
 
 	Ok(())
 }

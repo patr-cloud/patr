@@ -9,28 +9,25 @@ pub use meta_data::*;
 pub use organisation::*;
 pub use rbac::*;
 use redis::{aio::MultiplexedConnection, Client, RedisError};
-use sqlx::{
-	mysql::{MySqlConnectOptions, MySqlPoolOptions},
-	MySqlPool,
-};
+use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
 use tokio::task;
 pub use user::*;
 
-use crate::utils::settings::Settings;
+use crate::{utils::settings::Settings, Database};
 
-pub async fn create_mysql_connection(
+pub async fn create_database_connection(
 	config: &Settings,
-) -> Result<MySqlPool, sqlx::Error> {
+) -> Result<Pool<Database>, sqlx::Error> {
 	log::trace!("Creating database connection pool...");
-	MySqlPoolOptions::new()
-		.max_connections(config.mysql.connection_limit)
+	PoolOptions::<Database>::new()
+		.max_connections(config.database.connection_limit)
 		.connect_with(
-			MySqlConnectOptions::new()
-				.username(&config.mysql.user)
-				.password(&config.mysql.password)
-				.host(&config.mysql.host)
-				.port(config.mysql.port)
-				.database(&config.mysql.database),
+			<<Database as Db>::Connection as Connection>::Options::new()
+				.username(&config.database.user)
+				.password(&config.database.password)
+				.host(&config.database.host)
+				.port(config.database.port)
+				.database(&config.database.database),
 		)
 		.await
 }

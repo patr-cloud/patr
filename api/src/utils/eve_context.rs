@@ -11,9 +11,9 @@ use eve_rs::{
 	Response,
 };
 use serde_json::Value;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{app::App, models::AccessTokenData};
+use crate::{app::App, models::AccessTokenData, Database};
 
 pub struct EveContext {
 	request: Request,
@@ -21,7 +21,7 @@ pub struct EveContext {
 	body_object: Value,
 	render_register: Option<Arc<Handlebars<'static>>>,
 	state: App,
-	db_connection: Option<Transaction<'static, MySql>>,
+	db_connection: Option<Transaction<'static, Database>>,
 	access_token_data: Option<AccessTokenData>,
 }
 
@@ -47,17 +47,19 @@ impl EveContext {
 		&mut self.state
 	}
 
-	pub fn get_mysql_connection(&mut self) -> &mut Transaction<'static, MySql> {
+	pub fn get_database_connection(
+		&mut self,
+	) -> &mut Transaction<'static, Database> {
 		self.db_connection.as_mut().unwrap()
 	}
 
-	pub fn take_mysql_connection(&mut self) -> Transaction<'_, MySql> {
+	pub fn take_database_connection(&mut self) -> Transaction<'_, Database> {
 		self.db_connection.take().unwrap()
 	}
 
-	pub fn set_mysql_connection(
+	pub fn set_database_connection(
 		&mut self,
-		connection: Transaction<'static, MySql>,
+		connection: Transaction<'static, Database>,
 	) {
 		self.db_connection = Some(connection);
 	}
