@@ -429,6 +429,57 @@
       "nullable": []
     }
   },
+  "19bfabefa6db2a6127ec6aca7dbd01d1bce199b02429294db3f30b34d5f75cf9": {
+    "query": "SELECT * FROM volume WHERE deployment_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "deployment_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4099
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "1a896b4c2994e2cf150f5d0cdac886e958d8f12f1b48b876851449783c7ee73a": {
     "query": "SELECT id, name, is_verified as `is_verified: bool` FROM domain WHERE id = ?",
     "describe": {
@@ -597,6 +648,16 @@
         false,
         false
       ]
+    }
+  },
+  "22bbdd962db9877ec9f3422d0c64de7059f1cc4313a0c12871572f812505d96c": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, var_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "23842286e5e76685178fe086624b3afa5206535e5abded414a4fe27e58decedf": {
@@ -2709,6 +2770,31 @@
       "nullable": []
     }
   },
+  "9c2c5a2495a32cede6b380077fb6abdea9677e28ad154d3e262a6606d2f972cc": {
+    "query": "SELECT port FROM port WHERE deployment_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "port",
+          "type_info": {
+            "type": "Short",
+            "flags": {
+              "bits": 4131
+            },
+            "char_set": 63,
+            "max_size": 5
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
     "query": "CREATE TABLE IF NOT EXISTS user_email_address ( type ENUM('personal', 'organisation') NOT NULL, /* Personal email address */ email_address VARCHAR(320), /* Organisation email address */ email_local VARCHAR(160), domain_id BINARY(16), user_id BINARY(16) NOT NULL, UNIQUE(email_address, email_local, domain_id, user_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES domain(id), CONSTRAINT CHECK ( ( type = 'personal' AND ( email_address IS NOT NULL AND email_local IS NULL AND domain_id IS NULL ) ) OR ( type = 'organisation' AND ( email_address IS NULL AND email_local IS NOT NULL AND domain_id IS NOT NULL ) ) ) );",
     "describe": {
@@ -4178,16 +4264,6 @@
       ]
     }
   },
-  "d8b606666167878ae1e0493b743499d19fc646d24faddc147ac0adc346f6c912": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, volume_id, var_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
     "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
     "describe": {
@@ -4879,6 +4955,57 @@
         "Right": 6
       },
       "nullable": []
+    }
+  },
+  "ff8200dbf35c11fc054a316e39e4ce74398ae128888357a48d3dd2f70092cca6": {
+    "query": "SELECT * FROM environment_variable WHERE deployment_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "deployment_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4099
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "value",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 200
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   }
 }

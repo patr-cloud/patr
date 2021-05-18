@@ -1,7 +1,9 @@
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::{Deployment, DockerRepository, MachineType},
+	models::db_mapping::{
+		Deployment, DockerRepository, EnvVariable, MachineType, VolumeMount,
+	},
 	query, query_as,
 };
 
@@ -23,7 +25,7 @@ pub async fn initialize_deployer_pre(
 			/* TODO change port to port array, and take image from docker_registry_repository */
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path, volume_id, var_id)
+			UNIQUE(domain_id, sub_domain, path, var_id)
 		);
 		"#
 	)
@@ -556,10 +558,64 @@ pub async fn insert_deployment_environment_variables(
 }
 
 // function to return list of ports
-// pub async fn get_ports_by_deployment_id(
-// 	connection: &mut Transaction<'_, MySql>,
-// 	deployment_id: &[u8],
-// ) -> Result<Vec<u8>, sqlx::Error> {
-// }
+pub async fn get_ports_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<u8>, sqlx::Error> {
+	Ok(query!(
+		r#"
+			SELECT
+				port
+			FROM
+				port
+			WHERE
+				deployment_id = ?;
+			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await?
+	.into_iter()
+	.map(|val| val.port as u8)
+	.collect())
+}
 // function to return list of env variables
+pub async fn get_variables_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<EnvVariable>, sqlx::Error> {
+	query_as!(
+		EnvVariable,
+		r#"
+			SELECT
+				*
+			FROM
+				environment_variable
+			WHERE
+				deployment_id = ?;
+			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await
+}
 // function to return list of volume mounts
+pub async fn get_volume_mounts_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<VolumeMount>, sqlx::Error> {
+	query_as!(
+		VolumeMount,
+		r#"
+			SELECT
+				*
+			FROM
+				volume
+			WHERE
+				deployment_id = ?;
+			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await
+}
