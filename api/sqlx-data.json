@@ -129,25 +129,12 @@
             "char_set": 224,
             "max_size": 1020
           }
-        },
-        {
-          "ordinal": 8,
-          "name": "port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
         }
       ],
       "parameters": {
         "Right": 3
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -165,16 +152,6 @@
       "columns": [],
       "parameters": {
         "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "0b0d653d0d214444420792b341cdcda4c8b88e2313719d213d643a4cfb058880": {
-    "query": "CREATE TABLE IF NOT EXISTS volume( id BINARY(16), name VARCHAR(50) NOT NULL, path VARCHAR(255) NOT NULL, PRIMARY KEY (id, name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -632,6 +609,16 @@
       "nullable": []
     }
   },
+  "246ee1e9b8da9d39d131b46818e7c082bc65aed09ec4322b88af42dcc58eac19": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 8
+      },
+      "nullable": []
+    }
+  },
   "270607c5a5464d2dc9a24c4b1fb63dffd37a83d24f80fa5529655e82d48063d2": {
     "query": "SELECT deployment.* FROM deployment, resource WHERE deployment.id = resource.id AND image_name = ? AND image_tag = ? AND resource.owner_id = ?;",
     "describe": {
@@ -731,25 +718,12 @@
             "char_set": 224,
             "max_size": 1020
           }
-        },
-        {
-          "ordinal": 8,
-          "name": "port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
         }
       ],
       "parameters": {
         "Right": 3
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -883,12 +857,12 @@
       "nullable": []
     }
   },
-  "2eb30ef67eae8db451ac5abf742c2755bef9e95a6de6ff5f1800d662e3a4b554": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL, gpu_type_id BINARY(16) NOT NULL, UNIQUE(cpu_count, memory_count, gpu_type_id), FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id) );",
+  "31b102825bff8e68ccaf75e2c8c629994be2742d428f3669c4d9334b1c968900": {
+    "query": "INSERT INTO deployment_machine_type VALUES (?, ?, ?, ?, ?);",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 0
+        "Right": 5
       },
       "nullable": []
     }
@@ -1515,22 +1489,89 @@
       "nullable": []
     }
   },
+  "4841c5cb549827b8140b44a2daa88c2a9360b1bb20a6a4042639e857401a5cab": {
+    "query": "SELECT * FROM deployment_machine_type WHERE name = ? AND cpu_count = ? AND memory_count = ? AND gpu_type_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4101
+            },
+            "char_set": 224,
+            "max_size": 400
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "cpu_count",
+          "type_info": {
+            "type": "Tiny",
+            "flags": {
+              "bits": 4137
+            },
+            "char_set": 63,
+            "max_size": 3
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "memory_count",
+          "type_info": {
+            "type": "Float",
+            "flags": {
+              "bits": 4129
+            },
+            "char_set": 63,
+            "max_size": 12
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "gpu_type_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4233
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 4
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "48abb42c3402fb054e4b5afa35f35b891c56ba49b91c0bbdacc4e7e306706efb": {
     "query": "DELETE FROM role WHERE id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "4954871520e1227f2f0dd0685d82d3527725bd70e47b252a043f2ac4b3809712": {
-    "query": "CREATE TABLE IF NOT EXISTS environment_variable ( id BINARY(16), name VARCHAR(50) NOT NULL, value VARCHAR(50) NOT NULL, PRIMARY KEY (id, name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -1561,6 +1602,16 @@
       "columns": [],
       "parameters": {
         "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "5c0221593fa8841dddb354a50559be25e55281ee78e440032c9ed6c2c175c313": {
+    "query": "CREATE TABLE IF NOT EXISTS port ( deployment_id BINARY(16), port SMALLINT UNSIGNED NOT NULL, PRIMARY KEY (deployment_id, port), FOREIGN KEY (deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -1774,18 +1825,6 @@
             "char_set": 224,
             "max_size": 1020
           }
-        },
-        {
-          "ordinal": 8,
-          "name": "port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
         }
       ],
       "parameters": {
@@ -1799,9 +1838,18 @@
         false,
         false,
         false,
-        false,
         false
       ]
+    }
+  },
+  "6500a3e644b2015b4c665160304aa020dedd9dab0df9ffaa167c232b584c0c87": {
+    "query": "INSERT INTO port VALUES (?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
     }
   },
   "6c36509fe5189947f266e4bc0258dfe1805f4c49da5fb0b22e0bc00d07eeb08c": {
@@ -2118,6 +2166,16 @@
       "nullable": []
     }
   },
+  "74b03882d0e37e84b4065f131ada2973b678f5efd67e96f1889f5802ee562448": {
+    "query": "CREATE TABLE IF NOT EXISTS environment_variable ( deployment_id BINARY(16), name VARCHAR(50) NOT NULL, value VARCHAR(50) NOT NULL, PRIMARY KEY (deployment_id, name), FOREIGN KEY (deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "79b16b905cb201a6e81c6190120324df27fc4372ac663acac6909db3e2a329b9": {
     "query": "INSERT INTO resource VALUES (?, ?, ?, ?);",
     "describe": {
@@ -2293,22 +2351,22 @@
       "nullable": []
     }
   },
+  "814ed4048b9b58837112b1ecfab89c0dd8cd3778c27e2d40331b173de407976f": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count TINYINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL, gpu_type_id BINARY(16) NOT NULL, UNIQUE(cpu_count, memory_count, gpu_type_id), FOREIGN KEY(gpu_type_id) REFERENCES deployment_gpu_type(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "84071fcc2602af52bf7155e3c4b20c14d3213e1fb5f8aee16f281ac5dfa77e05": {
     "query": "DELETE FROM deployment WHERE id = ?;",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "850a36848cb2c9dba15ecb0647d0c1dbcd9ea92e953ae97d592d117a8589c5d9": {
-    "query": "CREATE TABLE IF NOT EXISTS port ( id BINARY(16), port SMALLINT UNSIGNED NOT NULL, PRIMARY KEY (id, port) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -2457,6 +2515,16 @@
       "columns": [],
       "parameters": {
         "Right": 6
+      },
+      "nullable": []
+    }
+  },
+  "8daf25ec2dd97190522c1a9165cd88b96de1c6b54e82c0ef4ed3a0d43c25f0ee": {
+    "query": "CREATE TABLE IF NOT EXISTS default_deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count TINYINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL, gpu_type_id BINARY(16) NOT NULL, UNIQUE(cpu_count, memory_count, gpu_type_id), FOREIGN KEY(gpu_type_id) REFERENCES deployment_gpu_type(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -2647,6 +2715,16 @@
       "columns": [],
       "parameters": {
         "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "a46071743472b5c1dbd6109805106da70ba30a6e53c1032b66ce983623ffe929": {
+    "query": "INSERT INTO environment_variable VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
       },
       "nullable": []
     }
@@ -2995,16 +3073,6 @@
       "columns": [],
       "parameters": {
         "Right": 3
-      },
-      "nullable": []
-    }
-  },
-  "b64ab4b9565cf4bef2909b874aa3a6a741e2dc6495a7d06d96d580fdfd7f5362": {
-    "query": "CREATE TABLE IF NOT EXISTS default_deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL, gpu_type_id BINARY(16) NOT NULL, UNIQUE(cpu_count, memory_count, gpu_type_id), FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
       },
       "nullable": []
     }
@@ -3620,6 +3688,16 @@
       "nullable": []
     }
   },
+  "cdc42f8ad84e206cd4ad8bff62b0406a51566cfcef5aa246d7413dddba0f369e": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "cebce49fbac635b253575a841bae02bca13a53323b655259c2bea4312f9860fc": {
     "query": "UPDATE domain SET is_verified = FALSE WHERE id = ?;",
     "describe": {
@@ -3749,25 +3827,12 @@
             "char_set": 224,
             "max_size": 1020
           }
-        },
-        {
-          "ordinal": 8,
-          "name": "port",
-          "type_info": {
-            "type": "Short",
-            "flags": {
-              "bits": 4129
-            },
-            "char_set": 63,
-            "max_size": 5
-          }
         }
       ],
       "parameters": {
         "Right": 1
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -4123,16 +4188,6 @@
       ]
     }
   },
-  "d96261f4b6ee15ce075ca8e64067fd6d3edf4c6359b1746fec6c1acf46ac1826": {
-    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 9
-      },
-      "nullable": []
-    }
-  },
   "e11db95f5c17f7aab93d6e1c9a8688c6620478927417860d7df315090e74a6ee": {
     "query": "INSERT INTO domain VALUES (?, ?, FALSE);",
     "describe": {
@@ -4470,6 +4525,16 @@
       ]
     }
   },
+  "ed4c22beb026fdc992a243bb94c956087c897c4d6a9df4d64bd4f78e9893d53a": {
+    "query": "CREATE TABLE IF NOT EXISTS volume( deployment_id BINARY(16), name VARCHAR(50) NOT NULL, path VARCHAR(255) NOT NULL, PRIMARY KEY (deployment_id, name), UNIQUE (deployment_id, path), FOREIGN KEY (deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "edddc427c2d59da76499dd64cc93166619332951071305d67df5b2cb056f442d": {
     "query": "ALTER TABLE file ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -4635,22 +4700,22 @@
       ]
     }
   },
-  "f6f6fa8e2fbe509bfaac477e4a79ac791b60551d84adb9c1fe882edcce9074c1": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ port_id SMALLINT UNSIGNED NOT NULL, volume_id BINARY(16) NOT NULL, var_id BINARY(16) NOT NULL, persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "f8ef316753f63e41cb293ae11a2a4bf8d5367c2b4fdb790726d5d881afc49395": {
     "query": "INSERT INTO permission VALUES (?, ?, NULL)",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "fab95daa2642065003a0382839ef86d28dd7d5a7dd22950f62600ef1db445431": {
+    "query": "INSERT INTO volume VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
       },
       "nullable": []
     }

@@ -127,4 +127,9 @@ pub mod request_keys {
 	pub const SUB_DOMAIN: &str = "subDomain";
 	pub const PATH: &str = "path";
 	pub const PORT: &str = "port";
+	pub const CPU_COUNT: &str = "cpuCount";
+	pub const MEMORY_COUNT: &str = "memoryCount";
+	pub const GPU_ID: &str = "gpuId";
+	pub const VARIABLE_LIST: &str = "variableList";
+	pub const VOLUME_LIST: &str = "volumeList";
 }

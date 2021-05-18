@@ -1,7 +1,7 @@
 use sqlx::{MySql, Transaction};
 
 use crate::{
-	models::db_mapping::{Deployment, DockerRepository},
+	models::db_mapping::{Deployment, DockerRepository, MachineType},
 	query, query_as,
 };
 
@@ -23,9 +23,6 @@ pub async fn initialize_deployer_pre(
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
-			port_id SMALLINT UNSIGNED NOT NULL,
-			volume_id BINARY(16) NOT NULL,
-			var_id BINARY(16) NOT NULL,
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE(domain_id, sub_domain, path, port_id, volume_id, var_id),
@@ -61,12 +58,14 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	// change this table to deployment id and port as unique
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS port (
-			id BINARY(16),
+			deployment_id BINARY(16),
 			port SMALLINT UNSIGNED NOT NULL,
-			PRIMARY KEY (id, port)
+			PRIMARY KEY (deployment_id, port),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
 		);
 		"#
 	)
@@ -76,10 +75,11 @@ pub async fn initialize_deployer_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS environment_variable (
-			id BINARY(16),
+			deployment_id BINARY(16),
 			name VARCHAR(50) NOT NULL,
 			value VARCHAR(50) NOT NULL,
-			PRIMARY KEY (id, name)
+			PRIMARY KEY (deployment_id, name),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
 		);
 		"#
 	)
@@ -89,21 +89,17 @@ pub async fn initialize_deployer_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS volume(
-			id BINARY(16),
+			deployment_id BINARY(16),
 			name VARCHAR(50) NOT NULL,
 			path VARCHAR(255) NOT NULL,
-			PRIMARY KEY (id, name)
+			PRIMARY KEY (deployment_id, name),
+			UNIQUE (deployment_id, path),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
 		);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
-
-	// TODO: create table for maching type and  upgrade path
-	// id, graphic card, cpu, memory
-
-	// upgrade path
-	// deployment id,
 
 	query!(
 		r#"
@@ -121,11 +117,11 @@ pub async fn initialize_deployer_pre(
 		CREATE TABLE IF NOT EXISTS default_deployment_machine_type (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) NOT NULL UNIQUE,
-			cpu_count SMALLINT UNSIGNED NOT NULL,
+			cpu_count TINYINT UNSIGNED NOT NULL,
 			memory_count FLOAT UNSIGNED NOT NULL,
 			gpu_type_id BINARY(16) NOT NULL,
 			UNIQUE(cpu_count, memory_count, gpu_type_id),
-			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+			FOREIGN KEY(gpu_type_id) REFERENCES deployment_gpu_type(id)
 		);
 		"#
 	)
@@ -137,16 +133,17 @@ pub async fn initialize_deployer_pre(
 		CREATE TABLE IF NOT EXISTS deployment_machine_type (
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(100) NOT NULL UNIQUE,
-			cpu_count SMALLINT UNSIGNED NOT NULL,
+			cpu_count TINYINT UNSIGNED NOT NULL,
 			memory_count FLOAT UNSIGNED NOT NULL,
 			gpu_type_id BINARY(16) NOT NULL,
 			UNIQUE(cpu_count, memory_count, gpu_type_id),
-			FOREIGN KEY(gpu_type_id) REFERENCES deployer_gpu_type(id)
+			FOREIGN KEY(gpu_type_id) REFERENCES deployment_gpu_type(id)
 		);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
+	// CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id) );
 
 	query!(
 		r#"
@@ -164,11 +161,6 @@ pub async fn initialize_deployer_pre(
 
 	Ok(())
 }
-
-// CREATE TABLE IF NOT EXISTS deployment_upgrade_path (deployment_id BINARY(16)
-// NOT NULL, machine_type_id BINARY(16) NOT NULL,PRIMARY KEY (deployment_id,
-// machine_type_id),FOREIGN KEY(deployment_id) REFERENCES deployment(id),FOREIGN
-// KEY(machine_type_id) REFERENCES deployment_machine_type(id));
 
 pub async fn initialize_deployer_post(
 	transaction: &mut Transaction<'_, MySql>,
@@ -315,14 +307,13 @@ pub async fn create_deployment(
 	domain_id: &[u8],
 	sub_domain: &str,
 	path: &str,
-	port: u16,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?, ?, ?, ?);
 		"#,
 		deployment_id,
 		name,
@@ -331,8 +322,7 @@ pub async fn create_deployment(
 		image_tag,
 		domain_id,
 		sub_domain,
-		path,
-		port
+		path
 	)
 	.execute(connection)
 	.await
@@ -451,6 +441,129 @@ pub async fn delete_deployment_by_id(
 			id = ?;
 		"#,
 		deployment_id
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn create_deployment_machine_type(
+	connection: &mut Transaction<'_, MySql>,
+	machine_type_id: &[u8],
+	name: &str,
+	cpu_count: u8,
+	memory_count: f32,
+	gpu_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		deployment_machine_type
+	VALUES
+		(?, ?, ?, ?, ?);
+	"#,
+		machine_type_id,
+		name,
+		cpu_count,
+		memory_count,
+		gpu_id,
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+//  here we will not need id as the aim is to see
+// if a mcchine type with the given config already exists
+pub async fn get_deployment_machine_type(
+	connection: &mut Transaction<'_, MySql>,
+	name: &str,
+	cpu_count: u8,
+	memory_count: f32,
+	gpu_id: &[u8],
+) -> Result<Option<MachineType>, sqlx::Error> {
+	Ok(query_as!(
+		MachineType,
+		r#"
+			SELECT
+				*
+			FROM
+				deployment_machine_type
+			WHERE
+				name = ? AND
+				cpu_count = ? AND
+				memory_count = ? AND
+				gpu_type_id = ?;
+			"#,
+		name,
+		cpu_count,
+		memory_count,
+		gpu_id
+	)
+	.fetch_all(connection)
+	.await?
+	.into_iter()
+	.next())
+}
+
+pub async fn insert_deployment_port(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	port: u16,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		port
+	VALUES
+		(?, ?);
+	"#,
+		deployment_id,
+		port
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn insert_deployment_volumes(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	name: &str,
+	path: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		volume
+	VALUES
+		(?, ?, ?);
+	"#,
+		deployment_id,
+		name,
+		path
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn insert_deployment_environment_variables(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	name: &str,
+	value: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		environment_variable
+	VALUES
+		(?, ?, ?);
+	"#,
+		deployment_id,
+		name,
+		value
 	)
 	.execute(connection)
 	.await

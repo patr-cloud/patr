@@ -8,8 +8,7 @@ use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
@@ -27,12 +26,15 @@ pub fn create_sub_app(
 	sub_app
 }
 
+// TODO: change hard coded port value to deployment's given port.
+// use newly refactored table to first fetch port id and then get port number from it
+// NOTE: hardcoded port is 3090
 pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context.get_content_type().as_str() !=
-		"application/vnd.docker.distribution.events.v1+json"
+	if context.get_content_type().as_str()
+		!= "application/vnd.docker.distribution.events.v1+json"
 	{
 		Error::as_result()
 			.status(400)
@@ -179,7 +181,7 @@ pub async fn notification_handler(
 					.host_config
 					.port_bindings
 					.unwrap_or_default()
-					.get(&format!("{}/tcp", deployment.port))
+					.get(&format!("{}/tcp", 3090))
 					.unwrap_or_else(|| &empty_vec)
 					.get(0)
 					.unwrap_or_else(|| &empty_map)
@@ -218,7 +220,7 @@ pub async fn notification_handler(
 					&ContainerOptions::builder(&full_image_name)
 						.name(&container_name)
 						.privileged(false)
-						.expose(deployment.port as u32, "tcp", port)
+						.expose(3090 as u32, "tcp", port)
 						.build(),
 				)
 				.await;
@@ -241,3 +243,5 @@ pub async fn notification_handler(
 
 	Ok(context)
 }
+
+// TODO: write a refactored version of notification handler.
