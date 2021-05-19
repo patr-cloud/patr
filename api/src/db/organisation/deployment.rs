@@ -20,7 +20,8 @@ pub async fn initialize_deployer_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
-			image_name VARCHAR(512) NOT NULL,
+			repositoryId BINARY(16),
+			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			domain_id BINARY(16) NOT NULL,
 			sub_domain VARCHAR(255) NOT NULL,
@@ -28,7 +29,20 @@ pub async fn initialize_deployer_pre(
 			/* TODO change port to port array, and take image from docker_registry_repository */
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path)
+			UNIQUE (domain_id, sub_domain, path),
+			UNIQUE (repositoryId, image_name, image_tag),
+			CONSTRAINT CHECK (
+				(
+					registry = "docker.registry.vicara.co" AND
+					image_name IS NULL AND
+					repository_id IS NOT NULL
+				) OR
+				(
+					registry != "docker.registry.vicara.co" AND
+					image_name IS NOT NULL AND
+					repository_id IS NULL
+				)
+			)
 		);
 		"#
 	)
@@ -152,16 +166,27 @@ pub async fn initialize_deployer_post(
 		r#"
 		ALTER TABLE deployment
 		ADD CONSTRAINT
-		FOREIGN KEY(id) REFERENCES resource(id);
+		FOREIGN KEY (id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT
+		FOREIGN KEY (repositoryId) REFERENCES docker_registry_repository(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
 		ADD CONSTRAINT
-		FOREIGN KEY(id) REFERENCES resource(id);
+		FOREIGN KEY (id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -180,7 +205,7 @@ pub async fn create_repository(
 		INSERT INTO 
 			docker_registry_repository
 		VALUES
-			(?,?,?);
+			(?, ?, ?);
 		"#,
 		resource_id,
 		organisation_id,
@@ -286,7 +311,7 @@ pub async fn create_deployment(
 		INSERT INTO
 			deployment
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?);
+			(?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');
 		"#,
 		deployment_id,
 		name,
@@ -311,7 +336,14 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.domain_id,
+			deployment.sub_domain,
+			deployment.path
 		FROM
 			deployment,
             resource
@@ -336,7 +368,14 @@ pub async fn get_deployments_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.domain_id,
+			deployment.sub_domain,
+			deployment.path
 		FROM
 			deployment,
 			resource
@@ -357,7 +396,14 @@ pub async fn get_deployment_by_id(
 		Deployment,
 		r#"
 			SELECT
-				*
+				id,
+				name,
+				registry,
+				image_name,
+				image_tag,
+				domain_id,
+				sub_domain,
+				path
 			FROM
 				deployment
 			WHERE
@@ -380,7 +426,14 @@ pub async fn get_deployment_by_entry_point(
 		Deployment,
 		r#"
 			SELECT
-				*
+				id,
+				name,
+				registry,
+				image_name,
+				image_tag,
+				domain_id,
+				sub_domain,
+				path
 			FROM
 				deployment
 			WHERE

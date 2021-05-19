@@ -33,7 +33,7 @@ pub async fn get_deployment_config_by_id(
 		id: deployment.id,
 		name: deployment.name,
 		registry: deployment.registry,
-		image_name: deployment.image_name,
+		image_name: deployment.image_name.unwrap(),
 		image_tag: deployment.image_tag,
 		domain_id: deployment.domain_id,
 		sub_domain: deployment.sub_domain,
