@@ -30,7 +30,7 @@ pub async fn initialize_deployer_pre(
 			/* TODO change port to port array, and take image from docker_registry_repository */
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path, var_id)
+			UNIQUE(domain_id, sub_domain, path)
 		);
 		"#
 	)

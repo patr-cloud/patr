@@ -650,16 +650,6 @@
       ]
     }
   },
-  "22bbdd962db9877ec9f3422d0c64de7059f1cc4313a0c12871572f812505d96c": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path, var_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "23842286e5e76685178fe086624b3afa5206535e5abded414a4fe27e58decedf": {
     "query": "CREATE TABLE IF NOT EXISTS role ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BINARY(16) NOT NULL, UNIQUE(name, owner_id), FOREIGN KEY(owner_id) REFERENCES organisation(id) );",
     "describe": {
@@ -2793,6 +2783,16 @@
       "nullable": [
         false
       ]
+    }
+  },
+  "a1c700015a65dfa910889a79bc3f78f505d8a3984a6a4c941a9d31d8826e387b": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE(domain_id, sub_domain, path) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
