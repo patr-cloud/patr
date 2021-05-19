@@ -1,5 +1,4 @@
 use sqlx::{MySql, Transaction};
-
 use crate::{
 	models::db_mapping::{
 		Deployment,
@@ -11,8 +10,6 @@ use crate::{
 	query,
 	query_as,
 };
-
-
 pub async fn initialize_deployer_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
@@ -23,35 +20,32 @@ pub async fn initialize_deployer_pre(
 			id BINARY(16) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
-			image_name VARCHAR(512),
-			image_tag VARCHAR(255),
-			repository_id BINARY(16),
+			image_name VARCHAR(512) NOT NULL,
+			image_tag VARCHAR(255) NOT NULL,
 			domain_id BINARY(16) NOT NULL,
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE(domain_id, sub_domain, path, var_id)
+			UNIQUE(domain_id, sub_domain, path)
 		);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS docker_registry_repository (
 			id BINARY(16) PRIMARY KEY,
 			organisation_id BINARY(16) NOT NULL,
-			name VARCHAR(512) NOT NULL,
+			name VARCHAR(255) NOT NULL,
 			UNIQUE(organisation_id, name)
 		);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	// change this table to deployment id and port as unique
 	query!(
 		r#"
@@ -65,7 +59,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS environment_variable (
@@ -79,7 +72,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS volume(
@@ -94,7 +86,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_gpu_type (
@@ -105,7 +96,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS default_deployment_machine_type (
@@ -121,7 +111,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_machine_type (
@@ -141,7 +130,6 @@ pub async fn initialize_deployer_pre(
 	// PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT
 	// UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id)
 	// );
-
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_upgrade_path (
@@ -155,10 +143,8 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	Ok(())
 }
-
 pub async fn initialize_deployer_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
@@ -171,7 +157,6 @@ pub async fn initialize_deployer_post(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
@@ -181,12 +166,9 @@ pub async fn initialize_deployer_post(
 	)
 	.execute(&mut *transaction)
 	.await?;
-
 	Ok(())
 }
-
 // function to add new repositorys
-
 pub async fn create_repository(
 	transaction: &mut Transaction<'_, MySql>,
 	resource_id: &[u8],
@@ -208,7 +190,6 @@ pub async fn create_repository(
 	.await?;
 	Ok(())
 }
-
 pub async fn get_repository_by_name(
 	connection: &mut Transaction<'_, MySql>,
 	repository_name: &str,
@@ -231,10 +212,8 @@ pub async fn get_repository_by_name(
 	)
 	.fetch_all(connection)
 	.await?;
-
 	Ok(rows.into_iter().next())
 }
-
 pub async fn get_docker_repositories_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
@@ -254,7 +233,6 @@ pub async fn get_docker_repositories_for_organisation(
 	.fetch_all(connection)
 	.await
 }
-
 pub async fn get_docker_repository_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	repository_id: &[u8],
@@ -275,7 +253,6 @@ pub async fn get_docker_repository_by_id(
 	.await
 	.map(|repos| repos.into_iter().next())
 }
-
 pub async fn delete_docker_repository_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	repository_id: &[u8],
@@ -293,7 +270,6 @@ pub async fn delete_docker_repository_by_id(
 	.await
 	.map(|_| ())
 }
-
 pub async fn create_deployment(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -325,7 +301,6 @@ pub async fn create_deployment(
 	.await
 	.map(|_| ())
 }
-
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	image_name: &str,
@@ -353,7 +328,6 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	.fetch_all(connection)
 	.await
 }
-
 pub async fn get_deployments_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
 	organisation_id: &[u8],
@@ -375,7 +349,6 @@ pub async fn get_deployments_for_organisation(
 	.fetch_all(connection)
 	.await
 }
-
 pub async fn get_deployment_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -397,7 +370,6 @@ pub async fn get_deployment_by_id(
 	.into_iter()
 	.next())
 }
-
 pub async fn get_deployment_by_entry_point(
 	connection: &mut Transaction<'_, MySql>,
 	domain_id: &[u8],
@@ -425,7 +397,6 @@ pub async fn get_deployment_by_entry_point(
 	.into_iter()
 	.next())
 }
-
 pub async fn delete_deployment_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -443,7 +414,6 @@ pub async fn delete_deployment_by_id(
 	.await
 	.map(|_| ())
 }
-
 pub async fn create_deployment_machine_type(
 	connection: &mut Transaction<'_, MySql>,
 	machine_type_id: &[u8],
@@ -469,7 +439,6 @@ pub async fn create_deployment_machine_type(
 	.await
 	.map(|_| ())
 }
-
 //  here we will not need id as the aim is to see
 // if a mcchine type with the given config already exists
 pub async fn get_deployment_machine_type(
@@ -502,7 +471,6 @@ pub async fn get_deployment_machine_type(
 	.into_iter()
 	.next())
 }
-
 pub async fn insert_deployment_port(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -522,7 +490,6 @@ pub async fn insert_deployment_port(
 	.await
 	.map(|_| ())
 }
-
 pub async fn insert_deployment_volumes(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -544,7 +511,6 @@ pub async fn insert_deployment_volumes(
 	.await
 	.map(|_| ())
 }
-
 pub async fn insert_deployment_environment_variables(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -566,7 +532,6 @@ pub async fn insert_deployment_environment_variables(
 	.await
 	.map(|_| ())
 }
-
 // function to return list of ports
 pub async fn get_ports_for_deployment(
 	connection: &mut Transaction<'_, MySql>,
