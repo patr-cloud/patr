@@ -80,6 +80,7 @@ pub struct MachineType {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default, rename_all = "camelCase")]
 pub struct EnvVariable {
+	pub deployment_id: Vec<u8>,
 	pub name: String,
 	pub value: String,
 }
@@ -87,6 +88,7 @@ pub struct EnvVariable {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default, rename_all = "camelCase")]
 pub struct VolumeMount {
+	pub deployment_id: Vec<u8>,
 	pub name: String,
 	pub path: String,
 }
