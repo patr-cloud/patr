@@ -69,6 +69,13 @@ pub struct DeploymentConfig {
 	pub volume_mount_list: Vec<VolumeMount>,
 }
 
+pub struct EntryPoint {
+	pub deployment_id: Vec<u8>,
+	pub domain_id: Vec<u8>,
+	pub sub_domain: String,
+	pub path: String,
+}
+
 pub struct MachineType {
 	pub id: Vec<u8>,
 	pub name: String,

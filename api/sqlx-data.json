@@ -1520,6 +1520,16 @@
       ]
     }
   },
+  "42a95239376fa672a6955a2893243fadc3e113bf8a84c2b08d671c2d84a228e5": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "4381c233c7c762f95acd31726c1afab88e926b797bc3ab22e22228a3b2ac96e4": {
     "query": "DELETE FROM domain WHERE id = ?;",
     "describe": {
@@ -2053,6 +2063,16 @@
         true,
         false
       ]
+    }
+  },
+  "6f333b387555fd76571085d41e95502ec1f2b2c2bf4718d86b88939c81a1faab": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment_entry_point( deployment_id BINARY(16) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL DEFAULT \"@\", path VARCHAR(255) NOT NULL DEFAULT \"/\", PRIMARY KEY (deployment_id, domain_id, sub_domain), UNIQUE (domain_id, sub_domain, path), FOREIGN KEY(domain_id) REFERENCES domain(id), FOREIGN KEY(deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "6fa2444bb63e13a9590e092c01ba865ce21d7b2c4a5b434272bda49d9c2ea729": {
@@ -3542,16 +3562,6 @@
         false,
         true
       ]
-    }
-  },
-  "c608babe8d9a17a2bc44413b4db529d897e6a827a82c7216301681600e065490": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ UNIQUE(domain_id, sub_domain, path) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "c6fd001247a7d00ff678efaf200f373293cedc44182733e05af9f7c743b6ab3d": {

@@ -18,12 +18,7 @@ pub async fn initialize_deployer_pre(
 			name VARCHAR(255) NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
 			image_name VARCHAR(512) NOT NULL,
-			image_tag VARCHAR(255) NOT NULL,
-			domain_id BINARY(16) NOT NULL,
-			sub_domain VARCHAR(255) NOT NULL,
-			path VARCHAR(255) NOT NULL DEFAULT "/",
-			/* TODO change port to port array, and take image from docker_registry_repository */
-			UNIQUE(domain_id, sub_domain, path)
+			image_tag VARCHAR(255) NOT NULL
 		);
 		"#
 	)
@@ -37,6 +32,23 @@ pub async fn initialize_deployer_pre(
 			organisation_id BINARY(16) NOT NULL,
 			name VARCHAR(255) NOT NULL,
 			UNIQUE(organisation_id, name)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS deployment_entry_point(
+			deployment_id BINARY(16) NOT NULL,
+			domain_id  BINARY(16) NOT NULL,
+			sub_domain VARCHAR(255) NOT NULL DEFAULT "@",
+			path VARCHAR(255) NOT NULL DEFAULT "/",
+			PRIMARY KEY (deployment_id, domain_id, sub_domain),
+			UNIQUE (domain_id, sub_domain, path),
+			FOREIGN KEY(domain_id) REFERENCES domain(id),
+			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
 		);
 		"#
 	)
@@ -128,10 +140,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-	// CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16)
-	// PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT
-	// UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id)
-	// );
 
 	query!(
 		r#"
