@@ -48,11 +48,14 @@ pub struct Deployment {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub registry: String,
-	pub image_name: String,
+	pub repository_id: Option<Vec<u8>>,
+	pub image_name: Option<String>,
 	pub image_tag: String,
 	pub domain_id: Vec<u8>,
 	pub sub_domain: String,
 	pub path: String,
+	pub persistence: bool,
+	pub datacenter: String
 }
 
 pub struct DeploymentConfig {

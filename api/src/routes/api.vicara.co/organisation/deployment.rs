@@ -12,7 +12,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{EnvVariable, VolumeMount},
+		db_mapping::{DockerRepository, EnvVariable, VolumeMount},
 		rbac::{self, permissions},
 	},
 	pin_fn,
@@ -335,6 +335,22 @@ async fn create_deployment(
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 		}
 	}
+	let mut check_repository: Option<DockerRepository> = None;
+
+	if registry == "registry.docker.vicara.co" {
+		check_repository = db::get_repository_by_name(
+			context.get_mysql_connection(),
+			image_name,
+			&organisation_id,
+		)
+		.await?;
+
+		if check_repository.is_none() {
+			Error::as_result()
+				.status(404)
+				.body(error!(REPOSITORY_NOT_FOUND).to_string())?;
+		}
+	}
 
 	let domain_id = hex::decode(domain_id)
 		.status(400)
@@ -369,18 +385,39 @@ async fn create_deployment(
 		&organisation_id,
 	)
 	.await?;
-	db::create_deployment(
-		context.get_mysql_connection(),
-		deployment_id,
-		name,
-		registry,
-		image_name,
-		image_tag,
-		&domain_id,
-		sub_domain,
-		path,
-	)
-	.await?;
+
+	let repository_id;
+	if check_repository.is_some() {
+		let check_repository = check_repository.unwrap();
+		repository_id = check_repository.id;
+		db::create_deployment(
+			context.get_mysql_connection(),
+			deployment_id,
+			name,
+			registry,
+			Some(repository_id),
+			"NULL",
+			image_tag,
+			&domain_id,
+			sub_domain,
+			path,
+		)
+		.await?;
+	} else {
+		db::create_deployment(
+			context.get_mysql_connection(),
+			deployment_id,
+			name,
+			registry,
+			None,
+			image_name,
+			image_tag,
+			&domain_id,
+			sub_domain,
+			path,
+		)
+		.await?;
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

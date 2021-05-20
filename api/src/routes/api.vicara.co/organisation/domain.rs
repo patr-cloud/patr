@@ -77,7 +77,6 @@ pub fn create_sub_app(
 						&organisation_id,
 					)
 					.await?;
-
 					if resource.is_none() {
 						context
 							.status(404)

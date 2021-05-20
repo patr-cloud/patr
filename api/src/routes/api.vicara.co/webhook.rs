@@ -91,7 +91,7 @@ pub async fn notification_handler(
 				&organisation.id,
 			)
 			.await?;
-
+		// temporary change
 		for deployment in deployments {
 			let container_name =
 				format!("deployment-{}", deployment.id.encode_hex::<String>());
@@ -99,7 +99,7 @@ pub async fn notification_handler(
 				"{}/{}/{}@{}",
 				config.docker_registry.registry_url,
 				org_name,
-				deployment.image_name,
+				deployment.image_name.unwrap(),
 				target.digest
 			);
 
