@@ -50,6 +50,16 @@
       "nullable": []
     }
   },
+  "0c143d1b65885f33d2308f57447f8c5fa2c89a9c918b404e7b34b2fdd08bf072": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repositoryId BINARY(16), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE (domain_id, sub_domain, path), CONSTRAINT CHECK ( ( registry = \"docker.registry.vicara.co\" AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != \"docker.registry.vicara.co\" AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "0cd0154b524b65dee7e5d7f2de9f8e21a2047b94ac9f02a2ecb66b3400c9dcbd": {
     "query": "SELECT * FROM password_reset_request WHERE user_id = ?;",
     "describe": {
@@ -2773,16 +2783,6 @@
       "nullable": [
         false
       ]
-    }
-  },
-  "9c5cc437b741bd48bc6cc7f7440daabb540eefebba4f94466e20791c299b7f60": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repositoryId BINARY(16), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE (domain_id, sub_domain, path), UNIQUE (repositoryId, image_name, image_tag), CONSTRAINT CHECK ( ( registry = \"docker.registry.vicara.co\" AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != \"docker.registry.vicara.co\" AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "a1d8ebe89166353d292660ee1aca82cc2883ec9ccb72d84204025ee2c1e73379": {

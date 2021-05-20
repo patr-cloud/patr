@@ -30,7 +30,6 @@ pub async fn initialize_deployer_pre(
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE (domain_id, sub_domain, path),
-			UNIQUE (repositoryId, image_name, image_tag),
 			CONSTRAINT CHECK (
 				(
 					registry = "docker.registry.vicara.co" AND
