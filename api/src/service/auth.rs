@@ -163,12 +163,7 @@ pub async fn create_user_join_request(
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	}
-	let backup_email_domain_id =
-		if let Some(ref domain_id) = backup_email_domain_id {
-			Some(domain_id.as_slice())
-		} else {
-			None
-		};
+	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
@@ -527,30 +522,11 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	let backup_email_local =
-		if let Some(ref value) = user_data.backup_email_local {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_email_domain_id =
-		if let Some(ref value) = user_data.backup_email_domain_id {
-			Some(value.as_slice())
-		} else {
-			None
-		};
+	let backup_email_local = user_data.backup_email_local.as_deref();
+	let backup_email_domain_id = user_data.backup_email_domain_id.as_deref();
 	let backup_phone_country_code =
-		if let Some(ref value) = user_data.backup_phone_country_code {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_phone_number =
-		if let Some(ref value) = user_data.backup_phone_number {
-			Some(value.as_str())
-		} else {
-			None
-		};
+		user_data.backup_phone_country_code.as_deref();
+	let backup_phone_number = user_data.backup_phone_number.as_deref();
 	db::begin_deferred_constraints(connection).await?;
 
 	if let Some((email_local, domain_id)) = user_data

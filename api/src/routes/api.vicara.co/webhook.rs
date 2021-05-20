@@ -205,9 +205,9 @@ pub async fn notification_handler(
 					.get(&format!("{}/tcp", deployment.port))
 					.unwrap_or(&empty_vec)
 					.get(0)
-					.unwrap_or_else(|| &empty_map)
+					.unwrap_or(&empty_map)
 					.get("HostPort")
-					.unwrap_or_else(|| &empty_string)
+					.unwrap_or(&empty_string)
 					.parse()
 					.unwrap_or(0);
 			} else {

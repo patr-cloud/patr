@@ -184,11 +184,7 @@ async fn update_user_info(
 		.transpose()?;
 
 	let dob_string = dob.map(|value| value.to_string());
-	let dob_str = if let Some(ref dob) = dob_string {
-		Some(dob.as_str())
-	} else {
-		None
-	};
+	let dob_str = dob_string.as_deref();
 
 	// If no parameters to update
 	first_name

@@ -626,11 +626,7 @@ pub async fn get_user_by_username_or_email(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: if let Some(dob) = row.dob {
-			Some(dob as u64)
-		} else {
-			None
-		},
+		dob: row.dob.map(|dob| dob as u64),
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
@@ -681,11 +677,7 @@ pub async fn get_user_by_email(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: if let Some(dob) = row.dob {
-			Some(dob as u64)
-		} else {
-			None
-		},
+		dob: row.dob.map(|dob| dob as u64),
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
@@ -734,11 +726,7 @@ pub async fn get_user_by_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: if let Some(dob) = row.dob {
-			Some(dob as u64)
-		} else {
-			None
-		},
+		dob: row.dob.map(|dob| dob as u64),
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
@@ -775,11 +763,7 @@ pub async fn get_user_by_username(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: if let Some(dob) = row.dob {
-			Some(dob as u64)
-		} else {
-			None
-		},
+		dob: row.dob.map(|dob| dob as u64),
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
@@ -816,11 +800,7 @@ pub async fn get_user_by_user_id(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		dob: if let Some(dob) = row.dob {
-			Some(dob as u64)
-		} else {
-			None
-		},
+		dob: row.dob.map(|dob| dob as u64),
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
