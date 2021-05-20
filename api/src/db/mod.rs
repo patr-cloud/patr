@@ -17,7 +17,7 @@ pub use self::{
 	rbac::*,
 	user::*,
 };
-use crate::{utils::settings::Settings, Database, query};
+use crate::{query, utils::settings::Settings, Database};
 
 pub async fn create_database_connection(
 	config: &Settings,
@@ -78,7 +78,7 @@ pub async fn begin_deferred_constraints(
 }
 
 pub async fn end_deferred_constraints(
-	connection: &mut Transaction<'_, Database>
+	connection: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

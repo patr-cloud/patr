@@ -1,13 +1,20 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error, pin_fn, service,
+	db,
+	error,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, mailer, Error, ErrorData, EveContext,
+		constants::request_keys,
+		mailer,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -175,7 +182,7 @@ async fn update_user_info(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
-	
+
 	let dob_string = dob.map(|value| value.to_string());
 	let dob_str = if let Some(ref dob) = dob_string {
 		Some(dob.as_str())

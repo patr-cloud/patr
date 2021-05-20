@@ -119,7 +119,7 @@ pub async fn get_portus_tunnel_by_name(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64
+		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -149,7 +149,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64
+		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -180,7 +180,7 @@ pub async fn is_portus_port_available(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64
+		created: row.created as u64,
 	});
 
 	Ok(rows.next().is_none())
@@ -214,7 +214,7 @@ pub async fn get_portus_tunnels_for_organisation(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64
+		created: row.created as u64,
 	})
 	.collect();
 

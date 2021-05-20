@@ -2,7 +2,9 @@ use sqlx::Transaction;
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query, query_as, Database,
+	query,
+	query_as,
+	Database,
 };
 
 pub async fn initialize_deployer_pre(
