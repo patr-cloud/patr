@@ -1,6 +1,6 @@
 use sqlx::Transaction;
 
-use crate::{models::db_mapping::PortusTunnel, query, query_as, Database};
+use crate::{models::db_mapping::PortusTunnel, query, Database};
 
 pub async fn initialize_portus_pre(
 	transaction: &mut Transaction<'_, Database>,
@@ -50,8 +50,8 @@ pub async fn create_new_portus_tunnel(
 	connection: &mut Transaction<'_, Database>,
 	id: &[u8],
 	username: &str,
-	ssh_port: u32,
-	exposed_port: u32,
+	ssh_port: u16,
+	exposed_port: u16,
 	tunnel_name: &str,
 	created: u64,
 ) -> Result<(), sqlx::Error> {
@@ -60,14 +60,14 @@ pub async fn create_new_portus_tunnel(
 		INSERT INTO
 			portus_tunnel
 		VALUES
-			(?, ?, ?, ?, ?, ?);
+			($1, $2, $3, $4, $5, $6);
 		"#,
 		id,
 		username,
-		ssh_port,
-		exposed_port,
+		ssh_port as i32,
+		exposed_port as i32,
 		tunnel_name,
-		created,
+		created as i64,
 	)
 	.execute(connection)
 	.await?;
@@ -85,7 +85,7 @@ pub async fn delete_portus_tunnel(
 		DELETE FROM
 			portus_tunnel
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		tunnel_id
 	)
@@ -99,75 +99,98 @@ pub async fn get_portus_tunnel_by_name(
 	connection: &mut Transaction<'_, Database>,
 	tunnel_name: &str,
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
-	let rows = query_as!(
-		PortusTunnel,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			name = ?;
+			name = $1;
 		"#,
 		tunnel_name
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+		created: row.created as u64
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_portus_tunnel_by_tunnel_id(
 	connection: &mut Transaction<'_, Database>,
 	tunnel_id: &[u8],
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
-	let rows = query_as!(
-		PortusTunnel,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		tunnel_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+		created: row.created as u64
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn is_portus_port_available(
 	connection: &mut Transaction<'_, Database>,
-	port: u32,
+	port: u16,
 ) -> Result<bool, sqlx::Error> {
-	let rows = query!(
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			ssh_port = ? OR
-			exposed_port = ?;
+			ssh_port = $1 OR
+			exposed_port = $1;
 		"#,
-		port,
-		port
+		port as i32
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+		created: row.created as u64
+	});
 
-	Ok(rows.is_empty())
+	Ok(rows.next().is_none())
 }
 
 pub async fn get_portus_tunnels_for_organisation(
 	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<PortusTunnel>, sqlx::Error> {
-	query_as!(
-		PortusTunnel,
+	let rows = query!(
 		r#"
 		SELECT 
 			portus_tunnel.*
@@ -178,10 +201,22 @@ pub async fn get_portus_tunnels_for_organisation(
 		ON 
 			resource.id = portus_tunnel.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+		created: row.created as u64
+	})
+	.collect();
+
+	Ok(rows)
 }

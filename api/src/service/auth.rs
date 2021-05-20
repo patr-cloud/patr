@@ -551,14 +551,16 @@ pub async fn join_user(
 		} else {
 			None
 		};
+	db::begin_deferred_constraints(connection).await?;
 
 	if let Some((email_local, domain_id)) = user_data
 		.backup_email_local
 		.as_ref()
 		.zip(user_data.backup_email_domain_id.as_ref())
 	{
-		db::create_orphaned_personal_email(
+		db::add_personal_email_for_user(
 			connection,
+			user_id,
 			&email_local,
 			&domain_id,
 		)
@@ -568,8 +570,9 @@ pub async fn join_user(
 		.as_ref()
 		.zip(user_data.backup_phone_number.as_ref())
 	{
-		db::create_orphaned_phone_number(
+		db::add_phone_number_for_user(
 			connection,
+			user_id,
 			&phone_country_code,
 			&phone_number,
 		)
@@ -597,19 +600,14 @@ pub async fn join_user(
 		backup_phone_number,
 	)
 	.await?;
-
-	let account_type = user_data
-		.account_type
-		.parse::<ResourceOwnerType>()
-		.ok()
-		.unwrap();
+	db::end_deferred_constraints(connection).await?;
 
 	let welcome_email_to; // Send the "welcome to vicara" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
 	// For an organisation, create the organisation and domain
-	if let ResourceOwnerType::Organisation = account_type {
+	if let ResourceOwnerType::Organisation = user_data.account_type {
 		let organisation_id = service::create_organisation(
 			connection,
 			&user_data.organisation_name.unwrap(),
@@ -727,40 +725,6 @@ pub async fn join_user(
 		user_id,
 	)
 	.await?;
-
-	if let Some((email_local, domain_id)) = user_data
-		.backup_email_local
-		.as_ref()
-		.zip(user_data.backup_email_domain_id.as_ref())
-	{
-		db::set_user_for_personal_email(
-			connection,
-			user_id,
-			&email_local,
-			&domain_id,
-		)
-		.await?;
-	} else if let Some((phone_country_code, phone_number)) = user_data
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user_data.backup_phone_number.as_ref())
-	{
-		db::set_user_for_phone_number(
-			connection,
-			user_id,
-			&phone_country_code,
-			&phone_number,
-		)
-		.await?;
-	} else {
-		log::error!(
-			"Got neither backup email, nor backup phone number while signing up user: {}",
-			user_data.username
-		);
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 

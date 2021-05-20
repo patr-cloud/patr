@@ -361,8 +361,8 @@ async fn create(
 					format!("USER_PASSWORD={}", &generated_password).as_str(),
 					format!("USER_NAME={}", &username).as_str(),
 				])
-				.expose(image_ssh_port, "tcp", ssh_port)
-				.expose(exposed_port, "tcp", exposed_port)
+				.expose(image_ssh_port.into(), "tcp", ssh_port.into())
+				.expose(exposed_port.into(), "tcp", exposed_port.into())
 				.build(),
 		)
 		.await?;

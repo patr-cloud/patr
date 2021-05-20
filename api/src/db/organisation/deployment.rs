@@ -2,9 +2,7 @@ use sqlx::Transaction;
 
 use crate::{
 	models::db_mapping::{Deployment, DockerRepository},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_deployer_pre(
@@ -223,7 +221,7 @@ pub async fn create_deployment(
 		domain_id,
 		sub_domain,
 		path,
-		port
+		port as i32
 	)
 	.execute(connection)
 	.await
@@ -236,34 +234,47 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	image_tag: &str,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	query_as!(
-		Deployment,
+	let rows = query!(
 		r#"
 		SELECT
 			deployment.*
 		FROM
 			deployment,
-            resource
+			resource
 		WHERE
-            deployment.id = resource.id AND
+			deployment.id = resource.id AND
 			image_name = $1 AND
 			image_tag = $2 AND
-            resource.owner_id = $3;
+			resource.owner_id = $3;
 		"#,
 		image_name,
 		image_tag,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| Deployment {
+		id: row.id,
+		name: row.name,
+		registry: row.registry,
+		image_name: row.image_name,
+		image_tag: row.image_tag,
+		domain_id: row.domain_id,
+		sub_domain: row.sub_domain,
+		path: row.path,
+		port: row.port as u16,
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_deployments_for_organisation(
 	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	query_as!(
-		Deployment,
+	let rows = query!(
 		r#"
 		SELECT
 			deployment.*
@@ -277,15 +288,29 @@ pub async fn get_deployments_for_organisation(
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| Deployment {
+		id: row.id,
+		name: row.name,
+		registry: row.registry,
+		image_name: row.image_name,
+		image_tag: row.image_tag,
+		domain_id: row.domain_id,
+		sub_domain: row.sub_domain,
+		path: row.path,
+		port: row.port as u16,
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_deployment_by_id(
 	connection: &mut Transaction<'_, Database>,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let rows = query_as!(
-		Deployment,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
@@ -297,9 +322,21 @@ pub async fn get_deployment_by_id(
 		deployment_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Deployment {
+		id: row.id,
+		name: row.name,
+		registry: row.registry,
+		image_name: row.image_name,
+		image_tag: row.image_tag,
+		domain_id: row.domain_id,
+		sub_domain: row.sub_domain,
+		path: row.path,
+		port: row.port as u16,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_deployment_by_entry_point(
@@ -308,26 +345,37 @@ pub async fn get_deployment_by_entry_point(
 	sub_domain: &str,
 	path: &str,
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let rows = query_as!(
-		Deployment,
+	let mut rows = query!(
 		r#"
-			SELECT
-				*
-			FROM
-				deployment
-			WHERE
-				domain_id = $1 AND
-				sub_domain = $2 AND
-				path = $3;
-			"#,
+		SELECT
+			*
+		FROM
+			deployment
+		WHERE
+			domain_id = $1 AND
+			sub_domain = $2 AND
+			path = $3;
+		"#,
 		domain_id,
 		sub_domain,
 		path
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Deployment {
+		id: row.id,
+		name: row.name,
+		registry: row.registry,
+		image_name: row.image_name,
+		image_tag: row.image_tag,
+		domain_id: row.domain_id,
+		sub_domain: row.sub_domain,
+		path: row.path,
+		port: row.port as u16,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn delete_deployment_by_id(

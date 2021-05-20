@@ -2,18 +2,12 @@ use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
+	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		User,
-		UserLogin,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
+		PhoneCountryCode, User, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_users_pre(
@@ -590,93 +584,127 @@ pub async fn get_user_by_username_or_email(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let mut rows = query!(
 		r#"
 		SELECT
-			user.*
+			"user".*
 		FROM
-			user
+			"user"
 		LEFT JOIN
 			personal_email
 		ON
-			personal_email.user_id = user.id
+			personal_email.user_id = "user".id
 		LEFT JOIN
 			organisation_email
 		ON
-			organisation_email.user_id = user.id
+			organisation_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
 			domain.id = organisation_email.domain_id
 		WHERE
-			user.username = ? OR
-			CONCAT(personal_email.local, '@', domain.name) = ? OR
-			CONCAT(organisation_email.local, '@', domain.name) = ?;
+			"user".username = $1 OR
+			CONCAT(personal_email.local, '@', domain.name) = $1 OR
+			CONCAT(organisation_email.local, '@', domain.name) = $1;
 		"#,
-		user_id,
-		user_id,
 		user_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: if let Some(dob) = row.dob {
+			Some(dob as u64)
+		} else {
+			None
+		},
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_user_by_email(
 	connection: &mut Transaction<'_, Database>,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let mut rows = query!(
 		r#"
 		SELECT
-			user.*
+			"user".*
 		FROM
-			user
+			"user"
 		LEFT JOIN
 			personal_email
 		ON
-			personal_email.user_id = user.id
+			personal_email.user_id = "user".id
 		LEFT JOIN
 			organisation_email
 		ON
-			organisation_email.user_id = user.id
+			organisation_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
 			domain.id = organisation_email.domain_id
 		WHERE
-			CONCAT(personal_email.local, '@', domain.name) = ? OR
-			CONCAT(organisation_email.local, '@', domain.name) = ?;
+			CONCAT(personal_email.local, '@', domain.name) = $1 OR
+			CONCAT(organisation_email.local, '@', domain.name) = $1;
 		"#,
-		email,
 		email
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: if let Some(dob) = row.dob {
+			Some(dob as u64)
+		} else {
+			None
+		},
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_user_by_phone_number(
 	connection: &mut Transaction<'_, Database>,
 	phone_number: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let mut rows = query!(
 		r#"
 		SELECT
-			user.*
+			"user".*
 		FROM
-			user
+			"user"
 		INNER JOIN
 			user_phone_number
 		ON
-			user.id = user_phone_number.user_id
+			"user".id = user_phone_number.user_id
 		INNER JOIN
 			phone_number_country_code
 		ON
@@ -686,58 +714,116 @@ pub async fn get_user_by_phone_number(
 				'+',
 				phone_number_country_code.phone_code,
 				user_phone_number.number
-			) = ?;
+			) = $1;
 		"#,
 		phone_number
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: if let Some(dob) = row.dob {
+			Some(dob as u64)
+		} else {
+			None
+		},
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_user_by_username(
 	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			user
+			"user"
 		WHERE
-			username = ?;
+			username = $1;
 		"#,
 		username
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: if let Some(dob) = row.dob {
+			Some(dob as u64)
+		} else {
+			None
+		},
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_user_by_user_id(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Option<User>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			user
+			"user"
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: if let Some(dob) = row.dob {
+			Some(dob as u64)
+		} else {
+			None
+		},
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn generate_new_user_id(
@@ -745,37 +831,41 @@ pub async fn generate_new_user_id(
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		User,
+	let mut exists = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			user
+			"user"
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		uuid.as_bytes().as_ref()
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.next()
+	.is_some();
 
-	while !rows.is_empty() {
+	while exists {
 		uuid = Uuid::new_v4();
-		rows = query_as!(
-			User,
+		exists = query!(
 			r#"
 			SELECT
 				*
 			FROM
-				user
+				"user"
 			WHERE
-				id = ?;
+				id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
 		.fetch_all(&mut *connection)
-		.await?;
+		.await?
+		.into_iter()
+		.next()
+		.is_some();
 	}
 
 	Ok(uuid)
@@ -784,13 +874,12 @@ pub async fn generate_new_user_id(
 pub async fn get_god_user_id(
 	connection: &mut Transaction<'_, Database>,
 ) -> Result<Option<Uuid>, sqlx::Error> {
-	let rows = query_as!(
-		User,
+	let uuid = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			user
+			"user"
 		ORDER BY
 			created
 		DESC
@@ -798,16 +887,15 @@ pub async fn get_god_user_id(
 		"#
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.next()
+	.map(|row| {
+		Uuid::from_slice(row.id.as_ref())
+			.expect("unable to unwrap UUID from Vec<u8>")
+	});
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-	let id = Uuid::from_slice(row.id.as_ref())
-		.expect("unable to unwrap UUID from Vec<u8>");
-
-	Ok(Some(id))
+	Ok(uuid)
 }
 
 pub async fn set_personal_user_to_be_signed_up(
@@ -830,45 +918,45 @@ pub async fn set_personal_user_to_be_signed_up(
 			user_to_sign_up
 		VALUES
 			(
-				?,
+				$1,
 				'personal',
 				
-				?,
-				?,
-				?,
+				$2,
+				$3,
+				$4,
 				
-				?,
-				?,
+				$5,
+				$6,
 				
-				?,
-				?,
+				$7,
+				$8,
 				
 				NULL,
 				NULL,
 				NULL,
 				
-				?,
-				?
+				$9,
+				$10
 			)
-		ON DUPLICATE KEY UPDATE
+		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'personal',
 
-			password = ?,
-			first_name = ?,
-			last_name = ?,
+			password = EXCLUDED.password,
+			first_name = EXCLUDED.first_name,
+			last_name = EXCLUDED.last_name,
 			
-			backup_email_local = ?,
-			backup_email_domain_id = ?,
+			backup_email_local = EXCLUDED.backup_email_local,
+			backup_email_domain_id = EXCLUDED.backup_email_domain_id,
 
-			backup_phone_country_code = ?,
-			backup_phone_number = ?,
+			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
+			backup_phone_number = EXCLUDED.backup_phone_number,
 			
 			org_email_local = NULL,
 			org_domain_name = NULL,
 			organisation_name = NULL,
 			
-			otp_hash = ?,
-			otp_expiry = ?;
+			otp_hash = EXCLUDED.otp_hash,
+			otp_expiry = EXCLUDED.otp_expiry;
 		"#,
 		username,
 		password,
@@ -879,17 +967,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		backup_phone_country_code,
 		backup_phone_number,
 		otp_hash,
-		otp_expiry,
-		// On duplicate key
-		password,
-		first_name,
-		last_name,
-		email_local,
-		email_domain_id,
-		backup_phone_country_code,
-		backup_phone_number,
-		otp_hash,
-		otp_expiry
+		otp_expiry as i64
 	)
 	.execute(connection)
 	.await?;
@@ -921,45 +999,45 @@ pub async fn set_organisation_user_to_be_signed_up(
 			user_to_sign_up
 		VALUES
 			(
-				?,
+				$1,
 				'organisation',
 				
-				?,
-				?,
-				?,
+				$2,
+				$3,
+				$4,
 				
-				?,
-				?,
+				$5,
+				$6,
 				
-				?,
-				?,
+				$7,
+				$8,
 				
-				?,
-				?,
-				?,
+				$9,
+				$10,
+				$11,
 				
-				?,
-				?
+				$12,
+				$13
 			)
-		ON DUPLICATE KEY UPDATE
+		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'organisation',
 
-			password = ?,
-			first_name = ?,
-			last_name = ?,
+			password = EXCLUDED.password,
+			first_name = EXCLUDED.first_name,
+			last_name = EXCLUDED.last_name,
 			
-			backup_email_local = ?,
-			backup_email_domain_id = ?,
+			backup_email_local = EXCLUDED.backup_email_local,
+			backup_email_domain_id = EXCLUDED.backup_email_domain_id,
 
-			backup_phone_country_code = ?,
-			backup_phone_number = ?,
+			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
+			backup_phone_number = EXCLUDED.backup_phone_number,
 			
-			org_email_local = ?,
-			org_domain_name = ?,
-			organisation_name = ?,
+			org_email_local = EXCLUDED.org_email_local,
+			org_domain_name = EXCLUDED.org_domain_name,
+			organisation_name = EXCLUDED.organisation_name,
 			
-			otp_hash = ?,
-			otp_expiry = ?;
+			otp_hash = EXCLUDED.otp_hash,
+			otp_expiry = EXCLUDED.otp_expiry;
 		"#,
 		username,
 		password,
@@ -973,20 +1051,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 		org_domain_name,
 		organisation_name,
 		otp_hash,
-		otp_expiry,
-		// On duplicate key
-		password,
-		first_name,
-		last_name,
-		backup_email_local,
-		backup_email_domain_id,
-		backup_phone_country_code,
-		backup_phone_number,
-		org_email_local,
-		org_domain_name,
-		organisation_name,
-		otp_hash,
-		otp_expiry
+		otp_expiry as i64
 	)
 	.execute(connection)
 	.await?;
@@ -998,50 +1063,102 @@ pub async fn get_user_to_sign_up_by_username(
 	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let rows = query_as!(
-		UserToSignUp,
+	let mut rows = query!(
 		r#"
 		SELECT
-			*
+			user_to_sign_up.username,
+			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
+			user_to_sign_up.password,
+			user_to_sign_up.first_name,
+			user_to_sign_up.last_name,
+			user_to_sign_up.backup_email_local,
+			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_phone_country_code,
+			user_to_sign_up.backup_phone_number,
+			user_to_sign_up.org_email_local,
+			user_to_sign_up.org_domain_name,
+			user_to_sign_up.organisation_name,
+			user_to_sign_up.otp_hash,
+			user_to_sign_up.otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			username = ?;
+			username = $1;
 		"#,
 		username
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| UserToSignUp {
+		username: row.username,
+		account_type: row.account_type,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+		org_email_local: row.org_email_local,
+		org_domain_name: row.org_domain_name,
+		organisation_name: row.organisation_name,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry as u64,
+	});
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_user_to_sign_up_by_organisation_name(
 	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let rows = query_as!(
-		UserToSignUp,
+	let mut rows = query!(
 		r#"
 		SELECT
-			*
+			user_to_sign_up.username,
+			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
+			user_to_sign_up.password,
+			user_to_sign_up.first_name,
+			user_to_sign_up.last_name,
+			user_to_sign_up.backup_email_local,
+			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_phone_country_code,
+			user_to_sign_up.backup_phone_number,
+			user_to_sign_up.org_email_local,
+			user_to_sign_up.org_domain_name,
+			user_to_sign_up.organisation_name,
+			user_to_sign_up.otp_hash,
+			user_to_sign_up.otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			organisation_name = ?;
+			organisation_name = $1;
 		"#,
 		organisation_name
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| UserToSignUp {
+		username: row.username,
+		account_type: row.account_type,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+		org_email_local: row.org_email_local,
+		org_domain_name: row.org_domain_name,
+		organisation_name: row.organisation_name,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry as u64,
+	});
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -1057,20 +1174,17 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		INSERT INTO
 			user_unverified_personal_email
 		VALUES
-			(?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			user_id = ?,
-			verification_token_hash = ?,
-			verification_token_expiry = ?;
+			($1, $2, $3, $4, $5)
+		ON CONFLICT(local, domain_id) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			verification_token_hash = EXCLUDED.verification_token_hash,
+			verification_token_expiry = EXCLUDED.verification_token_expiry;
 		"#,
 		email_local,
 		domain_id,
 		user_id,
 		verification_token,
-		token_expiry,
-		user_id,
-		verification_token,
-		token_expiry
+		token_expiry as i64
 	)
 	.execute(connection)
 	.await?;
@@ -1083,8 +1197,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	user_id: &[u8],
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let rows = query_as!(
-		PersonalEmailToBeVerified,
+	let mut rows = query!(
 		r#"
 		SELECT
 			user_unverified_personal_email.*
@@ -1095,16 +1208,24 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		ON
 			domain.id = user_unverified_personal_email.domain_id
 		WHERE
-			user_id = ? AND
-			CONCAT(local, '@', domain.name) = ?;
+			user_id = $1 AND
+			CONCAT(local, '@', domain.name) = $2;
 		"#,
 		user_id,
 		email
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| PersonalEmailToBeVerified {
+		local: row.local,
+		domain_id: row.domain_id,
+		user_id: row.user_id,
+		verification_token_hash: row.verification_token_hash,
+		verification_token_expiry: row.verification_token_expiry as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn add_personal_email_for_user(
@@ -1118,54 +1239,7 @@ pub async fn add_personal_email_for_user(
 		INSERT INTO
 			personal_email
 		VALUES
-			(?, ?, ?);
-		"#,
-		user_id,
-		email_local,
-		domain_id
-	)
-	.execute(connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn create_orphaned_personal_email(
-	connection: &mut Transaction<'_, Database>,
-	email_local: &str,
-	domain_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			personal_email
-		VALUES
-			(NULL, ?, ?);
-		"#,
-		email_local,
-		domain_id
-	)
-	.execute(connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn set_user_for_personal_email(
-	connection: &mut Transaction<'_, Database>,
-	user_id: &[u8],
-	email_local: &str,
-	domain_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			personal_email
-		SET
-			user_id = ?
-		WHERE
-			local = ? AND
-			domain_id = ?;
+			($1, $2, $3);
 		"#,
 		user_id,
 		email_local,
@@ -1188,7 +1262,7 @@ pub async fn add_organisation_email_for_user(
 		INSERT INTO
 			organisation_email
 		VALUES
-			(?, ?, ?);
+			($1, $2, $3);
 		"#,
 		user_id,
 		email_local,
@@ -1209,7 +1283,7 @@ pub async fn delete_user_to_be_signed_up(
 		DELETE FROM
 			user_to_sign_up
 		WHERE
-			username = ?;
+			username = $1;
 		"#,
 		username,
 	)
@@ -1236,24 +1310,24 @@ pub async fn create_user(
 	query!(
 		r#"
 		INSERT INTO
-			user
+			"user"
 		VALUES
 			(
-				?,
-				?,
-				?,
-				?,
-				?,
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
 				NULL,
 				NULL,
 				NULL,
-				?,
+				$6,
 				
-				?,
-				?,
+				$7,
+				$8,
 				
-				?,
-				?
+				$9,
+				$10
 			);
 		"#,
 		user_id,
@@ -1261,7 +1335,7 @@ pub async fn create_user(
 		password,
 		first_name,
 		last_name,
-		created,
+		created as i64,
 		backup_email_local,
 		backup_email_domain_id,
 		backup_phone_country_code,
@@ -1287,14 +1361,14 @@ pub async fn add_user_login(
 		INSERT INTO
 			user_login
 		VALUES
-			(?, ?, ?, ?, ?, ?);
+			($1, $2, $3, $4, $5, $6);
 		"#,
 		login_id,
 		refresh_token,
-		token_expiry,
+		token_expiry as i64,
 		user_id,
-		last_login,
-		last_activity
+		last_login as i64,
+		last_activity as i64
 	)
 	.execute(connection)
 	.await?;
@@ -1306,22 +1380,30 @@ pub async fn get_user_login(
 	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let rows = query_as!(
-		UserLogin,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			user_login
 		WHERE
-			login_id = ?;
+			login_id = $1;
 		"#,
 		login_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| UserLogin {
+		login_id: row.login_id,
+		refresh_token: row.refresh_token,
+		token_expiry: row.token_expiry as u64,
+		user_id: row.user_id,
+		last_login: row.last_login as u64,
+		last_activity: row.last_activity as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn generate_new_login_id(
@@ -1329,37 +1411,41 @@ pub async fn generate_new_login_id(
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		UserLogin,
+	let mut exists = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			user_login
 		WHERE
-			login_id = ?;
+			login_id = $1;
 		"#,
 		uuid.as_bytes().as_ref()
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.next()
+	.is_some();
 
-	while !rows.is_empty() {
+	while exists {
 		uuid = Uuid::new_v4();
-		rows = query_as!(
-			UserLogin,
+		exists = query!(
 			r#"
 			SELECT
 				*
 			FROM
 				user_login
 			WHERE
-				login_id = ?;
+				login_id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
 		.fetch_all(&mut *connection)
-		.await?;
+		.await?
+		.into_iter()
+		.next()
+		.is_some();
 	}
 
 	Ok(uuid)
@@ -1369,20 +1455,31 @@ pub async fn get_all_logins_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Vec<UserLogin>, sqlx::Error> {
-	query_as!(
-		UserLogin,
+	let rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			user_login
 		WHERE
-			user_id = ?;
+			user_id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| UserLogin {
+		login_id: row.login_id,
+		refresh_token: row.refresh_token,
+		token_expiry: row.token_expiry as u64,
+		user_id: row.user_id,
+		last_login: row.last_login as u64,
+		last_activity: row.last_activity as u64,
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn delete_user_login_by_id(
@@ -1394,7 +1491,7 @@ pub async fn delete_user_login_by_id(
 		DELETE FROM
 			user_login
 		WHERE
-			login_id = ?;
+			login_id = $1;
 		"#,
 		login_id,
 	)
@@ -1414,13 +1511,13 @@ pub async fn set_login_expiry(
 		UPDATE
 			user_login
 		SET
-			token_expiry = ?,
-			last_activity = ?
+			token_expiry = $1,
+			last_activity = $2
 		WHERE
-			login_id = ?;
+			login_id = $3;
 		"#,
-		token_expiry,
-		last_activity,
+		token_expiry as i64,
+		last_activity as i64,
 		login_id
 	)
 	.execute(connection)
@@ -1433,38 +1530,75 @@ pub async fn update_user_data(
 	connection: &mut Transaction<'_, Database>,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
-	dob: Option<&str>,
+	dob: Option<u64>,
 	bio: Option<&str>,
 	location: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	let params = [
-		(first_name, "first_name"),
-		(last_name, "last_name"),
-		(dob, "dob"),
-		(bio, "bio"),
-		(location, "location"),
-	];
-
-	let param_updates = params
-		.iter()
-		.filter_map(|(param, name)| {
-			if param.is_none() {
-				None
-			} else {
-				Some(format!("{} = ?", name))
-			}
-		})
-		.collect::<Vec<String>>()
-		.join(", ");
-
-	let query_string = format!("UPDATE user SET {};", param_updates);
-	let mut query = sqlx::query(&query_string);
-	for (param, _) in params.iter() {
-		if let Some(value) = param {
-			query = query.bind(value);
-		}
+	if let Some(first_name) = first_name {
+		query!(
+			r#"
+			UPDATE
+				"user"
+			SET
+				first_name = $1;
+			"#,
+			first_name
+		)
+		.execute(&mut *connection)
+		.await?;
 	}
-	query.execute(connection).await?;
+	if let Some(last_name) = last_name {
+		query!(
+			r#"
+			UPDATE
+				"user"
+			SET
+				last_name = $1;
+			"#,
+			last_name
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+	if let Some(dob) = dob {
+		query!(
+			r#"
+			UPDATE
+				"user"
+			SET
+				dob = $1;
+			"#,
+			dob as i64
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+	if let Some(bio) = bio {
+		query!(
+			r#"
+			UPDATE
+				"user"
+			SET
+				bio = $1;
+			"#,
+			bio
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+	if let Some(location) = location {
+		query!(
+			r#"
+			UPDATE
+				"user"
+			SET
+				location = $1;
+			"#,
+			location
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -1477,11 +1611,11 @@ pub async fn update_user_password(
 	query!(
 		r#"
 		UPDATE
-			user
+			"user"
 		SET
-			password = ?
+			password = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		password,
 		user_id,
@@ -1503,16 +1637,14 @@ pub async fn add_password_reset_request(
 		INSERT INTO
 			password_reset_request
 		VALUES
-			(?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			token = ?,
-			token_expiry = ?;
+			($1, $2, $3)
+		ON CONFLICT(user_id) DO UPDATE SET
+			token = EXCLUDED.token,
+			token_expiry = EXCLUDED.token_expiry;
 		"#,
 		user_id,
 		token_hash,
-		token_expiry,
-		token_hash,
-		token_expiry,
+		token_expiry as i64
 	)
 	.execute(connection)
 	.await?;
@@ -1524,22 +1656,27 @@ pub async fn get_password_reset_request_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
-	let rows = query_as!(
-		PasswordResetRequest,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			password_reset_request
 		WHERE
-			user_id = ?;
+			user_id = $1;
 		"#,
 		user_id,
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| PasswordResetRequest {
+		user_id: row.user_id,
+		token: row.token,
+		token_expiry: row.token_expiry as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn delete_password_reset_request_for_user(
@@ -1551,7 +1688,7 @@ pub async fn delete_password_reset_request_for_user(
 		DELETE FROM
 			password_reset_request
 		WHERE
-			user_id = ?;
+			user_id = $1;
 		"#,
 		user_id,
 	)
@@ -1565,15 +1702,10 @@ pub async fn get_all_organisations_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<Vec<Organisation>, sqlx::Error> {
-	let organisations = query_as!(
-		Organisation,
+	let organisations = query!(
 		r#"
 		SELECT DISTINCT
-			organisation.id,
-			organisation.name,
-			organisation.super_admin_id,
-			organisation.active as `active: bool`,
-			organisation.created
+			organisation.*
 		FROM
 			organisation
 		LEFT JOIN
@@ -1581,14 +1713,22 @@ pub async fn get_all_organisations_for_user(
 		ON
 			organisation.id = organisation_user.organisation_id
 		WHERE
-			organisation.super_admin_id = ? OR
-			organisation_user.user_id = ?;
+			organisation.super_admin_id = $1 OR
+			organisation_user.user_id = $1;
 		"#,
-		user_id,
 		user_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Organisation {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		created: row.created as u64,
+	})
+	.collect();
 
 	Ok(organisations)
 }
@@ -1605,7 +1745,7 @@ pub async fn get_phone_country_by_country_code(
 		FROM
 			phone_number_country_code
 		WHERE
-			country_code = ?;
+			country_code = $1;
 		"#,
 		country_code
 	)
@@ -1627,52 +1767,7 @@ pub async fn add_phone_number_for_user(
 		INSERT INTO
 			user_phone_number
 		VALUES
-			(?, ?, ?);
-		"#,
-		user_id,
-		phone_country_code,
-		phone_number
-	)
-	.execute(connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn create_orphaned_phone_number(
-	connection: &mut Transaction<'_, Database>,
-	phone_country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			user_phone_number
-		VALUES
-			(NULL, ?, ?);
-		"#,
-		phone_country_code,
-		phone_number
-	)
-	.execute(connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn set_user_for_phone_number(
-	connection: &mut Transaction<'_, Database>,
-	user_id: &[u8],
-	phone_country_code: &str,
-	phone_number: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			user_phone_number
-		SET
-			user_id = ?
-		WHERE
-			country_code = ? AND
-			number = ?;
+			($1, $2, $3);
 		"#,
 		user_id,
 		phone_country_code,

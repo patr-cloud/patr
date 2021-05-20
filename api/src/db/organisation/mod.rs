@@ -1,17 +1,17 @@
 use sqlx::Transaction;
 
-use crate::{models::db_mapping::Organisation, query, query_as, Database};
+use crate::{models::db_mapping::Organisation, query, Database};
 
-//mod application;
+mod application;
 mod deployment;
 mod domain;
-//mod drive;
+mod drive;
 mod portus;
 
-//pub use application::*;
+pub use application::*;
 pub use deployment::*;
 pub use domain::*;
-//pub use drive::*;
+pub use drive::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
@@ -49,9 +49,9 @@ pub async fn initialize_organisations_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	//application::initialize_application_pre(&mut *transaction).await?;
+	application::initialize_application_pre(&mut *transaction).await?;
 	domain::initialize_domain_pre(&mut *transaction).await?;
-	//drive::initialize_drive_pre(&mut *transaction).await?;
+	drive::initialize_drive_pre(&mut *transaction).await?;
 	portus::initialize_portus_pre(&mut *transaction).await?;
 	deployment::initialize_deployer_pre(&mut *transaction).await?;
 
@@ -72,9 +72,9 @@ pub async fn initialize_organisations_post(
 	.execute(&mut *transaction)
 	.await?;
 
-	//application::initialize_application_post(&mut *transaction).await?;
+	application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
-	//drive::initialize_drive_post(&mut *transaction).await?;
+	drive::initialize_drive_post(&mut *transaction).await?;
 	portus::initialize_portus_post(&mut *transaction).await?;
 	deployment::initialize_deployer_post(&mut *transaction).await?;
 
@@ -93,13 +93,13 @@ pub async fn create_organisation(
 		INSERT INTO
 			organisation
 		VALUES
-			(?, ?, ?, ?, ?);
+			($1, $2, $3, $4, $5);
 		"#,
 		organisation_id,
 		name,
 		super_admin_id,
 		true,
-		created,
+		created as i64,
 	)
 	.execute(connection)
 	.await?;
@@ -111,52 +111,58 @@ pub async fn get_organisation_info(
 	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query_as!(
-		Organisation,
+	let mut rows = query!(
 		r#"
 		SELECT
-			id,
-			name,
-			super_admin_id,
-			active as `active: bool`,
-			created
+			*
 		FROM
 			organisation
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Organisation {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		created: row.created as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_organisation_by_name(
 	connection: &mut Transaction<'_, Database>,
 	name: &str,
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query_as!(
-		Organisation,
+	let mut rows = query!(
 		r#"
 		SELECT
-			id,
-			name,
-			super_admin_id,
-			active as `active: bool`,
-			created
+			*
 		FROM
 			organisation
 		WHERE
-			name = ?;
+			name = $1;
 		"#,
 		name
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Organisation {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		created: row.created as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn update_organisation_name(
@@ -169,9 +175,9 @@ pub async fn update_organisation_name(
 		UPDATE
 			organisation
 		SET
-			name = ?
+			name = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		name,
 		organisation_id,

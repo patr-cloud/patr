@@ -1,20 +1,13 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::json;
+use serde_json::{Value, json};
 use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
-	pin_fn,
-	service,
+	db, error, pin_fn, service,
 	utils::{
-		constants::request_keys,
-		mailer,
-		Error,
-		ErrorData,
-		EveContext,
+		constants::request_keys, mailer, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
@@ -139,17 +132,31 @@ async fn update_user_info(
 		})
 		.transpose()?;
 
-	let dob: Option<&str> = body
+	let dob = body
 		.get(request_keys::BIRTHDAY)
-		.map(|value| {
-			value
-				.as_str()
+		.map(|value| match value {
+			Value::String(value) => value
+				.parse::<u64>()
 				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
+				.body(error!(WRONG_PARAMETERS).to_string()),
+			Value::Number(num) => {
+				if let Some(num) = num.as_u64() {
+					Ok(num)
+				} else if let Some(num) = num.as_i64() {
+					Ok(num as u64)
+				} else {
+					Err(Error::empty()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string()))
+				}
+			}
+			_ => Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())),
 		})
 		.transpose()?;
 
-	let bio: Option<&str> = body
+	let bio = body
 		.get(request_keys::BIO)
 		.map(|value| {
 			value
@@ -159,7 +166,7 @@ async fn update_user_info(
 		})
 		.transpose()?;
 
-	let location: Option<&str> = body
+	let location = body
 		.get(request_keys::LOCATION)
 		.map(|value| {
 			value
@@ -168,11 +175,18 @@ async fn update_user_info(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
+	
+	let dob_string = dob.map(|value| value.to_string());
+	let dob_str = if let Some(ref dob) = dob_string {
+		Some(dob.as_str())
+	} else {
+		None
+	};
 
 	// If no parameters to update
 	first_name
 		.or(last_name)
-		.or(dob)
+		.or(dob_str)
 		.or(bio)
 		.or(location)
 		.status(400)
