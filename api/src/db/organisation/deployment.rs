@@ -1,4 +1,5 @@
 use sqlx::{MySql, Transaction};
+
 use crate::{
 	models::db_mapping::{
 		Deployment,
@@ -299,6 +300,7 @@ pub async fn create_deployment(
 	deployment_id: &[u8],
 	name: &str,
 	registry: &str,
+	repository_id: Option<Vec<u8>>,
 	image_name: &str,
 	image_tag: &str,
 	domain_id: &[u8],
@@ -310,11 +312,12 @@ pub async fn create_deployment(
 		INSERT INTO
 			deployment
 		VALUES
-			(?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');
+			(?, ?, ?, ?, ?, ?, ?, ?, ?, false, 'india');
 		"#,
 		deployment_id,
 		name,
 		registry,
+		repository_id.unwrap(),
 		image_name,
 		image_tag,
 		domain_id,
