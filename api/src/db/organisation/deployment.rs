@@ -43,19 +43,19 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// // change this table to deployment id and port as unique
-	// query!(
-	// 	r#"
-	// 	CREATE TABLE IF NOT EXISTS port (
-	// 		deployment_id BINARY(16),
-	// 		port SMALLINT UNSIGNED NOT NULL, persistence: (), datacenter: () , percistence: (), datacenter: () ,
-	// 		PRIMARY KEY (deployment_id, port),
-	// 		FOREIGN KEY (deployment_id) REFERENCES deployment(id)
-	// 	);
-	// 	"#
-	// )
-	// .execute(&mut *transaction)
-	// .await?;
+	// change this table to deployment id and port as unique
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS port (
+			deployment_id BINARY(16),
+			port SMALLINT UNSIGNED NOT NULL,
+			PRIMARY KEY (deployment_id, port),
+			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
 
 	query!(
 		r#"

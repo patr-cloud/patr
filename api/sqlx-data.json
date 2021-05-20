@@ -1657,6 +1657,16 @@
       "nullable": []
     }
   },
+  "5c0221593fa8841dddb354a50559be25e55281ee78e440032c9ed6c2c175c313": {
+    "query": "CREATE TABLE IF NOT EXISTS port ( deployment_id BINARY(16), port SMALLINT UNSIGNED NOT NULL, PRIMARY KEY (deployment_id, port), FOREIGN KEY (deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
   "5c9d8c96cd0e5ba43916e348518be8a09788b9864f09ed016f95fb4f75ac109d": {
     "query": "DELETE FROM role_permissions_resource_type WHERE role_id = ?;",
     "describe": {
