@@ -9,8 +9,9 @@ pub async fn initialize_meta_pre(
 	log::info!("Initializing meta tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS meta_data (
-			id VARCHAR(100) PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS meta_data(
+			id VARCHAR(100)
+				CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#
@@ -35,15 +36,15 @@ pub async fn set_database_version(
 		INSERT INTO
 			meta_data
 		VALUES
-			('version_major', ?),
-			('version_minor', ?),
-			('version_patch', ?)
-		ON DUPLICATE KEY UPDATE
-			value = VALUES(value);
+			('version_major', $1),
+			('version_minor', $2),
+			('version_patch', $3)
+		ON CONFLICT(id) DO UPDATE SET
+			value = EXCLUDED.value;
 		"#,
-		version.major,
-		version.minor,
-		version.patch
+		version.major.to_string(),
+		version.minor.to_string(),
+		version.patch.to_string()
 	)
 	.execute(connection)
 	.await?;
@@ -53,7 +54,9 @@ pub async fn set_database_version(
 pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 	let rows = query!(
 		r#"
-		SELECT * FROM
+		SELECT
+			*
+		FROM
 			meta_data
 		WHERE
 			id = 'version_major' OR

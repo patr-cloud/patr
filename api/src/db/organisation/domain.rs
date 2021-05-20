@@ -15,11 +15,11 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(255) UNIQUE NOT NULL,
-			type ENUM('personal', 'organisation') NOT NULL,
-			KEY(id, type)
+		CREATE TABLE IF NOT EXISTS domain(
+			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
+			name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE,
+			type RESOURCE_OWNER_TYPE NOT NULL,
+			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
 		);
 		"#
 	)
@@ -29,11 +29,13 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS organisation_domain (
-			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal', 'organisation') NOT NULL,
+			id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT organisation_domain_chk_dmn_typ
+					CHECK(domain_type = 'organisation'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
-			CONSTRAINT CHECK(domain_type = 'organisation')
+			CONSTRAINT organisation_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
 	)
@@ -43,10 +45,13 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_domain (
-			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal', 'organisation') NOT NULL,
-			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
-			CONSTRAINT CHECK(domain_type = 'personal')
+			id BYTEA
+				CONSTRAINT personal_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT personal_domain_chk_dmn_typ
+					CHECK(domain_type = 'personal'),
+			CONSTRAINT personal_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
 	)
@@ -62,7 +67,7 @@ pub async fn initialize_domain_post(
 	query!(
 		r#"
 		ALTER TABLE domain
-		ADD CONSTRAINT
+		ADD CONSTRAINT domain_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
@@ -83,7 +88,7 @@ pub async fn create_generic_domain(
 		INSERT INTO
 			domain
 		VALUES
-			(?, ?, ?);
+			($1, $2, $3);
 		"#,
 		domain_id,
 		domain_name,
@@ -103,7 +108,7 @@ pub async fn add_to_organisation_domain(
 		INSERT INTO
 			organisation_domain
 		VALUES
-			(?, 'organisation', FALSE);
+			($1, 'organisation', FALSE);
 		"#,
 		domain_id
 	)
@@ -121,7 +126,7 @@ pub async fn add_to_personal_domain(
 		INSERT INTO
 			personal_domain
 		VALUES
-			(?, 'personal');
+			($1, 'personal');
 		"#,
 		domain_id
 	)
@@ -139,9 +144,7 @@ pub async fn get_domains_for_organisation(
 		r#"
 		SELECT
 			domain.name,
-			organisation_domain.id,
-			organisation_domain.domain_type,
-			organisation_domain.is_verified as `is_verified: bool`
+			organisation_domain.*
 		FROM
 			domain
 		INNER JOIN
@@ -153,7 +156,7 @@ pub async fn get_domains_for_organisation(
 		ON
 			domain.id = resource.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)

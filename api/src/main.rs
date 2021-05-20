@@ -29,7 +29,7 @@ use tokio::{fs, runtime::Builder};
 use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
-pub type Database = sqlx::MySql;
+pub type Database = sqlx::Postgres;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()

@@ -7,6 +7,7 @@ use crate::{
 	Database,
 };
 
+// TODO these haven't been migrated to postgres yet
 pub async fn initialize_application_pre(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {

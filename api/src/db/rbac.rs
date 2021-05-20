@@ -22,9 +22,9 @@ pub async fn initialize_rbac_pre(
 	// Resource types, like application, deployment, VM, etc
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS resource_type (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(100) UNIQUE NOT NULL,
+		CREATE TABLE IF NOT EXISTS resource_type(
+			id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY,
+			name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE,
 			description VARCHAR(500)
 		);
 		"#
@@ -34,13 +34,15 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS resource (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS resource(
+			id BYTEA CONSTRAINT resource_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
-			resource_type_id BINARY(16) NOT NULL,
-			owner_id BINARY(16),
-			FOREIGN KEY(owner_id) REFERENCES organisation(id),
-			FOREIGN KEY(resource_type_id) REFERENCES resource_type(id)
+			resource_type_id BYTEA NOT NULL
+				CONSTRAINT resource_fk_resource_type_id
+					REFERENCES resource_type(id),
+			owner_id BYTEA NOT NULL
+				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
+					DEFERRABLE INITIALLY IMMEDIATE
 		);
 		"#
 	)
@@ -50,13 +52,13 @@ pub async fn initialize_rbac_pre(
 	// Roles belong to an organisation
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS role(
+			id BYTEA CONSTRAINT role_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500),
-			owner_id BINARY(16) NOT NULL,
-			UNIQUE(name, owner_id),
-			FOREIGN KEY(owner_id) REFERENCES organisation(id)
+			owner_id BYTEA NOT NULL
+				CONSTRAINT role_fk_owner_id REFERENCES organisation(id),
+			CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id)
 		);
 		"#
 	)
@@ -65,8 +67,8 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS permission (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS permission(
+			id BYTEA CONSTRAINT permission_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500)
 		);
@@ -78,14 +80,16 @@ pub async fn initialize_rbac_pre(
 	// Users belong to an organisation through a role
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation_user (
-			user_id BINARY(16) NOT NULL,
-			organisation_id BINARY(16) NOT NULL,
-			role_id BINARY(16) NOT NULL,
-			PRIMARY KEY(user_id, organisation_id, role_id),
-			FOREIGN KEY(user_id) REFERENCES user(id),
-			FOREIGN KEY(organisation_id) REFERENCES organisation(id),
-			FOREIGN KEY(role_id) REFERENCES role(id)
+		CREATE TABLE IF NOT EXISTS organisation_user(
+			user_id BYTEA NOT NULL
+				CONSTRAINT organisation_user_fk_user_id REFERENCES "user"(id),
+			organisation_id BYTEA NOT NULL
+				CONSTRAINT organisation_user_fk_organisation_id
+					REFERENCES organisation(id),
+			role_id BYTEA NOT NULL
+				CONSTRAINT organisation_user_fk_role_id REFERENCES role(id),
+			CONSTRAINT organisation_user_pk
+				PRIMARY KEY(user_id, organisation_id, role_id)
 		);
 		"#
 	)
@@ -95,14 +99,18 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a resource type
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role_permissions_resource_type (
-			role_id BINARY(16),
-			permission_id BINARY(16),
-			resource_type_id BINARY(16),
-			PRIMARY KEY(role_id, permission_id, resource_type_id),
-			FOREIGN KEY(role_id) REFERENCES role(id),
-			FOREIGN KEY(permission_id) REFERENCES permission(id),
-			FOREIGN KEY(resource_type_id) REFERENCES resource_type(id)
+		CREATE TABLE IF NOT EXISTS role_permissions_resource_type(
+			role_id BYTEA
+				CONSTRAINT role_permissions_resource_type_fk_role_id
+					REFERENCES role(id),
+			permission_id BYTEA
+				CONSTRAINT role_permissions_resource_type_fk_permission_id
+					REFERENCES permission(id),
+			resource_type_id BYTEA
+				CONSTRAINT role_permissions_resource_type_fk_resource_type_id
+					REFERENCES resource_type(id),
+			CONSTRAINT role_permissions_resource_type_pk
+				PRIMARY KEY(role_id, permission_id, resource_type_id)
 		);
 		"#
 	)
@@ -112,14 +120,18 @@ pub async fn initialize_rbac_pre(
 	// Roles that have permissions on a specific resource
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role_permissions_resource (
-			role_id BINARY(16),
-			permission_id BINARY(16),
-			resource_id BINARY(16),
-			PRIMARY KEY(role_id, permission_id, resource_id),
-			FOREIGN KEY(role_id) REFERENCES role(id),
-			FOREIGN KEY(permission_id) REFERENCES permission(id),
-			FOREIGN KEY(resource_id) REFERENCES resource(id)
+		CREATE TABLE IF NOT EXISTS role_permissions_resource(
+			role_id BYTEA
+				CONSTRAINT role_permissions_resource_fk_role_id
+					REFERENCES role(id),
+			permission_id BYTEA
+				CONSTRAINT role_permissions_resource_fk_permission_id
+					REFERENCES permission(id),
+			resource_id BYTEA
+				CONSTRAINT role_permissions_resource_fk_resource_id
+					REFERENCES resource(id),
+			CONSTRAINT role_permissions_resource_pk
+				PRIMARY KEY(role_id, permission_id, resource_id)
 		);
 		"#
 	)
@@ -140,7 +152,7 @@ pub async fn initialize_rbac_post(
 			INSERT INTO
 				permission
 			VALUES
-				(?, ?, NULL)
+				($1, $2, NULL);
 			"#,
 			uuid,
 			permission,
@@ -165,7 +177,7 @@ pub async fn initialize_rbac_post(
 			INSERT INTO
 				resource_type
 			VALUES
-				(?, ?, NULL);
+				($1, $2, NULL);
 			"#,
 			uuid,
 			resource_type,
@@ -194,7 +206,7 @@ pub async fn get_all_organisation_roles_for_user(
 		FROM
 			organisation_user
 		WHERE
-			user_id = ?
+			user_id = $1
 		ORDER BY
 			organisation_id;
 		"#,
@@ -213,7 +225,7 @@ pub async fn get_all_organisation_roles_for_user(
 			FROM
 				role_permissions_resource
 			WHERE
-				role_id = ?
+				role_id = $1;
 			"#,
 			org_role.role_id
 		)
@@ -227,7 +239,7 @@ pub async fn get_all_organisation_roles_for_user(
 			FROM
 				role_permissions_resource_type
 			WHERE
-				role_id = ?;
+				role_id = $1;
 			"#,
 			org_role.role_id
 		)
@@ -313,7 +325,7 @@ pub async fn get_all_organisation_roles_for_user(
 		FROM
 			organisation
 		WHERE
-			super_admin_id = ?;
+			super_admin_id = $1;
 		"#,
 		user_id
 	)
@@ -352,7 +364,7 @@ pub async fn generate_new_role_id(
 		FROM
 			role
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		uuid.as_bytes().as_ref()
 	)
@@ -369,7 +381,7 @@ pub async fn generate_new_role_id(
 			FROM
 				role
 			WHERE
-				id = ?;
+				id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
@@ -428,7 +440,7 @@ pub async fn get_resource_type_for_resource(
 		ON
 			resource.resource_type_id = resource_type.id
 		WHERE
-			resource.id = ?;
+			resource.id = $1;
 		"#,
 		resource_id
 	)
@@ -450,7 +462,7 @@ pub async fn create_role(
 		INSERT INTO
 			role
 		VALUES
-			(?, ?, ?, ?);
+			($1, $2, $3, $4);
 		"#,
 		role_id,
 		name,
@@ -459,52 +471,6 @@ pub async fn create_role(
 	)
 	.fetch_all(connection)
 	.await?;
-	Ok(())
-}
-
-pub async fn create_orphaned_resource(
-	connection: &mut Transaction<'_, Database>,
-	resource_id: &[u8],
-	resource_name: &str,
-	resource_type_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			resource
-		VALUES
-			(?, ?, ?, NULL);
-		"#,
-		resource_id,
-		resource_name,
-		resource_type_id
-	)
-	.execute(connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn set_resource_owner_id(
-	connection: &mut Transaction<'_, Database>,
-	resource_id: &[u8],
-	owner_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			resource
-		SET
-			owner_id = ?
-		WHERE
-			id = ?;
-		"#,
-		owner_id,
-		resource_id
-	)
-	.execute(connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -520,7 +486,7 @@ pub async fn create_resource(
 		INSERT INTO
 			resource
 		VALUES
-			(?, ?, ?, ?);
+			($1, $2, $3, $4);
 		"#,
 		resource_id,
 		resource_name,
@@ -542,14 +508,11 @@ pub async fn generate_new_resource_id(
 		Resource,
 		r#"
 		SELECT
-			id,
-			name,
-			resource_type_id,
-			owner_id as `owner_id!`
+			*
 		FROM
 			resource
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		uuid.as_bytes().as_ref()
 	)
@@ -562,14 +525,11 @@ pub async fn generate_new_resource_id(
 			Resource,
 			r#"
 			SELECT
-				id,
-				name,
-				resource_type_id,
-				owner_id as `owner_id!`
+				*
 			FROM
 				resource
 			WHERE
-				id = ?;
+				id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
@@ -588,14 +548,11 @@ pub async fn get_resource_by_id(
 		Resource,
 		r#"
 		SELECT
-			id,
-			name,
-			resource_type_id,
-			owner_id as `owner_id!`
+			*
 		FROM
 			resource
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		resource_id
 	)
@@ -614,7 +571,7 @@ pub async fn delete_resource(
 		DELETE FROM
 			resource
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		resource_id
 	)
@@ -636,7 +593,7 @@ pub async fn get_all_organisation_roles(
 		FROM
 			role
 		WHERE
-			owner_id = ?;
+			owner_id = $1;
 		"#,
 		organisation_id
 	)
@@ -656,7 +613,7 @@ pub async fn get_role_by_id(
 		FROM
 			role
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		role_id
 	)
@@ -684,7 +641,7 @@ pub async fn get_permissions_on_resources_for_role(
 		ON
 			role_permissions_resource.permission_id = permission.id
 		WHERE
-			role_permissions_resource.role_id = ?;
+			role_permissions_resource.role_id = $1;
 		"#,
 		role_id
 	)
@@ -724,7 +681,7 @@ pub async fn get_permissions_on_resource_types_for_role(
 		ON
 			role_permissions_resource_type.permission_id = permission.id
 		WHERE
-			role_permissions_resource_type.role_id = ?;
+			role_permissions_resource_type.role_id = $1;
 		"#,
 		role_id
 	)
@@ -755,7 +712,7 @@ pub async fn remove_all_permissions_for_role(
 		DELETE FROM
 			role_permissions_resource
 		WHERE
-			role_id = ?;
+			role_id = $1;
 		"#,
 		role_id
 	)
@@ -767,7 +724,7 @@ pub async fn remove_all_permissions_for_role(
 		DELETE FROM
 			role_permissions_resource_type
 		WHERE
-			role_id = ?;
+			role_id = $1;
 		"#,
 		role_id
 	)
@@ -789,7 +746,7 @@ pub async fn insert_resource_permissions_for_role(
 				INSERT INTO
 					role_permissions_resource
 				VALUES
-					(?, ?, ?);
+					($1, $2, $3);
 				"#,
 				role_id,
 				permission_id,
@@ -814,7 +771,7 @@ pub async fn insert_resource_type_permissions_for_role(
 				INSERT INTO
 					role_permissions_resource_type
 				VALUES
-					(?, ?, ?);
+					($1, $2, $3);
 				"#,
 				role_id,
 				permission_id,
@@ -838,7 +795,7 @@ pub async fn delete_role(
 		DELETE FROM
 			role
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		role_id
 	)
@@ -857,7 +814,7 @@ pub async fn remove_all_users_from_role(
 		DELETE FROM
 			organisation_user
 		WHERE
-			role_id = ?;
+			role_id = $1;
 		"#,
 		role_id
 	)

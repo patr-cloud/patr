@@ -2,16 +2,16 @@ use sqlx::Transaction;
 
 use crate::{models::db_mapping::Organisation, query, query_as, Database};
 
-mod application;
+//mod application;
 mod deployment;
 mod domain;
-mod drive;
+//mod drive;
 mod portus;
 
-pub use application::*;
+//pub use application::*;
 pub use deployment::*;
 pub use domain::*;
-pub use drive::*;
+//pub use drive::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
@@ -20,22 +20,38 @@ pub async fn initialize_organisations_pre(
 	log::info!("Initializing organisation tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(100) UNIQUE NOT NULL,
-			super_admin_id BINARY(16) NOT NULL,
+		CREATE TABLE IF NOT EXISTS organisation(
+			id BYTEA
+				CONSTRAINT organisation_pk PRIMARY KEY,
+			name VARCHAR(100) NOT NULL
+				CONSTRAINT organisation_uq_name UNIQUE,
+			super_admin_id BYTEA NOT NULL
+				CONSTRAINT organisation_super_admin_id_fk_user_id
+					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
-			created BIGINT UNSIGNED NOT NULL,
-			FOREIGN KEY(super_admin_id) REFERENCES user(id)
+			created BIGINT NOT NULL
+				CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0)
 		);
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
 
-	application::initialize_application_pre(&mut *transaction).await?;
+	// Ref: https://www.postgresql.org/docs/13/datatype-enum.html
+	query!(
+		r#"
+		CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM(
+			'personal',
+			'organisation'
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	//application::initialize_application_pre(&mut *transaction).await?;
 	domain::initialize_domain_pre(&mut *transaction).await?;
-	drive::initialize_drive_pre(&mut *transaction).await?;
+	//drive::initialize_drive_pre(&mut *transaction).await?;
 	portus::initialize_portus_pre(&mut *transaction).await?;
 	deployment::initialize_deployer_pre(&mut *transaction).await?;
 
@@ -48,16 +64,17 @@ pub async fn initialize_organisations_post(
 	query!(
 		r#"
 		ALTER TABLE organisation
-		ADD CONSTRAINT
-		FOREIGN KEY(id) REFERENCES resource(id);
+		ADD CONSTRAINT organisation_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id)
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *transaction)
 	.await?;
 
-	application::initialize_application_post(&mut *transaction).await?;
+	//application::initialize_application_post(&mut *transaction).await?;
 	domain::initialize_domain_post(&mut *transaction).await?;
-	drive::initialize_drive_post(&mut *transaction).await?;
+	//drive::initialize_drive_post(&mut *transaction).await?;
 	portus::initialize_portus_post(&mut *transaction).await?;
 	deployment::initialize_deployer_post(&mut *transaction).await?;
 

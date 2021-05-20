@@ -8,13 +8,19 @@ pub async fn initialize_portus_pre(
 	log::info!("Initializing Portus tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS portus_tunnel (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE IF NOT EXISTS portus_tunnel(
+			id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL,
-			ssh_port SMALLINT UNSIGNED NOT NULL,
-			exposed_port SMALLINT UNSIGNED NOT NULL,
+			ssh_port INTEGER NOT NULL
+				CONSTRAINT portus_tunnel_chk_ssh_port_u16
+					CHECK(ssh_port >= 0 AND ssh_port <= 65534),
+			exposed_port INTEGER NOT NULL
+				CONSTRAINT portus_tunnel_chk_exposed_port_u16
+					CHECK(exposed_port >= 0 AND exposed_port <= 65534),
 			name VARCHAR(50) NOT NULL,
-			created BIGINT UNSIGNED NOT NULL
+			created BIGINT NOT NULL
+				CONSTRAINT portus_tunnel_chk_created_unsigned
+					CHECK(created >= 0)
 		);
 		"#
 	)
@@ -29,7 +35,7 @@ pub async fn initialize_portus_post(
 	query!(
 		r#"
 		ALTER TABLE portus_tunnel
-		ADD CONSTRAINT 
+		ADD CONSTRAINT portus_tunnel_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)

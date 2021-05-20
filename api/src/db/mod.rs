@@ -1,19 +1,23 @@
 mod initializer;
 mod meta_data;
+mod migrations;
 mod organisation;
 mod rbac;
 mod user;
 
-pub use initializer::initialize;
-pub use meta_data::*;
-pub use organisation::*;
-pub use rbac::*;
 use redis::{aio::MultiplexedConnection, Client, RedisError};
-use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
+use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool, Transaction};
 use tokio::task;
-pub use user::*;
 
-use crate::{utils::settings::Settings, Database};
+pub use self::{
+	initializer::*,
+	meta_data::*,
+	migrations::*,
+	organisation::*,
+	rbac::*,
+	user::*,
+};
+use crate::{utils::settings::Settings, Database, query};
 
 pub async fn create_database_connection(
 	config: &Settings,
@@ -35,6 +39,7 @@ pub async fn create_database_connection(
 pub async fn create_redis_connection(
 	config: &Settings,
 ) -> Result<MultiplexedConnection, RedisError> {
+	log::trace!("Creating redis connection pool...");
 	let (redis, redis_poller) = Client::open(format!(
 		"redis://{}{}{}:{}/0",
 		if let Some(user) = &config.redis.user {
@@ -55,4 +60,34 @@ pub async fn create_redis_connection(
 	task::spawn(redis_poller);
 
 	Ok(redis)
+}
+
+pub async fn begin_deferred_constraints(
+	connection: &mut Transaction<'_, Database>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		SET CONSTRAINTS
+		ALL DEFERRED;
+		"#,
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn end_deferred_constraints(
+	connection: &mut Transaction<'_, Database>
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		SET CONSTRAINTS
+		ALL IMMEDIATE;
+		"#
+	)
+	.execute(connection)
+	.await?;
+
+	Ok(())
 }

@@ -1,21 +1,31 @@
 use std::cmp::Ordering;
 
-use semver::Version;
-use sqlx::Transaction;
-
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
 	models::rbac,
 	query,
 	utils::constants,
-	Database,
 };
 
 pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	log::info!("Initializing database");
 
-	let tables = query!("SHOW TABLES;").fetch_all(&app.database).await?;
+	let tables = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			information_schema.tables
+		WHERE
+			table_catalog = $1 AND
+			table_schema = 'public' AND
+			table_type = 'BASE TABLE';
+		"#,
+		app.config.database.database
+	)
+	.fetch_all(&app.database)
+	.await?;
 	let mut transaction = app.database.begin().await?;
 
 	// If no tables exist in the database, initialize fresh
@@ -59,7 +69,7 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				migrate_database(&mut transaction, version).await?;
+				db::migrate_database(&mut transaction, version).await?;
 			}
 			Ordering::Equal => {
 				log::info!("Database already in the latest version. No migration required.");
@@ -90,32 +100,4 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 
 		Ok(())
 	}
-}
-
-async fn migrate_database(
-	connection: &mut Transaction<'_, Database>,
-	db_version: Version,
-) -> Result<(), sqlx::Error> {
-	let migrations = vec!["0.0.0"];
-	let db_version = db_version.to_string();
-
-	let mut migrating = false;
-
-	for migration_version in migrations {
-		if migration_version == db_version {
-			migrating = true;
-		}
-		if !migrating {
-			continue;
-		}
-		#[allow(clippy::single_match)]
-		match migration_version {
-			"0.0.0" => (),
-			_ => (),
-		}
-	}
-
-	set_database_version(connection, &constants::DATABASE_VERSION).await?;
-
-	Ok(())
 }
