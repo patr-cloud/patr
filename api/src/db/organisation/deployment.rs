@@ -2,14 +2,9 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{
-		Deployment,
-		DockerRepository,
-		EnvVariable,
-		MachineType,
-		VolumeMount,
+		Deployment, DockerRepository, EnvVariable, MachineType, VolumeMount,
 	},
-	query,
-	query_as,
+	query, query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -28,8 +23,6 @@ pub async fn initialize_deployer_pre(
 			sub_domain VARCHAR(255) NOT NULL,
 			path VARCHAR(255) NOT NULL DEFAULT "/",
 			/* TODO change port to port array, and take image from docker_registry_repository */
-			persistence BOOL NOT NULL,
-			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE(domain_id, sub_domain, path)
 		);
 		"#
@@ -50,19 +43,19 @@ pub async fn initialize_deployer_pre(
 	.execute(&mut *transaction)
 	.await?;
 
-	// change this table to deployment id and port as unique
-	query!(
-		r#"
-		CREATE TABLE IF NOT EXISTS port (
-			deployment_id BINARY(16),
-			port SMALLINT UNSIGNED NOT NULL,
-			PRIMARY KEY (deployment_id, port),
-			FOREIGN KEY (deployment_id) REFERENCES deployment(id)
-		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
+	// // change this table to deployment id and port as unique
+	// query!(
+	// 	r#"
+	// 	CREATE TABLE IF NOT EXISTS port (
+	// 		deployment_id BINARY(16),
+	// 		port SMALLINT UNSIGNED NOT NULL, persistence: (), datacenter: () , percistence: (), datacenter: () ,
+	// 		PRIMARY KEY (deployment_id, port),
+	// 		FOREIGN KEY (deployment_id) REFERENCES deployment(id)
+	// 	);
+	// 	"#
+	// )
+	// .execute(&mut *transaction)
+	// .await?;
 
 	query!(
 		r#"
