@@ -1,5 +1,8 @@
+use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use sqlx::{MySql, Transaction};
 
+use crate::{db, error, utils::Error};
 pub struct DockerRepository {
 	pub id: Vec<u8>,
 	pub organisation_id: Vec<u8>,
@@ -55,7 +58,45 @@ pub struct Deployment {
 	pub sub_domain: String,
 	pub path: String,
 	pub persistence: bool,
-	pub datacenter: String
+	pub datacenter: String,
+}
+
+impl Deployment {
+	async fn get_full_image(
+		mut self,
+		connection: &mut Transaction<'_, MySql>,
+	) -> Result<Self, Error> {
+		if self.registry == "registry.docker.vicara.co" {
+			match &self.repository_id {
+				Some(repo_id) => {
+					let docker_repository =
+						db::get_docker_repository_by_id(connection, &repo_id)
+							.await?
+							.status(404)
+							.body(error!(REPOSITORY_NOT_FOUND).to_string())?;
+
+					self.image_name = Some(docker_repository.name);
+				}
+				None => Error::as_result()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?,
+			}
+		}
+
+		Ok(Deployment {
+			id: self.id,
+			name: self.name,
+			registry: self.registry,
+			repository_id: self.repository_id,
+			image_name: self.image_name,
+			image_tag: self.image_tag,
+			domain_id: self.domain_id,
+			sub_domain: self.sub_domain,
+			path: self.path,
+			persistence: self.persistence,
+			datacenter: self.datacenter,
+		})
+	}
 }
 
 pub struct DeploymentConfig {
