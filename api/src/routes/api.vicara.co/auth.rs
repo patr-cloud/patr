@@ -42,7 +42,10 @@ pub fn create_sub_app(
 	);
 	app.post(
 		"/sign-out",
-		[EveMiddleware::CustomFunction(pin_fn!(sign_out))],
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
+		],
 	);
 	app.post("/join", [EveMiddleware::CustomFunction(pin_fn!(join))]);
 	app.get(
@@ -281,13 +284,23 @@ async fn sign_out(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	db::get_user_login(context.get_database_connection(), &login_id)
-		.await?
-		.status(200)
-		.body(error!(TOKEN_NOT_FOUND).to_string())?;
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	db::delete_user_login_by_id(context.get_database_connection(), &login_id)
-		.await?;
+	db::get_user_login_for_user(
+		context.get_database_connection(),
+		&login_id,
+		&user_id,
+	)
+	.await?
+	.status(200)
+	.body(error!(TOKEN_NOT_FOUND).to_string())?;
+
+	db::delete_user_login_by_id(
+		context.get_database_connection(),
+		&login_id,
+		&user_id,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS:true,

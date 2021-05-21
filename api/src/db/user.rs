@@ -69,7 +69,7 @@ pub async fn initialize_users_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS user_login(
 			login_id BYTEA
-				CONSTRAINT user_login_pk PRIMARY KEY,
+				CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
 			token_expiry BIGINT NOT NULL
 				CONSTRAINT user_login_chk_token_expiry_unsigned
@@ -81,7 +81,8 @@ pub async fn initialize_users_pre(
 					CHECK(last_login >= 0),
 			last_activity BIGINT NOT NULL
 				CONSTRAINT user_login_chk_last_activity_unsigned
-					CHECK(last_activity >= 0)
+					CHECK(last_activity >= 0),
+			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
 		"#
 	)
@@ -1393,6 +1394,39 @@ pub async fn get_user_login(
 	Ok(rows.next())
 }
 
+pub async fn get_user_login_for_user(
+	connection: &mut Transaction<'_, Database>,
+	login_id: &[u8],
+	user_id: &[u8],
+) -> Result<Option<UserLogin>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			user_login
+		WHERE
+			login_id = $1 AND
+			user_id = $2;
+		"#,
+		login_id,
+		user_id,
+	)
+	.fetch_all(connection)
+	.await?
+	.into_iter()
+	.map(|row| UserLogin {
+		login_id: row.login_id,
+		refresh_token: row.refresh_token,
+		token_expiry: row.token_expiry as u64,
+		user_id: row.user_id,
+		last_login: row.last_login as u64,
+		last_activity: row.last_activity as u64,
+	});
+
+	Ok(rows.next())
+}
+
 pub async fn generate_new_login_id(
 	connection: &mut Transaction<'_, Database>,
 ) -> Result<Uuid, sqlx::Error> {
@@ -1472,15 +1506,18 @@ pub async fn get_all_logins_for_user(
 pub async fn delete_user_login_by_id(
 	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
+	user_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		DELETE FROM
 			user_login
 		WHERE
-			login_id = $1;
+			login_id = $1 AND
+			user_id = $2;
 		"#,
 		login_id,
+		user_id,
 	)
 	.execute(connection)
 	.await
