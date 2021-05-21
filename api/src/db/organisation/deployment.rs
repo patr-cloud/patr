@@ -2,9 +2,15 @@ use sqlx::{MySql, Transaction};
 
 use crate::{
 	models::db_mapping::{
-		Deployment, DockerRepository, EnvVariable, MachineType, VolumeMount,
+		Deployment,
+		DockerRepository,
+		EntryPoint,
+		EnvVariable,
+		MachineType,
+		VolumeMount,
 	},
-	query, query_as,
+	query,
+	query_as,
 };
 
 pub async fn initialize_deployer_pre(
@@ -300,25 +306,19 @@ pub async fn create_deployment(
 	registry: &str,
 	image_name: &str,
 	image_tag: &str,
-	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?);
+			(?, ?, ?, ?, ?);
 		"#,
 		deployment_id,
 		name,
 		registry,
 		image_name,
-		image_tag,
-		domain_id,
-		sub_domain,
-		path
+		image_tag
 	)
 	.execute(connection)
 	.await
@@ -402,14 +402,14 @@ pub async fn get_deployment_by_entry_point(
 	domain_id: &[u8],
 	sub_domain: &str,
 	path: &str,
-) -> Result<Option<Deployment>, sqlx::Error> {
+) -> Result<Option<EntryPoint>, sqlx::Error> {
 	Ok(query_as!(
-		Deployment,
+		EntryPoint,
 		r#"
 			SELECT
 				*
 			FROM
-				deployment
+				deployment_entry_point
 			WHERE
 				domain_id = ? AND
 				sub_domain = ? AND
@@ -544,7 +544,7 @@ pub async fn insert_deployment_volumes(
 	.map(|_| ())
 }
 
-pub async fn insert_deployment_environment_variables(
+pub async fn insert_deployment_environment_variable(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
 	name: &str,
@@ -560,6 +560,30 @@ pub async fn insert_deployment_environment_variables(
 		deployment_id,
 		name,
 		value
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn insert_deployment_entry_point(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		deployment_entry_point
+	VALUES
+		(?, ?, ?, ?);
+	"#,
+		deployment_id,
+		domain_id,
+		sub_domain,
+		path
 	)
 	.execute(connection)
 	.await
@@ -603,6 +627,26 @@ pub async fn get_variables_for_deployment(
 			WHERE
 				deployment_id = ?;
 			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_entry_points_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<EntryPoint>, sqlx::Error> {
+	query_as!(
+		EntryPoint,
+		r#"
+			SELECT
+				*
+			FROM
+				deployment_entry_point
+			WHERE
+				deployment_id = ?
+		"#,
 		deployment_id
 	)
 	.fetch_all(connection)

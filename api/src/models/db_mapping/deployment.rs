@@ -50,9 +50,6 @@ pub struct Deployment {
 	pub registry: String,
 	pub image_name: String,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
 }
 
 pub struct DeploymentConfig {
@@ -61,14 +58,13 @@ pub struct DeploymentConfig {
 	pub registry: String,
 	pub image_name: String,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
 	pub port_list: Vec<u8>,
 	pub env_variable_list: Vec<EnvVariable>,
 	pub volume_mount_list: Vec<VolumeMount>,
+	pub entry_point_list: Vec<EntryPoint>,
 }
-
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct EntryPoint {
 	pub deployment_id: Vec<u8>,
 	pub domain_id: Vec<u8>,
