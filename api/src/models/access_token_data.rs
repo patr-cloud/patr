@@ -20,6 +20,7 @@ pub struct AccessTokenData {
 	pub typ: String,
 	pub exp: u64,
 	pub orgs: HashMap<String, OrgPermissions>,
+	pub login_id: String,
 	pub user: ExposedUserData,
 	// Do we need to add more?
 }
@@ -50,6 +51,7 @@ impl AccessTokenData {
 		iat: u64,
 		exp: u64,
 		orgs: HashMap<String, OrgPermissions>,
+		login_id: String,
 		user: ExposedUserData,
 	) -> Self {
 		AccessTokenData {
@@ -59,6 +61,7 @@ impl AccessTokenData {
 			typ: String::from("accessToken"),
 			exp,
 			orgs,
+			login_id,
 			user,
 		}
 	}

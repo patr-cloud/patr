@@ -38,13 +38,6 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
-	app.get(
-		"/:username/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
-		],
-	);
 	app.post(
 		"/add-email-address",
 		[
@@ -66,12 +59,21 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_organisations_for_user)),
 		],
 	);
-
 	app.post(
 		"/change-password",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
+		],
+	);
+	app.get("/logins", []); // TODO list all logins here
+	app.get("/logins/:loginId/info", []); // TODO list all information about a particular login here
+	app.delete("/logins/:loginId", []); // TODO delete a particular login ID and invalidate it
+	app.get(
+		"/:username/info",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
 		],
 	);
 	app

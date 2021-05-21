@@ -273,17 +273,10 @@ async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let login_id = body
-		.get(request_keys::LOGIN_ID)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|value| hex::decode(value).ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
+	let login_id =
+		hex::decode(context.get_token_data().unwrap().login_id.clone())
+			.status(400)
+			.body(error!(UNAUTHORIZED).to_string())?;
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	db::get_user_login_for_user(
@@ -511,18 +504,20 @@ async fn reset_password(
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let username = body
-		.get(request_keys::USERNAME)
+	let user_id = body
+		.get(request_keys::USER_ID)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
-			.await?
-			.status(400)
-			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+	let user = db::get_user_by_username_or_email(
+		context.get_database_connection(),
+		user_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
 	let config = context.get_state().config.clone();
 

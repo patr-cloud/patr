@@ -373,7 +373,13 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
+	let token_data = AccessTokenData::new(
+		iat,
+		exp,
+		orgs,
+		hex::encode(&user_login.login_id),
+		user,
+	);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
