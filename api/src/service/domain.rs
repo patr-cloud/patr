@@ -29,7 +29,7 @@ pub async fn ensure_personal_domain_exists(
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
-		if domain.r#type == "organisation" {
+		if let ResourceOwnerType::Organisation = domain.r#type {
 			Error::as_result()
 				.status(500)
 				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())
@@ -37,19 +37,8 @@ pub async fn ensure_personal_domain_exists(
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
 	} else {
-		let domain_uuid = db::generate_new_resource_id(connection).await?;
+		let domain_uuid = db::generate_new_domain_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
-		db::create_orphaned_resource(
-			connection,
-			domain_id,
-			&format!("Personal Domain: {}", domain_name),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::DOMAIN)
-				.unwrap(),
-		)
-		.await?;
 		db::create_generic_domain(
 			connection,
 			domain_id,
@@ -76,7 +65,7 @@ pub async fn add_domain_to_organisation(
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
-		if domain.r#type.as_str() == "personal" {
+		if let ResourceOwnerType::Personal = domain.r#type {
 			Error::as_result()
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
@@ -87,7 +76,7 @@ pub async fn add_domain_to_organisation(
 		}
 	}
 
-	let domain_uuid = db::generate_new_resource_id(connection).await?;
+	let domain_uuid = db::generate_new_domain_id(connection).await?;
 	let domain_id = domain_uuid.as_bytes();
 	db::create_resource(
 		connection,

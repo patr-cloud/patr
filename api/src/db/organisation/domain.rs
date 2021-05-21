@@ -1,4 +1,5 @@
 use sqlx::Transaction;
+use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{Domain, OrganisationDomain, PersonalDomain},
@@ -66,8 +67,8 @@ pub async fn initialize_domain_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		ALTER TABLE domain
-		ADD CONSTRAINT domain_fk_id
+		ALTER TABLE organisation_domain
+		ADD CONSTRAINT organisation_domain_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
@@ -75,6 +76,97 @@ pub async fn initialize_domain_post(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn generate_new_domain_id(
+	connection: &mut Transaction<'_, Database>,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	// If it exists in the resource table, it can't be used
+	// because organisation domains are a resource
+	// If it exists in the domain table, it can't be used
+	// since personal domains are a type of domains
+	let mut exists = {
+		query!(
+			r#"
+			SELECT
+				*
+			FROM
+				resource
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.next()
+		.is_some()
+	} || {
+		query!(
+			r#"
+			SELECT
+				id,
+				name,
+				type as "type: ResourceOwnerType"
+			FROM
+				domain
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.next()
+		.is_some()
+	};
+
+	while exists {
+		uuid = Uuid::new_v4();
+		exists = {
+			query!(
+				r#"
+				SELECT
+					*
+				FROM
+					resource
+				WHERE
+					id = $1;
+				"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_all(&mut *connection)
+			.await?
+			.into_iter()
+			.next()
+			.is_some()
+		} || {
+			query!(
+				r#"
+				SELECT
+					id,
+					name,
+					type as "type: ResourceOwnerType"
+				FROM
+					domain
+				WHERE
+					id = $1;
+				"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_all(&mut *connection)
+			.await?
+			.into_iter()
+			.next()
+			.is_some()
+		}
+	}
+
+	Ok(uuid)
 }
 
 pub async fn create_generic_domain(
