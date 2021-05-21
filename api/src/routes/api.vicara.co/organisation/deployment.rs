@@ -447,19 +447,19 @@ async fn create_machine_type(
 	)
 	.await?;
 
-	let machine_type_id: Vec<u8>;
-	if is_machine_available.is_none() {
-		machine_type_id =
-			db::generate_new_resource_id(context.get_mysql_connection())
-				.await?
-				.as_bytes()
-				.to_vec();
-	} else {
-		// machine is already available
-		machine_type_id = is_machine_available.unwrap().id;
-		context.json(json!({ request_keys::MACHINE_ID: &machine_type_id }));
+	// if machine exists, return machine id
+	if is_machine_available.is_some() {
+		context.json(json!({
+			request_keys::MACHINE_ID: is_machine_available.unwrap().id
+		}));
 		return Ok(context);
 	}
+
+	let machine_type_id =
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await?
+			.as_bytes()
+			.to_vec();
 
 	// function to crate a machine type
 	db::create_deployment_machine_type(
