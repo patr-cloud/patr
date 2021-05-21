@@ -172,7 +172,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_phone_number_chk_number_valid CHECK(
 					LENGTH(number) >= 7 AND
 					LENGTH(number) <= 15 AND
-					CAST(number AS INTEGER) > 0
+					CAST(number AS BIGINT) > 0
 				),
 			CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number),
 			CONSTRAINT user_phone_number_uq_user_id_country_code_number
@@ -230,7 +230,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK(
 					LENGTH(backup_phone_number) >= 7 AND
 					LENGTH(backup_phone_number) <= 15 AND
-					CAST(backup_phone_number AS INTEGER) > 0
+					CAST(backup_phone_number AS BIGINT) > 0
 				),
 
 			/* Organisation email address */
