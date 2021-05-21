@@ -789,6 +789,48 @@
       ]
     }
   },
+  "333da8ffd1e90a8f41cb260722d9a20053a709510eb7b022e28ee8a5ecc97c27": {
+    "query": "SELECT id, name, type as \"type: ResourceOwnerType\" FROM domain WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "type: ResourceOwnerType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "35725518dbac83499f9bce45b05d2c9840f79915f0f28feb6e8981ccae25ad52": {
     "query": "SELECT * FROM role WHERE id = $1;",
     "describe": {
@@ -1935,6 +1977,16 @@
       ]
     }
   },
+  "8bd7a7d2e3ce79c168936248e93fdc28f92810a4435eac91b59c2fe1d83b765c": {
+    "query": "ALTER TABLE organisation_domain ADD CONSTRAINT organisation_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "8c7079fc4df3151c8cc076d92619dfb6bbcd19d279b3e58daa5bdb4c3e87b044": {
     "query": "CREATE TABLE IF NOT EXISTS user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id) );",
     "describe": {
@@ -2417,20 +2469,6 @@
       "nullable": []
     }
   },
-  "a1fee411f746bec8163240182e98e79d4c38c359766bcd256b7b6e917454b95a": {
-    "query": "INSERT INTO resource VALUES ($1, $2, $3, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "a3abf15ceb610eac63cbccf25ff04116545f97f57c3c36a7fe9e75a139e74bd8": {
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number FOREIGN KEY ( id, backup_phone_country_code, backup_phone_number ) REFERENCES user_phone_number ( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -2893,16 +2931,6 @@
         false,
         false
       ]
-    }
-  },
-  "c66cbe2c16960ad758bb8775f047f23c40d037d578fafa8611a8a0702ccd2184": {
-    "query": "ALTER TABLE domain ADD CONSTRAINT domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {

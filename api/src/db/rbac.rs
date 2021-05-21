@@ -474,28 +474,6 @@ pub async fn create_role(
 	Ok(())
 }
 
-pub async fn create_orphaned_resource(
-	connection: &mut Transaction<'_, Database>,
-	resource_id: &[u8],
-	resource_name: &str,
-	resource_type_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			resource
-		VALUES
-			($1, $2, $3, NULL);
-		"#,
-		resource_id,
-		resource_name,
-		resource_type_id
-	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
-}
-
 pub async fn create_resource(
 	connection: &mut Transaction<'_, Database>,
 	resource_id: &[u8],
