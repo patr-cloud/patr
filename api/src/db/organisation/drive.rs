@@ -8,7 +8,7 @@ pub async fn initialize_drive_pre(
 	log::info!("Initializing drive tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS file (
+		CREATE TABLE file (
 			id BYTEA CONSTRAINT file_pk PRIMARY KEY,
 			name VARCHAR(250) NOT NULL
 		);

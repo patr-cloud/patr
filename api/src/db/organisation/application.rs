@@ -14,7 +14,7 @@ pub async fn initialize_application_pre(
 	log::info!("Initializing application tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS application (
+		CREATE TABLE application (
 			id BYTEA CONSTRAINT application_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL CONSTRAINT application_uq_name UNIQUE
 		);
@@ -25,7 +25,7 @@ pub async fn initialize_application_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS application_version (
+		CREATE TABLE application_version (
 			application_id BYTEA NOT NULL
 				CONSTRAINT application_version_fk_application_id
 					REFERENCES application(id),
@@ -40,7 +40,7 @@ pub async fn initialize_application_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS application_version_platform (
+		CREATE TABLE application_version_platform (
 			application_id BYTEA NOT NULL,
 			version VARCHAR(32) NOT NULL,
 			platform VARCHAR(60) NOT NULL,

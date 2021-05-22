@@ -8,7 +8,7 @@ pub async fn initialize_portus_pre(
 	log::info!("Initializing Portus tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS portus_tunnel(
+		CREATE TABLE portus_tunnel(
 			id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL,
 			ssh_port INTEGER NOT NULL
@@ -26,6 +26,19 @@ pub async fn initialize_portus_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			portus_tunnel_idx_name
+		ON
+			portus_tunnel
+		(name);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 

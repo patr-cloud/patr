@@ -16,7 +16,7 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain(
+		CREATE TABLE domain(
 			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE,
 			type RESOURCE_OWNER_TYPE NOT NULL,
@@ -29,7 +29,7 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation_domain (
+		CREATE TABLE organisation_domain (
 			id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
 				CONSTRAINT organisation_domain_chk_dmn_typ
@@ -45,7 +45,19 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS personal_domain (
+		CREATE INDEX
+			organisation_domain_idx_is_verified
+		ON
+			organisation_domain
+		(is_verified);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE personal_domain (
 			id BYTEA
 				CONSTRAINT personal_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL

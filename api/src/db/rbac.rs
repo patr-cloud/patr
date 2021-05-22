@@ -22,7 +22,7 @@ pub async fn initialize_rbac_pre(
 	// Resource types, like application, deployment, VM, etc
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS resource_type(
+		CREATE TABLE resource_type(
 			id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE,
 			description VARCHAR(500)
@@ -34,7 +34,7 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS resource(
+		CREATE TABLE resource(
 			id BYTEA CONSTRAINT resource_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			resource_type_id BYTEA NOT NULL
@@ -49,10 +49,22 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		CREATE INDEX
+			resource_idx_owner_id
+		ON
+			resource
+		(owner_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	// Roles belong to an organisation
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role(
+		CREATE TABLE role(
 			id BYTEA CONSTRAINT role_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500),
@@ -67,7 +79,7 @@ pub async fn initialize_rbac_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS permission(
+		CREATE TABLE permission(
 			id BYTEA CONSTRAINT permission_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500)
@@ -80,7 +92,7 @@ pub async fn initialize_rbac_pre(
 	// Users belong to an organisation through a role
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation_user(
+		CREATE TABLE organisation_user(
 			user_id BYTEA NOT NULL
 				CONSTRAINT organisation_user_fk_user_id REFERENCES "user"(id),
 			organisation_id BYTEA NOT NULL
@@ -96,10 +108,34 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_user_idx_user_id
+		ON
+			organisation_user
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_user_idx_user_id_organisation_id
+		ON
+			organisation_user
+		(user_id, organisation_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	// Roles that have permissions on a resource type
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role_permissions_resource_type(
+		CREATE TABLE role_permissions_resource_type(
 			role_id BYTEA
 				CONSTRAINT role_permissions_resource_type_fk_role_id
 					REFERENCES role(id),
@@ -117,10 +153,34 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		CREATE INDEX
+			role_permissions_resource_type_idx_role_id
+		ON
+			role_permissions_resource_type
+		(role_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_permissions_resource_type_idx_role_id_resource_type_id
+		ON
+			role_permissions_resource_type
+		(role_id, resource_type_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	// Roles that have permissions on a specific resource
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS role_permissions_resource(
+		CREATE TABLE role_permissions_resource(
 			role_id BYTEA
 				CONSTRAINT role_permissions_resource_fk_role_id
 					REFERENCES role(id),
@@ -133,6 +193,30 @@ pub async fn initialize_rbac_pre(
 			CONSTRAINT role_permissions_resource_pk
 				PRIMARY KEY(role_id, permission_id, resource_id)
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_permissions_resource_idx_role_id
+		ON
+			role_permissions_resource
+		(role_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_permissions_resource_idx_role_id_resource_id
+		ON
+			role_permissions_resource
+		(role_id, resource_id);
 		"#
 	)
 	.execute(&mut *transaction)

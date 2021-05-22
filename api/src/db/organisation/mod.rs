@@ -20,7 +20,7 @@ pub async fn initialize_organisations_pre(
 	log::info!("Initializing organisation tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation(
+		CREATE TABLE organisation(
 			id BYTEA
 				CONSTRAINT organisation_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL
@@ -32,6 +32,30 @@ pub async fn initialize_organisations_pre(
 			created BIGINT NOT NULL
 				CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0)
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_idx_super_admin_id
+		ON
+			organisation
+		(super_admin_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_idx_active
+		ON
+			organisation
+		(active);
 		"#
 	)
 	.execute(&mut *transaction)

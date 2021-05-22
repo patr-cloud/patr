@@ -9,7 +9,7 @@ pub async fn initialize_meta_pre(
 	log::info!("Initializing meta tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS meta_data(
+		CREATE TABLE meta_data(
 			id VARCHAR(100)
 				CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL

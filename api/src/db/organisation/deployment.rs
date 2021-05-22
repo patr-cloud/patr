@@ -13,7 +13,7 @@ pub async fn initialize_deployer_pre(
 	log::info!("Initializing deployment tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment(
+		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co',
@@ -36,7 +36,43 @@ pub async fn initialize_deployer_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS docker_registry_repository(
+		CREATE INDEX
+			deployment_idx_name
+		ON
+			deployment
+		(name);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			deployment_idx_image_name_image_tag
+		ON
+			deployment
+		(image_name, image_tag);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			deployment_idx_registry_image_name_image_tag
+		ON
+			deployment
+		(registry, image_name, image_tag);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE docker_registry_repository(
 			id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
 			organisation_id BYTEA NOT NULL,
 			name VARCHAR(255) NOT NULL,

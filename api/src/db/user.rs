@@ -23,7 +23,7 @@ pub async fn initialize_users_pre(
 	log::info!("Initializing user tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS "user"(
+		CREATE TABLE "user"(
 			id BYTEA
 				CONSTRAINT user_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL
@@ -67,7 +67,19 @@ pub async fn initialize_users_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_login(
+		CREATE INDEX
+			user_idx_created
+		ON
+			"user"
+		(created);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_login(
 			login_id BYTEA
 				CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
@@ -91,7 +103,19 @@ pub async fn initialize_users_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS password_reset_request(
+		CREATE INDEX
+			user_login_idx_user_id
+		ON
+			user_login
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE password_reset_request(
 			user_id BYTEA
 				CONSTRAINT password_reset_request_pk PRIMARY KEY
 				CONSTRAINT password_reset_request_fk_user_id
@@ -114,7 +138,7 @@ pub async fn initialize_users_post(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS personal_email(
+		CREATE TABLE personal_email(
 			user_id BYTEA NOT NULL
 				CONSTRAINT personal_email_fk_user_id REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
@@ -133,7 +157,19 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation_email(
+		CREATE INDEX
+			personal_email_idx_user_id
+		ON
+			personal_email
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE organisation_email(
 			user_id BYTEA NOT NULL
 				CONSTRAINT organisation_email_fk_user_id REFERENCES "user"(id),
 			local VARCHAR(64) NOT NULL,
@@ -149,7 +185,19 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS phone_number_country_code(
+		CREATE INDEX
+			organisation_email_idx_user_id
+		ON
+			organisation_email
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE phone_number_country_code(
 			country_code CHAR(2)
 				CONSTRAINT phone_number_country_code_pk PRIMARY KEY,
 			phone_code VARCHAR(5) NOT NULL,
@@ -162,7 +210,19 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_phone_number(
+		CREATE INDEX
+			phone_number_country_code_idx_phone_code
+		ON
+			phone_number_country_code
+		(phone_code);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_phone_number(
 			user_id BYTEA NOT NULL
 				CONSTRAINT user_phone_number_fk_user_id REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
@@ -186,7 +246,19 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_unverified_personal_email(
+		CREATE INDEX
+			user_phone_number_idx_user_id
+		ON
+			user_phone_number
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_unverified_personal_email(
 			local VARCHAR(64) NOT NULL,
 			domain_id BYTEA NOT NULL
 				CONSTRAINT user_unverified_personal_email_fk_domain_id
@@ -201,7 +273,10 @@ pub async fn initialize_users_post(
 					CHECK(verification_token_expiry >= 0),
 			
 			CONSTRAINT user_unverified_personal_email_pk
-				PRIMARY KEY(local, domain_id)
+				PRIMARY KEY(local, domain_id),
+			CONSTRAINT
+				user_unverified_personal_email_uq_user_id_local_domain_id
+				UNIQUE(user_id, local, domain_id)
 		);
 		"#
 	)
@@ -210,7 +285,19 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS user_to_sign_up(
+		CREATE INDEX
+			user_unverified_personal_email_idx_user_id
+		ON
+			user_unverified_personal_email
+		(user_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_to_sign_up(
 			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY,
 			account_type RESOURCE_OWNER_TYPE NOT NULL,
 
@@ -277,6 +364,30 @@ pub async fn initialize_users_post(
 				)
 			)
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_otp_expiry
+		ON
+			user_to_sign_up
+		(otp_expiry);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_username_otp_expiry
+		ON
+			user_to_sign_up
+		(username, otp_expiry);
 		"#
 	)
 	.execute(&mut *transaction)
