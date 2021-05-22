@@ -1,5 +1,15 @@
 {
   "db": "PostgreSQL",
+  "003572bba6e2c9719d902eb4cefc74a1087b9eeb51e867eec080938d306e3bb4": {
+    "query": "CREATE INDEX deployment_idx_registry_image_name_image_tag ON deployment (registry, image_name, image_tag);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
     "describe": {
@@ -22,8 +32,28 @@
       "nullable": []
     }
   },
-  "0b091a7a9a68613f461e8335de3172bf3530f27732e5cb128ee8e52e5b55499e": {
-    "query": "CREATE TABLE IF NOT EXISTS user_login( login_id BYTEA CONSTRAINT user_login_pk PRIMARY KEY, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id BYTEA NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0) );",
+  "05d4329b320e74565551e57e2419b8a312b019bd441b7e91b966c1e2937eaf4d": {
+    "query": "CREATE TABLE portus_tunnel( id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_ssh_port_u16 CHECK(ssh_port >= 0 AND ssh_port <= 65534), exposed_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_exposed_port_u16 CHECK(exposed_port >= 0 AND exposed_port <= 65534), name VARCHAR(50) NOT NULL, created BIGINT NOT NULL CONSTRAINT portus_tunnel_chk_created_unsigned CHECK(created >= 0) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0aeda202c1315facdf01113fe29e35e88eb46dc18e56bfd9a543302b83247776": {
+    "query": "CREATE INDEX organisation_idx_super_admin_id ON organisation (super_admin_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0ba65499ecae8902b5e35d4c272af2c09970683633d0cb1822835ebaade7d41b": {
+    "query": "CREATE TABLE role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -148,6 +178,16 @@
         "Left": [
           "Varchar"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
+    "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -402,6 +442,26 @@
       ]
     }
   },
+  "17a939d999365a1af9058019c73d2750ddd19dbf913eaea09a9d036ecd23cdfa": {
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY, account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
+    "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "1a244236b1a5779b312dea34ac0d15869837af670cc8327868d1d3b1f813a188": {
     "query": "DELETE FROM organisation_domain WHERE id = $1;",
     "describe": {
@@ -422,6 +482,16 @@
         "Left": [
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "1c8d4fd66ca5d3500c65672a36b1b6931a2f37ac3bddfb1f75a59c5aa3a8a81d": {
+    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -485,6 +555,16 @@
           "Bytea",
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "1f3c437755be8017fcacea1842f4a100105f000ffffb225d1b2e68cebbd590bc": {
+    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -555,18 +635,8 @@
       ]
     }
   },
-  "24ef186f33c0c788eb04321abf9fe638132c6b8fb7cc75149bf4ef796a35aa7f": {
-    "query": "CREATE TABLE IF NOT EXISTS phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "25fc77b2168e42994f03f84a6e2787e549b2ce09dfd118a83aaee7fb4068a079": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT deployment_fk_domain_id REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT '/', port INTEGER NOT NULL CONSTRAINT deployment_chk_port_u16 CHECK(port >= 0 AND port <= 65534), CONSTRAINT deployment_uq_domain_id_sub_domain_path UNIQUE(domain_id, sub_domain, path) );",
+  "267cda1e5050dca6e8a3352b3ba5058efb79ec634733852a559df21880908120": {
+    "query": "CREATE TABLE personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -665,6 +735,16 @@
         false,
         false
       ]
+    }
+  },
+  "29c6c0c77ee4addddb5f2fe4400fa72bb8b8b8e850d297e12886a94e64f46100": {
+    "query": "CREATE TABLE role( id BYTEA CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BYTEA NOT NULL CONSTRAINT role_fk_owner_id REFERENCES organisation(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "2dfba0dc072e1de9c4fc4976210f8d85d204f97567f6d9d0496398a53f04b4ab": {
@@ -831,6 +911,16 @@
       ]
     }
   },
+  "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
+    "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "35725518dbac83499f9bce45b05d2c9840f79915f0f28feb6e8981ccae25ad52": {
     "query": "SELECT * FROM role WHERE id = $1;",
     "describe": {
@@ -882,8 +972,8 @@
       "nullable": []
     }
   },
-  "38587bf2562a53c46f09aa1723d34cef89e3a4fabbad2ba41c422b4bca9c9d42": {
-    "query": "CREATE TABLE IF NOT EXISTS portus_tunnel( id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_ssh_port_u16 CHECK(ssh_port >= 0 AND ssh_port <= 65534), exposed_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_exposed_port_u16 CHECK(exposed_port >= 0 AND exposed_port <= 65534), name VARCHAR(50) NOT NULL, created BIGINT NOT NULL CONSTRAINT portus_tunnel_chk_created_unsigned CHECK(created >= 0) );",
+  "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
+    "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -996,6 +1086,16 @@
       "nullable": []
     }
   },
+  "3cea416ed3eb6ab48c87ef349e166f2adf2abcd2eb5ce955a50ed1caf9e20c35": {
+    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3d0c78ef163d5c1a3691b56512d8b2389181475f24461486fe6dd8f49a328658": {
     "query": "INSERT INTO resource VALUES ($1, $2, $3, $4);",
     "describe": {
@@ -1069,8 +1169,8 @@
       "nullable": []
     }
   },
-  "41f0b4fa3be0f82fb0c3c3c21d872cbbfda12e9fe8f2a0f0cad4fc61428a18ef": {
-    "query": "CREATE TABLE IF NOT EXISTS role( id BYTEA CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BYTEA NOT NULL CONSTRAINT role_fk_owner_id REFERENCES organisation(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
+  "4128fbdbda6f6ae313616236827d29e3c8ee9c64acc78d91047b9bb9831d5d9f": {
+    "query": "CREATE TABLE organisation_domain ( id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT organisation_domain_chk_dmn_typ CHECK(domain_type = 'organisation'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT organisation_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1105,6 +1205,26 @@
       ]
     }
   },
+  "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
+    "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "46f418909a71fadea0b38f2672bf4813fa6bdfab1af130894201ddd42a62c435": {
+    "query": "CREATE TABLE docker_registry_repository( id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY, organisation_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, CONSTRAINT docker_registry_repository_uq_organisation_id_name UNIQUE(organisation_id, name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
     "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
     "describe": {
@@ -1121,6 +1241,26 @@
       "nullable": []
     }
   },
+  "4b540dbce4c784d22133ecc1b800ddf979dcc940fddaee745d374fa35ab824de": {
+    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4c8250d020711eb9e5b8771e8f1b0ea04a251eedc883afa88e0e4c0374bcd20c": {
+    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "4e1d0ecf66dd0b48a03cac5a39547ef34705ecbc7b0bc20e9e11fcdad7f7f97b": {
     "query": "DELETE FROM organisation_user WHERE role_id = $1;",
     "describe": {
@@ -1129,16 +1269,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "4f131dac0d9a0ac007b11f18358210775fab323c399d3667f5a2c315b7470412": {
-    "query": "CREATE TABLE IF NOT EXISTS \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -1200,16 +1330,6 @@
       ]
     }
   },
-  "557c6cc1527a15d189bb2658ea536086a8bb1baad6915b296301f129c9df2385": {
-    "query": "CREATE TABLE IF NOT EXISTS user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS INTEGER) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "5803e973fb5aebfccb8ab5bb6815d0e716808a3e76fdc97702662a0f20e8776a": {
     "query": "SELECT application_id, version FROM application_version WHERE application_id = $1;",
     "describe": {
@@ -1236,6 +1356,16 @@
       ]
     }
   },
+  "58a62ba31db832c8901e6b2eae6676b999ea76084dfcfbb4ce5e57071f03abdf": {
+    "query": "CREATE INDEX portus_tunnel_idx_name ON portus_tunnel (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "5b2c77ea3a5cb8b691f7a5ba6f122c2fe324137ef48330812aa7bc5776481e2d": {
     "query": "INSERT INTO meta_data VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;",
     "describe": {
@@ -1248,6 +1378,57 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "5d39c74aa502ba075ac3532d29826cf1889b77fc4ff4aa587a7e2482f240f6c1": {
+    "query": "SELECT * FROM user_login WHERE login_id = $1 AND user_id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "5f148eb2cfd81e700bc78ededf4dfd92702fcf36992957a1ae5ad82aaecb57a1": {
@@ -1436,14 +1617,22 @@
       ]
     }
   },
-  "69d76e9ca85addc0e5fdd064a005023a73fdf932b3b33b47942ab4449c2fdf73": {
-    "query": "DELETE FROM user_login WHERE login_id = $1;",
+  "6155ec064d38d7bb9ffb58e400b363cf1092b519f31bb574e1b07b63a6885360": {
+    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_ck_unsigned CHECK(token_expiry >= 0) );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": [
-          "Bytea"
-        ]
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -1516,16 +1705,6 @@
         false,
         false
       ]
-    }
-  },
-  "6d650070169dee626e1feb529c8bcff39df3e8963f3c8fbdd822dc77ac45771f": {
-    "query": "CREATE TABLE IF NOT EXISTS user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY, account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS INTEGER) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "6e3a486525330c72b9c3f74b391246cbe883ee761d6b19654a714a2e4fca8302": {
@@ -1701,8 +1880,8 @@
       ]
     }
   },
-  "7bb4a1ca621efcc3d58f993fbb88ab3d03421be6d375a3754dbd6f024bd20d4f": {
-    "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
+  "7c8edaf1d6dde092f19241f722cb1f72239c24af5d801596d06ee9e43b7b8864": {
+    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE, type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1711,8 +1890,8 @@
       "nullable": []
     }
   },
-  "7d29c75852b88573e780a9705d6e579cc2d180e2cfe41bfad2e1e9516657beb3": {
-    "query": "CREATE TABLE IF NOT EXISTS domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE, type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
+  "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
+    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1765,8 +1944,18 @@
       ]
     }
   },
-  "83aa2147e1b35d5dd8671ed01d07f97d72b4beac2df2cde4347589283b90fed8": {
-    "query": "CREATE TABLE IF NOT EXISTS organisation_domain ( id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT organisation_domain_chk_dmn_typ CHECK(domain_type = 'organisation'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT organisation_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+  "81176c7e3e4b2d05c35514e25f56b3f3a94ebc3c737323d2359e22d82c0f8fe8": {
+    "query": "CREATE TABLE file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "818eee9c01eadb18bef86a30b153109c1224379e2881d1ef733a89e14e460541": {
+    "query": "CREATE INDEX user_unverified_personal_email_idx_user_id ON user_unverified_personal_email (user_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1873,6 +2062,16 @@
       ]
     }
   },
+  "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "86de4c8193df4ddaa97ee03f5b58d3cfa0f548c5ed7541b3c6d2b583859f9818": {
     "query": "SELECT * FROM organisation WHERE name = $1;",
     "describe": {
@@ -1977,8 +2176,8 @@
       ]
     }
   },
-  "8bd7a7d2e3ce79c168936248e93fdc28f92810a4435eac91b59c2fe1d83b765c": {
-    "query": "ALTER TABLE organisation_domain ADD CONSTRAINT organisation_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+  "894b4961089ee424f2aa6806ab74024dff7f864ec43da8e98b727636486f2939": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT deployment_fk_domain_id REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT '/', port INTEGER NOT NULL CONSTRAINT deployment_chk_port_u16 CHECK(port >= 0 AND port <= 65534), CONSTRAINT deployment_uq_domain_id_sub_domain_path UNIQUE(domain_id, sub_domain, path) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1987,8 +2186,8 @@
       "nullable": []
     }
   },
-  "8c7079fc4df3151c8cc076d92619dfb6bbcd19d279b3e58daa5bdb4c3e87b044": {
-    "query": "CREATE TABLE IF NOT EXISTS user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id) );",
+  "8bd7a7d2e3ce79c168936248e93fdc28f92810a4435eac91b59c2fe1d83b765c": {
+    "query": "ALTER TABLE organisation_domain ADD CONSTRAINT organisation_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2097,6 +2296,16 @@
         "Left": [
           "Text"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "8f68d37a4267bbd5a176bc66f268837212b48b9322411f826cb66f0037c414ce": {
+    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -2315,8 +2524,8 @@
       ]
     }
   },
-  "979d32828553dc7beca16b5819d28eb2f9bddb377b95132640b72bf1715256e5": {
-    "query": "CREATE TABLE IF NOT EXISTS application_version_platform ( application_id BYTEA NOT NULL, version VARCHAR(32) NOT NULL, platform VARCHAR(60) NOT NULL, CONSTRAINT application_version_platform_pk PRIMARY KEY(application_id, version, platform), CONSTRAINT application_version_platform_fk_application_id_version FOREIGN KEY(application_id, version) REFERENCES application_version(application_id, version) );",
+  "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
+    "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2425,8 +2634,8 @@
       ]
     }
   },
-  "9af03a1858e9992d6e1596425d941e0aa7e29bd9e173fdd4a85f0e34f5b905ca": {
-    "query": "CREATE TABLE IF NOT EXISTS personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+  "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
+    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2435,8 +2644,18 @@
       "nullable": []
     }
   },
-  "9e58dee6f43a71a327ceae644e8ae02a558c570e6a6ac2e643a0b48b284dee09": {
-    "query": "CREATE TABLE IF NOT EXISTS permission( id BYTEA CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
+  "9c84ef771789c50d93bc91888a8bcf1ef45e2323a552757ae1e8587b7d5c06f2": {
+    "query": "CREATE TABLE permission( id BYTEA CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9d566dc2f404887f143fbd18aca765672fed95b3f46f11f72c60bb42cfda1f2a": {
+    "query": "CREATE INDEX organisation_user_idx_user_id ON organisation_user (user_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2503,6 +2722,16 @@
   },
   "a794dcad3259ed1b706fcf59441297d3e6a03628a9b965b64c2684032d50d364": {
     "query": "ALTER TABLE organisation ADD CONSTRAINT organisation_fk_id FOREIGN KEY(id) REFERENCES resource(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ab946fe7f8938408e571a2117c1542bfa8898dc0e5dccef8d39d26a3a94b8225": {
+    "query": "CREATE INDEX organisation_email_idx_user_id ON organisation_email (user_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2687,6 +2916,26 @@
       ]
     }
   },
+  "b00c3a7fbe255cf3b72fa3272bcb337bf8e7caf17e64cc884f0e1a39305a26b3": {
+    "query": "CREATE TABLE application_version_platform ( application_id BYTEA NOT NULL, version VARCHAR(32) NOT NULL, platform VARCHAR(60) NOT NULL, CONSTRAINT application_version_platform_pk PRIMARY KEY(application_id, version, platform), CONSTRAINT application_version_platform_fk_application_id_version FOREIGN KEY(application_id, version) REFERENCES application_version(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b0f9ddd3982bfc24fbe6d8f7a06617d038818c52ed9e462b7404f324fd0a804f": {
+    "query": "CREATE TABLE user_login( login_id BYTEA CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id BYTEA NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
     "query": "UPDATE \"user\" SET password = $1 WHERE id = $2;",
     "describe": {
@@ -2794,16 +3043,6 @@
       ]
     }
   },
-  "b74713b9be08953c9c16ad7fc7b6ba7ff0811992be0bbdc7336b31ab88589777": {
-    "query": "CREATE TABLE IF NOT EXISTS password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_ck_unsigned CHECK(token_expiry >= 0) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
     "query": "SET CONSTRAINTS ALL DEFERRED;",
     "describe": {
@@ -2814,8 +3053,48 @@
       "nullable": []
     }
   },
+  "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
+    "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ba880271509f42c4b057a3aff90364ecb175af96fbd909885726821bb2c22a4c": {
+    "query": "CREATE INDEX organisation_idx_active ON organisation (active);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "ba9bd7a1dc576127a8132d0fbada1e9242c2b2b8441f29a131eed0537bbbdfc8": {
     "query": "SET CONSTRAINTS ALL IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "baf8c3ed596de5ee5a358bd0e1d98f2f92a6e83cf9b53d2f246e89447f30846f": {
+    "query": "CREATE TABLE application_version ( application_id BYTEA NOT NULL CONSTRAINT application_version_fk_application_id REFERENCES application(id), version VARCHAR(32) NOT NULL, CONSTRAINT application_version_pk PRIMARY KEY(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
+    "query": "CREATE INDEX user_to_sign_up_idx_username_otp_expiry ON user_to_sign_up (username, otp_expiry);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2871,26 +3150,6 @@
       ]
     }
   },
-  "c179d845777acca405a1ae04681cd7517bb5879b8e64a5936b7d8d27dc5189ff": {
-    "query": "CREATE TABLE IF NOT EXISTS organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "c2fa086005fa2cec71cfb14f6e80704464d111f1023d4a2a138b0c5b10e7a7fb": {
-    "query": "CREATE TABLE IF NOT EXISTS meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "c3a925e8c3a743a9f0df880e374fc65d00f881df9da6d04730310f90894e407d": {
     "query": "SELECT domain.name, personal_domain.id, personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;",
     "describe": {
@@ -2931,6 +3190,16 @@
         false,
         false
       ]
+    }
+  },
+  "c6feb8e474f4f1831dd1aae406a021fb6855581c2705b788eb05bfc9f65d4eb7": {
+    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
@@ -3031,18 +3300,8 @@
       ]
     }
   },
-  "c89290ccd555dede02da76c7071a3578a70c894ad7a9b55e0a769743f568c610": {
-    "query": "CREATE TABLE IF NOT EXISTS application ( id BYTEA CONSTRAINT application_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT application_uq_name UNIQUE );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "c93bcb6f08da0f5de5de632b516647867c85c8c00fd8b18bfc15dee7102510af": {
-    "query": "CREATE TABLE IF NOT EXISTS resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE );",
+  "c842c31eb3324dcb69e56439b24b7909057b220839e81bcc4638d2b4e4f27bdb": {
+    "query": "CREATE TABLE organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3077,26 +3336,6 @@
       ]
     }
   },
-  "cd62783d77fcb4537312efba4db0761aa918b97fdc9da10c509b3c82c4d3e4be": {
-    "query": "CREATE TABLE IF NOT EXISTS application_version ( application_id BYTEA NOT NULL CONSTRAINT application_version_fk_application_id REFERENCES application(id), version VARCHAR(32) NOT NULL, CONSTRAINT application_version_pk PRIMARY KEY(application_id, version) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "cd94a198d012bc02fcafa96ddc8c5c46390059cceafb0dfd34315fe97484a4a1": {
-    "query": "CREATE TABLE IF NOT EXISTS resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -3113,16 +3352,6 @@
   },
   "d053057cd4d2bef5776a82a37cdf49a8147fff23182d6d1254c9fc30f1def33b": {
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_email_local_backup_email_domain_id FOREIGN KEY ( id, backup_email_local, backup_email_domain_id ) REFERENCES personal_email ( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "d07f53628102700f2529f0961a74c137630ee90366e7465b12ebbcc3d2f6109b": {
-    "query": "CREATE TABLE IF NOT EXISTS docker_registry_repository( id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY, organisation_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, CONSTRAINT docker_registry_repository_uq_organisation_id_name UNIQUE(organisation_id, name) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3177,8 +3406,8 @@
       ]
     }
   },
-  "d48ba3825d9bc6a9b5695f2121f656b79a7d3928225c2d19bb17f080c9e5eee6": {
-    "query": "CREATE TABLE IF NOT EXISTS personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+  "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
+    "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3195,16 +3424,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "d86ad00b29e3560568407d5789ef1c30b3f06abb5a2ea6712ef3758027616e7b": {
-    "query": "CREATE TABLE IF NOT EXISTS organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -3349,6 +3568,46 @@
       ]
     }
   },
+  "dc3b3ef773e26c8df28ea1d57db35e8cf2adc36f4edf9f5cd5414c4e415370d7": {
+    "query": "CREATE TABLE application ( id BYTEA CONSTRAINT application_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT application_uq_name UNIQUE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "deec3c4f37507d0cdcd3cede7f2ed65c170692b696e4c222f4ad1d3ad672e54d": {
+    "query": "CREATE TABLE organisation( id BYTEA CONSTRAINT organisation_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT organisation_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT organisation_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, created BIGINT NOT NULL CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "df1ce9a576d9b85018ae7f57841bf1060679004429f62313ea42d4b95d4102f4": {
+    "query": "CREATE INDEX organisation_user_idx_user_id_organisation_id ON organisation_user (user_id, organisation_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "df36e2ceaf21f2d013406c873646c95c106b64e49665f309738b14201df9ec56": {
+    "query": "CREATE INDEX user_login_idx_user_id ON user_login (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "dff62e4a51297dcf1ab7b3b96a0c17501f37babb6150c67287986265c5580ef9": {
     "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE';",
     "describe": {
@@ -3443,16 +3702,6 @@
         "Left": [
           "Varchar"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "e1e1e1517bf53c3516199f8f095b0192ee928fbd7fc299f2e213b84bafd30007": {
-    "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource_type( role_id BYTEA CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id BYTEA CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -3642,6 +3891,39 @@
       "nullable": []
     }
   },
+  "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
+    "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "e9190d8880f4128c2dd3c366e1e52de53a9552f30698c4da7d6085759af0938e": {
+    "query": "CREATE TABLE role_permissions_resource_type( role_id BYTEA CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id BYTEA CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "e91e543e8d8395c1862678749ecbb1a23ae3d2df055111d862745c8c7cb165e3": {
+    "query": "DELETE FROM user_login WHERE login_id = $1 AND user_id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "ea2e3a024fbd1861c22fa4221fe28db777fb20a7b1704a84b096c53e2c2e32bc": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'personal', $2, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL, $9, $10 ) ON CONFLICT(username) DO UPDATE SET account_type = 'personal', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, org_email_local = NULL, org_domain_name = NULL, organisation_name = NULL, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -3663,18 +3945,8 @@
       "nullable": []
     }
   },
-  "ee8d0b1ffb14e28dc590396efa2ee7e2b33d6113d4ade3b60b4a8713770fffe5": {
-    "query": "CREATE TABLE IF NOT EXISTS file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "f1090cf38f89f1cd81b65dc62037af25af2e03bf99a8da085b6d0188c4091399": {
-    "query": "CREATE TABLE IF NOT EXISTS organisation( id BYTEA CONSTRAINT organisation_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT organisation_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT organisation_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, created BIGINT NOT NULL CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0) );",
+  "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
+    "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3735,6 +4007,16 @@
           "Varchar",
           "Int4"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "fdbfecfc96b57cbf713d6fe0e9cb5f72e7fffe27b0345d44abeb0d50397905e2": {
+    "query": "CREATE INDEX organisation_domain_idx_is_verified ON organisation_domain (is_verified);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
