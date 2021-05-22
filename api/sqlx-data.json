@@ -1,5 +1,15 @@
 {
   "db": "MySQL",
+  "02b6cf368a04461c3d286b8c23b4030a9eb2da79e2cb6215ccff3195581109e7": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, false, 'india');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 8
+      },
+      "nullable": []
+    }
+  },
   "0346579f00f2674ce01f47d580460271ff00e265fb686ace54b5dcb496092fb8": {
     "query": "INSERT INTO resource VALUES (?, ?, ?, NULL);",
     "describe": {
@@ -2737,6 +2747,26 @@
       ]
     }
   },
+  "9ccdc788a8655e2c99c1aca9ba9ef0d1c5ebe7e2a45ff87e63ef633c770836e9": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repository_id BINARY(16) NULL, image_name VARCHAR(512) NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE (domain_id, sub_domain, path), CONSTRAINT CHECK ( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "a1d8ebe89166353d292660ee1aca82cc2883ec9ccb72d84204025ee2c1e73379": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 8
+      },
+      "nullable": []
+    }
+  },
   "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
     "query": "CREATE TABLE IF NOT EXISTS user_email_address ( type ENUM('personal', 'organisation') NOT NULL, /* Personal email address */ email_address VARCHAR(320), /* Organisation email address */ email_local VARCHAR(160), domain_id BINARY(16), user_id BINARY(16) NOT NULL, UNIQUE(email_address, email_local, domain_id, user_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES domain(id), CONSTRAINT CHECK ( ( type = 'personal' AND ( email_address IS NOT NULL AND email_local IS NULL AND domain_id IS NULL ) ) OR ( type = 'organisation' AND ( email_address IS NULL AND email_local IS NOT NULL AND domain_id IS NOT NULL ) ) ) );",
     "describe": {
@@ -3407,16 +3437,6 @@
   },
   "bac04b47777bccc88ced8cdb296aae251094b36c384bf5e57cfee94df2e5deb6": {
     "query": "CREATE TABLE IF NOT EXISTS user_login ( login_id BINARY(16) PRIMARY KEY, refresh_token TEXT NOT NULL, token_expiry BIGINT UNSIGNED NOT NULL, user_id BINARY(16) NOT NULL, last_login BIGINT UNSIGNED NOT NULL, last_activity BIGINT UNSIGNED NOT NULL, FOREIGN KEY(user_id) REFERENCES user(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "bd6db33b6df66cfdb7f9cc0ae341ba370dc863d05438583f2fafc28b7a346eeb": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repository_id BINARY(16) NULL, image_name VARCHAR(512) NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE (domain_id, sub_domain, path), CONSTRAINT CHECK ( ( registry = \"docker.registry.vicara.co\" AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != \"docker.registry.vicara.co\" AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4828,16 +4848,6 @@
       "columns": [],
       "parameters": {
         "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "f2a564650dc99349cd9ad2c10c8842750896a972340d2e35047fc949bf3f8ffc": {
-    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, false, 'india');",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 9
       },
       "nullable": []
     }

@@ -164,7 +164,6 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 
 				let org_id = resource.owner_id.encode_hex::<String>();
 				let org_permission = access_data.orgs.get(&org_id);
-				println!("{:?}", access_data);
 				if org_permission.is_none() {
 					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);

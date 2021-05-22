@@ -292,12 +292,25 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let repository_id = body
+		.get(request_keys::REPOSITORY_ID)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
 	let image_name = body
 		.get(request_keys::IMAGE_NAME)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
 
 	let image_tag = body
 		.get(request_keys::IMAGE_TAG)
@@ -335,22 +348,6 @@ async fn create_deployment(
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 		}
 	}
-	let mut check_repository: Option<DockerRepository> = None;
-
-	if registry == "registry.docker.vicara.co" {
-		check_repository = db::get_repository_by_name(
-			context.get_mysql_connection(),
-			image_name,
-			&organisation_id,
-		)
-		.await?;
-
-		if check_repository.is_none() {
-			Error::as_result()
-				.status(404)
-				.body(error!(REPOSITORY_NOT_FOUND).to_string())?;
-		}
-	}
 
 	let domain_id = hex::decode(domain_id)
 		.status(400)
@@ -386,37 +383,50 @@ async fn create_deployment(
 	)
 	.await?;
 
-	let repository_id;
-	if check_repository.is_some() {
-		let check_repository = check_repository.unwrap();
-		repository_id = check_repository.id;
-		db::create_deployment(
-			context.get_mysql_connection(),
-			deployment_id,
-			name,
-			registry,
-			Some(repository_id),
-			"NULL",
-			image_tag,
-			&domain_id,
-			sub_domain,
-			path,
-		)
-		.await?;
-	} else {
-		db::create_deployment(
-			context.get_mysql_connection(),
-			deployment_id,
-			name,
-			registry,
-			None,
-			image_name,
-			image_tag,
-			&domain_id,
-			sub_domain,
-			path,
-		)
-		.await?;
+	if registry == "registry.docker.vicara.co" && repository_id.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	} else if registry != "registry.docker.vicara.co" && image_name.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	}
+	match registry {
+		"registry.docker.vicara.co" => {
+			let repository_id = hex::decode(repository_id.unwrap())
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+
+			db::create_deployment(
+				context.get_mysql_connection(),
+				deployment_id,
+				name,
+				registry,
+				Some(repository_id),
+				None,
+				image_tag,
+				&domain_id,
+				sub_domain,
+				path,
+			)
+			.await?;
+		}
+		_ => {
+			db::create_deployment(
+				context.get_mysql_connection(),
+				deployment_id,
+				name,
+				registry,
+				None,
+				image_name,
+				image_tag,
+				&domain_id,
+				sub_domain,
+				path,
+			)
+			.await?;
+		}
 	}
 
 	context.json(json!({

@@ -31,19 +31,21 @@ pub async fn initialize_deployer_pre(
 			persistence BOOL NOT NULL,
 			datacenter VARCHAR(255) NOT NULL,
 			UNIQUE (domain_id, sub_domain, path),
-			CONSTRAINT CHECK (
+			CONSTRAINT CHECK 
+			(			
 				(
-					registry = "docker.registry.vicara.co" AND
+					registry = 'registry.docker.vicara.co' AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
-				) OR
+				)
+				 OR
 				(
-					registry != "docker.registry.vicara.co" AND
+					registry != 'registry.docker.vicara.co' AND
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
-			)
-		);
+			)	
+			);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -301,32 +303,53 @@ pub async fn create_deployment(
 	name: &str,
 	registry: &str,
 	repository_id: Option<Vec<u8>>,
-	image_name: &str,
+	image_name: Option<&str>,
 	image_tag: &str,
 	domain_id: &[u8],
 	sub_domain: &str,
 	path: &str,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment
-		VALUES
-			(?, ?, ?, ?, ?, ?, ?, ?, ?, false, 'india');
-		"#,
-		deployment_id,
-		name,
-		registry,
-		repository_id.unwrap(),
-		image_name,
-		image_tag,
-		domain_id,
-		sub_domain,
-		path
-	)
-	.execute(connection)
-	.await
-	.map(|_| ())
+	if repository_id.is_none() {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				(?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');
+			"#,
+			deployment_id,
+			name,
+			registry,
+			image_name.unwrap(),
+			image_tag,
+			domain_id,
+			sub_domain,
+			path
+		)
+		.execute(connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				(?, ?, ?, ?, NULL, ?, ?, ?, ?, false, 'india');
+			"#,
+			deployment_id,
+			name,
+			registry,
+			repository_id.unwrap(),
+			image_tag,
+			domain_id,
+			sub_domain,
+			path
+		)
+		.execute(connection)
+		.await
+		.map(|_| ())
+	}
 }
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,
