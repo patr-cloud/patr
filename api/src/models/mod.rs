@@ -3,9 +3,11 @@ pub mod error;
 pub mod rbac;
 
 mod access_token_data;
+mod docker_registry_token;
 mod twilio_sms_body;
 
 pub use access_token_data::*;
+pub use docker_registry_token::*;
 pub use twilio_sms_body::*;
 
 /*
@@ -162,11 +164,11 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		)
 		.body(json!({
 			"username": user.username,
-			"email": user.backup_email,
 			"password": user.password,
 			"accountType": "personal",
 			"firstName": user.first_name,
-			"lastName": user.last_name
+			"lastName": user.last_name,
+			"backupEmail": user.backup_email
 		}))
 		.await
 		.unwrap()
@@ -200,10 +202,10 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		.await
 		.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
-			log::error!("Error joining user {}: {}", user.username, response);
-		} else {
+		if response["success"].as_bool().unwrap() {
 			log::info!("User `{}` created successfully", user.username);
+		} else {
+			log::error!("Error joining user {}: {}", user.username, response);
 		}
 	}
 
@@ -255,16 +257,16 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		.await
 		.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
+		if response["success"].as_bool().unwrap() {
+			log::info!(
+				"Organisation `{}` created successfully",
+				organisation.name
+			);
+		} else {
 			log::error!(
 				"Error creating organisation {}: {}",
 				organisation.name,
 				response
-			);
-		} else {
-			log::info!(
-				"Organisation `{}` created successfully",
-				organisation.name
 			);
 		}
 	}

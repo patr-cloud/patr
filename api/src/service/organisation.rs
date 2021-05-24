@@ -6,7 +6,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{get_current_time, validator, Error},
+	utils::{get_current_time_millis, validator, Error},
 };
 
 pub async fn is_organisation_name_allowed(
@@ -56,7 +56,7 @@ pub async fn create_organisation(
 		resource_id,
 		&organisation_name,
 		super_admin_id,
-		get_current_time(),
+		get_current_time_millis(),
 	)
 	.await?;
 	db::set_resource_owner_id(connection, resource_id, resource_id).await?;

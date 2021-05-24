@@ -1,15 +1,14 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2, PasswordHash, Version,
+	Argon2,
+	PasswordHash,
+	Version,
 };
-use once_cell::sync::OnceCell;
+use hex::ToHex;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
-use crate::{
-	db,
-	utils::{settings::Settings, Error},
-};
+use crate::{db, service, utils::Error};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -19,15 +18,6 @@ lazy_static::lazy_static! {
 		4,
 		Version::V0x13
 	).unwrap();
-}
-static APP_SETTINGS: OnceCell<Settings> = OnceCell::new();
-
-pub fn initialize(config: &Settings) {
-	let mut config = config.clone();
-	config.password_pepper = base64::encode(&config.password_pepper);
-	APP_SETTINGS
-		.set(config)
-		.expect("unable to set app settings")
 }
 
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
@@ -43,10 +33,7 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 	let salt = format!(
 		"{}{}",
-		APP_SETTINGS
-			.get()
-			.expect("unable to get app settings")
-			.password_pepper,
+		service::get_config().password_pepper,
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON
@@ -75,20 +62,16 @@ pub async fn generate_new_refresh_token_for_user(
 	connection: &mut Transaction<'_, MySql>,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
-	let mut refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
 	let mut hashed = hash(refresh_token.as_bytes())?;
 	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
-	let mut login = logins.iter().find(|login| {
-		login.refresh_token == hashed
-	});
+	let mut login = logins.iter().find(|login| login.refresh_token == hashed);
 
 	while login.is_some() {
-		refresh_token = hex::encode(Uuid::new_v4().as_bytes());
+		refresh_token = Uuid::new_v4().as_bytes().encode_hex();
 		hashed = hash(refresh_token.as_bytes())?;
 		logins = db::get_all_logins_for_user(connection, user_id).await?;
-		login = logins.iter().find(|login| {
-			login.refresh_token == hashed
-		});
+		login = logins.iter().find(|login| login.refresh_token == hashed);
 	}
 
 	Ok((refresh_token, hashed))

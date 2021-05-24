@@ -4,9 +4,8 @@ use sqlx::{MySql, Transaction};
 use crate::{
 	db,
 	error,
-	models::db_mapping::UserEmailAddress,
 	service,
-	utils::{get_current_time, validator, Error},
+	utils::{get_current_time_millis, validator, Error},
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -32,12 +31,22 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
-	let token_expiry = get_current_time() + service::get_join_token_expiry();
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
+
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let personal_domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name).await?;
 
 	db::add_personal_email_to_be_verified_for_user(
 		connection,
-		&email_address,
+		&email_local,
+		personal_domain_id.as_bytes(),
 		&user_id,
 		&verification_token,
 		token_expiry,
@@ -73,16 +82,47 @@ pub async fn verify_personal_email_address_for_user(
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 
-	if email_verification_data.verification_token_expiry < get_current_time() {
+	if email_verification_data.verification_token_expiry <
+		get_current_time_millis()
+	{
 		Error::as_result()
 			.status(200)
 			.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 	}
 
-	let email_address =
-		UserEmailAddress::Personal(email_verification_data.email_address);
+	db::add_personal_email_for_user(
+		connection,
+		user_id,
+		&email_verification_data.local,
+		&email_verification_data.domain_id,
+	)
+	.await?;
 
-	db::add_email_for_user(connection, user_id, email_address).await?;
+	Ok(())
+}
+
+pub async fn change_password_for_user(
+	connection: &mut Transaction<'_, MySql>,
+	user_id: &[u8],
+	old_password: &str,
+	new_password: &str,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(500)
+		.body(error!(USER_NOT_FOUND).to_string())?;
+
+	let success = service::validate_hash(old_password, &user.password)?;
+
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(INVALID_PASSWORD).to_string())?;
+	}
+
+	let new_password = service::hash(new_password.as_bytes())?;
+
+	db::update_user_password(connection, &user_id, &new_password).await?;
 
 	Ok(())
 }

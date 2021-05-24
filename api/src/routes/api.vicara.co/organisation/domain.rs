@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -210,7 +211,7 @@ async fn get_domains_for_organisation(
 	.await?
 	.into_iter()
 	.map(|domain| {
-		let id = hex::encode(domain.id);
+		let id = domain.id.encode_hex::<String>();
 		json!({
 			request_keys::ID: id,
 			request_keys::NAME: domain.name,
@@ -249,7 +250,7 @@ async fn add_domain_to_organisation(
 		&organisation_id,
 	)
 	.await?;
-	let domain_id = hex::encode(domain_id.as_bytes());
+	let domain_id = domain_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -271,17 +272,19 @@ async fn verify_domain_in_organisation(
 	// This won't be executed unless hex::decode(domain_id) returns Ok
 	let domain_id = hex::decode(&domain_id_string).unwrap();
 
-	let domain =
-		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await?
-			// Domain cannot be null.
-			// This function wouldn't run unless the resource middleware
-			// executes successfully The resource middleware checks if a
-			// resource with that name exists. If the domain is null but the
-			// resource exists, then you have a dangling resource. This is a big
-			// problem. Make sure it's logged and investigated into
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+	let domain = db::get_organisation_domain_by_id(
+		context.get_mysql_connection(),
+		&domain_id,
+	)
+	.await?
+	// Domain cannot be null.
+	// This function wouldn't run unless the resource middleware
+	// executes successfully The resource middleware checks if a
+	// resource with that name exists. If the domain is null but the
+	// resource exists, then you have a dangling resource. This is a big
+	// problem. Make sure it's logged and investigated into
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let verified =
 		service::is_domain_verified(context.get_mysql_connection(), &domain.id)
@@ -310,9 +313,11 @@ async fn get_domain_info_in_organisation(
 	// This won't be executed unless hex::decode(domain_id) returns Ok
 	let domain_id = hex::decode(domain_id).unwrap();
 
-	let domain =
-		db::get_domain_by_id(context.get_mysql_connection(), &domain_id)
-			.await?;
+	let domain = db::get_organisation_domain_by_id(
+		context.get_mysql_connection(),
+		&domain_id,
+	)
+	.await?;
 
 	if domain.is_none() {
 		// Domain cannot be null.
@@ -325,7 +330,7 @@ async fn get_domain_info_in_organisation(
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
-	let domain_id = hex::encode(domain.id);
+	let domain_id = domain.id.encode_hex::<String>();
 
 	context.json(
 		if domain.is_verified {
@@ -367,6 +372,8 @@ async fn delete_domain_in_organisation(
 		&domain_id,
 	)
 	.await?;
+	db::delete_generic_domain(context.get_mysql_connection(), &domain_id)
+		.await?;
 	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
 
 	context.json(json!({

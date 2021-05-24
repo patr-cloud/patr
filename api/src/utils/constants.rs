@@ -21,27 +21,27 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
-pub enum AccountType {
+pub enum ResourceOwnerType {
 	Personal,
 	Organisation,
 }
 
-impl Display for AccountType {
+impl Display for ResourceOwnerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			AccountType::Personal => write!(f, "personal"),
-			AccountType::Organisation => write!(f, "organisation"),
+			ResourceOwnerType::Personal => write!(f, "personal"),
+			ResourceOwnerType::Organisation => write!(f, "organisation"),
 		}
 	}
 }
 
-impl FromStr for AccountType {
+impl FromStr for ResourceOwnerType {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(AccountType::Personal),
-			"organisation" => Ok(AccountType::Organisation),
+			"personal" => Ok(ResourceOwnerType::Personal),
+			"organisation" => Ok(ResourceOwnerType::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -54,12 +54,17 @@ pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const EMAIL: &str = "email";
 	pub const PASSWORD: &str = "password";
+	pub const NEW_PASSWORD: &str = "newPassword";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
+	pub const ERRORS: &str = "errors";
 	pub const MESSAGE: &str = "message";
 	pub const ACCESS_TOKEN: &str = "accessToken";
 	pub const REFRESH_TOKEN: &str = "refreshToken";
 	pub const VERIFICATION_TOKEN: &str = "verificationToken";
+	pub const CODE: &str = "code";
+	pub const DETAIL: &str = "detail";
+	pub const TOKEN: &str = "token";
 	pub const AVAILABLE: &str = "available";
 	pub const FIRST_NAME: &str = "firstName";
 	pub const LAST_NAME: &str = "lastName";
@@ -67,7 +72,10 @@ pub mod request_keys {
 	pub const DOMAIN: &str = "domain";
 	pub const DOMAIN_ID: &str = "domainId";
 	pub const ORGANISATION_NAME: &str = "organisationName";
+	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
+	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
@@ -107,4 +115,20 @@ pub mod request_keys {
 	pub const TUNNEL_ID: &str = "tunnelId";
 	pub const TUNNELS: &str = "tunnels";
 	pub const LOGIN_ID: &str = "loginId";
+	pub const SCOPE: &str = "scope";
+	pub const SERVICE: &str = "service";
+	pub const SNAKE_CASE_CLIENT_ID: &str = "client_id";
+	pub const SNAKE_CASE_OFFLINE_TOKEN: &str = "offline_token";
+	pub const REPOSITORY: &str = "repository";
+	pub const REPOSITORIES: &str = "repositories";
+	pub const REPOSITORY_ID: &str = "repositoryId";
+	pub const DEPLOYMENT_ID: &str = "deploymentId";
+	pub const DEPLOYMENTS: &str = "deployments";
+	pub const DEPLOYMENT: &str = "deployment";
+	pub const REGISTRY: &str = "registry";
+	pub const IMAGE_NAME: &str = "imageName";
+	pub const IMAGE_TAG: &str = "imageTag";
+	pub const SUB_DOMAIN: &str = "subDomain";
+	pub const PATH: &str = "path";
+	pub const PORT: &str = "port";
 }

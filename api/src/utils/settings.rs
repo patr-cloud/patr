@@ -4,7 +4,7 @@ use std::{
 };
 
 use config_rs::{Config, Environment, File};
-use serde_derive::Deserialize;
+use serde::Deserialize;
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
@@ -41,7 +41,13 @@ pub fn parse_config() -> Settings {
 		.merge(Environment::with_prefix("APP_"))
 		.expect("unable to merge with environment variables");
 
-	settings.try_into().expect("unable to parse settings")
+	let mut settings: Settings =
+		settings.try_into().expect("unable to parse settings");
+
+	settings.docker_registry.public_key_der =
+		Some(base64::decode(&settings.docker_registry.public_key).unwrap());
+
+	settings
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -59,6 +65,7 @@ pub struct Settings {
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
+	pub docker_registry: DockerRegistrySettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -136,6 +143,23 @@ pub struct CloudflareSettings {
 pub enum RunningEnvironment {
 	Development,
 	Production,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerRegistrySettings {
+	pub service_name: String,
+	pub issuer: String,
+	pub registry_url: String,
+	pub private_key: String,
+	pub public_key: String,
+	pub public_key_der: Option<Vec<u8>>,
+}
+
+impl DockerRegistrySettings {
+	pub fn public_key_der(&self) -> &[u8] {
+		self.public_key_der.as_ref().unwrap().as_ref()
+	}
 }
 
 impl Display for RunningEnvironment {

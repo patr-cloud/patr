@@ -14,13 +14,14 @@ use eve_rs::{
 	Middleware,
 	NextHandler,
 };
+use hex::ToHex;
 use redis::{AsyncCommands, RedisError};
 
 use crate::{
 	app::App,
 	error,
 	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
-	utils::{get_current_time, Error, ErrorData, EveContext},
+	utils::{get_current_time_millis, Error, ErrorData, EveContext},
 };
 
 pub type MiddlewareHandlerFunction =
@@ -161,7 +162,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				}
 				let resource = resource.unwrap();
 
-				let org_id = hex::encode(&resource.owner_id);
+				let org_id = resource.owner_id.encode_hex::<String>();
 				let org_permission = access_data.orgs.get(&org_id);
 
 				if org_permission.is_none() {
@@ -248,7 +249,7 @@ async fn is_access_token_valid(
 	// - Specific tokens
 	// - User IDs whose tokens after a given timestamp is invalid
 	// - Global timestamp after which all tokens are invalid
-	if token.exp < get_current_time() {
+	if token.exp < get_current_time_millis() {
 		// If current time is more than expiry, return false
 		return Ok(false);
 	}
@@ -261,10 +262,10 @@ async fn is_access_token_valid(
 
 	let user_exp: Option<u64> = app
 		.redis
-		.get(format!("user-{}-exp", hex::encode(&token.user.id)))
+		.get(format!("user-{}-exp", token.user.id.encode_hex::<String>()))
 		.await?;
 	if let Some(exp) = user_exp {
-		if exp < get_current_time() {
+		if exp < get_current_time_millis() {
 			// This user needs an exp greater than user-userid-exp
 			return Ok(false);
 		}
@@ -272,7 +273,7 @@ async fn is_access_token_valid(
 
 	let global_exp: Option<u64> = app.redis.get("global-user-exp").await?;
 	if let Some(exp) = global_exp {
-		if exp < get_current_time() {
+		if exp < get_current_time_millis() {
 			// This user needs an exp greater than global-user-exp
 			return Ok(false);
 		}

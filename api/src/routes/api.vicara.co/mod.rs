@@ -8,6 +8,7 @@ use crate::{
 mod auth;
 mod organisation;
 mod user;
+mod webhook;
 
 pub fn create_sub_app(
 	app: &App,
@@ -17,6 +18,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/auth", auth::create_sub_app(app));
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/organisation", organisation::create_sub_app(app));
+	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
 
 	sub_app
 }

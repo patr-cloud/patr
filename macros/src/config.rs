@@ -1,7 +1,8 @@
 use std::fs;
 
+use heck::{CamelCase, SnakeCase};
 use proc_macro::TokenStream;
-use quote::quote;
+use serde_json::{Map, Value};
 use syn::{
 	parse::{Parse, ParseStream},
 	parse_macro_input,
@@ -56,11 +57,132 @@ pub fn parse(input: TokenStream) -> TokenStream {
 	}
 	let config_content = config_content.unwrap();
 
-	let expanded = quote! {
-		{
-			let content = #config_content;
-			serde_json::from_str(&content).unwrap()
+	let config_value: Value = serde_json::from_str(&config_content).unwrap();
+	let config_value = config_value.as_object().unwrap();
+
+	let mut struct_declarations = vec![String::from("pub struct Config {\n")];
+	parse_declarations("config", &mut struct_declarations, 0, config_value);
+	struct_declarations[0] += "}\n";
+
+	let expanded = format!(
+		"{}\npub const CONFIG: Config = {};",
+		struct_declarations.join("\n"),
+		parse_values("Config", config_value)
+	);
+
+	expanded.parse().unwrap()
+}
+
+fn parse_declarations(
+	object_name: &str,
+	struct_declarations: &mut Vec<String>,
+	current_item: usize,
+	object: &Map<String, Value>,
+) {
+	let object_name = object_name.to_camel_case();
+	for (key, value) in object {
+		let var_name = key.to_snake_case();
+		match value {
+			Value::Null => (),
+			Value::Bool(_) => {
+				let struct_declaration =
+					struct_declarations.get_mut(current_item).unwrap();
+				struct_declaration
+					.push_str(&format!("pub {}: bool,\n", var_name));
+			}
+			Value::Number(number) => {
+				let struct_declaration =
+					struct_declarations.get_mut(current_item).unwrap();
+				if number.is_i64() {
+					struct_declaration
+						.push_str(&format!("pub {}: i64,\n", var_name));
+				} else if number.is_u64() {
+					struct_declaration
+						.push_str(&format!("pub {}: u64,\n", var_name));
+				} else if number.is_f64() {
+					struct_declaration
+						.push_str(&format!("pub {}: f64,\n", var_name));
+				} else {
+					println!("Found unknown number: {:?}", number);
+				}
+			}
+			Value::String(_) => {
+				let struct_declaration =
+					struct_declarations.get_mut(current_item).unwrap();
+				struct_declaration
+					.push_str(&format!("pub {}: &'static str,\n", var_name));
+			}
+			Value::Array(_) => {
+				todo!();
+			}
+			Value::Object(map) => {
+				let type_name =
+					format!("{}{}", object_name, key.to_camel_case());
+				let new_index = struct_declarations.len();
+				struct_declarations
+					.push(format!("pub struct {} {{\n", type_name));
+				parse_declarations(
+					&type_name,
+					struct_declarations,
+					new_index,
+					map,
+				);
+				struct_declarations
+					.get_mut(new_index)
+					.unwrap()
+					.push_str("}\n");
+				struct_declarations
+					.get_mut(current_item)
+					.unwrap()
+					.push_str(&format!("pub {}: {},\n", var_name, type_name));
+			}
 		}
-	};
-	TokenStream::from(expanded)
+	}
+}
+
+fn parse_values(object_name: &str, object: &Map<String, Value>) -> String {
+	let mut values = String::new();
+	let type_name = object_name.to_camel_case();
+	values.push_str(&format!("{} {{\n", type_name));
+	for (key, value) in object {
+		match value {
+			Value::Null => (),
+			Value::Bool(value) => {
+				values.push_str(&format!(
+					"{}: {},",
+					key.to_snake_case(),
+					value
+				));
+			}
+			Value::Number(number) => {
+				values.push_str(&format!(
+					"{}: {},",
+					key.to_snake_case(),
+					number
+				));
+			}
+			Value::String(value) => {
+				values.push_str(&format!(
+					"{}: \"{}\",",
+					key.to_snake_case(),
+					value
+				));
+			}
+			Value::Array(_) => {
+				todo!();
+			}
+			Value::Object(map) => {
+				values.push_str(&format!(
+					"{}: {},",
+					key.to_snake_case(),
+					parse_values(
+						&format!("{}{}", type_name, key.to_camel_case()),
+						map
+					)
+				));
+			}
+		}
+	}
+	values.push('}');
+	values
 }

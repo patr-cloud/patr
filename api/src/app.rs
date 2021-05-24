@@ -1,5 +1,6 @@
 use std::{
 	fmt::{Debug, Formatter},
+	process,
 	sync::Arc,
 	time::{Duration, Instant},
 };
@@ -17,6 +18,7 @@ use eve_rs::{
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::mysql::MySqlPool;
+use tokio::{signal, time};
 
 use crate::{
 	error,
@@ -49,7 +51,7 @@ pub async fn start_server(app: App) {
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
-	let shutdown_signal = Some(futures::future::pending());
+	let shutdown_signal = Some(get_shutdown_signal());
 	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
@@ -82,11 +84,34 @@ fn get_basic_middlewares() -> [EveMiddleware; 6] {
 	]
 }
 
+async fn get_shutdown_signal() {
+	signal::ctrl_c()
+		.await
+		.expect("Unable to install signal handler");
+	println!();
+	log::warn!("Recieved stop signal. Gracefully shutting down server");
+	tokio::spawn(async {
+		time::sleep(Duration::from_millis(2000)).await;
+		log::info!("Server taking too long to quit...");
+		log::info!("Press Ctrl+C again to force quit application");
+		signal::ctrl_c()
+			.await
+			.expect("Unable to install signal handler");
+		println!();
+		log::warn!("Recieved stop signal again. Force shutting down server");
+		log::info!("Bye");
+		process::exit(-1);
+	});
+}
+
 fn eve_error_handler(mut response: Response, error: Error) -> Response {
-	log::error!(
-		"Error occured while processing request: {}",
-		error.get_error().to_string()
-	);
+	let error_string = error.get_error().to_string();
+	if error_string != "entity not found" {
+		log::error!(
+			"Error occured while processing request: {}",
+			error.get_error().to_string()
+		);
+	}
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
 	let default_error = error!(SERVER_ERROR).to_string();

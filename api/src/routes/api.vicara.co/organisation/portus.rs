@@ -1,19 +1,27 @@
 use std::error::Error as StdError;
 
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 use shiplift::{ContainerOptions, Docker};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::{self, permissions},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{self, request_keys},
-		get_current_time, Error, ErrorData, EveContext, EveMiddleware,
+		get_current_time_millis,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
+type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 
 pub fn creare_sub_app(
 	app: &App,
@@ -199,7 +207,7 @@ async fn get_tunnels_for_organisation(
 	.await?
 	.into_iter()
 	.map(|tunnel| {
-		let id = hex::encode(tunnel.id);
+		let id = tunnel.id.encode_hex::<String>();
 		json!({
 			request_keys::ID: id,
 			request_keys::USERNAME: tunnel.username,
@@ -325,7 +333,7 @@ async fn create(
 		service::assign_available_port(context.get_mysql_connection()).await?;
 	let image_ssh_port = service::get_ssh_port_for_server();
 	let server_ip_address = service::get_server_ip_address();
-	let created = get_current_time();
+	let created = get_current_time_millis();
 
 	// check if container name already exists
 	let portus_tunnel = db::get_portus_tunnel_by_name(
@@ -387,7 +395,6 @@ async fn create(
 	.await;
 
 	//  add container information in portus table
-	type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 	let tunnel_register_result = container_start_result
 		.map_err::<StdErrorType, _>(|err| Box::new(err))
 		.and(
@@ -418,7 +425,7 @@ async fn create(
 
 	// on success, return ssh port, username,  exposed port, server ip address,
 	// password
-	let resource_id = hex::encode(resource_id);
+	let resource_id = resource_id.encode_hex::<String>();
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: resource_id,

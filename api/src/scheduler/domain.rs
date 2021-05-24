@@ -214,25 +214,24 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 
 		if let Status::Active = response.result.status {
 			continue;
-		} else {
-			// Domain is now unverified
-			db::set_domain_as_unverified(&mut connection, &verified_domain.id)
-				.await?;
-			let notification_email = db::get_notification_email_for_domain(
-				&mut connection,
-				&verified_domain.id,
-			)
-			.await?;
-			if notification_email.is_none() {
-				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
-				continue;
-			}
-			mailer::send_domain_unverified_mail(
-				config.config.clone(),
-				notification_email.unwrap(),
-				verified_domain.name,
-			);
 		}
+		// Domain is now unverified
+		db::set_domain_as_unverified(&mut connection, &verified_domain.id)
+			.await?;
+		let notification_email = db::get_notification_email_for_domain(
+			&mut connection,
+			&verified_domain.id,
+		)
+		.await?;
+		if notification_email.is_none() {
+			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
+			continue;
+		}
+		mailer::send_domain_unverified_mail(
+			config.config.clone(),
+			notification_email.unwrap(),
+			verified_domain.name,
+		);
 	}
 
 	Ok(())
@@ -242,7 +241,7 @@ pub async fn get_zone_for_domain(
 	client: &Client,
 	domain: &str,
 ) -> Option<Zone> {
-	let response = if let Ok(response) = client
+	client
 		.request(&zone::ListZones {
 			params: zone::ListZonesParams {
 				name: Some(domain.to_string()),
@@ -250,11 +249,7 @@ pub async fn get_zone_for_domain(
 			},
 		})
 		.await
-	{
-		response
-	} else {
-		return None;
-	};
-
-	response.result.into_iter().next()
+		.ok()
+		.map(|zones| zones.result.into_iter().next())
+		.flatten()
 }

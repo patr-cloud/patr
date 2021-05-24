@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::{json, Map, Value};
 
 use crate::{
@@ -288,7 +289,7 @@ async fn list_all_roles(
 	.await?
 	.into_iter()
 	.map(|role| {
-		let role_id = hex::encode(role.id);
+		let role_id = role.id.encode_hex::<String>();
 		if let Some(description) = role.description {
 			json!({
 				request_keys::ROLE_ID: role_id,
@@ -319,7 +320,7 @@ async fn list_all_permissions(
 		.await?
 		.into_iter()
 		.map(|permission| {
-			let permission_id = hex::encode(permission.id);
+			let permission_id = permission.id.encode_hex::<String>();
 			if let Some(description) = permission.description {
 				json!({
 					request_keys::PERMISSION_ID: permission_id,
@@ -351,7 +352,7 @@ async fn list_all_resource_types(
 			.await?
 			.into_iter()
 			.map(|resource_type| {
-				let resource_type_id = hex::encode(resource_type.id);
+				let resource_type_id = resource_type.id.encode_hex::<String>();
 				if let Some(description) = resource_type.description {
 					json!({
 						request_keys::RESOURCE_TYPE_ID: resource_type_id,
@@ -406,7 +407,7 @@ async fn get_permissions_for_role(
 
 	for (resource_id, permissions) in resource_permissions {
 		resource_map.insert(
-			hex::encode(resource_id),
+			resource_id.encode_hex::<String>(),
 			Value::Array(
 				permissions
 					.into_iter()
@@ -430,7 +431,7 @@ async fn get_permissions_for_role(
 	}
 	for (resource_id, permissions) in resource_type_permissions {
 		resource_type_map.insert(
-			hex::encode(resource_id),
+			resource_id.encode_hex::<String>(),
 			Value::Array(
 				permissions
 					.into_iter()
@@ -505,7 +506,7 @@ async fn create_role(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ROLE_ID: hex::encode(role_id),
+		request_keys::ROLE_ID: role_id.encode_hex::<String>(),
 	}));
 	Ok(context)
 }

@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -144,7 +145,7 @@ async fn get_applications(
 	.await?
 	.into_iter()
 	.map(|application| {
-		let id = hex::encode(application.id); // get application id
+		let id = application.id.encode_hex::<String>(); // get application id
 		json!({
 			request_keys::ID : id,
 			request_keys::NAME : application.name,
