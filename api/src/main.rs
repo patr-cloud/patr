@@ -1,20 +1,32 @@
+// #![deny(
+// 	clippy::all,
+// 	clippy::correctness,
+// 	clippy::style,
+// 	clippy::complexity,
+// 	clippy::perf,
+// 	clippy::pedantic,
+// 	clippy::nursery,
+// 	clippy::cargo
+// )]
+// #![allow(clippy::module_name_repetitions)]
+
 mod app;
 mod db;
 mod macros;
 mod models;
 mod routes;
 mod scheduler;
+mod service;
 mod utils;
-
-use api_macros::{query, query_as};
-use app::App;
-use eve_rs::handlebars::Handlebars;
-use tokio::{fs, runtime::Builder};
-use utils::{constants, logger};
 
 use std::{error::Error, sync::Arc};
 
+use api_macros::{query, query_as};
+use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
+use eve_rs::handlebars::Handlebars;
+use tokio::{fs, runtime::Builder};
+use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 
@@ -25,7 +37,7 @@ fn main() -> Result<()> {
 		.thread_name(format!("{}-worker-thread", constants::APP_NAME))
 		// Each CPU gets at least 2 workers to avoid idling
 		.worker_threads(num_cpus::get() * 2)
-		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overage
+		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overflow
 		.build()
 		.unwrap()
 		.block_on(async_main())
@@ -67,6 +79,9 @@ async fn async_main() -> Result<()> {
 		);
 		return Ok(());
 	}
+
+	service::initialize(&app.config);
+	log::debug!("Service initialized");
 
 	scheduler::domain::refresh_domain_tld_list().await?;
 	log::info!("Domain TLD list initialized");

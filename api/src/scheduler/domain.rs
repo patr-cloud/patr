@@ -1,9 +1,3 @@
-use crate::{
-	db,
-	scheduler::Job,
-	utils::{mailer, validator},
-};
-
 use cloudflare::{
 	endpoints::zone::{self, Status, Zone},
 	framework::{
@@ -13,7 +7,12 @@ use cloudflare::{
 		HttpApiClientConfig,
 	},
 };
-use surf::mime::APPLICATION_JSON;
+
+use crate::{
+	db,
+	scheduler::Job,
+	utils::{mailer, validator},
+};
 
 // Every two hours
 pub(super) fn verify_unverified_domains_job() -> Job {
@@ -43,22 +42,10 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 pub async fn refresh_domain_tld_list() -> crate::Result<()> {
-	let response =
-		surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt").await;
-	let mut response = match response {
-		Ok(response) => response,
-		Err(err) => {
-			return Err(err);
-		}
-	};
-
-	let data = response.body_string().await;
-	let data = match data {
-		Ok(data) => data,
-		Err(err) => {
-			return Err(err);
-		}
-	};
+	let data = surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+		.await?
+		.body_string()
+		.await?;
 
 	let tlds = data
 		.split('\n')
@@ -157,11 +144,10 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 			"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
 			response.result.id
 		))
-		.set_header(
+		.header(
 			"Authorization",
 			format!("Bearer {}", config.config.cloudflare.api_token),
 		)
-		.set_mime(APPLICATION_JSON)
 		.await;
 		if let Err(err) = response {
 			log::error!("Cannot initiate zone activation check: {}", err);
@@ -228,25 +214,24 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 
 		if let Status::Active = response.result.status {
 			continue;
-		} else {
-			// Domain is now unverified
-			db::set_domain_as_unverified(&mut connection, &verified_domain.id)
-				.await?;
-			let notification_email = db::get_notification_email_for_domain(
-				&mut connection,
-				&verified_domain.id,
-			)
-			.await?;
-			if notification_email.is_none() {
-				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
-				continue;
-			}
-			mailer::send_domain_unverified_mail(
-				config.config.clone(),
-				notification_email.unwrap(),
-				verified_domain.name,
-			);
 		}
+		// Domain is now unverified
+		db::set_domain_as_unverified(&mut connection, &verified_domain.id)
+			.await?;
+		let notification_email = db::get_notification_email_for_domain(
+			&mut connection,
+			&verified_domain.id,
+		)
+		.await?;
+		if notification_email.is_none() {
+			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
+			continue;
+		}
+		mailer::send_domain_unverified_mail(
+			config.config.clone(),
+			notification_email.unwrap(),
+			verified_domain.name,
+		);
 	}
 
 	Ok(())
@@ -256,7 +241,7 @@ pub async fn get_zone_for_domain(
 	client: &Client,
 	domain: &str,
 ) -> Option<Zone> {
-	let response = if let Ok(response) = client
+	client
 		.request(&zone::ListZones {
 			params: zone::ListZonesParams {
 				name: Some(domain.to_string()),
@@ -264,11 +249,7 @@ pub async fn get_zone_for_domain(
 			},
 		})
 		.await
-	{
-		response
-	} else {
-		return None;
-	};
-
-	response.result.into_iter().next()
+		.ok()
+		.map(|zones| zones.result.into_iter().next())
+		.flatten()
 }

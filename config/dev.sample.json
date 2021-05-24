@@ -1,7 +1,7 @@
 {
 	"port": 3000,
 	"basePath": "/",
-	"passwordSalt": "keyboard cat",
+	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
 	"s3": {
 		"endpoint": "s3.localhost",
@@ -51,5 +51,12 @@
 		"accountId": "<example-account-id>",
 		"accountEmail": "account@example.com",
 		"apiToken": "<example-api-token>"
+	},
+	"dockerRegistry": {
+		"serviceName": "Deployer Registry Service",
+		"issuer": "localhost:3000",
+		"registryUrl": "localhost:5000",
+		"privateKey": "",
+		"publicKey": ""
 	}
 }

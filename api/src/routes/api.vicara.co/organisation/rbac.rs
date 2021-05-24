@@ -1,42 +1,53 @@
 use std::collections::HashMap;
 
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use hex::ToHex;
+use serde_json::{json, Map, Value};
+
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	utils::{constants::request_keys, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
+	},
 };
 
-use eve_rs::{App as EveApp, Context, Error, NextHandler};
-use serde_json::{json, Map, Value};
-use uuid::Uuid;
-
-pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
+pub fn create_sub_app(
+	app: &App,
+) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
 	// List all roles
 	sub_app.get(
 		"/roles",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -46,24 +57,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	sub_app.get(
 		"/permissions",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -73,24 +87,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	sub_app.get(
 		"/resourceTypes",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -102,24 +119,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Create new role
 	sub_app.post(
 		"/role",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::CREATE_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -130,24 +150,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// List permissions for a role
 	sub_app.get(
 		"/role/:roleId/permissions",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -158,24 +181,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// Update permissions for a role
 	sub_app.post(
 		"/role/:roleId/permissions",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::EDIT_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -185,24 +211,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	);
 	sub_app.delete(
 		"/role/:roleId",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::EDIT_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -214,24 +243,27 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 	// get resource info
 	sub_app.get(
 		"/resource/:resourceId/info",
-		&[
+		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let organisation_id = hex::decode(&organisation_id);
-					if organisation_id.is_err() {
-						context.status(400).json(error!(WRONG_PARAMETERS));
-						return Ok((context, None));
-					}
-					let organisation_id = organisation_id.unwrap();
+					let organisation_id = hex::decode(&organisation_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_mysql_connection(),
 						&organisation_id,
 					)
 					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
 
 					Ok((context, resource))
 				}),
@@ -245,8 +277,8 @@ pub fn create_sub_app(app: &App) -> EveApp<EveContext, EveMiddleware, App> {
 
 async fn list_all_roles(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let organisation_id =
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(organisation_id).unwrap();
@@ -254,26 +286,24 @@ async fn list_all_roles(
 		context.get_mysql_connection(),
 		&organisation_id,
 	)
-	.await?;
-
-	let roles = roles
-		.into_iter()
-		.map(|role| {
-			let role_id = hex::encode(role.id);
-			if let Some(description) = role.description {
-				json!({
-					request_keys::ROLE_ID: role_id,
-					request_keys::NAME: role.name,
-					request_keys::DESCRIPTION: description,
-				})
-			} else {
-				json!({
-					request_keys::ROLE_ID: role_id,
-					request_keys::NAME: role.name,
-				})
-			}
-		})
-		.collect::<Vec<_>>();
+	.await?
+	.into_iter()
+	.map(|role| {
+		let role_id = role.id.encode_hex::<String>();
+		if let Some(description) = role.description {
+			json!({
+				request_keys::ROLE_ID: role_id,
+				request_keys::NAME: role.name,
+				request_keys::DESCRIPTION: description,
+			})
+		} else {
+			json!({
+				request_keys::ROLE_ID: role_id,
+				request_keys::NAME: role.name,
+			})
+		}
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -284,14 +314,13 @@ async fn list_all_roles(
 
 async fn list_all_permissions(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
-	let permissions =
-		db::get_all_permissions(context.get_mysql_connection()).await?;
-	let permissions = permissions
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let permissions = db::get_all_permissions(context.get_mysql_connection())
+		.await?
 		.into_iter()
 		.map(|permission| {
-			let permission_id = hex::encode(permission.id);
+			let permission_id = permission.id.encode_hex::<String>();
 			if let Some(description) = permission.description {
 				json!({
 					request_keys::PERMISSION_ID: permission_id,
@@ -316,28 +345,28 @@ async fn list_all_permissions(
 
 async fn list_all_resource_types(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let resource_types =
-		db::get_all_resource_types(context.get_mysql_connection()).await?;
-	let resource_types = resource_types
-		.into_iter()
-		.map(|resource_type| {
-			let resource_type_id = hex::encode(resource_type.id);
-			if let Some(description) = resource_type.description {
-				json!({
-					request_keys::RESOURCE_TYPE_ID: resource_type_id,
-					request_keys::NAME: resource_type.name,
-					request_keys::DESCRIPTION: description,
-				})
-			} else {
-				json!({
-					request_keys::RESOURCE_TYPE_ID: resource_type_id,
-					request_keys::NAME: resource_type.name,
-				})
-			}
-		})
-		.collect::<Vec<_>>();
+		db::get_all_resource_types(context.get_mysql_connection())
+			.await?
+			.into_iter()
+			.map(|resource_type| {
+				let resource_type_id = resource_type.id.encode_hex::<String>();
+				if let Some(description) = resource_type.description {
+					json!({
+						request_keys::RESOURCE_TYPE_ID: resource_type_id,
+						request_keys::NAME: resource_type.name,
+						request_keys::DESCRIPTION: description,
+					})
+				} else {
+					json!({
+						request_keys::RESOURCE_TYPE_ID: resource_type_id,
+						request_keys::NAME: resource_type.name,
+					})
+				}
+			})
+			.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -348,23 +377,18 @@ async fn list_all_resource_types(
 
 async fn get_permissions_for_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = if let Ok(role_id) = hex::decode(role_id) {
-		role_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let role_id = hex::decode(role_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let role =
-		db::get_role_by_id(context.get_mysql_connection(), &role_id).await?;
-
-	if role.is_none() {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	}
+	// Check if the role exists
+	let _ = db::get_role_by_id(context.get_mysql_connection(), &role_id)
+		.await?
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let resource_permissions = db::get_permissions_on_resources_for_role(
 		context.get_mysql_connection(),
@@ -383,7 +407,7 @@ async fn get_permissions_for_role(
 
 	for (resource_id, permissions) in resource_permissions {
 		resource_map.insert(
-			hex::encode(resource_id),
+			resource_id.encode_hex::<String>(),
 			Value::Array(
 				permissions
 					.into_iter()
@@ -407,7 +431,7 @@ async fn get_permissions_for_role(
 	}
 	for (resource_id, permissions) in resource_type_permissions {
 		resource_type_map.insert(
-			hex::encode(resource_id),
+			resource_id.encode_hex::<String>(),
 			Value::Array(
 				permissions
 					.into_iter()
@@ -440,62 +464,61 @@ async fn get_permissions_for_role(
 
 async fn create_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
-	let organisation_id = context
-		.get_param(request_keys::ORGANISATION_ID)
-		.unwrap()
-		.clone();
-	let organisation_id =
-		if let Ok(organisation_id) = hex::decode(organisation_id) {
-			organisation_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let organisation_id = hex::decode(
+		context
+			.get_param(request_keys::ORGANISATION_ID)
+			.unwrap()
+			.clone(),
+	)
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let body = context.get_body_object().clone();
-	let name = if let Some(Value::String(name)) = body.get(request_keys::NAME) {
-		name.clone()
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let description = match body.get(request_keys::DESCRIPTION) {
-		Some(Value::String(description)) => Some(description.clone()),
-		None => None,
-		_ => {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		}
-	};
-	let role_id = Uuid::new_v4().as_bytes().to_vec();
+	let name = body
+		.get(request_keys::NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let description = body
+		.get(request_keys::DESCRIPTION)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+	let role_id = db::generate_new_role_id(context.get_mysql_connection())
+		.await?
+		.as_bytes()
+		.to_vec();
 	db::create_role(
 		context.get_mysql_connection(),
 		&role_id,
-		&name,
-		&description,
+		name,
+		description,
 		&organisation_id,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ROLE_ID: hex::encode(role_id),
+		request_keys::ROLE_ID: role_id.encode_hex::<String>(),
 	}));
 	Ok(context)
 }
 
 async fn update_role_permissions(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = if let Ok(role_id) = hex::decode(role_id) {
-		role_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let role_id = hex::decode(role_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let body = context.get_body_object().clone();
 
@@ -610,15 +633,12 @@ async fn update_role_permissions(
 
 async fn delete_role(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = if let Ok(role_id) = hex::decode(role_id) {
-		role_id
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
+	let role_id = hex::decode(role_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// Remove all users who belong to this role
 	db::remove_all_users_from_role(context.get_mysql_connection(), &role_id)
@@ -634,28 +654,21 @@ async fn delete_role(
 
 async fn get_resource_info(
 	mut context: EveContext,
-	_: NextHandler<EveContext>,
-) -> Result<EveContext, Error<EveContext>> {
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	let resource_id_string = context
 		.get_param(request_keys::RESOURCE_ID)
 		.unwrap()
 		.clone();
-	let resource_id = hex::decode(&resource_id_string);
-
-	if resource_id.is_err() {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	}
-	let resource_id = resource_id.unwrap();
+	let resource_id = hex::decode(&resource_id_string)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let resource =
 		db::get_resource_by_id(context.get_mysql_connection(), &resource_id)
-			.await?;
-	if resource.is_none() {
-		context.status(400).json(error!(RESOURCE_DOES_NOT_EXIST));
-		return Ok(context);
-	}
-	let resource = resource.unwrap();
+			.await?
+			.status(400)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let resource_type = db::get_resource_type_for_resource(
 		context.get_mysql_connection(),
 		&resource.id,
