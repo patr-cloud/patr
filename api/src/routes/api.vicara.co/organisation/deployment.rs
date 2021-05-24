@@ -10,19 +10,14 @@ use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{EntryPoint, EnvVariable, VolumeMount},
 		rbac::{self, permissions},
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -199,7 +194,6 @@ pub fn create_sub_app(
 	);
 
 	// endpoint to add in deployment configuration.
-	// TODO: can also add in entrypoint information
 	app.post(
 		"/:deploymentId/config",
 		[
@@ -235,7 +229,6 @@ pub fn create_sub_app(
 	app
 }
 
-// TODO: extract port number using `port_id`
 async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
