@@ -1763,9 +1763,15 @@
         false,
         false,
         false,
+<<<<<<< HEAD
         true,
         true,
         false
+=======
+        false,
+        false,
+        true
+>>>>>>> 5ce827b1b48ee6c4cd3b6b5dee6572f9f118ed6e
       ]
     }
   },
