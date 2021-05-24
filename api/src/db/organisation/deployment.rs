@@ -315,7 +315,7 @@ pub async fn create_deployment(
 	image_tag: &str,
 ) -> Result<(), sqlx::Error> {
 	if repository_id.is_none() {
-		query!(
+		return query!(
 			r#"
 			INSERT INTO
 				deployment
@@ -330,25 +330,25 @@ pub async fn create_deployment(
 		)
 		.execute(connection)
 		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				deployment
-			VALUES
-				(?, ?, ?, ?, NULL, ?);
-			"#,
-			deployment_id,
-			name,
-			registry,
-			repository_id.unwrap(),
-			image_tag
-		)
-		.execute(connection)
-		.await
-		.map(|_| ())
+		.map(|_| ());
 	}
+
+	query!(
+		r#"
+		INSERT INTO
+			deployment
+		VALUES
+			(?, ?, ?, ?, NULL, ?);
+		"#,
+		deployment_id,
+		name,
+		registry,
+		repository_id.unwrap(),
+		image_tag
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
 }
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	connection: &mut Transaction<'_, MySql>,

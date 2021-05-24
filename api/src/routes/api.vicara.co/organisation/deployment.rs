@@ -238,6 +238,12 @@ async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	// if we try retrieve a deployment which is from registry.docker.vicara.co
+	// from db it will return imageName=null because it wasn't supplied in the
+	// first place so even if i write something like this:
+	// let get_full_image =
+	// deployment.get_full_image(context.get_mysql_connection()).await;
+	// it doesn't work
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
