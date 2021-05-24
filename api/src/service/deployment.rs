@@ -4,11 +4,15 @@ use sqlx::{MySql, Transaction};
 use crate::{
 	db,
 	error,
-	models::{db_mapping::DeploymentConfig, rbac},
+	models::{
+		db_mapping::{DeploymentConfig, EntryPoint},
+		rbac,
+	},
 	utils::{validator, Error},
 };
 
 // function to return deployment config details
+// can also be rename to `get_deployment_info`??
 pub async fn get_deployment_config_by_id(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
@@ -28,6 +32,8 @@ pub async fn get_deployment_config_by_id(
 		db::get_variables_for_deployment(connection, deployment_id).await?;
 	let volume_mount_list =
 		db::get_volume_mounts_for_deployment(connection, deployment_id).await?;
+	let entry_point_list =
+		db::get_entry_points_for_deployment(connection, deployment_id).await?;
 
 	Ok(Some(DeploymentConfig {
 		id: deployment.id,
@@ -35,11 +41,26 @@ pub async fn get_deployment_config_by_id(
 		registry: deployment.registry,
 		image_name: deployment.image_name.unwrap(),
 		image_tag: deployment.image_tag,
-		domain_id: deployment.domain_id,
-		sub_domain: deployment.sub_domain,
-		path: deployment.path,
 		port_list,
 		env_variable_list: variable_list,
 		volume_mount_list,
+		entry_point_list,
 	}))
+}
+
+pub async fn get_entry_points_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<EntryPoint>, Error> {
+	// check if deployment exists
+	let deployment =
+		db::get_deployment_by_id(connection, deployment_id).await?;
+	if deployment.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+	let entry_point_list =
+		db::get_entry_points_for_deployment(connection, deployment_id).await?;
+	Ok(entry_point_list)
 }

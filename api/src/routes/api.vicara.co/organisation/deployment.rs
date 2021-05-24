@@ -4,6 +4,7 @@ use api_macros::closure_as_pinned_box;
 use chrono::naive::serde;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
+use s3::request;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -12,7 +13,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{DockerRepository, EnvVariable, VolumeMount},
+		db_mapping::{EntryPoint, EnvVariable, VolumeMount},
 		rbac::{self, permissions},
 	},
 	pin_fn,
@@ -165,7 +166,6 @@ pub fn create_sub_app(
 	);
 
 	// endpoint to create machine type
-	// Create a new deployment
 	app.post(
 		"/machine-type",
 		[
@@ -198,7 +198,8 @@ pub fn create_sub_app(
 		],
 	);
 
-	// Create a new deployment
+	// endpoint to add in deployment configuration.
+	// TODO: can also add in entrypoint information
 	app.post(
 		"/:deploymentId/config",
 		[
@@ -255,9 +256,6 @@ async fn list_deployments(
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
-			request_keys::SUB_DOMAIN: deployment.sub_domain,
-			request_keys::PATH: deployment.path,
 		})
 	})
 	.collect::<Vec<_>>();
@@ -319,27 +317,6 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let domain_id = body
-		.get(request_keys::DOMAIN_ID)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let sub_domain = body
-		.get(request_keys::SUB_DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let path = body
-		.get(request_keys::PATH)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	match registry {
 		"registry.docker.vicara.co" | "registry.hub.docker.com" => (),
 		_ => {
@@ -347,23 +324,6 @@ async fn create_deployment(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 		}
-	}
-
-	let domain_id = hex::decode(domain_id)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let deployment = db::get_deployment_by_entry_point(
-		context.get_mysql_connection(),
-		&domain_id,
-		sub_domain,
-		path,
-	)
-	.await?;
-	if deployment.is_some() {
-		Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
 	let deployment_id =
@@ -436,7 +396,6 @@ async fn create_deployment(
 	Ok(context)
 }
 
-// TODO: get port from `port_id`
 async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -460,9 +419,6 @@ async fn get_deployment_info(
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
-			request_keys::SUB_DOMAIN: deployment.sub_domain,
-			request_keys::PATH: deployment.path,
 		}
 	}));
 	Ok(context)
@@ -532,7 +488,7 @@ async fn create_machine_type(
 
 	// check if the given machine type already exists
 	// if yes, get the id from the table. else, add a new machine type
-	let is_machine_availabel = db::get_deployment_machine_type(
+	let is_machine_available = db::get_deployment_machine_type(
 		context.get_mysql_connection(),
 		&name,
 		cpu_count.try_into().unwrap(),
@@ -541,19 +497,19 @@ async fn create_machine_type(
 	)
 	.await?;
 
-	let machine_type_id: Vec<u8>;
-	if is_machine_availabel.is_none() {
-		machine_type_id =
-			db::generate_new_resource_id(context.get_mysql_connection())
-				.await?
-				.as_bytes()
-				.to_vec();
-	} else {
-		// machine is already available
-		machine_type_id = is_machine_availabel.unwrap().id;
-		context.json(json!({ "machineId": &machine_type_id }));
+	// if machine exists, return machine id
+	if is_machine_available.is_some() {
+		context.json(json!({
+			request_keys::MACHINE_ID: is_machine_available.unwrap().id
+		}));
 		return Ok(context);
 	}
+
+	let machine_type_id =
+		db::generate_new_resource_id(context.get_mysql_connection())
+			.await?
+			.as_bytes()
+			.to_vec();
 
 	// function to crate a machine type
 	db::create_deployment_machine_type(
@@ -566,7 +522,7 @@ async fn create_machine_type(
 	)
 	.await?;
 
-	context.json(json!({ "machineId": &machine_type_id }));
+	context.json(json!({ request_keys::MACHINE_ID: &machine_type_id }));
 	Ok(context)
 }
 
@@ -602,6 +558,13 @@ pub async fn create_deployment_config(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let entry_point_list = body
+		.get(request_keys::ENTRY_POINT_LIST)
+		.map(|values| values.as_array())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	// check if deployment exists.
 	let deployment = db::get_deployment_by_id(
 		context.get_mysql_connection(),
@@ -609,8 +572,8 @@ pub async fn create_deployment_config(
 	)
 	.await?;
 
+	// throw resource does not exist if deployment is `none`
 	if deployment.is_none() {
-		// throw resource does not exist
 		context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 		return Ok(context);
 	}
@@ -629,7 +592,7 @@ pub async fn create_deployment_config(
 	for variable_value in variable_list {
 		let variable: EnvVariable =
 			serde_json::from_value(variable_value.to_owned())?;
-		db::insert_deployment_environment_variables(
+		db::insert_deployment_environment_variable(
 			context.get_mysql_connection(),
 			&deployment_id,
 			&variable.name,
@@ -650,9 +613,24 @@ pub async fn create_deployment_config(
 		.await?;
 	}
 
+	// iterate over entry point array and add it to `deployment_entry_point`
+	// table
+	for entry_value in entry_point_list {
+		let entry_point: EntryPoint =
+			serde_json::from_value(entry_value.to_owned())?;
+		db::insert_deployment_entry_point(
+			context.get_mysql_connection(),
+			&deployment_id,
+			&entry_point.domain_id,
+			&entry_point.sub_domain,
+			&entry_point.path,
+		)
+		.await?;
+	}
+
 	context.json(json!({
-		"success" : true,
-		"message" : "data added successfully"
+		request_keys::SUCCESS: true,
+		request_keys::MESSAGE : "data added successfully"
 	}));
 
 	Ok(context)

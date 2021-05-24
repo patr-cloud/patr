@@ -54,11 +54,6 @@ pub struct Deployment {
 	pub repository_id: Option<Vec<u8>>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
-	pub persistence: bool,
-	pub datacenter: String,
 }
 
 impl Deployment {
@@ -89,12 +84,7 @@ impl Deployment {
 			registry: self.registry,
 			repository_id: self.repository_id,
 			image_name: self.image_name,
-			image_tag: self.image_tag,
-			domain_id: self.domain_id,
-			sub_domain: self.sub_domain,
-			path: self.path,
-			persistence: self.persistence,
-			datacenter: self.datacenter,
+			image_tag: self.image_tag
 		})
 	}
 }
@@ -105,12 +95,18 @@ pub struct DeploymentConfig {
 	pub registry: String,
 	pub image_name: String,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
 	pub port_list: Vec<u8>,
 	pub env_variable_list: Vec<EnvVariable>,
 	pub volume_mount_list: Vec<VolumeMount>,
+	pub entry_point_list: Vec<EntryPoint>,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct EntryPoint {
+	pub deployment_id: Vec<u8>,
+	pub domain_id: Vec<u8>,
+	pub sub_domain: String,
+	pub path: String,
 }
 
 pub struct MachineType {

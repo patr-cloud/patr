@@ -4,6 +4,7 @@ use crate::{
 	models::db_mapping::{
 		Deployment,
 		DockerRepository,
+		EntryPoint,
 		EnvVariable,
 		MachineType,
 		VolumeMount,
@@ -23,14 +24,7 @@ pub async fn initialize_deployer_pre(
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
 			repository_id BINARY(16) NULL,
 			image_name VARCHAR(512) NULL,
-			image_tag VARCHAR(255) NOT NULL,
-			domain_id BINARY(16) NOT NULL,
-			sub_domain VARCHAR(255) NOT NULL,
-			path VARCHAR(255) NOT NULL DEFAULT "/",
-			/* TODO change port to port array, and take image from docker_registry_repository */
-			persistence BOOL NOT NULL,
-			datacenter VARCHAR(255) NOT NULL,
-			UNIQUE (domain_id, sub_domain, path),
+			image_tag VARCHAR(255) NOT NULL
 			CONSTRAINT CHECK 
 			(			
 				(
@@ -62,6 +56,24 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS deployment_entry_point(
+			deployment_id BINARY(16) NOT NULL,
+			domain_id  BINARY(16) NOT NULL,
+			sub_domain VARCHAR(255) NOT NULL DEFAULT "@",
+			path VARCHAR(255) NOT NULL DEFAULT "/",
+			PRIMARY KEY (deployment_id, domain_id, sub_domain),
+			UNIQUE (domain_id, sub_domain, path),
+			FOREIGN KEY(domain_id) REFERENCES domain(id),
+			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	// change this table to deployment id and port as unique
 	query!(
 		r#"
@@ -142,10 +154,6 @@ pub async fn initialize_deployer_pre(
 	)
 	.execute(&mut *transaction)
 	.await?;
-	// CREATE TABLE IF NOT EXISTS deployment_machine_type ( id BINARY(16)
-	// PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, cpu_count SMALLINT
-	// UNSIGNED NOT NULL, memory_count FLOAT UNSIGNED NOT NULL,yer_gpu_type(id)
-	// );
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS deployment_upgrade_path (
@@ -305,9 +313,6 @@ pub async fn create_deployment(
 	repository_id: Option<Vec<u8>>,
 	image_name: Option<&str>,
 	image_tag: &str,
-	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
 ) -> Result<(), sqlx::Error> {
 	if repository_id.is_none() {
 		query!(
@@ -315,16 +320,13 @@ pub async fn create_deployment(
 			INSERT INTO
 				deployment
 			VALUES
-				(?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');
+				(?, ?, ?, NULL, ?, ?);
 			"#,
 			deployment_id,
 			name,
 			registry,
 			image_name.unwrap(),
-			image_tag,
-			domain_id,
-			sub_domain,
-			path
+			image_tag
 		)
 		.execute(connection)
 		.await
@@ -335,16 +337,13 @@ pub async fn create_deployment(
 			INSERT INTO
 				deployment
 			VALUES
-				(?, ?, ?, ?, NULL, ?, ?, ?, ?, false, 'india');
+				(?, ?, ?, ?, NULL, ?);
 			"#,
 			deployment_id,
 			name,
 			registry,
 			repository_id.unwrap(),
-			image_tag,
-			domain_id,
-			sub_domain,
-			path
+			image_tag
 		)
 		.execute(connection)
 		.await
@@ -455,9 +454,9 @@ pub async fn get_deployment_by_entry_point(
 	domain_id: &[u8],
 	sub_domain: &str,
 	path: &str,
-) -> Result<Option<Deployment>, sqlx::Error> {
+) -> Result<Option<EntryPoint>, sqlx::Error> {
 	Ok(query_as!(
-		Deployment,
+		EntryPoint,
 		r#"
 			SELECT
 				id,
@@ -472,7 +471,7 @@ pub async fn get_deployment_by_entry_point(
 				persistence AS 'persistence: bool',
 				datacenter
 			FROM
-				deployment
+				deployment_entry_point
 			WHERE
 				domain_id = ? AND
 				sub_domain = ? AND
@@ -601,7 +600,8 @@ pub async fn insert_deployment_volumes(
 	.await
 	.map(|_| ())
 }
-pub async fn insert_deployment_environment_variables(
+
+pub async fn insert_deployment_environment_variable(
 	connection: &mut Transaction<'_, MySql>,
 	deployment_id: &[u8],
 	name: &str,
@@ -622,6 +622,31 @@ pub async fn insert_deployment_environment_variables(
 	.await
 	.map(|_| ())
 }
+
+pub async fn insert_deployment_entry_point(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+	INSERT INTO 
+		deployment_entry_point
+	VALUES
+		(?, ?, ?, ?);
+	"#,
+		deployment_id,
+		domain_id,
+		sub_domain,
+		path
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
+}
+
 // function to return list of ports
 pub async fn get_ports_for_deployment(
 	connection: &mut Transaction<'_, MySql>,
@@ -659,6 +684,26 @@ pub async fn get_variables_for_deployment(
 			WHERE
 				deployment_id = ?;
 			"#,
+		deployment_id
+	)
+	.fetch_all(connection)
+	.await
+}
+
+pub async fn get_entry_points_for_deployment(
+	connection: &mut Transaction<'_, MySql>,
+	deployment_id: &[u8],
+) -> Result<Vec<EntryPoint>, sqlx::Error> {
+	query_as!(
+		EntryPoint,
+		r#"
+			SELECT
+				*
+			FROM
+				deployment_entry_point
+			WHERE
+				deployment_id = ?
+		"#,
 		deployment_id
 	)
 	.fetch_all(connection)
