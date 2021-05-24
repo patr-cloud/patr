@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::utils::constants::ResourceOwnerType;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
@@ -52,7 +54,7 @@ pub struct UserPhoneNumber {
 
 pub struct UserToSignUp {
 	pub username: String,
-	pub account_type: String,
+	pub account_type: ResourceOwnerType,
 
 	pub password: String,
 	pub first_name: String,

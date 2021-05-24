@@ -38,7 +38,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -73,7 +73,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -105,7 +105,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&domain_id,
 					)
 					.await?;
@@ -138,7 +138,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&domain_id,
 					)
 					.await?;
@@ -171,7 +171,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&domain_id,
 					)
 					.await?;
@@ -205,7 +205,7 @@ async fn get_domains_for_organisation(
 			.unwrap();
 
 	let domains = db::get_domains_for_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -245,7 +245,7 @@ async fn add_domain_to_organisation(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let domain_id = service::add_domain_to_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		domain_name,
 		&organisation_id,
 	)
@@ -273,7 +273,7 @@ async fn verify_domain_in_organisation(
 	let domain_id = hex::decode(&domain_id_string).unwrap();
 
 	let domain = db::get_organisation_domain_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&domain_id,
 	)
 	.await?
@@ -286,9 +286,11 @@ async fn verify_domain_in_organisation(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let verified =
-		service::is_domain_verified(context.get_mysql_connection(), &domain.id)
-			.await?;
+	let verified = service::is_domain_verified(
+		context.get_database_connection(),
+		&domain.id,
+	)
+	.await?;
 
 	if verified {
 		context.json(json!({
@@ -314,7 +316,7 @@ async fn get_domain_info_in_organisation(
 	let domain_id = hex::decode(domain_id).unwrap();
 
 	let domain = db::get_organisation_domain_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&domain_id,
 	)
 	.await?;
@@ -368,13 +370,13 @@ async fn delete_domain_in_organisation(
 	// TODO make sure all associated resources to this domain are removed first
 
 	db::delete_domain_from_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&domain_id,
 	)
 	.await?;
-	db::delete_generic_domain(context.get_mysql_connection(), &domain_id)
+	db::delete_generic_domain(context.get_database_connection(), &domain_id)
 		.await?;
-	db::delete_resource(context.get_mysql_connection(), &domain_id).await?;
+	db::delete_resource(context.get_database_connection(), &domain_id).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

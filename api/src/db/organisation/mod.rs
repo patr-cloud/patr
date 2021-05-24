@@ -1,6 +1,6 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{models::db_mapping::Organisation, query, query_as};
+use crate::{models::db_mapping::Organisation, query, Database};
 
 mod application;
 mod deployment;
@@ -15,18 +15,58 @@ pub use drive::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing organisation tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(100) UNIQUE NOT NULL,
-			super_admin_id BINARY(16) NOT NULL,
+		CREATE TABLE organisation(
+			id BYTEA
+				CONSTRAINT organisation_pk PRIMARY KEY,
+			name VARCHAR(100) NOT NULL
+				CONSTRAINT organisation_uq_name UNIQUE,
+			super_admin_id BYTEA NOT NULL
+				CONSTRAINT organisation_super_admin_id_fk_user_id
+					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
-			created BIGINT UNSIGNED NOT NULL,
-			FOREIGN KEY(super_admin_id) REFERENCES user(id)
+			created BIGINT NOT NULL
+				CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_idx_super_admin_id
+		ON
+			organisation
+		(super_admin_id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			organisation_idx_active
+		ON
+			organisation
+		(active);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	// Ref: https://www.postgresql.org/docs/13/datatype-enum.html
+	query!(
+		r#"
+		CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM(
+			'personal',
+			'organisation'
 		);
 		"#
 	)
@@ -43,13 +83,14 @@ pub async fn initialize_organisations_pre(
 }
 
 pub async fn initialize_organisations_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE organisation
-		ADD CONSTRAINT
-		FOREIGN KEY(id) REFERENCES resource(id);
+		ADD CONSTRAINT organisation_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id)
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *transaction)
@@ -65,7 +106,7 @@ pub async fn initialize_organisations_post(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
@@ -76,13 +117,13 @@ pub async fn create_organisation(
 		INSERT INTO
 			organisation
 		VALUES
-			(?, ?, ?, ?, ?);
+			($1, $2, $3, $4, $5);
 		"#,
 		organisation_id,
 		name,
 		super_admin_id,
 		true,
-		created,
+		created as i64,
 	)
 	.execute(connection)
 	.await?;
@@ -91,59 +132,65 @@ pub async fn create_organisation(
 }
 
 pub async fn get_organisation_info(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query_as!(
-		Organisation,
+	let mut rows = query!(
 		r#"
 		SELECT
-			id,
-			name,
-			super_admin_id,
-			active as `active: bool`,
-			created
+			*
 		FROM
 			organisation
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		organisation_id
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Organisation {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		created: row.created as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_organisation_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	name: &str,
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let rows = query_as!(
-		Organisation,
+	let mut rows = query!(
 		r#"
 		SELECT
-			id,
-			name,
-			super_admin_id,
-			active as `active: bool`,
-			created
+			*
 		FROM
 			organisation
 		WHERE
-			name = ?;
+			name = $1;
 		"#,
 		name
 	)
 	.fetch_all(connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Organisation {
+		id: row.id,
+		name: row.name,
+		super_admin_id: row.super_admin_id,
+		active: row.active,
+		created: row.created as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn update_organisation_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -152,9 +199,9 @@ pub async fn update_organisation_name(
 		UPDATE
 			organisation
 		SET
-			name = ?
+			name = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		name,
 		organisation_id,

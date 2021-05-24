@@ -52,7 +52,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -126,7 +126,7 @@ async fn get_organisation_info(
 	}
 
 	let organisation = db::get_organisation_info(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -156,7 +156,7 @@ async fn is_name_available(
 		.clone();
 
 	let allowed = service::is_organisation_name_allowed(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_name,
 	)
 	.await?;
@@ -183,7 +183,7 @@ async fn create_new_organisation(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let org_id = service::create_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		organisation_name,
 		&user_id,
 	)
@@ -226,7 +226,7 @@ async fn update_organisation_info(
 	let name = name.unwrap();
 
 	let allowed = service::is_organisation_name_allowed(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&name,
 	)
 	.await?;
@@ -237,7 +237,7 @@ async fn update_organisation_info(
 	}
 
 	db::update_organisation_name(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 		name,
 	)

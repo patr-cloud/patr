@@ -59,7 +59,7 @@ pub struct Settings {
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
-	pub mysql: MysqlSettings,
+	pub database: DatabaseSettings,
 	pub mongodb: MongoDbSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
@@ -80,7 +80,7 @@ pub struct S3Settings {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct MysqlSettings {
+pub struct DatabaseSettings {
 	pub host: String,
 	pub port: u16,
 	pub user: String,

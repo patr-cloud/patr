@@ -2,10 +2,10 @@
 use std::{env, iter, path::PathBuf};
 
 use rand::{distributions::Alphanumeric, prelude::*};
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use tokio::fs;
 
-use crate::db;
+use crate::{db, Database};
 
 /// function to assign available port
 pub fn generate_password(length: usize) -> String {
@@ -60,7 +60,7 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("connect-pi-to-server.sh"))
 }
 
-pub fn get_ssh_port_for_server() -> u32 {
+pub fn get_ssh_port_for_server() -> u16 {
 	2222
 }
 
@@ -74,8 +74,8 @@ pub fn get_server_ip_address() -> &'static str {
 
 /// function to get an available port.
 pub async fn assign_available_port(
-	transaction: &mut Transaction<'_, MySql>,
-) -> Result<u32, sqlx::Error> {
+	transaction: &mut Transaction<'_, Database>,
+) -> Result<u16, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;
 	let restricted_ports = [5800, 8080, 9000, 3000];

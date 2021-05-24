@@ -1,3 +1,5 @@
+use crate::utils::constants::ResourceOwnerType;
+
 pub struct Organisation {
 	pub id: Vec<u8>,
 	pub name: String,
@@ -9,19 +11,19 @@ pub struct Organisation {
 pub struct Domain {
 	pub id: Vec<u8>,
 	pub name: String,
-	pub r#type: String,
+	pub r#type: ResourceOwnerType,
 }
 
 pub struct PersonalDomain {
 	pub id: Vec<u8>,
 	pub name: String,
-	pub domain_type: String,
+	pub domain_type: ResourceOwnerType,
 }
 
 pub struct OrganisationDomain {
 	pub id: Vec<u8>,
 	pub name: String,
-	pub domain_type: String,
+	pub domain_type: ResourceOwnerType,
 	pub is_verified: bool,
 }
 

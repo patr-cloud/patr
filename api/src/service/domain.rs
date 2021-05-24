@@ -1,6 +1,6 @@
 use eve_rs::AsError;
 use hex::ToHex;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
@@ -14,10 +14,11 @@ use crate::{
 	error,
 	models::rbac,
 	utils::{constants::ResourceOwnerType, validator, Error},
+	Database,
 };
 
 pub async fn ensure_personal_domain_exists(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
@@ -28,7 +29,7 @@ pub async fn ensure_personal_domain_exists(
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
-		if domain.r#type == "organisation" {
+		if let ResourceOwnerType::Organisation = domain.r#type {
 			Error::as_result()
 				.status(500)
 				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())
@@ -36,19 +37,8 @@ pub async fn ensure_personal_domain_exists(
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
 	} else {
-		let domain_uuid = db::generate_new_resource_id(connection).await?;
+		let domain_uuid = db::generate_new_domain_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
-		db::create_orphaned_resource(
-			connection,
-			domain_id,
-			&format!("Personal Domain: {}", domain_name),
-			rbac::RESOURCE_TYPES
-				.get()
-				.unwrap()
-				.get(rbac::resource_types::DOMAIN)
-				.unwrap(),
-		)
-		.await?;
 		db::create_generic_domain(
 			connection,
 			domain_id,
@@ -63,7 +53,7 @@ pub async fn ensure_personal_domain_exists(
 }
 
 pub async fn add_domain_to_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	domain_name: &str,
 	organisation_id: &[u8],
 ) -> Result<Uuid, Error> {
@@ -75,7 +65,7 @@ pub async fn add_domain_to_organisation(
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
-		if domain.r#type.as_str() == "personal" {
+		if let ResourceOwnerType::Personal = domain.r#type {
 			Error::as_result()
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
@@ -86,7 +76,7 @@ pub async fn add_domain_to_organisation(
 		}
 	}
 
-	let domain_uuid = db::generate_new_resource_id(connection).await?;
+	let domain_uuid = db::generate_new_domain_id(connection).await?;
 	let domain_id = domain_uuid.as_bytes();
 	db::create_resource(
 		connection,
@@ -115,7 +105,7 @@ pub async fn add_domain_to_organisation(
 // TODO make domain store the registrar and
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
 	let domain = db::get_organisation_domain_by_id(connection, &domain_id)
