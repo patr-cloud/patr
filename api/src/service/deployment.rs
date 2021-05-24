@@ -35,12 +35,14 @@ pub async fn get_deployment_config_by_id(
 	let entry_point_list =
 		db::get_entry_points_for_deployment(connection, deployment_id).await?;
 
+	let full_image_details = deployment.get_full_image(connection).await?;
+
 	Ok(Some(DeploymentConfig {
-		id: deployment.id,
-		name: deployment.name,
-		registry: deployment.registry,
-		image_name: deployment.image_name.unwrap(),
-		image_tag: deployment.image_tag,
+		id: full_image_details.id,
+		name: full_image_details.name,
+		registry: full_image_details.registry,
+		image_name: full_image_details.image_name.unwrap(),
+		image_tag: full_image_details.image_tag,
 		port_list,
 		env_variable_list: variable_list,
 		volume_mount_list,

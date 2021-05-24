@@ -93,13 +93,16 @@ pub async fn notification_handler(
 			.await?;
 		// temporary change
 		for deployment in deployments {
+			let full_image = deployment
+				.get_full_image(context.get_mysql_connection())
+				.await?;
 			let container_name =
-				format!("deployment-{}", deployment.id.encode_hex::<String>());
+				format!("deployment-{}", full_image.id.encode_hex::<String>());
 			let full_image_name = format!(
 				"{}/{}/{}@{}",
 				config.docker_registry.registry_url,
 				org_name,
-				deployment.image_name.unwrap(),
+				full_image.image_name.unwrap(),
 				target.digest
 			);
 

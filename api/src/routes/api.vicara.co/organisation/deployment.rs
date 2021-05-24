@@ -340,7 +340,7 @@ async fn create_deployment(
 		&organisation_id,
 	)
 	.await?;
-
+	// TODO: create a separate function for registry validation
 	if registry == "registry.docker.vicara.co" && repository_id.is_none() {
 		Error::as_result()
 			.status(400)

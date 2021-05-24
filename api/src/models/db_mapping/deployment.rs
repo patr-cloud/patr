@@ -57,7 +57,7 @@ pub struct Deployment {
 }
 
 impl Deployment {
-	async fn get_full_image(
+	pub async fn get_full_image(
 		mut self,
 		connection: &mut Transaction<'_, MySql>,
 	) -> Result<Self, Error> {
