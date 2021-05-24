@@ -258,6 +258,7 @@ async fn list_deployments(
 			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
 			request_keys::NAME: deployment.name,
 			request_keys::REGISTRY: deployment.registry,
+			request_keys::REPOSITORY_ID: deployment.repository_id,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
 		})
