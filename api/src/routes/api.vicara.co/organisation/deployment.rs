@@ -450,6 +450,7 @@ async fn create_machine_type(
 	// if machine exists, return machine id
 	if is_machine_available.is_some() {
 		context.json(json!({
+			request_keys::SUCCESS : true,
 			request_keys::MACHINE_ID: is_machine_available.unwrap().id
 		}));
 		return Ok(context);
@@ -472,7 +473,10 @@ async fn create_machine_type(
 	)
 	.await?;
 
-	context.json(json!({ request_keys::MACHINE_ID: &machine_type_id }));
+	context.json(json!({
+		request_keys::SUCCESS : true,
+		request_keys::MACHINE_ID: &machine_type_id
+	}));
 	Ok(context)
 }
 
