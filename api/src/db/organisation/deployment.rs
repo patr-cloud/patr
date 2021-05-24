@@ -24,11 +24,7 @@ pub async fn initialize_deployer_pre(
 			registry VARCHAR(255) NOT NULL DEFAULT "registry.docker.vicara.co",
 			repository_id BINARY(16) NULL,
 			image_name VARCHAR(512) NULL,
-<<<<<<< HEAD
 			image_tag VARCHAR(255) NOT NULL,
-=======
-			image_tag VARCHAR(255) NOT NULL
->>>>>>> 5ce827b1b48ee6c4cd3b6b5dee6572f9f118ed6e
 			CONSTRAINT CHECK 
 			(			
 				(

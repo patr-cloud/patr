@@ -84,7 +84,7 @@ impl Deployment {
 			registry: self.registry,
 			repository_id: self.repository_id,
 			image_name: self.image_name,
-			image_tag: self.image_tag
+			image_tag: self.image_tag,
 		})
 	}
 }

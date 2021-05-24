@@ -10,14 +10,19 @@ use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{EntryPoint, EnvVariable, VolumeMount},
 		rbac::{self, permissions},
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -358,7 +363,7 @@ async fn create_deployment(
 				registry,
 				Some(repository_id),
 				None,
-				image_tag
+				image_tag,
 			)
 			.await?;
 		}
@@ -370,7 +375,7 @@ async fn create_deployment(
 				registry,
 				None,
 				image_name,
-				image_tag
+				image_tag,
 			)
 			.await?;
 		}
