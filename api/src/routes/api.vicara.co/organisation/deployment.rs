@@ -10,14 +10,19 @@ use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{EntryPoint, EnvVariable, VolumeMount},
 		rbac::{self, permissions},
 	},
 	pin_fn,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -233,6 +238,12 @@ async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	// if we try retrieve a deployment which is from registry.docker.vicara.co
+	// from db it will return imageName=null because it wasn't supplied in the
+	// first place so even if i write something like this:
+	// let get_full_image =
+	// deployment.get_full_image(context.get_mysql_connection()).await;
+	// it doesn't work
 	let organisation_id =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
@@ -247,6 +258,7 @@ async fn list_deployments(
 			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
 			request_keys::NAME: deployment.name,
 			request_keys::REGISTRY: deployment.registry,
+			request_keys::REPOSITORY_ID: deployment.repository_id,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
 		})
@@ -283,12 +295,25 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let repository_id = body
+		.get(request_keys::REPOSITORY_ID)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
 	let image_name = body
 		.get(request_keys::IMAGE_NAME)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
 
 	let image_tag = body
 		.get(request_keys::IMAGE_TAG)
@@ -322,15 +347,46 @@ async fn create_deployment(
 		&organisation_id,
 	)
 	.await?;
-	db::create_deployment(
-		context.get_mysql_connection(),
-		deployment_id,
-		name,
-		registry,
-		image_name,
-		image_tag,
-	)
-	.await?;
+	// TODO: create a separate function for registry validation
+	if registry == "registry.docker.vicara.co" && repository_id.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	} else if registry != "registry.docker.vicara.co" && image_name.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	}
+	match registry {
+		"registry.docker.vicara.co" => {
+			let repository_id = hex::decode(repository_id.unwrap())
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+
+			db::create_deployment(
+				context.get_mysql_connection(),
+				deployment_id,
+				name,
+				registry,
+				Some(repository_id),
+				None,
+				image_tag,
+			)
+			.await?;
+		}
+		_ => {
+			db::create_deployment(
+				context.get_mysql_connection(),
+				deployment_id,
+				name,
+				registry,
+				None,
+				image_name,
+				image_tag,
+			)
+			.await?;
+		}
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true,

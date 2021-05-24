@@ -1,15 +1,5 @@
 {
   "db": "MySQL",
-  "02c3f1118df5a288de6c68a9e1fe0f4cda0da6cc8ef8e87100f86a6037777e73": {
-    "query": "ALTER TABLE deployment ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "0346579f00f2674ce01f47d580460271ff00e265fb686ace54b5dcb496092fb8": {
     "query": "INSERT INTO resource VALUES (?, ?, ?, NULL);",
     "describe": {
@@ -586,18 +576,30 @@
         },
         {
           "ordinal": 3,
+          "name": "repository_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
           "name": "image_name",
           "type_info": {
             "type": "VarString",
             "flags": {
-              "bits": 4097
+              "bits": 0
             },
             "char_set": 224,
             "max_size": 2048
           }
         },
         {
-          "ordinal": 4,
+          "ordinal": 5,
           "name": "image_tag",
           "type_info": {
             "type": "VarString",
@@ -616,7 +618,8 @@
         false,
         false,
         false,
-        false,
+        true,
+        true,
         false
       ]
     }
@@ -889,16 +892,6 @@
         false,
         false
       ]
-    }
-  },
-  "3368f0a932d8a3e5c0f94b9b390d81dd7cce6162b3a885fcae47b407f487510b": {
-    "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "34725b1bba891ee860fbdbc88ff8b85b92a930fb5104cb779fa9dada00ab9366": {
@@ -1355,16 +1348,6 @@
       ]
     }
   },
-  "42a95239376fa672a6955a2893243fadc3e113bf8a84c2b08d671c2d84a228e5": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
   "4381c233c7c762f95acd31726c1afab88e926b797bc3ab22e22228a3b2ac96e4": {
     "query": "DELETE FROM domain WHERE id = ?;",
     "describe": {
@@ -1556,6 +1539,16 @@
       "nullable": []
     }
   },
+  "54388980b43b49a672fe6db6641bf3205e7d2f3e9785ebbd8267fb8034783877": {
+    "query": "INSERT INTO docker_registry_repository VALUES (?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
   "572ee1bc7c428de24baeecc05146b31607bac7390f5d960d8563bd8450c1f7f4": {
     "query": "UPDATE user_login SET token_expiry = ?, last_activity = ? WHERE login_id = ?;",
     "describe": {
@@ -1728,18 +1721,30 @@
         },
         {
           "ordinal": 3,
+          "name": "repository_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
           "name": "image_name",
           "type_info": {
             "type": "VarString",
             "flags": {
-              "bits": 4097
+              "bits": 0
             },
             "char_set": 224,
             "max_size": 2048
           }
         },
         {
-          "ordinal": 4,
+          "ordinal": 5,
           "name": "image_tag",
           "type_info": {
             "type": "VarString",
@@ -1758,7 +1763,8 @@
         false,
         false,
         false,
-        false,
+        true,
+        true,
         false
       ]
     }
@@ -1769,6 +1775,26 @@
       "columns": [],
       "parameters": {
         "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "66180e11918f8284d0b281f883ce06e64af54d2bfb896ca1b81b26a00849b072": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT FOREIGN KEY (repository_id) REFERENCES docker_registry_repository(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "6884da8cbafb64f418842efc2790a639f3506f8bc524fdbcefe2745717ac3eaa": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repository_id BINARY(16) NULL, image_name VARCHAR(512) NULL, image_tag VARCHAR(255) NOT NULL, CONSTRAINT CHECK ( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -2387,6 +2413,16 @@
         false,
         false
       ]
+    }
+  },
+  "86710765b572ff652abbbff7072351eb2d120ae0d0ebaf47ea3f4ef700975d06": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, NULL, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
     }
   },
   "8a8bbee60fc109098b0ac29824b8f6b0a91959274cadb0aa982f4c68375c9659": {
@@ -3437,6 +3473,16 @@
       "nullable": []
     }
   },
+  "c114c4a4e1946e0a6d802d8c35c1ebc14529b11517ca36c28193223fc4b8fc52": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, NULL, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
+    }
+  },
   "c16ef2a1d5294754262b0c77e596bb523c27ddbed94da43617285203dd95959d": {
     "query": "CREATE TABLE IF NOT EXISTS domain ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, is_verified BOOL NOT NULL DEFAULT FALSE );",
     "describe": {
@@ -3790,18 +3836,30 @@
         },
         {
           "ordinal": 3,
+          "name": "repository_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
           "name": "image_name",
           "type_info": {
             "type": "VarString",
             "flags": {
-              "bits": 4097
+              "bits": 0
             },
             "char_set": 224,
             "max_size": 2048
           }
         },
         {
-          "ordinal": 4,
+          "ordinal": 5,
           "name": "image_tag",
           "type_info": {
             "type": "VarString",
@@ -3820,7 +3878,8 @@
         false,
         false,
         false,
-        false,
+        true,
+        true,
         false
       ]
     }
@@ -3973,16 +4032,6 @@
       "columns": [],
       "parameters": {
         "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "d5b50b9a3bd127388b6a84343296ae34a5237c3d8dc839cd6fb922a7db470527": {
-    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, ?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 5
       },
       "nullable": []
     }
@@ -4185,6 +4234,16 @@
       "columns": [],
       "parameters": {
         "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "e1f1dab1ecf35a9da7398b0d36df0da82c1572e53d94c98b03f1203694e5453c": {
+    "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT FOREIGN KEY (id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
@@ -4536,16 +4595,6 @@
       "nullable": []
     }
   },
-  "f0eda87bd07f36dab8d2ce25961202654985cd6e1f16b06fa5083f1ae3fd8612": {
-    "query": "INSERT INTO docker_registry_repository VALUES (?,?,?);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 3
-      },
-      "nullable": []
-    }
-  },
   "f10a94d2cb6ef8ede5b0588f0825fca7641597066705d944adf7d1f902f1058a": {
     "query": "INSERT INTO organisation VALUES (?, ?, ?, ?, ?);",
     "describe": {
@@ -4572,7 +4621,7 @@
       "columns": [
         {
           "ordinal": 0,
-          "name": "Tables_in_api",
+          "name": "Tables_in_vicaraDB",
           "type_info": {
             "type": "VarString",
             "flags": {
@@ -4597,6 +4646,16 @@
       "columns": [],
       "parameters": {
         "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "f43ccac0e40f3cafdea46147fcaa2ee74b3f0dc28f9a83b8c7e764133abc949f": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT FOREIGN KEY (id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
       },
       "nullable": []
     }
