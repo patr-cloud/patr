@@ -1,15 +1,5 @@
 {
   "db": "MySQL",
-  "02b6cf368a04461c3d286b8c23b4030a9eb2da79e2cb6215ccff3195581109e7": {
-    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, false, 'india');",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 8
-      },
-      "nullable": []
-    }
-  },
   "0346579f00f2674ce01f47d580460271ff00e265fb686ace54b5dcb496092fb8": {
     "query": "INSERT INTO resource VALUES (?, ?, ?, NULL);",
     "describe": {
@@ -544,6 +534,96 @@
       "nullable": []
     }
   },
+  "270607c5a5464d2dc9a24c4b1fb63dffd37a83d24f80fa5529655e82d48063d2": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE deployment.id = resource.id AND image_name = ? AND image_tag = ? AND resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "2800638e0b9b0a15ed2f97715f6b16eee1f5ecd998fbeea9ace67289a8a09643": {
     "query": "DELETE FROM role_permissions_resource WHERE role_id = ?;",
     "describe": {
@@ -1056,161 +1136,6 @@
       ]
     }
   },
-  "3c0179cb26cda2037511773013fff786e4300dc2d915dfb01e3fdfa84e154486": {
-    "query": "SELECT id, name, registry, repository_id, image_name, image_tag, domain_id, sub_domain, path, persistence AS 'persistence: bool', datacenter FROM deployment WHERE id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 136
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 2048
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "domain_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "sub_domain",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "path",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "persistence: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "datacenter",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "3c371e005290ff7e86a0fa7d02589eaa963a6d12ef998638d70ac8a2bbea83c7": {
     "query": "CREATE TABLE IF NOT EXISTS user ( id BINARY(16) PRIMARY KEY, username VARCHAR(100) UNIQUE NOT NULL, password TEXT NOT NULL, backup_email VARCHAR(320) UNIQUE NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT UNSIGNED DEFAULT NULL, bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT UNSIGNED NOT NULL );",
     "describe": {
@@ -1540,6 +1465,70 @@
       "nullable": []
     }
   },
+  "4b9bd1ed6b95a5793c939f4a655b0217b8cbd1b0541d9e49cac796614f72746d": {
+    "query": "SELECT * FROM deployment_entry_point WHERE deployment_id = ?",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "deployment_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 3
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "4f6e7535ab071b0910a06269bc765549449729470f299316474f304583736d66": {
     "query": "CREATE TABLE IF NOT EXISTS role_permissions_resource ( role_id BINARY(16), permission_id BINARY(16), resource_id BINARY(16), PRIMARY KEY(role_id, permission_id, resource_id), FOREIGN KEY(role_id) REFERENCES role(id), FOREIGN KEY(permission_id) REFERENCES permission(id), FOREIGN KEY(resource_id) REFERENCES resource(id) );",
     "describe": {
@@ -1568,161 +1557,6 @@
         "Right": 3
       },
       "nullable": []
-    }
-  },
-  "59c99fbb56af5f9cfb624a3d703774b013666e21d2d6b1194649c0dce66152a3": {
-    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.domain_id, deployment.sub_domain, deployment.path, deployment.persistence AS 'persistence:bool', deployment.datacenter FROM deployment, resource WHERE deployment.id = resource.id AND image_name = ? AND image_tag = ? AND resource.owner_id = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 136
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 2048
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "domain_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "sub_domain",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "path",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "persistence:bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "datacenter",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 3
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "5c0221593fa8841dddb354a50559be25e55281ee78e440032c9ed6c2c175c313": {
@@ -1845,6 +1679,96 @@
       ]
     }
   },
+  "646b2763c95edd7db30a0eb81a9838a37f6836d31d5dcf927c40bedefb8421c3": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE resource.id = deployment.id AND resource.owner_id = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 136
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 0
+            },
+            "char_set": 224,
+            "max_size": 2048
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 4097
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "6500a3e644b2015b4c665160304aa020dedd9dab0df9ffaa167c232b584c0c87": {
     "query": "INSERT INTO port VALUES (?, ?);",
     "describe": {
@@ -1857,6 +1781,16 @@
   },
   "66180e11918f8284d0b281f883ce06e64af54d2bfb896ca1b81b26a00849b072": {
     "query": "ALTER TABLE deployment ADD CONSTRAINT FOREIGN KEY (repository_id) REFERENCES docker_registry_repository(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "6884da8cbafb64f418842efc2790a639f3506f8bc524fdbcefe2745717ac3eaa": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repository_id BINARY(16) NULL, image_name VARCHAR(512) NULL, image_tag VARCHAR(255) NOT NULL, CONSTRAINT CHECK ( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2015,6 +1949,16 @@
         true,
         false
       ]
+    }
+  },
+  "6f333b387555fd76571085d41e95502ec1f2b2c2bf4718d86b88939c81a1faab": {
+    "query": "CREATE TABLE IF NOT EXISTS deployment_entry_point( deployment_id BINARY(16) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL DEFAULT \"@\", path VARCHAR(255) NOT NULL DEFAULT \"/\", PRIMARY KEY (deployment_id, domain_id, sub_domain), UNIQUE (domain_id, sub_domain, path), FOREIGN KEY(domain_id) REFERENCES domain(id), FOREIGN KEY(deployment_id) REFERENCES deployment(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
     }
   },
   "6fa2444bb63e13a9590e092c01ba865ce21d7b2c4a5b434272bda49d9c2ea729": {
@@ -2384,6 +2328,16 @@
       "nullable": []
     }
   },
+  "84efce0b776831903b820f7eda9ede80ba841d61c56ed514ad4917e6fca7fc69": {
+    "query": "INSERT INTO deployment_entry_point VALUES (?, ?, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 4
+      },
+      "nullable": []
+    }
+  },
   "8659a1c8e68476e1dd39e11fcc5a07c18f488e8f7a0d8cc81c11a5cc8270d006": {
     "query": "SELECT * FROM organisation WHERE super_admin_id = ?;",
     "describe": {
@@ -2459,6 +2413,16 @@
         false,
         false
       ]
+    }
+  },
+  "86710765b572ff652abbbff7072351eb2d120ae0d0ebaf47ea3f4ef700975d06": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, NULL, ?, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
     }
   },
   "8a8bbee60fc109098b0ac29824b8f6b0a91959274cadb0aa982f4c68375c9659": {
@@ -2747,26 +2711,6 @@
       ]
     }
   },
-  "9ccdc788a8655e2c99c1aca9ba9ef0d1c5ebe7e2a45ff87e63ef633c770836e9": {
-    "query": "CREATE TABLE IF NOT EXISTS deployment ( id BINARY(16) PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT \"registry.docker.vicara.co\", repository_id BINARY(16) NULL, image_name VARCHAR(512) NULL, image_tag VARCHAR(255) NOT NULL, domain_id BINARY(16) NOT NULL, sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT \"/\", /* TODO change port to port array, and take image from docker_registry_repository */ persistence BOOL NOT NULL, datacenter VARCHAR(255) NOT NULL, UNIQUE (domain_id, sub_domain, path), CONSTRAINT CHECK ( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
-    }
-  },
-  "a1d8ebe89166353d292660ee1aca82cc2883ec9ccb72d84204025ee2c1e73379": {
-    "query": "INSERT INTO deployment VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, false, 'india');",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 8
-      },
-      "nullable": []
-    }
-  },
   "a43f43d015f46a9f162ca5d46e186e220fa84c2d6389705746d77798428f2899": {
     "query": "CREATE TABLE IF NOT EXISTS user_email_address ( type ENUM('personal', 'organisation') NOT NULL, /* Personal email address */ email_address VARCHAR(320), /* Organisation email address */ email_local VARCHAR(160), domain_id BINARY(16), user_id BINARY(16) NOT NULL, UNIQUE(email_address, email_local, domain_id, user_id), FOREIGN KEY(user_id) REFERENCES user(id), FOREIGN KEY(domain_id) REFERENCES domain(id), CONSTRAINT CHECK ( ( type = 'personal' AND ( email_address IS NOT NULL AND email_local IS NULL AND domain_id IS NULL ) ) OR ( type = 'organisation' AND ( email_address IS NULL AND email_local IS NOT NULL AND domain_id IS NOT NULL ) ) ) );",
     "describe": {
@@ -2795,6 +2739,70 @@
         "Right": 1
       },
       "nullable": []
+    }
+  },
+  "aa335830a800722bdf8e3560c2ca7665343401127dc8b7a3c52b349bdf389edb": {
+    "query": "SELECT * FROM deployment_entry_point WHERE domain_id = ? AND sub_domain = ? AND path = ?;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "deployment_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4227
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": {
+            "type": "String",
+            "flags": {
+              "bits": 4235
+            },
+            "char_set": 63,
+            "max_size": 16
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "sub_domain",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 3
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "path",
+          "type_info": {
+            "type": "VarString",
+            "flags": {
+              "bits": 1
+            },
+            "char_set": 224,
+            "max_size": 1020
+          }
+        }
+      ],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "abc73c01e06ecb0567f992fdf42fd74fcdb9e084178eab52980b95cdc62e7184": {
@@ -3465,6 +3473,16 @@
       "nullable": []
     }
   },
+  "c114c4a4e1946e0a6d802d8c35c1ebc14529b11517ca36c28193223fc4b8fc52": {
+    "query": "INSERT INTO deployment VALUES (?, ?, ?, ?, NULL, ?);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
+    }
+  },
   "c16ef2a1d5294754262b0c77e596bb523c27ddbed94da43617285203dd95959d": {
     "query": "CREATE TABLE IF NOT EXISTS domain ( id BINARY(16) PRIMARY KEY, name VARCHAR(100) UNIQUE NOT NULL, is_verified BOOL NOT NULL DEFAULT FALSE );",
     "describe": {
@@ -3746,8 +3764,38 @@
       "nullable": []
     }
   },
-  "cccf27b3d516cf607e9677c7f72732bd0133f35b1e3b967aee0e987f01d5e99f": {
-    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.domain_id, deployment.sub_domain, deployment.path, deployment.persistence AS 'persistence:bool', deployment.datacenter FROM deployment, resource WHERE resource.id = deployment.id AND resource.owner_id = ?;",
+  "cebce49fbac635b253575a841bae02bca13a53323b655259c2bea4312f9860fc": {
+    "query": "UPDATE domain SET is_verified = FALSE WHERE id = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "d1a13d223e75fa39e2df585c2949f6c5b1f2325813bcd6c3d9fdbfa53f6f9047": {
+    "query": "INSERT INTO user_to_sign_up VALUES (?, 'personal', ?, NULL, NULL, ?, ?, ?, NULL, ?, ?) ON DUPLICATE KEY UPDATE account_type = 'personal', email_address = ?, email_local = NULL, domain_name = NULL, organisation_name = NULL, password = ?, first_name = ?, last_name = ?, otp_hash = ?, otp_expiry = ?;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 13
+      },
+      "nullable": []
+    }
+  },
+  "d334dbe26b7ab3688b0cf565d4a2542516a1d7680731fea0b37d5ddbe869b480": {
+    "query": "CREATE TABLE IF NOT EXISTS file ( id BINARY(16) PRIMARY KEY, name VARCHAR(250) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": []
+    }
+  },
+  "d44888489c6f1b2ec6ce6dd190b49d7a629eaef2d24dc766d1997e3db2a6b187": {
+    "query": "SELECT * FROM deployment WHERE id = ?;",
     "describe": {
       "columns": [
         {
@@ -3821,66 +3869,6 @@
             "char_set": 224,
             "max_size": 1020
           }
-        },
-        {
-          "ordinal": 6,
-          "name": "domain_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "sub_domain",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "path",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "persistence:bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "datacenter",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
         }
       ],
       "parameters": {
@@ -3892,43 +3880,8 @@
         false,
         true,
         true,
-        false,
-        false,
-        false,
-        false,
-        false,
         false
       ]
-    }
-  },
-  "cebce49fbac635b253575a841bae02bca13a53323b655259c2bea4312f9860fc": {
-    "query": "UPDATE domain SET is_verified = FALSE WHERE id = ?;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": []
-    }
-  },
-  "d1a13d223e75fa39e2df585c2949f6c5b1f2325813bcd6c3d9fdbfa53f6f9047": {
-    "query": "INSERT INTO user_to_sign_up VALUES (?, 'personal', ?, NULL, NULL, ?, ?, ?, NULL, ?, ?) ON DUPLICATE KEY UPDATE account_type = 'personal', email_address = ?, email_local = NULL, domain_name = NULL, organisation_name = NULL, password = ?, first_name = ?, last_name = ?, otp_hash = ?, otp_expiry = ?;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 13
-      },
-      "nullable": []
-    }
-  },
-  "d334dbe26b7ab3688b0cf565d4a2542516a1d7680731fea0b37d5ddbe869b480": {
-    "query": "CREATE TABLE IF NOT EXISTS file ( id BINARY(16) PRIMARY KEY, name VARCHAR(250) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Right": 0
-      },
-      "nullable": []
     }
   },
   "d4d2ecce5a9761a66d35ad64a28fa27cf0ec6caebfe8ffc21cb88c4139110f56": {
@@ -4478,161 +4431,6 @@
         "Right": 0
       },
       "nullable": []
-    }
-  },
-  "ea1ec720f490e3757b7cf4eabda241c9703e336d4f734eecbdfcffa634cdb908": {
-    "query": "SELECT id, name, registry, repository_id, image_name, image_tag, domain_id, sub_domain, path, persistence AS 'persistence: bool', datacenter FROM deployment WHERE domain_id = ? AND sub_domain = ? AND path = ?;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4227
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 136
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 0
-            },
-            "char_set": 224,
-            "max_size": 2048
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 6,
-          "name": "domain_id",
-          "type_info": {
-            "type": "String",
-            "flags": {
-              "bits": 4233
-            },
-            "char_set": 63,
-            "max_size": 16
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "sub_domain",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 8,
-          "name": "path",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 1
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        },
-        {
-          "ordinal": 9,
-          "name": "persistence: bool",
-          "type_info": {
-            "type": "Tiny",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 63,
-            "max_size": 1
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "datacenter",
-          "type_info": {
-            "type": "VarString",
-            "flags": {
-              "bits": 4097
-            },
-            "char_set": 224,
-            "max_size": 1020
-          }
-        }
-      ],
-      "parameters": {
-        "Right": 3
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "eca653429eddbfe6a41f012b9fad4d53554ae7b79cde8d4150b0b84ee9bf9a8b": {

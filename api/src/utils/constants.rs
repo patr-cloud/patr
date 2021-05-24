@@ -132,4 +132,6 @@ pub mod request_keys {
 	pub const GPU_ID: &str = "gpuId";
 	pub const VARIABLE_LIST: &str = "variableList";
 	pub const VOLUME_LIST: &str = "volumeList";
+	pub const ENTRY_POINT_LIST: &str = "entryPointList";
+	pub const MACHINE_ID: &str = "machineId";
 }
