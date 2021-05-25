@@ -1,0 +1,26 @@
+kind: pipeline
+name: default
+
+concurrency:
+  limit: 1
+
+steps:
+  - name: "Install dependencies"
+    image: node:16
+    commands:
+      - npm install
+    when:
+      event:
+        - push
+      branch:
+        - master
+        - staging
+        - develop
+
+trigger:
+  event:
+    - push
+  branch:
+    - master
+    - staging
+    - develop
