@@ -83,14 +83,11 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let data = serde_json::to_value(
-		context.get_token_data().as_ref().unwrap().user.clone(),
-	)?;
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let user =
 		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
-			.status(400)
+			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	context.json(json!({
 		request_keys::SUCCESS : true,
