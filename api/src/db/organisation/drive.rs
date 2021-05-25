@@ -1,15 +1,15 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::query;
+use crate::{query, Database};
 
 pub async fn initialize_drive_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing drive tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS file (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE file (
+			id BYTEA CONSTRAINT file_pk PRIMARY KEY,
 			name VARCHAR(250) NOT NULL
 		);
 		"#
@@ -21,12 +21,12 @@ pub async fn initialize_drive_pre(
 }
 
 pub async fn initialize_drive_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE file
-		ADD CONSTRAINT
+		ADD CONSTRAINT file_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)

@@ -21,6 +21,8 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum ResourceOwnerType {
 	Personal,
 	Organisation,

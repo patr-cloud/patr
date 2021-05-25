@@ -1,0 +1,4084 @@
+<<<<<<< HEAD
+=======
+{
+  "db": "PostgreSQL",
+  "003572bba6e2c9719d902eb4cefc74a1087b9eeb51e867eec080938d306e3bb4": {
+    "query": "CREATE INDEX deployment_idx_registry_image_name_image_tag ON deployment (registry, image_name, image_tag);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
+    "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "05b6d33feb18545eda08444aaceb0df59d41f3487a9af37b982975ffbc31c637": {
+    "query": "UPDATE organisation_domain SET is_verified = FALSE WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "05d4329b320e74565551e57e2419b8a312b019bd441b7e91b966c1e2937eaf4d": {
+    "query": "CREATE TABLE portus_tunnel( id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_ssh_port_u16 CHECK(ssh_port >= 0 AND ssh_port <= 65534), exposed_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_exposed_port_u16 CHECK(exposed_port >= 0 AND exposed_port <= 65534), name VARCHAR(50) NOT NULL, created BIGINT NOT NULL CONSTRAINT portus_tunnel_chk_created_unsigned CHECK(created >= 0) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0aeda202c1315facdf01113fe29e35e88eb46dc18e56bfd9a543302b83247776": {
+    "query": "CREATE INDEX organisation_idx_super_admin_id ON organisation (super_admin_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0ba65499ecae8902b5e35d4c272af2c09970683633d0cb1822835ebaade7d41b": {
+    "query": "CREATE TABLE role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0c68619636ed3a68d55fe399dce188b04730aa02e8b278f18b74e3754b822cac": {
+    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE username = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceOwnerType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "org_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "org_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "organisation_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
+  "0cb05860f1a10055ea38b4951347e6860d3d226b43759fd52a31dac18e0cf708": {
+    "query": "UPDATE \"user\" SET last_name = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
+    "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "0da45c1d27fa549646343d6e654b15a75d30a5b545c0d29aa83d53eb2a9f6223": {
+    "query": "UPDATE organisation SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "0e697016c2da3ccb203f0ef61068ee1228e25a7fe59a5228385bf194eb8731ac": {
+    "query": "SELECT resource_type.* FROM resource_type INNER JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "1313e9b7345e378eccff29bad222a6533ccf50a9d69d08e2cd673bd3a8651343": {
+    "query": "SELECT * FROM \"user\" ORDER BY created DESC LIMIT 1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "15754548332233512bc74364ad9ebb4ee076cfa1c8555b5c4740c12d2c85b4b0": {
+    "query": "SELECT DISTINCT organisation.* FROM organisation LEFT JOIN organisation_user ON organisation.id = organisation_user.organisation_id WHERE organisation.super_admin_id = $1 OR organisation_user.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "17110d0af21fc886aaa70147d26f326a861ca13713b0c00fb8646642b5fb8f9f": {
+    "query": "INSERT INTO \"user\" VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Int8",
+          "Varchar",
+          "Bytea",
+          "Bpchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1790ace672f231da055435d16ee2b378379872de2433a2c077220f842c913a24": {
+    "query": "SELECT portus_tunnel.* FROM portus_tunnel INNER JOIN resource ON resource.id = portus_tunnel.id WHERE resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "17a939d999365a1af9058019c73d2750ddd19dbf913eaea09a9d036ecd23cdfa": {
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY, account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
+    "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "1a244236b1a5779b312dea34ac0d15869837af670cc8327868d1d3b1f813a188": {
+    "query": "DELETE FROM organisation_domain WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1a3b8e1bff241f2560652afe203c892e15868c7c48da74963afeccc550d90a9d": {
+    "query": "DELETE FROM role_permissions_resource_type WHERE role_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1c8d4fd66ca5d3500c65672a36b1b6931a2f37ac3bddfb1f75a59c5aa3a8a81d": {
+    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "1d910355f58fd3f630a39be384b98423a9abfc38721774e0d0d83080581433d4": {
+    "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "role_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "permission_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_type_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "1de59097b9fe16c191902d40f6e1aa7c48834c86988b7e4510771391cc369afa": {
+    "query": "INSERT INTO user_login VALUES ($1, $2, $3, $4, $5, $6);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Int8",
+          "Bytea",
+          "Int8",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1e5535c954669e884b6431f2be4e4ca0bcda5682951aed45f1f01d607a1d4f1c": {
+    "query": "INSERT INTO role_permissions_resource_type VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "1f3c437755be8017fcacea1842f4a100105f000ffffb225d1b2e68cebbd590bc": {
+    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "20c1eb3cae2ebe42eac8457cfdc0c9c47f1c651b946bb13486e822b54fdda53a": {
+    "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "228e6bc3a8eb9c3113acda6e4fa32f347b99cf44fb9935e39461eaa8e8cef7e7": {
+    "query": "SELECT * FROM meta_data WHERE id = 'version_major' OR id = 'version_minor' OR id = 'version_patch';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "value",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "24651378057df5d6b31be9a55d60d02884c8c9d9f7cb441254a408e7dc4f05b9": {
+    "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_code",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "country_name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bpchar"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "267cda1e5050dca6e8a3352b3ba5058efb79ec634733852a559df21880908120": {
+    "query": "CREATE TABLE personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "26eaf16db7408039c55c007d3a7c1ef25e5372bc09a58b93da3b6b3dcca88535": {
+    "query": "ALTER TABLE portus_tunnel ADD CONSTRAINT portus_tunnel_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "27ac436ae8691f04e9e8a2a2328a754631834ac82fcca7aebb8a04fe71345d1e": {
+    "query": "SELECT * FROM portus_tunnel WHERE ssh_port = $1 OR exposed_port = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "2812382d5ca4d1161895439f22493c75e9e99c344fbb46ed89d3bb2441543a39": {
+    "query": "SELECT * FROM role_permissions_resource WHERE role_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "role_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "permission_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "29c6c0c77ee4addddb5f2fe4400fa72bb8b8b8e850d297e12886a94e64f46100": {
+    "query": "CREATE TABLE role( id BYTEA CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BYTEA NOT NULL CONSTRAINT role_fk_owner_id REFERENCES organisation(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2dfba0dc072e1de9c4fc4976210f8d85d204f97567f6d9d0496398a53f04b4ab": {
+    "query": "DELETE FROM portus_tunnel WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "307345f2a5c65e8f92e5e1efff4d6b9975d1405095cb5e31dc91bc4e58b9f783": {
+    "query": "DELETE FROM resource WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "308d2e19a5efea0c3a4e71f68a5530d07685fee01064424bc20f138d144aea15": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE resource.id = deployment.id AND resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "32bbca67f63e1e5aa72546ffbf96822796156627286ecd1c1f8a6156407579e3": {
+    "query": "SELECT * FROM resource_type;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "333da8ffd1e90a8f41cb260722d9a20053a709510eb7b022e28ee8a5ecc97c27": {
+    "query": "SELECT id, name, type as \"type: ResourceOwnerType\" FROM domain WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "type: ResourceOwnerType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
+    "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "35725518dbac83499f9bce45b05d2c9840f79915f0f28feb6e8981ccae25ad52": {
+    "query": "SELECT * FROM role WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "owner_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
+  "3617769bafd7eadca0d9e2f748b3c3a1c25d49edab4425862ed1ef69652b9e6f": {
+    "query": "INSERT INTO permission VALUES ($1, $2, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
+    "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "3b740727a3984187ee1fedd25b647ba7d770e095675c1394ddfa6af2e6554bd8": {
+    "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "3cb20f213827519db975ea8e9b37a716ddbabeaba861ec1c9f7cb9485dded728": {
+    "query": "UPDATE organisation_domain SET is_verified = TRUE WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "3cea416ed3eb6ab48c87ef349e166f2adf2abcd2eb5ce955a50ed1caf9e20c35": {
+    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "3d0c78ef163d5c1a3691b56512d8b2389181475f24461486fe6dd8f49a328658": {
+    "query": "INSERT INTO resource VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "3fbd9b47a0e71cafd415cdedcede741d2f2ad4ef76b7feb8ecf226cf69ec8c05": {
+    "query": "SELECT domain.name as \"name!\", organisation_domain.id as \"id!\", organisation_domain.domain_type as \"domain_type!: _\", organisation_domain.is_verified as \"is_verified!\" FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "3fd358a1ce65800e2194b888923a2346da3e63ce7ce91b99f8b8830a97e10346": {
+    "query": "UPDATE \"user\" SET dob = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4128fbdbda6f6ae313616236827d29e3c8ee9c64acc78d91047b9bb9831d5d9f": {
+    "query": "CREATE TABLE organisation_domain ( id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT organisation_domain_chk_dmn_typ CHECK(domain_type = 'organisation'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT organisation_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4392448087542f024ecd334131b2ac61819bcf022bd3d00987591ee21a26afbb": {
+    "query": "SELECT application.* FROM application INNER JOIN resource ON application.id = resource.id WHERE resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
+    "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "46f418909a71fadea0b38f2672bf4813fa6bdfab1af130894201ddd42a62c435": {
+    "query": "CREATE TABLE docker_registry_repository( id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY, organisation_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, CONSTRAINT docker_registry_repository_uq_organisation_id_name UNIQUE(organisation_id, name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
+    "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea",
+          "Bytea",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4b540dbce4c784d22133ecc1b800ddf979dcc940fddaee745d374fa35ab824de": {
+    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4c8250d020711eb9e5b8771e8f1b0ea04a251eedc883afa88e0e4c0374bcd20c": {
+    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4e1d0ecf66dd0b48a03cac5a39547ef34705ecbc7b0bc20e9e11fcdad7f7f97b": {
+    "query": "DELETE FROM organisation_user WHERE role_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
+    "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "506fd619b8a6ae7471fc2271a3b044b77e3d82f26f14168ae27e14397af1e052": {
+    "query": "SELECT user_unverified_personal_email.* FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE user_id = $1 AND CONCAT(local, '@', domain.name) = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "5803e973fb5aebfccb8ab5bb6815d0e716808a3e76fdc97702662a0f20e8776a": {
+    "query": "SELECT application_id, version FROM application_version WHERE application_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "application_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "version",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "58a62ba31db832c8901e6b2eae6676b999ea76084dfcfbb4ce5e57071f03abdf": {
+    "query": "CREATE INDEX portus_tunnel_idx_name ON portus_tunnel (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "5b2c77ea3a5cb8b691f7a5ba6f122c2fe324137ef48330812aa7bc5776481e2d": {
+    "query": "INSERT INTO meta_data VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "5d39c74aa502ba075ac3532d29826cf1889b77fc4ff4aa587a7e2482f240f6c1": {
+    "query": "SELECT * FROM user_login WHERE login_id = $1 AND user_id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "5f148eb2cfd81e700bc78ededf4dfd92702fcf36992957a1ae5ad82aaecb57a1": {
+    "query": "INSERT INTO password_reset_request VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "5f4da81e11690f78c860744212e2d92c210d50982c52e97afe27b96c070caa27": {
+    "query": "SELECT * FROM resource WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_type_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "owner_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "5fc2a16315f643c674608b60a4ed62f25ee2dd758d71f7bd865c9ccebe8e1df0": {
+    "query": "SELECT id, name, type as \"type: _\" FROM domain WHERE name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
+    "query": "SELECT * FROM \"user\" WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "6155ec064d38d7bb9ffb58e400b363cf1092b519f31bb574e1b07b63a6885360": {
+    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_ck_unsigned CHECK(token_expiry >= 0) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "6b0bc5a2d0bc2ad17bf25284f85f50567ffdeb0f4f953337c45eb7ea0d76b09a": {
+    "query": "SELECT * FROM deployment WHERE domain_id = $1 AND sub_domain = $2 AND path = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "6e3a486525330c72b9c3f74b391246cbe883ee761d6b19654a714a2e4fca8302": {
+    "query": "SELECT * FROM role_permissions_resource_type INNER JOIN permission ON role_permissions_resource_type.permission_id = permission.id WHERE role_permissions_resource_type.role_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "role_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "permission_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_type_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "6fd4fa1501e306f9affc53e7cd5ac69dd0030d431edb5148d0ba49524d3e57e4": {
+    "query": "INSERT INTO organisation_domain VALUES ($1, 'organisation', FALSE);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "7295608182b46ec27e844f5ea11527047aece89adb58dc9bcdb1a3c4eda3418c": {
+    "query": "SELECT * FROM role WHERE owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "owner_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
+  "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
+    "query": "INSERT INTO resource_type VALUES ($1, $2, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "75bc2c480c7392db5ed625f6156487964d30fe4abbc7b81e45773a34073271f2": {
+    "query": "ALTER TABLE file ADD CONSTRAINT file_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "7b8d453d01b73cb8f7ca2909c91528bb28fca9b17cbb5dcf0ec247563df1dcc7": {
+    "query": "SELECT * FROM portus_tunnel WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "7c8edaf1d6dde092f19241f722cb1f72239c24af5d801596d06ee9e43b7b8864": {
+    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE, type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
+    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "7d5f9aa70e270166b2b87cc4b473d5fcbfa4e9a57260e09560a63128dcb3a6d5": {
+    "query": "UPDATE \"user\" SET location = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "806d8ffb3f6de78af43ad472fe58308b0f0cb0d822f8dbf40cc9f018bc70f220": {
+    "query": "SELECT * FROM password_reset_request WHERE user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "81176c7e3e4b2d05c35514e25f56b3f3a94ebc3c737323d2359e22d82c0f8fe8": {
+    "query": "CREATE TABLE file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "818eee9c01eadb18bef86a30b153109c1224379e2881d1ef733a89e14e460541": {
+    "query": "CREATE INDEX user_unverified_personal_email_idx_user_id ON user_unverified_personal_email (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "840642ff60df5797a9282585bdf849c8737ae4ab983f6af14d3b189a05cab472": {
+    "query": "SELECT * FROM portus_tunnel WHERE name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "ssh_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 3,
+          "name": "exposed_port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "8431b12442899e35157ab1cae767055bc2ce134e9b6704615114d02bcd0f4fea": {
+    "query": "SELECT domain.name, organisation_domain.id, organisation_domain.domain_type as \"domain_type: _\", organisation_domain.is_verified FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE domain.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "86de4c8193df4ddaa97ee03f5b58d3cfa0f548c5ed7541b3c6d2b583859f9818": {
+    "query": "SELECT * FROM organisation WHERE name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "873d6d3789fe5ca0d11c2b14280e2e6e7dad6162dd2c74c5108e77916face3ad": {
+    "query": "INSERT INTO phone_number_country_code VALUES ($$AF$$, $$93$$, $$Afghanistan$$), ($$AX$$, $$358$$, $$Aland Islands$$), ($$AL$$, $$355$$, $$Albania$$), ($$DZ$$, $$213$$, $$Algeria$$), ($$AS$$, $$1684$$, $$American Samoa$$), ($$AD$$, $$376$$, $$Andorra$$), ($$AO$$, $$244$$, $$Angola$$), ($$AI$$, $$1264$$, $$Anguilla$$), ($$AQ$$, $$672$$, $$Antarctica$$), ($$AG$$, $$1268$$, $$Antigua and Barbuda$$), ($$AR$$, $$54$$, $$Argentina$$), ($$AM$$, $$374$$, $$Armenia$$), ($$AW$$, $$297$$, $$Aruba$$), ($$AU$$, $$61$$, $$Australia$$), ($$AT$$, $$43$$, $$Austria$$), ($$AZ$$, $$994$$, $$Azerbaijan$$), ($$BS$$, $$1242$$, $$Bahamas$$), ($$BH$$, $$973$$, $$Bahrain$$), ($$BD$$, $$880$$, $$Bangladesh$$), ($$BB$$, $$1246$$, $$Barbados$$), ($$BY$$, $$375$$, $$Belarus$$), ($$BE$$, $$32$$, $$Belgium$$), ($$BZ$$, $$501$$, $$Belize$$), ($$BJ$$, $$229$$, $$Benin$$), ($$BM$$, $$1441$$, $$Bermuda$$), ($$BT$$, $$975$$, $$Bhutan$$), ($$BO$$, $$591$$, $$Bolivia$$), ($$BQ$$, $$599$$, $$Bonaire, Sint Eustatius and Saba$$), ($$BA$$, $$387$$, $$Bosnia and Herzegovina$$), ($$BW$$, $$267$$, $$Botswana$$), ($$BV$$, $$55$$, $$Bouvet Island$$), ($$BR$$, $$55$$, $$Brazil$$), ($$IO$$, $$246$$, $$British Indian Ocean Territory$$), ($$BN$$, $$673$$, $$Brunei Darussalam$$), ($$BG$$, $$359$$, $$Bulgaria$$), ($$BF$$, $$226$$, $$Burkina Faso$$), ($$BI$$, $$257$$, $$Burundi$$), ($$KH$$, $$855$$, $$Cambodia$$), ($$CM$$, $$237$$, $$Cameroon$$), ($$CA$$, $$1$$, $$Canada$$), ($$CV$$, $$238$$, $$Cape Verde$$), ($$KY$$, $$1345$$, $$Cayman Islands$$), ($$CF$$, $$236$$, $$Central African Republic$$), ($$TD$$, $$235$$, $$Chad$$), ($$CL$$, $$56$$, $$Chile$$), ($$CN$$, $$86$$, $$China$$), ($$CX$$, $$61$$, $$Christmas Island$$), ($$CC$$, $$672$$, $$Cocos (Keeling) Islands$$), ($$CO$$, $$57$$, $$Colombia$$), ($$KM$$, $$269$$, $$Comoros$$), ($$CG$$, $$242$$, $$Congo$$), ($$CD$$, $$242$$, $$Congo, Democratic Republic of the Congo$$), ($$CK$$, $$682$$, $$Cook Islands$$), ($$CR$$, $$506$$, $$Costa Rica$$), ($$CI$$, $$225$$, $$Cote D'Ivoire$$), ($$HR$$, $$385$$, $$Croatia$$), ($$CU$$, $$53$$, $$Cuba$$), ($$CW$$, $$599$$, $$Curacao$$), ($$CY$$, $$357$$, $$Cyprus$$), ($$CZ$$, $$420$$, $$Czech Republic$$), ($$DK$$, $$45$$, $$Denmark$$), ($$DJ$$, $$253$$, $$Djibouti$$), ($$DM$$, $$1767$$, $$Dominica$$), ($$DO$$, $$1809$$, $$Dominican Republic$$), ($$EC$$, $$593$$, $$Ecuador$$), ($$EG$$, $$20$$, $$Egypt$$), ($$SV$$, $$503$$, $$El Salvador$$), ($$GQ$$, $$240$$, $$Equatorial Guinea$$), ($$ER$$, $$291$$, $$Eritrea$$), ($$EE$$, $$372$$, $$Estonia$$), ($$ET$$, $$251$$, $$Ethiopia$$), ($$FK$$, $$500$$, $$Falkland Islands (Malvinas)$$), ($$FO$$, $$298$$, $$Faroe Islands$$), ($$FJ$$, $$679$$, $$Fiji$$), ($$FI$$, $$358$$, $$Finland$$), ($$FR$$, $$33$$, $$France$$), ($$GF$$, $$594$$, $$French Guiana$$), ($$PF$$, $$689$$, $$French Polynesia$$), ($$TF$$, $$262$$, $$French Southern Territories$$), ($$GA$$, $$241$$, $$Gabon$$), ($$GM$$, $$220$$, $$Gambia$$), ($$GE$$, $$995$$, $$Georgia$$), ($$DE$$, $$49$$, $$Germany$$), ($$GH$$, $$233$$, $$Ghana$$), ($$GI$$, $$350$$, $$Gibraltar$$), ($$GR$$, $$30$$, $$Greece$$), ($$GL$$, $$299$$, $$Greenland$$), ($$GD$$, $$1473$$, $$Grenada$$), ($$GP$$, $$590$$, $$Guadeloupe$$), ($$GU$$, $$1671$$, $$Guam$$), ($$GT$$, $$502$$, $$Guatemala$$), ($$GG$$, $$44$$, $$Guernsey$$), ($$GN$$, $$224$$, $$Guinea$$), ($$GW$$, $$245$$, $$Guinea-Bissau$$), ($$GY$$, $$592$$, $$Guyana$$), ($$HT$$, $$509$$, $$Haiti$$), ($$HM$$, $$0$$, $$Heard Island and Mcdonald Islands$$), ($$VA$$, $$39$$, $$Holy See (Vatican City State)$$), ($$HN$$, $$504$$, $$Honduras$$), ($$HK$$, $$852$$, $$Hong Kong$$), ($$HU$$, $$36$$, $$Hungary$$), ($$IS$$, $$354$$, $$Iceland$$), ($$IN$$, $$91$$, $$India$$), ($$ID$$, $$62$$, $$Indonesia$$), ($$IR$$, $$98$$, $$Iran, Islamic Republic of$$), ($$IQ$$, $$964$$, $$Iraq$$), ($$IE$$, $$353$$, $$Ireland$$), ($$IM$$, $$44$$, $$Isle of Man$$), ($$IL$$, $$972$$, $$Israel$$), ($$IT$$, $$39$$, $$Italy$$), ($$JM$$, $$1876$$, $$Jamaica$$), ($$JP$$, $$81$$, $$Japan$$), ($$JE$$, $$44$$, $$Jersey$$), ($$JO$$, $$962$$, $$Jordan$$), ($$KZ$$, $$7$$, $$Kazakhstan$$), ($$KE$$, $$254$$, $$Kenya$$), ($$KI$$, $$686$$, $$Kiribati$$), ($$KP$$, $$850$$, $$Korea, Democratic People's Republic of$$), ($$KR$$, $$82$$, $$Korea, Republic of$$), ($$XK$$, $$381$$, $$Kosovo$$), ($$KW$$, $$965$$, $$Kuwait$$), ($$KG$$, $$996$$, $$Kyrgyzstan$$), ($$LA$$, $$856$$, $$Lao People's Democratic Republic$$), ($$LV$$, $$371$$, $$Latvia$$), ($$LB$$, $$961$$, $$Lebanon$$), ($$LS$$, $$266$$, $$Lesotho$$), ($$LR$$, $$231$$, $$Liberia$$), ($$LY$$, $$218$$, $$Libyan Arab Jamahiriya$$), ($$LI$$, $$423$$, $$Liechtenstein$$), ($$LT$$, $$370$$, $$Lithuania$$), ($$LU$$, $$352$$, $$Luxembourg$$), ($$MO$$, $$853$$, $$Macao$$), ($$MK$$, $$389$$, $$Macedonia, the Former Yugoslav Republic of$$), ($$MG$$, $$261$$, $$Madagascar$$), ($$MW$$, $$265$$, $$Malawi$$), ($$MY$$, $$60$$, $$Malaysia$$), ($$MV$$, $$960$$, $$Maldives$$), ($$ML$$, $$223$$, $$Mali$$), ($$MT$$, $$356$$, $$Malta$$), ($$MH$$, $$692$$, $$Marshall Islands$$), ($$MQ$$, $$596$$, $$Martinique$$), ($$MR$$, $$222$$, $$Mauritania$$), ($$MU$$, $$230$$, $$Mauritius$$), ($$YT$$, $$269$$, $$Mayotte$$), ($$MX$$, $$52$$, $$Mexico$$), ($$FM$$, $$691$$, $$Micronesia, Federated States of$$), ($$MD$$, $$373$$, $$Moldova, Republic of$$), ($$MC$$, $$377$$, $$Monaco$$), ($$MN$$, $$976$$, $$Mongolia$$), ($$ME$$, $$382$$, $$Montenegro$$), ($$MS$$, $$1664$$, $$Montserrat$$), ($$MA$$, $$212$$, $$Morocco$$), ($$MZ$$, $$258$$, $$Mozambique$$), ($$MM$$, $$95$$, $$Myanmar$$), ($$NA$$, $$264$$, $$Namibia$$), ($$NR$$, $$674$$, $$Nauru$$), ($$NP$$, $$977$$, $$Nepal$$), ($$NL$$, $$31$$, $$Netherlands$$), ($$AN$$, $$599$$, $$Netherlands Antilles$$), ($$NC$$, $$687$$, $$New Caledonia$$), ($$NZ$$, $$64$$, $$New Zealand$$), ($$NI$$, $$505$$, $$Nicaragua$$), ($$NE$$, $$227$$, $$Niger$$), ($$NG$$, $$234$$, $$Nigeria$$), ($$NU$$, $$683$$, $$Niue$$), ($$NF$$, $$672$$, $$Norfolk Island$$), ($$MP$$, $$1670$$, $$Northern Mariana Islands$$), ($$NO$$, $$47$$, $$Norway$$), ($$OM$$, $$968$$, $$Oman$$), ($$PK$$, $$92$$, $$Pakistan$$), ($$PW$$, $$680$$, $$Palau$$), ($$PS$$, $$970$$, $$Palestinian Territory, Occupied$$), ($$PA$$, $$507$$, $$Panama$$), ($$PG$$, $$675$$, $$Papua New Guinea$$), ($$PY$$, $$595$$, $$Paraguay$$), ($$PE$$, $$51$$, $$Peru$$), ($$PH$$, $$63$$, $$Philippines$$), ($$PN$$, $$64$$, $$Pitcairn$$), ($$PL$$, $$48$$, $$Poland$$), ($$PT$$, $$351$$, $$Portugal$$), ($$PR$$, $$1787$$, $$Puerto Rico$$), ($$QA$$, $$974$$, $$Qatar$$), ($$RE$$, $$262$$, $$Reunion$$), ($$RO$$, $$40$$, $$Romania$$), ($$RU$$, $$70$$, $$Russian Federation$$), ($$RW$$, $$250$$, $$Rwanda$$), ($$BL$$, $$590$$, $$Saint Barthelemy$$), ($$SH$$, $$290$$, $$Saint Helena$$), ($$KN$$, $$1869$$, $$Saint Kitts and Nevis$$), ($$LC$$, $$1758$$, $$Saint Lucia$$), ($$MF$$, $$590$$, $$Saint Martin$$), ($$PM$$, $$508$$, $$Saint Pierre and Miquelon$$), ($$VC$$, $$1784$$, $$Saint Vincent and the Grenadines$$), ($$WS$$, $$684$$, $$Samoa$$), ($$SM$$, $$378$$, $$San Marino$$), ($$ST$$, $$239$$, $$Sao Tome and Principe$$), ($$SA$$, $$966$$, $$Saudi Arabia$$), ($$SN$$, $$221$$, $$Senegal$$), ($$RS$$, $$381$$, $$Serbia$$), ($$CS$$, $$381$$, $$Serbia and Montenegro$$), ($$SC$$, $$248$$, $$Seychelles$$), ($$SL$$, $$232$$, $$Sierra Leone$$), ($$SG$$, $$65$$, $$Singapore$$), ($$SX$$, $$1$$, $$Sint Maarten$$), ($$SK$$, $$421$$, $$Slovakia$$), ($$SI$$, $$386$$, $$Slovenia$$), ($$SB$$, $$677$$, $$Solomon Islands$$), ($$SO$$, $$252$$, $$Somalia$$), ($$ZA$$, $$27$$, $$South Africa$$), ($$GS$$, $$500$$, $$South Georgia and the South Sandwich Islands$$), ($$SS$$, $$211$$, $$South Sudan$$), ($$ES$$, $$34$$, $$Spain$$), ($$LK$$, $$94$$, $$Sri Lanka$$), ($$SD$$, $$249$$, $$Sudan$$), ($$SR$$, $$597$$, $$Suriname$$), ($$SJ$$, $$47$$, $$Svalbard and Jan Mayen$$), ($$SZ$$, $$268$$, $$Swaziland$$), ($$SE$$, $$46$$, $$Sweden$$), ($$CH$$, $$41$$, $$Switzerland$$), ($$SY$$, $$963$$, $$Syrian Arab Republic$$), ($$TW$$, $$886$$, $$Taiwan, Province of China$$), ($$TJ$$, $$992$$, $$Tajikistan$$), ($$TZ$$, $$255$$, $$Tanzania, United Republic of$$), ($$TH$$, $$66$$, $$Thailand$$), ($$TL$$, $$670$$, $$Timor-Leste$$), ($$TG$$, $$228$$, $$Togo$$), ($$TK$$, $$690$$, $$Tokelau$$), ($$TO$$, $$676$$, $$Tonga$$), ($$TT$$, $$1868$$, $$Trinidad and Tobago$$), ($$TN$$, $$216$$, $$Tunisia$$), ($$TR$$, $$90$$, $$Turkey$$), ($$TM$$, $$7370$$, $$Turkmenistan$$), ($$TC$$, $$1649$$, $$Turks and Caicos Islands$$), ($$TV$$, $$688$$, $$Tuvalu$$), ($$UG$$, $$256$$, $$Uganda$$), ($$UA$$, $$380$$, $$Ukraine$$), ($$AE$$, $$971$$, $$United Arab Emirates$$), ($$GB$$, $$44$$, $$United Kingdom$$), ($$US$$, $$1$$, $$United States$$), ($$UM$$, $$1$$, $$United States Minor Outlying Islands$$), ($$UY$$, $$598$$, $$Uruguay$$), ($$UZ$$, $$998$$, $$Uzbekistan$$), ($$VU$$, $$678$$, $$Vanuatu$$), ($$VE$$, $$58$$, $$Venezuela$$), ($$VN$$, $$84$$, $$Viet Nam$$), ($$VG$$, $$1284$$, $$Virgin Islands, British$$), ($$VI$$, $$1340$$, $$Virgin Islands, U.s.$$), ($$WF$$, $$681$$, $$Wallis and Futuna$$), ($$EH$$, $$212$$, $$Western Sahara$$), ($$YE$$, $$967$$, $$Yemen$$), ($$ZM$$, $$260$$, $$Zambia$$), ($$ZW$$, $$263$$, $$Zimbabwe$$);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "8900ed9f8b98bca306f1abb236ad79db5f8adc6c8178e9749ca03a0da091e0b0": {
+    "query": "SELECT * FROM user_login WHERE user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "894b4961089ee424f2aa6806ab74024dff7f864ec43da8e98b727636486f2939": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', image_name VARCHAR(512) NOT NULL, image_tag VARCHAR(255) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT deployment_fk_domain_id REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL DEFAULT '/', port INTEGER NOT NULL CONSTRAINT deployment_chk_port_u16 CHECK(port >= 0 AND port <= 65534), CONSTRAINT deployment_uq_domain_id_sub_domain_path UNIQUE(domain_id, sub_domain, path) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "8bd7a7d2e3ce79c168936248e93fdc28f92810a4435eac91b59c2fe1d83b765c": {
+    "query": "ALTER TABLE organisation_domain ADD CONSTRAINT organisation_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "8cb6670b215102202242b6d68955a7bc913f3995df415bf4f8796eb8732e3c08": {
+    "query": "SELECT * FROM \"user\" WHERE username = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "8e8442a69038da41e5966a479775fb1d9dbe1408096ccc93695d0c4713eb59b1": {
+    "query": "DELETE FROM user_to_sign_up WHERE username = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "8f68d37a4267bbd5a176bc66f268837212b48b9322411f826cb66f0037c414ce": {
+    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9074e096dfede5cb33579024b8259a835b5f641b60eca882b4dde3ac93bbd0dd": {
+    "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'organisation', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'organisation', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, org_email_local = EXCLUDED.org_email_local, org_domain_name = EXCLUDED.org_domain_name, organisation_name = EXCLUDED.organisation_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Bpchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "9186f2b1c4478b0bd198eca9e513bfb69799d4ce6a12371c3334bc33e8c71f60": {
+    "query": "INSERT INTO personal_email VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "9354bef44024be196abb0a45c596031609b49d3f39ebaba9d2986f0e0763b7c1": {
+    "query": "INSERT INTO role_permissions_resource VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "93e4886925865f7c780a14c42c3512c32a743c3d83d05fe2281b24602fb32ab0": {
+    "query": "SELECT \"user\".* FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id INNER JOIN phone_number_country_code ON user_phone_number.country_code = phone_number_country_code.country_code WHERE CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "94a8c6b73d9db03b56534e8515560bc0692c2d3c5595ed2cc9b7b32f5b99ecc8": {
+    "query": "SELECT deployment.* FROM deployment, resource WHERE deployment.id = resource.id AND image_name = $1 AND image_tag = $2 AND resource.owner_id = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
+    "query": "CREATE INDEX deployment_idx_image_name_image_tag ON deployment (image_name, image_tag);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
+    "query": "SELECT * FROM user_login WHERE login_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "9a7541654f9aea4a24830f06ff49a9a5e1126d4241b91470436470b47d3f2798": {
+    "query": "SELECT * FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "role_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "permission_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "resource_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
+    "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9c84ef771789c50d93bc91888a8bcf1ef45e2323a552757ae1e8587b7d5c06f2": {
+    "query": "CREATE TABLE permission( id BYTEA CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9d566dc2f404887f143fbd18aca765672fed95b3f46f11f72c60bb42cfda1f2a": {
+    "query": "CREATE INDEX organisation_user_idx_user_id ON organisation_user (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
+    "query": "DELETE FROM docker_registry_repository WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
+    "query": "DELETE FROM personal_domain WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "a3abf15ceb610eac63cbccf25ff04116545f97f57c3c36a7fe9e75a139e74bd8": {
+    "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number FOREIGN KEY ( id, backup_phone_country_code, backup_phone_number ) REFERENCES user_phone_number ( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
+    "query": "ALTER TABLE application ADD CONSTRAINT application_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "a780a4512b2ca58787f293e3033771d289cd7b0308573b4271865e3d63121215": {
+    "query": "DELETE FROM password_reset_request WHERE user_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "a794dcad3259ed1b706fcf59441297d3e6a03628a9b965b64c2684032d50d364": {
+    "query": "ALTER TABLE organisation ADD CONSTRAINT organisation_fk_id FOREIGN KEY(id) REFERENCES resource(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ab946fe7f8938408e571a2117c1542bfa8898dc0e5dccef8d39d26a3a94b8225": {
+    "query": "CREATE INDEX organisation_email_idx_user_id ON organisation_email (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ab9818828949b1fe311d15f45c8993bbad228c6a88accf65f19acb8263223808": {
+    "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id WHERE CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "ac590d7384f8f9f8c6bd09f3e56f4f1d386afb9e91b58c8df11ff35347cc1ee8": {
+    "query": "INSERT INTO organisation VALUES ($1, $2, $3, $4, $5);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Bool",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "ac8c1dfa6c8d2deb23ee9a99dbad97bee322cc5fe2dd1228b28afc4951b4e3dc": {
+    "query": "SELECT * FROM deployment WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 6,
+          "name": "sub_domain",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "port",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "b00c3a7fbe255cf3b72fa3272bcb337bf8e7caf17e64cc884f0e1a39305a26b3": {
+    "query": "CREATE TABLE application_version_platform ( application_id BYTEA NOT NULL, version VARCHAR(32) NOT NULL, platform VARCHAR(60) NOT NULL, CONSTRAINT application_version_platform_pk PRIMARY KEY(application_id, version, platform), CONSTRAINT application_version_platform_fk_application_id_version FOREIGN KEY(application_id, version) REFERENCES application_version(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b0f9ddd3982bfc24fbe6d8f7a06617d038818c52ed9e462b7404f324fd0a804f": {
+    "query": "CREATE TABLE user_login( login_id BYTEA CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id BYTEA NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
+    "query": "UPDATE \"user\" SET password = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b2fdf60a7346c285cacdc083afb3a525d7de1d09a3835bcb046d1eb32e5700e0": {
+    "query": "UPDATE user_login SET token_expiry = $1, last_activity = $2 WHERE login_id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b3ff3cce11d6b122157d91051f361b29ebe5b7c66547235081607dcaf93bc6cf": {
+    "query": "SELECT domain.name, organisation_domain.id, organisation_domain.domain_type as \"domain_type: _\", organisation_domain.is_verified FROM domain INNER JOIN organisation_domain ON organisation_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "b4d622915f6f0f0d5765d48e13394a021569866553db2c1935025cd26c4d268a": {
+    "query": "SELECT * FROM docker_registry_repository WHERE organisation_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
+    "query": "SET CONSTRAINTS ALL DEFERRED;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
+    "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ba880271509f42c4b057a3aff90364ecb175af96fbd909885726821bb2c22a4c": {
+    "query": "CREATE INDEX organisation_idx_active ON organisation (active);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ba9bd7a1dc576127a8132d0fbada1e9242c2b2b8441f29a131eed0537bbbdfc8": {
+    "query": "SET CONSTRAINTS ALL IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "baf8c3ed596de5ee5a358bd0e1d98f2f92a6e83cf9b53d2f246e89447f30846f": {
+    "query": "CREATE TABLE application_version ( application_id BYTEA NOT NULL CONSTRAINT application_version_fk_application_id REFERENCES application(id), version VARCHAR(32) NOT NULL, CONSTRAINT application_version_pk PRIMARY KEY(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
+    "query": "CREATE INDEX user_to_sign_up_idx_username_otp_expiry ON user_to_sign_up (username, otp_expiry);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bd28547f1202ec73d00ba925abf4f8e3017ec290aada5170532d409f13ef6ad6": {
+    "query": "INSERT INTO portus_tunnel VALUES ($1, $2, $3, $4, $5, $6);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Int4",
+          "Int4",
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "c17460773d9b52491bd2ad7e8f6db5ae04391e7e2fb1f481854760de2a8284aa": {
+    "query": "SELECT * FROM permission;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "c3a925e8c3a743a9f0df880e374fc65d00f881df9da6d04730310f90894e407d": {
+    "query": "SELECT domain.name, personal_domain.id, personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "c6feb8e474f4f1831dd1aae406a021fb6855581c2705b788eb05bfc9f65d4eb7": {
+    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
+    "query": "SELECT \"user\".*, domain.name FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id INNER JOIN resource ON organisation_domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN \"user\" ON organisation.super_admin_id = \"user\".id WHERE organisation_domain.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 13,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
+  "c842c31eb3324dcb69e56439b24b7909057b220839e81bcc4638d2b4e4f27bdb": {
+    "query": "CREATE TABLE organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "caeb5f3b7381d0c70558202479f3bf4d45c58eaceca120e1cbf1bced01385f61": {
+    "query": "SELECT * FROM application WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
+    "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "d053057cd4d2bef5776a82a37cdf49a8147fff23182d6d1254c9fc30f1def33b": {
+    "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_email_local_backup_email_domain_id FOREIGN KEY ( id, backup_email_local, backup_email_domain_id ) REFERENCES personal_email ( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "d0dd9c5b1cc93c475237438dde2881634d45de25872eb5ab1fcc222edd79c64e": {
+    "query": "INSERT INTO organisation_email VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "d1fe46b2a74918c7f0ee963f4bf1d32bf30e3c2e09907c3ba4799eecb2589f8e": {
+    "query": "SELECT * FROM organisation_user WHERE user_id = $1 ORDER BY organisation_id;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "role_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
+    "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "d6a9b819a2cf94ca4692e43762d578ff055edb849c52899efb651bd4b466a23d": {
+    "query": "DELETE FROM deployment WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
+    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE organisation_name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceOwnerType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "org_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "org_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "organisation_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
+  "d9f1a85d68405c7372854b9141d5218b66253723fc52f51e42290323ed42f111": {
+    "query": "SELECT * FROM docker_registry_repository WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "dc3b3ef773e26c8df28ea1d57db35e8cf2adc36f4edf9f5cd5414c4e415370d7": {
+    "query": "CREATE TABLE application ( id BYTEA CONSTRAINT application_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT application_uq_name UNIQUE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "deec3c4f37507d0cdcd3cede7f2ed65c170692b696e4c222f4ad1d3ad672e54d": {
+    "query": "CREATE TABLE organisation( id BYTEA CONSTRAINT organisation_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT organisation_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT organisation_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, created BIGINT NOT NULL CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "df1ce9a576d9b85018ae7f57841bf1060679004429f62313ea42d4b95d4102f4": {
+    "query": "CREATE INDEX organisation_user_idx_user_id_organisation_id ON organisation_user (user_id, organisation_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "df36e2ceaf21f2d013406c873646c95c106b64e49665f309738b14201df9ec56": {
+    "query": "CREATE INDEX user_login_idx_user_id ON user_login (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "dff62e4a51297dcf1ab7b3b96a0c17501f37babb6150c67287986265c5580ef9": {
+    "query": "SELECT * FROM information_schema.tables WHERE table_catalog = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "table_catalog",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 1,
+          "name": "table_schema",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 2,
+          "name": "table_name",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 3,
+          "name": "table_type",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "self_referencing_column_name",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 5,
+          "name": "reference_generation",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "user_defined_type_catalog",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 7,
+          "name": "user_defined_type_schema",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 8,
+          "name": "user_defined_type_name",
+          "type_info": "Name"
+        },
+        {
+          "ordinal": 9,
+          "name": "is_insertable_into",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "is_typed",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "commit_action",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Name"
+        ]
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "e1ccdf6aebae3eef774c9073a27f79aa581f9f096dac79fb8f5da81c6dc2307f": {
+    "query": "UPDATE \"user\" SET first_name = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e309c91b247eb4c5951f85282ef01315387421e0f820cdf6e5070f2ff14d9cac": {
+    "query": "SELECT domain.name as \"name!\", organisation_domain.id as \"id!\", organisation_domain.domain_type as \"domain_type!: _\", organisation_domain.is_verified as \"is_verified!\" FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "e313defa3d63bb79a1b84bbac09a430197050238b4076f03a1d8b90f0788f769": {
+    "query": "DELETE FROM domain WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e55e29119f1536b6d47e809a8042ff6f7c376ace4be149cb87049ecd308278e0": {
+    "query": "SELECT * FROM organisation WHERE super_admin_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "e575aca4066a7ed6cd69ba52e9b48168e8c7f0e22b62988182fa29d434b2158f": {
+    "query": "INSERT INTO role VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e5b59bd23f0d0544ef495cc3f23f98bcfb53b121fb4ac6e4d81ba52cc3625f2f": {
+    "query": "SELECT * FROM organisation WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "e784c3bf8fc613e812aee986db4120781c68821b15c3d6601b7eaa7dd986d0f1": {
+    "query": "UPDATE \"user\" SET bio = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e7a437100625d645f8b7ad6848df9ceba9aaaf280a0f139678058387b04d82e5": {
+    "query": "INSERT INTO personal_domain VALUES ($1, 'personal');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
+    "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "e9190d8880f4128c2dd3c366e1e52de53a9552f30698c4da7d6085759af0938e": {
+    "query": "CREATE TABLE role_permissions_resource_type( role_id BYTEA CONSTRAINT role_permissions_resource_type_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_type_fk_permission_id REFERENCES permission(id), resource_type_id BYTEA CONSTRAINT role_permissions_resource_type_fk_resource_type_id REFERENCES resource_type(id), CONSTRAINT role_permissions_resource_type_pk PRIMARY KEY(role_id, permission_id, resource_type_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "e91e543e8d8395c1862678749ecbb1a23ae3d2df055111d862745c8c7cb165e3": {
+    "query": "DELETE FROM user_login WHERE login_id = $1 AND user_id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "ea2e3a024fbd1861c22fa4221fe28db777fb20a7b1704a84b096c53e2c2e32bc": {
+    "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'personal', $2, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL, $9, $10 ) ON CONFLICT(username) DO UPDATE SET account_type = 'personal', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, org_email_local = NULL, org_domain_name = NULL, organisation_name = NULL, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Bpchar",
+          "Varchar",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
+    "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
+    "query": "DELETE FROM role WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "f7f36589fb4aa09e893bf49df096bed03c47775b16385ba61b2bca3972fc4e1a": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "fae57054668bd320a2e513fb937f06e40324b1393ffd6da90e070c4cbd2cdd25": {
+    "query": "INSERT INTO docker_registry_repository VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fc8cffb594a353a179c16408aa9aac8416209a43b5f456c22c08d70d09b3d91a": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fdbfecfc96b57cbf713d6fe0e9cb5f72e7fffe27b0345d44abeb0d50397905e2": {
+    "query": "CREATE INDEX organisation_domain_idx_is_verified ON organisation_domain (is_verified);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "fea8fe4eb8151508a43bd8a1af74ed745e4b06c32308df3818751d4a7bb72423": {
+    "query": "INSERT INTO domain VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fec57570e6a73eaf97a7cb37e5e027c6723a94d7b4e34621aca3258a62a0efe4": {
+    "query": "SELECT * FROM docker_registry_repository WHERE name = $1 AND organisation_id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  }
+}
+>>>>>>> 7ff5e590dab7924c4e37a3ccd5deb204ba7af790
