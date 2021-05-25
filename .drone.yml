@@ -6,9 +6,9 @@ concurrency:
 
 steps:
   - name: "Install dependencies"
-    image: node:16
+    image: rust:1
     commands:
-      - npm install
+      - cargo build
     when:
       event:
         - push
