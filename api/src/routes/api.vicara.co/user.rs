@@ -1,4 +1,3 @@
-use cloudflare::endpoints::user;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Value};
@@ -87,13 +86,14 @@ async fn get_user_info(
 	let data = serde_json::to_value(
 		context.get_token_data().as_ref().unwrap().user.clone(),
 	)?;
-	let username = data.get(request_keys::USERNAME).unwrap().as_str().unwrap();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
 			.status(400)
-			.body(error!(PROFILE_NOT_FOUND).to_string())?;
+			.body(error!(SERVER_ERROR).to_string())?;
 	context.json(json!({
+		request_keys::SUCCESS : true,
 		request_keys::USERNAME : user.username,
 		request_keys::FIRST_NAME : user.first_name,
 		request_keys::LAST_NAME : user.last_name,
