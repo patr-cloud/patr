@@ -2,6 +2,12 @@ use eve_rs::AsError;
 use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
+/// This module validates user info and performs tasks related to user authentication
+/// The flow of this file will be:
+/// 1. An endpoint will be called from routes layer and the arguments will be supplied to
+/// the functions in this file, then the functions might connect with db and return what was
+/// required for the endpoint
+
 use crate::{
 	db,
 	error,
@@ -20,7 +26,22 @@ use crate::{
 		Error,
 	},
 };
-
+ /// # Description
+ ///
+ /// The function is_username_allowed() will check if the username already exists and is according
+ /// to the criteria for the username
+ ///
+ /// # Arguments
+ ///
+ /// * `connection` - database save point, more details here:
+ /// [`Transaction`]
+ /// * `username` - A string which contains username to be validated
+ ///
+ /// # Return
+ ///
+ /// This function returns a bool which says if the username is valid or not
+ ///
+ /// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
@@ -36,6 +57,22 @@ pub async fn is_username_allowed(
 		.status(500)
 }
 
+/// # Description
+ ///
+ /// The function is_email_allowed() will check if the email already exists and is according
+ /// to the criteria for the email
+ ///
+ /// # Arguments
+ ///
+ /// * `connection` - database save point, more details here:
+ /// [`Transaction`]
+ /// * `email` - A string which contains username to be validated
+ ///
+ /// # Return
+ ///
+ /// This function returns a bool which says if the email is valid or not
+ ///
+ /// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
 	connection: &mut Transaction<'_, MySql>,
 	email: &str,
@@ -51,7 +88,22 @@ pub async fn is_email_allowed(
 		.map(|user| user.is_none())
 		.status(500)
 }
-
+/// # Description
+ ///
+ /// The function is_phone_number_allowed() will check if the phone number already exists and is according
+ /// to the criteria for the phone number
+ ///
+ /// # Arguments
+ ///
+ /// * `connection` - database save point, more details here: [`Transaction`]
+ /// * `phone_country_code` - A string which contains phone number country code
+ /// * `phone_number` - A string which contains phone_number to be validated
+ ///
+ /// # Return
+ ///
+ /// This function returns a bool which says if the phone number is valid or not
+ ///
+ /// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
 	connection: &mut Transaction<'_, MySql>,
 	phone_country_code: &str,
@@ -78,7 +130,31 @@ pub async fn is_phone_number_allowed(
 	.status(500)
 }
 
-/// Creates a new user to be signed up and returns an OTP
+/// # Description
+ /// Creates a new user to be signed up and returns an OTP, this function will validate details
+ /// given by the user, then a resource will be generated for the user according to the type of the
+ /// account
+ ///
+ /// # Arguments
+ ///
+ /// * `connection` - database save point, more details here: [`Transaction`]
+ /// * `username` - A string which contains username
+ /// * `account_type` - An enum object which contains the type of resource {Personal, Organisation}
+ /// * `password` -
+ /// * `first_name` -
+ /// * `last_name` -
+ /// * `backup_email` -
+ /// * `backup_phone_country_code` -
+ /// * `backup_phone_number` -
+ /// * `org_email_local` -
+ /// * `org_domain_name` -
+ /// * `organisation_name` -
+ ///
+ /// # Return
+ ///
+ /// This function returns a bool which says if the phone number is valid or not
+ ///
+ /// [`Transaction`]: Transaction
 pub async fn create_user_join_request(
 	connection: &mut Transaction<'_, MySql>,
 	username: &str,
