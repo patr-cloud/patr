@@ -61,8 +61,7 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 
 async fn verify_unverified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.mysql;
-	let mut connection = db_pool.begin().await?;
+	let mut connection = config.database.begin().await?;
 
 	let unverified_domains =
 		db::get_all_unverified_domains(&mut connection).await?;
@@ -159,8 +158,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 
 async fn reverify_verified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.mysql;
-	let mut connection = db_pool.begin().await?;
+	let mut connection = config.database.begin().await?;
 
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;

@@ -5,10 +5,10 @@ use argon2::{
 	Version,
 };
 use hex::ToHex;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
-use crate::{db, service, utils::Error};
+use crate::{db, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -59,7 +59,7 @@ pub fn get_refresh_token_expiry() -> u64 {
 
 // check if the hash is not in the database
 pub async fn generate_new_refresh_token_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
 	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();

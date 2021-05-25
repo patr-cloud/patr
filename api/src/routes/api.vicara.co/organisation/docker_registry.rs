@@ -39,7 +39,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -71,7 +71,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -102,7 +102,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&repository_id,
 					)
 					.await?;
@@ -154,7 +154,7 @@ async fn create_docker_repository(
 
 	// check if repository already exists
 	let check = db::get_repository_by_name(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&repository,
 		&organisation_id,
 	)
@@ -168,7 +168,7 @@ async fn create_docker_repository(
 
 	// split the repo nam in 2 halfs, and validate org, and repo name
 	let resource_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_database_connection()).await?;
 	let resource_id = resource_id.as_bytes();
 
 	// safe to assume that org id is present here
@@ -179,7 +179,7 @@ async fn create_docker_repository(
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
 	db::create_resource(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		resource_id,
 		&repository,
 		rbac::RESOURCE_TYPES
@@ -192,7 +192,7 @@ async fn create_docker_repository(
 	.await?;
 
 	db::create_repository(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		resource_id,
 		&repository,
 		&organisation_id,
@@ -216,7 +216,7 @@ async fn list_docker_repositories(
 	let organisation_id = hex::decode(&org_id_string).unwrap();
 
 	let repositories = db::get_docker_repositories_for_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -246,7 +246,7 @@ async fn delete_docker_repository(
 	let repository_id = hex::decode(&repo_id_string).unwrap();
 
 	db::get_docker_repository_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&repository_id,
 	)
 	.await?
@@ -256,7 +256,7 @@ async fn delete_docker_repository(
 	// TODO delete from docker registry using its API
 
 	db::delete_docker_repository_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&repository_id,
 	)
 	.await?;

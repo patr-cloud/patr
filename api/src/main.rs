@@ -29,6 +29,7 @@ use tokio::{fs, runtime::Builder};
 use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
+pub type Database = sqlx::Postgres;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()
@@ -55,8 +56,8 @@ async fn async_main() -> Result<()> {
 	logger::initialize(&config).await?;
 	log::debug!("Logger initialized");
 
-	let mysql = db::create_mysql_connection(&config).await?;
-	log::debug!("Mysql connection pool established");
+	let database = db::create_database_connection(&config).await?;
+	log::debug!("Database connection pool established");
 
 	let redis = db::create_redis_connection(&config).await?;
 	log::debug!("Redis connection pool established");
@@ -66,7 +67,7 @@ async fn async_main() -> Result<()> {
 
 	let app = App {
 		config,
-		mysql,
+		database,
 		redis,
 		render_register,
 	};

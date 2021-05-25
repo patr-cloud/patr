@@ -10,11 +10,11 @@
 		"key": "key123",
 		"secret": "secret123"
 	},
-	"mysql": {
+	"database": {
 		"host": "localhost",
 		"port": 3306,
 		"user": "root",
-		"password": "mysql",
+		"password": "database",
 		"database": "api",
 		"connectionLimit": 10
 	},

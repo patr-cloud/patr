@@ -1,5 +1,5 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -7,10 +7,11 @@ use crate::{
 	error,
 	models::rbac,
 	utils::{get_current_time_millis, validator, Error},
+	Database,
 };
 
 pub async fn is_organisation_name_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_organisation_name_valid(&organisation_name) {
@@ -26,7 +27,7 @@ pub async fn is_organisation_name_allowed(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_name: &str,
 	super_admin_id: &[u8],
 ) -> Result<Uuid, Error> {
@@ -39,7 +40,8 @@ pub async fn create_organisation(
 	let organisation_id = db::generate_new_resource_id(connection).await?;
 	let resource_id = organisation_id.as_bytes();
 
-	db::create_orphaned_resource(
+	db::begin_deferred_constraints(connection).await?;
+	db::create_resource(
 		connection,
 		resource_id,
 		&format!("Organiation: {}", organisation_name),
@@ -48,9 +50,9 @@ pub async fn create_organisation(
 			.unwrap()
 			.get(rbac::resource_types::ORGANISATION)
 			.unwrap(),
+		resource_id,
 	)
 	.await?;
-
 	db::create_organisation(
 		connection,
 		resource_id,
@@ -59,7 +61,7 @@ pub async fn create_organisation(
 		get_current_time_millis(),
 	)
 	.await?;
-	db::set_resource_owner_id(connection, resource_id, resource_id).await?;
+	db::end_deferred_constraints(connection).await?;
 
 	Ok(organisation_id)
 }
