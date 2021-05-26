@@ -19,12 +19,12 @@ def get_pipeline(ctx):
             build_code(),
             check_formatting(),
             check_clippy(),
-            notify_on_failure()
+            notify_on_failure(ctx)
         ]
     else:
         return [
             build_code(),
-            notify_on_failure()
+            notify_on_failure(ctx)
         ]
 
 def is_pr(ctx):
@@ -57,7 +57,7 @@ def check_clippy():
         ]
     }
 
-def notify_on_failure():
+def notify_on_failure(ctx):
     return {
         "name": "Notify if build failed",
         "image": "appleboy/drone-discord",
@@ -68,7 +68,7 @@ def notify_on_failure():
             "webhook_token": {
                 "from_secret": "webhook_token"
             },
-            "message": "Build \"{{build.message}}\" pushed by @{{build.author}} has failed. Please fix before merging"
+            "message": "Build \"{}\" pushed by @{} has failed. Please fix before merging".format(ctx.build.message, ctx.build.author)
         },
         "when": {
             "branch": [
