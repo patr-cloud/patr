@@ -35,7 +35,7 @@ def build_code():
         "name": "Build project",
         "image": "rust:1",
         "commands": [
-            "cargo build"
+            "cargo check"
         ]
     }
 
