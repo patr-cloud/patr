@@ -16,49 +16,62 @@ def main(ctx):
 def get_pipeline(ctx):
     if is_pr(ctx):
         return [
-            check_code(),
+            build_code(),
             check_formatting(),
-            check_clippy()
+            check_clippy(),
+            notify_on_failure()
         ]
     else:
-        return []
+        return [
+            build_code(),
+            notify_on_failure()
+        ]
 
 def is_pr(ctx):
-    return (ctx.build.event == "pull_request") or (ctx.build.event == "push")
+    return ctx.build.event == "pull_request"
 
-def check_code():
+def build_code():
     return {
-        "name": "Check code",
-        "image": "ubuntu:latest",
-        "command": [
-            "echo $PATH",
-            "apt update",
-            "apt install -y curl",
-            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
-            "cargo +nightly check"
+        "name": "Build project",
+        "image": "rust:1",
+        "commands": [
+            "cargo build"
         ]
     }
 
 def check_formatting():
     return {
         "name": "Check code formatting",
-        "image": "ubuntu:latest",
-        "command": [
-            "apt update",
-            "apt install -y curl",
-            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
-            "cargo +nightly fmt -- --check"
+        "image": "rustlang/rust:nightly",
+        "commands": [
+            "cargo fmt -- --check"
         ]
     }
 
 def check_clippy():
     return {
         "name": "Check clippy suggestions",
-        "image": "ubuntu:latest",
-        "command": [
-            "apt update",
-            "apt install -y curl",
-            "curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly",
-            "cargo +nightly clippy"
+        "image": "rustlang/rust:nightly",
+        "commands": [
+            "cargo clippy"
         ]
+    }
+
+def notify_on_failure():
+    return {
+        "name": "Notify if build failed",
+        "image": "appleboy/drone-discord",
+        "settings": {
+            "webhook_id": "847112958122786858",
+            "webhook_token": "koFsvBNownfkXUFr-KC6VT4KzxwGzXviiN2ywUoxIIJ9YxEvqjtBtq8fV1V-yCid5m1E",
+            "message": "Build \"{{build.message}}\" pushed by @{{build.author}} has failed. Please fix before merging"
+        },
+        "when": {
+            "branch": [
+                "master",
+                "staging",
+                "develop"
+            ],
+            "status": ["failure"]
+        }
     }
