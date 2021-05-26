@@ -141,19 +141,21 @@ pub async fn is_phone_number_allowed(
  /// * `connection` - database save point, more details here: [`Transaction`]
  /// * `username` - A string which contains username
  /// * `account_type` - An enum object which contains the type of resource {Personal, Organisation}
- /// * `password` -
- /// * `first_name` -
- /// * `last_name` -
- /// * `backup_email` -
- /// * `backup_phone_country_code` -
- /// * `backup_phone_number` -
- /// * `org_email_local` -
- /// * `org_domain_name` -
- /// * `organisation_name` -
+ /// * `password` - A string which contains password of the user
+ /// * `first_name` - A string which contains first name of the user
+ /// * `last_name` - A string which contains last name of the user
+ /// * `backup_email` - A string which contains recovery email of the user
+ /// * `backup_phone_country_code` - A string which contains phone number country code
+ /// * `backup_phone_number` - A string which contains phone number of of user
+ /// * `org_email_local` - A string which contains a pre-existing email_local of the user's
+ /// organisation email
+ /// * `org_domain_name` - A string which contains domain name of the user's organisation's email id
+ /// * `organisation_name` - A string which contains user's organisation name.
  ///
  /// # Return
  ///
- /// This function returns a bool which says if the phone number is valid or not
+ /// This function returns a Result<string, error> which contains either one-time-password
+ /// to confirm user's email id or phone number and hence complete the registration or an error
  ///
  /// [`Transaction`]: Transaction
 pub async fn create_user_join_request(
@@ -341,8 +343,19 @@ pub async fn create_user_join_request(
 	Ok(otp)
 }
 
-// Creates a login in the db and returns it
-// loginId and refresh_token are separate things
+/// # Description
+/// This functions creates a record when a user logs into the system, this record contains two
+/// things:
+/// 1. refresh token
+/// 2. access token
+/// refresh token is for regenerating the access token, and access token is for
+/// authenticating the user for the current session
+///
+/// # Arguments
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+///
+/// # Returns
+/// An object of struct [`UserLogin`]
 pub async fn create_login_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
@@ -375,6 +388,8 @@ pub async fn create_login_for_user(
 	Ok(user_login)
 }
 
+/// # Description
+///
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
 pub async fn sign_in_user(
