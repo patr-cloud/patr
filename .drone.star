@@ -68,7 +68,7 @@ def notify_on_failure(ctx):
             "webhook_token": {
                 "from_secret": "webhook_token"
             },
-            "message": "Build \"{}\" pushed by @{} has failed. Please fix before merging".format(ctx.build.message, ctx.build.author)
+            "message": "Build \"{{build.message}}\" pushed by @{{build.author}} has failed. Please fix before merging"
         },
         "when": {
             "branch": [
