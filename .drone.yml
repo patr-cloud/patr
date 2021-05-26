@@ -1,26 +1,40 @@
+---
 kind: pipeline
-name: default
+name: Default
 
-concurrency:
-  limit: 1
+platform:
+  os: linux
+  arch: amd64
 
 steps:
-  - name: "Install dependencies"
-    image: rust:1
-    commands:
-      - cargo build
-    when:
-      event:
-        - push
-      branch:
-        - master
-        - staging
-        - develop
+- name: Check code
+  image: ubuntu:latest
+  command:
+  - echo $PATH
+  - apt update
+  - apt install -y curl
+  - curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly
+  - cargo +nightly check
+
+- name: Check code formatting
+  image: ubuntu:latest
+  command:
+  - apt update
+  - apt install -y curl
+  - curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly
+  - cargo +nightly fmt -- --check
+
+- name: Check clippy suggestions
+  image: ubuntu:latest
+  command:
+  - apt update
+  - apt install -y curl
+  - curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly
+  - cargo +nightly clippy
 
 trigger:
   event:
-    - push
-  branch:
-    - master
-    - staging
-    - develop
+  - push
+  - pull_request
+
+...
