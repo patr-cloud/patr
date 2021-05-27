@@ -154,7 +154,7 @@ pub async fn is_phone_number_allowed(
  ///
  /// # Return
  ///
- /// This function returns a Result<string, error> which contains either one-time-password
+ /// This function returns a `Result<string, error>` which contains either one-time-password
  /// to confirm user's email id or phone number and hence complete the registration or an error
  ///
  /// [`Transaction`]: Transaction
@@ -347,15 +347,16 @@ pub async fn create_user_join_request(
 /// This functions creates a record when a user logs into the system, this record contains two
 /// things:
 /// 1. refresh token
-/// 2. access token
-/// refresh token is for regenerating the access token, and access token is for
+/// refresh token is used to generate access token, and access token is for
 /// authenticating the user for the current session
 ///
 /// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
 /// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
 ///
 /// # Returns
-/// An object of struct [`UserLogin`]
+/// This function returns a `Result<UserLogin, error>` which contains an instance of UserLogin
+/// or an error
 ///
 /// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
@@ -391,9 +392,23 @@ pub async fn create_login_for_user(
 }
 
 /// # Description
-///	This function is used to sign-in the user
-/// function to sign in a user
-/// Returns: JWT (String), Refresh Token (Uuid)
+///	This function is used to log in a user, it calls [`create_login_for_user()`] to get
+/// [`UserLogin`] object using which it generates a new refresh token and then generate
+/// an access token through the newly generated refresh token
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+///
+/// # Returns
+/// This function returns a Result<(String, Uuid, Uuid), Error> containing jwt, login_id, and
+/// refresh token or an error
+///
+/// [`create_login_for_user()`]: self.create_login_for_user()
+/// [`UserLogin`]: UserLogin
+/// [`Transaction`]: Transaction
+/// [`Settings]: Settings
 pub async fn sign_in_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
@@ -412,6 +427,18 @@ pub async fn sign_in_user(
 	))
 }
 
+/// # Description
+///	This function is used to get the log in details of the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `login_id` - an unsigned 8 bit integer array which represents the id of the user
+///
+/// # Returns
+/// This function returns Result<UserLogin, Error> containing an instance of UserLogin or an error
+///
+/// [`UserLogin`]: UserLogin
+/// [`Transaction`]: Transaction
 pub async fn get_user_login_for_login_id(
 	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
@@ -430,7 +457,18 @@ pub async fn get_user_login_for_login_id(
 
 	Ok(user_login)
 }
-
+/// # Description
+///	This function is used to generate access token for the logged in user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+/// * `user_login` - an object of struct [`UserLogin`]
+///
+/// # Returns
+/// This function returns a Result<String, Error> containing
+///
+/// [`Transaction`]: Transaction
 pub async fn generate_access_token(
 	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
@@ -480,7 +518,17 @@ pub async fn generate_access_token(
 	Ok(jwt)
 }
 
-// function to reset password
+/// # Description
+/// This function returns an otp for the user for making a new password
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+///
+/// # Returns
+/// This function returns Result<(String, String), Error> containing otp and email_id of user
+///
+/// [`Transaction`]: Transaction
 // TODO: Remove otp from response
 pub async fn forgot_password(
 	connection: &mut Transaction<'_, Database>,
@@ -520,6 +568,20 @@ pub async fn forgot_password(
 	))
 }
 
+/// # Description
+/// This function updates the password of user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+///	* `new_password` - a string containing new password of user
+/// * `token` - a string containing a reset request token to verify if the reset password request is
+/// valid or not
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+///
+/// # Returns
+///	This function returns Result<(), Error> containing an empty response or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn reset_password(
 	connection: &mut Transaction<'_, Database>,
 	new_password: &str,
@@ -553,6 +615,45 @@ pub async fn reset_password(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to register user in database
+/// required parameters for personal account:
+/// 	1. username
+/// 	2. password
+/// 	3. account_type
+/// 	4. first_name
+///		5. last_name
+///		6. (backup_email_local, backup_email_domain_id) OR
+///		7. (backup_phone_country_code, backup_phone_number)
+/// extra parameters required for organisation account:
+/// 	1. domain_name
+/// 	2. organisation_name
+/// 	3. backup_email
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+/// * `otp` - A string which contains One-Time-Password
+/// * `username` - A string containing username of the user
+/// # Returns
+/// This function returns Result<
+/// 	(
+/// 		String,
+/// 		Uuid,
+/// 		Uuid,
+/// 		Option<String>,
+/// 		Option<String>,
+/// 		Option<String>,
+/// 	),
+/// 	Error
+/// > containing
+/// 	* jwt
+///		* login id
+/// 	* refresh token
+/// 	* welcome email
+/// 	* backup email
+///		* backup phone number
+///
+/// [`Transaction`]: Transaction
 pub async fn join_user(
 	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
@@ -587,22 +688,6 @@ pub async fn join_user(
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
 	}
-
-	// For a personal account, get:
-	// - username
-	// - password
-	// - account_type
-	// - first_name
-	// - last_name
-
-	//
-	// - (backup_email_local, backup_email_domain_id) OR
-	// - (backup_phone_country_code, backup_phone_number)
-
-	// For an organisation account, also get:
-	// - domain_name
-	// - organisation_name
-	// - backup_email
 
 	// First create user,
 	// Then create an organisation if an org account,
