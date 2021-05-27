@@ -356,6 +356,8 @@ pub async fn create_user_join_request(
 ///
 /// # Returns
 /// An object of struct [`UserLogin`]
+///
+/// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
@@ -389,7 +391,7 @@ pub async fn create_login_for_user(
 }
 
 /// # Description
-///
+///	This function is used to sign-in the user
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
 pub async fn sign_in_user(
