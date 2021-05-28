@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
 }
 
 /// # Description
-///	this function is used to validate the hashed password using [`ARGON`]
+///	this function is used to validate the hashed password using [`static@ARGON`]
 ///
 /// # Arguments
 /// 	* `pwd` - a string containing password of the user
@@ -30,7 +30,7 @@ lazy_static::lazy_static! {
 /// # Returns
 ///	this function returns `Result<bool, Error>` containing bool stating the the
 /// password is successfully validated or not or an error
-/// [`ARGON`]: ARGON
+/// [`static@ARGON`]: static@ARGON
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 	Ok(ARGON
 		.verify_password(
