@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
-use semver::Version;
+use semver::{BuildMetadata, Prerelease, Version};
 
 use crate::{error, utils::Error};
 
@@ -10,8 +10,8 @@ pub const DATABASE_VERSION: Version = Version {
 	major: 0,
 	minor: 0,
 	patch: 0,
-	pre: vec![],
-	build: vec![],
+	pre: Prerelease::EMPTY,
+	build: BuildMetadata::EMPTY,
 };
 
 pub const APP_NAME: &str = crate_name!();

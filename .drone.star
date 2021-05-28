@@ -74,11 +74,11 @@ def notify_on_failure(ctx):
 
 **Commit message**
 ```
-{{commit.message}}
+{{{{commit.message}}}}
 ```
 
 **Author**
-%s
+{}
 
 Please fix before merging
 """.format(get_author_list())

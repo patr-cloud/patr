@@ -1,3 +1,4 @@
+use reqwest::Client;
 use serde_json::Value;
 
 use crate::{
@@ -11,14 +12,15 @@ pub async fn send_otp_sms(
 	to_number: String,
 	otp: String,
 ) -> Result<(), String> {
-	let request = surf::post(format!(
-		"https://{}:{}@api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
-		config.twilio.username,
-		config.twilio.access_token,
-		config.twilio.username
-	))
-	.body(
-		serde_json::to_value(SmsRequest {
+	let client = Client::new();
+	let request = client
+		.post(format!(
+			"https://{}:{}@api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
+			config.twilio.username,
+			config.twilio.access_token,
+			config.twilio.username
+		))
+		.json(&SmsRequest {
 			body: format!(
 				"Welcome to Vicara! The OTP to verify your account is {}",
 				otp
@@ -26,14 +28,12 @@ pub async fn send_otp_sms(
 			from: config.twilio.from_number,
 			to: to_number.clone(),
 		})
-		.map_err(|err| err.to_string())?,
-	)
-	.recv_string();
+		.send();
 
 	// Send the email
 	match request.await {
 		Ok(data) => {
-			let result = serde_json::from_str(&data);
+			let result = data.json().await;
 			let data: Value = if let Ok(data) = result {
 				data
 			} else {
