@@ -1,9 +1,7 @@
 [workspace]
 members = [
   "api",
-  "macros",
-  "dashboard-frontend",
-  "drive-frontend"
+  "macros"
 ]
 
 [profile.release]

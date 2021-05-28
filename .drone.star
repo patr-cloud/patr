@@ -1,4 +1,5 @@
 def main(ctx):
+    print(ctx)
     return {
         "kind": "pipeline",
         "type": "docker",
@@ -68,7 +69,17 @@ def notify_on_failure(ctx):
             "webhook_token": {
                 "from_secret": "webhook_token"
             },
-            "message": "Build \"{{commit.message}}\" pushed by @{{commit.author}} has failed. Please fix before merging"
+            "message": """
+# Build failed
+----------------
+**Commit message**
+"{{commit.message}}".
+**Author**
+{{#equal commit.author "rakshith"}}
+<@847862457254936577>
+{{/equal}}
+Please fix before merging
+"""
         },
         "when": {
             "branch": [
