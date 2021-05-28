@@ -20,6 +20,17 @@ lazy_static::lazy_static! {
 	).unwrap();
 }
 
+/// # Description
+///	this function is used to validate the hashed password using [`ARGON`]
+///
+/// # Arguments
+/// 	* `pwd` - a string containing password of the user
+/// 	* `hashed` - a string containing hashed password of the user
+///
+/// # Returns
+///	this function returns `Result<bool, Error>` containing bool stating the the
+/// password is successfully validated or not or an error
+/// [`ARGON`]: ARGON
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 	Ok(ARGON
 		.verify_password(
@@ -29,7 +40,16 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 		.is_ok())
 }
 
-/// function to get token hash
+/// # Description
+/// this function is used to get token hash
+///
+/// # Arguments
+/// 	* `pwd` - an unsigned 8 bit integer array containing hashed password of the
+///    user
+///
+/// # Returns
+///	this function returns Result<String, Error> containing hashed password or an
+/// error
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 	let salt = format!(
 		"{}{}",
@@ -42,22 +62,47 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 		.map_err(|_| Error::empty())
 }
 
-// 2 hours
+/// # Description
+///	function to get join token expiry
+/// set to: `2 hours`
+///
+/// # Returns
+///	this function returns unsigned 64 bit integer (unix time)
 pub fn get_join_token_expiry() -> u64 {
 	1000 * 60 * 60 * 2
 }
 
-// 3 days
+/// # Description
+///	function to get access token expiry
+/// set to: `3 days`
+///
+/// # Returns
+///	this function returns unsigned 64 bit integer (unix time)
 pub fn get_access_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 3
 }
 
-// 30 days
+/// # Description
+///	function to get refresh token expiry
+/// set to: `30 days`
+///
+/// # Returns
+///	this function returns unsigned 64 bit integer (unix time)
 pub fn get_refresh_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 30
 }
 
-// check if the hash is not in the database
+/// # Description
+/// this function is used to generate a new refresh token and check if the token
+/// is already present or not in the database
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+///
+/// # Returns
+/// this function returns Result<(String, String), Error> containing strings
+/// refresh token and hashed form of it
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
@@ -77,6 +122,13 @@ pub async fn generate_new_refresh_token_for_user(
 	Ok((refresh_token, hashed))
 }
 
+/// # Description
+/// this function is used to generate a new otp, but for development purpose
+/// this function will not be used, it will only be used in production or
+/// testing
+///
+/// # Returns
+/// returns a string containing a 6 digit One-Time-Password
 #[cfg(not(feature = "sample-data"))]
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
@@ -98,6 +150,11 @@ pub fn generate_new_otp() -> String {
 	}
 }
 
+/// # Description
+/// this function is used to generate a new otp only during the development time
+///
+/// # Returns
+/// returns a string containing a 6 digit One-Time-Password (000000)
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()

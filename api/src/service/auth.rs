@@ -2,12 +2,11 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 use uuid::Uuid;
 
-/// This module validates user info and performs tasks related to user authentication
-/// The flow of this file will be:
-/// 1. An endpoint will be called from routes layer and the arguments will be supplied to
-/// the functions in this file, then the functions might connect with db and return what was
-/// required for the endpoint
-
+/// This module validates user info and performs tasks related to user
+/// authentication The flow of this file will be:
+/// 1. An endpoint will be called from routes layer and the arguments will
+/// be supplied to the functions in this file, then the functions might
+/// connect with db and return what was required for the endpoint
 use crate::{
 	db,
 	error,
@@ -27,22 +26,19 @@ use crate::{
 	},
 	Database,
 };
- /// # Description
- ///
- /// The function is_username_allowed() will check if the username already exists and is according
- /// to the criteria for the username
- ///
- /// # Arguments
- ///
- /// * `connection` - database save point, more details here:
- /// [`Transaction`]
- /// * `username` - A string which contains username to be validated
- ///
- /// # Return
- ///
- /// This function returns a bool which says if the username is valid or not
- ///
- /// [`Transaction`]: Transaction
+
+/// # Description
+/// The function is_username_allowed() will check if the username already exists
+/// and is according to the criteria for the username
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `username` - A string which contains username to be validated
+///
+/// # Return
+/// This function returns a bool which says if the username is valid or not
+///
+/// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
 	connection: &mut Transaction<'_, Database>,
 	username: &str,
@@ -59,21 +55,18 @@ pub async fn is_username_allowed(
 }
 
 /// # Description
- ///
- /// The function is_email_allowed() will check if the email already exists and is according
- /// to the criteria for the email
- ///
- /// # Arguments
- ///
- /// * `connection` - database save point, more details here:
- /// [`Transaction`]
- /// * `email` - A string which contains username to be validated
- ///
- /// # Return
- ///
- /// This function returns a bool which says if the email is valid or not
- ///
- /// [`Transaction`]: Transaction
+/// The function is_email_allowed() will check if the email already exists and
+/// is according to the criteria for the email
+///
+/// # Arguments
+/// * `connection` - database save point, more details here:
+/// [`Transaction`]
+/// * `email` - A string which contains username to be validated
+///
+/// # Return
+/// This function returns a bool which says if the email is valid or not
+///
+/// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
 	connection: &mut Transaction<'_, Database>,
 	email: &str,
@@ -90,21 +83,19 @@ pub async fn is_email_allowed(
 		.status(500)
 }
 /// # Description
- ///
- /// The function is_phone_number_allowed() will check if the phone number already exists and is according
- /// to the criteria for the phone number
- ///
- /// # Arguments
- ///
- /// * `connection` - database save point, more details here: [`Transaction`]
- /// * `phone_country_code` - A string which contains phone number country code
- /// * `phone_number` - A string which contains phone_number to be validated
- ///
- /// # Return
- ///
- /// This function returns a bool which says if the phone number is valid or not
- ///
- /// [`Transaction`]: Transaction
+/// The function is_phone_number_allowed() will check if the phone number
+/// already exists and is according to the criteria for the phone number
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `phone_country_code` - A string which contains phone number country code
+/// * `phone_number` - A string which contains phone_number to be validated
+///
+/// # Return
+///
+/// This function returns a bool which says if the phone number is valid or not
+///
+/// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
 	connection: &mut Transaction<'_, Database>,
 	phone_country_code: &str,
@@ -132,32 +123,35 @@ pub async fn is_phone_number_allowed(
 }
 
 /// # Description
- /// Creates a new user to be signed up and returns an OTP, this function will validate details
- /// given by the user, then a resource will be generated for the user according to the type of the
- /// account
- ///
- /// # Arguments
- ///
- /// * `connection` - database save point, more details here: [`Transaction`]
- /// * `username` - A string which contains username
- /// * `account_type` - An enum object which contains the type of resource {Personal, Organisation}
- /// * `password` - A string which contains password of the user
- /// * `first_name` - A string which contains first name of the user
- /// * `last_name` - A string which contains last name of the user
- /// * `backup_email` - A string which contains recovery email of the user
- /// * `backup_phone_country_code` - A string which contains phone number country code
- /// * `backup_phone_number` - A string which contains phone number of of user
- /// * `org_email_local` - A string which contains a pre-existing email_local of the user's
- /// organisation email
- /// * `org_domain_name` - A string which contains domain name of the user's organisation's email id
- /// * `organisation_name` - A string which contains user's organisation name.
- ///
- /// # Return
- ///
- /// This function returns a `Result<string, error>` which contains either one-time-password
- /// to confirm user's email id or phone number and hence complete the registration or an error
- ///
- /// [`Transaction`]: Transaction
+/// Creates a new user to be signed up and returns an OTP, this function will
+/// validate details given by the user, then a resource will be generated for
+/// the user according to the type of the account
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `username` - A string which contains username
+/// * `account_type` - An enum object which contains the type of resource
+///   {Personal, Organisation}
+/// * `password` - A string which contains password of the user
+/// * `first_name` - A string which contains first name of the user
+/// * `last_name` - A string which contains last name of the user
+/// * `backup_email` - A string which contains recovery email of the user
+/// * `backup_phone_country_code` - A string which contains phone number country
+///   code
+/// * `backup_phone_number` - A string which contains phone number of of user
+/// * `org_email_local` - A string which contains a pre-existing email_local of
+///   the user's
+/// organisation email
+/// * `org_domain_name` - A string which contains domain name of the user's
+///   organisation's email id
+/// * `organisation_name` - A string which contains user's organisation name.
+///
+/// # Return
+/// This function returns a `Result<string, error>` which contains either
+/// one-time-password to confirm user's email id or phone number and hence
+/// complete the registration or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn create_user_join_request(
 	connection: &mut Transaction<'_, Database>,
 	username: &str,
@@ -344,19 +338,20 @@ pub async fn create_user_join_request(
 }
 
 /// # Description
-/// This functions creates a record when a user logs into the system, this record contains two
-/// things:
+/// This functions creates a record when a user logs into the system, this
+/// record contains two things:
 /// 1. refresh token
 /// refresh token is used to generate access token, and access token is for
 /// authenticating the user for the current session
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
 ///
 /// # Returns
-/// This function returns a `Result<UserLogin, error>` which contains an instance of UserLogin
-/// or an error
+/// This function returns a `Result<UserLogin, error>` which contains an
+/// instance of UserLogin or an error
 ///
 /// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
@@ -392,18 +387,20 @@ pub async fn create_login_for_user(
 }
 
 /// # Description
-///	This function is used to log in a user, it calls [`create_login_for_user()`] to get
-/// [`UserLogin`] object using which it generates a new refresh token and then generate
-/// an access token through the newly generated refresh token
+///	This function is used to log in a user, it calls [`create_login_for_user()`]
+/// to get [`UserLogin`] object using which it generates a new refresh token and
+/// then generate an access token through the newly generated refresh token
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
-/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+///   the whole API
 ///
 /// # Returns
-/// This function returns a Result<(String, Uuid, Uuid), Error> containing jwt, login_id, and
-/// refresh token or an error
+/// This function returns a Result<(String, Uuid, Uuid), Error> containing jwt,
+/// login_id, and refresh token or an error
 ///
 /// [`create_login_for_user()`]: self.create_login_for_user()
 /// [`UserLogin`]: UserLogin
@@ -432,10 +429,12 @@ pub async fn sign_in_user(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `login_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `login_id` - an unsigned 8 bit integer array which represents the id of
+///   the user
 ///
 /// # Returns
-/// This function returns Result<UserLogin, Error> containing an instance of UserLogin or an error
+/// This function returns Result<UserLogin, Error> containing an instance of
+/// UserLogin or an error
 ///
 /// [`UserLogin`]: UserLogin
 /// [`Transaction`]: Transaction
@@ -462,7 +461,8 @@ pub async fn get_user_login_for_login_id(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+///   the whole API
 /// * `user_login` - an object of struct [`UserLogin`]
 ///
 /// # Returns
@@ -523,10 +523,12 @@ pub async fn generate_access_token(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
 ///
 /// # Returns
-/// This function returns Result<(String, String), Error> containing otp and email_id of user
+/// This function returns Result<(String, String), Error> containing otp and
+/// email_id of user
 ///
 /// [`Transaction`]: Transaction
 // TODO: Remove otp from response
@@ -573,13 +575,16 @@ pub async fn forgot_password(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-///	* `new_password` - a string containing new password of user
-/// * `token` - a string containing a reset request token to verify if the reset password request is
+/// 	* `new_password` - a string containing new password of user
+/// * `token` - a string containing a reset request token to verify if the reset
+///   password request is
 /// valid or not
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
 ///
 /// # Returns
-///	This function returns Result<(), Error> containing an empty response or an error
+///	This function returns Result<(), Error> containing an empty response or an
+/// error
 ///
 /// [`Transaction`]: Transaction
 pub async fn reset_password(
@@ -631,7 +636,8 @@ pub async fn reset_password(
 /// 	3. backup_email
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `config` - An object of [`Settings`] struct which stores configuration of the whole API
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+///   the whole API
 /// * `otp` - A string which contains One-Time-Password
 /// * `username` - A string containing username of the user
 /// # Returns
@@ -647,11 +653,11 @@ pub async fn reset_password(
 /// 	Error
 /// > containing
 /// 	* jwt
-///		* login id
+/// 		* login id
 /// 	* refresh token
 /// 	* welcome email
 /// 	* backup email
-///		* backup phone number
+/// 		* backup phone number
 ///
 /// [`Transaction`]: Transaction
 pub async fn join_user(

@@ -7,7 +7,14 @@ use tokio::fs;
 
 use crate::{db, Database};
 
-/// function to assign available port
+/// # Description
+///	this function is used to generate password for portus user
+///
+/// # Arguments
+/// 	* `length` - an unsigned size variable used to define size of new password
+///
+/// # Returns
+///	this function returns a string containing newly generated password
 pub fn generate_password(length: usize) -> String {
 	let mut rng = thread_rng();
 	iter::repeat(())
@@ -17,7 +24,15 @@ pub fn generate_password(length: usize) -> String {
 		.collect()
 }
 
-/// generates username for portus user
+/// # Description
+/// This function is used to generate username for portus user
+///
+/// # Arguments
+/// 	* `length` - an unsigned size variable containing the size of username of
+///    user
+///
+/// # Returns
+///	this function returns a string containing newly generated username
 pub fn generate_username(length: u16) -> String {
 	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
@@ -29,7 +44,20 @@ pub fn generate_username(length: u16) -> String {
 		.collect()
 }
 
-/// formats bash script with given parameters
+/// # Description
+/// the function that is used to format bash script with given parameters
+///
+/// # Arguments
+/// 	* `local_port` - string containing local post variable name
+/// 	* `local_host_name` - string containing local hostname variable
+/// * `exposed_server_port` - string containing exposed server post variable
+/// * `server_ip_address` - string containing server hostname or ip address
+///   variable
+/// * `server_user_name` - string containing server username variable
+/// * `server_ssh_port` - string containing server SSH port variable
+///
+/// # Returns
+///	this function returns Result<String> containing contents of bash command
 pub async fn bash_script_formatter(
 	local_port: &str,
 	local_host_name: &str,
@@ -43,7 +71,7 @@ pub async fn bash_script_formatter(
 	let mut contents = fs::read_to_string(path).await?;
 	contents = contents
 		.replace("localPortVariable", local_port)
-		.replace("localHostNameVaribale", local_host_name)
+		.replace("localHostNameVariable", local_host_name)
 		.replace("exposedServerPortVariable", exposed_server_port)
 		.replace("serverHostNameOrIpAddressVariable", server_ip_address)
 		.replace("serverUserNameVariable", server_user_name)
@@ -52,7 +80,12 @@ pub async fn bash_script_formatter(
 	Ok(contents)
 }
 
-/// returns path to the script file.
+/// # Description
+/// this function is used to get path to the script file.
+///
+/// # Returns
+///	this function returns Result<PathBuf> containing path of script file or
+/// nothing
 pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 	Ok(env::current_dir()?
 		.join("assets")
@@ -60,19 +93,46 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("connect-pi-to-server.sh"))
 }
 
+/// # Description
+///	this function is used to get port for server
+///
+/// # Returns
+///	this function returns an unsigned integer containing the ssh port for server
 pub fn get_ssh_port_for_server() -> u16 {
 	2222
 }
 
+/// # Description
+///	this function is used to generate the name of container
+///
+/// # Arguments
+/// * `username` - a string containing username of user
+///
+/// # Returns
+///	this function returns a string containing formatted container name
 pub fn get_container_name(username: &str) -> String {
 	format!("{}-container", username)
 }
 
+/// # Description
+///	This function gets server ip address
+///
+/// # Returns
+///	returns server ip address
 pub fn get_server_ip_address() -> &'static str {
 	"143.110.179.80"
 }
 
-/// function to get an available port.
+/// # Description
+/// this function is used get an available port.
+///
+/// # Arguments
+/// * `transaction` - database save point, more details here: [`Transaction`]
+///
+/// # Returns
+///	this function returns Result<u16, sqlx::Error> containing unsigned 16 bit
+/// integer containing the port number
+/// [`Transaction`]: Transaction
 pub async fn assign_available_port(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<u16, sqlx::Error> {
