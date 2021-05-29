@@ -56,6 +56,7 @@ pub async fn initialize_upgrade_path_pre(
 pub async fn initialize_upgrade_path_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up upgrade path tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment_upgrade_path

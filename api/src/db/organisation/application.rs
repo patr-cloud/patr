@@ -55,6 +55,7 @@ pub async fn initialize_application_pre(
 pub async fn initialize_application_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up application tables initialization");
 	query!(
 		r#"
 		ALTER TABLE application

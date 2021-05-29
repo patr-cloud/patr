@@ -57,6 +57,7 @@ pub async fn initialize_entry_point_pre(
 pub async fn initialize_entry_point_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up entry point tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment_entry_point

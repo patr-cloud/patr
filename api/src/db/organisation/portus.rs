@@ -5,7 +5,7 @@ use crate::{models::db_mapping::PortusTunnel, query, query_as};
 pub async fn initialize_portus_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing Portus tables");
+	log::info!("Initializing portus tables");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS portus_tunnel (
@@ -26,6 +26,7 @@ pub async fn initialize_portus_pre(
 pub async fn initialize_portus_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up portus tables initialization");
 	query!(
 		r#"
 		ALTER TABLE portus_tunnel

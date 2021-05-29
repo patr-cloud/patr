@@ -6,7 +6,7 @@ use crate::{
 	query_as,
 };
 
-pub async fn initialize_deployer_pre(
+pub async fn initialize_deployment_pre(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -84,9 +84,10 @@ pub async fn initialize_deployer_pre(
 	Ok(())
 }
 
-pub async fn initialize_deployer_post(
+pub async fn initialize_deployment_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up deployment tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment

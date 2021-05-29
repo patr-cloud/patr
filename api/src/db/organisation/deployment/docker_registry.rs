@@ -26,6 +26,7 @@ pub async fn initialize_docker_registry_pre(
 pub async fn initialize_docker_registry_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up docker registry tables initialization");
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository

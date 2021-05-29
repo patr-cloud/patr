@@ -38,6 +38,7 @@ pub async fn initialize_rbac_pre(
 			name VARCHAR(100) NOT NULL,
 			resource_type_id BINARY(16) NOT NULL,
 			owner_id BINARY(16),
+			KEY(id, owner_id),
 			FOREIGN KEY(owner_id) REFERENCES organisation(id),
 			FOREIGN KEY(resource_type_id) REFERENCES resource_type(id)
 		);
@@ -131,6 +132,7 @@ pub async fn initialize_rbac_pre(
 pub async fn initialize_rbac_post(
 	connection: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_resource_id(&mut *connection).await?;
 		let uuid = uuid.as_bytes().as_ref();
