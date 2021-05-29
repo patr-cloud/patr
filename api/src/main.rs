@@ -10,8 +10,6 @@
 // )]
 // #![allow(clippy::module_name_repetitions)]
 
-asdf
-
 mod app;
 mod db;
 mod macros;

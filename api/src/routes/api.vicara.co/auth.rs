@@ -251,16 +251,23 @@ async fn sign_up(
 	if let Some(email) = backup_email {
 		let config = context.get_state().config.clone();
 		let email = email.to_string();
+		// task::spawn_blocking(|| {
+		// 	mailer::send_email_verification_mail(config, email, otp_clone);
+		// });
 
-		task::spawn_blocking(|| {
-			mailer::send_email_verification_mail(config, email, otp);
-		});
+		service::send_user_verification_otp(None, None, Some(&email), &otp)
+			.await?;
 	}
 	if let Some((_country_code, _phone_number)) =
 		backup_phone_country_code.zip(backup_phone_number)
 	{
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
+		service::send_user_verification_otp(
+			backup_phone_country_code,
+			backup_phone_number,
+			None,
+			&otp,
+		)
+		.await?;
 	}
 
 	context.json(json!({
@@ -458,6 +465,8 @@ async fn is_username_valid(
 	Ok(context)
 }
 
+// TODO: CHANGE IMPLEMENTATION OF THIS.
+// CHECK IF USER HAS REGISTERED BACKUP PHONE NUMBER AS WELL
 async fn forgot_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -476,9 +485,11 @@ async fn forgot_password(
 		service::forgot_password(context.get_database_connection(), user_id)
 			.await?;
 
-	task::spawn_blocking(|| {
-		mailer::send_password_reset_requested_mail(config, backup_email, otp);
-	});
+	// task::spawn_blocking(|| {
+	// 	mailer::send_password_reset_requested_mail(config, backup_email, otp);
+	// });
+	service::send_user_verification_otp(None, None, Some(&backup_email), &otp)
+		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -551,7 +562,7 @@ async fn reset_password(
 	if let Some((_phone_country_code, _phone_number)) =
 		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
-		// TODO implement this
+		//TODO implement this
 		panic!("Sending OTPs through phone numbers aren't handled yet");
 	}
 
