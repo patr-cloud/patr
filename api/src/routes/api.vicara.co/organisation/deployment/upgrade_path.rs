@@ -38,7 +38,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -71,7 +71,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -104,7 +104,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&upgrade_path_id,
 					)
 					.await?;
@@ -137,7 +137,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&upgrade_path_id,
 					)
 					.await?;
@@ -170,7 +170,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&upgrade_path_id,
 					)
 					.await?;
@@ -199,7 +199,7 @@ async fn list_upgrade_paths(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 	let upgrade_paths = db::get_deployment_upgrade_paths_in_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -250,7 +250,7 @@ async fn create_upgrade_path(
 
 	let upgrade_path_id =
 		service::create_deployment_upgrade_path_in_organisation(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			&organisation_id,
 			name,
 			&machine_types,
@@ -273,7 +273,7 @@ async fn get_upgrade_path_details(
 			.unwrap();
 
 	let upgrade_path = db::get_deployment_upgrade_path_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 	)
 	.await?
@@ -281,7 +281,7 @@ async fn get_upgrade_path_details(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let machine_types = db::get_machine_types_in_deployment_upgrade_path(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 	)
 	.await?;
@@ -304,7 +304,7 @@ async fn delete_upgrade_path(
 			.unwrap();
 
 	db::get_deployment_upgrade_path_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 	)
 	.await?
@@ -312,12 +312,12 @@ async fn delete_upgrade_path(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	db::remove_all_machine_types_for_deployment_upgrade_path(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 	)
 	.await?;
 	db::delete_deployment_upgrade_path_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 	)
 	.await?;
@@ -358,7 +358,7 @@ async fn update_upgrade_path(
 	}
 
 	service::update_deployment_upgrade_path(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&upgrade_path_id,
 		name,
 		&machine_types,

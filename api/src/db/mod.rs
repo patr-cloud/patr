@@ -1,36 +1,37 @@
 mod initializer;
 mod meta_data;
+mod migrations;
 mod organisation;
 mod rbac;
 mod user;
 
-pub use initializer::initialize;
-pub use meta_data::*;
-pub use organisation::*;
-pub use rbac::*;
 use redis::{aio::MultiplexedConnection, Client, RedisError};
-use sqlx::{
-	mysql::{MySqlConnectOptions, MySqlPoolOptions},
-	MySqlPool,
-};
+use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool, Transaction};
 use tokio::task;
-pub use user::*;
 
-use crate::utils::settings::Settings;
+pub use self::{
+	initializer::*,
+	meta_data::*,
+	migrations::*,
+	organisation::*,
+	rbac::*,
+	user::*,
+};
+use crate::{query, utils::settings::Settings, Database};
 
-pub async fn create_mysql_connection(
+pub async fn create_database_connection(
 	config: &Settings,
-) -> Result<MySqlPool, sqlx::Error> {
+) -> Result<Pool<Database>, sqlx::Error> {
 	log::trace!("Creating database connection pool...");
-	MySqlPoolOptions::new()
-		.max_connections(config.mysql.connection_limit)
+	PoolOptions::<Database>::new()
+		.max_connections(config.database.connection_limit)
 		.connect_with(
-			MySqlConnectOptions::new()
-				.username(&config.mysql.user)
-				.password(&config.mysql.password)
-				.host(&config.mysql.host)
-				.port(config.mysql.port)
-				.database(&config.mysql.database),
+			<<Database as Db>::Connection as Connection>::Options::new()
+				.username(&config.database.user)
+				.password(&config.database.password)
+				.host(&config.database.host)
+				.port(config.database.port)
+				.database(&config.database.database),
 		)
 		.await
 }
@@ -38,6 +39,7 @@ pub async fn create_mysql_connection(
 pub async fn create_redis_connection(
 	config: &Settings,
 ) -> Result<MultiplexedConnection, RedisError> {
+	log::trace!("Creating redis connection pool...");
 	let (redis, redis_poller) = Client::open(format!(
 		"redis://{}{}{}:{}/0",
 		if let Some(user) = &config.redis.user {
@@ -58,4 +60,34 @@ pub async fn create_redis_connection(
 	task::spawn(redis_poller);
 
 	Ok(redis)
+}
+
+pub async fn begin_deferred_constraints(
+	connection: &mut Transaction<'_, Database>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		SET CONSTRAINTS
+		ALL DEFERRED;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn end_deferred_constraints(
+	connection: &mut Transaction<'_, Database>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		SET CONSTRAINTS
+		ALL IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }

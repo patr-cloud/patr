@@ -1,15 +1,16 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
 use crate::{
 	db,
 	error,
 	service,
 	utils::{get_current_time_millis, validator, Error},
+	Database,
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email_address: &str,
 	user_id: &[u8],
 ) -> Result<(), Error> {
@@ -57,7 +58,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 pub async fn verify_personal_email_address_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	email_address: &str,
 	otp: &str,
@@ -97,6 +98,32 @@ pub async fn verify_personal_email_address_for_user(
 		&email_verification_data.domain_id,
 	)
 	.await?;
+
+	Ok(())
+}
+
+pub async fn change_password_for_user(
+	connection: &mut Transaction<'_, Database>,
+	user_id: &[u8],
+	old_password: &str,
+	new_password: &str,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(500)
+		.body(error!(USER_NOT_FOUND).to_string())?;
+
+	let success = service::validate_hash(old_password, &user.password)?;
+
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(INVALID_PASSWORD).to_string())?;
+	}
+
+	let new_password = service::hash(new_password.as_bytes())?;
+
+	db::update_user_password(connection, &user_id, &new_password).await?;
 
 	Ok(())
 }

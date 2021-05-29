@@ -1,19 +1,21 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{models::db_mapping::DockerRepository, query, query_as};
+use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
 pub async fn initialize_docker_registry_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing docker registry tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS docker_registry_repository (
-			id BINARY(16) PRIMARY KEY,
-			organisation_id BINARY(16) NOT NULL,
+		CREATE TABLE docker_registry_repository(
+			id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
+			organisation_id BYTEA NOT NULL
+				CONSTRAINT docker_registry_repository_fk_id
+					REFERENCES organisation(id),
 			name VARCHAR(255) NOT NULL,
-			UNIQUE(organisation_id, name),
-			FOREIGN KEY(organisation_id) REFERENCES organisation(id)
+			CONSTRAINT docker_registry_repository_uq_organisation_id_name
+				UNIQUE(organisation_id, name)
 		);
 		"#
 	)
@@ -24,15 +26,14 @@ pub async fn initialize_docker_registry_pre(
 }
 
 pub async fn initialize_docker_registry_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up docker registry tables initialization");
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
-		ADD CONSTRAINT
-		FOREIGN KEY (id, organisation_id)
-		REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT docker_registry_repository_fk_id_organisation_id
+		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -43,7 +44,7 @@ pub async fn initialize_docker_registry_post(
 
 // function to add new repositorys
 pub async fn create_docker_repository(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	resource_id: &[u8],
 	name: &str,
 	organisation_id: &[u8],
@@ -53,19 +54,19 @@ pub async fn create_docker_repository(
 		INSERT INTO 
 			docker_registry_repository
 		VALUES
-			(?, ?, ?);
+			($1, $2, $3);
 		"#,
 		resource_id,
 		organisation_id,
 		name
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 pub async fn get_repository_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_name: &str,
 	organisation_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
@@ -77,20 +78,20 @@ pub async fn get_repository_by_name(
 		FROM
 			docker_registry_repository
 		WHERE
-			name = ?
+			name = $1
 		AND
-			organisation_id = ?;
+			organisation_id = $2;
 		"#,
 		repository_name,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| rows.into_iter().next())
 }
 
 pub async fn get_docker_repositories_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -101,16 +102,16 @@ pub async fn get_docker_repositories_for_organisation(
 		FROM
 			docker_registry_repository
 		WHERE
-			organisation_id = ?;
+			organisation_id = $1;
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_docker_repository_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -121,17 +122,17 @@ pub async fn get_docker_repository_by_id(
 		FROM
 			docker_registry_repository
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		repository_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|repos| repos.into_iter().next())
 }
 
 pub async fn delete_docker_repository_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	repository_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -139,11 +140,11 @@ pub async fn delete_docker_repository_by_id(
 		DELETE FROM
 			docker_registry_repository
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		repository_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }

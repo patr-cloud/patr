@@ -98,9 +98,9 @@ Resources:
 pub async fn initialize_sample_data(config: crate::app::App) {
 	use std::{collections::HashMap, time::Duration};
 
+	use reqwest::Client;
 	use serde::Deserialize;
 	use serde_json::{json, Value};
-	use surf::Url;
 
 	use crate::constants::request_keys;
 
@@ -153,28 +153,29 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 	let content = include_str!("../../../assets/sample-data.json");
 	let data: SampleData = serde_json::from_str(content).unwrap();
 
+	let client = Client::new();
+
 	// Create all users
 	for user in &data.users {
-		let response: Value = surf::post(
-			Url::parse(
-				format!("http://localhost:{}/auth/sign-up", config.config.port)
-					.as_ref(),
-			)
-			.unwrap(),
-		)
-		.body(json!({
-			"username": user.username,
-			"email": user.backup_email,
-			"password": user.password,
-			"accountType": "personal",
-			"firstName": user.first_name,
-			"lastName": user.last_name
-		}))
-		.await
-		.unwrap()
-		.body_json()
-		.await
-		.unwrap();
+		let response: Value = client
+			.post(format!(
+				"http://localhost:{}/auth/sign-up",
+				config.config.port
+			))
+			.json(&json!({
+				"username": user.username,
+				"password": user.password,
+				"accountType": "personal",
+				"firstName": user.first_name,
+				"lastName": user.last_name,
+				"backupEmail": user.backup_email
+			}))
+			.send()
+			.await
+			.unwrap()
+			.json()
+			.await
+			.unwrap();
 
 		if !response["success"].as_bool().unwrap() {
 			log::error!(
@@ -185,49 +186,44 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 			continue;
 		}
 
-		let response: Value = surf::post(
-			Url::parse(
-				format!("http://localhost:{}/auth/join", config.config.port)
-					.as_ref(),
-			)
-			.unwrap(),
-		)
-		.body(json!({
-			"username": user.username,
-			"verificationToken": "000-000"
-		}))
-		.await
-		.unwrap()
-		.body_json()
-		.await
-		.unwrap();
+		let response: Value = client
+			.post(format!("http://localhost:{}/auth/join", config.config.port))
+			.json(&json!({
+				"username": user.username,
+				"verificationToken": "000-000"
+			}))
+			.send()
+			.await
+			.unwrap()
+			.json()
+			.await
+			.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
-			log::error!("Error joining user {}: {}", user.username, response);
-		} else {
+		if response["success"].as_bool().unwrap() {
 			log::info!("User `{}` created successfully", user.username);
+		} else {
+			log::error!("Error joining user {}: {}", user.username, response);
 		}
 	}
 
 	for organisation in &data.organisations {
 		let super_user =
 			get_user_by_username(&data.users, &organisation.super_user);
-		let response: Value = surf::post(
-			Url::parse(
-				format!("http://localhost:{}/auth/sign-in", config.config.port)
-					.as_ref(),
-			)
-			.unwrap(),
-		)
-		.body(json!({
-			"userId": super_user.username,
-			"password": super_user.password
-		}))
-		.await
-		.unwrap()
-		.body_json()
-		.await
-		.unwrap();
+		let response: Value = client
+			.post(format!(
+				"http://localhost:{}/auth/sign-in",
+				config.config.port
+			))
+			.json(&json!({
+				"userId": super_user.username,
+				"password": super_user.password
+			}))
+			.send()
+			.await
+			.unwrap()
+			.json()
+			.await
+			.unwrap();
 
 		if !response["success"].as_bool().unwrap() {
 			log::error!(
@@ -239,34 +235,33 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		}
 		let token = response[request_keys::ACCESS_TOKEN].as_str().unwrap();
 
-		let response: Value = surf::post(
-			Url::parse(
-				format!("http://localhost:{}/organisation", config.config.port)
-					.as_ref(),
-			)
-			.unwrap(),
-		)
-		.header("Authorization", token)
-		.body(json!({
-			"domain": organisation.domains.get(0).unwrap(),
-			"organisationName": organisation.name
-		}))
-		.await
-		.unwrap()
-		.body_json()
-		.await
-		.unwrap();
+		let response: Value = client
+			.post(format!(
+				"http://localhost:{}/organisation",
+				config.config.port
+			))
+			.header("Authorization", token)
+			.json(&json!({
+				"domain": organisation.domains.get(0).unwrap(),
+				"organisationName": organisation.name
+			}))
+			.send()
+			.await
+			.unwrap()
+			.json()
+			.await
+			.unwrap();
 
-		if !response["success"].as_bool().unwrap() {
+		if response["success"].as_bool().unwrap() {
+			log::info!(
+				"Organisation `{}` created successfully",
+				organisation.name
+			);
+		} else {
 			log::error!(
 				"Error creating organisation {}: {}",
 				organisation.name,
 				response
-			);
-		} else {
-			log::info!(
-				"Organisation `{}` created successfully",
-				organisation.name
 			);
 		}
 	}

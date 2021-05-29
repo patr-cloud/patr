@@ -37,7 +37,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -70,7 +70,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&application_id,
 					)
 					.await?;
@@ -106,7 +106,7 @@ pub fn create_sub_app(
 
 					// check if resource with the given application id exists.
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&application_id,
 					)
 					.await?;
@@ -139,7 +139,7 @@ async fn get_applications(
 			.unwrap();
 
 	let applications = db::get_applications_in_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -169,7 +169,7 @@ async fn get_application_info_in_organisation(
 		context.get_param(request_keys::APPLICATION_ID).unwrap();
 	let application_id = hex::decode(application_id).unwrap();
 	let application = db::get_application_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&application_id,
 	)
 	.await?;
@@ -205,7 +205,7 @@ async fn get_all_versions_for_application(
 
 	// call fetch query for the given application id.
 	let versions = db::get_all_versions_for_application(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&application_id,
 	)
 	.await?

@@ -1,15 +1,29 @@
 use std::{collections::HashMap, time::Duration};
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord, CreateDnsRecordParams, DnsContent, ListDnsRecords,
+			ListDnsRecordsParams, UpdateDnsRecord, UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client},
+		auth::Credentials,
+		Environment, HttpApiClientConfig,
+	},
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use futures::StreamExt;
 use hex::ToHex;
 use rand::Rng;
 use shiplift::{ContainerOptions, Docker, PullOptions, RegistryAuth};
+use tokio::{fs, process::Command};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
@@ -34,8 +48,8 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context.get_content_type().as_str() !=
-		"application/vnd.docker.distribution.events.v1+json"
+	if context.get_content_type().as_str()
+		!= "application/vnd.docker.distribution.events.v1+json"
 	{
 		Error::as_result()
 			.status(400)
@@ -44,6 +58,8 @@ pub async fn notification_handler(
 	let body = context.get_body()?;
 	let events: EventData = serde_json::from_str(&body)?;
 	let config = context.get_state().clone().config;
+
+	let server_ip = "128.199.25.235";
 
 	// init docker
 	let docker = Docker::new();
@@ -74,7 +90,7 @@ pub async fn notification_handler(
 		let tag = target.tag;
 
 		let organisation = db::get_organisation_by_name(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			org_name,
 		)
 		.await?;
@@ -85,7 +101,7 @@ pub async fn notification_handler(
 
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_organisation(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				image_name,
 				&tag,
 				&organisation.id,
@@ -98,14 +114,14 @@ pub async fn notification_handler(
 			let full_image_name = format!(
 				"{}@{}",
 				deployment
-					.get_full_image(context.get_mysql_connection())
+					.get_full_image(context.get_database_connection())
 					.await?,
 				target.digest
 			);
 
 			// Pull the latest image again
 			let god_user = db::get_user_by_user_id(
-				context.get_mysql_connection(),
+				context.get_database_connection(),
 				rbac::GOD_USER_ID.get().unwrap().as_bytes(),
 			)
 			.await?
@@ -145,7 +161,7 @@ pub async fn notification_handler(
 					.auth(registry_auth)
 					.build(),
 			);
-			while let Some(_) = stream.next().await {}
+			while stream.next().await.is_some() {}
 
 			let empty_vec = vec![];
 			let empty_map = HashMap::new();
@@ -182,12 +198,12 @@ pub async fn notification_handler(
 					.host_config
 					.port_bindings
 					.unwrap_or_default()
-					.get(&format!("{}/tcp", 3090))
-					.unwrap_or_else(|| &empty_vec)
+					.get(&format!("{}/tcp", 80))
+					.unwrap_or(&empty_vec)
 					.get(0)
-					.unwrap_or_else(|| &empty_map)
+					.unwrap_or(&empty_map)
 					.get("HostPort")
-					.unwrap_or_else(|| &empty_string)
+					.unwrap_or(&empty_string)
 					.parse()
 					.unwrap_or(0);
 			} else {
@@ -235,6 +251,156 @@ pub async fn notification_handler(
 			let result = docker.containers().get(&container_name).start().await;
 			if let Err(err) = result {
 				log::error!("Error starting container: {:?}", err);
+				// TODO log somewhere that the start failed and that it
+				// needs to be done again
+				continue;
+			}
+
+			// TODO clean up all this shit with service layer configs
+
+			let credentials = Credentials::UserAuthToken {
+				token: context.get_state().config.cloudflare.api_token.clone(),
+			};
+
+			let client = Client::new(
+				credentials,
+				HttpApiClientConfig::default(),
+				Environment::Production,
+			)
+			.unwrap();
+
+			let domain = format!("{}.vicara.tech", hex::encode(&deployment.id));
+			let response = client
+				.request(&ListZones {
+					params: ListZonesParams {
+						name: Some(String::from("vicara.tech")),
+						..Default::default()
+					},
+				})
+				.await;
+			if let Err(err) = response {
+				log::error!("Error listing zones: {:?}", err);
+				continue;
+			}
+			let response = response.unwrap();
+			let zone_id = response.result.get(0);
+			if zone_id.is_none() {
+				log::error!("Zero zones returned");
+				continue;
+			}
+			let zone_identifier = zone_id.unwrap().id.as_str();
+			let expected_dns_record = DnsContent::A {
+				content: server_ip.parse().unwrap(),
+			};
+
+			let response = client
+				.request(&ListDnsRecords {
+					zone_identifier,
+					params: ListDnsRecordsParams {
+						name: Some(domain.clone()),
+						..Default::default()
+					},
+				})
+				.await;
+			if let Err(err) = response {
+				log::error!("Error listing DNS records: {:?}", err);
+				continue;
+			}
+			let response = response.unwrap();
+			let dns_record = response.result.iter().find(|record| {
+				if let DnsContent::A { .. } = record.content {
+					record.name == domain
+				} else {
+					false
+				}
+			});
+			if let Some(record) = dns_record {
+				let response = client
+					.request(&UpdateDnsRecord {
+						zone_identifier,
+						identifier: record.id.as_str(),
+						params: UpdateDnsRecordParams {
+							content: expected_dns_record,
+							name: domain.as_str(),
+							proxied: Some(true),
+							ttl: Some(1),
+						},
+					})
+					.await;
+				if let Err(err) = response {
+					log::error!("Error updating DNS record: {:?}", err);
+					continue;
+				}
+			} else {
+				// Create
+				let response = client
+					.request(&CreateDnsRecord {
+						zone_identifier,
+						params: CreateDnsRecordParams {
+							content: expected_dns_record,
+							name: hex::encode(&deployment.id).as_str(),
+							ttl: Some(1),
+							priority: None,
+							proxied: Some(true),
+						},
+					})
+					.await;
+				if let Err(err) = response {
+					log::error!("Error creating DNS record: {:?}", err);
+					continue;
+				}
+			}
+
+			let write_result = fs::write(
+				format!(
+					"/etc/nginx/sites-enabled/{}",
+					hex::encode(&deployment.id)
+				),
+				format!(
+					r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+	
+	return 301 https://{domain}$request_uri;
+}}
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+	
+	ssl_certificate /etc/letsencrypt/live/deployment.vicara.tech/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/deployment.vicara.tech/privkey.pem;
+	
+	location {path} {{
+		proxy_pass http://localhost:{port};
+	}}
+	
+	include snippets/letsencrypt.conf;
+}}
+"#,
+					domain = domain,
+					port = port,
+					path = "/",
+				),
+			)
+			.await;
+			if let Err(err) = write_result {
+				log::error!("Error creating nginx conf : {:?}", err);
+				// TODO log somewhere that the start failed and that it
+				// needs to be done again
+				continue;
+			}
+			let reload_result = Command::new("nginx")
+				.arg("-s")
+				.arg("reload")
+				.spawn()
+				.expect("unable to spawn nginx process")
+				.wait()
+				.await?;
+			if !reload_result.success() {
+				log::error!("Error reloading nginx : {:?}", reload_result);
 				// TODO log somewhere that the start failed and that it
 				// needs to be done again
 				continue;

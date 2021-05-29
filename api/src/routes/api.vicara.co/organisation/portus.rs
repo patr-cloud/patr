@@ -21,6 +21,7 @@ use crate::{
 		EveMiddleware,
 	},
 };
+type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 
 pub fn creare_sub_app(
 	app: &App,
@@ -42,7 +43,7 @@ pub fn creare_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -75,7 +76,7 @@ pub fn creare_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -106,7 +107,7 @@ pub fn creare_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&tunnel_id,
 					)
 					.await?;
@@ -138,7 +139,7 @@ pub fn creare_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&tunnel_id,
 					)
 					.await?;
@@ -170,7 +171,7 @@ pub fn creare_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&tunnel_id,
 					)
 					.await?;
@@ -200,7 +201,7 @@ async fn get_tunnels_for_organisation(
 			.unwrap();
 
 	let tunnels = db::get_portus_tunnels_for_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -241,7 +242,7 @@ async fn get_info_for_tunnel(
 
 	//  get tunnel info  using tunnel id
 	let tunnel = db::get_portus_tunnel_by_tunnel_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&tunnel_id,
 	)
 	.await?
@@ -274,7 +275,7 @@ async fn delete_tunnel(
 
 	//  get tunnel info  using tunnel id
 	let tunnel = db::get_portus_tunnel_by_tunnel_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&tunnel_id,
 	)
 	.await?
@@ -284,7 +285,7 @@ async fn delete_tunnel(
 	let docker = Docker::new();
 	let container_name = service::get_container_name(&tunnel.username);
 
-	db::delete_portus_tunnel(context.get_mysql_connection(), &tunnel_id)
+	db::delete_portus_tunnel(context.get_database_connection(), &tunnel_id)
 		.await?;
 
 	service::delete_container(&docker, &container_name).await?;
@@ -316,7 +317,7 @@ async fn create(
 
 	// generate new resource id for the generated container.
 	let resource_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
+		db::generate_new_resource_id(context.get_database_connection()).await?;
 	let resource_id = resource_id.as_bytes(); // convert to byte array
 
 	// generate unique password
@@ -327,16 +328,18 @@ async fn create(
 	let image = constants::PORTUS_DOCKER_IMAGE;
 	let container_name = service::get_container_name(username.as_str());
 	let ssh_port =
-		service::assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_database_connection())
+			.await?;
 	let exposed_port =
-		service::assign_available_port(context.get_mysql_connection()).await?;
+		service::assign_available_port(context.get_database_connection())
+			.await?;
 	let image_ssh_port = service::get_ssh_port_for_server();
 	let server_ip_address = service::get_server_ip_address();
 	let created = get_current_time_millis();
 
 	// check if container name already exists
 	let portus_tunnel = db::get_portus_tunnel_by_name(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&tunnel_name,
 	)
 	.await?;
@@ -358,8 +361,8 @@ async fn create(
 					format!("USER_PASSWORD={}", &generated_password).as_str(),
 					format!("USER_NAME={}", &username).as_str(),
 				])
-				.expose(image_ssh_port, "tcp", ssh_port)
-				.expose(exposed_port, "tcp", exposed_port)
+				.expose(image_ssh_port.into(), "tcp", ssh_port.into())
+				.expose(exposed_port.into(), "tcp", exposed_port.into())
 				.build(),
 		)
 		.await?;
@@ -370,7 +373,7 @@ async fn create(
 		service::start_container(&docker, &container_id).await;
 	// create resource in db
 	let create_resource_result = db::create_resource(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		resource_id,
 		&format!("portus-tunnel-{}", tunnel_name),
 		rbac::RESOURCE_TYPES
@@ -383,7 +386,7 @@ async fn create(
 	.await;
 
 	let create_tunnel_result = db::create_new_portus_tunnel(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		resource_id,
 		&username,
 		ssh_port,
@@ -394,7 +397,6 @@ async fn create(
 	.await;
 
 	//  add container information in portus table
-	type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 	let tunnel_register_result = container_start_result
 		.map_err::<StdErrorType, _>(|err| Box::new(err))
 		.and(

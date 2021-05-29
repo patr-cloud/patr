@@ -1,6 +1,7 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::json;
+use serde_json::{json, Value};
+use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -10,6 +11,7 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
+		mailer,
 		Error,
 		ErrorData,
 		EveContext,
@@ -36,13 +38,6 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(update_user_info)),
 		],
 	);
-	app.get(
-		"/:username/info",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
-		],
-	);
 	app.post(
 		"/add-email-address",
 		[
@@ -64,7 +59,23 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_organisations_for_user)),
 		],
 	);
-
+	app.post(
+		"/change-password",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(change_password)),
+		],
+	);
+	app.get("/logins", []); // TODO list all logins here
+	app.get("/logins/:loginId/info", []); // TODO list all information about a particular login here
+	app.delete("/logins/:loginId", []); // TODO delete a particular login ID and invalidate it
+	app.get(
+		"/:username/info",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
+		],
+	);
 	app
 }
 
@@ -72,14 +83,22 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let mut data = serde_json::to_value(
-		context.get_token_data().as_ref().unwrap().user.clone(),
-	)?;
-	let object = data.as_object_mut().unwrap();
-	object.remove(request_keys::ID);
-	object.insert(request_keys::SUCCESS.to_string(), true.into());
-
-	context.json(data);
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	context.json(json!({
+		request_keys::SUCCESS : true,
+		request_keys::USERNAME : user.username,
+		request_keys::FIRST_NAME : user.first_name,
+		request_keys::LAST_NAME : user.last_name,
+		request_keys::BIRTHDAY : user.dob,
+		request_keys::BIO : user.bio,
+		request_keys::LOCATION : user.location,
+		request_keys::CREATED : user.created,
+	}));
 	Ok(context)
 }
 
@@ -90,7 +109,7 @@ async fn get_user_info_by_username(
 	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
 
 	let user_data =
-		db::get_user_by_username(context.get_mysql_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(400)
 			.body(error!(PROFILE_NOT_FOUND).to_string())?;
@@ -130,17 +149,31 @@ async fn update_user_info(
 		})
 		.transpose()?;
 
-	let dob: Option<&str> = body
+	let dob = body
 		.get(request_keys::BIRTHDAY)
-		.map(|value| {
-			value
-				.as_str()
+		.map(|value| match value {
+			Value::String(value) => value
+				.parse::<u64>()
 				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
+				.body(error!(WRONG_PARAMETERS).to_string()),
+			Value::Number(num) => {
+				if let Some(num) = num.as_u64() {
+					Ok(num)
+				} else if let Some(num) = num.as_i64() {
+					Ok(num as u64)
+				} else {
+					Err(Error::empty()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string()))
+				}
+			}
+			_ => Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())),
 		})
 		.transpose()?;
 
-	let bio: Option<&str> = body
+	let bio = body
 		.get(request_keys::BIO)
 		.map(|value| {
 			value
@@ -150,7 +183,7 @@ async fn update_user_info(
 		})
 		.transpose()?;
 
-	let location: Option<&str> = body
+	let location = body
 		.get(request_keys::LOCATION)
 		.map(|value| {
 			value
@@ -160,17 +193,20 @@ async fn update_user_info(
 		})
 		.transpose()?;
 
+	let dob_string = dob.map(|value| value.to_string());
+	let dob_str = dob_string.as_deref();
+
 	// If no parameters to update
 	first_name
 		.or(last_name)
-		.or(dob)
+		.or(dob_str)
 		.or(bio)
 		.or(location)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	db::update_user_data(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		first_name,
 		last_name,
 		dob,
@@ -200,7 +236,7 @@ async fn add_email_address(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::add_personal_email_to_be_verified_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		email_address,
 		&user_id,
 	)
@@ -234,7 +270,7 @@ async fn verify_email_address(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::verify_personal_email_address_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 		email_address,
 		otp,
@@ -253,7 +289,7 @@ async fn get_organisations_for_user(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let organisations = db::get_all_organisations_for_user(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
@@ -271,6 +307,75 @@ async fn get_organisations_for_user(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ORGANISATIONS: organisations
+	}));
+	Ok(context)
+}
+
+async fn change_password(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let new_password = body
+		.get(request_keys::NEW_PASSWORD)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let password = body
+		.get(request_keys::PASSWORD)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	service::change_password_for_user(
+		context.get_database_connection(),
+		&user_id,
+		password,
+		new_password,
+	)
+	.await?;
+
+	if let Some((backup_email_local, backup_email_domain_id)) =
+		user.backup_email_local.zip(user.backup_email_domain_id)
+	{
+		let config = context.get_state().config.clone();
+		let email = format!(
+			"{}@{}",
+			backup_email_local,
+			db::get_personal_domain_by_id(
+				context.get_database_connection(),
+				&backup_email_domain_id
+			)
+			.await?
+			.status(500)?
+			.name
+		);
+		task::spawn_blocking(|| {
+			mailer::send_password_changed_notification_mail(config, email);
+		});
+	}
+
+	if let Some((_phone_country_code, _phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
+	{
+		// TODO implement this
+		panic!("Sending OTPs through phone numbers aren't handled yet");
+	}
+
+	context.json(json!({
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

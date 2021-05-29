@@ -1,23 +1,25 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{DeploymentUpgradePath, MachineType},
-	query,
-	query_as,
+	query, query_as, Database,
 };
 
 pub async fn initialize_upgrade_path_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing upgrade path tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_machine_type (
-			id BINARY(16) PRIMARY KEY,
-			cpu_count TINYINT UNSIGNED NOT NULL,
-			memory_count FLOAT UNSIGNED NOT NULL,
-			UNIQUE(cpu_count, memory_count)
+		CREATE TABLE deployment_machine_type(
+			id BYTEA CONSTRAINT deployment_machine_type_pk PRIMARY KEY,
+			cpu_count SMALLINT NOT NULL
+				CONSTRAINT deployment_machine_type_chk_cpu_u8
+					CHECK(cpu_count >= 0 AND cpu_count <= 256),
+			memory_count REAL NOT NULL,
+			CONSTRAINT deployment_machine_type_uq_config
+				UNIQUE(cpu_count, memory_count)
 		);
 		"#
 	)
@@ -26,10 +28,10 @@ pub async fn initialize_upgrade_path_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_upgrade_path(
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE deployment_upgrade_path(
+			id BYTEA CONSTRAINT deployment_upgrade_path_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			default_machine_type BINARY(16)
+			default_machine_type BYTEA NOT NULL
 		);
 		"#
 	)
@@ -38,13 +40,33 @@ pub async fn initialize_upgrade_path_pre(
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_upgrade_path_machine_type (
-			upgrade_path_id BINARY(16) NOT NULL,
-			machine_type_id BINARY(16) NOT NULL,
-			PRIMARY KEY (upgrade_path_id, machine_type_id),
-			FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(id),
-			FOREIGN KEY(machine_type_id) REFERENCES deployment_machine_type(id)
+		CREATE TABLE deployment_upgrade_path_machine_type(
+			upgrade_path_id BYTEA NOT NULL
+				CONSTRAINT
+					deployment_upgrade_path_machine_type_fk_upgrade_path_id
+					REFERENCES deployment_upgrade_path(id),
+			machine_type_id BYTEA NOT NULL
+				CONSTRAINT
+					deployment_upgrade_path_machine_type_fk_machine_type_id
+					REFERENCES deployment_machine_type(id),
+			CONSTRAINT deployment_upgrade_path_machine_type_pk
+				PRIMARY KEY (upgrade_path_id, machine_type_id)
 		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_upgrade_path
+		ADD CONSTRAINT deployment_upgrade_path_fk_id_default_machine_type
+		FOREIGN KEY(id, default_machine_type)
+		REFERENCES deployment_upgrade_path_machine_type(
+			upgrade_path_id,
+			machine_type_id
+		)
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *transaction)
@@ -54,14 +76,14 @@ pub async fn initialize_upgrade_path_pre(
 }
 
 pub async fn initialize_upgrade_path_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up upgrade path tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment_upgrade_path
-		ADD CONSTRAINT
-		FOREIGN KEY (id) REFERENCES resource(id);
+		ADD CONSTRAINT deployment_upgrade_path_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -71,7 +93,7 @@ pub async fn initialize_upgrade_path_post(
 }
 
 pub async fn generate_new_deployment_machine_type_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -82,7 +104,7 @@ pub async fn generate_new_deployment_machine_type_id(
 		FROM
 			deployment_machine_type
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		uuid.as_bytes().as_ref()
 	)
@@ -101,7 +123,7 @@ pub async fn generate_new_deployment_machine_type_id(
 			FROM
 				deployment_machine_type
 			WHERE
-				id = ?;
+				id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
@@ -116,7 +138,7 @@ pub async fn generate_new_deployment_machine_type_id(
 }
 
 pub async fn get_deployment_upgrade_paths_in_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<DeploymentUpgradePath>, sqlx::Error> {
 	query_as!(
@@ -125,23 +147,25 @@ pub async fn get_deployment_upgrade_paths_in_organisation(
 		SELECT
 			deployment_upgrade_path.*
 		FROM
-			deployment_upgrade_path,
+			deployment_upgrade_path
+		INNER JOIN
 			resource
+		ON
+			resource.id = deployment_upgrade_path.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_machine_types_in_deployment_upgrade_path(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 ) -> Result<Vec<MachineType>, sqlx::Error> {
-	query_as!(
-		MachineType,
+	let rows = query!(
 		r#"
 		SELECT
 			deployment_machine_type.cpu_count,
@@ -153,16 +177,24 @@ pub async fn get_machine_types_in_deployment_upgrade_path(
 		ON
 			deployment_machine_type.id = deployment_upgrade_path_machine_type.machine_type_id
 		WHERE
-			deployment_upgrade_path_machine_type.upgrade_path_id = ?;
+			deployment_upgrade_path_machine_type.upgrade_path_id = $1;
 		"#,
 		upgrade_path_id
 	)
-	.fetch_all(connection)
-	.await
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| MachineType {
+		cpu_count: row.cpu_count as u8,
+		memory_count: row.memory_count
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_deployment_upgrade_path_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 ) -> Result<Option<DeploymentUpgradePath>, sqlx::Error> {
 	query_as!(
@@ -173,17 +205,17 @@ pub async fn get_deployment_upgrade_path_by_id(
 		FROM
 			deployment_upgrade_path
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		upgrade_path_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| rows.into_iter().next())
 }
 
 pub async fn get_deployment_upgrade_path_by_name_in_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	name: &str,
 	organisation_id: &[u8],
 ) -> Result<Option<DeploymentUpgradePath>, sqlx::Error> {
@@ -199,19 +231,19 @@ pub async fn get_deployment_upgrade_path_by_name_in_organisation(
 		ON
 			deployment_upgrade_path.id = resource.id
 		WHERE
-			deployment_upgrade_path.name = ? AND
-			resource.owner_id = ?;
+			deployment_upgrade_path.name = $1 AND
+			resource.owner_id = $2;
 		"#,
 		name,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| rows.into_iter().next())
 }
 
 pub async fn create_deployment_upgrade_path(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -220,18 +252,18 @@ pub async fn create_deployment_upgrade_path(
 		INSERT INTO
 			deployment_upgrade_path
 		VALUES
-			(?, ?, NULL);
+			($1, $2, NULL);
 		"#,
 		upgrade_path_id,
 		name
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn get_deployment_machine_type_id_for_configuration(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	cpu_count: u8,
 	memory_count: f32,
 ) -> Result<Option<Vec<u8>>, sqlx::Error> {
@@ -242,19 +274,19 @@ pub async fn get_deployment_machine_type_id_for_configuration(
 		FROM
 			deployment_machine_type
 		WHERE
-			cpu_count = ? AND
-			memory_count = ?;
+			cpu_count = $1 AND
+			memory_count = $2;
 		"#,
-		cpu_count,
+		cpu_count as i16,
 		memory_count
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| rows.into_iter().next().map(|row| row.id))
 }
 
 pub async fn add_deployment_machine_type(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	machine_type_id: &[u8],
 	cpu_count: u8,
 	memory_count: f32,
@@ -264,19 +296,19 @@ pub async fn add_deployment_machine_type(
 		INSERT INTO
 			deployment_machine_type
 		VALUES
-			(?, ?, ?);
+			($1, $2, $3);
 		"#,
 		machine_type_id,
-		cpu_count,
+		cpu_count as i16,
 		memory_count
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn add_deployment_machine_type_for_upgrade_path(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 	machine_type_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -285,18 +317,18 @@ pub async fn add_deployment_machine_type_for_upgrade_path(
 		INSERT INTO
 			deployment_upgrade_path_machine_type
 		VALUES
-			(?, ?);
+			($1, $2);
 		"#,
 		upgrade_path_id,
 		machine_type_id,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn remove_all_machine_types_for_deployment_upgrade_path(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -304,17 +336,17 @@ pub async fn remove_all_machine_types_for_deployment_upgrade_path(
 		DELETE FROM
 			deployment_upgrade_path_machine_type
 		WHERE
-			upgrade_path_id = ?;
+			upgrade_path_id = $1;
 		"#,
 		upgrade_path_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn update_deployment_upgrade_path_name_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -323,20 +355,20 @@ pub async fn update_deployment_upgrade_path_name_by_id(
 		UPDATE
 			deployment_upgrade_path
 		SET
-			name = ?
+			name = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		name,
 		upgrade_path_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn delete_deployment_upgrade_path_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -344,11 +376,11 @@ pub async fn delete_deployment_upgrade_path_by_id(
 		DELETE FROM
 			deployment_upgrade_path
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		upgrade_path_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }

@@ -9,7 +9,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{DeploymentEntryPoint, DeploymentEntryPointType},
+		db_mapping::{DeploymentEntryPoint, DeploymentEntryPointValue},
 		rbac::permissions,
 	},
 	pin_fn,
@@ -43,7 +43,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -76,7 +76,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -109,7 +109,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&entry_point_id,
 					)
 					.await?;
@@ -142,7 +142,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&entry_point_id,
 					)
 					.await?;
@@ -192,7 +192,7 @@ async fn list_entry_points(
 	let deployment_id = deployment_id.as_deref();
 
 	let mut entry_points = db::get_deployment_entry_points_in_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?;
@@ -208,7 +208,7 @@ async fn list_entry_points(
 		entry_points = entry_points
 			.into_iter()
 			.filter(|entry_point| {
-				if let DeploymentEntryPointType::Deployment {
+				if let DeploymentEntryPointValue::Deployment {
 					deployment_id,
 					deployment_port: _,
 				} = &entry_point.entry_point_type
@@ -248,7 +248,7 @@ async fn list_entry_points(
 			);
 			map.insert(request_keys::PATH.to_string(), Value::String(path));
 			match entry_point_type {
-				DeploymentEntryPointType::Deployment {
+				DeploymentEntryPointValue::Deployment {
 					deployment_id,
 					deployment_port,
 				} => {
@@ -265,7 +265,7 @@ async fn list_entry_points(
 						Value::Number(deployment_port.into()),
 					);
 				}
-				DeploymentEntryPointType::Redirect { url } => {
+				DeploymentEntryPointValue::Redirect { url } => {
 					map.insert(
 						request_keys::ENTRY_POINT_TYPE.to_string(),
 						Value::String("redirect".to_string()),
@@ -275,7 +275,7 @@ async fn list_entry_points(
 						Value::String(url),
 					);
 				}
-				DeploymentEntryPointType::Proxy { url } => {
+				DeploymentEntryPointValue::Proxy { url } => {
 					map.insert(
 						request_keys::ENTRY_POINT_TYPE.to_string(),
 						Value::String("proxy".to_string()),
@@ -374,7 +374,7 @@ async fn create_entry_point(
 
 	let entry_point_uuid =
 		service::create_deployment_entry_point_in_organisation(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			&organisation_id,
 			sub_domain,
 			&domain_id,
@@ -450,7 +450,7 @@ async fn edit_entry_point(
 		.transpose()?;
 
 	service::update_deployment_entry_point(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&entry_point_id,
 		entry_point_type,
 		deployment_id.as_deref(),
@@ -474,7 +474,7 @@ async fn delete_entry_point(
 			.unwrap();
 
 	db::delete_deployment_entry_point_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&entry_point_id,
 	)
 	.await?;

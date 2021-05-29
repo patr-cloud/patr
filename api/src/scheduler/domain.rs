@@ -42,10 +42,11 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 pub async fn refresh_domain_tld_list() -> crate::Result<()> {
-	let data = surf::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
-		.await?
-		.body_string()
-		.await?;
+	let data =
+		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+			.await?
+			.text()
+			.await?;
 
 	let tlds = data
 		.split('\n')
@@ -61,8 +62,7 @@ pub async fn refresh_domain_tld_list() -> crate::Result<()> {
 
 async fn verify_unverified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.mysql;
-	let mut connection = db_pool.begin().await?;
+	let mut connection = config.database.begin().await?;
 
 	let unverified_domains =
 		db::get_all_unverified_domains(&mut connection).await?;
@@ -140,15 +140,18 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 		// else
 
 		// Domain is still not verified. Initiate zone activation check
-		let response = surf::put(format!(
-			"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
-			response.result.id
-		))
-		.header(
-			"Authorization",
-			format!("Bearer {}", config.config.cloudflare.api_token),
-		)
-		.await;
+		let reqwest_client = reqwest::Client::new();
+		let response = reqwest_client
+			.put(format!(
+				"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
+				response.result.id
+			))
+			.header(
+				"Authorization",
+				format!("Bearer {}", config.config.cloudflare.api_token),
+			)
+			.send()
+			.await;
 		if let Err(err) = response {
 			log::error!("Cannot initiate zone activation check: {}", err);
 		}
@@ -159,8 +162,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 
 async fn reverify_verified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
-	let db_pool = &config.mysql;
-	let mut connection = db_pool.begin().await?;
+	let mut connection = config.database.begin().await?;
 
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;
@@ -214,25 +216,24 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 
 		if let Status::Active = response.result.status {
 			continue;
-		} else {
-			// Domain is now unverified
-			db::set_domain_as_unverified(&mut connection, &verified_domain.id)
-				.await?;
-			let notification_email = db::get_notification_email_for_domain(
-				&mut connection,
-				&verified_domain.id,
-			)
-			.await?;
-			if notification_email.is_none() {
-				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
-				continue;
-			}
-			mailer::send_domain_unverified_mail(
-				config.config.clone(),
-				notification_email.unwrap(),
-				verified_domain.name,
-			);
 		}
+		// Domain is now unverified
+		db::set_domain_as_unverified(&mut connection, &verified_domain.id)
+			.await?;
+		let notification_email = db::get_notification_email_for_domain(
+			&mut connection,
+			&verified_domain.id,
+		)
+		.await?;
+		if notification_email.is_none() {
+			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
+			continue;
+		}
+		mailer::send_domain_unverified_mail(
+			config.config.clone(),
+			notification_email.unwrap(),
+			verified_domain.name,
+		);
 	}
 
 	Ok(())

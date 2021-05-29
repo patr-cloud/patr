@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
-use semver::Version;
+use semver::{BuildMetadata, Prerelease, Version};
 
 use crate::{error, utils::Error};
 
@@ -10,8 +10,8 @@ pub const DATABASE_VERSION: Version = Version {
 	major: 0,
 	minor: 0,
 	patch: 0,
-	pre: vec![],
-	build: vec![],
+	pre: Prerelease::EMPTY,
+	build: BuildMetadata::EMPTY,
 };
 
 pub const APP_NAME: &str = crate_name!();
@@ -21,6 +21,8 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum ResourceOwnerType {
 	Personal,
 	Organisation,
@@ -54,6 +56,7 @@ pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const EMAIL: &str = "email";
 	pub const PASSWORD: &str = "password";
+	pub const NEW_PASSWORD: &str = "newPassword";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
 	pub const ERRORS: &str = "errors";

@@ -39,7 +39,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -72,7 +72,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -104,7 +104,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -136,7 +136,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -168,7 +168,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -200,7 +200,7 @@ pub fn create_sub_app(
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&deployment_id,
 					)
 					.await?;
@@ -229,7 +229,7 @@ async fn list_deployments(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 	let deployments = db::get_deployments_for_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -313,7 +313,7 @@ async fn create_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let deployment_id = service::create_deployment_in_organisation(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 		name,
 		registry,
@@ -338,7 +338,7 @@ async fn get_deployment_info(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 	let deployment = db::get_deployment_by_id(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?
@@ -365,14 +365,14 @@ async fn get_deployment_config(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(context.get_mysql_connection(), &deployment_id)
+	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let env_vars: Map<String, Value> =
 		db::get_environment_variables_for_deployment(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			&deployment_id,
 		)
 		.await?
@@ -380,13 +380,13 @@ async fn get_deployment_config(
 		.map(|(key, value)| (key, Value::String(value)))
 		.collect();
 	let ports = db::get_exposed_ports_for_deployment(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?;
 	let volumes: Map<String, Value> =
 		db::get_persistent_volumes_for_deployment(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			&deployment_id,
 		)
 		.await?
@@ -463,7 +463,7 @@ pub async fn update_deployment_config(
 	}
 
 	service::update_configuration_for_deployment(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&deployment_id,
 		&exposed_ports,
 		&environment_variables,
@@ -484,13 +484,16 @@ async fn delete_deployment(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(context.get_mysql_connection(), &deployment_id)
+	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::delete_deployment_by_id(context.get_mysql_connection(), &deployment_id)
-		.await?;
+	db::delete_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?;
 
 	// TODO stop and delete the container running the image, if it exists
 

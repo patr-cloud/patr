@@ -1,22 +1,29 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{User, UserLogin},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType, get_current_time_millis,
-		settings::Settings, validator, Error,
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
 	},
+	Database,
 };
 
 pub async fn is_username_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(&username) {
@@ -31,7 +38,7 @@ pub async fn is_username_allowed(
 }
 
 pub async fn is_email_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	email: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(&email) {
@@ -47,7 +54,7 @@ pub async fn is_email_allowed(
 }
 
 pub async fn is_phone_number_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<bool, Error> {
@@ -74,7 +81,7 @@ pub async fn is_phone_number_allowed(
 
 /// Creates a new user to be signed up and returns an OTP
 pub async fn create_user_join_request(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	username: &str,
 	account_type: ResourceOwnerType,
 	password: &str,
@@ -102,72 +109,61 @@ pub async fn create_user_join_request(
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
-	// Either of backup email or phone number must be mentioned
-	if backup_email
-		.or(backup_phone_country_code.and(backup_phone_number))
-		.is_none()
-	{
-		Error::as_result()
-			.status(400)
-			.body(error!(NO_RECOVERY_OPTIONS).to_string())?;
-	}
-
 	// If backup email is given, extract the local and domain id from it
 	let backup_email_local;
 	let backup_email_domain_id;
-	if let Some(backup_email) = backup_email {
-		// Check if backup_email is allowed and valid
-		if !is_email_allowed(connection, backup_email).await? {
-			Error::as_result()
-				.status(200)
-				.body(error!(EMAIL_TAKEN).to_string())?;
-		}
+	let phone_country_code;
+	let phone_number;
 
-		// extract the email_local and domain name from it
-		let (email_local, domain_name) = backup_email
-			.split_once('@')
-			.status(400)
-			.body(error!(INVALID_EMAIL).to_string())?;
-
-		// Assign values
-		backup_email_local = Some(email_local);
-		backup_email_domain_id = Some(
-			service::ensure_personal_domain_exists(connection, domain_name)
+	match (backup_email, backup_phone_country_code, backup_phone_number) {
+		// If phone is provided
+		(None, Some(country_code), Some(number)) => {
+			if !is_phone_number_allowed(connection, country_code, number)
 				.await?
-				.as_bytes()
-				.to_vec(),
-		);
-	} else {
-		backup_email_local = None;
-		backup_email_domain_id = None;
-	}
-	let backup_email_domain_id =
-		if let Some(ref domain_id) = backup_email_domain_id {
-			Some(domain_id.as_slice())
-		} else {
-			None
-		};
-
-	// If phone number is given, check if it's valid
-	let (backup_phone_country_code, backup_phone_number) =
-		if let Some((phone_country_code, phone_number)) =
-			backup_phone_country_code.zip(backup_phone_number)
-		{
-			if !is_phone_number_allowed(
-				connection,
-				phone_country_code,
-				phone_number,
-			)
-			.await?
 			{
 				Error::as_result()
 					.status(400)
 					.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 			}
-			(Some(phone_country_code), Some(phone_number))
-		} else {
-			(None, None)
-		};
+			phone_country_code = Some(country_code);
+			phone_number = Some(number);
+			backup_email_local = None;
+			backup_email_domain_id = None;
+		}
+		// If backup_email is only provided
+		(Some(backup_email), None, None) => {
+			// Check if backup_email is allowed and valid
+			if !is_email_allowed(connection, backup_email).await? {
+				Error::as_result()
+					.status(200)
+					.body(error!(EMAIL_TAKEN).to_string())?;
+			}
+
+			// extract the email_local and domain name from it
+			let (email_local, domain_name) = backup_email
+				.split_once('@')
+				.status(400)
+				.body(error!(INVALID_EMAIL).to_string())?;
+
+			// Assign values
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(
+				service::ensure_personal_domain_exists(connection, domain_name)
+					.await?
+					.as_bytes()
+					.to_vec(),
+			);
+			phone_country_code = None;
+			phone_number = None;
+		}
+		// If both or neither recovery options are provided
+		_ => {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()));
+		}
+	}
+	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
@@ -239,8 +235,8 @@ pub async fn create_user_join_request(
 				(first_name, last_name),
 				backup_email_local,
 				backup_email_domain_id,
-				backup_phone_country_code,
-				backup_phone_number,
+				phone_country_code,
+				phone_number,
 				org_email_local,
 				org_domain_name,
 				organisation_name,
@@ -257,8 +253,8 @@ pub async fn create_user_join_request(
 				(first_name, last_name),
 				backup_email_local,
 				backup_email_domain_id,
-				backup_phone_country_code,
-				backup_phone_number,
+				phone_country_code,
+				phone_number,
 				&token_hash,
 				token_expiry,
 			)
@@ -272,7 +268,7 @@ pub async fn create_user_join_request(
 // Creates a login in the db and returns it
 // loginId and refresh_token are separate things
 pub async fn create_login_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
@@ -306,7 +302,7 @@ pub async fn create_login_for_user(
 /// function to sign in a user
 /// Returns: JWT (String), Refresh Token (Uuid)
 pub async fn sign_in_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &[u8],
 	config: &Settings,
 ) -> Result<(String, Uuid, Uuid), Error> {
@@ -324,7 +320,7 @@ pub async fn sign_in_user(
 }
 
 pub async fn get_user_login_for_login_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	login_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
@@ -343,7 +339,7 @@ pub async fn get_user_login_for_login_id(
 }
 
 pub async fn generate_access_token(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
 	user_login: &UserLogin,
 ) -> Result<String, Error> {
@@ -377,7 +373,13 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
+	let token_data = AccessTokenData::new(
+		iat,
+		exp,
+		orgs,
+		hex::encode(&user_login.login_id),
+		user,
+	);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
@@ -388,7 +390,7 @@ pub async fn generate_access_token(
 // function to reset password
 // TODO: Remove otp from response
 pub async fn forgot_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	user_id: &str,
 ) -> Result<(String, String), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
@@ -426,7 +428,7 @@ pub async fn forgot_password(
 }
 
 pub async fn reset_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],
@@ -459,12 +461,21 @@ pub async fn reset_password(
 }
 
 pub async fn join_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<(String, Uuid, Uuid, Option<String>, Option<String>, Option<String>), Error>
-{
+) -> Result<
+	(
+		String,
+		Uuid,
+		Uuid,
+		Option<String>,
+		Option<String>,
+		Option<String>,
+	),
+	Error,
+> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
@@ -517,55 +528,45 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	let backup_email_local =
-		if let Some(ref value) = user_data.backup_email_local {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_email_domain_id =
-		if let Some(ref value) = user_data.backup_email_domain_id {
-			Some(value.as_slice())
-		} else {
-			None
-		};
+	let backup_email_local = user_data.backup_email_local.as_deref();
+	let backup_email_domain_id = user_data.backup_email_domain_id.as_deref();
 	let backup_phone_country_code =
-		if let Some(ref value) = user_data.backup_phone_country_code {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_phone_number =
-		if let Some(ref value) = user_data.backup_phone_number {
-			Some(value.as_str())
-		} else {
-			None
-		};
+		user_data.backup_phone_country_code.as_deref();
+	let backup_phone_number = user_data.backup_phone_number.as_deref();
+	db::begin_deferred_constraints(connection).await?;
 
 	if let Some((email_local, domain_id)) = user_data
 		.backup_email_local
 		.as_ref()
 		.zip(user_data.backup_email_domain_id.as_ref())
 	{
-		db::create_orphaned_personal_email(
+		db::add_personal_email_for_user(
 			connection,
+			user_id,
 			&email_local,
 			&domain_id,
 		)
 		.await?;
-	}
-
-	if let Some((phone_country_code, phone_number)) = user_data
+	} else if let Some((phone_country_code, phone_number)) = user_data
 		.backup_phone_country_code
 		.as_ref()
 		.zip(user_data.backup_phone_number.as_ref())
 	{
-		db::create_orphaned_phone_number(
+		db::add_phone_number_for_user(
 			connection,
+			user_id,
 			&phone_country_code,
 			&phone_number,
 		)
 		.await?;
+	} else {
+		log::error!(
+			"Got neither backup email, nor backup phone number while signing up user: {}",
+			user_data.username
+		);
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
 	}
 
 	db::create_user(
@@ -581,19 +582,14 @@ pub async fn join_user(
 		backup_phone_number,
 	)
 	.await?;
-
-	let account_type = user_data
-		.account_type
-		.parse::<ResourceOwnerType>()
-		.ok()
-		.unwrap();
+	db::end_deferred_constraints(connection).await?;
 
 	let welcome_email_to; // Send the "welcome to vicara" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
 	// For an organisation, create the organisation and domain
-	if let ResourceOwnerType::Organisation = account_type {
+	if let ResourceOwnerType::Organisation = user_data.account_type {
 		let organisation_id = service::create_organisation(
 			connection,
 			&user_data.organisation_name.unwrap(),
@@ -637,11 +633,8 @@ pub async fn join_user(
 					.status(500)?
 					.name
 			));
-		} else {
-			backup_email_to = None;
-		}
-
-		if let Some((phone_country_code, phone_number)) = user_data
+			backup_phone_number_to = None;
+		} else if let Some((phone_country_code, phone_number)) = user_data
 			.backup_phone_country_code
 			.as_ref()
 			.zip(user_data.backup_phone_number.as_ref())
@@ -654,8 +647,15 @@ pub async fn join_user(
 			.status(500)?;
 			backup_phone_number_to =
 				Some(format!("+{}{}", country.phone_code, phone_number));
+			backup_email_to = None;
 		} else {
-			backup_phone_number_to = None;
+			log::error!(
+				"Got neither backup email, nor backup phone number while signing up user: {}",
+				user_data.username
+			);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
 	} else {
 		if let Some((email_local, domain_id)) = user_data
@@ -671,13 +671,8 @@ pub async fn join_user(
 					.status(500)?
 					.name
 			));
-		} else {
-			welcome_email_to = None;
-		}
-
-		backup_email_to = None;
-
-		if let Some((phone_country_code, phone_number)) = user_data
+			backup_phone_number_to = None;
+		} else if let Some((phone_country_code, phone_number)) = user_data
 			.backup_phone_country_code
 			.as_ref()
 			.zip(user_data.backup_phone_number.as_ref())
@@ -690,9 +685,18 @@ pub async fn join_user(
 			.status(500)?;
 			backup_phone_number_to =
 				Some(format!("+{}{}", country.phone_code, phone_number));
+			welcome_email_to = None;
 		} else {
-			backup_phone_number_to = None;
+			log::error!(
+				"Got neither backup email, nor backup phone number while signing up user: {}",
+				user_data.username
+			);
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
+
+		backup_email_to = None;
 	}
 
 	// add personal organisation
@@ -703,34 +707,6 @@ pub async fn join_user(
 		user_id,
 	)
 	.await?;
-
-	if let Some((email_local, domain_id)) = user_data
-		.backup_email_local
-		.as_ref()
-		.zip(user_data.backup_email_domain_id.as_ref())
-	{
-		db::set_user_for_personal_email(
-			connection,
-			user_id,
-			&email_local,
-			&domain_id,
-		)
-		.await?;
-	}
-
-	if let Some((phone_country_code, phone_number)) = user_data
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user_data.backup_phone_number.as_ref())
-	{
-		db::set_user_for_phone_number(
-			connection,
-			user_id,
-			&phone_country_code,
-			&phone_number,
-		)
-		.await?;
-	}
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 

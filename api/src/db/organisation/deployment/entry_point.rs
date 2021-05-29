@@ -1,30 +1,50 @@
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
 use crate::{
-	models::db_mapping::{DeploymentEntryPoint, DeploymentEntryPointType},
-	query,
+	models::db_mapping::{
+		DeploymentEntryPoint, DeploymentEntryPointType,
+		DeploymentEntryPointValue,
+	},
+	query, Database,
 };
 
 pub async fn initialize_entry_point_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing entry point tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS deployment_entry_point(
-			id BINARY(16) PRIMARY KEY,
-			sub_domain VARCHAR(255) NOT NULL DEFAULT "@",
-			domain_id BINARY(16) NOT NULL,
-			path VARCHAR(255) NOT NULL DEFAULT "/",
-			entry_point_type ENUM('deployment', 'redirect', 'proxy') NOT NULL,
-			deployment_id BINARY(16),
-			deployment_port SMALLINT UNSIGNED,
+		CREATE TYPE DEPLOYMENT_ENTRY_POINT_TYPE AS ENUM(
+			'deployment',
+			'redirect',
+			'proxy'
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_entry_point(
+			id BYTEA CONSTRAINT deployment_entry_point_pk PRIMARY KEY,
+			sub_domain VARCHAR(255) NOT NULL DEFAULT '@',
+			domain_id BYTEA NOT NULL
+				CONSTRAINT deployment_entry_point_fk_domain_id
+					REFERENCES organisation_domain(id),
+			path VARCHAR(255) NOT NULL DEFAULT '/',
+			entry_point_type DEPLOYMENT_ENTRY_POINT_TYPE NOT NULL,
+			deployment_id BYTEA,
+			deployment_port INTEGER
+				CONSTRAINT deployment_entry_point_chk_deployment_port_u16
+					CHECK(deployment_port >= 0 AND deployment_port <= 65534),
 			url TEXT,
-			UNIQUE (sub_domain, domain_id, path),
-			FOREIGN KEY(domain_id) REFERENCES organisation_domain(id),
-			FOREIGN KEY(deployment_id, deployment_port)
-			REFERENCES deployment_exposed_port(deployment_id, port),
-			CONSTRAINT CHECK(
+			CONSTRAINT deployment_entry_point_uq_sub_domain_domain_id_path
+				UNIQUE(sub_domain, domain_id, path),
+			CONSTRAINT deployment_entry_point_fk_deployment_id_deployment_port
+				FOREIGN KEY(deployment_id, deployment_port)
+				REFERENCES deployment_exposed_port(deployment_id, port),
+			CONSTRAINT deployment_entry_point_chk_port_url_valid CHECK(
 				(
 					entry_point_type = 'deployment' AND
 					(
@@ -55,30 +75,38 @@ pub async fn initialize_entry_point_pre(
 }
 
 pub async fn initialize_entry_point_post(
-	transaction: &mut Transaction<'_, MySql>,
+	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up entry point tables initialization");
 	query!(
 		r#"
 		ALTER TABLE deployment_entry_point
-		ADD CONSTRAINT
-		FOREIGN KEY (id) REFERENCES resource(id);
+		ADD CONSTRAINT deployment_entry_point_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(transaction)
+	.execute(&mut *transaction)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn get_deployment_entry_points_in_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	organisation_id: &[u8],
 ) -> Result<Vec<DeploymentEntryPoint>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			deployment_entry_point.*
+			deployment_entry_point.id,
+			deployment_entry_point.sub_domain,
+			deployment_entry_point.domain_id,
+			deployment_entry_point.path,
+			deployment_entry_point.entry_point_type 
+				as "entry_point_type: DeploymentEntryPointType",
+			deployment_entry_point.deployment_id,
+			deployment_entry_point.deployment_port,
+			deployment_entry_point.url
 		FROM
 			deployment_entry_point
 		INNER JOIN
@@ -86,11 +114,11 @@ pub async fn get_deployment_entry_points_in_organisation(
 		ON
 			deployment_entry_point.id = resource.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| DeploymentEntryPoint {
@@ -102,22 +130,23 @@ pub async fn get_deployment_entry_points_in_organisation(
 		},
 		domain_id: row.domain_id,
 		path: row.path,
-		entry_point_type: match row.entry_point_type.as_str() {
-			"deployment" => DeploymentEntryPointType::Deployment {
-				deployment_id: row.deployment_id.unwrap(),
-				deployment_port: row.deployment_port.unwrap(),
-			},
-			"redirect" => DeploymentEntryPointType::Redirect {
-				url: row.url.unwrap(),
-			},
-			"proxy" => DeploymentEntryPointType::Proxy {
-				url: row.url.unwrap(),
-			},
-			_ => panic!(
-				"{} {}",
-				"Database shouldn't allow any other entry point type.",
-				"How did this happen?"
-			),
+		entry_point_type: match row.entry_point_type {
+			DeploymentEntryPointType::Deployment => {
+				DeploymentEntryPointValue::Deployment {
+					deployment_id: row.deployment_id.unwrap(),
+					deployment_port: row.deployment_port.unwrap() as u16,
+				}
+			}
+			DeploymentEntryPointType::Redirect => {
+				DeploymentEntryPointValue::Redirect {
+					url: row.url.unwrap(),
+				}
+			}
+			DeploymentEntryPointType::Proxy => {
+				DeploymentEntryPointValue::Proxy {
+					url: row.url.unwrap(),
+				}
+			}
 		},
 	})
 	.collect();
@@ -126,7 +155,7 @@ pub async fn get_deployment_entry_points_in_organisation(
 }
 
 pub async fn get_deployment_entry_point_by_url(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	sub_domain: &str,
 	domain_id: &[u8],
 	path: &str,
@@ -134,19 +163,27 @@ pub async fn get_deployment_entry_point_by_url(
 	query!(
 		r#"
 		SELECT
-			*
+			deployment_entry_point.id,
+			deployment_entry_point.sub_domain,
+			deployment_entry_point.domain_id,
+			deployment_entry_point.path,
+			deployment_entry_point.entry_point_type 
+				as "entry_point_type: DeploymentEntryPointType",
+			deployment_entry_point.deployment_id,
+			deployment_entry_point.deployment_port,
+			deployment_entry_point.url
 		FROM
 			deployment_entry_point
 		WHERE
-			sub_domain = ? AND
-			domain_id = ? AND
-			path = ?;
+			sub_domain = $1 AND
+			domain_id = $2 AND
+			path = $3;
 		"#,
 		sub_domain,
 		domain_id,
 		path
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| {
 		rows.into_iter().next().map(|row| DeploymentEntryPoint {
@@ -158,43 +195,51 @@ pub async fn get_deployment_entry_point_by_url(
 			},
 			domain_id: row.domain_id,
 			path: row.path,
-			entry_point_type: match row.entry_point_type.as_str() {
-				"deployment" => DeploymentEntryPointType::Deployment {
-					deployment_id: row.deployment_id.unwrap(),
-					deployment_port: row.deployment_port.unwrap(),
-				},
-				"redirect" => DeploymentEntryPointType::Redirect {
-					url: row.url.unwrap(),
-				},
-				"proxy" => DeploymentEntryPointType::Proxy {
-					url: row.url.unwrap(),
-				},
-				_ => panic!(
-					"{} {}",
-					"Database shouldn't allow any other entry point type.",
-					"How did this happen?"
-				),
+			entry_point_type: match row.entry_point_type {
+				DeploymentEntryPointType::Deployment => {
+					DeploymentEntryPointValue::Deployment {
+						deployment_id: row.deployment_id.unwrap(),
+						deployment_port: row.deployment_port.unwrap() as u16,
+					}
+				}
+				DeploymentEntryPointType::Redirect => {
+					DeploymentEntryPointValue::Redirect {
+						url: row.url.unwrap(),
+					}
+				}
+				DeploymentEntryPointType::Proxy => {
+					DeploymentEntryPointValue::Proxy {
+						url: row.url.unwrap(),
+					}
+				}
 			},
 		})
 	})
 }
 
 pub async fn get_deployment_entry_point_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 ) -> Result<Option<DeploymentEntryPoint>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
-			*
+			id,
+			sub_domain,
+			domain_id,
+			path,
+			entry_point_type as "entry_point_type: DeploymentEntryPointType",
+			deployment_id,
+			deployment_port,
+			url
 		FROM
 			deployment_entry_point
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		entry_point_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| {
 		rows.into_iter().next().map(|row| DeploymentEntryPoint {
@@ -206,29 +251,30 @@ pub async fn get_deployment_entry_point_by_id(
 			},
 			domain_id: row.domain_id,
 			path: row.path,
-			entry_point_type: match row.entry_point_type.as_str() {
-				"deployment" => DeploymentEntryPointType::Deployment {
-					deployment_id: row.deployment_id.unwrap(),
-					deployment_port: row.deployment_port.unwrap(),
-				},
-				"redirect" => DeploymentEntryPointType::Redirect {
-					url: row.url.unwrap(),
-				},
-				"proxy" => DeploymentEntryPointType::Proxy {
-					url: row.url.unwrap(),
-				},
-				_ => panic!(
-					"{} {}",
-					"Database shouldn't allow any other entry point type.",
-					"How did this happen?"
-				),
+			entry_point_type: match row.entry_point_type {
+				DeploymentEntryPointType::Deployment => {
+					DeploymentEntryPointValue::Deployment {
+						deployment_id: row.deployment_id.unwrap(),
+						deployment_port: row.deployment_port.unwrap() as u16,
+					}
+				}
+				DeploymentEntryPointType::Redirect => {
+					DeploymentEntryPointValue::Redirect {
+						url: row.url.unwrap(),
+					}
+				}
+				DeploymentEntryPointType::Proxy => {
+					DeploymentEntryPointValue::Proxy {
+						url: row.url.unwrap(),
+					}
+				}
 			},
 		})
 	})
 }
 
 pub async fn add_deployment_entry_point_for_deployment(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -241,22 +287,22 @@ pub async fn add_deployment_entry_point_for_deployment(
 		INSERT INTO
 			deployment_entry_point
 		VALUES
-			(?, ?, ?, ?, 'deployment', ?, ?, NULL);
+			($1, $2, $3, $4, 'deployment', $5, $6, NULL);
 		"#,
 		entry_point_id,
 		sub_domain,
 		domain_id,
 		path,
 		deployment_id,
-		deployment_port
+		deployment_port as i32
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn add_deployment_entry_point_for_redirect(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -268,7 +314,7 @@ pub async fn add_deployment_entry_point_for_redirect(
 		INSERT INTO
 			deployment_entry_point
 		VALUES
-			(?, ?, ?, ?, 'redirect', NULL, NULL, ?);
+			($1, $2, $3, $4, 'redirect', NULL, NULL, $5);
 		"#,
 		entry_point_id,
 		sub_domain,
@@ -276,13 +322,13 @@ pub async fn add_deployment_entry_point_for_redirect(
 		path,
 		url
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn add_deployment_entry_point_for_proxy(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -294,7 +340,7 @@ pub async fn add_deployment_entry_point_for_proxy(
 		INSERT INTO
 			deployment_entry_point
 		VALUES
-			(?, ?, ?, ?, 'proxy', NULL, NULL, ?);
+			($1, $2, $3, $4, 'proxy', NULL, NULL, $5);
 		"#,
 		entry_point_id,
 		sub_domain,
@@ -302,13 +348,13 @@ pub async fn add_deployment_entry_point_for_proxy(
 		path,
 		url
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn update_deployment_entry_point_to_deployment(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	deployment_id: &[u8],
 	deployment_port: u16,
@@ -318,24 +364,24 @@ pub async fn update_deployment_entry_point_to_deployment(
 		UPDATE
 			deployment_entry_point
 		SET
-			entry_point_type = 'deployment' AND
-			deployment_id = ? AND
-			deployment_port = ? AND
+			entry_point_type = 'deployment',
+			deployment_id = $1,
+			deployment_port = $2,
 			url = NULL
 		WHERE
-			id = ?;
+			id = $3;
 		"#,
 		deployment_id,
-		deployment_port,
+		deployment_port as i32,
 		entry_point_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn update_deployment_entry_point_to_redirect(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	url: &str,
 ) -> Result<(), sqlx::Error> {
@@ -344,23 +390,23 @@ pub async fn update_deployment_entry_point_to_redirect(
 		UPDATE
 			deployment_entry_point
 		SET
-			entry_point_type = 'redirect' AND
-			deployment_id = NULL AND
-			deployment_port = NULL AND
-			url = ?
+			entry_point_type = 'redirect',
+			deployment_id = NULL,
+			deployment_port = NULL,
+			url = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		url,
 		entry_point_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn update_deployment_entry_point_to_proxy(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 	url: &str,
 ) -> Result<(), sqlx::Error> {
@@ -369,23 +415,23 @@ pub async fn update_deployment_entry_point_to_proxy(
 		UPDATE
 			deployment_entry_point
 		SET
-			entry_point_type = 'proxy' AND
-			deployment_id = NULL AND
-			deployment_port = NULL AND
-			url = ?
+			entry_point_type = 'proxy',
+			deployment_id = NULL,
+			deployment_port = NULL,
+			url = $1
 		WHERE
-			id = ?;
+			id = $2;
 		"#,
 		url,
 		entry_point_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn delete_deployment_entry_point_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut Transaction<'_, Database>,
 	entry_point_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -393,11 +439,11 @@ pub async fn delete_deployment_entry_point_by_id(
 		DELETE FROM
 			deployment_entry_point
 		WHERE
-			id = ?
+			id = $1;
 		"#,
 		entry_point_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }

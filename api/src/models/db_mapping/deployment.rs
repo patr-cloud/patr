@@ -1,8 +1,9 @@
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::{MySql, Transaction};
+use sqlx::Transaction;
 
-use crate::{db, error, utils::Error};
+use crate::{db, error, utils::Error, Database};
+
 pub struct DockerRepository {
 	pub id: Vec<u8>,
 	pub organisation_id: Vec<u8>,
@@ -59,11 +60,11 @@ pub struct Deployment {
 impl Deployment {
 	pub async fn get_full_image(
 		&self,
-		connection: &mut Transaction<'_, MySql>,
+		connection: &mut Transaction<'_, Database>,
 	) -> Result<String, Error> {
 		if self.registry == "registry.docker.vicara.co" {
 			let docker_repository = db::get_docker_repository_by_id(
-				connection,
+				&mut *connection,
 				self.repository_id
 					.as_ref()
 					.status(500)
@@ -74,7 +75,7 @@ impl Deployment {
 			.body(error!(SERVER_ERROR).to_string())?;
 
 			let organisation = db::get_organisation_info(
-				connection,
+				&mut *connection,
 				&docker_repository.organisation_id,
 			)
 			.await?
@@ -116,10 +117,10 @@ pub struct MachineType {
 pub struct DeploymentUpgradePath {
 	pub id: Vec<u8>,
 	pub name: String,
-	pub default_machine_type: Option<Vec<u8>>,
+	pub default_machine_type: Vec<u8>,
 }
 
-pub enum DeploymentEntryPointType {
+pub enum DeploymentEntryPointValue {
 	Deployment {
 		deployment_id: Vec<u8>,
 		deployment_port: u16,
@@ -132,10 +133,18 @@ pub enum DeploymentEntryPointType {
 	},
 }
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "DEPLOYMENT_ENTRY_POINT_TYPE", rename_all = "lowercase")]
+pub enum DeploymentEntryPointType {
+	Deployment,
+	Redirect,
+	Proxy,
+}
+
 pub struct DeploymentEntryPoint {
 	pub id: Vec<u8>,
 	pub sub_domain: Option<String>,
 	pub domain_id: Vec<u8>,
 	pub path: String,
-	pub entry_point_type: DeploymentEntryPointType,
+	pub entry_point_type: DeploymentEntryPointValue,
 }

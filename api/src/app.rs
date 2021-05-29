@@ -17,7 +17,7 @@ use eve_rs::{
 	Response,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
-use sqlx::mysql::MySqlPool;
+use sqlx::Pool;
 use tokio::{signal, time};
 
 use crate::{
@@ -25,12 +25,13 @@ use crate::{
 	pin_fn,
 	routes,
 	utils::{settings::Settings, Error, ErrorData, EveContext, EveMiddleware},
+	Database,
 };
 
 #[derive(Clone)]
 pub struct App {
 	pub config: Settings,
-	pub mysql: MySqlPool,
+	pub database: Pool<Database>,
 	pub redis: RedisConnection,
 	pub render_register: Arc<Handlebars<'static>>,
 }
@@ -105,10 +106,13 @@ async fn get_shutdown_signal() {
 }
 
 fn eve_error_handler(mut response: Response, error: Error) -> Response {
-	log::error!(
-		"Error occured while processing request: {}",
-		error.get_error().to_string()
-	);
+	let error_string = error.get_error().to_string();
+	if error_string != "entity not found" {
+		log::error!(
+			"Error occured while processing request: {}",
+			error.get_error().to_string()
+		);
+	}
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
 	let default_error = error!(SERVER_ERROR).to_string();
@@ -129,10 +133,10 @@ async fn init_states(
 
 	// Get a connection from the connection pool and begin a transaction on that
 	// connection
-	let transaction = context.get_state().mysql.begin().await?;
+	let transaction = context.get_state().database.begin().await?;
 
-	// Set the mysql transaction
-	context.set_mysql_connection(transaction);
+	// Set the database connection
+	context.set_database_connection(transaction);
 	let path = context.get_path();
 	let method = context.get_method().clone();
 
@@ -146,7 +150,7 @@ async fn init_states(
 	match result {
 		Ok(mut context) => {
 			context
-				.take_mysql_connection()
+				.take_database_connection()
 				.commit()
 				.await
 				.body("Unable to commit transaction")?;

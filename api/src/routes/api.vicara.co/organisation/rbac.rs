@@ -38,7 +38,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -68,7 +68,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -98,7 +98,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -130,7 +130,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -161,7 +161,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -192,7 +192,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -222,7 +222,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -254,7 +254,7 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
-						context.get_mysql_connection(),
+						context.get_database_connection(),
 						&organisation_id,
 					)
 					.await?;
@@ -283,7 +283,7 @@ async fn list_all_roles(
 		context.get_param(request_keys::ORGANISATION_ID).unwrap();
 	let organisation_id = hex::decode(organisation_id).unwrap();
 	let roles = db::get_all_organisation_roles(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
@@ -316,25 +316,26 @@ async fn list_all_permissions(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let permissions = db::get_all_permissions(context.get_mysql_connection())
-		.await?
-		.into_iter()
-		.map(|permission| {
-			let permission_id = permission.id.encode_hex::<String>();
-			if let Some(description) = permission.description {
-				json!({
-					request_keys::PERMISSION_ID: permission_id,
-					request_keys::NAME: permission.name,
-					request_keys::DESCRIPTION: description,
-				})
-			} else {
-				json!({
-					request_keys::PERMISSION_ID: permission_id,
-					request_keys::NAME: permission.name,
-				})
-			}
-		})
-		.collect::<Vec<_>>();
+	let permissions =
+		db::get_all_permissions(context.get_database_connection())
+			.await?
+			.into_iter()
+			.map(|permission| {
+				let permission_id = permission.id.encode_hex::<String>();
+				if let Some(description) = permission.description {
+					json!({
+						request_keys::PERMISSION_ID: permission_id,
+						request_keys::NAME: permission.name,
+						request_keys::DESCRIPTION: description,
+					})
+				} else {
+					json!({
+						request_keys::PERMISSION_ID: permission_id,
+						request_keys::NAME: permission.name,
+					})
+				}
+			})
+			.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -348,7 +349,7 @@ async fn list_all_resource_types(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let resource_types =
-		db::get_all_resource_types(context.get_mysql_connection())
+		db::get_all_resource_types(context.get_database_connection())
 			.await?
 			.into_iter()
 			.map(|resource_type| {
@@ -385,19 +386,19 @@ async fn get_permissions_for_role(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// Check if the role exists
-	let _ = db::get_role_by_id(context.get_mysql_connection(), &role_id)
+	let _ = db::get_role_by_id(context.get_database_connection(), &role_id)
 		.await?
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let resource_permissions = db::get_permissions_on_resources_for_role(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&role_id,
 	)
 	.await?;
 	let resource_type_permissions =
 		db::get_permissions_on_resource_types_for_role(
-			context.get_mysql_connection(),
+			context.get_database_connection(),
 			&role_id,
 		)
 		.await?;
@@ -491,12 +492,12 @@ async fn create_role(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
-	let role_id = db::generate_new_role_id(context.get_mysql_connection())
+	let role_id = db::generate_new_role_id(context.get_database_connection())
 		.await?
 		.as_bytes()
 		.to_vec();
 	db::create_role(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&role_id,
 		name,
 		description,
@@ -608,18 +609,18 @@ async fn update_role_permissions(
 	}
 
 	db::remove_all_permissions_for_role(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&role_id,
 	)
 	.await?;
 	db::insert_resource_permissions_for_role(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&role_id,
 		&resource_permissions,
 	)
 	.await?;
 	db::insert_resource_type_permissions_for_role(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&role_id,
 		&resource_type_permissions,
 	)
@@ -641,10 +642,10 @@ async fn delete_role(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// Remove all users who belong to this role
-	db::remove_all_users_from_role(context.get_mysql_connection(), &role_id)
+	db::remove_all_users_from_role(context.get_database_connection(), &role_id)
 		.await?;
 	// Delete role
-	db::delete_role(context.get_mysql_connection(), &role_id).await?;
+	db::delete_role(context.get_database_connection(), &role_id).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -665,12 +666,12 @@ async fn get_resource_info(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let resource =
-		db::get_resource_by_id(context.get_mysql_connection(), &resource_id)
+		db::get_resource_by_id(context.get_database_connection(), &resource_id)
 			.await?
 			.status(400)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let resource_type = db::get_resource_type_for_resource(
-		context.get_mysql_connection(),
+		context.get_database_connection(),
 		&resource.id,
 	)
 	.await?
