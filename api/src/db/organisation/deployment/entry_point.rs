@@ -21,7 +21,7 @@ pub async fn initialize_entry_point_pre(
 			deployment_port SMALLINT UNSIGNED,
 			url TEXT,
 			UNIQUE (sub_domain, domain_id, path),
-			FOREIGN KEY(domain_id) REFERENCES domain(id),
+			FOREIGN KEY(domain_id) REFERENCES organisation_domain(id),
 			FOREIGN KEY(deployment_id, deployment_port)
 			REFERENCES deployment_exposed_port(deployment_id, port),
 			CONSTRAINT CHECK(

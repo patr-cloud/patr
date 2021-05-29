@@ -3,8 +3,7 @@ use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{db_mapping::MachineType, rbac},
 	utils::Error,
 };
@@ -298,8 +297,7 @@ pub async fn create_deployment_entry_point_in_organisation(
 	let entry_point_uuid = db::generate_new_resource_id(connection).await?;
 	let entry_point_id = entry_point_uuid.as_bytes();
 
-	// TODO make this get_organisation_domain_by_id
-	let domain = db::get_domain_by_id(connection, domain_id)
+	let domain = db::get_organisation_domain_by_id(connection, domain_id)
 		.await?
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
