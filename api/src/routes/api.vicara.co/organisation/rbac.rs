@@ -213,7 +213,7 @@ pub fn create_sub_app(
 		"/role/:roleId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::EDIT_ROLE,
+				permissions::organisation::DELETE_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let organisation_id = context
 						.get_param(request_keys::ORGANISATION_ID)

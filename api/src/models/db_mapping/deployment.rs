@@ -58,77 +58,84 @@ pub struct Deployment {
 
 impl Deployment {
 	pub async fn get_full_image(
-		mut self,
+		&self,
 		connection: &mut Transaction<'_, MySql>,
-	) -> Result<Self, Error> {
+	) -> Result<String, Error> {
 		if self.registry == "registry.docker.vicara.co" {
-			match &self.repository_id {
-				Some(repo_id) => {
-					let docker_repository =
-						db::get_docker_repository_by_id(connection, &repo_id)
-							.await?
-							.status(404)
-							.body(error!(REPOSITORY_NOT_FOUND).to_string())?;
-
-					self.image_name = Some(docker_repository.name);
-				}
-				None => Error::as_result()
+			let docker_repository = db::get_docker_repository_by_id(
+				connection,
+				self.repository_id
+					.as_ref()
 					.status(500)
 					.body(error!(SERVER_ERROR).to_string())?,
-			}
-		}
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
-		Ok(Deployment {
-			id: self.id,
-			name: self.name,
-			registry: self.registry,
-			repository_id: self.repository_id,
-			image_name: self.image_name,
-			image_tag: self.image_tag,
-		})
+			let organisation = db::get_organisation_info(
+				connection,
+				&docker_repository.organisation_id,
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+			Ok(format!(
+				"{}/{}/{}",
+				"registry.docker.vicara.co",
+				organisation.name,
+				docker_repository.name
+			))
+		} else {
+			Ok(format!(
+				"{}/{}",
+				self.registry,
+				self.image_name
+					.as_ref()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?
+			))
+		}
 	}
 }
 
-pub struct DeploymentConfig {
-	pub id: Vec<u8>,
-	pub name: String,
-	pub registry: String,
-	pub image_name: String,
-	pub image_tag: String,
-	pub port_list: Vec<u8>,
-	pub env_variable_list: Vec<EnvVariable>,
-	pub volume_mount_list: Vec<VolumeMount>,
-	pub entry_point_list: Vec<EntryPoint>,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
-pub struct EntryPoint {
-	pub deployment_id: Vec<u8>,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
-}
-
-pub struct MachineType {
-	pub id: Vec<u8>,
-	pub name: String,
-	pub cpu_count: u8,
-	pub memory_count: f32,
-	pub gpu_type_id: Vec<u8>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
-pub struct EnvVariable {
-	pub deployment_id: Vec<u8>,
-	pub name: String,
-	pub value: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
 pub struct VolumeMount {
 	pub deployment_id: Vec<u8>,
 	pub name: String,
 	pub path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MachineType {
+	pub cpu_count: u8,
+	pub memory_count: f32,
+}
+
+pub struct DeploymentUpgradePath {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub default_machine_type: Option<Vec<u8>>,
+}
+
+pub enum DeploymentEntryPointType {
+	Deployment {
+		deployment_id: Vec<u8>,
+		deployment_port: u16,
+	},
+	Redirect {
+		url: String,
+	},
+	Proxy {
+		url: String,
+	},
+}
+
+pub struct DeploymentEntryPoint {
+	pub id: Vec<u8>,
+	pub sub_domain: Option<String>,
+	pub domain_id: Vec<u8>,
+	pub path: String,
+	pub entry_point_type: DeploymentEntryPointType,
 }
