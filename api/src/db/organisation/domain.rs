@@ -58,6 +58,7 @@ pub async fn initialize_domain_pre(
 pub async fn initialize_domain_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
 		ALTER TABLE domain

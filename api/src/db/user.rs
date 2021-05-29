@@ -92,6 +92,7 @@ pub async fn initialize_users_pre(
 pub async fn initialize_users_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up user tables initialization");
 	query!(
 		r#"
 		CREATE TABLE IF NOT EXISTS personal_email (

@@ -1,14 +1,15 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::rbac::permissions,
 	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -121,8 +122,72 @@ pub fn create_sub_app(
 		],
 	);
 
-	// Delete a deployment
+	// endpoint to update deployment configuration.
 	app.get(
+		"/:deploymentId/configuration",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_deployment_config)),
+		],
+	);
+
+	// endpoint to update deployment configuration.
+	app.post(
+		"/:deploymentId/configuration",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_mysql_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(update_deployment_config)),
+		],
+	);
+
+	// Delete a deployment
+	app.delete(
 		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -169,18 +234,24 @@ async fn list_deployments(
 	)
 	.await?
 	.into_iter()
-	.map(|deployment| {
-		json!({
-			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
-			request_keys::NAME: deployment.name,
-			request_keys::REGISTRY: deployment.registry,
-			request_keys::IMAGE_NAME: deployment.image_name,
-			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
-			request_keys::SUB_DOMAIN: deployment.sub_domain,
-			request_keys::PATH: deployment.path,
-			request_keys::PORT: deployment.port,
-		})
+	.filter_map(|deployment| {
+		if deployment.registry == "registry.docker.vicara.co" {
+			Some(json!({
+				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+				request_keys::NAME: deployment.name,
+				request_keys::REGISTRY: deployment.registry,
+				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
+				request_keys::IMAGE_TAG: deployment.image_tag,
+			}))
+		} else {
+			Some(json!({
+				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+				request_keys::NAME: deployment.name,
+				request_keys::REGISTRY: deployment.registry,
+				request_keys::IMAGE_NAME: deployment.image_name?,
+				request_keys::IMAGE_TAG: deployment.image_tag,
+			}))
+		}
 	})
 	.collect::<Vec<_>>();
 
@@ -214,12 +285,25 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let repository_id = body
+		.get(request_keys::REPOSITORY_ID)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
 	let image_name = body
 		.get(request_keys::IMAGE_NAME)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
 
 	let image_tag = body
 		.get(request_keys::IMAGE_TAG)
@@ -228,105 +312,20 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let domain_id = body
-		.get(request_keys::DOMAIN_ID)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let sub_domain = body
-		.get(request_keys::SUB_DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let path = body
-		.get(request_keys::PATH)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let port = body
-		.get(request_keys::NAME)
-		.map(|value| match value {
-			Value::Number(number) => {
-				if number.is_u64() {
-					Some(number.as_u64().unwrap() as u16)
-				} else if number.is_i64() {
-					Some(number.as_i64().unwrap() as u16)
-				} else {
-					None
-				}
-			}
-			Value::String(value) => value.parse::<u16>().ok(),
-			_ => None,
-		})
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	match registry {
-		"registry.docker.vicara.co" | "registry.hub.docker.com" => (),
-		_ => {
-			Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-		}
-	}
-
-	let domain_id = hex::decode(domain_id)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let deployment = db::get_deployment_by_entry_point(
+	let deployment_id = service::create_deployment_in_organisation(
 		context.get_mysql_connection(),
-		&domain_id,
-		sub_domain,
-		path,
-	)
-	.await?;
-	if deployment.is_some() {
-		Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_EXISTS).to_string())?;
-	}
-
-	let deployment_id =
-		db::generate_new_resource_id(context.get_mysql_connection()).await?;
-	let deployment_id = deployment_id.as_bytes();
-
-	db::create_resource(
-		context.get_mysql_connection(),
-		deployment_id,
-		&format!("Deployment: {}", name),
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::DEPLOYMENT)
-			.unwrap(),
 		&organisation_id,
-	)
-	.await?;
-	db::create_deployment(
-		context.get_mysql_connection(),
-		deployment_id,
 		name,
 		registry,
+		repository_id,
 		image_name,
 		image_tag,
-		&domain_id,
-		sub_domain,
-		path,
-		port,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DEPLOYMENT_ID: deployment_id.encode_hex::<String>()
+		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id.as_bytes())
 	}));
 	Ok(context)
 }
@@ -354,11 +353,126 @@ async fn get_deployment_info(
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			request_keys::DOMAIN_ID: deployment.domain_id.encode_hex::<String>(),
-			request_keys::SUB_DOMAIN: deployment.sub_domain,
-			request_keys::PATH: deployment.path,
-			request_keys::PORT: deployment.port,
 		}
+	}));
+	Ok(context)
+}
+
+async fn get_deployment_config(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+	db::get_deployment_by_id(context.get_mysql_connection(), &deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let env_vars: Map<String, Value> =
+		db::get_environment_variables_for_deployment(
+			context.get_mysql_connection(),
+			&deployment_id,
+		)
+		.await?
+		.into_iter()
+		.map(|(key, value)| (key, Value::String(value)))
+		.collect();
+	let ports = db::get_exposed_ports_for_deployment(
+		context.get_mysql_connection(),
+		&deployment_id,
+	)
+	.await?;
+	let volumes: Map<String, Value> =
+		db::get_persistent_volumes_for_deployment(
+			context.get_mysql_connection(),
+			&deployment_id,
+		)
+		.await?
+		.into_iter()
+		.map(|volume| (volume.name, Value::String(volume.path)))
+		.collect();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ENVIRONMENT_VARIABLES: env_vars,
+		request_keys::EXPOSED_PORTS: ports,
+		request_keys::PERSISTENT_VOLUMES: volumes
+	}));
+	Ok(context)
+}
+
+// function to store port, env variables and mount path
+pub async fn update_deployment_config(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	// get array of ports
+	let port_values = body
+		.get(request_keys::EXPOSED_PORTS)
+		.map(|values| values.as_array())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let env_var_values = body
+		.get(request_keys::ENVIRONMENT_VARIABLES)
+		.map(|values| values.as_object())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let volume_values = body
+		.get(request_keys::PERSISTENT_VOLUMES)
+		.map(|values| values.as_object())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let mut exposed_ports = vec![];
+	let mut environment_variables = vec![];
+	let mut persistent_volumes = vec![];
+
+	for port in port_values {
+		let port = serde_json::from_value(port.clone())
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+		exposed_ports.push(port);
+	}
+
+	for (key, value) in env_var_values {
+		let value = value
+			.as_str()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+		environment_variables.push((key.as_str(), value));
+	}
+
+	for (name, path) in volume_values {
+		let path = path
+			.as_str()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+		persistent_volumes.push((name.as_str(), path));
+	}
+
+	service::update_configuration_for_deployment(
+		context.get_mysql_connection(),
+		&deployment_id,
+		&exposed_ports,
+		&environment_variables,
+		&persistent_volumes,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

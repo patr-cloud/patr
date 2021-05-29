@@ -32,6 +32,7 @@ pub mod id {
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
 	pub const REPOSITORY_ALREADY_EXISTS: &str = "repositoryAlreadyExists";
+	pub const REPOSITORY_NOT_FOUND: &str = "repositoryNotFound";
 	pub const INVALID_REQUEST: &str = "invalidRequest";
 	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
@@ -94,6 +95,7 @@ pub mod message {
 		"That domain is unverified. Check your verification settings";
 	pub const REPOSITORY_ALREADY_EXISTS: &str =
 		"The given repository already exists";
+	pub const REPOSITORY_NOT_FOUND: &str = "The repository does not exist";
 	pub const ACCESS_TYPE_NOT_PRESENT: &str =
 		"Access type not present in request";
 	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client";

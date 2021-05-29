@@ -1,5 +1,8 @@
+use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use sqlx::{MySql, Transaction};
 
+use crate::{db, error, utils::Error};
 pub struct DockerRepository {
 	pub id: Vec<u8>,
 	pub organisation_id: Vec<u8>,
@@ -48,10 +51,91 @@ pub struct Deployment {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub registry: String,
-	pub image_name: String,
+	pub repository_id: Option<Vec<u8>>,
+	pub image_name: Option<String>,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
+}
+
+impl Deployment {
+	pub async fn get_full_image(
+		&self,
+		connection: &mut Transaction<'_, MySql>,
+	) -> Result<String, Error> {
+		if self.registry == "registry.docker.vicara.co" {
+			let docker_repository = db::get_docker_repository_by_id(
+				connection,
+				self.repository_id
+					.as_ref()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?,
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+			let organisation = db::get_organisation_info(
+				connection,
+				&docker_repository.organisation_id,
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+			Ok(format!(
+				"{}/{}/{}",
+				"registry.docker.vicara.co",
+				organisation.name,
+				docker_repository.name
+			))
+		} else {
+			Ok(format!(
+				"{}/{}",
+				self.registry,
+				self.image_name
+					.as_ref()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?
+			))
+		}
+	}
+}
+
+pub struct VolumeMount {
+	pub deployment_id: Vec<u8>,
+	pub name: String,
 	pub path: String,
-	pub port: u16,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MachineType {
+	pub cpu_count: u8,
+	pub memory_count: f32,
+}
+
+pub struct DeploymentUpgradePath {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub default_machine_type: Option<Vec<u8>>,
+}
+
+pub enum DeploymentEntryPointType {
+	Deployment {
+		deployment_id: Vec<u8>,
+		deployment_port: u16,
+	},
+	Redirect {
+		url: String,
+	},
+	Proxy {
+		url: String,
+	},
+}
+
+pub struct DeploymentEntryPoint {
+	pub id: Vec<u8>,
+	pub sub_domain: Option<String>,
+	pub domain_id: Vec<u8>,
+	pub path: String,
+	pub entry_point_type: DeploymentEntryPointType,
 }

@@ -191,7 +191,7 @@ async fn create_docker_repository(
 	)
 	.await?;
 
-	db::create_repository(
+	db::create_docker_repository(
 		context.get_mysql_connection(),
 		resource_id,
 		&repository,

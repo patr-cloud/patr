@@ -23,6 +23,7 @@ pub async fn initialize_drive_pre(
 pub async fn initialize_drive_post(
 	transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up drive tables initialization");
 	query!(
 		r#"
 		ALTER TABLE file

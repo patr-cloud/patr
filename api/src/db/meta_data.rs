@@ -23,6 +23,7 @@ pub async fn initialize_meta_pre(
 pub async fn initialize_meta_post(
 	_transaction: &mut Transaction<'_, MySql>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up meta tables initialization");
 	Ok(())
 }
 

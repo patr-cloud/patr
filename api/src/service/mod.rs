@@ -1,4 +1,5 @@
 mod auth;
+mod deployment;
 mod docker;
 mod domain;
 mod organisation;
@@ -7,6 +8,7 @@ mod user;
 mod utils;
 
 pub use auth::*;
+pub use deployment::*;
 pub use docker::*;
 pub use domain::*;
 pub use organisation::*;
