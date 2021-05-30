@@ -63,22 +63,20 @@ pub async fn create_deployment_in_organisation(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
+	} else if let Some(image_name) = image_name {
+		db::create_deployment_with_external_registry(
+			connection,
+			deployment_id,
+			name,
+			registry,
+			image_name,
+			image_tag,
+		)
+		.await?;
 	} else {
-		if let Some(image_name) = image_name {
-			db::create_deployment_with_external_registry(
-				connection,
-				deployment_id,
-				name,
-				registry,
-				image_name,
-				image_tag,
-			)
-			.await?;
-		} else {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
-		}
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
 	Ok(deployment_uuid)

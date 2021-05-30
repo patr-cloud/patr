@@ -3,7 +3,9 @@ use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{DeploymentUpgradePath, MachineType},
-	query, query_as, Database,
+	query,
+	query_as,
+	Database,
 };
 
 pub async fn initialize_upgrade_path_pre(

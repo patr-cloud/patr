@@ -1,11 +1,10 @@
+#[allow(clippy::module_inception)]
 mod deployment;
 mod docker_registry;
 mod entry_point;
 mod upgrade_path;
 
-use sqlx::{Transaction};
-
-use crate::Database;
+use sqlx::Transaction;
 
 pub use self::{
 	deployment::*,
@@ -13,6 +12,7 @@ pub use self::{
 	entry_point::*,
 	upgrade_path::*,
 };
+use crate::Database;
 
 pub async fn initialize_deployment_pre(
 	transaction: &mut Transaction<'_, Database>,

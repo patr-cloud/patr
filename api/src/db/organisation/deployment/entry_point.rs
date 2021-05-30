@@ -2,10 +2,12 @@ use sqlx::Transaction;
 
 use crate::{
 	models::db_mapping::{
-		DeploymentEntryPoint, DeploymentEntryPointType,
+		DeploymentEntryPoint,
+		DeploymentEntryPointType,
 		DeploymentEntryPointValue,
 	},
-	query, Database,
+	query,
+	Database,
 };
 
 pub async fn initialize_entry_point_pre(

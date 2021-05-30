@@ -1,6 +1,11 @@
-use sqlx::{Transaction};
+use sqlx::Transaction;
 
-use crate::{Database, models::db_mapping::{Deployment, VolumeMount}, query, query_as};
+use crate::{
+	models::db_mapping::{Deployment, VolumeMount},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_deployment_pre(
 	transaction: &mut Transaction<'_, Database>,

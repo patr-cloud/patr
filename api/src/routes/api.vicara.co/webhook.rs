@@ -3,15 +3,21 @@ use std::{collections::HashMap, time::Duration};
 use cloudflare::{
 	endpoints::{
 		dns::{
-			CreateDnsRecord, CreateDnsRecordParams, DnsContent, ListDnsRecords,
-			ListDnsRecordsParams, UpdateDnsRecord, UpdateDnsRecordParams,
+			CreateDnsRecord,
+			CreateDnsRecordParams,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+			UpdateDnsRecord,
+			UpdateDnsRecordParams,
 		},
 		zone::{ListZones, ListZonesParams},
 	},
 	framework::{
 		async_api::{ApiClient, Client},
 		auth::Credentials,
-		Environment, HttpApiClientConfig,
+		Environment,
+		HttpApiClientConfig,
 	},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -23,7 +29,8 @@ use tokio::{fs, process::Command};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{db_mapping::EventData, rbac, RegistryToken, RegistryTokenAccess},
 	pin_fn,
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
@@ -48,8 +55,8 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	if context.get_content_type().as_str()
-		!= "application/vnd.docker.distribution.events.v1+json"
+	if context.get_content_type().as_str() !=
+		"application/vnd.docker.distribution.events.v1+json"
 	{
 		Error::as_result()
 			.status(400)
@@ -237,7 +244,7 @@ pub async fn notification_handler(
 					&ContainerOptions::builder(&full_image_name)
 						.name(&container_name)
 						.privileged(false)
-						.expose(3090 as u32, "tcp", port)
+						.expose(3090_u32, "tcp", port)
 						.build(),
 				)
 				.await;

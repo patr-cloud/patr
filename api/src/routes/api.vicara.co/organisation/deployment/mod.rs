@@ -5,6 +5,7 @@ use crate::{
 	utils::{ErrorData, EveContext, EveMiddleware},
 };
 
+#[allow(clippy::module_inception)]
 mod deployment;
 mod entry_point;
 mod upgrade_path;
