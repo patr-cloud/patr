@@ -29,17 +29,37 @@ pub async fn send_user_verification_otp(
 	otp: &str,
 ) -> Result<(), Error> {
 	log::error!("NOTIFIER NOT YET IMPLEMENTED, Thanks for trying LOL");
-
+	// TODO: check if any None value is passed before unwrapping directly
 	if phone_number.is_some() {
 		sms::send_user_verification_otp(
 			country_code.unwrap(),
 			phone_number.unwrap(),
 			otp,
-		);
+		)?;
 	}
 
 	if email.is_some() {
-		email::send_user_verification_otp(email.unwrap(), otp)
+		email::send_user_verification_otp(email.unwrap(), otp)?;
+	}
+	Ok(())
+}
+
+// reset password
+pub async fn send_user_reset_password_notification(
+	country_code: Option<&str>,
+	phone_number: Option<&str>,
+	email: Option<&str>,
+) -> Result<(), Error> {
+	log::error!("NOTIFIER NOT YET IMPLEMENTED, Thanks for trying LOL");
+	if phone_number.is_some() {
+		sms::send_user_reset_password_notification(
+			country_code.unwrap(),
+			phone_number.unwrap(),
+		)?;
+	}
+
+	if email.is_some() {
+		email::send_user_reset_password_notification(email.unwrap())?;
 	}
 	Ok(())
 }

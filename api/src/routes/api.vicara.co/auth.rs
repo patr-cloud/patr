@@ -5,24 +5,16 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time,
-		mailer,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
+		get_current_time, mailer, validator, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
@@ -72,6 +64,13 @@ pub fn create_sub_app(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
+		))],
+	);
+
+	app.post(
+		"/list-recovery-options",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			list_recovery_options
 		))],
 	);
 
@@ -359,9 +358,15 @@ async fn join(
 		});
 	}
 
-	if let Some(_phone_number) = backup_phone_number_to {
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
+	if let Some(_phone_number) = &backup_phone_number_to {
+		// using `as_deref` to conver Option<String> to Option<&str>
+		service::send_user_verification_otp(
+			None,
+			backup_phone_number_to.as_deref(),
+			None,
+			otp,
+		)
+		.await?;
 	}
 
 	context.json(json!({
@@ -554,16 +559,28 @@ async fn reset_password(
 			.status(500)?
 			.name
 		);
-		task::spawn_blocking(|| {
-			mailer::send_password_changed_notification_mail(config, email);
-		});
+		// 	task::spawn_blocking(|| {
+		// 		mailer::send_password_changed_notification_mail(config, email);
+		// 	});
+		service::send_user_reset_password_notification(
+			None,
+			None,
+			Some(&email),
+		)
+		.await?;
 	}
 
-	if let Some((_phone_country_code, _phone_number)) =
-		user.backup_phone_country_code.zip(user.backup_phone_number)
+	if let Some((_phone_country_code, _phone_number)) = user
+		.backup_phone_country_code
+		.as_ref()
+		.zip(user.backup_phone_number.as_ref())
 	{
-		//TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
+		service::send_user_reset_password_notification(
+			user.backup_phone_country_code.as_deref(),
+			user.backup_phone_number.as_deref(),
+			None,
+		)
+		.await?;
 	}
 
 	context.json(json!({
@@ -1108,5 +1125,40 @@ async fn docker_registry_authenticate(
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
+	Ok(context)
+}
+
+async fn list_recovery_options(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	// get user id from the body
+	let user_id = body
+		.get(request_keys::USER_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user = db::get_user_by_user_id(
+		context.get_database_connection(),
+		user_id.as_bytes(),
+	)
+	.await?;
+
+	if user.is_none() {
+		context.json(error!(USER_NOT_FOUND));
+		return Ok(context);
+	}
+
+	let user = user.unwrap();
+
+	// TODO
+	// 1) check if user has email as backup
+	// 2) check if user has phone number as backup
+	// mask the values and return it back as response
+
 	Ok(context)
 }
