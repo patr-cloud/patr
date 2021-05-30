@@ -1,5 +1,4 @@
 use eve_rs::AsError;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
 };
 
 pub async fn create_deployment_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 	name: &str,
 	registry: &str,
@@ -84,7 +83,7 @@ pub async fn create_deployment_in_organisation(
 }
 
 pub async fn update_configuration_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	exposed_ports: &[u16],
 	environment_variables: &[(&str, &str)],
@@ -137,7 +136,7 @@ pub async fn update_configuration_for_deployment(
 }
 
 pub async fn create_deployment_upgrade_path_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 	name: &str,
 	machine_types: &[MachineType],
@@ -239,7 +238,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 }
 
 pub async fn update_deployment_upgrade_path(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 	name: &str,
 	machine_types: &[MachineType],
@@ -309,7 +308,7 @@ pub async fn update_deployment_upgrade_path(
 }
 
 pub async fn create_deployment_entry_point_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -428,7 +427,7 @@ pub async fn create_deployment_entry_point_in_organisation(
 }
 
 pub async fn update_deployment_entry_point(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	entry_point_type: &str,
 	deployment_id: Option<&[u8]>,

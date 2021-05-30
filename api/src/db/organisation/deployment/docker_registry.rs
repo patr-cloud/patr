@@ -1,9 +1,7 @@
-use sqlx::Transaction;
-
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
 pub async fn initialize_docker_registry_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing docker registry tables");
 	query!(
@@ -26,7 +24,7 @@ pub async fn initialize_docker_registry_pre(
 }
 
 pub async fn initialize_docker_registry_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up docker registry tables initialization");
 	query!(
@@ -44,7 +42,7 @@ pub async fn initialize_docker_registry_post(
 
 // function to add new repositorys
 pub async fn create_docker_repository(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 	name: &str,
 	organisation_id: &[u8],
@@ -66,7 +64,7 @@ pub async fn create_docker_repository(
 }
 
 pub async fn get_repository_by_name(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_name: &str,
 	organisation_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
@@ -91,7 +89,7 @@ pub async fn get_repository_by_name(
 }
 
 pub async fn get_docker_repositories_for_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -111,7 +109,7 @@ pub async fn get_docker_repositories_for_organisation(
 }
 
 pub async fn get_docker_repository_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
@@ -132,7 +130,7 @@ pub async fn get_docker_repository_by_id(
 }
 
 pub async fn delete_docker_repository_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

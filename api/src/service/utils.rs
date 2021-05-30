@@ -5,7 +5,6 @@ use argon2::{
 	Version,
 };
 use hex::ToHex;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{db, service, utils::Error, Database};
@@ -59,7 +58,7 @@ pub fn get_refresh_token_expiry() -> u64 {
 
 // check if the hash is not in the database
 pub async fn generate_new_refresh_token_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
 	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();

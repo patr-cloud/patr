@@ -1,5 +1,3 @@
-use sqlx::Transaction;
-
 use crate::{
 	models::db_mapping::{Deployment, VolumeMount},
 	query,
@@ -8,7 +6,7 @@ use crate::{
 };
 
 pub async fn initialize_deployment_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -129,7 +127,7 @@ pub async fn initialize_deployment_pre(
 }
 
 pub async fn initialize_deployment_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up deployment tables initialization");
 	query!(
@@ -146,7 +144,7 @@ pub async fn initialize_deployment_post(
 }
 
 pub async fn create_deployment_with_internal_registry(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	name: &str,
 	repository_id: &[u8],
@@ -170,7 +168,7 @@ pub async fn create_deployment_with_internal_registry(
 }
 
 pub async fn create_deployment_with_external_registry(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	name: &str,
 	registry: &str,
@@ -196,7 +194,7 @@ pub async fn create_deployment_with_external_registry(
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	image_name: &str,
 	image_tag: &str,
 	organisation_id: &[u8],
@@ -226,7 +224,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 }
 
 pub async fn get_deployments_for_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
@@ -251,7 +249,7 @@ pub async fn get_deployments_for_organisation(
 }
 
 pub async fn get_deployment_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	Ok(query_as!(
@@ -273,7 +271,7 @@ pub async fn get_deployment_by_id(
 }
 
 pub async fn delete_deployment_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -291,7 +289,7 @@ pub async fn delete_deployment_by_id(
 }
 
 pub async fn get_exposed_ports_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Vec<u16>, sqlx::Error> {
 	let rows = query!(
@@ -315,7 +313,7 @@ pub async fn get_exposed_ports_for_deployment(
 }
 
 pub async fn add_exposed_port_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	port: u16,
 ) -> Result<(), sqlx::Error> {
@@ -335,7 +333,7 @@ pub async fn add_exposed_port_for_deployment(
 }
 
 pub async fn remove_all_exposed_ports_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -353,7 +351,7 @@ pub async fn remove_all_exposed_ports_for_deployment(
 }
 
 pub async fn get_persistent_volumes_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Vec<VolumeMount>, sqlx::Error> {
 	query_as!(
@@ -373,7 +371,7 @@ pub async fn get_persistent_volumes_for_deployment(
 }
 
 pub async fn add_persistent_volume_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	name: &str,
 	path: &str,
@@ -395,7 +393,7 @@ pub async fn add_persistent_volume_for_deployment(
 }
 
 pub async fn remove_all_persistent_volumes_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -413,7 +411,7 @@ pub async fn remove_all_persistent_volumes_for_deployment(
 }
 
 pub async fn get_environment_variables_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Vec<(String, String)>, sqlx::Error> {
 	let rows = query!(
@@ -437,7 +435,7 @@ pub async fn get_environment_variables_for_deployment(
 }
 
 pub async fn add_environment_variable_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	key: &str,
 	value: &str,
@@ -459,7 +457,7 @@ pub async fn add_environment_variable_for_deployment(
 }
 
 pub async fn remove_all_environment_variables_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

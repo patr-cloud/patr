@@ -1,6 +1,5 @@
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::Transaction;
 
 use crate::{db, error, utils::Error, Database};
 
@@ -60,7 +59,7 @@ pub struct Deployment {
 impl Deployment {
 	pub async fn get_full_image(
 		&self,
-		connection: &mut Transaction<'_, Database>,
+		connection: &mut <Database as sqlx::Database>::Connection,
 	) -> Result<String, Error> {
 		if self.registry == "registry.docker.vicara.co" {
 			let docker_repository = db::get_docker_repository_by_id(

@@ -1,5 +1,3 @@
-use sqlx::Transaction;
-
 use crate::{
 	models::db_mapping::{
 		DeploymentEntryPoint,
@@ -11,7 +9,7 @@ use crate::{
 };
 
 pub async fn initialize_entry_point_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing entry point tables");
 	query!(
@@ -77,7 +75,7 @@ pub async fn initialize_entry_point_pre(
 }
 
 pub async fn initialize_entry_point_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up entry point tables initialization");
 	query!(
@@ -94,7 +92,7 @@ pub async fn initialize_entry_point_post(
 }
 
 pub async fn get_deployment_entry_points_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<DeploymentEntryPoint>, sqlx::Error> {
 	let rows = query!(
@@ -157,7 +155,7 @@ pub async fn get_deployment_entry_points_in_organisation(
 }
 
 pub async fn get_deployment_entry_point_by_url(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	sub_domain: &str,
 	domain_id: &[u8],
 	path: &str,
@@ -220,7 +218,7 @@ pub async fn get_deployment_entry_point_by_url(
 }
 
 pub async fn get_deployment_entry_point_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 ) -> Result<Option<DeploymentEntryPoint>, sqlx::Error> {
 	query!(
@@ -276,7 +274,7 @@ pub async fn get_deployment_entry_point_by_id(
 }
 
 pub async fn add_deployment_entry_point_for_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -304,7 +302,7 @@ pub async fn add_deployment_entry_point_for_deployment(
 }
 
 pub async fn add_deployment_entry_point_for_redirect(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -330,7 +328,7 @@ pub async fn add_deployment_entry_point_for_redirect(
 }
 
 pub async fn add_deployment_entry_point_for_proxy(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	sub_domain: &str,
 	domain_id: &[u8],
@@ -356,7 +354,7 @@ pub async fn add_deployment_entry_point_for_proxy(
 }
 
 pub async fn update_deployment_entry_point_to_deployment(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	deployment_id: &[u8],
 	deployment_port: u16,
@@ -383,7 +381,7 @@ pub async fn update_deployment_entry_point_to_deployment(
 }
 
 pub async fn update_deployment_entry_point_to_redirect(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	url: &str,
 ) -> Result<(), sqlx::Error> {
@@ -408,7 +406,7 @@ pub async fn update_deployment_entry_point_to_redirect(
 }
 
 pub async fn update_deployment_entry_point_to_proxy(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 	url: &str,
 ) -> Result<(), sqlx::Error> {
@@ -433,7 +431,7 @@ pub async fn update_deployment_entry_point_to_proxy(
 }
 
 pub async fn delete_deployment_entry_point_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

@@ -1,4 +1,3 @@
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -9,7 +8,7 @@ use crate::{
 };
 
 pub async fn initialize_upgrade_path_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing upgrade path tables");
 	query!(
@@ -78,7 +77,7 @@ pub async fn initialize_upgrade_path_pre(
 }
 
 pub async fn initialize_upgrade_path_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up upgrade path tables initialization");
 	query!(
@@ -95,7 +94,7 @@ pub async fn initialize_upgrade_path_post(
 }
 
 pub async fn generate_new_deployment_machine_type_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -140,7 +139,7 @@ pub async fn generate_new_deployment_machine_type_id(
 }
 
 pub async fn get_deployment_upgrade_paths_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<DeploymentUpgradePath>, sqlx::Error> {
 	query_as!(
@@ -165,7 +164,7 @@ pub async fn get_deployment_upgrade_paths_in_organisation(
 
 // TODO sort machine_types
 pub async fn get_machine_types_in_deployment_upgrade_path(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 ) -> Result<Vec<MachineType>, sqlx::Error> {
 	let rows = query!(
@@ -197,7 +196,7 @@ pub async fn get_machine_types_in_deployment_upgrade_path(
 }
 
 pub async fn get_deployment_upgrade_path_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 ) -> Result<Option<DeploymentUpgradePath>, sqlx::Error> {
 	query_as!(
@@ -218,7 +217,7 @@ pub async fn get_deployment_upgrade_path_by_id(
 }
 
 pub async fn get_deployment_upgrade_path_by_name_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 	organisation_id: &[u8],
 ) -> Result<Option<DeploymentUpgradePath>, sqlx::Error> {
@@ -246,7 +245,7 @@ pub async fn get_deployment_upgrade_path_by_name_in_organisation(
 }
 
 pub async fn create_deployment_upgrade_path(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 	name: &str,
 	default_machine_type_id: &[u8],
@@ -268,7 +267,7 @@ pub async fn create_deployment_upgrade_path(
 }
 
 pub async fn get_deployment_machine_type_id_for_configuration(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	cpu_count: u8,
 	memory_count: f32,
 ) -> Result<Option<Vec<u8>>, sqlx::Error> {
@@ -291,7 +290,7 @@ pub async fn get_deployment_machine_type_id_for_configuration(
 }
 
 pub async fn add_deployment_machine_type(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	machine_type_id: &[u8],
 	cpu_count: u8,
 	memory_count: f32,
@@ -313,7 +312,7 @@ pub async fn add_deployment_machine_type(
 }
 
 pub async fn add_deployment_machine_type_for_upgrade_path(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 	machine_type_id: &[u8],
 ) -> Result<(), sqlx::Error> {
@@ -333,7 +332,7 @@ pub async fn add_deployment_machine_type_for_upgrade_path(
 }
 
 pub async fn remove_all_machine_types_for_deployment_upgrade_path(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -351,7 +350,7 @@ pub async fn remove_all_machine_types_for_deployment_upgrade_path(
 }
 
 pub async fn update_deployment_upgrade_path_name_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {
@@ -373,7 +372,7 @@ pub async fn update_deployment_upgrade_path_name_by_id(
 }
 
 pub async fn delete_deployment_upgrade_path_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

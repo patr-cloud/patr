@@ -30,6 +30,7 @@ use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 pub type Database = sqlx::Postgres;
+pub type DbConnection = <Database as sqlx::Database>::Connection;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()

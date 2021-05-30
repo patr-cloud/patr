@@ -6,7 +6,7 @@ mod rbac;
 mod user;
 
 use redis::{aio::MultiplexedConnection, Client, RedisError};
-use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool, Transaction};
+use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
 use tokio::task;
 
 pub use self::{
@@ -63,7 +63,7 @@ pub async fn create_redis_connection(
 }
 
 pub async fn begin_deferred_constraints(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -78,7 +78,7 @@ pub async fn begin_deferred_constraints(
 }
 
 pub async fn end_deferred_constraints(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
