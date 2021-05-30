@@ -44,7 +44,7 @@ pub async fn create_organisation(
 	db::create_resource(
 		connection,
 		resource_id,
-		&format!("Organiation: {}", organisation_name),
+		&format!("Organisation: {}", organisation_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

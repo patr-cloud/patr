@@ -77,7 +77,7 @@ pub async fn initialize_organisations_pre(
 	domain::initialize_domain_pre(&mut *transaction).await?;
 	drive::initialize_drive_pre(&mut *transaction).await?;
 	portus::initialize_portus_pre(&mut *transaction).await?;
-	deployment::initialize_deployer_pre(&mut *transaction).await?;
+	deployment::initialize_deployment_pre(&mut *transaction).await?;
 
 	Ok(())
 }
@@ -85,6 +85,7 @@ pub async fn initialize_organisations_pre(
 pub async fn initialize_organisations_post(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up organisation tables initialization");
 	query!(
 		r#"
 		ALTER TABLE organisation
@@ -100,7 +101,7 @@ pub async fn initialize_organisations_post(
 	domain::initialize_domain_post(&mut *transaction).await?;
 	drive::initialize_drive_post(&mut *transaction).await?;
 	portus::initialize_portus_post(&mut *transaction).await?;
-	deployment::initialize_deployer_post(&mut *transaction).await?;
+	deployment::initialize_deployment_post(&mut *transaction).await?;
 
 	Ok(())
 }
@@ -125,7 +126,7 @@ pub async fn create_organisation(
 		true,
 		created as i64,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -146,7 +147,7 @@ pub async fn get_organisation_info(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| Organisation {
@@ -175,7 +176,7 @@ pub async fn get_organisation_by_name(
 		"#,
 		name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| Organisation {
@@ -206,7 +207,7 @@ pub async fn update_organisation_name(
 		name,
 		organisation_id,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

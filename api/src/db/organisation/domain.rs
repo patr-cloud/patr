@@ -77,6 +77,7 @@ pub async fn initialize_domain_pre(
 pub async fn initialize_domain_post(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
 		ALTER TABLE organisation_domain
@@ -234,7 +235,7 @@ pub async fn add_to_personal_domain(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
@@ -266,7 +267,7 @@ pub async fn get_domains_for_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -291,7 +292,7 @@ pub async fn get_all_unverified_domains(
 			is_verified = FALSE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -310,7 +311,7 @@ pub async fn set_domain_as_verified(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
@@ -336,7 +337,7 @@ pub async fn get_all_verified_domains(
 			is_verified = TRUE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -355,7 +356,7 @@ pub async fn set_domain_as_unverified(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
@@ -393,7 +394,7 @@ pub async fn get_notification_email_for_domain(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	if rows.is_empty() {
@@ -489,7 +490,7 @@ pub async fn get_organisation_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -517,7 +518,7 @@ pub async fn get_personal_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -541,7 +542,7 @@ pub async fn get_domain_by_name(
 		"#,
 		domain_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())

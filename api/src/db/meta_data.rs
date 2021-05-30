@@ -10,13 +10,12 @@ pub async fn initialize_meta_pre(
 	query!(
 		r#"
 		CREATE TABLE meta_data(
-			id VARCHAR(100)
-				CONSTRAINT meta_data_pk PRIMARY KEY,
+			id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#
 	)
-	.execute(transaction)
+	.execute(&mut *transaction)
 	.await?;
 	Ok(())
 }
@@ -24,6 +23,7 @@ pub async fn initialize_meta_pre(
 pub async fn initialize_meta_post(
 	_transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up meta tables initialization");
 	Ok(())
 }
 
@@ -46,7 +46,7 @@ pub async fn set_database_version(
 		version.minor.to_string(),
 		version.patch.to_string()
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }

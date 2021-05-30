@@ -42,7 +42,8 @@ pub async fn initialize_rbac_pre(
 					REFERENCES resource_type(id),
 			owner_id BYTEA NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
-					DEFERRABLE INITIALLY IMMEDIATE
+					DEFERRABLE INITIALLY IMMEDIATE,
+			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
 	)
@@ -228,6 +229,7 @@ pub async fn initialize_rbac_pre(
 pub async fn initialize_rbac_post(
 	connection: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_resource_id(&mut *connection).await?;
 		let uuid = uuid.as_bytes().as_ref();
@@ -488,7 +490,7 @@ pub async fn get_all_resource_types(
 			resource_type;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -504,7 +506,7 @@ pub async fn get_all_permissions(
 			permission;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -528,7 +530,7 @@ pub async fn get_resource_type_for_resource(
 		"#,
 		resource_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -553,7 +555,7 @@ pub async fn create_role(
 		description,
 		owner_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 	Ok(())
 }
@@ -577,7 +579,7 @@ pub async fn create_resource(
 		resource_type_id,
 		owner_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -659,7 +661,7 @@ pub async fn delete_resource(
 		"#,
 		resource_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -681,7 +683,7 @@ pub async fn get_all_organisation_roles(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -701,7 +703,7 @@ pub async fn get_role_by_id(
 		"#,
 		role_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())

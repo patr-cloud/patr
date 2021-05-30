@@ -71,7 +71,7 @@ pub async fn begin_deferred_constraints(
 		ALL DEFERRED;
 		"#,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -86,7 +86,7 @@ pub async fn end_deferred_constraints(
 		ALL IMMEDIATE;
 		"#
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

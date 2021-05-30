@@ -132,5 +132,16 @@ pub mod request_keys {
 	pub const IMAGE_TAG: &str = "imageTag";
 	pub const SUB_DOMAIN: &str = "subDomain";
 	pub const PATH: &str = "path";
+	pub const ENVIRONMENT_VARIABLES: &str = "environmentVariables";
+	pub const PERSISTENT_VOLUMES: &str = "volumes";
+	pub const EXPOSED_PORTS: &str = "ports";
+	pub const UPGRADE_PATH_ID: &str = "upgradePathId";
+	pub const UPGRADE_PATHS: &str = "upgradePaths";
+	pub const MACHINE_TYPES: &str = "machineTypes";
+	pub const ENTRY_POINT_ID: &str = "entryPointId";
+	pub const ENTRY_POINTS: &str = "entryPoints";
+	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
+	pub const URL: &str = "url";
+	pub const DEFAULT: &str = "default";
 }

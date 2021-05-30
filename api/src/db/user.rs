@@ -136,6 +136,7 @@ pub async fn initialize_users_pre(
 pub async fn initialize_users_post(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up user tables initialization");
 	query!(
 		r#"
 		CREATE TABLE personal_email(
@@ -729,7 +730,7 @@ pub async fn get_user_by_username_or_email(
 		"#,
 		user_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| User {
@@ -780,7 +781,7 @@ pub async fn get_user_by_email(
 		"#,
 		email
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| User {
@@ -829,7 +830,7 @@ pub async fn get_user_by_phone_number(
 		"#,
 		phone_number
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| User {
@@ -866,7 +867,7 @@ pub async fn get_user_by_username(
 		"#,
 		username
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| User {
@@ -903,7 +904,7 @@ pub async fn get_user_by_user_id(
 		"#,
 		user_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| User {
@@ -985,7 +986,7 @@ pub async fn get_god_user_id(
 		LIMIT 1;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.next()
@@ -1068,7 +1069,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		otp_hash,
 		otp_expiry as i64
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1152,7 +1153,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 		otp_hash,
 		otp_expiry as i64
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1186,7 +1187,7 @@ pub async fn get_user_to_sign_up_by_username(
 		"#,
 		username
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| UserToSignUp {
@@ -1237,7 +1238,7 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 		"#,
 		organisation_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| UserToSignUp {
@@ -1285,7 +1286,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		verification_token,
 		token_expiry as i64
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1313,7 +1314,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		user_id,
 		email
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PersonalEmailToBeVerified {
@@ -1344,7 +1345,7 @@ pub async fn add_personal_email_for_user(
 		email_local,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1367,7 +1368,7 @@ pub async fn add_organisation_email_for_user(
 		email_local,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1386,7 +1387,7 @@ pub async fn delete_user_to_be_signed_up(
 		"#,
 		username,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1440,7 +1441,7 @@ pub async fn create_user(
 		backup_phone_country_code,
 		backup_phone_number
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1469,7 +1470,7 @@ pub async fn add_user_login(
 		last_login as i64,
 		last_activity as i64
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1490,7 +1491,7 @@ pub async fn get_user_login(
 		"#,
 		login_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| UserLogin {
@@ -1523,7 +1524,7 @@ pub async fn get_user_login_for_user(
 		login_id,
 		user_id,
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| UserLogin {
@@ -1598,7 +1599,7 @@ pub async fn get_all_logins_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| UserLogin {
@@ -1630,7 +1631,7 @@ pub async fn delete_user_login_by_id(
 		login_id,
 		user_id,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
@@ -1655,7 +1656,7 @@ pub async fn set_login_expiry(
 		last_activity as i64,
 		login_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1755,7 +1756,7 @@ pub async fn update_user_password(
 		password,
 		user_id,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1781,7 +1782,7 @@ pub async fn add_password_reset_request(
 		token_hash,
 		token_expiry as i64
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1802,7 +1803,7 @@ pub async fn get_password_reset_request_for_user(
 		"#,
 		user_id,
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PasswordResetRequest {
@@ -1827,7 +1828,7 @@ pub async fn delete_password_reset_request_for_user(
 		"#,
 		user_id,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1853,7 +1854,7 @@ pub async fn get_all_organisations_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| Organisation {
@@ -1869,7 +1870,7 @@ pub async fn get_all_organisations_for_user(
 }
 
 pub async fn get_phone_country_by_country_code(
-	transaction: &mut Transaction<'_, Database>,
+	connection: &mut Transaction<'_, Database>,
 	country_code: &str,
 ) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
 	let rows = query_as!(
@@ -1884,7 +1885,7 @@ pub async fn get_phone_country_by_country_code(
 		"#,
 		country_code
 	)
-	.fetch_all(transaction)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -1908,7 +1909,7 @@ pub async fn add_phone_number_for_user(
 		phone_country_code,
 		phone_number
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }

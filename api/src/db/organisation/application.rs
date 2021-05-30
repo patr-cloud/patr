@@ -61,6 +61,7 @@ pub async fn initialize_application_pre(
 pub async fn initialize_application_post(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up application tables initialization");
 	query!(
 		r#"
 		ALTER TABLE application
@@ -95,7 +96,7 @@ pub async fn get_applications_in_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
@@ -116,7 +117,7 @@ pub async fn get_application_by_id(
 		"#,
 		application_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -142,7 +143,7 @@ pub async fn get_all_versions_for_application(
 		"#,
 		appliction_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(versions)

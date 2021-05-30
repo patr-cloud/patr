@@ -5,7 +5,7 @@ use crate::{models::db_mapping::PortusTunnel, query, Database};
 pub async fn initialize_portus_pre(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing Portus tables");
+	log::info!("Initializing portus tables");
 	query!(
 		r#"
 		CREATE TABLE portus_tunnel(
@@ -45,6 +45,7 @@ pub async fn initialize_portus_pre(
 pub async fn initialize_portus_post(
 	transaction: &mut Transaction<'_, Database>,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up portus tables initialization");
 	query!(
 		r#"
 		ALTER TABLE portus_tunnel
@@ -82,7 +83,7 @@ pub async fn create_new_portus_tunnel(
 		tunnel_name,
 		created as i64,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -102,7 +103,7 @@ pub async fn delete_portus_tunnel(
 		"#,
 		tunnel_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
@@ -123,7 +124,7 @@ pub async fn get_portus_tunnel_by_name(
 		"#,
 		tunnel_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -153,7 +154,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		"#,
 		tunnel_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -184,7 +185,7 @@ pub async fn is_portus_port_available(
 		"#,
 		port as i32
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -218,7 +219,7 @@ pub async fn get_portus_tunnels_for_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
