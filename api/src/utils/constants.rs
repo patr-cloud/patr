@@ -143,4 +143,5 @@ pub mod request_keys {
 	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
 	pub const URL: &str = "url";
+	pub const DEFAULT: &str = "default";
 }

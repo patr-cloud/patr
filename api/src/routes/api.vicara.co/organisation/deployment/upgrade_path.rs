@@ -1,6 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -240,12 +240,21 @@ async fn create_upgrade_path(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let mut machine_types: Vec<MachineType> = vec![];
+	let mut default_machine_type = None;
 	for machine_type_value in machine_types_values {
 		let machine_type: MachineType =
 			serde_json::from_value(machine_type_value.clone())
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
-		machine_types.push(machine_type);
+		let default = machine_type_value
+			.get(request_keys::DEFAULT)
+			.unwrap_or(&Value::Null)
+			.as_bool()
+			.unwrap_or(false);
+		machine_types.push(machine_type.clone());
+		if default {
+			default_machine_type = Some(machine_type);
+		}
 	}
 
 	let upgrade_path_id =
@@ -254,6 +263,10 @@ async fn create_upgrade_path(
 			&organisation_id,
 			name,
 			&machine_types,
+			default_machine_type
+				.as_ref()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?,
 		)
 		.await?;
 

@@ -163,6 +163,7 @@ pub async fn get_deployment_upgrade_paths_in_organisation(
 	.await
 }
 
+// TODO sort machine_types
 pub async fn get_machine_types_in_deployment_upgrade_path(
 	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
@@ -248,16 +249,18 @@ pub async fn create_deployment_upgrade_path(
 	connection: &mut Transaction<'_, Database>,
 	upgrade_path_id: &[u8],
 	name: &str,
+	default_machine_type_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment_upgrade_path
 		VALUES
-			($1, $2, NULL);
+			($1, $2, $3);
 		"#,
 		upgrade_path_id,
-		name
+		name,
+		default_machine_type_id
 	)
 	.execute(&mut *connection)
 	.await

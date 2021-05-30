@@ -141,6 +141,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	machine_types: &[MachineType],
+	default_machine_type: &MachineType,
 ) -> Result<Uuid, Error> {
 	db::get_deployment_upgrade_path_by_name_in_organisation(
 		connection,
@@ -154,6 +155,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 	let upgrade_path_uuid = db::generate_new_resource_id(connection).await?;
 	let upgrade_path_id = upgrade_path_uuid.as_bytes();
 
+	db::begin_deferred_constraints(connection).await?;
 	db::create_resource(
 		connection,
 		upgrade_path_id,
@@ -166,8 +168,37 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 		organisation_id,
 	)
 	.await?;
-	db::create_deployment_upgrade_path(connection, upgrade_path_id, name)
+	let default_machine_type_id = if let Some(id) =
+		db::get_deployment_machine_type_id_for_configuration(
+			connection,
+			default_machine_type.cpu_count,
+			default_machine_type.memory_count,
+		)
+		.await?
+	{
+		id
+	} else {
+		let machine_type_uuid =
+			db::generate_new_deployment_machine_type_id(connection).await?;
+		let machine_type_id = machine_type_uuid.as_bytes();
+		db::add_deployment_machine_type(
+			connection,
+			machine_type_id,
+			default_machine_type.cpu_count,
+			default_machine_type.memory_count,
+		)
 		.await?;
+		machine_type_id.to_vec()
+	};
+	db::create_deployment_upgrade_path(
+		connection,
+		upgrade_path_id,
+		name,
+		&default_machine_type_id,
+	)
+	.await?;
+
+	// TODO sort machine_types
 
 	// For each machine type, if a machine type already exists in the db, use
 	// that. If it doesn't, insert a new one
@@ -202,6 +233,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 		)
 		.await?;
 	}
+	db::end_deferred_constraints(connection).await?;
 
 	Ok(upgrade_path_uuid)
 }
