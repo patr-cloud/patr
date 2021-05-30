@@ -3,7 +3,8 @@ use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{db_mapping::MachineType, rbac},
 	utils::Error,
 	Database,
