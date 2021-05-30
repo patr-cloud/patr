@@ -2,29 +2,23 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{User, UserLogin},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 	Database,
 };
 
 //TODO: implement this function
-pub fn send_user_verification_otp_sms(
-	country_code: Option<&str>,
-	phone_number: Option<&str>,
+pub fn send_user_verification_otp(
+	country_code: &str,
+	phone_number: &str,
 	otp: &str,
 ) {
 	log::error!("sending sms...");
