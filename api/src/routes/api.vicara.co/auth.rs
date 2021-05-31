@@ -5,16 +5,25 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
+		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		mailer,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -481,6 +490,15 @@ async fn forgot_password(
 	let user_id = body
 		.get(request_keys::USER_ID)
 		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let preferred_recovery_option = body
+		.get(request_keys::PREFERRED_RECOVERY_OPTION)
+		.map(|param| param.as_str())
+		.flatten()
+		.map(|a| a.parse::<PreferredRecoveryOption>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1134,53 +1152,54 @@ async fn list_recovery_options(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
+	let mut response = json!({});
+	let response_map = response.as_object_mut().unwrap();
+
 	// get user id from the body
-	let username = body
-		.get(request_keys::USERNAME)
+	let user_id = body
+		.get(request_keys::USER_ID)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let recovery_options = db::get_recovery_options_by_username(
+	let user = db::get_user_by_username_or_email(
 		context.get_database_connection(),
-		username,
+		user_id,
 	)
 	.await?;
 
-	// recover option cannot be null. if null, throw server error
-	if recovery_options.is_none() {
-		context.json(error!(SERVER_ERROR));
+	if user.is_none() {
+		context.json(error!(USER_NOT_FOUND));
 		return Ok(context);
 	}
 
-	let recovery_options = recovery_options.unwrap();
+	let user = user.unwrap();
 
 	// mask phone number
-	if recovery_options.backup_phone_number.is_some() {
-		let phone_number = &recovery_options.backup_phone_number.unwrap();
+	if user.backup_phone_number.is_some() {
+		let phone_number = &user.backup_phone_number.unwrap();
 		let phone_number = mask_phone_number(phone_number)?;
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
-			&recovery_options.backup_phone_country_code.unwrap(),
+			&user.backup_phone_country_code.unwrap(),
 		)
 		.await?
 		.status(400)
 		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
-		context.json(json!({
-			request_keys::SUCCESS : true,
-			request_keys::BACKUP_PHONE_NUMBER: format!("+{}{}", country_code.phone_code, phone_number)
-		}));
-		return Ok(context);
+		response_map.insert(
+			request_keys::BACKUP_PHONE_NUMBER.to_string(),
+			format!("+{}{}", country_code.phone_code, phone_number).into(),
+		);
 	}
 
-	if recovery_options.backup_email_local.is_some() {
+	if user.backup_email_local.is_some() {
 		let email = format!(
 			"{}@{}",
-			recovery_options.backup_email_local.unwrap(),
+			user.backup_email_local.unwrap(),
 			db::get_personal_domain_by_id(
 				context.get_database_connection(),
-				&recovery_options.backup_email_domain_id.unwrap()
+				&user.backup_email_domain_id.unwrap()
 			)
 			.await?
 			.status(500)?
@@ -1188,13 +1207,12 @@ async fn list_recovery_options(
 		);
 
 		let email = mask_email(&email)?;
-		context.json(json!({
-			request_keys::SUCCESS: true,
-			request_keys::BACKUP_EMAIL: email
-		}));
-
-		return Ok(context);
+		response_map
+			.insert(request_keys::BACKUP_EMAIL.to_string(), email.into());
 	}
+
+	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
+	context.json(response);
 	Ok(context)
 }
 

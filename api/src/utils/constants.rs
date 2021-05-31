@@ -133,4 +133,5 @@ pub mod request_keys {
 	pub const SUB_DOMAIN: &str = "subDomain";
 	pub const PATH: &str = "path";
 	pub const PORT: &str = "port";
+	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
 }

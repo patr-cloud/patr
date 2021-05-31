@@ -1,6 +1,12 @@
+use std::str::FromStr;
+
+use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::constants::ResourceOwnerType;
+use crate::{
+	error,
+	utils::{constants::ResourceOwnerType, Error},
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -95,9 +101,25 @@ pub struct PhoneCountryCode {
 }
 
 // enum taken in as response from the front end
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum PreferredRecoveryOption {
-	PhoneNumber,
-	EmailAddress,
+	BackupPhoneNumber,
+	BackupEmail,
+}
+
+impl FromStr for PreferredRecoveryOption {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"phonenumber" => Ok(PreferredRecoveryOption::BackupPhoneNumber),
+			"email" => Ok(PreferredRecoveryOption::BackupEmail),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -120,20 +142,20 @@ pub struct RecoveryOptions {
 	pub backup_email_domain_id: Option<Vec<u8>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PhoneNumber {
-	#[serde(rename = "phoneCountryCode")]
-	backup_phone_country_code: String,
-	#[serde(rename = "phoneNumber")]
-	backup_phone_number: String,
-}
+// #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+// #[serde(rename_all = "camelCase")]
+// pub struct PhoneNumber {
+// 	#[serde(rename = "phoneCountryCode")]
+// 	backup_phone_country_code: String,
+// 	#[serde(rename = "phoneNumber")]
+// 	backup_phone_number: String,
+// }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct EmailAddress {
-	#[serde(rename = "emailLocal")]
-	backup_email_local: String,
-	#[serde(rename = "emailDomainId")]
-	backup_email_domain_id: Vec<u8>,
-}
+// #[derive(Serialize, Deserialize, Clone, Debug, Default)]
+// #[serde(rename_all = "camelCase")]
+// pub struct EmailAddress {
+// 	#[serde(rename = "emailLocal")]
+// 	backup_email_local: String,
+// 	#[serde(rename = "emailDomainId")]
+// 	backup_email_domain_id: Vec<u8>,
+// }
