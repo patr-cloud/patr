@@ -4,17 +4,10 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		User,
-		UserLogin,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
+		PhoneCountryCode, RecoveryOptions, User, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_users_pre(
@@ -1911,4 +1904,29 @@ pub async fn add_phone_number_for_user(
 	.execute(connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_recovery_options_by_username(
+	connection: &mut Transaction<'_, Database>,
+	username: &str,
+) -> Result<Option<RecoveryOptions>, sqlx::Error> {
+	let rows = query_as!(
+		RecoveryOptions,
+		r#"
+		SELECT
+			backup_email_local,
+			backup_email_domain_id,
+			backup_phone_country_code,
+			backup_phone_number
+		FROM 
+			"user"
+		WHERE
+			username = $1;
+	"#,
+		username
+	)
+	.fetch_all(connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
 }

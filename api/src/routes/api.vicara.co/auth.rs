@@ -5,24 +5,16 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time,
-		mailer,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
+		get_current_time, mailer, validator, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
@@ -1162,9 +1154,52 @@ async fn list_recovery_options(
 		return Ok(context);
 	}
 
-	let mut recovery_options = serde_json::to_value(recovery_options.unwrap())?;
+	// check if phone number is not null
+	let recovery_options = recovery_options.unwrap();
+	if recovery_options.backup_phone_number.is_some() {}
+
+	let mut recovery_options = serde_json::to_value(recovery_options)?;
 	let response = recovery_options.as_object_mut().unwrap();
 	response.insert(request_keys::SUCCESS.to_string(), true.into());
 	context.json(json!(response));
 	Ok(context)
+}
+
+// TODO: move these functions to respective folders
+fn mask_email(email: &str) -> Result<String, ()> {
+	let mut email = email.to_owned();
+	let start_index = 3;
+
+	let offset_index = email.find("@").unwrap() - 2;
+	println!("offset index {}", offset_index);
+
+	let difference = offset_index - start_index;
+	println!("difference {}", difference);
+
+	let mask = String::from_utf8(vec![b'*'; difference]);
+	if let Err(er) = mask {
+		return Err(());
+	}
+	let mask = mask.unwrap();
+
+	email.replace_range(start_index..offset_index, &mask);
+	return Ok(email);
+}
+
+fn mask_phone_number(email: &str) -> Result<String, ()> {
+	let mut email = email.to_owned();
+	let start_index = 0;
+	let offset_index = 6;
+
+	let difference = offset_index - start_index;
+	// println!("difference {}", difference);
+
+	let mask = String::from_utf8(vec![b'*'; difference]);
+	if let Err(er) = mask {
+		return Err(());
+	}
+	let mask = mask.unwrap();
+
+	email.replace_range(start_index..offset_index, &mask);
+	return Ok(email);
 }
