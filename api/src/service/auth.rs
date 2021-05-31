@@ -6,7 +6,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{User, UserLogin},
+		db_mapping::{PreferredRecoveryOption, User, UserLogin},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -387,12 +387,14 @@ pub async fn generate_access_token(
 	Ok(jwt)
 }
 
-// function to reset password
-// TODO: Remove otp from response
+// this function takes care of generating an OTP and sending it
+// to the preferred Recovery option chosen by the user.
+// response will NOT contain the OTP
 pub async fn forgot_password(
 	connection: &mut Transaction<'_, Database>,
 	user_id: &str,
-) -> Result<(String, String), Error> {
+	preferred_recovery_option: PreferredRecoveryOption,
+) -> Result<(), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
 		.await?
 		.status(200)
@@ -413,18 +415,16 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	// TODO don't unwrap in case of phone number backup
-	let domain = db::get_personal_domain_by_id(
+	// NOTE: BELOW CODE WILL PANIC
+	service::send_forgot_password_otp(
 		connection,
-		user.backup_email_domain_id.unwrap().as_ref(),
+		user_id,
+		preferred_recovery_option,
+		&otp,
 	)
-	.await?
-	.status(500)?;
+	.await?;
 
-	Ok((
-		otp,
-		format!("{}@{}", user.backup_email_local.unwrap(), domain.name),
-	))
+	Ok(())
 }
 
 pub async fn reset_password(

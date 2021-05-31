@@ -19,7 +19,6 @@ use crate::{
 
 //TODO: implement this function
 pub fn send_user_verification_otp(
-	country_code: &str,
 	phone_number: &str,
 	otp: &str,
 ) -> Result<(), Error> {

@@ -504,15 +504,19 @@ async fn forgot_password(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-	let (otp, backup_email) =
-		service::forgot_password(context.get_database_connection(), user_id)
-			.await?;
+
+	// service function should take care of otp generation and delivering the
+	// otp to the preferred recovery option
+	service::forgot_password(
+		context.get_database_connection(),
+		user_id,
+		preferred_recovery_option,
+	)
+	.await?;
 
 	// task::spawn_blocking(|| {
 	// 	mailer::send_password_reset_requested_mail(config, backup_email, otp);
 	// });
-	service::send_user_verification_otp(None, None, Some(&backup_email), &otp)
-		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
