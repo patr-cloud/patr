@@ -5,16 +5,24 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		mailer,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -1135,30 +1143,28 @@ async fn list_recovery_options(
 	let body = context.get_body_object().clone();
 
 	// get user id from the body
-	let user_id = body
-		.get(request_keys::USER_ID)
+	let username = body
+		.get(request_keys::USERNAME)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = db::get_user_by_user_id(
+	let recovery_options = db::get_recovery_options_by_username(
 		context.get_database_connection(),
-		user_id.as_bytes(),
+		username,
 	)
 	.await?;
 
-	if user.is_none() {
-		context.json(error!(USER_NOT_FOUND));
+	// recover option cannot be null. if null, throw server error
+	if recovery_options.is_none() {
+		context.json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 
-	let user = user.unwrap();
-
-	// TODO
-	// 1) check if user has email as backup
-	// 2) check if user has phone number as backup
-	// mask the values and return it back as response
-
+	let mut recovery_options = serde_json::to_value(recovery_options.unwrap())?;
+	let response = recovery_options.as_object_mut().unwrap();
+	response.insert(request_keys::SUCCESS.to_string(), true.into());
+	context.json(json!(response));
 	Ok(context)
 }

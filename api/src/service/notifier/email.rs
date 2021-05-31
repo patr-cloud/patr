@@ -4,15 +4,21 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{User, UserLogin},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType, get_current_time_millis,
-		settings::Settings, validator, Error,
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
 	},
 	Database,
 };
