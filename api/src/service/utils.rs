@@ -1,8 +1,6 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2,
-	PasswordHash,
-	Version,
+	Argon2, PasswordHash, Version,
 };
 use hex::ToHex;
 use sqlx::Transaction;
@@ -101,4 +99,32 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+pub fn mask_email(email: &str) -> Result<String, Error> {
+	let mut email = email.to_owned();
+	let start_index = 3;
+
+	let offset_index = email.find("@").unwrap() - 2;
+	println!("offset index {}", offset_index);
+
+	let difference = offset_index - start_index;
+	println!("difference {}", difference);
+
+	let mask = String::from_utf8(vec![b'*'; difference])?;
+
+	email.replace_range(start_index..offset_index, &mask);
+	return Ok(email);
+}
+
+pub fn mask_phone_number(phone_number: &str) -> Result<String, Error> {
+	let mut phone_number = phone_number.to_owned();
+	let start_index = 0;
+	let offset_index = 6;
+
+	let difference = offset_index - start_index;
+
+	let mask = String::from_utf8(vec![b'*'; difference])?;
+	phone_number.replace_range(start_index..offset_index, &mask);
+	return Ok(phone_number);
 }

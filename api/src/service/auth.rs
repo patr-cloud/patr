@@ -3,21 +3,15 @@ use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{PreferredRecoveryOption, User, UserLogin},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 	Database,
 };
@@ -418,7 +412,7 @@ pub async fn forgot_password(
 	// NOTE: BELOW CODE WILL PANIC
 	service::send_forgot_password_otp(
 		connection,
-		user_id,
+		user,
 		preferred_recovery_option,
 		&otp,
 	)

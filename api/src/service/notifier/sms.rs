@@ -1,37 +1,34 @@
+use crate::{db, error, utils::Error};
 use core::panic;
-
-use eve_rs::AsError;
-use sqlx::Transaction;
-
-use crate::{
-	db,
-	error,
-	models::{
-		db_mapping::{User, UserLogin},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-	},
-	service::{self, get_refresh_token_expiry},
-	utils::Error,
-	Database,
-};
 
 //TODO: implement this function
 pub fn send_user_verification_otp(
-	phone_number: &str,
-	otp: &str,
+	_phone_number: &str,
+	_otp: &str,
 ) -> Result<(), Error> {
-	log::error!("SENDING MESSAGE...");
+	log::error!("SENDING OTP MESSAGE...");
+	panic!("sending SMS with phone number is not implemented yet.");
+	Ok(())
+}
+
+pub fn send_password_changed_notification(
+	_phone_number: &str,
+) -> Result<(), Error> {
+	log::error!("SENDING PASSWORD CHANGE MESSAGE...");
 	panic!("sending SMS with phone number is not implemented yet.");
 	Ok(())
 }
 
 pub fn send_user_reset_password_notification(
-	country_code: &str,
-	phone_number: &str,
+	_phone_number: &str,
 ) -> Result<(), Error> {
-	log::error!("SENDING PASSWORD RESET NOTIFICATION");
+	log::error!("SENDING PASSWORD RESET MESSAGE");
 	panic!("sending SMS with phone number is not implenented yet.");
+	Ok(())
+}
+
+pub fn send_backup_registration_sms(_phone_number: &str) -> Result<(), Error> {
+	log::error!("SENDING BACKUP MESSAGE...");
+	panic!("sending SMS with phone number is not implemented yet.");
 	Ok(())
 }

@@ -5,25 +5,17 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
-		db_mapping::PreferredRecoveryOption,
+		db_mapping::{JoinNotifier, PreferredRecoveryOption},
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time,
-		mailer,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
+		get_current_time, mailer, validator, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
@@ -256,27 +248,21 @@ async fn sign_up(
 	)
 	.await?;
 
-	if let Some(email) = backup_email {
-		let config = context.get_state().config.clone();
-		let email = email.to_string();
-		// task::spawn_blocking(|| {
-		// 	mailer::send_email_verification_mail(config, email, otp_clone);
-		// });
+	// at this point, User should be added to table `User to sign up`
+	let user_to_sign_up = db::get_user_to_sign_up_by_username(
+		context.get_database_connection(),
+		username,
+	)
+	.await?
+	.status(500)?;
 
-		service::send_user_verification_otp(None, None, Some(&email), &otp)
-			.await?;
-	}
-	if let Some((_country_code, _phone_number)) =
-		backup_phone_country_code.zip(backup_phone_number)
-	{
-		service::send_user_verification_otp(
-			backup_phone_country_code,
-			backup_phone_number,
-			None,
-			&otp,
-		)
-		.await?;
-	}
+	// send otp
+	service::send_user_sign_up_otp(
+		context.get_database_connection(),
+		user_to_sign_up,
+		&otp,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -354,29 +340,13 @@ async fn join(
 		backup_phone_number_to,
 	) = result;
 
-	if let Some(welcome_email_to) = welcome_email_to {
-		task::spawn_blocking(|| {
-			mailer::send_sign_up_completed_mail(config, welcome_email_to);
-		});
-	}
-
-	if let Some(backup_email) = backup_email_to {
-		let config = context.get_state().config.clone();
-		task::spawn_blocking(|| {
-			mailer::send_backup_registration_mail(config, backup_email);
-		});
-	}
-
-	if let Some(_phone_number) = &backup_phone_number_to {
-		// using `as_deref` to conver Option<String> to Option<&str>
-		service::send_user_verification_otp(
-			None,
-			backup_phone_number_to.as_deref(),
-			None,
-			otp,
-		)
-		.await?;
-	}
+	// BELOW CODE WILL PANIC
+	service::send_sign_up_complete_notification(
+		welcome_email_to,
+		backup_email_to,
+		backup_phone_number_to,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -567,43 +537,12 @@ async fn reset_password(
 	)
 	.await?;
 
-	if let Some((backup_email_local, backup_email_domain_id)) =
-		user.backup_email_local.zip(user.backup_email_domain_id)
-	{
-		let email = format!(
-			"{}@{}",
-			backup_email_local,
-			db::get_personal_domain_by_id(
-				context.get_database_connection(),
-				&backup_email_domain_id
-			)
-			.await?
-			.status(500)?
-			.name
-		);
-		// 	task::spawn_blocking(|| {
-		// 		mailer::send_password_changed_notification_mail(config, email);
-		// 	});
-		service::send_user_reset_password_notification(
-			None,
-			None,
-			Some(&email),
-		)
-		.await?;
-	}
-
-	if let Some((_phone_country_code, _phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
-	{
-		service::send_user_reset_password_notification(
-			user.backup_phone_country_code.as_deref(),
-			user.backup_phone_number.as_deref(),
-			None,
-		)
-		.await?;
-	}
+	// THIS CODE WILL PANIC
+	service::send_user_reset_password_notification(
+		context.get_database_connection(),
+		user,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -1183,7 +1122,7 @@ async fn list_recovery_options(
 	// mask phone number
 	if user.backup_phone_number.is_some() {
 		let phone_number = &user.backup_phone_number.unwrap();
-		let phone_number = mask_phone_number(phone_number)?;
+		let phone_number = service::mask_phone_number(phone_number)?;
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
 			&user.backup_phone_country_code.unwrap(),
@@ -1210,7 +1149,7 @@ async fn list_recovery_options(
 			.name
 		);
 
-		let email = mask_email(&email)?;
+		let email = service::mask_email(&email)?;
 		response_map
 			.insert(request_keys::BACKUP_EMAIL.to_string(), email.into());
 	}
@@ -1218,33 +1157,4 @@ async fn list_recovery_options(
 	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
 	context.json(response);
 	Ok(context)
-}
-
-// TODO: move these functions to respective folders
-fn mask_email(email: &str) -> Result<String, Error> {
-	let mut email = email.to_owned();
-	let start_index = 3;
-
-	let offset_index = email.find("@").unwrap() - 2;
-	println!("offset index {}", offset_index);
-
-	let difference = offset_index - start_index;
-	println!("difference {}", difference);
-
-	let mask = String::from_utf8(vec![b'*'; difference])?;
-
-	email.replace_range(start_index..offset_index, &mask);
-	return Ok(email);
-}
-
-fn mask_phone_number(phone_number: &str) -> Result<String, Error> {
-	let mut phone_number = phone_number.to_owned();
-	let start_index = 0;
-	let offset_index = 6;
-
-	let difference = offset_index - start_index;
-
-	let mask = String::from_utf8(vec![b'*'; difference])?;
-	phone_number.replace_range(start_index..offset_index, &mask);
-	return Ok(phone_number);
 }

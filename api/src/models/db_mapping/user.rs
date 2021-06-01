@@ -100,6 +100,11 @@ pub struct PhoneCountryCode {
 	pub country_name: String,
 }
 
+pub enum JoinNotifier {
+	WelcomeEmail,
+	BackupEmail,
+	BackupPhoneNumber,
+}
 // enum taken in as response from the front end
 #[derive(sqlx::Type, Debug)]
 #[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
