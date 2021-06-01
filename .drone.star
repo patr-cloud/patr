@@ -68,7 +68,20 @@ def notify_on_failure(ctx):
             "webhook_token": {
                 "from_secret": "webhook_token"
             },
-            "message": "Build \"{{build.message}}\" pushed by @{{build.author}} has failed. Please fix before merging"
+            "message": """
+**Build failed**
+----------------
+
+**Commit message**
+```
+{{{{commit.message}}}}
+```
+
+**Author**
+{}
+
+Please fix before merging
+""".format(get_author_list())
         },
         "when": {
             "branch": [
@@ -79,3 +92,20 @@ def notify_on_failure(ctx):
             "status": ["failure"]
         }
     }
+
+def get_author_list():
+    code = ""
+    authors = {
+        "abhishek": "427846410101325825",
+        "tsgowtham": "328247582835081237",
+        "rakshith": "455822434919120926",
+        "manjeet.arneja": "434292143507374080",
+        "aniket.jain": "764032015041036320",
+        "samyak.gangwal": "429563803315994624",
+        "satyam.jha": "417720780835782657",
+        "rohit.singh": "688020346451918929",
+        "sanskar.biswal": "688020277829173337"
+    }
+    for author in authors:
+        code += "{{{{#equal commit.author \"{}\"}}}}<@{}>{{{{/equal}}}}".format(author, authors[author])
+    return code

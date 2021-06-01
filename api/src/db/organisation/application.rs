@@ -1,5 +1,3 @@
-use sqlx::Transaction;
-
 use crate::{
 	models::db_mapping::{Application, ApplicationVersion},
 	query,
@@ -9,7 +7,7 @@ use crate::{
 
 // TODO these haven't been migrated to postgres yet
 pub async fn initialize_application_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing application tables");
 	query!(
@@ -59,8 +57,9 @@ pub async fn initialize_application_pre(
 }
 
 pub async fn initialize_application_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up application tables initialization");
 	query!(
 		r#"
 		ALTER TABLE application
@@ -76,7 +75,7 @@ pub async fn initialize_application_post(
 
 /// function to fetch all the application names.
 pub async fn get_applications_in_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<Application>, sqlx::Error> {
 	query_as!(
@@ -95,13 +94,13 @@ pub async fn get_applications_in_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 /// add function to get application for specific given id
 pub async fn get_application_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	application_id: &[u8],
 ) -> Result<Option<Application>, sqlx::Error> {
 	let rows = query_as!(
@@ -116,7 +115,7 @@ pub async fn get_application_by_id(
 		"#,
 		application_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -126,7 +125,7 @@ pub async fn get_application_by_id(
 /// this query checks versions for an application from TABLE
 /// application_versions.
 pub async fn get_all_versions_for_application(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	appliction_id: &[u8],
 ) -> Result<Vec<ApplicationVersion>, sqlx::Error> {
 	let versions = query_as!(
@@ -142,7 +141,7 @@ pub async fn get_all_versions_for_application(
 		"#,
 		appliction_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(versions)

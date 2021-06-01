@@ -1,5 +1,4 @@
 use eve_rs::AsError;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
 };
 
 pub async fn is_organisation_name_allowed(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_name: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_organisation_name_valid(&organisation_name) {
@@ -27,7 +26,7 @@ pub async fn is_organisation_name_allowed(
 }
 
 pub async fn create_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_name: &str,
 	super_admin_id: &[u8],
 ) -> Result<Uuid, Error> {
@@ -44,7 +43,7 @@ pub async fn create_organisation(
 	db::create_resource(
 		connection,
 		resource_id,
-		&format!("Organiation: {}", organisation_name),
+		&format!("Organisation: {}", organisation_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()

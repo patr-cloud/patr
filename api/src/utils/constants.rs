@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
-use semver::Version;
+use semver::{BuildMetadata, Prerelease, Version};
 
 use crate::{error, utils::Error};
 
@@ -10,8 +10,8 @@ pub const DATABASE_VERSION: Version = Version {
 	major: 0,
 	minor: 0,
 	patch: 0,
-	pre: vec![],
-	build: vec![],
+	pre: Prerelease::EMPTY,
+	build: BuildMetadata::EMPTY,
 };
 
 pub const APP_NAME: &str = crate_name!();
@@ -132,6 +132,17 @@ pub mod request_keys {
 	pub const IMAGE_TAG: &str = "imageTag";
 	pub const SUB_DOMAIN: &str = "subDomain";
 	pub const PATH: &str = "path";
+	pub const ENVIRONMENT_VARIABLES: &str = "environmentVariables";
+	pub const PERSISTENT_VOLUMES: &str = "volumes";
+	pub const EXPOSED_PORTS: &str = "ports";
+	pub const UPGRADE_PATH_ID: &str = "upgradePathId";
+	pub const UPGRADE_PATHS: &str = "upgradePaths";
+	pub const MACHINE_TYPES: &str = "machineTypes";
+	pub const ENTRY_POINT_ID: &str = "entryPointId";
+	pub const ENTRY_POINTS: &str = "entryPoints";
+	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
 	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
+	pub const URL: &str = "url";
+	pub const DEFAULT: &str = "default";
 }

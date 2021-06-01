@@ -1,34 +1,33 @@
 use semver::Version;
-use sqlx::Transaction;
 
 use crate::{app::App, query, Database};
 
 pub async fn initialize_meta_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing meta tables");
 	query!(
 		r#"
 		CREATE TABLE meta_data(
-			id VARCHAR(100)
-				CONSTRAINT meta_data_pk PRIMARY KEY,
+			id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#
 	)
-	.execute(transaction)
+	.execute(&mut *transaction)
 	.await?;
 	Ok(())
 }
 
 pub async fn initialize_meta_post(
-	_transaction: &mut Transaction<'_, Database>,
+	_transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up meta tables initialization");
 	Ok(())
 }
 
 pub async fn set_database_version(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	version: &Version,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -46,7 +45,7 @@ pub async fn set_database_version(
 		version.minor.to_string(),
 		version.patch.to_string()
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }

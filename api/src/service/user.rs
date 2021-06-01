@@ -1,5 +1,4 @@
 use eve_rs::AsError;
-use sqlx::Transaction;
 
 use crate::{
 	db,
@@ -10,7 +9,7 @@ use crate::{
 };
 
 pub async fn add_personal_email_to_be_verified_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
 	user_id: &[u8],
 ) -> Result<(), Error> {
@@ -58,7 +57,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 pub async fn verify_personal_email_address_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_address: &str,
 	otp: &str,
@@ -103,7 +102,7 @@ pub async fn verify_personal_email_address_for_user(
 }
 
 pub async fn change_password_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	old_password: &str,
 	new_password: &str,

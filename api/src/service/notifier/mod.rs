@@ -2,8 +2,7 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
 	utils::Error,
 	Database,
@@ -161,7 +160,7 @@ pub async fn send_user_reset_password_notification(
 }
 
 pub async fn send_forgot_password_otp(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 	recovery_option: PreferredRecoveryOption,
 	otp: &str,

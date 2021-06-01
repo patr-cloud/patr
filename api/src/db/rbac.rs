@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use hex::ToHex;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -15,7 +14,7 @@ use crate::{
 };
 
 pub async fn initialize_rbac_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing rbac tables");
 
@@ -42,7 +41,8 @@ pub async fn initialize_rbac_pre(
 					REFERENCES resource_type(id),
 			owner_id BYTEA NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
-					DEFERRABLE INITIALLY IMMEDIATE
+					DEFERRABLE INITIALLY IMMEDIATE,
+			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
 	)
@@ -226,8 +226,9 @@ pub async fn initialize_rbac_pre(
 }
 
 pub async fn initialize_rbac_post(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_resource_id(&mut *connection).await?;
 		let uuid = uuid.as_bytes().as_ref();
@@ -278,7 +279,7 @@ pub async fn initialize_rbac_post(
 }
 
 pub async fn get_all_organisation_roles_for_user(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<HashMap<String, OrgPermissions>, sqlx::Error> {
 	let mut orgs: HashMap<String, OrgPermissions> = HashMap::new();
@@ -436,7 +437,7 @@ pub async fn get_all_organisation_roles_for_user(
 }
 
 pub async fn generate_new_role_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -477,7 +478,7 @@ pub async fn generate_new_role_id(
 }
 
 pub async fn get_all_resource_types(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<ResourceType>, sqlx::Error> {
 	query_as!(
 		ResourceType,
@@ -488,12 +489,12 @@ pub async fn get_all_resource_types(
 			resource_type;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_all_permissions(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Permission>, sqlx::Error> {
 	query_as!(
 		Permission,
@@ -504,12 +505,12 @@ pub async fn get_all_permissions(
 			permission;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_resource_type_for_resource(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<ResourceType>, sqlx::Error> {
 	let rows = query_as!(
@@ -528,14 +529,14 @@ pub async fn get_resource_type_for_resource(
 		"#,
 		resource_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
 }
 
 pub async fn create_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 	name: &str,
 	description: Option<&str>,
@@ -553,13 +554,13 @@ pub async fn create_role(
 		description,
 		owner_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 pub async fn create_resource(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 	resource_name: &str,
 	resource_type_id: &[u8],
@@ -577,14 +578,14 @@ pub async fn create_resource(
 		resource_type_id,
 		owner_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn generate_new_resource_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -625,7 +626,7 @@ pub async fn generate_new_resource_id(
 }
 
 pub async fn get_resource_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
 	let rows = query_as!(
@@ -647,7 +648,7 @@ pub async fn get_resource_by_id(
 }
 
 pub async fn delete_resource(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -659,14 +660,14 @@ pub async fn delete_resource(
 		"#,
 		resource_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn get_all_organisation_roles(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<Role>, sqlx::Error> {
 	query_as!(
@@ -681,12 +682,12 @@ pub async fn get_all_organisation_roles(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_role_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<Option<Role>, sqlx::Error> {
 	let rows = query_as!(
@@ -701,7 +702,7 @@ pub async fn get_role_by_id(
 		"#,
 		role_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
@@ -710,7 +711,7 @@ pub async fn get_role_by_id(
 /// For a given role, what permissions does it have and on what resources?
 /// Returns a HashMap of Resource -> Permission[]
 pub async fn get_permissions_on_resources_for_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
 	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
@@ -750,7 +751,7 @@ pub async fn get_permissions_on_resources_for_role(
 /// For a given role, what permissions does it have and on what resources types?
 /// Returns a HashMap of ResourceType -> Permission[]
 pub async fn get_permissions_on_resource_types_for_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
 	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
@@ -788,7 +789,7 @@ pub async fn get_permissions_on_resource_types_for_role(
 }
 
 pub async fn remove_all_permissions_for_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -819,7 +820,7 @@ pub async fn remove_all_permissions_for_role(
 }
 
 pub async fn insert_resource_permissions_for_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 	resource_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
 ) -> Result<(), sqlx::Error> {
@@ -844,7 +845,7 @@ pub async fn insert_resource_permissions_for_role(
 }
 
 pub async fn insert_resource_type_permissions_for_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 	resource_type_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
 ) -> Result<(), sqlx::Error> {
@@ -869,7 +870,7 @@ pub async fn insert_resource_type_permissions_for_role(
 }
 
 pub async fn delete_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	remove_all_permissions_for_role(&mut *connection, role_id).await?;
@@ -890,7 +891,7 @@ pub async fn delete_role(
 }
 
 pub async fn remove_all_users_from_role(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(

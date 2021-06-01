@@ -1,11 +1,9 @@
-use sqlx::Transaction;
-
 use crate::{models::db_mapping::PortusTunnel, query, Database};
 
 pub async fn initialize_portus_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing Portus tables");
+	log::info!("Initializing portus tables");
 	query!(
 		r#"
 		CREATE TABLE portus_tunnel(
@@ -43,8 +41,9 @@ pub async fn initialize_portus_pre(
 }
 
 pub async fn initialize_portus_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up portus tables initialization");
 	query!(
 		r#"
 		ALTER TABLE portus_tunnel
@@ -60,7 +59,7 @@ pub async fn initialize_portus_post(
 
 // query to add user information with port and container details
 pub async fn create_new_portus_tunnel(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &[u8],
 	username: &str,
 	ssh_port: u16,
@@ -82,7 +81,7 @@ pub async fn create_new_portus_tunnel(
 		tunnel_name,
 		created as i64,
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -90,7 +89,7 @@ pub async fn create_new_portus_tunnel(
 
 // query to remove portus tunnel from database
 pub async fn delete_portus_tunnel(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -102,14 +101,14 @@ pub async fn delete_portus_tunnel(
 		"#,
 		tunnel_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 /// function to check if container exists with the given tunnel name
 pub async fn get_portus_tunnel_by_name(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_name: &str,
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
 	let mut rows = query!(
@@ -123,7 +122,7 @@ pub async fn get_portus_tunnel_by_name(
 		"#,
 		tunnel_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -139,7 +138,7 @@ pub async fn get_portus_tunnel_by_name(
 }
 
 pub async fn get_portus_tunnel_by_tunnel_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_id: &[u8],
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
 	let mut rows = query!(
@@ -153,7 +152,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		"#,
 		tunnel_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -169,7 +168,7 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 }
 
 pub async fn is_portus_port_available(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	port: u16,
 ) -> Result<bool, sqlx::Error> {
 	let mut rows = query!(
@@ -184,7 +183,7 @@ pub async fn is_portus_port_available(
 		"#,
 		port as i32
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {
@@ -200,7 +199,7 @@ pub async fn is_portus_port_available(
 }
 
 pub async fn get_portus_tunnels_for_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<PortusTunnel>, sqlx::Error> {
 	let rows = query!(
@@ -218,7 +217,7 @@ pub async fn get_portus_tunnels_for_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
 	.map(|row| PortusTunnel {

@@ -1,4 +1,3 @@
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
@@ -10,7 +9,7 @@ use crate::{
 };
 
 pub async fn initialize_domain_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing domain tables");
 
@@ -75,8 +74,9 @@ pub async fn initialize_domain_pre(
 }
 
 pub async fn initialize_domain_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
 		ALTER TABLE organisation_domain
@@ -91,7 +91,7 @@ pub async fn initialize_domain_post(
 }
 
 pub async fn generate_new_domain_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
@@ -182,7 +182,7 @@ pub async fn generate_new_domain_id(
 }
 
 pub async fn create_generic_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 	domain_name: &str,
 	domain_type: &ResourceOwnerType,
@@ -204,7 +204,7 @@ pub async fn create_generic_domain(
 }
 
 pub async fn add_to_organisation_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -222,7 +222,7 @@ pub async fn add_to_organisation_domain(
 }
 
 pub async fn add_to_personal_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -234,13 +234,13 @@ pub async fn add_to_personal_domain(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn get_domains_for_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
@@ -266,12 +266,12 @@ pub async fn get_domains_for_organisation(
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_all_unverified_domains(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
 		OrganisationDomain,
@@ -291,12 +291,12 @@ pub async fn get_all_unverified_domains(
 			is_verified = FALSE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn set_domain_as_verified(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -310,13 +310,13 @@ pub async fn set_domain_as_verified(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn get_all_verified_domains(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
 		OrganisationDomain,
@@ -336,12 +336,12 @@ pub async fn get_all_verified_domains(
 			is_verified = TRUE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn set_domain_as_unverified(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -355,14 +355,14 @@ pub async fn set_domain_as_unverified(
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 // TODO get the correct email based on permission
 pub async fn get_notification_email_for_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<String>, sqlx::Error> {
 	let rows = query!(
@@ -393,7 +393,7 @@ pub async fn get_notification_email_for_domain(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	if rows.is_empty() {
@@ -410,7 +410,7 @@ pub async fn get_notification_email_for_domain(
 
 #[allow(dead_code)]
 pub async fn delete_personal_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -429,7 +429,7 @@ pub async fn delete_personal_domain(
 }
 
 pub async fn delete_domain_from_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -448,7 +448,7 @@ pub async fn delete_domain_from_organisation(
 }
 
 pub async fn delete_generic_domain(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -467,7 +467,7 @@ pub async fn delete_generic_domain(
 }
 
 pub async fn get_organisation_domain_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<OrganisationDomain>, sqlx::Error> {
 	let rows = query_as!(
@@ -489,14 +489,14 @@ pub async fn get_organisation_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
 }
 
 pub async fn get_personal_domain_by_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<PersonalDomain>, sqlx::Error> {
 	let rows = query_as!(
@@ -517,14 +517,14 @@ pub async fn get_personal_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
 }
 
 pub async fn get_domain_by_name(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<Option<Domain>, sqlx::Error> {
 	let rows = query_as!(
@@ -541,7 +541,7 @@ pub async fn get_domain_by_name(
 		"#,
 		domain_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
