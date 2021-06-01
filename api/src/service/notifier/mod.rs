@@ -2,7 +2,8 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
 	utils::Error,
 	Database,
