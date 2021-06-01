@@ -1225,44 +1225,6 @@
       "nullable": []
     }
   },
-  "46f6805d6f2c29bf57783866aa8647b136a3d275fd84b2da70586c1ae1a790d4": {
-    "query": "SELECT backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number FROM \"user\" WHERE username = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "backup_email_domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
     "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
     "describe": {
@@ -4013,44 +3975,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "f8a07111dfb10c01c54b062d4ef1936f880663c0d5013e33363bf280d559dad1": {
-    "query": "SELECT backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number FROM \"user\" WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "backup_email_domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true
-      ]
     }
   },
   "fae57054668bd320a2e513fb937f06e40324b1393ffd6da90e070c4cbd2cdd25": {
