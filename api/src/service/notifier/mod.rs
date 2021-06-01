@@ -2,7 +2,8 @@ use eve_rs::AsError;
 use sqlx::Transaction;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
 	utils::Error,
 	Database,
@@ -76,7 +77,8 @@ pub async fn send_user_sign_up_otp(
 	Ok(())
 }
 
-// This function will send the given otp to all the backup options available for the given user.
+// This function will send the given otp to all the backup options available for
+// the given user.
 pub async fn send_password_changed_notification(
 	connection: &mut Transaction<'_, Database>,
 	user: User,

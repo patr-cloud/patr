@@ -1,6 +1,8 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2, PasswordHash, Version,
+	Argon2,
+	PasswordHash,
+	Version,
 };
 use hex::ToHex;
 use sqlx::Transaction;

@@ -5,9 +5,16 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error, pin_fn, service,
+	db,
+	error,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, mailer, Error, ErrorData, EveContext,
+		constants::request_keys,
+		mailer,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };

@@ -3,15 +3,21 @@ use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
-		db_mapping::{PreferredRecoveryOption, User, UserLogin},
-		rbac, AccessTokenData, ExposedUserData,
+		db_mapping::{JoinUser, PreferredRecoveryOption, User, UserLogin},
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType, get_current_time_millis,
-		settings::Settings, validator, Error,
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
 	},
 	Database,
 };
@@ -459,17 +465,7 @@ pub async fn join_user(
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<
-	(
-		String,
-		Uuid,
-		Uuid,
-		Option<String>,
-		Option<String>,
-		Option<String>,
-	),
-	Error,
-> {
+) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
@@ -706,13 +702,14 @@ pub async fn join_user(
 
 	let (jwt, login_id, refresh_token) =
 		sign_in_user(connection, user_id, &config).await?;
-
-	Ok((
+	let response = JoinUser::new(
 		jwt,
 		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,
 		backup_phone_number_to,
-	))
+	);
+
+	Ok(response)
 }

@@ -1,5 +1,6 @@
-use crate::{db, error, utils::Error};
 use core::panic;
+
+use crate::{db, error, utils::Error};
 
 //TODO: implement this function
 pub fn send_user_verification_otp(

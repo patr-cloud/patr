@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
 	error,
@@ -100,11 +101,6 @@ pub struct PhoneCountryCode {
 	pub country_name: String,
 }
 
-pub enum JoinNotifier {
-	WelcomeEmail,
-	BackupEmail,
-	BackupPhoneNumber,
-}
 // enum taken in as response from the front end
 #[derive(sqlx::Type, Debug)]
 #[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
@@ -123,6 +119,35 @@ impl FromStr for PreferredRecoveryOption {
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+pub struct JoinUser {
+	pub jwt: String,
+	pub login_id: Uuid,
+	pub refresh_token: Uuid,
+	pub welcome_email_to: Option<String>,
+	pub backup_email_to: Option<String>,
+	pub backup_phone_number_to: Option<String>,
+}
+
+impl JoinUser {
+	pub fn new(
+		jwt: String,
+		login_id: Uuid,
+		refresh_token: Uuid,
+		welcome_email_to: Option<String>,
+		backup_email_to: Option<String>,
+		backup_phone_number_to: Option<String>,
+	) -> Self {
+		JoinUser {
+			jwt,
+			login_id,
+			refresh_token,
+			welcome_email_to,
+			backup_email_to,
+			backup_phone_number_to,
 		}
 	}
 }

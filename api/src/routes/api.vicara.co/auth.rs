@@ -5,17 +5,25 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
-		db_mapping::{JoinNotifier, PreferredRecoveryOption},
+		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		mailer,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -324,35 +332,27 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
-	let result = service::join_user(
+	let join_user = service::join_user(
 		context.get_database_connection(),
 		&config,
 		otp,
 		username,
 	)
 	.await?;
-	let (
-		jwt,
-		login_id,
-		refresh_token,
-		welcome_email_to,
-		backup_email_to,
-		backup_phone_number_to,
-	) = result;
 
 	// BELOW CODE WILL PANIC
 	service::send_sign_up_complete_notification(
-		welcome_email_to,
-		backup_email_to,
-		backup_phone_number_to,
+		join_user.welcome_email_to,
+		join_user.backup_email_to,
+		join_user.backup_phone_number_to,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
-		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
+		request_keys::ACCESS_TOKEN: join_user.jwt,
+		request_keys::REFRESH_TOKEN: join_user.refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: join_user.login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
