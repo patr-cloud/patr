@@ -5,7 +5,7 @@ use crate::utils::Error;
 // TODO: implement this
 pub fn send_user_verification_otp(
 	_email: &str,
-	otp: &str,
+	_otp: &str,
 ) -> Result<(), Error> {
 	log::error!("SENDING OTP EMAIL ...");
 	panic!("Sending email in notifier is not implemented yet.");
