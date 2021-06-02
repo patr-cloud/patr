@@ -1,5 +1,5 @@
-use lettre::message::MultiPart;
 pub use api_macros::EmailTemplate;
+use lettre::message::MultiPart;
 
 use crate::utils::Error;
 

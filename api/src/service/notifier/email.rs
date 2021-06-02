@@ -92,11 +92,15 @@ async fn send_email<TEmail>(
 where
 	TEmail: EmailTemplate,
 {
-	use crate::service;
 	use lettre::{
-		transport::smtp::authentication::Credentials, AsyncSmtpTransport,
-		AsyncTransport, Message, Tokio1Executor,
+		transport::smtp::authentication::Credentials,
+		AsyncSmtpTransport,
+		AsyncTransport,
+		Message,
+		Tokio1Executor,
 	};
+
+	use crate::service;
 
 	let settings = service::get_config();
 	let mut builder = Message::builder()

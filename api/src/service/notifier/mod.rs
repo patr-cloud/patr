@@ -1,7 +1,8 @@
 use eve_rs::AsError;
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
 	utils::Error,
 	Database,
@@ -180,8 +181,7 @@ pub async fn send_forgot_password_otp(
 			let phone_number = user.backup_phone_number.unwrap();
 			let country_code = db::get_phone_country_by_country_code(
 				connection,
-				user
-					.backup_phone_country_code
+				user.backup_phone_country_code
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,

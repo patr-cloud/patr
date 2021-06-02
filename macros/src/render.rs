@@ -15,6 +15,7 @@ use syn::{
 	Token,
 };
 
+#[allow(dead_code)]
 struct RenderParser {
 	expr: Expr,
 	file_name: LitStr,
