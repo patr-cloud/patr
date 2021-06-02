@@ -4,10 +4,12 @@ pub mod rbac;
 
 mod access_token_data;
 mod docker_registry_token;
+mod email_template;
 mod twilio_sms;
 
 pub use access_token_data::*;
 pub use docker_registry_token::*;
+pub use email_template::*;
 pub use twilio_sms::*;
 
 /*

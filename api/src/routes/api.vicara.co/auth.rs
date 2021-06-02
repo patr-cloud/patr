@@ -438,8 +438,6 @@ async fn is_username_valid(
 	Ok(context)
 }
 
-// TODO: CHANGE IMPLEMENTATION OF THIS.
-// CHECK IF USER HAS REGISTERED BACKUP PHONE NUMBER AS WELL
 async fn forgot_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -470,10 +468,6 @@ async fn forgot_password(
 		preferred_recovery_option,
 	)
 	.await?;
-
-	// task::spawn_blocking(|| {
-	// 	mailer::send_password_reset_requested_mail(config, backup_email, otp);
-	// });
 
 	context.json(json!({
 		request_keys::SUCCESS: true

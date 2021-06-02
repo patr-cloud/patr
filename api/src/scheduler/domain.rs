@@ -8,11 +8,7 @@ use cloudflare::{
 	},
 };
 
-use crate::{
-	db,
-	scheduler::Job,
-	utils::{mailer, validator},
-};
+use crate::{db, scheduler::Job, utils::validator};
 
 // Every two hours
 pub(super) fn verify_unverified_domains_job() -> Job {
@@ -129,11 +125,12 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 					"You might have a dangling resource for the domain"
 				);
 			} else {
-				mailer::send_domain_verified_mail(
-					config.config.clone(),
-					notification_email.unwrap(),
-					unverified_domain.name,
-				);
+				// TODO change this to notifier
+				// mailer::send_domain_verified_mail(
+				// 	config.config.clone(),
+				// 	notification_email.unwrap(),
+				// 	unverified_domain.name,
+				// );
 			}
 			continue;
 		}
@@ -229,11 +226,12 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
 			continue;
 		}
-		mailer::send_domain_unverified_mail(
-			config.config.clone(),
-			notification_email.unwrap(),
-			verified_domain.name,
-		);
+		// TODO change this to notifier
+		// mailer::send_domain_unverified_mail(
+		// 	config.config.clone(),
+		// 	notification_email.unwrap(),
+		// 	verified_domain.name,
+		// );
 	}
 
 	Ok(())

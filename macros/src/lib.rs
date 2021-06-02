@@ -24,7 +24,7 @@ pub fn query_as(input: TokenStream) -> TokenStream {
 	query_as::parse(input)
 }
 
-#[proc_macro]
+#[proc_macro_derive(EmailTemplate, attributes(template_path))]
 pub fn email_template(input: TokenStream) -> TokenStream {
 	email_template::parse(input)
 }

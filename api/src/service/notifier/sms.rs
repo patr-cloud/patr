@@ -64,7 +64,9 @@ pub async fn send_user_reset_password_notification(
 	.await
 }
 
-pub async fn send_backup_registration_sms(phone_number: &str) -> Result<(), Error> {
+pub async fn send_backup_registration_sms(
+	phone_number: &str,
+) -> Result<(), Error> {
 	send_sms(
 		phone_number,
 		format!(

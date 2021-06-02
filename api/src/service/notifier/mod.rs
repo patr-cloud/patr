@@ -1,9 +1,7 @@
 use eve_rs::AsError;
-use sqlx::Transaction;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
 	utils::Error,
 	Database,
@@ -21,11 +19,11 @@ pub async fn send_sign_up_complete_notification(
 	backup_phone_number: Option<String>,
 ) -> Result<(), Error> {
 	if let Some(welcome_email) = welcome_email {
-		email::send_sign_up_completed_email(&welcome_email)?;
+		email::send_sign_up_completed_email(welcome_email.parse()?).await?;
 	}
 
 	if let Some(backup_email) = backup_email {
-		email::send_backup_registration_mail(&backup_email)?;
+		email::send_backup_registration_mail(backup_email.parse()?).await?;
 	}
 
 	if let Some(phone_number) = backup_phone_number {
@@ -34,39 +32,35 @@ pub async fn send_sign_up_complete_notification(
 	Ok(())
 }
 
-// could possibly also take in `PreferredNotifierType`
 pub async fn send_user_sign_up_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: UserToSignUp,
 	otp: &str,
 ) -> Result<(), Error> {
-	log::error!("NOTIFIER NOT YET IMPLEMENTED, Thanks for trying");
 	// chcek if email is given as a backup option
-	if let Some((_backup_email_domain_id, _backup_email_local)) = user
+	if let Some((backup_email_domain_id, backup_email_local)) = user
 		.backup_email_domain_id
 		.as_ref()
 		.zip(user.backup_email_local.as_ref())
 	{
 		let email = get_user_email(
 			connection,
-			user.backup_email_domain_id.unwrap().as_ref(),
-			&user.backup_email_local.unwrap(),
+			&backup_email_domain_id,
+			&backup_email_local,
 		)
 		.await?;
 
-		email::send_user_verification_otp(&email, otp).await?;
-	}
-
-	// check if phone number is given as a backup
-	if let Some((_phone_country_code, _phone_number)) = user
+		email::send_user_verification_otp(email.parse()?, otp).await?;
+	} else if let Some((phone_country_code, phone_number)) = user
 		.backup_phone_country_code
 		.as_ref()
 		.zip(user.backup_phone_number.as_ref())
 	{
+		// check if phone number is given as a backup
 		let phone_number = get_user_phone_number(
 			connection,
-			&user.backup_phone_country_code.unwrap(),
-			&user.backup_phone_number.unwrap(),
+			&phone_country_code,
+			&phone_number,
 		)
 		.await?;
 
@@ -83,31 +77,31 @@ pub async fn send_password_changed_notification(
 	user: User,
 ) -> Result<(), Error> {
 	// chcek if email is given as a backup option
-	if let Some((_backup_email_domain_id, _backup_email_local)) = user
+	if let Some((backup_email_domain_id, backup_email_local)) = user
 		.backup_email_domain_id
 		.as_ref()
 		.zip(user.backup_email_local.as_ref())
 	{
 		let email = get_user_email(
 			connection,
-			user.backup_email_domain_id.unwrap().as_ref(),
-			&user.backup_email_local.unwrap(),
+			&backup_email_domain_id,
+			&backup_email_local,
 		)
 		.await?;
 
-		email::send_password_changed_notification(&email).await?;
+		email::send_password_changed_notification(email.parse()?).await?;
 	}
 
 	// check if phone number is given as a backup
-	if let Some((_phone_country_code, _phone_number)) = user
+	if let Some((phone_country_code, phone_number)) = user
 		.backup_phone_country_code
 		.as_ref()
 		.zip(user.backup_phone_number.as_ref())
 	{
 		let phone_number = get_user_phone_number(
 			connection,
-			&user.backup_phone_country_code.unwrap(),
-			&user.backup_phone_number.unwrap(),
+			&phone_country_code,
+			&phone_number,
 		)
 		.await?;
 
@@ -121,36 +115,34 @@ pub async fn send_user_reset_password_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	log::error!("NOTIFIER NOT YET IMPLEMENTED, Thanks for trying LOL");
-
-	if let Some((_phone_country_code, _phone_number)) = user
+	if let Some((phone_country_code, phone_number)) = user
 		.backup_phone_country_code
 		.as_ref()
 		.zip(user.backup_phone_number.as_ref())
 	{
 		let phone_number = get_user_phone_number(
 			connection,
-			&user.backup_phone_country_code.unwrap(),
-			&user.backup_phone_number.unwrap(),
+			&phone_country_code,
+			&phone_number,
 		)
 		.await?;
 
 		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
 
-	if let Some((_backup_email_domain_id, _backup_email_local)) = user
+	if let Some((backup_email_domain_id, backup_email_local)) = user
 		.backup_email_domain_id
 		.as_ref()
 		.zip(user.backup_email_local.as_ref())
 	{
 		let email = get_user_email(
 			connection,
-			user.backup_email_domain_id.unwrap().as_ref(),
-			&user.backup_email_local.unwrap(),
+			&backup_email_domain_id,
+			&backup_email_local,
 		)
 		.await?;
 
-		email::send_user_reset_password_notification(&email).await?;
+		email::send_user_reset_password_notification(email.parse()?).await?;
 	}
 	Ok(())
 }
@@ -166,21 +158,33 @@ pub async fn send_forgot_password_otp(
 		PreferredRecoveryOption::BackupEmail => {
 			let domain = db::get_personal_domain_by_id(
 				connection,
-				user.backup_email_domain_id.unwrap().as_ref(),
+				user.backup_email_domain_id
+					.as_ref()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?
 			.status(500)?;
 
-			let email =
-				format!("{}@{}", user.backup_email_local.unwrap(), domain.name);
+			let email = format!(
+				"{}@{}",
+				user.backup_email_local
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?,
+				domain.name
+			);
 			// send email
-			email::send_forgot_password_otp(&email, otp).await?;
+			email::send_forgot_password_otp(email.parse()?, otp).await?;
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
 			let phone_number = user.backup_phone_number.unwrap();
 			let country_code = db::get_phone_country_by_country_code(
 				connection,
-				&user.backup_phone_country_code.unwrap(),
+				user
+					.backup_phone_country_code
+					.as_ref()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?
 			.status(500)
