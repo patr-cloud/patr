@@ -12,6 +12,12 @@ pub fn send_user_verification_otp(
 	Ok(())
 }
 
+pub fn send_forgot_password_otp(_email: &str, _otp: &str) -> Result<(), Error> {
+	log::error!("SENDING OTP EMAIL ...");
+	panic!("Sending email in notifier is not implemented yet.");
+	Ok(())
+}
+
 pub fn send_user_reset_password_notification(
 	_email: &str,
 ) -> Result<(), Error> {

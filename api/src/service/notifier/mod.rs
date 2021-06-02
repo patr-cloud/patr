@@ -180,7 +180,7 @@ pub async fn send_forgot_password_otp(
 			let email =
 				format!("{}@{}", user.backup_email_local.unwrap(), domain.name);
 			// send email
-			email::send_user_verification_otp(&email, otp)?;
+			email::send_forgot_password_otp(&email, otp)?;
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
 			let phone_number = user.backup_phone_number.unwrap();
@@ -196,7 +196,7 @@ pub async fn send_forgot_password_otp(
 				format!("+{}{}", country_code.phone_code, phone_number);
 
 			// send SMS
-			sms::send_user_verification_otp(&phone_number, otp)?;
+			sms::send_forgot_password_otp(&phone_number, otp)?;
 		}
 	};
 

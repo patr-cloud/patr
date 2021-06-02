@@ -20,6 +20,15 @@ pub fn send_password_changed_notification(
 	Ok(())
 }
 
+pub fn send_forgot_password_otp(
+	_phone_number: &str,
+	_otp: &str,
+) -> Result<(), Error> {
+	log::error!("SENDING OTP FOR FORGOT PASSWORD...");
+	panic!("sending SMS with phone number is not implemented yet.");
+	Ok(())
+}
+
 pub fn send_user_reset_password_notification(
 	_phone_number: &str,
 ) -> Result<(), Error> {
