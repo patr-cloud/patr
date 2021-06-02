@@ -76,6 +76,9 @@ pub mod request_keys {
 	pub const ORGANISATION_NAME: &str = "organisationName";
 	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const EMAILS: &str = "emails";
+	pub const PERSONAL_EMAILS: &str = "personalEmails";
+	pub const ORGANISATION_EMAILS: &str = "organisationEmails";
 	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
 	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
 	pub const BIRTHDAY: &str = "birthday";

@@ -2491,6 +2491,26 @@
       "nullable": []
     }
   },
+  "862f46cc6424340226c5ed5e85cd6c8b278fcdea0595cb88aa3d5c72e9d0d1b3": {
+    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email!:String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!:String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "86de4c8193df4ddaa97ee03f5b58d3cfa0f548c5ed7541b3c6d2b583859f9818": {
     "query": "SELECT * FROM organisation WHERE name = $1;",
     "describe": {
@@ -3114,6 +3134,26 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "a6e0c0b93d70ce48f7573ec517a78fe2257ce05708ef34a2f75ea42dff11c9e0": {
+    "query": "SELECT CONCAT(organisation_email.local, '@', domain.name) as \"email!:String\" FROM organisation_email INNER JOIN domain ON organisation_email.domain_id = domain.id WHERE organisation_email.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!:String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
       ]
     }
   },

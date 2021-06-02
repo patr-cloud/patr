@@ -93,3 +93,11 @@ pub struct PhoneCountryCode {
 	pub phone_code: String,
 	pub country_name: String,
 }
+
+pub struct PersonalEmails {
+	pub personal_email: String
+}
+
+pub struct OrganisationEmails {
+	pub organisation_email: String
+}

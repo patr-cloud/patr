@@ -15,6 +15,7 @@ use crate::{
 	query_as,
 	Database,
 };
+use crate::models::db_mapping::{OrganisationEmails, PersonalEmails};
 
 pub async fn initialize_users_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -1911,4 +1912,64 @@ pub async fn add_phone_number_for_user(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_personal_emails(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<PersonalEmails>, sqlx::Error> {
+	let rows = query!(
+		r#"
+			SELECT
+				CONCAT(personal_email.local, '@', domain.name) as "email!:String"
+			FROM
+				personal_email
+			INNER JOIN
+				domain
+			ON
+				personal_email.domain_id = domain.id
+			WHERE
+				personal_email.user_id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PersonalEmails {
+		personal_email: row.email
+	})
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn get_organisation_emails(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<OrganisationEmails>, sqlx::Error> {
+	let rows = query!(
+		r#"
+			SELECT
+				CONCAT(organisation_email.local, '@', domain.name) as "email!:String"
+			FROM
+				organisation_email
+			INNER JOIN
+				domain
+			ON
+				organisation_email.domain_id = domain.id
+			WHERE
+				organisation_email.user_id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| OrganisationEmails {
+		organisation_email: row.email
+	})
+	.collect();
+
+	Ok(rows)
 }

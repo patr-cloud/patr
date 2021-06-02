@@ -45,6 +45,34 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(add_email_address)),
 		],
 	);
+	app.get(
+		"/list-email-address",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
+		],
+	);
+	// app.get(
+	// 	"list-phone-numbers",
+	// 	[
+	// 		EveMiddleware::PlainTokenAuthenticator,
+	// 		EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
+	// 	],
+	// );
+	// app.put(
+	// 	"update-backup-email",
+	// 	[
+	// 		EveMiddleware::PlainTokenAuthenticator,
+	// 		EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
+	// 	],
+	// );
+	// app.put(
+	// 	"update-backup-phone",
+	// 	[
+	// 		EveMiddleware::PlainTokenAuthenticator,
+	// 		EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
+	// 	],
+	// );
 	app.post(
 		"/verify-email-address",
 		[
@@ -244,6 +272,28 @@ async fn add_email_address(
 
 	context.json(json!({
 		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn list_email_addresses(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let email_addresses_list =
+		service::get_user_emails(
+			context.get_database_connection(),
+			&user_id
+		).await?;
+
+	context.json(json!({
+		request_keys::SUCCESS : true,
+		request_keys::EMAILS : {
+			request_keys::PERSONAL_EMAILS : email_addresses_list.0,
+			request_keys::ORGANISATION_EMAILS : email_addresses_list.1
+		}
 	}));
 	Ok(context)
 }

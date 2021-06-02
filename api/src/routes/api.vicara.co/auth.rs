@@ -26,6 +26,7 @@ use crate::{
 		EveMiddleware,
 	},
 };
+use crate::utils::sms;
 
 pub fn create_sub_app(
 	app: &App,
@@ -256,11 +257,16 @@ async fn sign_up(
 			mailer::send_email_verification_mail(config, email, otp);
 		});
 	}
-	if let Some((_country_code, _phone_number)) =
-		backup_phone_country_code.zip(backup_phone_number)
+	else if let Some((_country_code, _phone_number)) =
+	backup_phone_country_code.zip(backup_phone_number)
 	{
 		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
+		let config = context.get_state().config.clone();
+		let backup_phone_number = format!("{}{}",_country_code, _phone_number);
+		task::spawn_blocking( || {
+			sms::send_otp_sms(config, backup_phone_number, otp);
+		});
+		// panic!("Sending OTPs through phone numbers aren't handled yet");
 	}
 
 	context.json(json!({
@@ -867,7 +873,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	// check if access type is respository
+	// check if access type is repository
 	if access_type != request_keys::REPOSITORY {
 		Error::as_result().status(400).body(
 			json!({

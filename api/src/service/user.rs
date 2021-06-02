@@ -126,3 +126,37 @@ pub async fn change_password_for_user(
 
 	Ok(())
 }
+
+pub async fn get_user_emails(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8]
+) -> Result<(Vec<String>, Vec<String>), Error> {
+
+	let personal_email_list =
+		db::get_personal_emails(
+			connection,
+			&user_id
+		)
+		.await?;
+
+	let mut p_email =  Vec::new();
+
+	for email in personal_email_list {
+		p_email.push(email.personal_email); 
+	}
+
+	let organisation_email_list =
+		db::get_organisation_emails(
+			connection,
+			&user_id
+		)
+		.await?;
+	
+	let mut o_email = Vec::new();
+
+	for email in organisation_email_list {
+		o_email.push(email.organisation_email);
+	}
+
+	Ok((p_email, o_email))
+}
