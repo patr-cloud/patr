@@ -6,7 +6,6 @@ pub mod logger;
 #[allow(unused_variables)]
 pub mod mailer;
 pub mod settings;
-pub mod sms;
 pub mod validator;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

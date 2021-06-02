@@ -330,7 +330,6 @@ async fn join(
 	)
 	.await?;
 
-	// BELOW CODE WILL PANIC
 	service::send_sign_up_complete_notification(
 		join_user.welcome_email_to,
 		join_user.backup_email_to,
@@ -523,7 +522,6 @@ async fn reset_password(
 	)
 	.await?;
 
-	// THIS CODE WILL PANIC
 	service::send_user_reset_password_notification(
 		context.get_database_connection(),
 		user,

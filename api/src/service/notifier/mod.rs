@@ -29,7 +29,7 @@ pub async fn send_sign_up_complete_notification(
 	}
 
 	if let Some(phone_number) = backup_phone_number {
-		sms::send_backup_registration_sms(&phone_number)?;
+		sms::send_backup_registration_sms(&phone_number).await?;
 	}
 	Ok(())
 }
@@ -54,8 +54,7 @@ pub async fn send_user_sign_up_otp(
 		)
 		.await?;
 
-		// this will panic
-		email::send_user_verification_otp(&email, otp)?;
+		email::send_user_verification_otp(&email, otp).await?;
 	}
 
 	// check if phone number is given as a backup
@@ -71,8 +70,7 @@ pub async fn send_user_sign_up_otp(
 		)
 		.await?;
 
-		// this will panic
-		sms::send_user_verification_otp(&phone_number, otp)?;
+		sms::send_user_verification_otp(&phone_number, otp).await?;
 	}
 
 	Ok(())
@@ -97,8 +95,7 @@ pub async fn send_password_changed_notification(
 		)
 		.await?;
 
-		// this will panic
-		email::send_password_changed_notification(&email)?;
+		email::send_password_changed_notification(&email).await?;
 	}
 
 	// check if phone number is given as a backup
@@ -114,8 +111,7 @@ pub async fn send_password_changed_notification(
 		)
 		.await?;
 
-		// this will panic
-		sms::send_password_changed_notification(&phone_number)?;
+		sms::send_password_changed_notification(&phone_number).await?;
 	}
 	Ok(())
 }
@@ -139,8 +135,7 @@ pub async fn send_user_reset_password_notification(
 		)
 		.await?;
 
-		// this will panic
-		sms::send_user_reset_password_notification(&phone_number)?;
+		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
 
 	if let Some((_backup_email_domain_id, _backup_email_local)) = user
@@ -155,8 +150,7 @@ pub async fn send_user_reset_password_notification(
 		)
 		.await?;
 
-		// this will panic
-		email::send_user_reset_password_notification(&email)?;
+		email::send_user_reset_password_notification(&email).await?;
 	}
 	Ok(())
 }
@@ -196,7 +190,7 @@ pub async fn send_forgot_password_otp(
 				format!("+{}{}", country_code.phone_code, phone_number);
 
 			// send SMS
-			sms::send_user_verification_otp(&phone_number, otp)?;
+			sms::send_user_verification_otp(&phone_number, otp).await?;
 		}
 	};
 

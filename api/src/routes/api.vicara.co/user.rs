@@ -345,7 +345,6 @@ async fn change_password(
 	)
 	.await?;
 
-	// THIS CODE WILL PANIC
 	service::send_password_changed_notification(
 		context.get_database_connection(),
 		user,

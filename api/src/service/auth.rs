@@ -460,7 +460,6 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	// NOTE: BELOW CODE WILL PANIC
 	service::send_forgot_password_otp(
 		connection,
 		user,
