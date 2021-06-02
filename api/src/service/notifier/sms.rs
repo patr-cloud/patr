@@ -31,6 +31,24 @@ pub async fn send_password_changed_notification(
 	.await
 }
 
+pub async fn send_forgot_password_otp(
+	phone_number: &str,
+	otp: &str,
+) -> Result<(), Error> {
+	send_sms(
+		phone_number,
+		format!(
+			"{}{}{}{}{}",
+			"We received a password reset request from your Deployment Tool ",
+			"account. Your OTP to reset the same is: ",
+			otp,
+			"If this process was not initiated by you, ",
+			"please contact support immediately."
+		),
+	)
+	.await
+}
+
 pub async fn send_user_reset_password_notification(
 	phone_number: &str,
 ) -> Result<(), Error> {

@@ -120,7 +120,9 @@ impl FromStr for PreferredRecoveryOption {
 			request_keys::BACKUP_PHONE_NUMBER => {
 				Ok(PreferredRecoveryOption::BackupPhoneNumber)
 			}
-			request_keys::EMAIL => Ok(PreferredRecoveryOption::BackupEmail),
+			request_keys::BACKUP_EMAIL => {
+				Ok(PreferredRecoveryOption::BackupEmail)
+			}
 			_ => Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),

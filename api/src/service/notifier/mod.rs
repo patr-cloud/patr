@@ -36,7 +36,7 @@ pub async fn send_sign_up_complete_notification(
 
 // could possibly also take in `PreferredNotifierType`
 pub async fn send_user_sign_up_otp(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user: UserToSignUp,
 	otp: &str,
 ) -> Result<(), Error> {
@@ -174,7 +174,7 @@ pub async fn send_forgot_password_otp(
 			let email =
 				format!("{}@{}", user.backup_email_local.unwrap(), domain.name);
 			// send email
-			email::send_user_verification_otp(&email, otp)?;
+			email::send_forgot_password_otp(&email, otp).await?;
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
 			let phone_number = user.backup_phone_number.unwrap();
@@ -190,7 +190,7 @@ pub async fn send_forgot_password_otp(
 				format!("+{}{}", country_code.phone_code, phone_number);
 
 			// send SMS
-			sms::send_user_verification_otp(&phone_number, otp).await?;
+			sms::send_forgot_password_otp(&phone_number, otp).await?;
 		}
 	};
 
