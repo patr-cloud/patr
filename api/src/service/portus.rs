@@ -59,7 +59,7 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 		.join("connect-pi-to-server.sh"))
 }
 
-pub fn get_ssh_port_for_server() -> u16 {
+pub const fn get_ssh_port_for_server() -> u16 {
 	2222
 }
 
@@ -67,7 +67,7 @@ pub fn get_container_name(username: &str) -> String {
 	format!("{}-container", username)
 }
 
-pub fn get_server_ip_address() -> &'static str {
+pub const fn get_server_ip_address() -> &'static str {
 	"143.110.179.80"
 }
 

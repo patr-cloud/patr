@@ -29,7 +29,6 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	}
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();

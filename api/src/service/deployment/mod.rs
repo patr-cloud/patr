@@ -1,13 +1,26 @@
+use std::collections::HashMap;
+
 use eve_rs::AsError;
 use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::{db_mapping::MachineType, rbac},
+	models::{
+		db_mapping::{
+			Deployment,
+			DeploymentConfiguration,
+			DeploymentRepositoryImage,
+			MachineType,
+		},
+		rbac,
+	},
 	utils::Error,
 	Database,
 };
+
+mod runner;
+pub use self::runner::*;
 
 pub async fn create_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -493,4 +506,75 @@ pub async fn update_deployment_entry_point(
 	}
 
 	Ok(())
+}
+
+pub async fn get_deployment_config_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<DeploymentConfiguration, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let ports =
+		db::get_exposed_ports_for_deployment(connection, deployment_id).await?;
+	let volumes =
+		db::get_persistent_volumes_for_deployment(connection, deployment_id)
+			.await?;
+	let environment_variables =
+		db::get_environment_variables_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.collect::<HashMap<_, _>>();
+	let upgrade_path = db::get_deployment_upgrade_path_by_id(
+		connection,
+		&deployment.upgrade_path_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let upgrade_path_machines =
+		db::get_machine_types_in_deployment_upgrade_path(
+			connection,
+			&deployment.upgrade_path_id,
+		)
+		.await?;
+	let image = if deployment.registry == "registry.docker.vicara.co" {
+		let full_image = deployment.get_full_image(connection).await?;
+		DeploymentRepositoryImage::Internal {
+			image_name: full_image.replace("registry.docker.vicara.co/", ""),
+			repository_id: deployment
+				.repository_id
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?,
+		}
+	} else {
+		DeploymentRepositoryImage::External {
+			registry: deployment.registry,
+			image_name: deployment
+				.image_name
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?,
+		}
+	};
+	let Deployment {
+		id,
+		image_tag,
+		name,
+		..
+	} = deployment;
+
+	Ok(DeploymentConfiguration {
+		id,
+		name,
+		image,
+		image_tag,
+		ports,
+		volumes,
+		environment_variables,
+		upgrade_path,
+		upgrade_path_machines,
+	})
 }

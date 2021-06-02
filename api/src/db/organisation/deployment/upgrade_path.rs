@@ -73,6 +73,15 @@ pub async fn initialize_upgrade_path_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_upgrade_path_id
+		FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 

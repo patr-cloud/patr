@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -54,6 +56,7 @@ pub struct Deployment {
 	pub repository_id: Option<Vec<u8>>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
+	pub upgrade_path_id: Vec<u8>,
 }
 
 impl Deployment {
@@ -146,4 +149,47 @@ pub struct DeploymentEntryPoint {
 	pub domain_id: Vec<u8>,
 	pub path: String,
 	pub entry_point_type: DeploymentEntryPointValue,
+}
+
+pub enum DeploymentRepositoryImage {
+	// image comes from the internal registry
+	Internal {
+		repository_id: Vec<u8>,
+		image_name: String,
+	},
+	External {
+		registry: String,
+		image_name: String,
+	},
+}
+
+pub struct DeploymentConfiguration {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub image: DeploymentRepositoryImage,
+	pub image_tag: String,
+	pub ports: Vec<u16>,
+	pub volumes: Vec<VolumeMount>,
+	pub environment_variables: HashMap<String, String>,
+	pub upgrade_path: DeploymentUpgradePath,
+	pub upgrade_path_machines: Vec<MachineType>,
+}
+
+impl DeploymentConfiguration {
+	pub async fn get_full_image_name(&self) -> String {
+		match &self.image {
+			DeploymentRepositoryImage::Internal {
+				repository_id: _,
+				image_name,
+			} => {
+				format!("registry.docker.vicara.co/{}", image_name)
+			}
+			DeploymentRepositoryImage::External {
+				registry,
+				image_name,
+			} => {
+				format!("{}/{}", registry, image_name)
+			}
+		}
+	}
 }

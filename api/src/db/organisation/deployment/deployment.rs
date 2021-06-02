@@ -18,6 +18,7 @@ pub async fn initialize_deployment_pre(
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
+			upgrade_path_id BYTEA NOT NULL,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(			
 				(
 					registry = 'registry.docker.vicara.co' AND

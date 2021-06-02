@@ -32,7 +32,7 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 	let salt = format!(
 		"{}{}",
-		service::get_config().password_pepper,
+		service::get_settings().password_pepper,
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON
@@ -42,17 +42,17 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 }
 
 // 2 hours
-pub fn get_join_token_expiry() -> u64 {
+pub const fn get_join_token_expiry() -> u64 {
 	1000 * 60 * 60 * 2
 }
 
 // 3 days
-pub fn get_access_token_expiry() -> u64 {
+pub const fn get_access_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 3
 }
 
 // 30 days
-pub fn get_refresh_token_expiry() -> u64 {
+pub const fn get_refresh_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 30
 }
 
@@ -76,13 +76,18 @@ pub async fn generate_new_refresh_token_for_user(
 	Ok((refresh_token, hashed))
 }
 
+#[cfg(all(feature = "sample-data", release))]
+pub fn sample_data_not_allowed_in_release_mode() {
+	compile_error!("Populating sample data is not allowed in release mode");
+}
+
 #[cfg(not(feature = "sample-data"))]
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
-	if otp < 10 {
+	let otp = if otp < 10 {
 		format!("00000{}", otp)
 	} else if otp < 100 {
 		format!("0000{}", otp)
@@ -90,14 +95,15 @@ pub fn generate_new_otp() -> String {
 		format!("000{}", otp)
 	} else if otp < 10000 {
 		format!("00{}", otp)
-	} else if otp < 100000 {
+	} else if otp < 100_000 {
 		format!("0{}", otp)
 	} else {
 		format!("{}", otp)
-	}
+	};
+	format!("{}-{}", &otp[..3], &otp[3..])
 }
 
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
-	"000000".to_string()
+	"000-000".to_string()
 }

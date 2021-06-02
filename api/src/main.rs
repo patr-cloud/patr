@@ -82,7 +82,7 @@ async fn async_main() -> Result<()> {
 		return Ok(());
 	}
 
-	service::initialize(&app.config);
+	service::initialize(&app);
 	log::debug!("Service initialized");
 
 	scheduler::domain::refresh_domain_tld_list().await?;

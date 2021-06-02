@@ -42,8 +42,8 @@ impl FromStr for ResourceOwnerType {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(ResourceOwnerType::Personal),
-			"organisation" => Ok(ResourceOwnerType::Organisation),
+			"personal" => Ok(Self::Personal),
+			"organisation" => Ok(Self::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

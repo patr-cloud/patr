@@ -165,7 +165,6 @@ pub async fn create_user_join_request(
 	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 
@@ -398,7 +397,6 @@ pub async fn forgot_password(
 		.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 
