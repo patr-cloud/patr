@@ -108,13 +108,13 @@ pub fn mask_email(email: &str) -> Result<String, Error> {
 	let mut start_index: usize = 0;
 	// get index of '@'
 	// if offset_index is None, then it is an invalid email addr.
-	let mut offset_index = email.find("@").status(500)?;
+	let mut offset_index = email.find('@').status(500)?;
 
 	if offset_index > 2 && offset_index <= 4 {
 		start_index = 1;
 	} else if offset_index > 4 {
 		start_index = 1;
-		offset_index = offset_index - 2;
+		offset_index -= 2;
 	}
 	let difference = offset_index - start_index;
 	let mask = String::from_utf8(vec![b'*'; difference])?;
@@ -130,5 +130,5 @@ pub fn mask_phone_number(phone_number: &str) -> Result<String, Error> {
 	let mask = String::from_utf8(vec![b'*'; difference])?;
 
 	phone_number.replace_range(start_index..end_index, &mask);
-	return Ok(phone_number);
+	Ok(phone_number)
 }

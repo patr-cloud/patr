@@ -1,7 +1,6 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Value};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -11,7 +10,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		mailer,
 		Error,
 		ErrorData,
 		EveContext,

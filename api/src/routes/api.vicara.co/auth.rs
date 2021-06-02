@@ -1,7 +1,6 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Map};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -19,7 +18,6 @@ use crate::{
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
 		get_current_time,
-		mailer,
 		validator,
 		Error,
 		ErrorData,
@@ -465,8 +463,6 @@ async fn forgot_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let config = context.get_state().config.clone();
-
 	// service function should take care of otp generation and delivering the
 	// otp to the preferred recovery option
 	service::forgot_password(
@@ -518,8 +514,6 @@ async fn reset_password(
 	.await?
 	.status(400)
 	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
-
-	let config = context.get_state().config.clone();
 
 	service::reset_password(
 		context.get_database_connection(),
