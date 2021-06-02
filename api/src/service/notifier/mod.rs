@@ -79,7 +79,7 @@ pub async fn send_user_sign_up_otp(
 // This function will send the given otp to all the backup options available for
 // the given user.
 pub async fn send_password_changed_notification(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
 	// chcek if email is given as a backup option
@@ -118,7 +118,7 @@ pub async fn send_password_changed_notification(
 
 // reset password
 pub async fn send_user_reset_password_notification(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
 	log::error!("NOTIFIER NOT YET IMPLEMENTED, Thanks for trying LOL");
@@ -198,7 +198,7 @@ pub async fn send_forgot_password_otp(
 }
 
 async fn get_user_email(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 	email_string: &str,
 ) -> Result<String, Error> {
@@ -210,7 +210,7 @@ async fn get_user_email(
 }
 
 async fn get_user_phone_number(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<String, Error> {
