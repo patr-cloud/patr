@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use crate::{
 	error,
-	utils::{constants::ResourceOwnerType, Error},
+	utils::{
+		constants::{request_keys, ResourceOwnerType},
+		Error,
+	},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -102,8 +105,8 @@ pub struct PhoneCountryCode {
 }
 
 // enum taken in as response from the front end
-#[derive(sqlx::Type, Debug)]
-#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum PreferredRecoveryOption {
 	BackupPhoneNumber,
 	BackupEmail,
@@ -113,11 +116,13 @@ impl FromStr for PreferredRecoveryOption {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"phonenumber" => Ok(PreferredRecoveryOption::BackupPhoneNumber),
-			"email" => Ok(PreferredRecoveryOption::BackupEmail),
+		match s {
+			request_keys::BACKUP_PHONE_NUMBER => {
+				Ok(PreferredRecoveryOption::BackupPhoneNumber)
+			}
+			request_keys::EMAIL => Ok(PreferredRecoveryOption::BackupEmail),
 			_ => Error::as_result()
-				.status(500)
+				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
@@ -130,24 +135,4 @@ pub struct JoinUser {
 	pub welcome_email_to: Option<String>,
 	pub backup_email_to: Option<String>,
 	pub backup_phone_number_to: Option<String>,
-}
-
-impl JoinUser {
-	pub fn new(
-		jwt: String,
-		login_id: Uuid,
-		refresh_token: Uuid,
-		welcome_email_to: Option<String>,
-		backup_email_to: Option<String>,
-		backup_phone_number_to: Option<String>,
-	) -> Self {
-		JoinUser {
-			jwt,
-			login_id,
-			refresh_token,
-			welcome_email_to,
-			backup_email_to,
-			backup_phone_number_to,
-		}
-	}
 }

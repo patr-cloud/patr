@@ -1,6 +1,6 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::json;
+use serde_json::{json, Map};
 use tokio::task;
 
 use crate::{
@@ -241,7 +241,7 @@ async fn sign_up(
 		})
 		.transpose()?;
 
-	let otp = service::create_user_join_request(
+	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
 		username,
 		account_type,
@@ -255,14 +255,6 @@ async fn sign_up(
 		organisation_name,
 	)
 	.await?;
-
-	// at this point, User should be added to table `User to sign up`
-	let user_to_sign_up = db::get_user_to_sign_up_by_username(
-		context.get_database_connection(),
-		username,
-	)
-	.await?
-	.status(500)?;
 
 	// send otp
 	service::send_user_sign_up_otp(
@@ -1094,10 +1086,7 @@ async fn list_recovery_options(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
-
-	let mut response = json!({});
-	let response_map = response.as_object_mut().unwrap();
-
+	let mut response_map = Map::new();
 	// get user id from the body
 	let user_id = body
 		.get(request_keys::USER_ID)
@@ -1110,25 +1099,19 @@ async fn list_recovery_options(
 		context.get_database_connection(),
 		user_id,
 	)
-	.await?;
-
-	if user.is_none() {
-		context.json(error!(USER_NOT_FOUND));
-		return Ok(context);
-	}
-
-	let user = user.unwrap();
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
 
 	// mask phone number
-	if user.backup_phone_number.is_some() {
-		let phone_number = &user.backup_phone_number.unwrap();
-		let phone_number = service::mask_phone_number(phone_number)?;
+	if let Some(phone_number) = user.backup_phone_number {
+		let phone_number = service::mask_phone_number(&phone_number)?;
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
 			&user.backup_phone_country_code.unwrap(),
 		)
 		.await?
-		.status(400)
+		.status(500)
 		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 		response_map.insert(
 			request_keys::BACKUP_PHONE_NUMBER.to_string(),
@@ -1136,13 +1119,15 @@ async fn list_recovery_options(
 		);
 	}
 
-	if user.backup_email_local.is_some() {
+	if let (Some(backup_email_local), Some(backup_email_domain_id)) =
+		(user.backup_email_local, user.backup_email_domain_id)
+	{
 		let email = format!(
 			"{}@{}",
-			user.backup_email_local.unwrap(),
+			backup_email_local,
 			db::get_personal_domain_by_id(
 				context.get_database_connection(),
-				&user.backup_email_domain_id.unwrap()
+				&backup_email_domain_id
 			)
 			.await?
 			.status(500)?
@@ -1155,6 +1140,7 @@ async fn list_recovery_options(
 	}
 
 	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
+	let response = serde_json::to_value(response_map)?;
 	context.json(response);
 	Ok(context)
 }

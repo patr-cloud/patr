@@ -4,6 +4,7 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
@@ -104,28 +105,30 @@ pub fn generate_new_otp() -> String {
 
 pub fn mask_email(email: &str) -> Result<String, Error> {
 	let mut email = email.to_owned();
-	let start_index = 3;
+	let mut start_index: usize = 0;
+	// get index of '@'
+	// if offset_index is None, then it is an invalid email addr.
+	let mut offset_index = email.find("@").status(500)?;
 
-	let offset_index = email.find("@").unwrap() - 2;
-	println!("offset index {}", offset_index);
-
+	if offset_index > 2 && offset_index <= 4 {
+		start_index = 1;
+	} else if offset_index > 4 {
+		start_index = 1;
+		offset_index = offset_index - 2;
+	}
 	let difference = offset_index - start_index;
-	println!("difference {}", difference);
-
 	let mask = String::from_utf8(vec![b'*'; difference])?;
-
 	email.replace_range(start_index..offset_index, &mask);
-	return Ok(email);
+	Ok(email)
 }
 
 pub fn mask_phone_number(phone_number: &str) -> Result<String, Error> {
 	let mut phone_number = phone_number.to_owned();
-	let start_index = 0;
-	let offset_index = 6;
-
-	let difference = offset_index - start_index;
-
+	let start_index = 1;
+	let end_index = phone_number.len() - 2;
+	let difference = end_index - start_index;
 	let mask = String::from_utf8(vec![b'*'; difference])?;
-	phone_number.replace_range(start_index..offset_index, &mask);
+
+	phone_number.replace_range(start_index..end_index, &mask);
 	return Ok(phone_number);
 }

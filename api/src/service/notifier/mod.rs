@@ -33,6 +33,7 @@ pub async fn send_sign_up_complete_notification(
 	}
 	Ok(())
 }
+
 // could possibly also take in `PreferredNotifierType`
 pub async fn send_user_sign_up_otp(
 	connection: &mut Transaction<'_, Database>,
@@ -197,9 +198,6 @@ pub async fn send_forgot_password_otp(
 			// send SMS
 			sms::send_user_verification_otp(&phone_number, otp)?;
 		}
-		_ => Error::as_result()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?,
 	};
 
 	Ok(())
