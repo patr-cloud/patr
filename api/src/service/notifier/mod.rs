@@ -157,42 +157,35 @@ pub async fn send_forgot_password_otp(
 	// match on the recovery type
 	match recovery_option {
 		PreferredRecoveryOption::BackupEmail => {
-			let domain = db::get_personal_domain_by_id(
+			let email = get_user_email(
 				connection,
 				user.backup_email_domain_id
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-			)
-			.await?
-			.status(500)?;
-
-			let email = format!(
-				"{}@{}",
-				user.backup_email_local
+				&user
+					.backup_email_local
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				domain.name
-			);
+			)
+			.await?;
+
 			// send email
 			email::send_forgot_password_otp(email.parse()?, otp).await?;
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
-			let phone_number = user.backup_phone_number.unwrap();
-			let country_code = db::get_phone_country_by_country_code(
+			let phone_number = get_user_phone_number(
 				connection,
 				user.backup_phone_country_code
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
+				&user
+					.backup_phone_number
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-			let phone_number =
-				format!("+{}{}", country_code.phone_code, phone_number);
-
+			.await?;
 			// send SMS
 			sms::send_forgot_password_otp(&phone_number, otp).await?;
 		}
