@@ -52,27 +52,27 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(list_email_addresses)),
 		],
 	);
-	// app.get(
-	// 	"list-phone-numbers",
-	// 	[
-	// 		EveMiddleware::PlainTokenAuthenticator,
-	// 		EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
-	// 	],
-	// );
-	// app.put(
-	// 	"update-backup-email",
-	// 	[
-	// 		EveMiddleware::PlainTokenAuthenticator,
-	// 		EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
-	// 	],
-	// );
-	// app.put(
-	// 	"update-backup-phone",
-	// 	[
-	// 		EveMiddleware::PlainTokenAuthenticator,
-	// 		EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
-	// 	],
-	// );
+	app.get(
+		"list-phone-numbers",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
+		],
+	);
+	app.put(
+		"update-backup-email",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
+		],
+	);
+	app.put(
+		"update-backup-phone",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
+		],
+	);
 	app.post(
 		"/verify-email-address",
 		[
@@ -286,7 +286,8 @@ async fn list_email_addresses(
 		service::get_user_emails(
 			context.get_database_connection(),
 			&user_id
-		).await?;
+		)
+		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS : true,
@@ -294,6 +295,101 @@ async fn list_email_addresses(
 			request_keys::PERSONAL_EMAILS : email_addresses_list.0,
 			request_keys::ORGANISATION_EMAILS : email_addresses_list.1
 		}
+	}));
+	Ok(context)
+}
+
+async fn list_phone_numbers(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let phone_numbers_list =
+		service::get_user_phone_numbers(
+			context.get_database_connection(),
+			&user_id
+		)
+		.await?
+		.into_iter()
+		.map(|phone_number| {
+			json!({
+				request_keys::PHONE_NUMBER: format!(
+					"{}{}",
+					phone_number.country_code,
+					phone_number.number
+				)
+			})
+		})
+		.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS : true,
+		request_keys::PHONE_NUMBERS : phone_numbers_list
+	}));
+	Ok(context)
+}
+
+async fn update_backup_email_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let email_address = body
+		.get(request_keys::BACKUP_EMAIL)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::update_user_backup_email(
+		context.get_database_connection(),
+		&user_id,
+		email_address
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn update_backup_phone_number(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let country_code = body
+		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let phone_number = body
+		.get(request_keys::BACKUP_PHONE_NUMBER)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::update_user_backup_phone_number(
+		context.get_database_connection(),
+		&user_id,
+		country_code,
+		phone_number
+	)
+		.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

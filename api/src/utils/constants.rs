@@ -81,6 +81,8 @@ pub mod request_keys {
 	pub const ORGANISATION_EMAILS: &str = "organisationEmails";
 	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
 	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
+	pub const PHONE_NUMBERS: &str = "phoneNumbers";
+	pub const PHONE_NUMBER: &str = "phoneNumber";
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";

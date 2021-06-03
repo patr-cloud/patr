@@ -15,7 +15,7 @@ use crate::{
 	query_as,
 	Database,
 };
-use crate::models::db_mapping::{OrganisationEmails, PersonalEmails};
+use crate::models::db_mapping::{OrganisationEmail, PersonalEmail, UserPhoneNumber};
 
 pub async fn initialize_users_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -1762,6 +1762,58 @@ pub async fn update_user_password(
 	Ok(())
 }
 
+pub async fn update_user_backup_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8]
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			backup_email_local = $1,
+			backup_email_domain_id = $2
+		WHERE
+			id = $3
+		"#,
+		email_local,
+		domain_id,
+		user_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn update_user_backup_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			backup_phone_country_code = $1,
+			backup_phone_number = $2
+		WHERE
+			id = $3
+		"#,
+		country_code,
+		phone_number,
+		user_id
+	)
+		.execute(&mut *connection)
+		.await?;
+
+	Ok(())
+}
+
 pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -1917,7 +1969,7 @@ pub async fn add_phone_number_for_user(
 pub async fn get_personal_emails(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<PersonalEmails>, sqlx::Error> {
+) -> Result<Vec<PersonalEmail>, sqlx::Error> {
 	let rows = query!(
 		r#"
 			SELECT
@@ -1936,7 +1988,7 @@ pub async fn get_personal_emails(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| PersonalEmails {
+	.map(|row| PersonalEmail {
 		personal_email: row.email
 	})
 	.collect();
@@ -1947,7 +1999,7 @@ pub async fn get_personal_emails(
 pub async fn get_organisation_emails(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<OrganisationEmails>, sqlx::Error> {
+) -> Result<Vec<OrganisationEmail>, sqlx::Error> {
 	let rows = query!(
 		r#"
 			SELECT
@@ -1966,10 +2018,102 @@ pub async fn get_organisation_emails(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| OrganisationEmails {
+	.map(|row| OrganisationEmail {
 		organisation_email: row.email
 	})
 	.collect();
 
 	Ok(rows)
+}
+
+pub async fn get_user_phone_numbers(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
+	let phone_numbers = query!(
+		r#"
+			SELECT
+				user_id,
+				country_code,
+				number
+			FROM
+				user_phone_number
+			WHERE
+				user_id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| UserPhoneNumber {
+		user_id: row.user_id,
+		country_code: row.country_code,
+		number: row.number
+	})
+	.collect();
+
+	Ok(phone_numbers)
+}
+
+pub async fn get_user_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str
+) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
+	let rows = query_as!(
+		UserPhoneNumber,
+		r#"
+		SELECT
+			user_id,
+			country_code,
+			number
+		FROM
+			user_phone_number
+		WHERE
+			user_id = $1 AND
+			country_code = $2 AND
+			number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+pub async fn get_personal_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8]
+) -> Result<Option<PersonalEmail>, sqlx::Error> {
+	let rows = query_as!(
+		PersonalEmail,
+		r#"
+		SELECT
+			CONCAT(personal_email.local, '@', domain.name) as "personal_email!:String"
+		FROM
+			personal_email
+		INNER JOIN
+			domain
+		ON
+			personal_email.domain_id = domain.id
+		WHERE
+			personal_email.user_id = $1 AND
+			personal_email.local = $2 AND
+			personal_email.domain_id = $3;
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
 }

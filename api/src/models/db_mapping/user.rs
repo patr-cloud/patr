@@ -45,7 +45,6 @@ pub struct UserEmailAddress {
 	pub domain_id: Vec<u8>,
 }
 
-#[allow(dead_code)]
 pub struct UserPhoneNumber {
 	pub user_id: Vec<u8>,
 	pub country_code: String,
@@ -94,10 +93,10 @@ pub struct PhoneCountryCode {
 	pub country_name: String,
 }
 
-pub struct PersonalEmails {
+pub struct PersonalEmail {
 	pub personal_email: String
 }
 
-pub struct OrganisationEmails {
+pub struct OrganisationEmail {
 	pub organisation_email: String
 }

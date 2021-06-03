@@ -2,6 +2,8 @@
 pub mod id {
 	pub const USER_NOT_FOUND: &str = "userNotFound";
 	pub const EMAIL_NOT_VERIFIED: &str = "emailNotVerified";
+	pub const EMAIL_NOT_FOUND: &str = "emailNotFound";
+	pub const PHONE_NUMBER_NOT_FOUND: &str = "phoneNumberNotFound";
 	pub const INVALID_PASSWORD: &str = "invalidPassword";
 	pub const INVALID_EMAIL: &str = "invalidEmail";
 	pub const INVALID_CREDENTIALS: &str = "invalidCredentials";
@@ -45,6 +47,7 @@ pub mod id {
 pub mod message {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
+	pub const PHONE_NUMBER_NOT_FOUND: &str = "The phone number is not found";
 	pub const INVALID_PASSWORD: &str = "Your password is incorrect";
 	pub const INVALID_EMAIL: &str = "Your email address is invalid";
 	pub const INVALID_CREDENTIALS: &str = "Your credentials are not valid";
@@ -122,6 +125,7 @@ pub mod message {
 	pub const AUTHORIZATION_PARSE_ERROR: &str = "Invalid request sent by the client. Authorization data could not be parsed as expected";
 	pub const USERNAME_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have username";
 	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password";
+	pub const EMAIL_NOT_FOUND: &str = "The email address sent by the client could not be found in the database.";
 	pub const DOMAIN_IS_PERSONAL: &str =
 		"That domain seems to be used for a personal account. Please remove all personal accounts related to that domain first. If this problem persists, please contact us";
 	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =

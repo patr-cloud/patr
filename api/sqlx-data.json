@@ -24,6 +24,28 @@
       "nullable": []
     }
   },
+  "03a0048a4ea8c3ab4faca4398846b4226f00a5fe13c4759e7d80afc3daff0e31": {
+    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"personal_email!:String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1 AND personal_email.local = $2 AND personal_email.domain_id = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "personal_email!:String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
     "describe": {
@@ -877,6 +899,20 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2bdf1dd4cb16f0638ecd27e9451374dfc354f546cbca2521c9a242f2f649020c": {
+    "query": "UPDATE \"user\" SET backup_email_local = $1, backup_email_domain_id = $2 WHERE id = $3",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea",
+          "Bytea"
+        ]
       },
       "nullable": []
     }
@@ -3932,6 +3968,20 @@
       ]
     }
   },
+  "ced6c464186b422d98e9a6b568e44d1390d25adb8183618f2a54db0cbf86187a": {
+    "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -4045,6 +4095,40 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "d825c44b74991eefa5719fdde8b372582b2877d689f31036970be5dec5c4f159": {
+    "query": "SELECT user_id, country_code, number FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
@@ -4775,6 +4859,38 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "f88c23e19d38e7662a587487220522d5ab9c870ad053daf370a4730e7220802e": {
+    "query": "SELECT user_id, country_code, number FROM user_phone_number WHERE user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "fae57054668bd320a2e513fb937f06e40324b1393ffd6da90e070c4cbd2cdd25": {
