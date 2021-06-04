@@ -1,9 +1,16 @@
-use sqlx::Pool;
+use std::collections::HashSet;
 
-use crate::{service, Database};
+use sqlx::Pool;
+use tokio::sync::Mutex;
+
+use crate::{db, service, utils::Error, Database};
+
+lazy_static::lazy_static! {
+	static ref DEPLOYMENTS: Mutex<HashSet<Vec<u8>>> = Mutex::new(HashSet::new());
+}
 
 pub async fn monitor_deployments() -> ! {
-	let app = service::get_config().clone();
+	let app = service::get_app().clone();
 	loop {
 		// Db stores the PRIMARY KEY(IP address, region) as server details
 		// Each server has it's own "alive" status independent of the runner's
@@ -20,14 +27,15 @@ pub async fn monitor_deployments() -> ! {
 	}
 }
 
-async fn start_all_deployment_monitors(pool: Pool<Database>) {
-	let result = pool.acquire().await;
-	if let Err(err) = result {
-		log::error!(
-			"Error occured while trying to aquire a database connection: {}",
-			err
-		);
-		return;
-	}
-	let connection = result.unwrap();
+async fn start_all_deployment_monitors(
+	pool: Pool<Database>,
+) -> Result<(), Error> {
+	let mut connection = pool.acquire().await?;
+
+	let deployments =
+		db::get_deployments_in_region(&mut connection, "").await?;
+
+	for deployment in deployments {}
+
+	Ok(())
 }

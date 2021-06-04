@@ -474,3 +474,20 @@ pub async fn remove_all_environment_variables_for_deployment(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_deployments_in_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_region: &str,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			*
+		FROM
+			deployment;
+		"#
+	)
+	.fetch_all(connection)
+	.await
+}

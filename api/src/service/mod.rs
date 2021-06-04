@@ -34,6 +34,6 @@ pub(super) fn get_settings() -> &'static Settings {
 		.config
 }
 
-pub(super) fn get_config() -> &'static App {
+pub(super) fn get_app() -> &'static App {
 	APP_SETTINGS.get().expect("unable to get app settings")
 }
