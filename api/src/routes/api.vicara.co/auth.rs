@@ -19,6 +19,7 @@ use crate::{
 		constants::{request_keys, ResourceOwnerType},
 		get_current_time,
 		mailer,
+		sms,
 		validator,
 		Error,
 		ErrorData,
@@ -26,7 +27,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-use crate::utils::sms;
 
 pub fn create_sub_app(
 	app: &App,
@@ -256,14 +256,13 @@ async fn sign_up(
 		task::spawn_blocking(|| {
 			mailer::send_email_verification_mail(config, email, otp);
 		});
-	}
-	else if let Some((_country_code, _phone_number)) =
-	backup_phone_country_code.zip(backup_phone_number)
+	} else if let Some((_country_code, _phone_number)) =
+		backup_phone_country_code.zip(backup_phone_number)
 	{
 		// TODO implement this
 		let config = context.get_state().config.clone();
-		let backup_phone_number = format!("{}{}",_country_code, _phone_number);
-		task::spawn_blocking( || {
+		let backup_phone_number = format!("{}{}", _country_code, _phone_number);
+		task::spawn_blocking(|| {
 			sms::send_otp_sms(config, backup_phone_number, otp);
 		});
 		// panic!("Sending OTPs through phone numbers aren't handled yet");

@@ -77,7 +77,9 @@ pub fn create_sub_app(
 		"delete-personal-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(delete_personal_email_address)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				delete_personal_email_address
+			)),
 		],
 	);
 	app.delete(
@@ -85,7 +87,7 @@ pub fn create_sub_app(
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
-		]
+		],
 	);
 	app.post(
 		"/verify-email-address",
@@ -297,11 +299,8 @@ async fn list_email_addresses(
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let email_addresses_list =
-		service::get_user_emails(
-			context.get_database_connection(),
-			&user_id
-		)
-		.await?;
+		service::get_user_emails(context.get_database_connection(), &user_id)
+			.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS : true,
@@ -319,20 +318,19 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let phone_numbers_list =
-		service::get_user_phone_numbers(
-			context.get_database_connection(),
-			&user_id
-		)
-		.await?
-		.into_iter()
-		.map(|phone_number| {
-			json!({
-				request_keys::COUNTRY_CODE: phone_number.country_code,
-				request_keys::PHONE_NUMBER: phone_number.number
-			})
+	let phone_numbers_list = service::get_user_phone_numbers(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.map(|phone_number| {
+		json!({
+			request_keys::COUNTRY_CODE: phone_number.country_code,
+			request_keys::PHONE_NUMBER: phone_number.number
 		})
-		.collect::<Vec<_>>();
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS : true,
@@ -358,7 +356,7 @@ async fn update_backup_email_address(
 	service::update_user_backup_email(
 		context.get_database_connection(),
 		&user_id,
-		email_address
+		email_address,
 	)
 	.await?;
 
@@ -393,7 +391,7 @@ async fn update_backup_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		&phone_number
+		&phone_number,
 	)
 	.await?;
 
@@ -407,7 +405,6 @@ async fn delete_personal_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-
 	let body = context.get_body_object().clone();
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -421,7 +418,7 @@ async fn delete_personal_email_address(
 	service::delete_personal_email_address(
 		context.get_database_connection(),
 		&user_id,
-		&email_address
+		&email_address,
 	)
 	.await?;
 
@@ -435,7 +432,6 @@ async fn delete_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-
 	let body = context.get_body_object().clone();
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -457,7 +453,7 @@ async fn delete_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		country_code,
-		phone_number
+		phone_number,
 	)
 	.await?;
 

@@ -42,7 +42,8 @@ pub mod id {
 		"domainBelongsToOrganisation";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
-	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "cannotDeleteBackupPhoneNumber";
+	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
+		"cannotDeleteBackupPhoneNumber";
 }
 
 #[allow(dead_code)]

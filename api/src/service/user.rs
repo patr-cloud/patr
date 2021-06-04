@@ -3,11 +3,11 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
+	models::db_mapping::UserPhoneNumber,
 	service,
 	utils::{get_current_time_millis, validator, Error},
 	Database,
 };
-use crate::models::db_mapping::UserPhoneNumber;
 
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -130,29 +130,20 @@ pub async fn change_password_for_user(
 
 pub async fn get_user_emails(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8]
+	user_id: &[u8],
 ) -> Result<(Vec<String>, Vec<String>), Error> {
-
 	let personal_email_list =
-		db::get_personal_emails(
-			connection,
-			&user_id
-		)
-		.await?;
+		db::get_personal_emails(connection, &user_id).await?;
 
-	let mut personal_email =  Vec::new();
+	let mut personal_email = Vec::new();
 
 	for email in personal_email_list {
 		personal_email.push(email.personal_email);
 	}
 
 	let organisation_email_list =
-		db::get_organisation_emails(
-			connection,
-			&user_id
-		)
-		.await?;
-	
+		db::get_organisation_emails(connection, &user_id).await?;
+
 	let mut organisation_email = Vec::new();
 
 	for email in organisation_email_list {
@@ -164,19 +155,15 @@ pub async fn get_user_emails(
 
 pub async fn get_user_phone_numbers(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8]
+	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, Error> {
-	let phone_numbers =
-		db::get_user_phone_numbers(
-			connection,
-			&user_id
-		)
+	let phone_numbers = db::get_user_phone_numbers(connection, &user_id)
 		.await?
 		.into_iter()
-		.map( |phone_number| UserPhoneNumber {
+		.map(|phone_number| UserPhoneNumber {
 			user_id: phone_number.user_id,
 			country_code: phone_number.country_code,
-			number: phone_number.number
+			number: phone_number.number,
 		})
 		.collect::<Vec<_>>();
 
@@ -186,7 +173,7 @@ pub async fn get_user_phone_numbers(
 pub async fn update_user_backup_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-	email_address: &str
+	email_address: &str,
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(&email_address) {
 		Error::as_result()
@@ -199,11 +186,8 @@ pub async fn update_user_backup_email(
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 	// check if the email domain exists
-	let personal_domain = db::get_domain_by_name(
-		connection,
-		domain_name
-	)
-	.await?;
+	let personal_domain =
+		db::get_domain_by_name(connection, domain_name).await?;
 
 	// if domain doesn't exists then return an error
 	if personal_domain.is_none() {
@@ -220,7 +204,7 @@ pub async fn update_user_backup_email(
 		connection,
 		user_id,
 		&personal_domain.name,
-		&personal_domain.id
+		&personal_domain.id,
 	)
 	.await?;
 
@@ -232,13 +216,13 @@ pub async fn update_user_backup_email(
 	}
 
 	// finally if everything checks out then change the personal email
-    db::update_user_backup_email(
-        connection,
-        &user_id,
-        &email_local,
-        &personal_domain.id
-    )
-    .await?;
+	db::update_user_backup_email(
+		connection,
+		&user_id,
+		&email_local,
+		&personal_domain.id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -247,9 +231,8 @@ pub async fn update_user_backup_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<(), Error> {
-
 	if !validator::is_country_code_valid(country_code) {
 		Error::as_result()
 			.status(200)
@@ -262,11 +245,11 @@ pub async fn update_user_backup_phone_number(
 			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 	}
 
-    let user_phone_details = db::get_user_phone_number(
-        connection,
-        &user_id,
-        country_code,
-        phone_number
+	let user_phone_details = db::get_user_phone_number(
+		connection,
+		&user_id,
+		country_code,
+		phone_number,
 	)
 	.await?;
 
@@ -280,7 +263,7 @@ pub async fn update_user_backup_phone_number(
 		connection,
 		&user_id,
 		&country_code,
-		&phone_number
+		&phone_number,
 	)
 	.await?;
 
@@ -290,19 +273,15 @@ pub async fn update_user_backup_phone_number(
 pub async fn delete_personal_email_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-	email_address: &str
+	email_address: &str,
 ) -> Result<(), Error> {
-
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 
-	let personal_domain = db::get_domain_by_name(
-		connection,
-		domain_name
-	)
-		.await?;
+	let personal_domain =
+		db::get_domain_by_name(connection, domain_name).await?;
 
 	// if domain doesn't exists then return an error
 	if personal_domain.is_none() {
@@ -318,7 +297,7 @@ pub async fn delete_personal_email_address(
 		connection,
 		&user_id,
 		&email_local,
-		&personal_domain.id
+		&personal_domain.id,
 	)
 	.await?;
 
@@ -332,7 +311,7 @@ pub async fn delete_personal_email_address(
 		connection,
 		&user_id,
 		&email_local,
-		&personal_domain.id
+		&personal_domain.id,
 	)
 	.await?;
 
@@ -343,14 +322,13 @@ pub async fn delete_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<(), Error> {
-
 	let backup_phone_number = db::get_backup_phone_number_from_user(
 		connection,
 		&user_id,
 		&country_code,
-		&phone_number
+		&phone_number,
 	)
 	.await?;
 
@@ -360,13 +338,8 @@ pub async fn delete_phone_number(
 			.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
 	}
 
-	db::delete_phone_number(
-		connection,
-		&user_id,
-		&country_code,
-		&phone_number
-	)
-	.await?;
+	db::delete_phone_number(connection, &user_id, &country_code, &phone_number)
+		.await?;
 
 	Ok(())
 }

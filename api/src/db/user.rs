@@ -4,18 +4,20 @@ use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
 		Organisation,
+		OrganisationEmail,
 		PasswordResetRequest,
+		PersonalEmail,
 		PersonalEmailToBeVerified,
 		PhoneCountryCode,
 		User,
 		UserLogin,
+		UserPhoneNumber,
 		UserToSignUp,
 	},
 	query,
 	query_as,
 	Database,
 };
-use crate::models::db_mapping::{OrganisationEmail, PersonalEmail, UserPhoneNumber};
 
 pub async fn initialize_users_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -1766,7 +1768,7 @@ pub async fn update_user_backup_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
-	domain_id: &[u8]
+	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1792,7 +1794,7 @@ pub async fn update_user_backup_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1808,8 +1810,8 @@ pub async fn update_user_backup_phone_number(
 		phone_number,
 		user_id
 	)
-		.execute(&mut *connection)
-		.await?;
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
@@ -1989,7 +1991,7 @@ pub async fn get_personal_emails(
 	.await?
 	.into_iter()
 	.map(|row| PersonalEmail {
-		personal_email: row.email
+		personal_email: row.email,
 	})
 	.collect();
 
@@ -2019,7 +2021,7 @@ pub async fn get_organisation_emails(
 	.await?
 	.into_iter()
 	.map(|row| OrganisationEmail {
-		organisation_email: row.email
+		organisation_email: row.email,
 	})
 	.collect();
 
@@ -2049,7 +2051,7 @@ pub async fn get_user_phone_numbers(
 	.map(|row| UserPhoneNumber {
 		user_id: row.user_id,
 		country_code: row.country_code,
-		number: row.number
+		number: row.number,
 	})
 	.collect();
 
@@ -2060,7 +2062,7 @@ pub async fn get_user_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
 	let rows = query_as!(
 		UserPhoneNumber,
@@ -2090,7 +2092,7 @@ pub async fn get_personal_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
-	domain_id: &[u8]
+	domain_id: &[u8],
 ) -> Result<Option<PersonalEmail>, sqlx::Error> {
 	let rows = query_as!(
 		PersonalEmail,
@@ -2122,7 +2124,7 @@ pub async fn get_backup_email_address_from_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
-	domain_id: &[u8]
+	domain_id: &[u8],
 ) -> Result<Option<PersonalEmail>, sqlx::Error> {
 	let rows = query_as!(
 		PersonalEmail,
@@ -2144,8 +2146,8 @@ pub async fn get_backup_email_address_from_user(
 		email_local,
 		domain_id
 	)
-		.fetch_all(&mut *connection)
-		.await?;
+	.fetch_all(&mut *connection)
+	.await?;
 
 	Ok(rows.into_iter().next())
 }
@@ -2154,7 +2156,7 @@ pub async fn get_backup_phone_number_from_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
 	let rows = query_as!(
 		UserPhoneNumber,
@@ -2184,7 +2186,7 @@ pub async fn delete_personal_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
-	domain_id: &[u8]
+	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2209,7 +2211,7 @@ pub async fn delete_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
-	phone_number: &str
+	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2224,8 +2226,8 @@ pub async fn delete_phone_number(
 		country_code,
 		phone_number
 	)
-		.execute(&mut *connection)
-		.await?;
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
