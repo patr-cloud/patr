@@ -1,8 +1,6 @@
 use argon2::{
 	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
-	Argon2,
-	PasswordHash,
-	Version,
+	Argon2, PasswordHash, Version,
 };
 use hex::ToHex;
 use uuid::Uuid;
@@ -108,33 +106,43 @@ pub fn mask_email_local(local: &str) -> String {
 	} else if local.len() <= 2 {
 		local.chars().map(|_| '*').collect()
 	} else if local.len() > 2 && local.len() <= 4 {
-		local
-			.char_indices()
-			.map(|(index, char)| if index == 0 { char } else { '*' })
-			.collect()
+		if let Some(first) = local.chars().next() {
+			format!("{}***", first)
+		} else {
+			String::from("*")
+		}
 	} else {
-		local
-			.char_indices()
-			.map(|(index, char)| {
-				if index == 0 || index == local.len() - 1 {
-					char
-				} else {
-					'*'
-				}
-			})
-			.collect()
+		let mut chars = local.chars();
+		let first = if let Some(first) = chars.next() {
+			first
+		} else {
+			return String::from("*");
+		};
+		let last = if let Some(last) = chars.last() {
+			last
+		} else {
+			return String::from("*");
+		};
+		format!(
+			"{}{}{}",
+			first,
+			if local.len() < 10 { "****" } else { "********" },
+			last
+		)
 	}
 }
 
 pub fn mask_phone_number(phone_number: &str) -> String {
-	phone_number
-		.char_indices()
-		.map(|(index, char)| {
-			if index == 0 || index >= phone_number.len() - 2 {
-				char
-			} else {
-				'*'
-			}
-		})
-		.collect()
+	let mut chars = phone_number.chars();
+	let first = if let Some(first) = chars.next() {
+		first
+	} else {
+		return String::from("******");
+	};
+	let last = if let Some(last) = chars.last() {
+		last
+	} else {
+		return String::from("******");
+	};
+	format!("{}******{}", first, last)
 }
