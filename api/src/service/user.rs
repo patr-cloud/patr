@@ -282,7 +282,91 @@ pub async fn update_user_backup_phone_number(
 		&country_code,
 		&phone_number
 	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_personal_email_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_address: &str
+) -> Result<(), Error> {
+
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let personal_domain = db::get_domain_by_name(
+		connection,
+		domain_name
+	)
 		.await?;
+
+	// if domain doesn't exists then return an error
+	if personal_domain.is_none() {
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?
+	}
+
+	// safe unwrap
+	let personal_domain = personal_domain.unwrap();
+
+	let backup_email = db::get_backup_email_address_from_user(
+		connection,
+		&user_id,
+		&email_local,
+		&personal_domain.id
+	)
+	.await?;
+
+	if backup_email.is_some() {
+		Error::as_result()
+			.status(400)
+			.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
+	}
+
+	db::delete_personal_email(
+		connection,
+		&user_id,
+		&email_local,
+		&personal_domain.id
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str
+) -> Result<(), Error> {
+
+	let backup_phone_number = db::get_backup_phone_number_from_user(
+		connection,
+		&user_id,
+		&country_code,
+		&phone_number
+	)
+	.await?;
+
+	if backup_phone_number.is_some() {
+		Error::as_result()
+			.status(400)
+			.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
+	}
+
+	db::delete_phone_number(
+		connection,
+		&user_id,
+		&country_code,
+		&phone_number
+	)
+	.await?;
 
 	Ok(())
 }

@@ -2117,3 +2117,114 @@ pub async fn get_personal_email(
 
 	Ok(rows.into_iter().next())
 }
+
+pub async fn get_backup_email_address_from_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8]
+) -> Result<Option<PersonalEmail>, sqlx::Error> {
+	let rows = query_as!(
+		PersonalEmail,
+		r#"
+		SELECT
+			CONCAT("user".backup_email_local, '@', domain.name) as "personal_email!:String"
+		FROM
+			"user"
+		INNER JOIN
+			domain
+		ON
+			"user".backup_email_domain_id = domain.id
+		WHERE
+			"user".id = $1 AND
+			"user".backup_email_local = $2 AND
+			"user".backup_email_domain_id = $3;
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+		.fetch_all(&mut *connection)
+		.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+pub async fn get_backup_phone_number_from_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str
+) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
+	let rows = query_as!(
+		UserPhoneNumber,
+		r#"
+		SELECT
+			backup_phone_country_code AS "country_code",
+			backup_phone_number AS "number"
+		FROM
+			"user"
+		WHERE
+			id = $1 AND
+			backup_phone_country_code = $2 AND
+			backup_phone_number = $3
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows.into_iter().next())
+}
+
+pub async fn delete_personal_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8]
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			personal_email
+		WHERE
+			user_id = $1 AND
+			local = $2 AND
+			domain_id = $3;
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_phone_number
+		WHERE
+			user_id = $1 AND
+			country_code = $2 AND
+			number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+		.execute(&mut *connection)
+		.await?;
+
+	Ok(())
+}

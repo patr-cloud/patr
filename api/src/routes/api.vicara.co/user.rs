@@ -73,6 +73,20 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
 		],
 	);
+	app.delete(
+		"delete-personal-email",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(delete_personal_email_address)),
+		],
+	);
+	app.delete(
+		"delete-phone-number",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(delete_phone_number)),
+		]
+	);
 	app.post(
 		"/verify-email-address",
 		[
@@ -314,11 +328,8 @@ async fn list_phone_numbers(
 		.into_iter()
 		.map(|phone_number| {
 			json!({
-				request_keys::PHONE_NUMBER: format!(
-					"{}{}",
-					phone_number.country_code,
-					phone_number.number
-				)
+				request_keys::COUNTRY_CODE: phone_number.country_code,
+				request_keys::PHONE_NUMBER: phone_number.number
 			})
 		})
 		.collect::<Vec<_>>();
@@ -335,7 +346,6 @@ async fn update_backup_email_address(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
-
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let email_address = body
@@ -363,7 +373,6 @@ async fn update_backup_phone_number(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
-
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let country_code = body
@@ -383,10 +392,74 @@ async fn update_backup_phone_number(
 	service::update_user_backup_phone_number(
 		context.get_database_connection(),
 		&user_id,
+		&country_code,
+		&phone_number
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn delete_personal_email_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+
+	let body = context.get_body_object().clone();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let email_address = body
+		.get(request_keys::EMAIL)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::delete_personal_email_address(
+		context.get_database_connection(),
+		&user_id,
+		&email_address
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn delete_phone_number(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+
+	let body = context.get_body_object().clone();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let country_code = body
+		.get(request_keys::COUNTRY_CODE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let phone_number = body
+		.get(request_keys::PHONE_NUMBER)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::delete_phone_number(
+		context.get_database_connection(),
+		&user_id,
 		country_code,
 		phone_number
 	)
-		.await?;
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
