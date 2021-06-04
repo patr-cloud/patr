@@ -5,16 +5,24 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		mailer,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -252,7 +260,7 @@ async fn sign_up(
 		backup_phone_country_code.zip(backup_phone_number)
 	{
 		// TODO implement this
-		// panic!("Sending OTPs through phone numbers aren't handled yet");
+		panic!("Sending OTPs through phone numbers aren't handled yet");
 	}
 
 	context.json(json!({
