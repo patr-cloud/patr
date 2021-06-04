@@ -80,6 +80,8 @@ def notify_on_failure(ctx):
 **Author**
 {}
 
+More details can be found in the [build logs]({{{{build.link}}}})
+
 Please fix before merging
 """.format(get_author_list())
         },
