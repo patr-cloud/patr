@@ -2160,8 +2160,9 @@ pub async fn get_backup_phone_number_from_user(
 		UserPhoneNumber,
 		r#"
 		SELECT
-			backup_phone_country_code AS "country_code",
-			backup_phone_number AS "number"
+			id AS "user_id!",
+			backup_phone_country_code AS "country_code!",
+			backup_phone_number AS "number!"
 		FROM
 			"user"
 		WHERE

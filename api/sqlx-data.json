@@ -296,6 +296,40 @@
       ]
     }
   },
+  "10dc40fde67fa2d106b5c253f159cc953af8311a2ff9b64d11d6bd65c943248b": {
+    "query": "SELECT id AS \"user_id!\", backup_phone_country_code AS \"country_code!\", backup_phone_number AS \"number!\" FROM \"user\" WHERE id = $1 AND backup_phone_country_code = $2 AND backup_phone_number = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id!",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "country_code!",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "number!",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        true,
+        true
+      ]
+    }
+  },
   "12b348ffdebe72e3058a63fa33fc3a124189e62c1c61d505cbc03a03fd3736bf": {
     "query": "SELECT deployment_entry_point.id, deployment_entry_point.sub_domain, deployment_entry_point.domain_id, deployment_entry_point.path, deployment_entry_point.entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_entry_point.deployment_id, deployment_entry_point.deployment_port, deployment_entry_point.url FROM deployment_entry_point INNER JOIN resource ON deployment_entry_point.id = resource.id WHERE resource.owner_id = $1;",
     "describe": {
@@ -747,6 +781,20 @@
         false,
         false
       ]
+    }
+  },
+  "228f448b2b9762ad776a9141f6d887b5b8bc31c914c927619b580ae829b118a8": {
+    "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "24651378057df5d6b31be9a55d60d02884c8c9d9f7cb441254a408e7dc4f05b9": {
@@ -1434,6 +1482,28 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "407370b2e00f93782da47e42202e86cf6ccd3dbdf937afc11545549441d9d56b": {
+    "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"personal_email!:String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1 AND \"user\".backup_email_local = $2 AND \"user\".backup_email_domain_id = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "personal_email!:String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "410b9b4a17be9a86ba3af7a7f69dc4549cc5025a3b306a2412deb213fc160c75": {
@@ -2597,6 +2667,20 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
+    "query": "DELETE FROM personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Bytea"
+        ]
       },
       "nullable": []
     }

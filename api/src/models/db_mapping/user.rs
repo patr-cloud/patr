@@ -94,9 +94,9 @@ pub struct PhoneCountryCode {
 }
 
 pub struct PersonalEmail {
-	pub personal_email: Option<String>
+	pub personal_email: String
 }
 
 pub struct OrganisationEmail {
-	pub organisation_email: Option<String>
+	pub organisation_email: String
 }
