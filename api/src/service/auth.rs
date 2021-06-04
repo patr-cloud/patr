@@ -30,10 +30,25 @@ pub async fn is_username_allowed(
 			.status(200)
 			.body(error!(INVALID_USERNAME).to_string())?;
 	}
-	db::get_user_by_username(connection, username)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+
+	let user = db::get_user_by_username(connection, username).await?;
+	if user.is_some() {
+		Error::as_result()
+			.status(200)
+			.body(error!(USERNAME_TAKEN).to_string())?;
+	}
+
+	// check if user is registered for signup
+	let sign_up_status =
+		db::get_user_to_sign_up_by_username(connection, username).await?;
+
+	if let Some(status) = sign_up_status {
+		// return in-valid (`false`) if expiry is greater than current time
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 pub async fn is_email_allowed(
