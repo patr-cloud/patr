@@ -3,17 +3,10 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		User,
-		UserLogin,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
+		PhoneCountryCode, User, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_users_pre(
@@ -1185,6 +1178,117 @@ pub async fn get_user_to_sign_up_by_username(
 			username = $1;
 		"#,
 		username
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| UserToSignUp {
+		username: row.username,
+		account_type: row.account_type,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+		org_email_local: row.org_email_local,
+		org_domain_name: row.org_domain_name,
+		organisation_name: row.organisation_name,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry as u64,
+	});
+
+	Ok(rows.next())
+}
+
+pub async fn get_user_to_sign_up_by_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	backup_phone_country_code: &str,
+	backup_phone_number: &str,
+) -> Result<Option<UserToSignUp>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			user_to_sign_up.username,
+			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
+			user_to_sign_up.password,
+			user_to_sign_up.first_name,
+			user_to_sign_up.last_name,
+			user_to_sign_up.backup_email_local,
+			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_phone_country_code,
+			user_to_sign_up.backup_phone_number,
+			user_to_sign_up.org_email_local,
+			user_to_sign_up.org_domain_name,
+			user_to_sign_up.organisation_name,
+			user_to_sign_up.otp_hash,
+			user_to_sign_up.otp_expiry
+		FROM
+			user_to_sign_up
+		WHERE
+			user_to_sign_up.backup_phone_country_code = $1 AND
+			user_to_sign_up.backup_phone_number = $2;
+		"#,
+		backup_phone_country_code,
+		backup_phone_number
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| UserToSignUp {
+		username: row.username,
+		account_type: row.account_type,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		backup_email_local: row.backup_email_local,
+		backup_email_domain_id: row.backup_email_domain_id,
+		backup_phone_country_code: row.backup_phone_country_code,
+		backup_phone_number: row.backup_phone_number,
+		org_email_local: row.org_email_local,
+		org_domain_name: row.org_domain_name,
+		organisation_name: row.organisation_name,
+		otp_hash: row.otp_hash,
+		otp_expiry: row.otp_expiry as u64,
+	});
+
+	Ok(rows.next())
+}
+
+pub async fn get_user_to_sign_up_by_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email: &str,
+	domain_name: &str,
+) -> Result<Option<UserToSignUp>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			user_to_sign_up.username,
+			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
+			user_to_sign_up.password,
+			user_to_sign_up.first_name,
+			user_to_sign_up.last_name,
+			user_to_sign_up.backup_email_local,
+			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_phone_country_code,
+			user_to_sign_up.backup_phone_number,
+			user_to_sign_up.org_email_local,
+			user_to_sign_up.org_domain_name,
+			user_to_sign_up.organisation_name,
+			user_to_sign_up.otp_hash,
+			user_to_sign_up.otp_expiry
+		FROM
+			user_to_sign_up
+		LEFT JOIN
+			domain
+		ON
+			domain.name = $1
+		WHERE
+			CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $2;
+		"#,
+		domain_name,
+		email
 	)
 	.fetch_all(&mut *connection)
 	.await?

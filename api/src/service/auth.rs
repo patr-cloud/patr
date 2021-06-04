@@ -2,21 +2,15 @@ use eve_rs::AsError;
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{User, UserLogin},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 	Database,
 };
@@ -33,9 +27,7 @@ pub async fn is_username_allowed(
 
 	let user = db::get_user_by_username(connection, username).await?;
 	if user.is_some() {
-		Error::as_result()
-			.status(200)
-			.body(error!(USERNAME_TAKEN).to_string())?;
+		return Ok(false);
 	}
 
 	// check if user is registered for signup
@@ -61,10 +53,25 @@ pub async fn is_email_allowed(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	db::get_user_by_email(connection, email)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+	let user = db::get_user_by_email(connection, email).await?;
+	if user.is_some() {
+		return Ok(false);
+	}
+	// extract the email_local and domain name from it
+	let (_email_local, domain_name) = email
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let sign_up_status =
+		db::get_user_to_sign_up_by_email(connection, email, domain_name)
+			.await?;
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 pub async fn is_phone_number_allowed(
@@ -84,13 +91,29 @@ pub async fn is_phone_number_allowed(
 			.status(400)
 			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 
-	db::get_user_by_phone_number(
+	let user = db::get_user_by_phone_number(
 		connection,
 		&format!("+{}{}", country_code.phone_code, phone_number),
 	)
-	.await
-	.map(|user| user.is_none())
-	.status(500)
+	.await?;
+
+	if user.is_some() {
+		return Ok(false);
+	}
+
+	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 /// Creates a new user to be signed up and returns an OTP
