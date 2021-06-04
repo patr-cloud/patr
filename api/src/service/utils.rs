@@ -4,7 +4,6 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
-use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
@@ -81,7 +80,7 @@ pub async fn generate_new_refresh_token_for_user(
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)
@@ -103,32 +102,39 @@ pub fn generate_new_otp() -> String {
 	"000000".to_string()
 }
 
-pub fn mask_email(email: &str) -> Result<String, Error> {
-	let mut email = email.to_owned();
-	let mut start_index: usize = 0;
-	// get index of '@'
-	// if offset_index is None, then it is an invalid email addr.
-	let mut offset_index = email.find('@').status(500)?;
-
-	if offset_index > 2 && offset_index <= 4 {
-		start_index = 1;
-	} else if offset_index > 4 {
-		start_index = 1;
-		offset_index -= 2;
+pub fn mask_email_local(local: &str) -> String {
+	if local.is_empty() {
+		String::from("*")
+	} else if local.len() <= 2 {
+		local.chars().map(|_| '*').collect()
+	} else if local.len() > 2 && local.len() <= 4 {
+		local
+			.char_indices()
+			.map(|(index, char)| if index == 0 { char } else { '*' })
+			.collect()
+	} else {
+		local
+			.char_indices()
+			.map(|(index, char)| {
+				if index == 0 || index == local.len() - 1 {
+					char
+				} else {
+					'*'
+				}
+			})
+			.collect()
 	}
-	let difference = offset_index - start_index;
-	let mask = String::from_utf8(vec![b'*'; difference])?;
-	email.replace_range(start_index..offset_index, &mask);
-	Ok(email)
 }
 
-pub fn mask_phone_number(phone_number: &str) -> Result<String, Error> {
-	let mut phone_number = phone_number.to_owned();
-	let start_index = 1;
-	let end_index = phone_number.len() - 2;
-	let difference = end_index - start_index;
-	let mask = String::from_utf8(vec![b'*'; difference])?;
-
-	phone_number.replace_range(start_index..end_index, &mask);
-	Ok(phone_number)
+pub fn mask_phone_number(phone_number: &str) -> String {
+	phone_number
+		.char_indices()
+		.map(|(index, char)| {
+			if index == 0 || index >= phone_number.len() - 2 {
+				char
+			} else {
+				'*'
+			}
+		})
+		.collect()
 }

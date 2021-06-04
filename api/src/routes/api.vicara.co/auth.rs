@@ -1091,7 +1091,7 @@ async fn list_recovery_options(
 
 	// mask phone number
 	if let Some(phone_number) = user.backup_phone_number {
-		let phone_number = service::mask_phone_number(&phone_number)?;
+		let phone_number = service::mask_phone_number(&phone_number);
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
 			&user.backup_phone_country_code.unwrap(),
@@ -1110,7 +1110,7 @@ async fn list_recovery_options(
 	{
 		let email = format!(
 			"{}@{}",
-			backup_email_local,
+			service::mask_email_local(&backup_email_local),
 			db::get_personal_domain_by_id(
 				context.get_database_connection(),
 				&backup_email_domain_id
@@ -1120,7 +1120,6 @@ async fn list_recovery_options(
 			.name
 		);
 
-		let email = service::mask_email(&email)?;
 		response_map
 			.insert(request_keys::BACKUP_EMAIL.to_string(), email.into());
 	}
