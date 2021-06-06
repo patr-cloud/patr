@@ -133,9 +133,17 @@ pub async fn initialize_deployment_post(
 	log::info!("Finishing up deployment tables initialization");
 	query!(
 		r#"
-		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_id
+		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_upgrade_path_id
+		FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(id);
 		"#
 	)
 	.execute(&mut *transaction)
