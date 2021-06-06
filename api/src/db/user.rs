@@ -1211,8 +1211,7 @@ pub async fn get_user_to_sign_up_by_username(
 
 pub async fn get_user_to_sign_up_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	backup_phone_country_code: &str,
-	backup_phone_number: &str,
+	phone_number: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let mut rows = query!(
 		r#"
@@ -1233,12 +1232,19 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			user_to_sign_up.otp_expiry
 		FROM
 			user_to_sign_up
+		INNER JOIN 
+			phone_number_country_code
+		ON
+			phone_number_country_code.country_code = user_to_sign_up.backup_phone_country_code
 		WHERE
-			user_to_sign_up.backup_phone_country_code = $1 AND
-			user_to_sign_up.backup_phone_number = $2;
+			CONCAT(
+				'+',
+				phone_number_country_code.phone_code,
+				user_to_sign_up.backup_phone_number
+			) = $1
+
 		"#,
-		backup_phone_country_code,
-		backup_phone_number
+		phone_number
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -1266,7 +1272,6 @@ pub async fn get_user_to_sign_up_by_phone_number(
 pub async fn get_user_to_sign_up_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
-	domain_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let mut rows = query!(
 		r#"
@@ -1287,14 +1292,13 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.otp_expiry
 		FROM
 			user_to_sign_up
-		LEFT JOIN
+		INNER JOIN
 			domain
 		ON
-			domain.name = $1
+			domain.id = user_to_sign_up.backup_email_domain_id
 		WHERE
-			CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $2;
+			CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;
 		"#,
-		domain_name,
 		email
 	)
 	.fetch_all(&mut *connection)

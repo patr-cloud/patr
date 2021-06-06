@@ -63,15 +63,9 @@ pub async fn is_email_allowed(
 	if user.is_some() {
 		return Ok(false);
 	}
-	// extract the email_local and domain name from it
-	let (_email_local, domain_name) = email
-		.split_once('@')
-		.status(400)
-		.body(error!(INVALID_EMAIL).to_string())?;
 
 	let sign_up_status =
-		db::get_user_to_sign_up_by_email(connection, email, domain_name)
-			.await?;
+		db::get_user_to_sign_up_by_email(connection, email).await?;
 	if let Some(status) = sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
 			return Ok(false);
@@ -97,22 +91,16 @@ pub async fn is_phone_number_allowed(
 			.status(400)
 			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 
-	let user = db::get_user_by_phone_number(
-		connection,
-		&format!("+{}{}", country_code.phone_code, phone_number),
-	)
-	.await?;
+	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
+	let user = db::get_user_by_phone_number(connection, &phone_number).await?;
 
 	if user.is_some() {
 		return Ok(false);
 	}
 
-	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
-		connection,
-		&country_code.country_code,
-		phone_number,
-	)
-	.await?;
+	let sign_up_status =
+		db::get_user_to_sign_up_by_phone_number(connection, &phone_number)
+			.await?;
 
 	if let Some(status) = sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
