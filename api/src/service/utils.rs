@@ -80,7 +80,7 @@ pub async fn generate_new_refresh_token_for_user(
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)
@@ -100,4 +100,51 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+pub fn mask_email_local(local: &str) -> String {
+	if local.is_empty() {
+		String::from("*")
+	} else if local.len() <= 2 {
+		local.chars().map(|_| '*').collect()
+	} else if local.len() > 2 && local.len() <= 4 {
+		if let Some(first) = local.chars().next() {
+			format!("{}***", first)
+		} else {
+			String::from("*")
+		}
+	} else {
+		let mut chars = local.chars();
+		let first = if let Some(first) = chars.next() {
+			first
+		} else {
+			return String::from("*");
+		};
+		let last = if let Some(last) = chars.last() {
+			last
+		} else {
+			return String::from("*");
+		};
+		format!(
+			"{}{}{}",
+			first,
+			if local.len() < 10 { "****" } else { "********" },
+			last
+		)
+	}
+}
+
+pub fn mask_phone_number(phone_number: &str) -> String {
+	let mut chars = phone_number.chars();
+	let first = if let Some(first) = chars.next() {
+		first
+	} else {
+		return String::from("******");
+	};
+	let last = if let Some(last) = chars.last() {
+		last
+	} else {
+		return String::from("******");
+	};
+	format!("{}******{}", first, last)
 }

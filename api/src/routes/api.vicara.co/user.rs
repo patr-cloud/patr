@@ -1,7 +1,6 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Value};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -11,7 +10,6 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		mailer,
 		Error,
 		ErrorData,
 		EveContext,
@@ -347,32 +345,11 @@ async fn change_password(
 	)
 	.await?;
 
-	if let Some((backup_email_local, backup_email_domain_id)) =
-		user.backup_email_local.zip(user.backup_email_domain_id)
-	{
-		let config = context.get_state().config.clone();
-		let email = format!(
-			"{}@{}",
-			backup_email_local,
-			db::get_personal_domain_by_id(
-				context.get_database_connection(),
-				&backup_email_domain_id
-			)
-			.await?
-			.status(500)?
-			.name
-		);
-		task::spawn_blocking(|| {
-			mailer::send_password_changed_notification_mail(config, email);
-		});
-	}
-
-	if let Some((_phone_country_code, _phone_number)) =
-		user.backup_phone_country_code.zip(user.backup_phone_number)
-	{
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
-	}
+	service::send_password_changed_notification(
+		context.get_database_connection(),
+		user,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

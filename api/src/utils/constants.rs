@@ -142,6 +142,7 @@ pub mod request_keys {
 	pub const ENTRY_POINTS: &str = "entryPoints";
 	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
+	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
 	pub const URL: &str = "url";
 	pub const DEFAULT: &str = "default";
 }
