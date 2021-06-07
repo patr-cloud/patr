@@ -53,7 +53,7 @@ def check_clippy():
         "name": "Check clippy suggestions",
         "image": "rustlang/rust:nightly",
         "commands": [
-            "cargo clippy"
+            "cargo clippy -- -D warnings"
         ]
     }
 
