@@ -1241,8 +1241,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 				'+',
 				phone_number_country_code.phone_code,
 				user_to_sign_up.backup_phone_number
-			) = $1
-
+			) = $1;
 		"#,
 		phone_number
 	)
