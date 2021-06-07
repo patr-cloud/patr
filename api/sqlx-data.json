@@ -2707,16 +2707,6 @@
       ]
     }
   },
-  "8d3d5dfed9de5e513b0c525439e5652a91ed2061d04198d07aab5d47be0984ff": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e": {
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;",
     "describe": {
@@ -3300,6 +3290,11 @@
           "ordinal": 5,
           "name": "image_tag",
           "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "upgrade_path_id",
+          "type_info": "Bytea"
         }
       ],
       "parameters": {
@@ -3313,6 +3308,61 @@
         false,
         true,
         true,
+        false,
+        false
+      ]
+    }
+  },
+  "ad07ec2137aaa42c3cd628bfda29b0c5a05d4b31c82bf40d789a5c886666fed7": {
+    "query": "SELECT * FROM deployment;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "upgrade_path_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
         false
       ]
     }
@@ -3875,6 +3925,11 @@
           "ordinal": 5,
           "name": "image_tag",
           "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "upgrade_path_id",
+          "type_info": "Bytea"
         }
       ],
       "parameters": {
@@ -3888,6 +3943,7 @@
         false,
         true,
         true,
+        false,
         false
       ]
     }
@@ -4370,6 +4426,16 @@
       "nullable": []
     }
   },
+  "e1f93c60be4d788e75e470ffa73940b3d25dc928ea7df63637e4c163007f9aaa": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, upgrade_path_id BYTEA NOT NULL, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "e309c91b247eb4c5951f85282ef01315387421e0f820cdf6e5070f2ff14d9cac": {
     "query": "SELECT domain.name as \"name!\", organisation_domain.id as \"id!\", organisation_domain.domain_type as \"domain_type!: _\", organisation_domain.is_verified as \"is_verified!\" FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE is_verified = TRUE;",
     "describe": {
@@ -4674,6 +4740,11 @@
           "ordinal": 5,
           "name": "image_tag",
           "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "upgrade_path_id",
+          "type_info": "Bytea"
         }
       ],
       "parameters": {
@@ -4689,8 +4760,19 @@
         false,
         true,
         true,
+        false,
         false
       ]
+    }
+  },
+  "ed5c61afe70dd81191232af648c701ac503387864b7d7d9e1b9b5be084890a36": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_upgrade_path_id FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "f40ff9a243ec7163aaf4231c178cac648d143ff785d045e31e517eb493d0d986": {
