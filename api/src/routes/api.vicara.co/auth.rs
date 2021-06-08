@@ -14,15 +14,7 @@ use crate::{
 	pin_fn, service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-<<<<<<< HEAD
-		get_current_time,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-=======
-		get_current_time, mailer, validator, Error, ErrorData, EveContext,
->>>>>>> fix-69/sign_up_collision
+		get_current_time, validator, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
