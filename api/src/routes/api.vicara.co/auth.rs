@@ -5,24 +5,16 @@ use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time,
-		mailer,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
+		get_current_time, mailer, validator, Error, ErrorData, EveContext,
 		EveMiddleware,
 	},
 };
@@ -89,7 +81,8 @@ async fn sign_in(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -173,6 +166,7 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// store email as lowercase
 	let backup_email = body
 		.get(request_keys::BACKUP_EMAIL)
 		.map(|param| {
@@ -181,8 +175,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store Phone Country Code as uppercase
 	let backup_phone_country_code = body
 		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
 		.map(|param| {
@@ -191,7 +187,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_ascii_uppercase());
 
 	let backup_phone_number = body
 		.get(request_keys::BACKUP_PHONE_NUMBER)
@@ -203,6 +200,7 @@ async fn sign_up(
 		})
 		.transpose()?;
 
+	// store org email as lower case
 	let org_email_local = body
 		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
 		.map(|param| {
@@ -211,8 +209,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store org domain name as lower case
 	let org_domain_name = body
 		.get(request_keys::DOMAIN)
 		.map(|param| {
@@ -221,7 +221,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let organisation_name = body
 		.get(request_keys::ORGANISATION_NAME)
@@ -239,11 +240,11 @@ async fn sign_up(
 		account_type,
 		password,
 		(first_name, last_name),
-		backup_email,
-		backup_phone_country_code,
+		backup_email.as_deref(),
+		backup_phone_country_code.as_deref(),
 		backup_phone_number,
-		org_email_local,
-		org_domain_name,
+		org_email_local.as_deref(),
+		org_domain_name.as_deref(),
 		organisation_name,
 	)
 	.await?;

@@ -3,17 +3,10 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		User,
-		UserLogin,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
+		PhoneCountryCode, User, UserLogin, UserToSignUp,
 	},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_users_pre(
@@ -331,6 +324,18 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
 
+			CONSTRAINT user_to_sign_up_chk_username_lwr_case CHECK(
+				backup_email_local = lower(backup_email_local)
+			),
+			CONSTRAINT user_to_sign_up_chk_bckp_email_lwr_case CHECK(
+				backup_email_local = lower(backup_email_local)
+			),
+			CONSTRAINT user_to_sign_up_chk_bckp_phn_cntry_code CHECK(
+				backup_phone_country_code = upper(backup_phone_country_code)
+			),
+			CONSTRAINT user_to_sign_up_chk_org_email_lwr_case CHECK(
+				org_email_local = lower(org_email_local)
+			),
 			CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK(
 				(
 					account_type = 'personal' AND
