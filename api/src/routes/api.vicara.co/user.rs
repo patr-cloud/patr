@@ -104,7 +104,11 @@ async fn get_user_info_by_username(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
+	let username = context
+		.get_param(request_keys::USERNAME)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let user_data =
 		db::get_user_by_username(context.get_database_connection(), &username)
@@ -230,12 +234,14 @@ async fn add_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
-		email_address,
+		&email_address,
 		&user_id,
 	)
 	.await?;
@@ -257,7 +263,8 @@ async fn verify_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let otp = body
 		.get(request_keys::VERIFICATION_TOKEN)
@@ -265,12 +272,13 @@ async fn verify_email_address(
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
 		&user_id,
-		email_address,
+		&email_address,
 		otp,
 	)
 	.await?;

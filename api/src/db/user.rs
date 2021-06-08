@@ -3,10 +3,17 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
-		PhoneCountryCode, User, UserLogin, UserToSignUp,
+		Organisation,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		PhoneCountryCode,
+		User,
+		UserLogin,
+		UserToSignUp,
 	},
-	query, query_as, Database,
+	query,
+	query_as,
+	Database,
 };
 
 pub async fn initialize_users_pre(
@@ -35,6 +42,15 @@ pub async fn initialize_users_pre(
 			backup_phone_country_code CHAR(2),
 			backup_phone_number VARCHAR(15),
 
+			CONSTRAINT user_chk_usrnm_lwr_case CHECK(
+				username = lower(username)
+			),
+			CONSTRAINT user_chk_bckp_eml_lwr_case CHECK(
+				backup_email_local = lower(backup_email_local)
+			),
+			CONSTRAINT user_chk_bckp_phn_cntry_cd_uppr_case CHECK(
+				backup_phone_country_code = upper(backup_phone_country_code)
+			),
 			CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id
 				UNIQUE(backup_email_local, backup_email_domain_id),
 
@@ -139,6 +155,9 @@ pub async fn initialize_users_post(
 			domain_id BYTEA NOT NULL
 				CONSTRAINT personal_email_fk_domain_id
 					REFERENCES personal_domain(id),
+			CONSTRAINT personal_email_chk_local_lwr_case CHECK(
+				local = lower(local)
+			),
 			CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id),
 			CONSTRAINT personal_email_uq_user_id_local_domain_id
 				UNIQUE(user_id, local, domain_id)
@@ -169,7 +188,10 @@ pub async fn initialize_users_post(
 			domain_id BYTEA NOT NULL
 				CONSTRAINT organisation_email_fk_domain_id
 					REFERENCES organisation_domain(id),
-			CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id)
+			CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id),
+			CONSTRAINT organisation_email_chk_local_lwr_case CHECK(
+				local = lower(local)
+			)
 		);
 		"#
 	)
@@ -194,7 +216,10 @@ pub async fn initialize_users_post(
 			country_code CHAR(2)
 				CONSTRAINT phone_number_country_code_pk PRIMARY KEY,
 			phone_code VARCHAR(5) NOT NULL,
-			country_name VARCHAR(80) NOT NULL
+			country_name VARCHAR(80) NOT NULL,
+			CONSTRAINT phone_number_country_code_chk_cntry_cd_uppr_case CHECK(
+				country_code = upper(country_code)
+			)
 		);
 		"#
 	)
@@ -228,6 +253,9 @@ pub async fn initialize_users_post(
 					LENGTH(number) <= 15 AND
 					CAST(number AS BIGINT) > 0
 				),
+			CONSTRAINT user_phone_number_chk_cntry_cd_uppr_case CHECK(
+				country_code = upper(country_code)
+			),
 			CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number),
 			CONSTRAINT user_phone_number_uq_user_id_country_code_number
 				UNIQUE(user_id, country_code, number)
@@ -269,7 +297,11 @@ pub async fn initialize_users_post(
 				PRIMARY KEY(local, domain_id),
 			CONSTRAINT
 				user_unverified_personal_email_uq_user_id_local_domain_id
-				UNIQUE(user_id, local, domain_id)
+				UNIQUE(user_id, local, domain_id),
+			CONSTRAINT user_unverified_personal_eml_chk_local_lwr_case CHECK(
+				local = lower(local)
+			)
+				
 		);
 		"#
 	)
@@ -324,16 +356,16 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
 
-			CONSTRAINT user_to_sign_up_chk_username_lwr_case CHECK(
+			CONSTRAINT user_to_sign_up_chk_usrnm_lwr_case CHECK(
+				username = lower(username)
+			),
+			CONSTRAINT user_to_sign_up_chk_bckp_eml_lwr_case CHECK(
 				backup_email_local = lower(backup_email_local)
 			),
-			CONSTRAINT user_to_sign_up_chk_bckp_email_lwr_case CHECK(
-				backup_email_local = lower(backup_email_local)
-			),
-			CONSTRAINT user_to_sign_up_chk_bckp_phn_cntry_code CHECK(
+			CONSTRAINT user_to_sign_up_chk_bckp_phn_cntry_cd_uppr_case CHECK(
 				backup_phone_country_code = upper(backup_phone_country_code)
 			),
-			CONSTRAINT user_to_sign_up_chk_org_email_lwr_case CHECK(
+			CONSTRAINT user_to_sign_up_chk_org_eml_lwr_case CHECK(
 				org_email_local = lower(org_email_local)
 			),
 			CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK(

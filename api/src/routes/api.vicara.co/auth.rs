@@ -4,17 +4,24 @@ use serde_json::{json, Map};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
-		get_current_time, validator, Error, ErrorData, EveContext,
+		get_current_time,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
 		EveMiddleware,
 	},
 };
@@ -195,7 +202,7 @@ async fn sign_up(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?
-		.map(|val| val.to_ascii_uppercase());
+		.map(|val| val.to_uppercase());
 
 	let backup_phone_number = body
 		.get(request_keys::BACKUP_PHONE_NUMBER)
@@ -320,7 +327,8 @@ async fn join(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let config = context.get_state().config.clone();
 
@@ -328,7 +336,7 @@ async fn join(
 		context.get_database_connection(),
 		&config,
 		otp,
-		username,
+		&username,
 	)
 	.await?;
 
@@ -401,11 +409,12 @@ async fn is_email_valid(
 	let email_address = query
 		.get(request_keys::EMAIL)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_email_allowed(
 		context.get_database_connection(),
-		email_address,
+		&email_address,
 	)
 	.await?;
 
@@ -425,11 +434,12 @@ async fn is_username_valid(
 	let username = query
 		.get(request_keys::USERNAME)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_username_allowed(
 		context.get_database_connection(),
-		username,
+		&username,
 	)
 	.await?;
 
