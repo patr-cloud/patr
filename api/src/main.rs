@@ -121,7 +121,7 @@ fn parse_cli_args<'a>() -> ArgMatches<'a> {
 				.long("populate-sample-data")
 				.takes_value(false)
 				.multiple(false)
-				.help("Initialises the database with sample data and quits"),
+				.help("Initialises the database with sample data"),
 		)
 		.get_matches()
 	}
