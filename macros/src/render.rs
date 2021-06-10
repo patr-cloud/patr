@@ -15,6 +15,7 @@ use syn::{
 	Token,
 };
 
+#[allow(dead_code)]
 struct RenderParser {
 	expr: Expr,
 	file_name: LitStr,
@@ -42,11 +43,10 @@ impl Parse for RenderParser {
 
 pub fn parse(input: TokenStream) -> TokenStream {
 	let RenderParser {
-		expr,
+		expr: _,
 		file_name,
 		params,
 	} = parse_macro_input!(input as RenderParser);
-	println!("{:#?}", expr);
 
 	let mut handlebar = Handlebars::new();
 	handlebar.set_strict_mode(true);

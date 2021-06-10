@@ -27,10 +27,11 @@ config_rs = { version = "0.11.0", package = "config" }
 cron = "0.9.0"
 eve-rs = { git = "https://github.com/vicara-hq/eve-rs", branch = "develop" }
 futures = "0.3.8"
+handlebars = "4.0.0"
 hex = "0.4.2"
 jsonwebtoken = "7.2.0"
 lazy_static = "1.4.0"
-lettre = "=0.10.0-alpha.2"
+lettre = { version = "=0.10.0-rc.3", features = ["tokio1", "smtp-transport", "tokio1-native-tls"] }
 log = "0.4.8"
 multer = "1.2.2"
 num_cpus = "1.13.0"
