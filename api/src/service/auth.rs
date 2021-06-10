@@ -139,21 +139,19 @@ pub async fn create_user_join_request(
 			}
 
 			// extract the email_local and domain name from it
-			let (email_local, domain_name) = backup_email
-				.split_once('@')
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
-
-			// Assign values
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(
-				service::ensure_personal_domain_exists(connection, domain_name)
-					.await?
-					.as_bytes()
-					.to_vec(),
-			);
+			// split email into 2 parts and get domain_id
+			let (email_local, domain_id) = 
+				service::get_local_and_domain_id_from_email(
+					connection, 
+					backup_email,
+					true
+			)
+			.await?;
+			
 			phone_country_code = None;
 			phone_number = None;
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(domain_id);
 		}
 		// If both or neither recovery options are provided
 		_ => {

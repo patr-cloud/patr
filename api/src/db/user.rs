@@ -1,23 +1,6 @@
 use uuid::Uuid;
 
-use crate::{
-	constants::ResourceOwnerType,
-	models::db_mapping::{
-		Organisation,
-		OrganisationEmail,
-		PasswordResetRequest,
-		PersonalEmail,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		User,
-		UserLogin,
-		UserPhoneNumber,
-		UserToSignUp,
-	},
-	query,
-	query_as,
-	Database,
-};
+use crate::{Database, constants::ResourceOwnerType, models::db_mapping::{Organisation, PasswordResetRequest, PersonalEmailToBeVerified, PhoneCountryCode, User, UserEmailAddress, UserLogin, UserPhoneNumber, UserToSignUp}, query, query_as};
 
 pub async fn initialize_users_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -1764,7 +1747,7 @@ pub async fn update_user_password(
 	Ok(())
 }
 
-pub async fn update_user_backup_email(
+pub async fn update_backup_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
@@ -1778,7 +1761,7 @@ pub async fn update_user_backup_email(
 			backup_email_local = $1,
 			backup_email_domain_id = $2
 		WHERE
-			id = $3
+			id = $3;
 		"#,
 		email_local,
 		domain_id,
@@ -1790,7 +1773,7 @@ pub async fn update_user_backup_email(
 	Ok(())
 }
 
-pub async fn update_user_backup_phone_number(
+pub async fn update_backup_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
@@ -1804,7 +1787,7 @@ pub async fn update_user_backup_phone_number(
 			backup_phone_country_code = $1,
 			backup_phone_number = $2
 		WHERE
-			id = $3
+			id = $3;
 		"#,
 		country_code,
 		phone_number,
@@ -1968,103 +1951,64 @@ pub async fn add_phone_number_for_user(
 	.map(|_| ())
 }
 
-pub async fn get_personal_emails(
+pub async fn get_personal_emails_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<PersonalEmail>, sqlx::Error> {
+) -> Result<Vec<String>, sqlx::Error> {
 	let rows = query!(
 		r#"
-			SELECT
-				CONCAT(personal_email.local, '@', domain.name) as "email!:String"
-			FROM
-				personal_email
-			INNER JOIN
-				domain
-			ON
-				personal_email.domain_id = domain.id
-			WHERE
-				personal_email.user_id = $1;
+		SELECT
+			CONCAT(personal_email.local, '@', domain.name) as "email! : String"
+		FROM
+			personal_email
+		INNER JOIN
+			domain
+		ON
+			personal_email.domain_id = domain.id
+		WHERE
+			personal_email.user_id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| PersonalEmail {
-		personal_email: row.email,
-	})
+	.map(|row| row.email)
 	.collect();
 
 	Ok(rows)
 }
 
-pub async fn get_organisation_emails(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<Vec<OrganisationEmail>, sqlx::Error> {
-	let rows = query!(
-		r#"
-			SELECT
-				CONCAT(organisation_email.local, '@', domain.name) as "email!:String"
-			FROM
-				organisation_email
-			INNER JOIN
-				domain
-			ON
-				organisation_email.domain_id = domain.id
-			WHERE
-				organisation_email.user_id = $1;
-		"#,
-		user_id
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| OrganisationEmail {
-		organisation_email: row.email,
-	})
-	.collect();
-
-	Ok(rows)
-}
-
-pub async fn get_user_phone_numbers(
+pub async fn get_phone_numbers_for_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
-	let phone_numbers = query!(
+	let phone_numbers = query_as!(
+		UserPhoneNumber,
 		r#"
-			SELECT
-				user_id,
-				country_code,
-				number
-			FROM
-				user_phone_number
-			WHERE
-				user_id = $1;
+		SELECT
+			user_id,
+			country_code,
+			number
+		FROM
+			user_phone_number
+		WHERE
+			user_id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| UserPhoneNumber {
-		user_id: row.user_id,
-		country_code: row.country_code,
-		number: row.number,
-	})
-	.collect();
+	.await?;
 
 	Ok(phone_numbers)
 }
-
-pub async fn get_user_phone_number(
+pub async fn check_if_personal_phone_number_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,
 	phone_number: &str,
-) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
-	let rows = query_as!(
+) -> Result<bool, sqlx::Error> {
+	let rows: Option<UserPhoneNumber> = query_as!(
 		UserPhoneNumber,
 		r#"
 		SELECT
@@ -2083,22 +2027,28 @@ pub async fn get_user_phone_number(
 		phone_number
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.next();
 
-	Ok(rows.into_iter().next())
+	if rows.is_none() {
+		Ok(false)
+	}
+	else {
+		Ok(true)
+	}
 }
 
-pub async fn get_personal_email(
+pub async fn check_if_personal_email_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
 	domain_id: &[u8],
-) -> Result<Option<PersonalEmail>, sqlx::Error> {
-	let rows = query_as!(
-		PersonalEmail,
+) -> Result<bool, sqlx::Error> {
+	let rows: Vec<String> = query!(
 		r#"
 		SELECT
-			CONCAT(personal_email.local, '@', domain.name) as "personal_email!:String"
+			CONCAT(personal_email.local, '@', domain.name) as "email! : String"
 		FROM
 			personal_email
 		INNER JOIN
@@ -2106,51 +2056,55 @@ pub async fn get_personal_email(
 		ON
 			personal_email.domain_id = domain.id
 		WHERE
-			personal_email.user_id = $1 AND
-			personal_email.local = $2 AND
-			personal_email.domain_id = $3;
+			personal_email.user_id = $1;
 		"#,
-		user_id,
-		email_local,
-		domain_id
+		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| row.email)
+	.collect();
 
-	Ok(rows.into_iter().next())
+	if !rows.is_empty() {
+		Ok(false)
+	}
+	else {
+		Ok(true)
+	}
 }
+// pub async fn get_backup_email_address_from_user(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	user_id: &[u8],
+// 	email_local: &str,
+// 	domain_id: &[u8],
+// ) -> Result<Option<UserEmailAddress>, sqlx::Error> {
+// 	let rows = query_as!(
+// 		UserEmailAddress,
+// 		r#"
+// 		SELECT
+// 			"user".backup_email_local as "email_local!",
+// 			"user".backup_email_domain_id as "domain_id!"
+// 		FROM
+// 			"user"
+// 		INNER JOIN
+// 			domain
+// 		ON
+// 			"user".backup_email_domain_id = domain.id
+// 		WHERE
+// 			"user".id = $1 AND
+// 			"user".backup_email_local = $2 AND
+// 			"user".backup_email_domain_id = $3;
+// 		"#,
+// 		user_id,
+// 		email_local,
+// 		domain_id
+// 	)
+// 	.fetch_all(&mut *connection)
+// 	.await?;
 
-pub async fn get_backup_email_address_from_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-	email_local: &str,
-	domain_id: &[u8],
-) -> Result<Option<PersonalEmail>, sqlx::Error> {
-	let rows = query_as!(
-		PersonalEmail,
-		r#"
-		SELECT
-			CONCAT("user".backup_email_local, '@', domain.name) as "personal_email!:String"
-		FROM
-			"user"
-		INNER JOIN
-			domain
-		ON
-			"user".backup_email_domain_id = domain.id
-		WHERE
-			"user".id = $1 AND
-			"user".backup_email_local = $2 AND
-			"user".backup_email_domain_id = $3;
-		"#,
-		user_id,
-		email_local,
-		domain_id
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
-}
+// 	Ok(rows.into_iter().next())
+// }
 
 pub async fn get_backup_phone_number_from_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -2182,7 +2136,7 @@ pub async fn get_backup_phone_number_from_user(
 	Ok(rows.into_iter().next())
 }
 
-pub async fn delete_personal_email(
+pub async fn delete_personal_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
@@ -2207,7 +2161,7 @@ pub async fn delete_personal_email(
 	Ok(())
 }
 
-pub async fn delete_phone_number(
+pub async fn delete_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	country_code: &str,

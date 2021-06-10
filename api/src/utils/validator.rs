@@ -17,8 +17,6 @@ lazy_static! {
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
-	// Can only validate if the code is less than or equal to 4 digit numbers
-	static ref COUNTRY_CODE: Regex = Regex::new("^[A-Z]{2}$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -30,7 +28,15 @@ pub fn is_email_valid(email: &str) -> bool {
 }
 
 pub fn is_country_code_valid(country_code: &str) -> bool {
-	COUNTRY_CODE.is_match(country_code)
+	if country_code.len() == 2 {
+		let cc_one = country_code.chars().nth(0).unwrap();
+		let cc_two = country_code.chars().nth(1).unwrap();
+		if cc_one.is_uppercase() && cc_two.is_uppercase() {
+			return true;
+		} 
+	}
+
+	return false;
 }
 
 pub fn is_password_valid(password: &str) -> bool {

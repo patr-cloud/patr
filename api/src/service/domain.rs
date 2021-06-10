@@ -19,6 +19,7 @@ use crate::{
 pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
+	new_domain: bool
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -36,18 +37,28 @@ pub async fn ensure_personal_domain_exists(
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
 	} else {
-		let domain_uuid = db::generate_new_domain_id(connection).await?;
-		let domain_id = domain_uuid.as_bytes();
-		db::create_generic_domain(
-			connection,
-			domain_id,
-			&domain_name,
-			&ResourceOwnerType::Personal,
-		)
-		.await?;
-		db::add_to_personal_domain(connection, domain_id).await?;
+		if new_domain {
 
-		Ok(domain_uuid)
+			let domain_uuid = db::generate_new_domain_id(connection).await?;
+			let domain_id = domain_uuid.as_bytes();
+			db::create_generic_domain(
+				connection,
+				domain_id,
+				&domain_name,
+				&ResourceOwnerType::Personal,
+			)
+			.await?;
+			
+			db::add_to_personal_domain(connection, domain_id).await?;
+
+			Ok(domain_uuid)
+
+		}
+		else {
+			Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?
+		}
 	}
 }
 
