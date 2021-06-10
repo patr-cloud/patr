@@ -37,11 +37,11 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	let verification_token = service::hash(otp.as_bytes())?;
 
 	// split email into 2 parts and get domain_id
-	let (email_local, personal_domain_id) = 
+	let (email_local, personal_domain_id) =
 		service::get_local_and_domain_id_from_email(
-			connection, 
+			connection,
 			email_address,
-			true
+			true,
 		)
 		.await?;
 
@@ -143,8 +143,8 @@ pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, Error> {
-	let phone_numbers = db::get_phone_numbers_for_users(connection, &user_id)
-		.await?;
+	let phone_numbers =
+		db::get_phone_numbers_for_users(connection, &user_id).await?;
 
 	Ok(phone_numbers)
 }
@@ -160,13 +160,12 @@ pub async fn update_user_backup_email(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 	// split email into 2 parts and get domain_id
-	let (email_local, domain_id) = 
-		service::get_local_and_domain_id_from_email(
-			connection, 
-			email_address,
-			false
-		)
-		.await?;
+	let (email_local, domain_id) = service::get_local_and_domain_id_from_email(
+		connection,
+		email_address,
+		false,
+	)
+	.await?;
 
 	// check if the email exists under user's id
 	let personal_email = db::check_if_personal_email_exists(
@@ -245,19 +244,14 @@ pub async fn delete_personal_email_address(
 	user_id: &[u8],
 	email_address: &str,
 ) -> Result<(), Error> {
-	let (email_local, domain_id) = 
-	service::get_local_and_domain_id_from_email(
-		connection, 
+	let (email_local, domain_id) = service::get_local_and_domain_id_from_email(
+		connection,
 		email_address,
-		false
+		false,
 	)
 	.await?;
 
-	let user_data = db::get_user_by_user_id(
-		connection,
-		&user_id
-	)
-	.await?;
+	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
 
 	if user_data.is_none() {
 		Error::as_result()
@@ -270,12 +264,13 @@ pub async fn delete_personal_email_address(
 
 	let backup_email_local = user_data.backup_email_local;
 	let backup_email_domain = user_data.backup_email_domain_id;
-	
+
 	if backup_email_local.is_some() {
 		let backup_email_local = backup_email_local.unwrap();
 		let backup_email_domain = backup_email_domain.unwrap();
 
-		if backup_email_local == email_local && backup_email_domain == domain_id {
+		if backup_email_local == email_local && backup_email_domain == domain_id
+		{
 			Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
@@ -283,9 +278,9 @@ pub async fn delete_personal_email_address(
 	}
 
 	// if backup_email.is_some() {
-		// Error::as_result()
-		// 	.status(400)
-		// 	.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
+	// Error::as_result()
+	// 	.status(400)
+	// 	.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
 	// }
 
 	db::delete_personal_email_for_user(
@@ -319,8 +314,13 @@ pub async fn delete_phone_number(
 			.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
 	}
 
-	db::delete_phone_number_for_user(connection, &user_id, &country_code, &phone_number)
-		.await?;
+	db::delete_phone_number_for_user(
+		connection,
+		&user_id,
+		&country_code,
+		&phone_number,
+	)
+	.await?;
 
 	Ok(())
 }

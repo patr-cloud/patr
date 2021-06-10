@@ -1,6 +1,22 @@
 use uuid::Uuid;
 
-use crate::{Database, constants::ResourceOwnerType, models::db_mapping::{Organisation, PasswordResetRequest, PersonalEmailToBeVerified, PhoneCountryCode, User, UserEmailAddress, UserLogin, UserPhoneNumber, UserToSignUp}, query, query_as};
+use crate::{
+	constants::ResourceOwnerType,
+	models::db_mapping::{
+		Organisation,
+		PasswordResetRequest,
+		PersonalEmailToBeVerified,
+		PhoneCountryCode,
+		User,
+		UserEmailAddress,
+		UserLogin,
+		UserPhoneNumber,
+		UserToSignUp,
+	},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_users_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -2033,8 +2049,7 @@ pub async fn check_if_personal_phone_number_exists(
 
 	if rows.is_none() {
 		Ok(false)
-	}
-	else {
+	} else {
 		Ok(true)
 	}
 }
@@ -2068,8 +2083,7 @@ pub async fn check_if_personal_email_exists(
 
 	if !rows.is_empty() {
 		Ok(false)
-	}
-	else {
+	} else {
 		Ok(true)
 	}
 }

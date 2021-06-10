@@ -33,7 +33,7 @@ pub fn is_country_code_valid(country_code: &str) -> bool {
 		let cc_two = country_code.chars().nth(1).unwrap();
 		if cc_one.is_uppercase() && cc_two.is_uppercase() {
 			return true;
-		} 
+		}
 	}
 
 	return false;

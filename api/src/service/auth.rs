@@ -147,14 +147,14 @@ pub async fn create_user_join_request(
 
 			// extract the email_local and domain name from it
 			// split email into 2 parts and get domain_id
-			let (email_local, domain_id) = 
+			let (email_local, domain_id) =
 				service::get_local_and_domain_id_from_email(
-					connection, 
+					connection,
 					backup_email,
-					true
-			)
-			.await?;
-			
+					true,
+				)
+				.await?;
+
 			phone_country_code = None;
 			phone_number = None;
 			backup_email_local = Some(email_local);

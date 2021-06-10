@@ -296,9 +296,11 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let email_addresses_list =
-		service::get_personal_emails_for_user(context.get_database_connection(), &user_id)
-			.await?;
+	let email_addresses_list = service::get_personal_emails_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS : true,

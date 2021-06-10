@@ -9,7 +9,14 @@ use futures::io::Read;
 use hex::ToHex;
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::db_mapping::ResourceType, service, utils::Error};
+use crate::{
+	db,
+	error,
+	models::db_mapping::ResourceType,
+	service,
+	utils::Error,
+	Database,
+};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -107,20 +114,21 @@ pub fn generate_new_otp() -> String {
 pub async fn get_local_and_domain_id_from_email<'a>(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &'a str,
-	new_domain: bool
+	new_domain: bool,
 ) -> Result<(&'a str, Vec<u8>), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 
-	let domain_id =  
-		service::ensure_personal_domain_exists(connection, domain_name, new_domain)
-			.await?
-			.as_bytes()
-			.to_vec();
-
-
+	let domain_id = service::ensure_personal_domain_exists(
+		connection,
+		domain_name,
+		new_domain,
+	)
+	.await?
+	.as_bytes()
+	.to_vec();
 
 	Ok((email_local, domain_id))
 }
