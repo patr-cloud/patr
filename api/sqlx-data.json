@@ -24,28 +24,6 @@
       "nullable": []
     }
   },
-  "03a0048a4ea8c3ab4faca4398846b4226f00a5fe13c4759e7d80afc3daff0e31": {
-    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"personal_email!:String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1 AND personal_email.local = $2 AND personal_email.domain_id = $3;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "personal_email!:String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
     "describe": {
@@ -296,6 +274,26 @@
       ]
     }
   },
+  "0f543fb7fb4b3a2c17e7011f91a802f39882086d60f4cff3f53b593bfa8ad8b9": {
+    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email! : String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email! : String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "10dc40fde67fa2d106b5c253f159cc953af8311a2ff9b64d11d6bd65c943248b": {
     "query": "SELECT id AS \"user_id!\", backup_phone_country_code AS \"country_code!\", backup_phone_number AS \"number!\" FROM \"user\" WHERE id = $1 AND backup_phone_country_code = $2 AND backup_phone_number = $3",
     "describe": {
@@ -401,6 +399,20 @@
         true,
         true
       ]
+    }
+  },
+  "12ec65904ba0d3fc836a99a97125cc5d43442d0cc6d5c24a2d79a824a0d128fc": {
+    "query": "UPDATE \"user\" SET backup_email_local = $1, backup_email_domain_id = $2 WHERE id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "1313e9b7345e378eccff29bad222a6533ccf50a9d69d08e2cd673bd3a8651343": {
@@ -951,20 +963,6 @@
       "nullable": []
     }
   },
-  "2bdf1dd4cb16f0638ecd27e9451374dfc354f546cbca2521c9a242f2f649020c": {
-    "query": "UPDATE \"user\" SET backup_email_local = $1, backup_email_domain_id = $2 WHERE id = $3",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Bytea",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "2dfba0dc072e1de9c4fc4976210f8d85d204f97567f6d9d0496398a53f04b4ab": {
     "query": "DELETE FROM portus_tunnel WHERE id = $1;",
     "describe": {
@@ -1482,28 +1480,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "407370b2e00f93782da47e42202e86cf6ccd3dbdf937afc11545549441d9d56b": {
-    "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"personal_email!:String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1 AND \"user\".backup_email_local = $2 AND \"user\".backup_email_domain_id = $3;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "personal_email!:String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "410b9b4a17be9a86ba3af7a7f69dc4549cc5025a3b306a2412deb213fc160c75": {
@@ -2597,26 +2573,6 @@
       "nullable": []
     }
   },
-  "862f46cc6424340226c5ed5e85cd6c8b278fcdea0595cb88aa3d5c72e9d0d1b3": {
-    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email!:String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email!:String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "86de4c8193df4ddaa97ee03f5b58d3cfa0f548c5ed7541b3c6d2b583859f9818": {
     "query": "SELECT * FROM organisation WHERE name = $1;",
     "describe": {
@@ -3254,26 +3210,6 @@
         false,
         false,
         false
-      ]
-    }
-  },
-  "a6e0c0b93d70ce48f7573ec517a78fe2257ce05708ef34a2f75ea42dff11c9e0": {
-    "query": "SELECT CONCAT(organisation_email.local, '@', domain.name) as \"email!:String\" FROM organisation_email INNER JOIN domain ON organisation_email.domain_id = domain.id WHERE organisation_email.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email!:String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
       ]
     }
   },
@@ -4052,20 +3988,6 @@
       ]
     }
   },
-  "ced6c464186b422d98e9a6b568e44d1390d25adb8183618f2a54db0cbf86187a": {
-    "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bpchar",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -4573,6 +4495,20 @@
       "parameters": {
         "Left": [
           "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {
+    "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Varchar",
+          "Bytea"
         ]
       },
       "nullable": []

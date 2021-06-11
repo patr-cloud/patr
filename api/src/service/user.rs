@@ -170,9 +170,7 @@ pub async fn update_user_backup_email(
 	// check if the email exists under user's id
 	let personal_email = db::check_if_personal_email_exists(
 		connection,
-		user_id,
-		&email_local,
-		&domain_id,
+		user_id
 	)
 	.await?;
 

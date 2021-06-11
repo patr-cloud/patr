@@ -5,14 +5,12 @@ use argon2::{
 	Version,
 };
 use eve_rs::AsError;
-use futures::io::Read;
 use hex::ToHex;
 use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::ResourceType,
 	service,
 	utils::Error,
 	Database,
