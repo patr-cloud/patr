@@ -103,11 +103,11 @@ pub fn generate_new_otp() -> String {
 	"000000".to_string()
 }
 
-pub async fn get_local_and_domain_id_from_email<'a>(
+pub async fn get_local_and_domain_id_from_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	email_address: &'a str,
+	email_address: &str,
 	new_domain: bool,
-) -> Result<(&'a str, Vec<u8>), Error> {
+) -> Result<(String, Vec<u8>), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
@@ -122,7 +122,7 @@ pub async fn get_local_and_domain_id_from_email<'a>(
 	.as_bytes()
 	.to_vec();
 
-	Ok((email_local, domain_id))
+	Ok((email_local.to_string(), domain_id))
 }
 pub fn mask_email_local(local: &str) -> String {
 	if local.is_empty() {
