@@ -256,7 +256,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local,
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code
@@ -290,7 +290,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local,
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code
