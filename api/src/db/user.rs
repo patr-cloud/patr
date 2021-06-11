@@ -2057,7 +2057,7 @@ pub async fn check_if_personal_email_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<bool, sqlx::Error> {
-	let rows: Vec<String> = query!(
+	let rows = query!(
 		r#"
 		SELECT
 			CONCAT(personal_email.local, '@', domain.name) as "email! : String"
@@ -2075,10 +2075,9 @@ pub async fn check_if_personal_email_exists(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| row.email)
-	.collect();
+	.map(|row| row.email);
 
-	if !rows.is_empty() {
+	if rows.len() == 0 {
 		Ok(false)
 	} else {
 		Ok(true)

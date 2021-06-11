@@ -36,26 +36,24 @@ pub async fn ensure_personal_domain_exists(
 		} else {
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
+	} else if new_domain {
+		let domain_uuid = db::generate_new_domain_id(connection).await?;
+		let domain_id = domain_uuid.as_bytes();
+		db::create_generic_domain(
+			connection,
+			domain_id,
+			&domain_name,
+			&ResourceOwnerType::Personal,
+		)
+		.await?;
+
+		db::add_to_personal_domain(connection, domain_id).await?;
+
+		Ok(domain_uuid)
 	} else {
-		if new_domain {
-			let domain_uuid = db::generate_new_domain_id(connection).await?;
-			let domain_id = domain_uuid.as_bytes();
-			db::create_generic_domain(
-				connection,
-				domain_id,
-				&domain_name,
-				&ResourceOwnerType::Personal,
-			)
-			.await?;
-
-			db::add_to_personal_domain(connection, domain_id).await?;
-
-			Ok(domain_uuid)
-		} else {
-			Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?
-		}
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?
 	}
 }
 
