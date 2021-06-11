@@ -8,13 +8,7 @@ use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
-use crate::{
-	db,
-	error,
-	service,
-	utils::Error,
-	Database,
-};
+use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(

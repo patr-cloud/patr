@@ -2055,7 +2055,7 @@ pub async fn check_if_personal_phone_number_exists(
 
 pub async fn check_if_personal_email_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8]
+	user_id: &[u8],
 ) -> Result<bool, sqlx::Error> {
 	let rows: Vec<String> = query!(
 		r#"
