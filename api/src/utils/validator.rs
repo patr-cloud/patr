@@ -27,18 +27,6 @@ pub fn is_email_valid(email: &str) -> bool {
 	email.len() <= 320 && EMAIL_REGEX.is_match(email)
 }
 
-pub fn is_country_code_valid(country_code: &str) -> bool {
-	if country_code.len() == 2 {
-		let cc_one = country_code.chars().next().unwrap();
-		let cc_two = country_code.chars().nth(1).unwrap();
-		if cc_one.is_uppercase() && cc_two.is_uppercase() {
-			return true;
-		}
-	}
-
-	false
-}
-
 pub fn is_password_valid(password: &str) -> bool {
 	let mut has_lower_case = false;
 	let mut has_upper_case = false;

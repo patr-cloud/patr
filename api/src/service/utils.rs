@@ -106,7 +106,7 @@ pub fn generate_new_otp() -> String {
 pub async fn get_local_and_domain_id_from_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
-	new_domain: bool,
+	personal_domain_present_in_db: bool,
 ) -> Result<(String, Vec<u8>), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
@@ -116,7 +116,7 @@ pub async fn get_local_and_domain_id_from_email(
 	let domain_id = service::ensure_personal_domain_exists(
 		connection,
 		domain_name,
-		new_domain,
+		personal_domain_present_in_db,
 	)
 	.await?
 	.as_bytes()

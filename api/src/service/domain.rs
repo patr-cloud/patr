@@ -19,7 +19,7 @@ use crate::{
 pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
-	new_domain: bool,
+	personal_domain_present_in_db: bool,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -36,7 +36,7 @@ pub async fn ensure_personal_domain_exists(
 		} else {
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
-	} else if new_domain {
+	} else if personal_domain_present_in_db {
 		let domain_uuid = db::generate_new_domain_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
 		db::create_generic_domain(

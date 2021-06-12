@@ -57,18 +57,32 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
-	app.put(
+	app.post(
 		"/update-backup-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
 		],
 	);
-	app.put(
+	app.post(
 		"/update-backup-phone",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
+		],
+	);
+	app.post(
+		"/add-phone-number",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(add_phone_number_for_user)),
+		],
+	);
+	app.post(
+		"/verify-phone-number",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(verify_phone_number)),
 		],
 	);
 	app.delete(
@@ -132,14 +146,14 @@ async fn get_user_info(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::USERNAME : user.username,
-		request_keys::FIRST_NAME : user.first_name,
-		request_keys::LAST_NAME : user.last_name,
-		request_keys::BIRTHDAY : user.dob,
-		request_keys::BIO : user.bio,
-		request_keys::LOCATION : user.location,
-		request_keys::CREATED : user.created,
+		request_keys::SUCCESS: true,
+		request_keys::USERNAME: user.username,
+		request_keys::FIRST_NAME: user.first_name,
+		request_keys::LAST_NAME: user.last_name,
+		request_keys::BIRTHDAY: user.dob,
+		request_keys::BIO: user.bio,
+		request_keys::LOCATION: user.location,
+		request_keys::CREATED: user.created,
 	}));
 	Ok(context)
 }
@@ -303,8 +317,8 @@ async fn list_email_addresses(
 	.await?;
 
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::EMAILS : email_addresses_list
+		request_keys::SUCCESS: true,
+		request_keys::EMAILS: email_addresses_list
 	}));
 	Ok(context)
 }
@@ -330,8 +344,8 @@ async fn list_phone_numbers(
 	.collect::<Vec<_>>();
 
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::PHONE_NUMBERS : phone_numbers_list
+		request_keys::SUCCESS: true,
+		request_keys::PHONE_NUMBERS: phone_numbers_list
 	}));
 	Ok(context)
 }
@@ -341,6 +355,7 @@ async fn update_backup_email_address(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let email_address = body
@@ -368,6 +383,7 @@ async fn update_backup_phone_number(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let country_code = body
@@ -403,6 +419,7 @@ async fn delete_personal_email_address(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let email_address = body
@@ -425,11 +442,99 @@ async fn delete_personal_email_address(
 	Ok(context)
 }
 
+async fn add_phone_number_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	// two letter country code instead of the numeric one
+	let country_code = body
+		.get(request_keys::COUNTRY_CODE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let phone_number = body
+		.get(request_keys::PHONE_NUMBER)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::add_phone_number_to_be_verified_for_user(
+		context.get_database_connection(),
+		&user_id,
+		country_code,
+		phone_number,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+
+	Ok(context)
+}
+
+async fn verify_phone_number(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let country_code = body
+		.get(request_keys::COUNTRY_CODE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let phone_number = body
+		.get(request_keys::COUNTRY_CODE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let otp = body
+		.get(request_keys::PHONE_NUMBER)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	service::send_phone_number_verification_otp(
+		context.get_database_connection(),
+		country_code,
+		phone_number,
+		otp,
+	)
+	.await?;
+
+	service::verify_phone_number_for_user(
+		context.get_database_connection(),
+		&user_id,
+		country_code,
+		phone_number,
+		otp,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
 async fn delete_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let country_code = body

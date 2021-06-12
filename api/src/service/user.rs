@@ -4,7 +4,7 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::UserPhoneNumber,
-	service,
+	service::{self},
 	utils::{get_current_time_millis, validator, Error},
 	Database,
 };
@@ -144,7 +144,7 @@ pub async fn get_phone_numbers_for_user(
 	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, Error> {
 	let phone_numbers =
-		db::get_phone_numbers_for_users(connection, &user_id).await?;
+		db::get_phone_numbers_for_user(connection, &user_id).await?;
 
 	Ok(phone_numbers)
 }
@@ -169,7 +169,8 @@ pub async fn update_user_backup_email(
 
 	// check if the email exists under user's id
 	let personal_email =
-		db::check_if_personal_email_exists(connection, user_id).await?;
+		db::check_if_personal_email_belongs_to_user(connection, user_id)
+			.await?;
 
 	// if it is false then the email isn't registered under user's id
 	if !personal_email {
@@ -196,19 +197,15 @@ pub async fn update_user_backup_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
-	if !validator::is_country_code_valid(country_code) {
+	if !service::is_phone_number_allowed(connection, country_code, phone_number)
+		.await?
+	{
 		Error::as_result()
-			.status(200)
-			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
+			.status(400)
+			.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 	}
 
-	if !validator::is_phone_number_valid(&phone_number) {
-		Error::as_result()
-			.status(200)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
-	}
-
-	let user_phone_details = db::check_if_personal_phone_number_exists(
+	let user_phone_details = db::check_if_phone_number_belongs_to_user(
 		connection,
 		&user_id,
 		country_code,
@@ -248,14 +245,13 @@ pub async fn delete_personal_email_address(
 
 	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
 
-	if user_data.is_none() {
-		Error::as_result()
+	let user_data = if let Some(user_data) = user_data {
+		user_data
+	} else {
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-	}
-
-	// safe unwrap
-	let user_data = user_data.unwrap();
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	};
 
 	let backup_email_local = user_data.backup_email_local;
 	let backup_email_domain = user_data.backup_email_domain_id;
@@ -271,12 +267,6 @@ pub async fn delete_personal_email_address(
 				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
 		}
 	}
-
-	// if backup_email.is_some() {
-	// Error::as_result()
-	// 	.status(400)
-	// 	.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
-	// }
 
 	db::delete_personal_email_for_user(
 		connection,
@@ -295,18 +285,30 @@ pub async fn delete_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
-	let backup_phone_number = db::get_backup_phone_number_from_user(
-		connection,
-		&user_id,
-		&country_code,
-		&phone_number,
-	)
-	.await?;
+	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
 
-	if backup_phone_number.is_some() {
-		Error::as_result()
+	let user_data = if let Some(user_data) = user_data {
+		user_data
+	} else {
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	};
+
+	let backup_phone_country_code = user_data.backup_phone_country_code;
+	let backup_phone_number = user_data.backup_phone_number;
+
+	if backup_phone_country_code.is_some() {
+		let backup_phone_country_code = backup_phone_country_code.unwrap();
+		let backup_phone_number = backup_phone_number.unwrap();
+
+		if backup_phone_country_code == country_code &&
+			backup_phone_number == phone_number
+		{
+			Error::as_result()
+				.status(400)
+				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
+		}
 	}
 
 	db::delete_phone_number_for_user(
@@ -314,6 +316,86 @@ pub async fn delete_phone_number(
 		&user_id,
 		&country_code,
 		&phone_number,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn add_phone_number_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<(), Error> {
+	if !service::is_phone_number_allowed(connection, country_code, phone_number)
+		.await?
+	{
+		Error::as_result()
+			.status(400)
+			.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
+	}
+
+	let otp = service::generate_new_otp();
+	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
+
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
+	let verification_token = service::hash(otp.as_bytes())?;
+
+	db::add_phone_number_to_be_verified_for_user(
+		connection,
+		&country_code,
+		&phone_number,
+		&user_id,
+		&verification_token,
+		token_expiry,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn verify_phone_number_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+	otp: &str,
+) -> Result<(), Error> {
+	let phone_verification_data = db::get_phone_number_to_be_verified_for_user(
+		connection,
+		user_id,
+		country_code,
+		phone_number,
+	)
+	.await?
+	.status(400)
+	.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
+
+	let success = service::validate_hash(
+		otp,
+		&phone_verification_data.verification_token_hash,
+	)?;
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
+	}
+
+	if phone_verification_data.verification_token_expiry <
+		get_current_time_millis()
+	{
+		Error::as_result()
+			.status(200)
+			.body(error!(PHONE_NUMBER_TOKEN_EXPIRED).to_string())?;
+	}
+
+	db::add_phone_number_for_user(
+		connection,
+		user_id,
+		&phone_verification_data.country_code,
+		&phone_verification_data.phone_number,
 	)
 	.await?;
 

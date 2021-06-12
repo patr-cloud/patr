@@ -25,6 +25,8 @@ pub mod id {
 	pub const TOKEN_NOT_FOUND: &str = "tokenNotFound";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
 	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
+	pub const PHONE_NUMBER_TOKEN_NOT_FOUND: &str = "phoneTokenNotFound";
+	pub const PHONE_NUMBER_TOKEN_EXPIRED: &str = "phoneTokenNotFound";
 	pub const INVALID_OTP: &str = "invalidOtp";
 	pub const OTP_EXPIRED: &str = "otpExpired";
 	pub const NOT_FOUND: &str = "notFound";
@@ -88,6 +90,10 @@ pub mod message {
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
 		"Your link has expired. Please request for a new link again";
+	pub const PHONE_NUMBER_TOKEN_NOT_FOUND: &str =
+		"Your otp seems to be invalid. Please request for a new otp again";
+	pub const PHONE_NUMBER_TOKEN_EXPIRED: &str =
+		"Your otp has expired. Please request for a new otp again";
 	pub const INVALID_OTP: &str = "That OTP seems to be invalid";
 	pub const OTP_EXPIRED: &str =
 		"That OTP seems to have been expired. Please request a new one";

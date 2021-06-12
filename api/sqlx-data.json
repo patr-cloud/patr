@@ -294,40 +294,6 @@
       ]
     }
   },
-  "10dc40fde67fa2d106b5c253f159cc953af8311a2ff9b64d11d6bd65c943248b": {
-    "query": "SELECT id AS \"user_id!\", backup_phone_country_code AS \"country_code!\", backup_phone_number AS \"number!\" FROM \"user\" WHERE id = $1 AND backup_phone_country_code = $2 AND backup_phone_number = $3",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "user_id!",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "country_code!",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "number!",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bpchar",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        true,
-        true
-      ]
-    }
-  },
   "12b348ffdebe72e3058a63fa33fc3a124189e62c1c61d505cbc03a03fd3736bf": {
     "query": "SELECT deployment_entry_point.id, deployment_entry_point.sub_domain, deployment_entry_point.domain_id, deployment_entry_point.path, deployment_entry_point.entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_entry_point.deployment_id, deployment_entry_point.deployment_port, deployment_entry_point.url FROM deployment_entry_point INNER JOIN resource ON deployment_entry_point.id = resource.id WHERE resource.owner_id = $1;",
     "describe": {
@@ -1172,6 +1138,52 @@
       "nullable": []
     }
   },
+  "3b23e7a9e584b71f62f2c0b3c51e585407e14fb8f583d2b6aaad1ec50d0f27b7": {
+    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON phone_number_country_code.country_code = user_unverified_phone_number.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "3b740727a3984187ee1fedd25b647ba7d770e095675c1394ddfa6af2e6554bd8": {
     "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1;",
     "describe": {
@@ -1804,6 +1816,16 @@
           "Text",
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "54fa109ca4b36e07629f266a0f5b28baa363d815db503d0d61c017bcafa4ff5f": {
+    "query": "CREATE INDEX user_unverified_phone_number_idx_user_id ON user_unverified_phone_number (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -3888,6 +3910,16 @@
       "nullable": []
     }
   },
+  "c78ec14ee84ac1ba0b95ff28a0ae799e530aae6c7a3df191f8c9b1c7a6f6f337": {
+    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), phone_number VARCHAR(15), user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "c842c31eb3324dcb69e56439b24b7909057b220839e81bcc4638d2b4e4f27bdb": {
     "query": "CREATE TABLE organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
     "describe": {
@@ -4296,6 +4328,22 @@
           "Bytea",
           "Int4",
           "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "dea649e4f9bfdbd55c4502fa51d5417cbfbec3b72543cc9c82c7acc7cadd6a37": {
+    "query": "INSERT INTO user_unverified_phone_number VALUES ($1, $2, $3, $4, $5) ON CONFLICT(country_code, phone_number) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Varchar",
+          "Bytea",
+          "Text",
+          "Int8"
         ]
       },
       "nullable": []
