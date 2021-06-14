@@ -5,7 +5,6 @@ use argon2::{
 	Version,
 };
 use hex::ToHex;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 use crate::{db, service, utils::Error, Database};
@@ -104,7 +103,7 @@ pub fn get_refresh_token_expiry() -> u64 {
 /// this function returns Result<(String, String), Error> containing strings
 /// refresh token and hashed form of it
 pub async fn generate_new_refresh_token_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
 	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
@@ -133,7 +132,7 @@ pub async fn generate_new_refresh_token_for_user(
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)
@@ -158,4 +157,51 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+pub fn mask_email_local(local: &str) -> String {
+	if local.is_empty() {
+		String::from("*")
+	} else if local.len() <= 2 {
+		local.chars().map(|_| '*').collect()
+	} else if local.len() > 2 && local.len() <= 4 {
+		if let Some(first) = local.chars().next() {
+			format!("{}***", first)
+		} else {
+			String::from("*")
+		}
+	} else {
+		let mut chars = local.chars();
+		let first = if let Some(first) = chars.next() {
+			first
+		} else {
+			return String::from("*");
+		};
+		let last = if let Some(last) = chars.last() {
+			last
+		} else {
+			return String::from("*");
+		};
+		format!(
+			"{}{}{}",
+			first,
+			if local.len() < 10 { "****" } else { "********" },
+			last
+		)
+	}
+}
+
+pub fn mask_phone_number(phone_number: &str) -> String {
+	let mut chars = phone_number.chars();
+	let first = if let Some(first) = chars.next() {
+		first
+	} else {
+		return String::from("******");
+	};
+	let last = if let Some(last) = chars.last() {
+		last
+	} else {
+		return String::from("******");
+	};
+	format!("{}******{}", first, last)
 }

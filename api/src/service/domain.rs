@@ -1,6 +1,5 @@
 use eve_rs::AsError;
 use hex::ToHex;
-use sqlx::Transaction;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
@@ -33,7 +32,7 @@ use crate::{
 ///
 ///[`Transaction`]: Transaction
 pub async fn ensure_personal_domain_exists(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
@@ -83,7 +82,7 @@ pub async fn ensure_personal_domain_exists(
 ///
 ///[`Transaction`]: Transaction
 pub async fn add_domain_to_organisation(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 	organisation_id: &[u8],
 ) -> Result<Uuid, Error> {
@@ -148,7 +147,7 @@ pub async fn add_domain_to_organisation(
 // TODO make domain store the registrar and
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
 	let domain = db::get_organisation_domain_by_id(connection, &domain_id)

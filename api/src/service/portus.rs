@@ -2,7 +2,6 @@
 use std::{env, iter, path::PathBuf};
 
 use rand::{distributions::Alphanumeric, prelude::*};
-use sqlx::Transaction;
 use tokio::fs;
 
 use crate::{db, Database};
@@ -134,7 +133,7 @@ pub fn get_server_ip_address() -> &'static str {
 /// integer containing the port number
 /// [`Transaction`]: Transaction
 pub async fn assign_available_port(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<u16, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;

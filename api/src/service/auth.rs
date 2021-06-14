@@ -1,5 +1,4 @@
 use eve_rs::AsError;
-use sqlx::Transaction;
 use uuid::Uuid;
 
 /// This module validates user info and performs tasks related to user
@@ -11,7 +10,13 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{User, UserLogin},
+		db_mapping::{
+			JoinUser,
+			PreferredRecoveryOption,
+			User,
+			UserLogin,
+			UserToSignUp,
+		},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -40,7 +45,7 @@ use crate::{
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(&username) {
@@ -68,7 +73,7 @@ pub async fn is_username_allowed(
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(&email) {
@@ -97,7 +102,7 @@ pub async fn is_email_allowed(
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<bool, Error> {
@@ -153,7 +158,7 @@ pub async fn is_phone_number_allowed(
 ///
 /// [`Transaction`]: Transaction
 pub async fn create_user_join_request(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	account_type: ResourceOwnerType,
 	password: &str,
@@ -166,7 +171,7 @@ pub async fn create_user_join_request(
 	org_email_local: Option<&str>,
 	org_domain_name: Option<&str>,
 	organisation_name: Option<&str>,
-) -> Result<String, Error> {
+) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
 		Error::as_result()
@@ -181,6 +186,7 @@ pub async fn create_user_join_request(
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
+	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
 	let backup_email_local;
 	let backup_email_domain_id;
@@ -316,6 +322,26 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+			// let check = backup_email_domain_id.map(|s| s.to_vec())
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: Some(org_email_local.to_string()),
+				org_domain_name: Some(org_domain_name.to_string()),
+				organisation_name: Some(organisation_name.to_string()),
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 		ResourceOwnerType::Personal => {
 			db::set_personal_user_to_be_signed_up(
@@ -331,10 +357,29 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: None,
+				org_domain_name: None,
+				organisation_name: None,
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 	}
 
-	Ok(otp)
+	Ok((response, otp))
 }
 
 /// # Description
@@ -355,7 +400,7 @@ pub async fn create_user_join_request(
 ///
 /// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
@@ -407,7 +452,7 @@ pub async fn create_login_for_user(
 /// [`Transaction`]: Transaction
 /// [`Settings]: Settings
 pub async fn sign_in_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	config: &Settings,
 ) -> Result<(String, Uuid, Uuid), Error> {
@@ -439,7 +484,7 @@ pub async fn sign_in_user(
 /// [`UserLogin`]: UserLogin
 /// [`Transaction`]: Transaction
 pub async fn get_user_login_for_login_id(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
@@ -470,7 +515,7 @@ pub async fn get_user_login_for_login_id(
 ///
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	user_login: &UserLogin,
 ) -> Result<String, Error> {
@@ -532,10 +577,14 @@ pub async fn generate_access_token(
 ///
 /// [`Transaction`]: Transaction
 // TODO: Remove otp from response
+// this function takes care of generating an OTP and sending it
+// to the preferred Recovery option chosen by the user.
+// response will NOT contain the OTP
 pub async fn forgot_password(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-) -> Result<(String, String), Error> {
+	preferred_recovery_option: PreferredRecoveryOption,
+) -> Result<(), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
 		.await?
 		.status(200)
@@ -556,18 +605,15 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	// TODO don't unwrap in case of phone number backup
-	let domain = db::get_personal_domain_by_id(
+	service::send_forgot_password_otp(
 		connection,
-		user.backup_email_domain_id.unwrap().as_ref(),
+		user,
+		preferred_recovery_option,
+		&otp,
 	)
-	.await?
-	.status(500)?;
+	.await?;
 
-	Ok((
-		otp,
-		format!("{}@{}", user.backup_email_local.unwrap(), domain.name),
-	))
+	Ok(())
 }
 
 /// # Description
@@ -588,7 +634,7 @@ pub async fn forgot_password(
 ///
 /// [`Transaction`]: Transaction
 pub async fn reset_password(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],
@@ -661,21 +707,11 @@ pub async fn reset_password(
 ///
 /// [`Transaction`]: Transaction
 pub async fn join_user(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<
-	(
-		String,
-		Uuid,
-		Uuid,
-		Option<String>,
-		Option<String>,
-		Option<String>,
-	),
-	Error,
-> {
+) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
@@ -896,13 +932,13 @@ pub async fn join_user(
 
 	let (jwt, login_id, refresh_token) =
 		sign_in_user(connection, user_id, &config).await?;
-
-	Ok((
+	let response = JoinUser {
 		jwt,
 		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,
 		backup_phone_number_to,
-	))
+	};
+	Ok(response)
 }

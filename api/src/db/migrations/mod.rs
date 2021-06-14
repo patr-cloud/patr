@@ -1,10 +1,9 @@
 use semver::Version;
-use sqlx::Transaction;
 
 use crate::{db, utils::constants, Database};
 
 pub async fn migrate_database(
-	connection: &mut Transaction<'_, Database>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	from_version: Version,
 ) -> Result<(), sqlx::Error> {
 	let migrations = vec!["0.0.0"];

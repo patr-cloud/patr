@@ -251,7 +251,7 @@ fn parse_module(
 			}
 			Item::Mod(item_mod) => {
 				if recursive {
-					parse_module(&item_mod, &args, iterators, recursive)?;
+					parse_module(item_mod, args, iterators, recursive)?;
 				}
 			}
 			_ => (),

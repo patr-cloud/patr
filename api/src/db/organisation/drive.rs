@@ -1,9 +1,7 @@
-use sqlx::Transaction;
-
 use crate::{query, Database};
 
 pub async fn initialize_drive_pre(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing drive tables");
 	query!(
@@ -21,8 +19,9 @@ pub async fn initialize_drive_pre(
 }
 
 pub async fn initialize_drive_post(
-	transaction: &mut Transaction<'_, Database>,
+	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up drive tables initialization");
 	query!(
 		r#"
 		ALTER TABLE file

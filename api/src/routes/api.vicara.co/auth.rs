@@ -1,13 +1,13 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::json;
-use tokio::task;
+use serde_json::{json, Map};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::{
+		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
 		RegistryToken,
@@ -18,7 +18,6 @@ use crate::{
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
 		get_current_time,
-		mailer,
 		validator,
 		Error,
 		ErrorData,
@@ -72,6 +71,13 @@ pub fn create_sub_app(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
+		))],
+	);
+
+	app.post(
+		"/list-recovery-options",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			list_recovery_options
 		))],
 	);
 
@@ -233,7 +239,7 @@ async fn sign_up(
 		})
 		.transpose()?;
 
-	let otp = service::create_user_join_request(
+	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
 		username,
 		account_type,
@@ -248,20 +254,13 @@ async fn sign_up(
 	)
 	.await?;
 
-	if let Some(email) = backup_email {
-		let config = context.get_state().config.clone();
-		let email = email.to_string();
-
-		task::spawn_blocking(|| {
-			mailer::send_email_verification_mail(config, email, otp);
-		});
-	}
-	if let Some((_country_code, _phone_number)) =
-		backup_phone_country_code.zip(backup_phone_number)
-	{
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
-	}
+	// send otp
+	service::send_user_sign_up_otp(
+		context.get_database_connection(),
+		user_to_sign_up,
+		&otp,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -323,45 +322,26 @@ async fn join(
 
 	let config = context.get_state().config.clone();
 
-	let result = service::join_user(
+	let join_user = service::join_user(
 		context.get_database_connection(),
 		&config,
 		otp,
 		username,
 	)
 	.await?;
-	let (
-		jwt,
-		login_id,
-		refresh_token,
-		welcome_email_to,
-		backup_email_to,
-		backup_phone_number_to,
-	) = result;
 
-	if let Some(welcome_email_to) = welcome_email_to {
-		task::spawn_blocking(|| {
-			mailer::send_sign_up_completed_mail(config, welcome_email_to);
-		});
-	}
-
-	if let Some(backup_email) = backup_email_to {
-		let config = context.get_state().config.clone();
-		task::spawn_blocking(|| {
-			mailer::send_backup_registration_mail(config, backup_email);
-		});
-	}
-
-	if let Some(_phone_number) = backup_phone_number_to {
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
-	}
+	service::send_sign_up_complete_notification(
+		join_user.welcome_email_to,
+		join_user.backup_email_to,
+		join_user.backup_phone_number_to,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
-		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
+		request_keys::ACCESS_TOKEN: join_user.jwt,
+		request_keys::REFRESH_TOKEN: join_user.refresh_token.to_simple().to_string().to_lowercase(),
+		request_keys::LOGIN_ID: join_user.login_id.to_simple().to_string().to_lowercase(),
 	}));
 	Ok(context)
 }
@@ -471,14 +451,23 @@ async fn forgot_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let config = context.get_state().config.clone();
-	let (otp, backup_email) =
-		service::forgot_password(context.get_database_connection(), user_id)
-			.await?;
+	let preferred_recovery_option = body
+		.get(request_keys::PREFERRED_RECOVERY_OPTION)
+		.map(|param| param.as_str())
+		.flatten()
+		.map(|a| a.parse::<PreferredRecoveryOption>().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	task::spawn_blocking(|| {
-		mailer::send_password_reset_requested_mail(config, backup_email, otp);
-	});
+	// service function should take care of otp generation and delivering the
+	// otp to the preferred recovery option
+	service::forgot_password(
+		context.get_database_connection(),
+		user_id,
+		preferred_recovery_option,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -519,8 +508,6 @@ async fn reset_password(
 	.status(400)
 	.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
-	let config = context.get_state().config.clone();
-
 	service::reset_password(
 		context.get_database_connection(),
 		new_password,
@@ -529,31 +516,11 @@ async fn reset_password(
 	)
 	.await?;
 
-	if let Some((backup_email_local, backup_email_domain_id)) =
-		user.backup_email_local.zip(user.backup_email_domain_id)
-	{
-		let email = format!(
-			"{}@{}",
-			backup_email_local,
-			db::get_personal_domain_by_id(
-				context.get_database_connection(),
-				&backup_email_domain_id
-			)
-			.await?
-			.status(500)?
-			.name
-		);
-		task::spawn_blocking(|| {
-			mailer::send_password_changed_notification_mail(config, email);
-		});
-	}
-
-	if let Some((_phone_country_code, _phone_number)) =
-		user.backup_phone_country_code.zip(user.backup_phone_number)
-	{
-		// TODO implement this
-		panic!("Sending OTPs through phone numbers aren't handled yet");
-	}
+	service::send_user_reset_password_notification(
+		context.get_database_connection(),
+		user,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -1097,5 +1064,68 @@ async fn docker_registry_authenticate(
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
+	Ok(context)
+}
+
+async fn list_recovery_options(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+	let mut response_map = Map::new();
+	// get user id from the body
+	let user_id = body
+		.get(request_keys::USER_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let user = db::get_user_by_username_or_email(
+		context.get_database_connection(),
+		user_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// mask phone number
+	if let Some(phone_number) = user.backup_phone_number {
+		let phone_number = service::mask_phone_number(&phone_number);
+		let country_code = db::get_phone_country_by_country_code(
+			context.get_database_connection(),
+			&user.backup_phone_country_code.unwrap(),
+		)
+		.await?
+		.status(500)
+		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+		response_map.insert(
+			request_keys::BACKUP_PHONE_NUMBER.to_string(),
+			format!("+{}{}", country_code.phone_code, phone_number).into(),
+		);
+	}
+
+	if let (Some(backup_email_local), Some(backup_email_domain_id)) =
+		(user.backup_email_local, user.backup_email_domain_id)
+	{
+		let email = format!(
+			"{}@{}",
+			service::mask_email_local(&backup_email_local),
+			db::get_personal_domain_by_id(
+				context.get_database_connection(),
+				&backup_email_domain_id
+			)
+			.await?
+			.status(500)?
+			.name
+		);
+
+		response_map
+			.insert(request_keys::BACKUP_EMAIL.to_string(), email.into());
+	}
+
+	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
+	let response = serde_json::to_value(response_map)?;
+	context.json(response);
 	Ok(context)
 }

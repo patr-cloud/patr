@@ -1,0 +1,15 @@
+{
+	"html": {
+		"file": "html.handlebars",
+		"inline": {
+			"logo": {
+				"mime": "image/png",
+				"file": "../../images/shared/logo.png"
+			}
+		}
+	},
+	"plain": {
+		"file": "plain.handlebars"
+	},
+	"attachments": {}
+}

@@ -30,6 +30,7 @@ use utils::{constants, logger};
 
 pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
 pub type Database = sqlx::Postgres;
+pub type DbConnection = <Database as sqlx::Database>::Connection;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()
@@ -120,7 +121,7 @@ fn parse_cli_args<'a>() -> ArgMatches<'a> {
 				.long("populate-sample-data")
 				.takes_value(false)
 				.multiple(false)
-				.help("Initialises the database with sample data and quits"),
+				.help("Initialises the database with sample data"),
 		)
 		.get_matches()
 	}
