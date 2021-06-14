@@ -5,7 +5,7 @@ use shiplift::{Docker, Error};
 ///
 /// # Arguments
 /// * `docker` - An instance of [`Docker`]
-/// 	* `container_id` - A string which contains id of the container
+/// * `container_id` - A string which contains id of the container
 ///
 /// # Returns
 ///	This function returns `Result<(), Error>` which is either the container will
@@ -23,7 +23,7 @@ pub async fn start_container(
 ///	This function is used to stop the docker container
 ///
 /// # Arguments
-/// 	* `docker` - An instance of [`Docker`]
+/// * `docker` - An instance of [`Docker`]
 /// * `container_name` - A string which contains name of the container
 ///
 /// # Returns
@@ -37,8 +37,17 @@ pub async fn stop_container(
 	docker.containers().get(container_name).stop(None).await
 }
 
-/// delete container
-/// this function will stop and delete a container.
+/// # Description
+///	This function is used to stop and delete the docker container
+///
+/// # Arguments
+/// * `docker` - An instance of [`Docker`]
+/// * `container_name` - A string which contains name of the container
+///
+/// # Returns
+///	This function returns `Result<(), Error>` which is either the container will
+/// stop and delete successfully or an error will be returned
+/// [`Docker`]: Docker
 pub async fn delete_container(
 	docker: &Docker,
 	container_name: &str,

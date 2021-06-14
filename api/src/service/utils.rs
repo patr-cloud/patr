@@ -23,8 +23,8 @@ lazy_static::lazy_static! {
 ///	this function is used to validate the hashed password using [`static@ARGON`]
 ///
 /// # Arguments
-/// 	* `pwd` - a string containing password of the user
-/// 	* `hashed` - a string containing hashed password of the user
+/// * `pwd` - a string containing password of the user
+/// * `hashed` - a string containing hashed password of the user
 ///
 /// # Returns
 ///	this function returns `Result<bool, Error>` containing bool stating the the
@@ -43,8 +43,8 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 /// this function is used to get token hash
 ///
 /// # Arguments
-/// 	* `pwd` - an unsigned 8 bit integer array containing hashed password of the
-///    user
+/// * `pwd` - an unsigned 8 bit integer array containing hashed password of the
+/// user
 ///
 /// # Returns
 ///	this function returns Result<String, Error> containing hashed password or an
@@ -159,6 +159,14 @@ pub fn generate_new_otp() -> String {
 	"000000".to_string()
 }
 
+/// # Description
+/// this function is used to mask the email local by "*" character
+/// 
+/// # Arguments
+/// * `local` - a string containing email_local
+/// 
+/// # Returns
+/// this function returns a `String` containg masked email local
 pub fn mask_email_local(local: &str) -> String {
 	if local.is_empty() {
 		String::from("*")
@@ -191,6 +199,14 @@ pub fn mask_email_local(local: &str) -> String {
 	}
 }
 
+/// # Description
+/// this function is used to mask the phone number by "*" character
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing phone_number
+/// 
+/// # Returns
+/// this function returns a `String` containg masked phone number
 pub fn mask_phone_number(phone_number: &str) -> String {
 	let mut chars = phone_number.chars();
 	let first = if let Some(first) = chars.next() {

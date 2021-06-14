@@ -41,7 +41,8 @@ use crate::{
 /// * `username` - A string which contains username to be validated
 ///
 /// # Return
-/// This function returns a bool which says if the username is valid or not
+/// This function returns a Result<bool, Error> which contains either a bool which says if the username is valid 
+/// or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
@@ -69,7 +70,8 @@ pub async fn is_username_allowed(
 /// * `email` - A string which contains username to be validated
 ///
 /// # Return
-/// This function returns a bool which says if the email is valid or not
+/// This function returns a Result<bool, Error> which contains either a bool which says if the email is valid 
+/// or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
@@ -98,7 +100,8 @@ pub async fn is_email_allowed(
 ///
 /// # Return
 ///
-/// This function returns a bool which says if the phone number is valid or not
+/// This function returns a Result<bool, Error> which contains either a bool which says if the phone number is valid 
+/// or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
@@ -384,15 +387,26 @@ pub async fn create_user_join_request(
 
 /// # Description
 /// This functions creates a record when a user logs into the system, this
-/// record contains two things:
-/// 1. refresh token
-/// refresh token is used to generate access token, and access token is for
+/// record contains six things: 
+/// 1. login_id 
+/// login_id is used to give to a unique identity to the current logged in user
+/// 2. user_id 
+/// user_id is the identity of the user currently logged in
+/// 3. last_activity 
+/// last_activity is the most recent task the user has performed on the api, when the user logs in, 
+/// the last activity is set to the time of login 
+/// 4. last_login
+/// last_login used to show the last time user was logged in. When the user logs in, 
+/// last_login updates with the time of log in
+/// 5. refresh_token
+/// refresh_token is used to generate access token, and access token is for
 /// authenticating the user for the current session
-///
+/// 6. token_expiry 
+/// token_expiry is used to set the expiry time for newly generated refresh token
+/// 
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
-///   user
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
 ///
 /// # Returns
 /// This function returns a `Result<UserLogin, error>` which contains an
@@ -444,7 +458,7 @@ pub async fn create_login_for_user(
 ///   the whole API
 ///
 /// # Returns
-/// This function returns a Result<(String, Uuid, Uuid), Error> containing jwt,
+/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing jwt,
 /// login_id, and refresh token or an error
 ///
 /// [`create_login_for_user()`]: self.create_login_for_user()
@@ -478,7 +492,7 @@ pub async fn sign_in_user(
 ///   the user
 ///
 /// # Returns
-/// This function returns Result<UserLogin, Error> containing an instance of
+/// This function returns `Result<UserLogin, Error>` containing an instance of
 /// UserLogin or an error
 ///
 /// [`UserLogin`]: UserLogin
@@ -511,7 +525,7 @@ pub async fn get_user_login_for_login_id(
 /// * `user_login` - an object of struct [`UserLogin`]
 ///
 /// # Returns
-/// This function returns a Result<String, Error> containing
+/// This function returns a `Result<String, Error>` containing a string 
 ///
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
@@ -564,7 +578,9 @@ pub async fn generate_access_token(
 }
 
 /// # Description
-/// This function returns an otp for the user for making a new password
+/// This function takes care of generating an OTP and sending it
+/// to the preferred Recovery option chosen by the user.
+/// response will NOT contain the OTP
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -572,14 +588,10 @@ pub async fn generate_access_token(
 ///   user
 ///
 /// # Returns
-/// This function returns Result<(String, String), Error> containing otp and
-/// email_id of user
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 ///
 /// [`Transaction`]: Transaction
-// TODO: Remove otp from response
-// this function takes care of generating an OTP and sending it
-// to the preferred Recovery option chosen by the user.
-// response will NOT contain the OTP
 pub async fn forgot_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
@@ -621,7 +633,7 @@ pub async fn forgot_password(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// 	* `new_password` - a string containing new password of user
+/// * `new_password` - a string containing new password of user
 /// * `token` - a string containing a reset request token to verify if the reset
 ///   password request is
 /// valid or not
@@ -629,7 +641,7 @@ pub async fn forgot_password(
 ///   user
 ///
 /// # Returns
-///	This function returns Result<(), Error> containing an empty response or an
+///	This function returns `Result<(), Error>` containing an empty response or an
 /// error
 ///
 /// [`Transaction`]: Transaction
@@ -687,25 +699,10 @@ pub async fn reset_password(
 /// * `otp` - A string which contains One-Time-Password
 /// * `username` - A string containing username of the user
 /// # Returns
-/// This function returns Result<
-/// 	(
-/// 		String,
-/// 		Uuid,
-/// 		Uuid,
-/// 		Option<String>,
-/// 		Option<String>,
-/// 		Option<String>,
-/// 	),
-/// 	Error
-/// > containing
-/// 	* jwt
-/// 		* login id
-/// 	* refresh token
-/// 	* welcome email
-/// 	* backup email
-/// 		* backup phone number
+/// This function returns `Result<JoinUser, Error>` containing a struct called [`JoinUser`]
 ///
 /// [`Transaction`]: Transaction
+/// ['JoinUser`]: JoinUser
 pub async fn join_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,

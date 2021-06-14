@@ -10,7 +10,7 @@ use crate::{db, Database};
 ///	this function is used to generate password for portus user
 ///
 /// # Arguments
-/// 	* `length` - an unsigned size variable used to define size of new password
+/// * `length` - an unsigned size variable used to define size of new password
 ///
 /// # Returns
 ///	this function returns a string containing newly generated password
@@ -27,8 +27,8 @@ pub fn generate_password(length: usize) -> String {
 /// This function is used to generate username for portus user
 ///
 /// # Arguments
-/// 	* `length` - an unsigned size variable containing the size of username of
-///    user
+/// * `length` - an unsigned size variable containing the size of username of
+/// user
 ///
 /// # Returns
 ///	this function returns a string containing newly generated username
@@ -47,8 +47,8 @@ pub fn generate_username(length: u16) -> String {
 /// the function that is used to format bash script with given parameters
 ///
 /// # Arguments
-/// 	* `local_port` - string containing local post variable name
-/// 	* `local_host_name` - string containing local hostname variable
+/// * `local_port` - string containing local post variable name
+/// * `local_host_name` - string containing local hostname variable
 /// * `exposed_server_port` - string containing exposed server post variable
 /// * `server_ip_address` - string containing server hostname or ip address
 ///   variable
