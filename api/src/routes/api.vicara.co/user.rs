@@ -485,11 +485,19 @@ async fn add_phone_number_for_user(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	service::add_phone_number_to_be_verified_for_user(
+	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
 		&user_id,
 		country_code,
 		phone_number,
+	)
+	.await?;
+
+	service::send_phone_number_verification_otp(
+		context.get_database_connection(),
+		country_code,
+		phone_number,
+		&otp,
 	)
 	.await?;
 
@@ -527,14 +535,6 @@ async fn verify_phone_number(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	service::send_phone_number_verification_otp(
-		context.get_database_connection(),
-		country_code,
-		phone_number,
-		otp,
-	)
-	.await?;
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),

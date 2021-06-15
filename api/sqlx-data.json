@@ -1138,52 +1138,6 @@
       "nullable": []
     }
   },
-  "3b23e7a9e584b71f62f2c0b3c51e585407e14fb8f583d2b6aaad1ec50d0f27b7": {
-    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON phone_number_country_code.country_code = user_unverified_phone_number.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "user_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "verification_token_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "verification_token_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bpchar",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "3b740727a3984187ee1fedd25b647ba7d770e095675c1394ddfa6af2e6554bd8": {
     "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1;",
     "describe": {
@@ -2125,6 +2079,52 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "633451c92cd5a304571b815a48cc642f024d1d6ca92eaab6e1b5ce40c950f32f": {
+    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number LEFT JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {

@@ -270,7 +270,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	user_id: &[u8],
 	country_code: &str,
 	phone_number: &str,
-) -> Result<(), Error> {
+) -> Result<String, Error> {
 	if !service::is_phone_number_allowed(connection, country_code, phone_number)
 		.await?
 	{
@@ -296,7 +296,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	)
 	.await?;
 
-	Ok(())
+	Ok(otp)
 }
 
 pub async fn verify_phone_number_for_user(
@@ -315,17 +315,18 @@ pub async fn verify_phone_number_for_user(
 	.await?
 	.status(400)
 	.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
-
+	println!("TEST1");
 	let success = service::validate_hash(
 		otp,
 		&phone_verification_data.verification_token_hash,
 	)?;
+	println!("TEST2");
 	if !success {
 		Error::as_result()
 			.status(400)
 			.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
 	}
-
+	println!("TEST3");
 	if phone_verification_data.verification_token_expiry <
 		get_current_time_millis()
 	{
