@@ -103,24 +103,20 @@ pub fn generate_new_otp() -> String {
 	"000000".to_string()
 }
 
-pub async fn get_local_and_domain_id_from_email(
+pub async fn split_email_with_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
-	personal_domain_present_in_db: bool,
 ) -> Result<(String, Vec<u8>), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 
-	let domain_id = service::ensure_personal_domain_exists(
-		connection,
-		domain_name,
-		personal_domain_present_in_db,
-	)
-	.await?
-	.as_bytes()
-	.to_vec();
+	let domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name)
+			.await?
+			.as_bytes()
+			.to_vec();
 
 	Ok((email_local.to_string(), domain_id))
 }

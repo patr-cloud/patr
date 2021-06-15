@@ -73,7 +73,7 @@ pub async fn is_phone_number_allowed(
 		db::get_phone_country_by_country_code(connection, phone_country_code)
 			.await?
 			.status(400)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
 	db::get_user_by_phone_number(
 		connection,
@@ -148,12 +148,8 @@ pub async fn create_user_join_request(
 			// extract the email_local and domain name from it
 			// split email into 2 parts and get domain_id
 			let (email_local, domain_id) =
-				service::get_local_and_domain_id_from_email(
-					connection,
-					backup_email,
-					true,
-				)
-				.await?;
+				service::split_email_with_domain_id(connection, backup_email)
+					.await?;
 
 			phone_country_code = None;
 			phone_number = None;

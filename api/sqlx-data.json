@@ -4135,40 +4135,6 @@
       "nullable": []
     }
   },
-  "d825c44b74991eefa5719fdde8b372582b2877d689f31036970be5dec5c4f159": {
-    "query": "SELECT user_id, country_code, number FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "user_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bpchar",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE organisation_name = $1;",
     "describe": {

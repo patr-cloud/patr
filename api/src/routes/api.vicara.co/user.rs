@@ -145,6 +145,26 @@ async fn get_user_info(
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
+	let personal_emails = db::get_personal_emails_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?;
+
+	let phone_numbers = db::get_phone_numbers_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.map(|phone_number| {
+		json!({
+			request_keys::COUNTRY_CODE: phone_number.country_code,
+			request_keys::PHONE_NUMBER: phone_number.number
+		})
+	})
+	.collect::<Vec<_>>();
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::USERNAME: user.username,
@@ -154,6 +174,8 @@ async fn get_user_info(
 		request_keys::BIO: user.bio,
 		request_keys::LOCATION: user.location,
 		request_keys::CREATED: user.created,
+		request_keys::EMAILS: personal_emails,
+		request_keys::PHONE_NUMBERS: phone_numbers
 	}));
 	Ok(context)
 }
@@ -310,7 +332,7 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let email_addresses_list = service::get_personal_emails_for_user(
+	let email_addresses_list = db::get_personal_emails_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -329,7 +351,7 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let phone_numbers_list = service::get_phone_numbers_for_user(
+	let phone_numbers_list = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)

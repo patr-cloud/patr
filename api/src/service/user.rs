@@ -3,7 +3,6 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
-	models::db_mapping::UserPhoneNumber,
 	service::{self},
 	utils::{get_current_time_millis, validator, Error},
 	Database,
@@ -38,12 +37,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 
 	// split email into 2 parts and get domain_id
 	let (email_local, personal_domain_id) =
-		service::get_local_and_domain_id_from_email(
-			connection,
-			email_address,
-			true,
-		)
-		.await?;
+		service::split_email_with_domain_id(connection, email_address).await?;
 
 	db::add_personal_email_to_be_verified_for_user(
 		connection,
@@ -129,26 +123,6 @@ pub async fn change_password_for_user(
 	Ok(())
 }
 
-pub async fn get_personal_emails_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<Vec<String>, Error> {
-	let personal_email: Vec<String> =
-		db::get_personal_emails_for_user(connection, &user_id).await?;
-
-	Ok(personal_email)
-}
-
-pub async fn get_phone_numbers_for_user(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<Vec<UserPhoneNumber>, Error> {
-	let phone_numbers =
-		db::get_phone_numbers_for_user(connection, &user_id).await?;
-
-	Ok(phone_numbers)
-}
-
 pub async fn update_user_backup_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -160,24 +134,8 @@ pub async fn update_user_backup_email(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 	// split email into 2 parts and get domain_id
-	let (email_local, domain_id) = service::get_local_and_domain_id_from_email(
-		connection,
-		email_address,
-		false,
-	)
-	.await?;
-
-	// check if the email exists under user's id
-	let personal_email =
-		db::check_if_personal_email_belongs_to_user(connection, user_id)
-			.await?;
-
-	// if it is false then the email isn't registered under user's id
-	if !personal_email {
-		Error::as_result()
-			.status(400)
-			.body(error!(EMAIL_NOT_FOUND).to_string())?
-	}
+	let (email_local, domain_id) =
+		service::split_email_with_domain_id(connection, email_address).await?;
 
 	// finally if everything checks out then change the personal email
 	db::update_backup_email_for_user(
@@ -186,7 +144,9 @@ pub async fn update_user_backup_email(
 		&email_local,
 		&domain_id,
 	)
-	.await?;
+	.await
+	.status(400)
+	.body(error!(INVALID_EMAIL).to_string())?;
 
 	Ok(())
 }
@@ -205,28 +165,15 @@ pub async fn update_user_backup_phone_number(
 			.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 	}
 
-	let user_phone_details = db::check_if_phone_number_belongs_to_user(
-		connection,
-		&user_id,
-		country_code,
-		phone_number,
-	)
-	.await?;
-
-	// if is false then phone number doesn't exist under user's id
-	if !user_phone_details {
-		Error::as_result()
-			.status(400)
-			.body(error!(PHONE_NUMBER_NOT_FOUND).to_string())?;
-	}
-
 	db::update_backup_phone_number_for_user(
 		connection,
 		&user_id,
 		&country_code,
 		&phone_number,
 	)
-	.await?;
+	.await
+	.status(400)
+	.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 
 	Ok(())
 }
@@ -236,12 +183,8 @@ pub async fn delete_personal_email_address(
 	user_id: &[u8],
 	email_address: &str,
 ) -> Result<(), Error> {
-	let (email_local, domain_id) = service::get_local_and_domain_id_from_email(
-		connection,
-		email_address,
-		false,
-	)
-	.await?;
+	let (email_local, domain_id) =
+		service::split_email_with_domain_id(connection, email_address).await?;
 
 	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
 
