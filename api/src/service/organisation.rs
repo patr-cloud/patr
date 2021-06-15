@@ -45,8 +45,8 @@ pub async fn is_organisation_name_allowed(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `organisation_name` - a string containing name of the organisation
-/// * `super_admin_id` - an unsigned 8 bit integer array containing id of the
-///   super admin of
+/// * `super_admin_id` - an unsigned 8 bit integer array containing id of the 
+/// super admin of
 /// organisation
 ///
 /// # Returns

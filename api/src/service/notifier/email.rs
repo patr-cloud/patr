@@ -139,7 +139,7 @@ pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 struct BackupNotificationEmail {}
 
 /// # Description
-/// This function is used to send the regstration info to back up email of the
+/// This function is used to send the registration info to back up email of the
 /// user
 ///
 /// # Arguments
@@ -155,6 +155,18 @@ pub async fn send_backup_registration_mail(
 	send_email(BackupNotificationEmail {}, email, None, "").await
 }
 
+/// # Description
+/// This function is used to send the email
+/// 
+/// # Arguments
+/// * `body` - a trait which is used to build body of the message, deifinition here: [`TEmail`]
+/// * `to` - Represents an email address with an optional name for the
+/// sender/recipient.
+/// * `reply_to` - An Option of struct [`Mailbox`], it is either None or email of recipient's email id. 
+/// * `subject` - A string containing the subject of the mail 
+/// # Returns
+/// 
+/// [`TEmail`]: TEmail
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
