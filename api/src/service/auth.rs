@@ -41,8 +41,8 @@ use crate::{
 /// * `username` - A string which contains username to be validated
 ///
 /// # Return
-/// This function returns a Result<bool, Error> which contains either a bool which says if the username is valid 
-/// or an error
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the username is valid or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
@@ -70,8 +70,8 @@ pub async fn is_username_allowed(
 /// * `email` - A string which contains username to be validated
 ///
 /// # Return
-/// This function returns a Result<bool, Error> which contains either a bool which says if the email is valid 
-/// or an error
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the email is valid or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
@@ -100,8 +100,8 @@ pub async fn is_email_allowed(
 ///
 /// # Return
 ///
-/// This function returns a Result<bool, Error> which contains either a bool which says if the phone number is valid 
-/// or an error
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the phone number is valid or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
@@ -387,26 +387,28 @@ pub async fn create_user_join_request(
 
 /// # Description
 /// This functions creates a record when a user logs into the system, this
-/// record contains six things: 
-/// 1. login_id 
+/// record contains six things:
+/// 1. login_id
 /// login_id is used to give to a unique identity to the current logged in user
-/// 2. user_id 
+/// 2. user_id
 /// user_id is the identity of the user currently logged in
-/// 3. last_activity 
-/// last_activity is the most recent task the user has performed on the api, when the user logs in, 
-/// the last activity is set to the time of login 
+/// 3. last_activity
+/// last_activity is the most recent task the user has performed on the api,
+/// when the user logs in, the last activity is set to the time of login
 /// 4. last_login
-/// last_login used to show the last time user was logged in. When the user logs in, 
-/// last_login updates with the time of log in
+/// last_login used to show the last time user was logged in. When the user logs
+/// in, last_login updates with the time of log in
 /// 5. refresh_token
 /// refresh_token is used to generate access token, and access token is for
 /// authenticating the user for the current session
-/// 6. token_expiry 
-/// token_expiry is used to set the expiry time for newly generated refresh token
-/// 
+/// 6. token_expiry
+/// token_expiry is used to set the expiry time for newly generated refresh
+/// token
+///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user_id` - an unsigned 8 bit integer array which represents the id of the user
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
 ///
 /// # Returns
 /// This function returns a `Result<UserLogin, error>` which contains an
@@ -458,8 +460,8 @@ pub async fn create_login_for_user(
 ///   the whole API
 ///
 /// # Returns
-/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing jwt,
-/// login_id, and refresh token or an error
+/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing
+/// jwt, login_id, and refresh token or an error
 ///
 /// [`create_login_for_user()`]: self.create_login_for_user()
 /// [`UserLogin`]: UserLogin
@@ -525,7 +527,7 @@ pub async fn get_user_login_for_login_id(
 /// * `user_login` - an object of struct [`UserLogin`]
 ///
 /// # Returns
-/// This function returns a `Result<String, Error>` containing a string 
+/// This function returns a `Result<String, Error>` containing a string
 ///
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
@@ -699,7 +701,8 @@ pub async fn reset_password(
 /// * `otp` - A string which contains One-Time-Password
 /// * `username` - A string containing username of the user
 /// # Returns
-/// This function returns `Result<JoinUser, Error>` containing a struct called [`JoinUser`]
+/// This function returns `Result<JoinUser, Error>` containing a struct called
+/// [`JoinUser`]
 ///
 /// [`Transaction`]: Transaction
 /// ['JoinUser`]: JoinUser

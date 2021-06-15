@@ -141,7 +141,7 @@ pub async fn verify_personal_email_address_for_user(
 /// # Returns
 ///	This function returns Result<(), Error> containing an empty response or an
 /// error
-/// 
+///
 /// [`Transaction`]: Transaction
 pub async fn change_password_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,

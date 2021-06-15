@@ -161,10 +161,10 @@ pub fn generate_new_otp() -> String {
 
 /// # Description
 /// this function is used to mask the email local by "*" character
-/// 
+///
 /// # Arguments
 /// * `local` - a string containing email_local
-/// 
+///
 /// # Returns
 /// this function returns a `String` containg masked email local
 pub fn mask_email_local(local: &str) -> String {
@@ -201,10 +201,10 @@ pub fn mask_email_local(local: &str) -> String {
 
 /// # Description
 /// this function is used to mask the phone number by "*" character
-/// 
+///
 /// # Arguments
 /// * `phone_number` - a string containing phone_number
-/// 
+///
 /// # Returns
 /// this function returns a `String` containg masked phone number
 pub fn mask_phone_number(phone_number: &str) -> String {
