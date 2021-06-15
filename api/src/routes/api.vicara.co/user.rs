@@ -522,14 +522,14 @@ async fn verify_phone_number(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let phone_number = body
-		.get(request_keys::COUNTRY_CODE)
+		.get(request_keys::PHONE_NUMBER)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let otp = body
-		.get(request_keys::PHONE_NUMBER)
+		.get(request_keys::VERIFICATION_TOKEN)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)

@@ -315,18 +315,18 @@ pub async fn verify_phone_number_for_user(
 	.await?
 	.status(400)
 	.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
-	println!("TEST1");
+
 	let success = service::validate_hash(
 		otp,
 		&phone_verification_data.verification_token_hash,
 	)?;
-	println!("TEST2");
+
 	if !success {
 		Error::as_result()
 			.status(400)
 			.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
 	}
-	println!("TEST3");
+
 	if phone_verification_data.verification_token_expiry <
 		get_current_time_millis()
 	{

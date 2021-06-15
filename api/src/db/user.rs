@@ -1411,10 +1411,10 @@ pub async fn get_phone_number_to_be_verified_for_user(
 			user_unverified_phone_number.*
 		FROM
 			user_unverified_phone_number
-		LEFT JOIN
+		INNER JOIN
 			phone_number_country_code
 		ON
-		user_unverified_phone_number.country_code = phone_number_country_code.country_code
+			user_unverified_phone_number.country_code = phone_number_country_code.country_code
 		WHERE
 			user_id = $1 AND
 			user_unverified_phone_number.country_code = $2 AND
