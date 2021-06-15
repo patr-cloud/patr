@@ -1015,6 +1015,52 @@
       ]
     }
   },
+  "32df3eb91793933bdc0f96443162f989349865039d9a9202e00fb6043b38b071": {
+    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "333da8ffd1e90a8f41cb260722d9a20053a709510eb7b022e28ee8a5ecc97c27": {
     "query": "SELECT id, name, type as \"type: ResourceOwnerType\" FROM domain WHERE id = $1;",
     "describe": {
@@ -2079,52 +2125,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "633451c92cd5a304571b815a48cc642f024d1d6ca92eaab6e1b5ce40c950f32f": {
-    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number LEFT JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "user_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "verification_token_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "verification_token_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bpchar",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
     }
   },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
