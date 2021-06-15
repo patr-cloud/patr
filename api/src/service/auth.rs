@@ -448,7 +448,7 @@ pub async fn create_login_for_user(
 }
 
 /// # Description
-///	This function is used to log in a user, it calls [`create_login_for_user()`]
+/// This function is used to log in a user, it calls [`create_login_for_user()`]
 /// to get [`UserLogin`] object using which it generates a new refresh token and
 /// then generate an access token through the newly generated refresh token
 ///
@@ -486,7 +486,7 @@ pub async fn sign_in_user(
 }
 
 /// # Description
-///	This function is used to get the log in details of the user
+/// This function is used to get the log in details of the user
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -518,7 +518,7 @@ pub async fn get_user_login_for_login_id(
 	Ok(user_login)
 }
 /// # Description
-///	This function is used to generate access token for the logged in user
+/// This function is used to generate access token for the logged in user
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -643,7 +643,7 @@ pub async fn forgot_password(
 ///   user
 ///
 /// # Returns
-///	This function returns `Result<(), Error>` containing an empty response or an
+/// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 ///
 /// [`Transaction`]: Transaction
@@ -683,17 +683,17 @@ pub async fn reset_password(
 /// # Description
 /// This function is used to register user in database
 /// required parameters for personal account:
-/// 	1. username
-/// 	2. password
-/// 	3. account_type
-/// 	4. first_name
-///		5. last_name
-///		6. (backup_email_local, backup_email_domain_id) OR
-///		7. (backup_phone_country_code, backup_phone_number)
+///     1. username
+///     2. password
+///     3. account_type
+///     4. first_name
+///     5. last_name
+///     6. (backup_email_local, backup_email_domain_id) OR
+///     7. (backup_phone_country_code, backup_phone_number)
 /// extra parameters required for organisation account:
-/// 	1. domain_name
-/// 	2. organisation_name
-/// 	3. backup_email
+///     1. domain_name
+///     2. organisation_name
+///     3. backup_email
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `config` - An object of [`Settings`] struct which stores configuration of

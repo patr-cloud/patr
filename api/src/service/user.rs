@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// # Description
-///	This functions adds personal email id to the email_address to be verified
+/// This functions adds personal email id to the email_address to be verified
 /// table
 ///
 /// # Arguments
@@ -18,7 +18,7 @@ use crate::{
 /// * `user_id` - an unsigned 8 bit integer array containing id of user
 ///
 /// # Returns
-///	This function returns Result<(), Error> containing an empty response or an
+/// This function returns Result<(), Error> containing an empty response or an
 /// error
 ///
 /// [`Transaction`]: Transaction
@@ -71,7 +71,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 /// # Description
-///	This function is used to verify the email address of the user, by comparing
+/// This function is used to verify the email address of the user, by comparing
 /// the otp
 ///
 /// # Arguments
@@ -80,7 +80,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 /// * `email_address` - a string containing email address of user
 /// * `otp` - a string containing One-Time-Password
 /// # Returns
-///	This function returns Result<(), Error> containing an empty response or an
+/// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 ///
 /// [`Transaction`]: Transaction
@@ -130,7 +130,7 @@ pub async fn verify_personal_email_address_for_user(
 }
 
 /// # Description
-///	This function is used to change the password of the user
+/// This function is used to change the password of the user
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -139,7 +139,7 @@ pub async fn verify_personal_email_address_for_user(
 /// * `new_password` - a string containing new password of the user
 ///
 /// # Returns
-///	This function returns Result<(), Error> containing an empty response or an
+/// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 ///
 /// [`Transaction`]: Transaction

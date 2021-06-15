@@ -40,7 +40,7 @@ pub async fn is_organisation_name_allowed(
 }
 
 /// # Description
-///	this function is used to create organisation
+/// This function is used to create organisation
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -50,8 +50,8 @@ pub async fn is_organisation_name_allowed(
 /// organisation
 ///
 /// # Returns
-///	this function returns Result<Uuid, Error> containing organisation id (uuid)
-/// or an error
+/// This function returns `Result<Uuid, Error>` containing organisation id
+/// (uuid) or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn create_organisation(
@@ -95,13 +95,13 @@ pub async fn create_organisation(
 }
 
 /// # Description
-///	This function is used to convert username into personal organisation name
+/// This function is used to convert username into personal organisation name
 ///
 /// # Arguments
 /// * `username` - a string containing username of the user
 ///
 /// # Returns
-///	this function returns a string containing the name of the personal
+/// This function returns a string containing the name of the personal
 /// organisation
 pub fn get_personal_org_name(username: &str) -> String {
 	format!("personal-organisation-{}", username)

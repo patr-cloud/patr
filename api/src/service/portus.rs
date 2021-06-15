@@ -7,13 +7,13 @@ use tokio::fs;
 use crate::{db, Database};
 
 /// # Description
-///	this function is used to generate password for portus user
+/// This function is used to generate password for portus user
 ///
 /// # Arguments
 /// * `length` - an unsigned size variable used to define size of new password
 ///
 /// # Returns
-///	this function returns a string containing newly generated password
+/// This function returns a string containing newly generated password
 pub fn generate_password(length: usize) -> String {
 	let mut rng = thread_rng();
 	iter::repeat(())
@@ -31,7 +31,7 @@ pub fn generate_password(length: usize) -> String {
 /// user
 ///
 /// # Returns
-///	this function returns a string containing newly generated username
+/// This function returns a string containing newly generated username
 pub fn generate_username(length: u16) -> String {
 	const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
@@ -56,7 +56,7 @@ pub fn generate_username(length: u16) -> String {
 /// * `server_ssh_port` - string containing server SSH port variable
 ///
 /// # Returns
-///	this function returns Result<String> containing contents of bash command
+/// This function returns Result<String> containing contents of bash command
 pub async fn bash_script_formatter(
 	local_port: &str,
 	local_host_name: &str,
@@ -80,10 +80,10 @@ pub async fn bash_script_formatter(
 }
 
 /// # Description
-/// this function is used to get path to the script file.
+/// This function is used to get path to the script file.
 ///
 /// # Returns
-///	this function returns Result<PathBuf> containing path of script file or
+/// This function returns Result<PathBuf> containing path of script file or
 /// nothing
 pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 	Ok(env::current_dir()?
@@ -93,43 +93,43 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 }
 
 /// # Description
-///	this function is used to get port for server
+/// This function is used to get port for server
 ///
 /// # Returns
-///	this function returns an unsigned integer containing the ssh port for server
+/// This function returns an unsigned integer containing the ssh port for server
 pub fn get_ssh_port_for_server() -> u16 {
 	2222
 }
 
 /// # Description
-///	this function is used to generate the name of container
+/// This function is used to generate the name of container
 ///
 /// # Arguments
 /// * `username` - a string containing username of user
 ///
 /// # Returns
-///	this function returns a string containing formatted container name
+/// This function returns a string containing formatted container name
 pub fn get_container_name(username: &str) -> String {
 	format!("{}-container", username)
 }
 
 /// # Description
-///	This function gets server ip address
+/// This function gets server ip address
 ///
 /// # Returns
-///	returns server ip address
+/// This function returns server ip address
 pub fn get_server_ip_address() -> &'static str {
 	"143.110.179.80"
 }
 
 /// # Description
-/// this function is used get an available port.
+/// This function is used get an available port.
 ///
 /// # Arguments
 /// * `transaction` - database save point, more details here: [`Transaction`]
 ///
 /// # Returns
-///	this function returns Result<u16, sqlx::Error> containing unsigned 16 bit
+/// This function returns `Result<u16, sqlx::Error>` containing unsigned 16 bit
 /// integer containing the port number
 /// [`Transaction`]: Transaction
 pub async fn assign_available_port(

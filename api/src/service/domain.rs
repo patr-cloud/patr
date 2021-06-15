@@ -23,8 +23,8 @@ use crate::{
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// 	* `domain_name` - A string which contains domain name of user's personal
-///    email id
+/// * `domain_name` - A string which contains domain name of user's personal
+///   email id
 ///
 /// # Returns
 /// This function returns Result<Uuid, Error> which contains domain_id as uuid
@@ -67,17 +67,17 @@ pub async fn ensure_personal_domain_exists(
 }
 
 /// # Description
-///	This function adds the organisation domain into the database
+/// This function adds the organisation domain into the database
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// 	* `domain_name` - A string which contains domain name of user's personal
-///    email id
+/// * `domain_name` - A string which contains domain name of user's personal
+///   email id
 /// * `organisation_id` - An unsigned 8 bit integer array which contains id of
 ///   the organisation
 ///
 /// # Returns
-///	This function returns Result<Uuid, Error> containing uuid of domain uuid or
+/// This function returns Result<Uuid, Error> containing uuid of domain uuid or
 /// an error
 ///
 ///[`Transaction`]: Transaction
@@ -140,7 +140,7 @@ pub async fn add_domain_to_organisation(
 ///   organisation domain
 ///
 /// # Returns
-///	Returns a Result<bool, Error> containing a bool whether the domain is
+/// Returns a Result<bool, Error> containing a bool whether the domain is
 /// verified or not or an error
 ///
 /// [`Transaction`]: Transaction
