@@ -1,21 +1,21 @@
+use std::u64;
+
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
+use log::info;
 use serde_json::{json, Map, Value};
+use shiplift::Docker;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, get_deployment_by_id},
 	error,
 	models::rbac::permissions,
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, get_current_time_millis, Error, ErrorData,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -122,7 +122,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	// endpoint to update deployment configuration.
+	// endpoint to get deployment configuration.
 	app.get(
 		"/:deploymentId/configuration",
 		[
@@ -501,4 +501,90 @@ async fn delete_deployment(
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
+}
+
+// functions to get an idea of runner algorithmm
+
+// function to check if a deployment is alive
+async fn check_running_deployment_status() -> Result<(), Error> {
+	let docker = Docker::new();
+	// call all the deployments run by the manager
+	let node_manager_id = "123456";
+
+	// call DB function
+	let deployment_list = get_deployments_for_manager(node_manager_id);
+
+	for deployment in deployment_list {
+		// check status for the deployment by fetching container id
+		let container_id = deployment.container_id;
+		let update_time = get_current_time_millis();
+
+		// if container is not running, update deployment status as false
+
+		// after updating status, get current time and update status
+		// to get the status, can use `inspect` function on the container object
+		// link to the function: https://docs.rs/shiplift/0.7.0/shiplift/struct.Container.html
+		let container = docker.containers().get(container_id);
+		let container_details = container.inspect().await?;
+		let status = container_details.state.status;
+		if status == "dead" {
+			// try restarting the deployment first
+			let start = container.start().await;
+			if let Err(_err) = start {
+				update_status_and_time_for_running_deployment(
+					update_time,
+					false,
+				);
+			}
+		}
+		// update status and time of deployment
+		update_status_and_time_for_running_deployment(update_time, true);
+	}
+
+	// iterate over the given deployment li
+	Ok(())
+}
+
+// function to check if any deployment which was supposed to be running has stopped
+
+// this function will actually be written in db layer.
+// it should basically return a list of deployments running for the given node manager.
+// the values should be fetcehed from `RUNNING_DEPLOYMENTS` table
+fn get_deployments_for_manager(
+	node_manager_id: &str,
+) -> Vec<RunningDeployment> {
+	let mut list: Vec<RunningDeployment> = Vec::new();
+	let d1 = RunningDeployment {
+		deployment_id: "12345".to_string(),
+		node_manager_id: node_manager_id.to_string(),
+		alive_status: true,
+		last_update: 12354565,
+		container_id: "987456".to_string(),
+	};
+
+	let d2 = RunningDeployment {
+		deployment_id: "54321".to_string(),
+		node_manager_id: node_manager_id.to_string(),
+		alive_status: true,
+		last_update: 12354565,
+		container_id: "2564798".to_string(),
+	};
+
+	list.push(d1);
+	list.push(d2);
+	return list;
+}
+
+fn update_status_and_time_for_running_deployment(
+	update_time: u64,
+	status: bool,
+) {
+	log::info!("updating status as {} for time {}", status, update_time)
+}
+pub struct RunningDeployment {
+	pub deployment_id: String,
+	pub node_manager_id: String,
+	pub alive_status: bool,
+	pub last_update: u64,
+	pub container_id: String,
 }
