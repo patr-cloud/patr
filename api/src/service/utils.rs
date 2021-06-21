@@ -120,6 +120,7 @@ pub async fn split_email_with_domain_id(
 
 	Ok((email_local.to_string(), domain_id))
 }
+
 pub fn mask_email_local(local: &str) -> String {
 	if local.is_empty() {
 		String::from("*")

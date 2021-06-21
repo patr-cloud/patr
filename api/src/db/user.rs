@@ -303,7 +303,7 @@ pub async fn initialize_users_post(
 			country_code CHAR(2) NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_country_code
 					REFERENCES phone_number_country_code(country_code),
-			phone_number VARCHAR(15),
+			phone_number VARCHAR(15) NOT NULL,
 			user_id BYTEA NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_user_id
 					REFERENCES "user"(id),
@@ -1418,7 +1418,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		WHERE
 			user_id = $1 AND
 			user_unverified_phone_number.country_code = $2 AND
-			user_unverified_phone_number.phone_number = $3
+			user_unverified_phone_number.phone_number = $3;
 		"#,
 		user_id,
 		country_code,

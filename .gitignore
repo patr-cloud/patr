@@ -88,3 +88,6 @@ dump.rdb
 # commented out the .idea files
 # adding the whole .idea folder
 .idea
+
+# iml file
+vicara-api.iml

@@ -3,7 +3,7 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
-	service::{self},
+	service,
 	utils::{get_current_time_millis, validator, Error},
 	Database,
 };
@@ -157,18 +157,22 @@ pub async fn update_user_backup_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
-	if !service::is_phone_number_allowed(connection, country_code, phone_number)
-		.await?
-	{
+	if !validator::is_phone_number_valid(phone_number) {
 		Error::as_result()
-			.status(400)
-			.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
+			.status(200)
+			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 	}
+
+	let country_code =
+		db::get_phone_country_by_country_code(connection, country_code)
+			.await?
+			.status(400)
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
 	db::update_backup_phone_number_for_user(
 		connection,
 		&user_id,
-		&country_code,
+		&country_code.country_code,
 		&phone_number,
 	)
 	.await
@@ -196,16 +200,12 @@ pub async fn delete_personal_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	let backup_email_local = user_data.backup_email_local;
-	let backup_email_domain = user_data.backup_email_domain_id;
-
-	if backup_email_local.is_some() {
-		let backup_email_local = backup_email_local.unwrap();
-		let backup_email_domain = backup_email_domain.unwrap();
-
-		if backup_email_local == email_local && backup_email_domain == domain_id
-		{
-			Error::as_result()
+	if let Some((_email_local, _domain_id)) = user_data
+		.backup_email_local
+		.zip(user_data.backup_email_domain_id)
+	{
+		if _email_local == email_local && _domain_id == domain_id {
+			return Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
 		}
@@ -238,17 +238,12 @@ pub async fn delete_phone_number(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	let backup_phone_country_code = user_data.backup_phone_country_code;
-	let backup_phone_number = user_data.backup_phone_number;
-
-	if backup_phone_country_code.is_some() {
-		let backup_phone_country_code = backup_phone_country_code.unwrap();
-		let backup_phone_number = backup_phone_number.unwrap();
-
-		if backup_phone_country_code == country_code &&
-			backup_phone_number == phone_number
-		{
-			Error::as_result()
+	if let Some((_country_code, _phone_number)) = user_data
+		.backup_phone_country_code
+		.zip(user_data.backup_phone_number)
+	{
+		if _country_code == country_code && _country_code == phone_number {
+			return Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
 		}
