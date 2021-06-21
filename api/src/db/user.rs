@@ -287,18 +287,6 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE INDEX
-			user_unverified_personal_email_idx_user_id
-		ON
-			user_unverified_personal_email
-		(user_id);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE user_unverified_phone_number(
 			country_code CHAR(2) NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_country_code
@@ -319,18 +307,6 @@ pub async fn initialize_users_post(
 				user_univerified_phone_number_uq_country_code_phone_number
 				UNIQUE(user_id, country_code, phone_number)
 		);
-		"#
-	)
-	.execute(&mut *transaction)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			user_unverified_phone_number_idx_user_id
-		ON
-			user_unverified_phone_number
-		(user_id);
 		"#
 	)
 	.execute(&mut *transaction)

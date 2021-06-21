@@ -1830,16 +1830,6 @@
       "nullable": []
     }
   },
-  "54fa109ca4b36e07629f266a0f5b28baa363d815db503d0d61c017bcafa4ff5f": {
-    "query": "CREATE INDEX user_unverified_phone_number_idx_user_id ON user_unverified_phone_number (user_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "5803e973fb5aebfccb8ab5bb6815d0e716808a3e76fdc97702662a0f20e8776a": {
     "query": "SELECT application_id, version FROM application_version WHERE application_id = $1;",
     "describe": {
@@ -2469,16 +2459,6 @@
   },
   "81176c7e3e4b2d05c35514e25f56b3f3a94ebc3c737323d2359e22d82c0f8fe8": {
     "query": "CREATE TABLE file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "818eee9c01eadb18bef86a30b153109c1224379e2881d1ef733a89e14e460541": {
-    "query": "CREATE INDEX user_unverified_personal_email_idx_user_id ON user_unverified_personal_email (user_id);",
     "describe": {
       "columns": [],
       "parameters": {
