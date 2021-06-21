@@ -274,26 +274,6 @@
       ]
     }
   },
-  "0f543fb7fb4b3a2c17e7011f91a802f39882086d60f4cff3f53b593bfa8ad8b9": {
-    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email! : String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email! : String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "12b348ffdebe72e3058a63fa33fc3a124189e62c1c61d505cbc03a03fd3736bf": {
     "query": "SELECT deployment_entry_point.id, deployment_entry_point.sub_domain, deployment_entry_point.domain_id, deployment_entry_point.path, deployment_entry_point.entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_entry_point.deployment_id, deployment_entry_point.deployment_port, deployment_entry_point.url FROM deployment_entry_point INNER JOIN resource ON deployment_entry_point.id = resource.id WHERE resource.owner_id = $1;",
     "describe": {
@@ -1148,6 +1128,26 @@
         false,
         true,
         false
+      ]
+    }
+  },
+  "35b8c34de1dcb2df4b41fa2f5699ad4740e04ee12a82258daf07c8b375ce56ed": {
+    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!: String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
       ]
     }
   },
