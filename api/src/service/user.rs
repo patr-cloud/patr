@@ -200,11 +200,11 @@ pub async fn delete_personal_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((_email_local, _domain_id)) = user_data
+	if let Some((backup_email_local, backup_domain_id)) = user_data
 		.backup_email_local
 		.zip(user_data.backup_email_domain_id)
 	{
-		if _email_local == email_local && _domain_id == domain_id {
+		if backup_email_local == email_local && backup_domain_id == domain_id {
 			return Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
@@ -238,11 +238,11 @@ pub async fn delete_phone_number(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((_country_code, _phone_number)) = user_data
+	if let Some((backup_country_code, backup_phone_number)) = user_data
 		.backup_phone_country_code
 		.zip(user_data.backup_phone_number)
 	{
-		if _country_code == country_code && _country_code == phone_number {
+		if backup_country_code == country_code && backup_phone_number == phone_number {
 			return Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
