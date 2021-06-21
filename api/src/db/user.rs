@@ -2083,7 +2083,7 @@ pub async fn get_personal_emails_for_user(
 	let rows = query!(
 		r#"
 		SELECT
-			CONCAT(personal_email.local, '@', domain.name) as "email! : String"
+			CONCAT(personal_email.local, '@', domain.name) as "email!: String"
 		FROM
 			personal_email
 		INNER JOIN
