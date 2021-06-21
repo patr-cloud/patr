@@ -4,10 +4,11 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
-use crate::{db, service, utils::Error, Database};
+use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -100,6 +101,24 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+pub async fn split_email_with_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email_address: &str,
+) -> Result<(String, Vec<u8>), Error> {
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name)
+			.await?
+			.as_bytes()
+			.to_vec();
+
+	Ok((email_local.to_string(), domain_id))
 }
 
 pub fn mask_email_local(local: &str) -> String {

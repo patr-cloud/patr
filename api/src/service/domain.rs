@@ -45,6 +45,7 @@ pub async fn ensure_personal_domain_exists(
 			&ResourceOwnerType::Personal,
 		)
 		.await?;
+
 		db::add_to_personal_domain(connection, domain_id).await?;
 
 		Ok(domain_uuid)

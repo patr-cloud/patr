@@ -73,7 +73,7 @@ pub async fn is_phone_number_allowed(
 		db::get_phone_country_by_country_code(connection, phone_country_code)
 			.await?
 			.status(400)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
 	db::get_user_by_phone_number(
 		connection,
@@ -146,21 +146,15 @@ pub async fn create_user_join_request(
 			}
 
 			// extract the email_local and domain name from it
-			let (email_local, domain_name) = backup_email
-				.split_once('@')
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
+			// split email into 2 parts and get domain_id
+			let (email_local, domain_id) =
+				service::split_email_with_domain_id(connection, backup_email)
+					.await?;
 
-			// Assign values
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(
-				service::ensure_personal_domain_exists(connection, domain_name)
-					.await?
-					.as_bytes()
-					.to_vec(),
-			);
 			phone_country_code = None;
 			phone_number = None;
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(domain_id);
 		}
 		// If both or neither recovery options are provided
 		_ => {
@@ -239,7 +233,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -258,7 +252,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code
@@ -277,7 +271,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -292,7 +286,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code

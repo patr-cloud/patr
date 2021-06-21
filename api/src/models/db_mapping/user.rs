@@ -55,7 +55,6 @@ pub struct UserEmailAddress {
 	pub domain_id: Vec<u8>,
 }
 
-#[allow(dead_code)]
 pub struct UserPhoneNumber {
 	pub user_id: Vec<u8>,
 	pub country_code: String,
@@ -93,6 +92,14 @@ pub struct PasswordResetRequest {
 pub struct PersonalEmailToBeVerified {
 	pub local: String,
 	pub domain_id: Vec<u8>,
+	pub user_id: Vec<u8>,
+	pub verification_token_hash: String,
+	pub verification_token_expiry: u64,
+}
+
+pub struct PhoneNumberToBeVerified {
+	pub country_code: String,
+	pub phone_number: String,
 	pub user_id: Vec<u8>,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,

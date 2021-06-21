@@ -834,7 +834,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	// check if access type is respository
+	// check if access type is repository
 	if access_type != request_keys::REPOSITORY {
 		Error::as_result().status(400).body(
 			json!({

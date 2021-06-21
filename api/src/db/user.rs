@@ -7,8 +7,10 @@ use crate::{
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		PhoneCountryCode,
+		PhoneNumberToBeVerified,
 		User,
 		UserLogin,
+		UserPhoneNumber,
 		UserToSignUp,
 	},
 	query,
@@ -285,11 +287,26 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE INDEX
-			user_unverified_personal_email_idx_user_id
-		ON
-			user_unverified_personal_email
-		(user_id);
+		CREATE TABLE user_unverified_phone_number(
+			country_code CHAR(2) NOT NULL
+				CONSTRAINT user_unverified_phone_number_fk_country_code
+					REFERENCES phone_number_country_code(country_code),
+			phone_number VARCHAR(15) NOT NULL,
+			user_id BYTEA NOT NULL
+				CONSTRAINT user_unverified_phone_number_fk_user_id
+					REFERENCES "user"(id),
+			verification_token_hash TEXT NOT NULL,
+			verification_token_expiry BIGINT NOT NULL
+				CONSTRAINT
+					user_unverified_phone_number_chk_token_expiry_unsigned
+					CHECK(verification_token_expiry >= 0),
+
+			CONSTRAINT user_univerified_phone_number_pk
+				PRIMARY KEY(country_code, phone_number),
+			CONSTRAINT
+				user_univerified_phone_number_uq_country_code_phone_number
+				UNIQUE(user_id, country_code, phone_number)
+		);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -1291,6 +1308,37 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	Ok(())
 }
 
+pub async fn add_phone_number_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
+	phone_number: &str,
+	user_id: &[u8],
+	verification_token: &str,
+	token_expiry: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			user_unverified_phone_number
+		VALUES
+			($1, $2, $3, $4, $5)
+		ON CONFLICT(country_code, phone_number) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			verification_token_hash = EXCLUDED.verification_token_hash,
+			verification_token_expiry = EXCLUDED.verification_token_expiry;
+		"#,
+		country_code,
+		phone_number,
+		user_id,
+		verification_token,
+		token_expiry as i64
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -1319,6 +1367,45 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	.map(|row| PersonalEmailToBeVerified {
 		local: row.local,
 		domain_id: row.domain_id,
+		user_id: row.user_id,
+		verification_token_hash: row.verification_token_hash,
+		verification_token_expiry: row.verification_token_expiry as u64,
+	});
+
+	Ok(rows.next())
+}
+
+pub async fn get_phone_number_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			user_unverified_phone_number.*
+		FROM
+			user_unverified_phone_number
+		INNER JOIN
+			phone_number_country_code
+		ON
+			user_unverified_phone_number.country_code = phone_number_country_code.country_code
+		WHERE
+			user_id = $1 AND
+			user_unverified_phone_number.country_code = $2 AND
+			user_unverified_phone_number.phone_number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PhoneNumberToBeVerified {
+		country_code: row.country_code,
+		phone_number: row.phone_number,
 		user_id: row.user_id,
 		verification_token_hash: row.verification_token_hash,
 		verification_token_expiry: row.verification_token_expiry as u64,
@@ -1761,6 +1848,58 @@ pub async fn update_user_password(
 	Ok(())
 }
 
+pub async fn update_backup_email_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			backup_email_local = $1,
+			backup_email_domain_id = $2
+		WHERE
+			id = $3;
+		"#,
+		email_local,
+		domain_id,
+		user_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn update_backup_phone_number_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			"user"
+		SET
+			backup_phone_country_code = $1,
+			backup_phone_number = $2
+		WHERE
+			id = $3;
+		"#,
+		country_code,
+		phone_number,
+		user_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -1911,4 +2050,106 @@ pub async fn add_phone_number_for_user(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_personal_emails_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			CONCAT(personal_email.local, '@', domain.name) as "email!: String"
+		FROM
+			personal_email
+		INNER JOIN
+			domain
+		ON
+			personal_email.domain_id = domain.id
+		WHERE
+			personal_email.user_id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.email)
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn get_phone_numbers_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
+	let phone_numbers = query_as!(
+		UserPhoneNumber,
+		r#"
+		SELECT
+			user_id,
+			country_code,
+			number
+		FROM
+			user_phone_number
+		WHERE
+			user_id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(phone_numbers)
+}
+
+pub async fn delete_personal_email_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			personal_email
+		WHERE
+			user_id = $1 AND
+			local = $2 AND
+			domain_id = $3;
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_phone_number_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_phone_number
+		WHERE
+			user_id = $1 AND
+			country_code = $2 AND
+			number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }

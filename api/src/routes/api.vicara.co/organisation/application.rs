@@ -154,7 +154,7 @@ async fn get_applications(
 	.collect::<Vec<_>>();
 
 	context.json(json!({
-		request_keys::SUCCESS : true,
+		request_keys::SUCCESS: true,
 		request_keys::APPLICATIONS: applications,
 	}));
 	Ok(context)
@@ -182,9 +182,9 @@ async fn get_application_info_in_organisation(
 
 	// add response to context json
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::APPLICATION_ID : application_id,
-		request_keys::NAME : application.name,
+		request_keys::SUCCESS: true,
+		request_keys::APPLICATION_ID: application_id,
+		request_keys::NAME: application.name,
 	}));
 	Ok(context)
 }
@@ -220,9 +220,9 @@ async fn get_all_versions_for_application(
 
 	// send true, application id, and versions.
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::APPLICATION_ID : application_id_string,
-		request_keys::VERSIONS : versions
+		request_keys::SUCCESS: true,
+		request_keys::APPLICATION_ID: application_id_string,
+		request_keys::VERSIONS: versions
 	}));
 	Ok(context)
 }
