@@ -242,7 +242,9 @@ pub async fn delete_phone_number(
 		.backup_phone_country_code
 		.zip(user_data.backup_phone_number)
 	{
-		if backup_country_code == country_code && backup_phone_number == phone_number {
+		if backup_country_code == country_code &&
+			backup_phone_number == phone_number
+		{
 			return Error::as_result()
 				.status(400)
 				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
@@ -309,18 +311,12 @@ pub async fn verify_phone_number_for_user(
 	)
 	.await?
 	.status(400)
-	.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
+	.body(error!(PHONE_NUMBER_TOKEN_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(
 		otp,
 		&phone_verification_data.verification_token_hash,
 	)?;
-
-	if !success {
-		Error::as_result()
-			.status(400)
-			.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
-	}
 
 	if phone_verification_data.verification_token_expiry <
 		get_current_time_millis()
@@ -328,6 +324,12 @@ pub async fn verify_phone_number_for_user(
 		Error::as_result()
 			.status(200)
 			.body(error!(PHONE_NUMBER_TOKEN_EXPIRED).to_string())?;
+	}
+
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(PHONE_NUMBER_TOKEN_NOT_FOUND).to_string())?;
 	}
 
 	db::add_phone_number_for_user(
