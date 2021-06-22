@@ -2312,6 +2312,20 @@
       "nullable": []
     }
   },
+  "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
+    "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "7b5c68437d1c2c6686003926f6d821aa3bc72e8d29b392393d86173f9c76284a": {
     "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'deployment', $5, $6, NULL);",
     "describe": {
@@ -3025,6 +3039,20 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
+    "query": "DELETE FROM user_unverified_phone_number WHERE user_id = $1 AND country_code = $2 AND phone_number = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
       },
       "nullable": []
     }
