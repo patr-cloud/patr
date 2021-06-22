@@ -434,10 +434,11 @@ pub async fn forgot_password(
 	user_id: &str,
 	preferred_recovery_option: PreferredRecoveryOption,
 ) -> Result<(), Error> {
-	let user = db::get_user_by_username_email_or_phone_number(connection, &user_id)
-		.await?
-		.status(200)
-		.body(error!(USER_NOT_FOUND).to_string())?;
+	let user =
+		db::get_user_by_username_email_or_phone_number(connection, &user_id)
+			.await?
+			.status(200)
+			.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
