@@ -36,10 +36,23 @@ pub async fn is_username_allowed(
 			.status(200)
 			.body(error!(INVALID_USERNAME).to_string())?;
 	}
-	db::get_user_by_username(connection, username)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+
+	let user = db::get_user_by_username(connection, username).await?;
+	if user.is_some() {
+		return Ok(false);
+	}
+
+	// check if user is registered for signup
+	let sign_up_status =
+		db::get_user_to_sign_up_by_username(connection, username).await?;
+
+	if let Some(status) = sign_up_status {
+		// return in-valid (`false`) if expiry is greater than current time
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 pub async fn is_email_allowed(
@@ -52,10 +65,28 @@ pub async fn is_email_allowed(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	db::get_user_by_email(connection, email)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+	let user = db::get_user_by_email(connection, email).await?;
+	if user.is_some() {
+		return Ok(false);
+	}
+	// check if the email has already been registered for verifying
+	let verify_status =
+		db::get_personal_email_to_be_verified_by_email(connection, email)
+			.await?;
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+
+	let sign_up_status =
+		db::get_user_to_sign_up_by_email(connection, email).await?;
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 pub async fn is_phone_number_allowed(
@@ -75,13 +106,44 @@ pub async fn is_phone_number_allowed(
 			.status(400)
 			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	db::get_user_by_phone_number(
+	let user = db::get_user_by_phone_number(
 		connection,
-		&format!("+{}{}", country_code.phone_code, phone_number),
+		&country_code.country_code,
+		phone_number,
 	)
-	.await
-	.map(|user| user.is_none())
-	.status(500)
+	.await?;
+
+	if user.is_some() {
+		return Ok(false);
+	}
+
+	// check if the email has already been registered for verifying
+	let verify_status = db::get_phone_number_to_be_verified_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+
+	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 /// Creates a new user to be signed up and returns an OTP

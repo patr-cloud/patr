@@ -46,6 +46,7 @@ pub mod id {
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
 		"cannotDeleteBackupPhoneNumber";
+	pub const DOMAIN_EXISTS: &str = "domainExists";
 }
 
 #[allow(dead_code)]
@@ -143,4 +144,5 @@ pub mod message {
 		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
+	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 }
