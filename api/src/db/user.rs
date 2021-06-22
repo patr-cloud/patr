@@ -716,7 +716,7 @@ pub async fn initialize_users_post(
 	Ok(())
 }
 
-pub async fn get_user_by_username_or_email(
+pub async fn get_user_by_username_email_or_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
@@ -739,10 +739,19 @@ pub async fn get_user_by_username_or_email(
 		ON
 			domain.id = personal_email.domain_id OR
 			domain.id = organisation_email.domain_id
+		LEFT JOIN
+			user_phone_number
+		ON
+			user_phone_number.user_id = "user".id
+		LEFT JOIN
+			phone_number_country_code
+		ON
+			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
 			"user".username = $1 OR
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1;
+			CONCAT(organisation_email.local, '@', domain.name) = $1 OR
+			CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;
 		"#,
 		user_id
 	)
@@ -2029,7 +2038,6 @@ pub async fn get_phone_country_by_country_code(
 	Ok(rows.into_iter().next())
 }
 
-#[allow(dead_code)]
 pub async fn add_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
