@@ -2084,7 +2084,7 @@ pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<u64, sqlx::Error> {
-	let rows = query!(
+	let count = query!(
 		r#"
 		SELECT
 			COUNT(personal_email.domain_id) as "count!"
@@ -2099,11 +2099,10 @@ pub async fn get_personal_email_count_for_domain_id(
 	.await?
 	.into_iter()
 	.next()
-	.map(|row| row.count);
+	.map(|row| row.count)
+	.unwrap_or(0);
 
-	let rows = rows.unwrap_or(0);
-
-	Ok(rows as u64)
+	Ok(count as u64)
 }
 
 pub async fn get_phone_numbers_for_user(
