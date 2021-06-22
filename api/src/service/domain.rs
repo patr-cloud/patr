@@ -31,13 +31,6 @@ pub async fn ensure_personal_domain_exists(
 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	}
 
-	// check if personal domain given by the user is registerd as a Org domain
-	if !is_domain_name_allowed(connection, domain_name).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string());
-	}
-
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceOwnerType::Organisation = domain.r#type {
@@ -48,6 +41,14 @@ pub async fn ensure_personal_domain_exists(
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
 	} else {
+		// check if personal domain given by the user is registerd as a Org
+		// domain
+		if !is_domain_name_allowed(connection, domain_name).await? {
+			Error::as_result()
+				.status(400)
+				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())?;
+		}
+
 		let domain_uuid = db::generate_new_domain_id(connection).await?;
 		let domain_id = domain_uuid.as_bytes();
 		db::create_generic_domain(
@@ -74,12 +75,7 @@ pub async fn add_domain_to_organisation(
 			.status(400)
 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	}
-	// check if personal domain given by the user is registerd as a Org domain
-	if !is_domain_name_allowed(connection, domain_name).await? {
-		return Error::as_result()
-			.status(400)
-			.body(error!(DOMAIN_EXISTS).to_string());
-	}
+
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceOwnerType::Personal = domain.r#type {
@@ -87,9 +83,13 @@ pub async fn add_domain_to_organisation(
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
 		} else {
-			Error::as_result()
-				.status(400)
-				.body(error!(RESOURCE_EXISTS).to_string())?;
+			// check if personal domain given by the user is registerd as a Org
+			// domain
+			if !is_domain_name_allowed(connection, domain_name).await? {
+				Error::as_result()
+					.status(400)
+					.body(error!(DOMAIN_EXISTS).to_string())?;
+			}
 		}
 	}
 

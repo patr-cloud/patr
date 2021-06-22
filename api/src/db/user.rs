@@ -830,6 +830,7 @@ pub async fn get_user_by_email(
 
 pub async fn get_user_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<User>, sqlx::Error> {
 	let mut rows = query!(
@@ -838,21 +839,11 @@ pub async fn get_user_by_phone_number(
 			"user".*
 		FROM
 			"user"
-		INNER JOIN
-			user_phone_number
-		ON
-			"user".id = user_phone_number.user_id
-		INNER JOIN
-			phone_number_country_code
-		ON
-			user_phone_number.country_code = phone_number_country_code.country_code
 		WHERE
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_phone_number.number
-			) = $1;
+			backup_phone_country_code = $1 AND
+			backup_phone_number = $2;
 		"#,
+		country_code,
 		phone_number
 	)
 	.fetch_all(&mut *connection)
@@ -1237,6 +1228,7 @@ pub async fn get_user_to_sign_up_by_username(
 
 pub async fn get_user_to_sign_up_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let mut rows = query!(
@@ -1258,17 +1250,11 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			user_to_sign_up.otp_expiry
 		FROM
 			user_to_sign_up
-		INNER JOIN 
-			phone_number_country_code
-		ON
-			phone_number_country_code.country_code = user_to_sign_up.backup_phone_country_code
 		WHERE
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_to_sign_up.backup_phone_number
-			) = $1;
+			backup_phone_country_code = $1 AND
+			backup_phone_number = $2;
 		"#,
+		country_code,
 		phone_number
 	)
 	.fetch_all(&mut *connection)
@@ -1646,8 +1632,9 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	Ok(rows.next())
 }
 
-pub async fn get_personal_phone_number_to_be_verified_by_phone_number(
+pub async fn get_phone_number_to_be_verified_by_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
 	let mut rows = query!(
@@ -1656,17 +1643,11 @@ pub async fn get_personal_phone_number_to_be_verified_by_phone_number(
 			user_unverified_phone_number.*
 		FROM
 			user_unverified_phone_number
-		INNER JOIN
-			phone_number_country_code
-		ON
-			user_unverified_phone_number.country_code = phone_number_country_code.country_code
 		WHERE
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_unverified_phone_number.phone_number
-			) = $1;
+			country_code = $1 AND
+			phone_number = $2;
 		"#,
+		country_code,
 		phone_number
 	)
 	.fetch_all(&mut *connection)

@@ -106,20 +106,24 @@ pub async fn is_phone_number_allowed(
 			.status(400)
 			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
-	let user = db::get_user_by_phone_number(connection, &phone_number).await?;
+	let user = db::get_user_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
 
 	if user.is_some() {
 		return Ok(false);
 	}
 
 	// check if the email has already been registered for verifying
-	let verify_status =
-		db::get_personal_phone_number_to_be_verified_by_phone_number(
-			connection,
-			&phone_number,
-		)
-		.await?;
+	let verify_status = db::get_phone_number_to_be_verified_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
 
 	if let Some(verify_status) = verify_status {
 		if verify_status.verification_token_expiry > get_current_time_millis() {
@@ -127,9 +131,12 @@ pub async fn is_phone_number_allowed(
 		}
 	}
 
-	let sign_up_status =
-		db::get_user_to_sign_up_by_phone_number(connection, &phone_number)
-			.await?;
+	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
 
 	if let Some(status) = sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
