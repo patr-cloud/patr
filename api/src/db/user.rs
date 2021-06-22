@@ -2083,7 +2083,7 @@ pub async fn get_personal_emails_for_user(
 pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-) -> Result<i64, sqlx::Error> {
+) -> Result<u64, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
@@ -2103,7 +2103,7 @@ pub async fn get_personal_email_count_for_domain_id(
 
 	let rows = rows.unwrap_or(0);
 
-	Ok(rows)
+	Ok(rows as u64)
 }
 
 pub async fn get_phone_numbers_for_user(
