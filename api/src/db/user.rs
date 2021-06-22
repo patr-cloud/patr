@@ -2038,7 +2038,6 @@ pub async fn get_phone_country_by_country_code(
 	Ok(rows.into_iter().next())
 }
 
-#[allow(dead_code)]
 pub async fn add_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
