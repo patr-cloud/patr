@@ -1384,6 +1384,31 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	Ok(rows.next())
 }
 
+pub async fn delete_personal_email_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_unverified_personal_email
+		WHERE
+			user_id = $1 AND
+			local = $2 AND
+			domain_id = $3;
+		"#,
+		user_id,
+		email_local,
+		domain_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_phone_number_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -1421,6 +1446,31 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	});
 
 	Ok(rows.next())
+}
+
+pub async fn delete_phone_number_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_unverified_phone_number
+		WHERE
+			user_id = $1 AND
+			country_code = $2 AND
+			phone_number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 pub async fn add_personal_email_for_user(
