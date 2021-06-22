@@ -43,7 +43,7 @@ pub async fn initialize_rbac_pre(
 				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			created BIGINT NOT NULL
-				CONSTRAINT organisation_created_ck_unsigned
+				CONSTRAINT organisation_created_chk_unsigned
 						CHECK(created >= 0),
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);

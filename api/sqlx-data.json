@@ -958,16 +958,6 @@
       "nullable": []
     }
   },
-  "377f9c3d792b78ec844153b27f29a13c7f6ee5b4155f45e549fbd9f665e455b7": {
-    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "378a25925a5613badbf9b5406f060d7106f7410a8c45b075c20655cd483e5758": {
     "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.docker.vicara.co', $3, NULL, $4, NULL);",
     "describe": {
@@ -995,6 +985,16 @@
   },
   "3a520b119fa3ee7b6704e7daa3e632b5f072223159051c10b2feb14e4af4f6af": {
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_organisation_id FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "3be319c2ba802f3b5c8e3f3b262951a61f49aae4599de3f2a86d0ec4b3f86bf6": {
+    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT organisation_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1681,8 +1681,8 @@
       ]
     }
   },
-  "6155ec064d38d7bb9ffb58e400b363cf1092b519f31bb574e1b07b63a6885360": {
-    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_ck_unsigned CHECK(token_expiry >= 0) );",
+  "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
+    "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1691,8 +1691,8 @@
       "nullable": []
     }
   },
-  "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
-    "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
+  "6c358b1315434f217977f83c02a85672f43f7cb251a4594f25cc1616d91cd64b": {
+    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1833,23 +1833,6 @@
           "Bytea",
           "Text",
           "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "7b5c68437d1c2c6686003926f6d821aa3bc72e8d29b392393d86173f9c76284a": {
-    "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'deployment', $5, $6, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Int4"
         ]
       },
       "nullable": []

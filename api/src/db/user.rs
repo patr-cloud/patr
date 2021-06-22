@@ -123,7 +123,7 @@ pub async fn initialize_users_pre(
 					REFERENCES "user"(id),
 			token TEXT NOT NULL,
 			token_expiry BIGINT NOT NULL
-				CONSTRAINT password_reset_request_token_expiry_ck_unsigned
+				CONSTRAINT password_reset_request_token_expiry_chk_unsigned
 					CHECK(token_expiry >= 0)
 		);
 		"#
