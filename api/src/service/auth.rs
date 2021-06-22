@@ -434,7 +434,7 @@ pub async fn forgot_password(
 	user_id: &str,
 	preferred_recovery_option: PreferredRecoveryOption,
 ) -> Result<(), Error> {
-	let user = db::get_user_by_username_or_email(connection, &user_id)
+	let user = db::get_user_by_username_email_or_phone_number(connection, &user_id)
 		.await?
 		.status(200)
 		.body(error!(USER_NOT_FOUND).to_string())?;
