@@ -4143,6 +4143,26 @@
       "nullable": []
     }
   },
+  "d804031c51fffec0b41dda4db1854bf360dacedcbf11e61467b3f77546568db6": {
+    "query": "SELECT COUNT(personal_email.domain_id) as \"count!\" FROM personal_email WHERE personal_email.domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE organisation_name = $1;",
     "describe": {

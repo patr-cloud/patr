@@ -2138,6 +2138,31 @@ pub async fn get_personal_emails_for_user(
 	Ok(rows)
 }
 
+pub async fn get_personal_email_count_for_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+) -> Result<u64, sqlx::Error> {
+	let count = query!(
+		r#"
+		SELECT
+			COUNT(personal_email.domain_id) as "count!"
+		FROM
+			personal_email
+		WHERE
+			personal_email.domain_id = $1;
+		"#,
+		domain_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.next()
+	.map(|row| row.count)
+	.unwrap_or(0);
+
+	Ok(count as u64)
+}
+
 pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
