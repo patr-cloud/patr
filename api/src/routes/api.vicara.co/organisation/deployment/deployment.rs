@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::{json, Map, Value};
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -22,7 +22,7 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(&app);
+	let mut app = create_eve_app(app);
 
 	// List all deployments
 	app.get(
@@ -119,70 +119,6 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_deployment_info)),
-		],
-	);
-
-	// endpoint to update deployment configuration.
-	app.get(
-		"/:deploymentId/configuration",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_deployment_config)),
-		],
-	);
-
-	// endpoint to update deployment configuration.
-	app.post(
-		"/:deploymentId/configuration",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(update_deployment_config)),
 		],
 	);
 
@@ -354,125 +290,6 @@ async fn get_deployment_info(
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
 		}
-	}));
-	Ok(context)
-}
-
-async fn get_deployment_config(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
-	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let env_vars: Map<String, Value> =
-		db::get_environment_variables_for_deployment(
-			context.get_database_connection(),
-			&deployment_id,
-		)
-		.await?
-		.into_iter()
-		.map(|(key, value)| (key, Value::String(value)))
-		.collect();
-	let ports = db::get_exposed_ports_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?;
-	let volumes: Map<String, Value> =
-		db::get_persistent_volumes_for_deployment(
-			context.get_database_connection(),
-			&deployment_id,
-		)
-		.await?
-		.into_iter()
-		.map(|volume| (volume.name, Value::String(volume.path)))
-		.collect();
-
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ENVIRONMENT_VARIABLES: env_vars,
-		request_keys::EXPOSED_PORTS: ports,
-		request_keys::PERSISTENT_VOLUMES: volumes
-	}));
-	Ok(context)
-}
-
-// function to store port, env variables and mount path
-pub async fn update_deployment_config(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
-	let body = context.get_body_object().clone();
-
-	// get array of ports
-	let port_values = body
-		.get(request_keys::EXPOSED_PORTS)
-		.map(|values| values.as_array())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let env_var_values = body
-		.get(request_keys::ENVIRONMENT_VARIABLES)
-		.map(|values| values.as_object())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let volume_values = body
-		.get(request_keys::PERSISTENT_VOLUMES)
-		.map(|values| values.as_object())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let mut exposed_ports = vec![];
-	let mut environment_variables = vec![];
-	let mut persistent_volumes = vec![];
-
-	for port in port_values {
-		let port = serde_json::from_value(port.clone())
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-		exposed_ports.push(port);
-	}
-
-	for (key, value) in env_var_values {
-		let value = value
-			.as_str()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-		environment_variables.push((key.as_str(), value));
-	}
-
-	for (name, path) in volume_values {
-		let path = path
-			.as_str()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-		persistent_volumes.push((name.as_str(), path));
-	}
-
-	service::update_configuration_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-		&exposed_ports,
-		&environment_variables,
-		&persistent_volumes,
-	)
-	.await?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true
 	}));
 	Ok(context)
 }

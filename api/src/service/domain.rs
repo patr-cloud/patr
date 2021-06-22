@@ -12,7 +12,12 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{constants::ResourceOwnerType, validator, Error},
+	utils::{
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -41,7 +46,7 @@ pub async fn ensure_personal_domain_exists(
 		db::create_generic_domain(
 			connection,
 			domain_id,
-			&domain_name,
+			domain_name,
 			&ResourceOwnerType::Personal,
 		)
 		.await?;
@@ -87,12 +92,13 @@ pub async fn add_domain_to_organisation(
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
 		organisation_id,
+		get_current_time_millis(),
 	)
 	.await?;
 	db::create_generic_domain(
 		connection,
 		domain_id,
-		&domain_name,
+		domain_name,
 		&ResourceOwnerType::Organisation,
 	)
 	.await?;
@@ -107,7 +113,7 @@ pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
-	let domain = db::get_organisation_domain_by_id(connection, &domain_id)
+	let domain = db::get_organisation_domain_by_id(connection, domain_id)
 		.await?
 		.status(200)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;

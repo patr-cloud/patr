@@ -13,7 +13,7 @@ pub async fn is_organisation_name_allowed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_name: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_organisation_name_valid(&organisation_name) {
+	if !validator::is_organisation_name_valid(organisation_name) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
@@ -50,12 +50,13 @@ pub async fn create_organisation(
 			.get(rbac::resource_types::ORGANISATION)
 			.unwrap(),
 		resource_id,
+		get_current_time_millis(),
 	)
 	.await?;
 	db::create_organisation(
 		connection,
 		resource_id,
-		&organisation_name,
+		organisation_name,
 		super_admin_id,
 		get_current_time_millis(),
 	)

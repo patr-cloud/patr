@@ -19,7 +19,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	if db::get_user_by_email(connection, &email_address)
+	if db::get_user_by_email(connection, email_address)
 		.await?
 		.is_some()
 	{
@@ -44,9 +44,9 @@ pub async fn add_personal_email_to_be_verified_for_user(
 
 	db::add_personal_email_to_be_verified_for_user(
 		connection,
-		&email_local,
+		email_local,
 		personal_domain_id.as_bytes(),
-		&user_id,
+		user_id,
 		&verification_token,
 		token_expiry,
 	)
@@ -121,7 +121,7 @@ pub async fn change_password_for_user(
 
 	let new_password = service::hash(new_password.as_bytes())?;
 
-	db::update_user_password(connection, &user_id, &new_password).await?;
+	db::update_user_password(connection, user_id, &new_password).await?;
 
 	Ok(())
 }

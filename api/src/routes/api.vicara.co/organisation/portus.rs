@@ -340,7 +340,7 @@ async fn create(
 	// check if container name already exists
 	let portus_tunnel = db::get_portus_tunnel_by_name(
 		context.get_database_connection(),
-		&tunnel_name,
+		tunnel_name,
 	)
 	.await?;
 
@@ -382,6 +382,7 @@ async fn create(
 			.get(rbac::resource_types::PORTUS)
 			.unwrap(),
 		&organisation_id,
+		get_current_time_millis(),
 	)
 	.await;
 
@@ -391,7 +392,7 @@ async fn create(
 		&username,
 		ssh_port,
 		exposed_port,
-		&tunnel_name,
+		tunnel_name,
 		created,
 	)
 	.await;

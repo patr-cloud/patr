@@ -20,7 +20,7 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(&app);
+	let mut app = create_eve_app(app);
 
 	// List all applications
 	app.get(

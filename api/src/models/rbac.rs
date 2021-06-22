@@ -54,8 +54,10 @@ pub mod permissions {
 			pub const CREATE: &str = "organisation::deployment::create";
 			pub const INFO: &str = "organisation::deployment::info";
 			pub const DELETE: &str = "organisation::deployment::delete";
+			#[allow(dead_code)]
 			pub const EDIT: &str = "organisation::deployment::edit";
 
+			#[allow(dead_code)]
 			pub mod upgrade_path {
 				pub const LIST: &str =
 					"organisation::deployment::upgradePath::list";
@@ -69,6 +71,7 @@ pub mod permissions {
 					"organisation::deployment::upgradePath::edit";
 			}
 
+			#[allow(dead_code)]
 			pub mod entry_point {
 				pub const LIST: &str =
 					"organisation::deployment::entryPoint::list";
@@ -97,11 +100,11 @@ pub mod permissions {
 	}
 }
 
+#[allow(dead_code)]
 #[api_macros::iterable_module(consts, recursive = false)]
 pub mod resource_types {
 	pub const ORGANISATION: &str = "organisation";
 	pub const DOMAIN: &str = "domain";
-	#[allow(dead_code)]
 	pub const APPLICATION: &str = "application";
 	pub const PORTUS: &str = "portus";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
