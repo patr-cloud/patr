@@ -227,7 +227,7 @@ async fn update_organisation_info(
 
 	let allowed = service::is_organisation_name_allowed(
 		context.get_database_connection(),
-		name,
+		&name,
 	)
 	.await?;
 	if !allowed {

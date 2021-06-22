@@ -42,9 +42,6 @@ pub async fn initialize_rbac_pre(
 			owner_id BYTEA NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
-			created BIGINT NOT NULL
-				CONSTRAINT organisation_created_ck_unsigned
-						CHECK(created >= 0),
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
@@ -568,20 +565,18 @@ pub async fn create_resource(
 	resource_name: &str,
 	resource_type_id: &[u8],
 	owner_id: &[u8],
-	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			resource
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4);
 		"#,
 		resource_id,
 		resource_name,
 		resource_type_id,
-		owner_id,
-		created as i64
+		owner_id
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -594,7 +589,8 @@ pub async fn generate_new_resource_id(
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
-	let mut exists = query!(
+	let mut rows = query_as!(
+		Resource,
 		r#"
 		SELECT
 			*
@@ -606,21 +602,12 @@ pub async fn generate_new_resource_id(
 		uuid.as_bytes().as_ref()
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| Resource {
-		id: row.id,
-		name: row.name,
-		resource_type_id: row.resource_type_id,
-		owner_id: row.owner_id,
-		created: row.created as u64,
-	})
-	.next()
-	.is_some();
+	.await?;
 
-	while exists {
+	while !rows.is_empty() {
 		uuid = Uuid::new_v4();
-		exists = query!(
+		rows = query_as!(
+			Resource,
 			r#"
 			SELECT
 				*
@@ -632,17 +619,7 @@ pub async fn generate_new_resource_id(
 			uuid.as_bytes().as_ref()
 		)
 		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.map(|row| Resource {
-			id: row.id,
-			name: row.name,
-			resource_type_id: row.resource_type_id,
-			owner_id: row.owner_id,
-			created: row.created as u64,
-		})
-		.next()
-		.is_some();
+		.await?;
 	}
 
 	Ok(uuid)
@@ -652,7 +629,8 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let mut rows = query!(
+	let rows = query_as!(
+		Resource,
 		r#"
 		SELECT
 			*
@@ -664,17 +642,9 @@ pub async fn get_resource_by_id(
 		resource_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| Resource {
-		id: row.id,
-		name: row.name,
-		resource_type_id: row.resource_type_id,
-		owner_id: row.owner_id,
-		created: row.created as u64,
-	});
+	.await?;
 
-	Ok(rows.next())
+	Ok(rows.into_iter().next())
 }
 
 pub async fn delete_resource(

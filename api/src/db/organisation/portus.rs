@@ -15,7 +15,10 @@ pub async fn initialize_portus_pre(
 			exposed_port INTEGER NOT NULL
 				CONSTRAINT portus_tunnel_chk_exposed_port_u16
 					CHECK(exposed_port >= 0 AND exposed_port <= 65534),
-			name VARCHAR(50) NOT NULL
+			name VARCHAR(50) NOT NULL,
+			created BIGINT NOT NULL
+				CONSTRAINT portus_tunnel_chk_created_unsigned
+					CHECK(created >= 0)
 		);
 		"#
 	)

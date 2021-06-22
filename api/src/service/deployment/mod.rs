@@ -1,11 +1,21 @@
+use std::collections::HashMap;
+
 use eve_rs::AsError;
 use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
-	utils::{get_current_time_millis, Error},
+	models::{
+		db_mapping::{
+			Deployment,
+			DeploymentConfiguration,
+			DeploymentRepositoryImage,
+			MachineType,
+		},
+		rbac,
+	},
+	utils::Error,
 	Database,
 };
 
@@ -43,8 +53,7 @@ pub async fn create_deployment_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
-		organisation_id,
-		get_current_time_millis(),
+		&organisation_id,
 	)
 	.await?;
 
@@ -84,4 +93,488 @@ pub async fn create_deployment_in_organisation(
 	}
 
 	Ok(deployment_uuid)
+}
+
+pub async fn update_configuration_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	exposed_ports: &[u16],
+	environment_variables: &[(&str, &str)],
+	persistent_volumes: &[(&str, &str)],
+) -> Result<(), Error> {
+	// check if deployment exists.
+	db::get_deployment_by_id(connection, &deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// iterate over ports and add it to port table
+	db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
+		.await?;
+	for &port in exposed_ports {
+		db::add_exposed_port_for_deployment(connection, deployment_id, port)
+			.await?;
+	}
+
+	// iterate over env vars and add it to env vars table
+	db::remove_all_environment_variables_for_deployment(
+		connection,
+		deployment_id,
+	)
+	.await?;
+	for &(key, value) in environment_variables {
+		db::add_environment_variable_for_deployment(
+			connection,
+			deployment_id,
+			key,
+			value,
+		)
+		.await?;
+	}
+
+	// iterate over persistent volumes and add it to the db
+	db::remove_all_persistent_volumes_for_deployment(connection, deployment_id)
+		.await?;
+	for (name, path) in persistent_volumes {
+		db::add_persistent_volume_for_deployment(
+			connection,
+			deployment_id,
+			name,
+			path,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
+
+pub async fn create_deployment_upgrade_path_in_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+	name: &str,
+	machine_types: &[MachineType],
+	default_machine_type: &MachineType,
+) -> Result<Uuid, Error> {
+	db::get_deployment_upgrade_path_by_name_in_organisation(
+		connection,
+		name,
+		organisation_id,
+	)
+	.await?
+	.status(409)
+	.body(error!(RESOURCE_EXISTS).to_string())?;
+
+	let upgrade_path_uuid = db::generate_new_resource_id(connection).await?;
+	let upgrade_path_id = upgrade_path_uuid.as_bytes();
+
+	db::begin_deferred_constraints(connection).await?;
+	db::create_resource(
+		connection,
+		upgrade_path_id,
+		&format!("Deployment Upgrade Path: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DEPLOYMENT_UPGRADE_PATH)
+			.unwrap(),
+		organisation_id,
+	)
+	.await?;
+	let default_machine_type_id = if let Some(id) =
+		db::get_deployment_machine_type_id_for_configuration(
+			connection,
+			default_machine_type.cpu_count,
+			default_machine_type.memory_count,
+		)
+		.await?
+	{
+		id
+	} else {
+		let machine_type_uuid =
+			db::generate_new_deployment_machine_type_id(connection).await?;
+		let machine_type_id = machine_type_uuid.as_bytes();
+		db::add_deployment_machine_type(
+			connection,
+			machine_type_id,
+			default_machine_type.cpu_count,
+			default_machine_type.memory_count,
+		)
+		.await?;
+		machine_type_id.to_vec()
+	};
+	db::create_deployment_upgrade_path(
+		connection,
+		upgrade_path_id,
+		name,
+		&default_machine_type_id,
+	)
+	.await?;
+
+	// TODO sort machine_types
+
+	// For each machine type, if a machine type already exists in the db, use
+	// that. If it doesn't, insert a new one
+	for machine_type in machine_types {
+		let machine_type_id =
+			db::get_deployment_machine_type_id_for_configuration(
+				connection,
+				machine_type.cpu_count,
+				machine_type.memory_count,
+			)
+			.await?;
+		let machine_type_id = if let Some(id) = machine_type_id {
+			id
+		} else {
+			let machine_type_uuid =
+				db::generate_new_deployment_machine_type_id(connection).await?;
+			let machine_type_id = machine_type_uuid.as_bytes();
+			db::add_deployment_machine_type(
+				connection,
+				machine_type_id,
+				machine_type.cpu_count,
+				machine_type.memory_count,
+			)
+			.await?;
+			machine_type_id.to_vec()
+		};
+
+		db::add_deployment_machine_type_for_upgrade_path(
+			connection,
+			upgrade_path_id,
+			&machine_type_id,
+		)
+		.await?;
+	}
+	db::end_deferred_constraints(connection).await?;
+
+	Ok(upgrade_path_uuid)
+}
+
+pub async fn update_deployment_upgrade_path(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	upgrade_path_id: &[u8],
+	name: &str,
+	machine_types: &[MachineType],
+) -> Result<(), Error> {
+	let resource = db::get_resource_by_id(connection, &upgrade_path_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::get_deployment_upgrade_path_by_name_in_organisation(
+		connection,
+		name,
+		&resource.owner_id,
+	)
+	.await?
+	.status(409)
+	.body(error!(RESOURCE_EXISTS).to_string())?;
+
+	db::update_deployment_upgrade_path_name_by_id(
+		connection,
+		upgrade_path_id,
+		name,
+	)
+	.await?;
+
+	db::remove_all_machine_types_for_deployment_upgrade_path(
+		connection,
+		upgrade_path_id,
+	)
+	.await?;
+
+	// For each machine type, if a machine type already exists in the db, use
+	// that. If it doesn't, insert a new one
+	for machine_type in machine_types {
+		let machine_type_id =
+			db::get_deployment_machine_type_id_for_configuration(
+				connection,
+				machine_type.cpu_count,
+				machine_type.memory_count,
+			)
+			.await?;
+		let machine_type_id = if let Some(id) = machine_type_id {
+			id
+		} else {
+			let machine_type_uuid =
+				db::generate_new_deployment_machine_type_id(connection).await?;
+			let machine_type_id = machine_type_uuid.as_bytes();
+			db::add_deployment_machine_type(
+				connection,
+				machine_type_id,
+				machine_type.cpu_count,
+				machine_type.memory_count,
+			)
+			.await?;
+			machine_type_id.to_vec()
+		};
+
+		db::add_deployment_machine_type_for_upgrade_path(
+			connection,
+			upgrade_path_id,
+			&machine_type_id,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
+
+pub async fn create_deployment_entry_point_in_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+	sub_domain: &str,
+	domain_id: &[u8],
+	path: &str,
+	entry_point_type: &str,
+	deployment_id: Option<&[u8]>,
+	deployment_port: Option<u16>,
+	url: Option<&str>,
+) -> Result<Uuid, Error> {
+	db::get_deployment_entry_point_by_url(
+		connection, sub_domain, domain_id, path,
+	)
+	.await?
+	.status(409)
+	.body(error!(RESOURCE_EXISTS).to_string())?;
+
+	let entry_point_uuid = db::generate_new_resource_id(connection).await?;
+	let entry_point_id = entry_point_uuid.as_bytes();
+
+	let domain = db::get_organisation_domain_by_id(connection, domain_id)
+		.await?
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// Ensure that you can only make entry points to domains in your
+	// organisation
+	let domain_resource = db::get_resource_by_id(connection, domain_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	if domain_resource.owner_id != organisation_id {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	}
+
+	db::create_resource(
+		connection,
+		entry_point_id,
+		&format!(
+			"Deployment entry point: {}.{}.{}",
+			sub_domain, domain.name, path
+		),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DEPLOYMENT_ENTRY_POINT)
+			.unwrap(),
+		organisation_id,
+	)
+	.await?;
+
+	match entry_point_type {
+		"deployment" => {
+			if let (Some(deployment_id), Some(deployment_port)) =
+				(deployment_id, deployment_port)
+			{
+				db::add_deployment_entry_point_for_deployment(
+					connection,
+					entry_point_id,
+					sub_domain,
+					domain_id,
+					path,
+					deployment_id,
+					deployment_port,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		"redirect" => {
+			if let Some(url) = url {
+				db::add_deployment_entry_point_for_redirect(
+					connection,
+					entry_point_id,
+					sub_domain,
+					domain_id,
+					path,
+					url,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		"proxy" => {
+			if let Some(url) = url {
+				db::add_deployment_entry_point_for_proxy(
+					connection,
+					entry_point_id,
+					sub_domain,
+					domain_id,
+					path,
+					url,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()))
+		}
+	}
+
+	Ok(entry_point_uuid)
+}
+
+pub async fn update_deployment_entry_point(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	entry_point_id: &[u8],
+	entry_point_type: &str,
+	deployment_id: Option<&[u8]>,
+	deployment_port: Option<u16>,
+	url: Option<&str>,
+) -> Result<(), Error> {
+	db::get_deployment_entry_point_by_id(connection, entry_point_id)
+		.await?
+		.status(409)
+		.body(error!(RESOURCE_EXISTS).to_string())?;
+
+	match entry_point_type {
+		"deployment" => {
+			if let (Some(deployment_id), Some(deployment_port)) =
+				(deployment_id, deployment_port)
+			{
+				db::update_deployment_entry_point_to_deployment(
+					connection,
+					entry_point_id,
+					deployment_id,
+					deployment_port,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		"redirect" => {
+			if let Some(url) = url {
+				db::update_deployment_entry_point_to_redirect(
+					connection,
+					entry_point_id,
+					url,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		"proxy" => {
+			if let Some(url) = url {
+				db::update_deployment_entry_point_to_proxy(
+					connection,
+					entry_point_id,
+					url,
+				)
+				.await?;
+			} else {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()));
+			}
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()))
+		}
+	}
+
+	Ok(())
+}
+
+pub async fn get_deployment_config_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<DeploymentConfiguration, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let ports =
+		db::get_exposed_ports_for_deployment(connection, deployment_id).await?;
+	let volumes =
+		db::get_persistent_volumes_for_deployment(connection, deployment_id)
+			.await?;
+	let environment_variables =
+		db::get_environment_variables_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.collect::<HashMap<_, _>>();
+	let upgrade_path = db::get_deployment_upgrade_path_by_id(
+		connection,
+		&deployment.upgrade_path_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let upgrade_path_machines =
+		db::get_machine_types_in_deployment_upgrade_path(
+			connection,
+			&deployment.upgrade_path_id,
+		)
+		.await?;
+	let image = if deployment.registry == "registry.docker.vicara.co" {
+		let full_image = deployment.get_full_image(connection).await?;
+		DeploymentRepositoryImage::Internal {
+			image_name: full_image.replace("registry.docker.vicara.co/", ""),
+			repository_id: deployment
+				.repository_id
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?,
+		}
+	} else {
+		DeploymentRepositoryImage::External {
+			registry: deployment.registry,
+			image_name: deployment
+				.image_name
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?,
+		}
+	};
+	let Deployment {
+		id,
+		image_tag,
+		name,
+		..
+	} = deployment;
+
+	Ok(DeploymentConfiguration {
+		id,
+		name,
+		image,
+		image_tag,
+		ports,
+		volumes,
+		environment_variables,
+		upgrade_path,
+		upgrade_path_machines,
+	})
 }

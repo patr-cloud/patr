@@ -26,7 +26,9 @@ pub async fn initialize_organisations_pre(
 			super_admin_id BYTEA NOT NULL
 				CONSTRAINT organisation_super_admin_id_fk_user_id
 					REFERENCES "user"(id),
-			active BOOLEAN NOT NULL DEFAULT FALSE
+			active BOOLEAN NOT NULL DEFAULT FALSE,
+			created BIGINT NOT NULL
+				CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0)
 		);
 		"#
 	)

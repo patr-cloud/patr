@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +56,7 @@ pub struct Deployment {
 	pub repository_id: Option<Vec<u8>>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
-	pub deployed_image: Option<String>,
+	pub upgrade_path_id: Vec<u8>,
 }
 
 impl Deployment {
@@ -97,6 +99,97 @@ impl Deployment {
 					.status(500)
 					.body(error!(SERVER_ERROR).to_string())?
 			))
+		}
+	}
+}
+
+pub struct VolumeMount {
+	pub deployment_id: Vec<u8>,
+	pub name: String,
+	pub path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MachineType {
+	pub cpu_count: u8,
+	pub memory_count: f32,
+}
+
+pub struct DeploymentUpgradePath {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub default_machine_type: Vec<u8>,
+}
+
+pub enum DeploymentEntryPointValue {
+	Deployment {
+		deployment_id: Vec<u8>,
+		deployment_port: u16,
+	},
+	Redirect {
+		url: String,
+	},
+	Proxy {
+		url: String,
+	},
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "DEPLOYMENT_ENTRY_POINT_TYPE", rename_all = "lowercase")]
+pub enum DeploymentEntryPointType {
+	Deployment,
+	Redirect,
+	Proxy,
+}
+
+pub struct DeploymentEntryPoint {
+	pub id: Vec<u8>,
+	pub sub_domain: Option<String>,
+	pub domain_id: Vec<u8>,
+	pub path: String,
+	pub entry_point_type: DeploymentEntryPointValue,
+}
+
+pub enum DeploymentRepositoryImage {
+	// image comes from the internal registry
+	Internal {
+		repository_id: Vec<u8>,
+		image_name: String,
+	},
+	External {
+		registry: String,
+		image_name: String,
+	},
+}
+
+pub struct DeploymentConfiguration {
+	pub id: Vec<u8>,
+	pub name: String,
+	pub image: DeploymentRepositoryImage,
+	pub image_tag: String,
+	pub ports: Vec<u16>,
+	pub volumes: Vec<VolumeMount>,
+	pub environment_variables: HashMap<String, String>,
+	pub upgrade_path: DeploymentUpgradePath,
+	pub upgrade_path_machines: Vec<MachineType>,
+}
+
+impl DeploymentConfiguration {
+	pub async fn get_full_image_name(&self) -> String {
+		match &self.image {
+			DeploymentRepositoryImage::Internal {
+				repository_id: _,
+				image_name,
+			} => {
+				format!("registry.docker.vicara.co/{}", image_name)
+			}
+			DeploymentRepositoryImage::External {
+				registry,
+				image_name,
+			} => {
+				format!("{}/{}", registry, image_name)
+			}
 		}
 	}
 }

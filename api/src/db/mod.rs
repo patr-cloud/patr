@@ -67,7 +67,8 @@ pub async fn begin_deferred_constraints(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		SET CONSTRAINTS ALL DEFERRED;
+		SET CONSTRAINTS
+		ALL DEFERRED;
 		"#,
 	)
 	.execute(&mut *connection)
@@ -81,7 +82,8 @@ pub async fn end_deferred_constraints(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		SET CONSTRAINTS ALL IMMEDIATE;
+		SET CONSTRAINTS
+		ALL IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)

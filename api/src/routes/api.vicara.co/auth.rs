@@ -30,7 +30,7 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+	let mut app = create_eve_app(&app);
 
 	app.post(
 		"/sign-in",
@@ -100,13 +100,13 @@ async fn sign_in(
 
 	let user_data = db::get_user_by_username_or_email(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	.status(200)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(password, &user_data.password)?;
+	let success = service::validate_hash(&password, &user_data.password)?;
 
 	if !success {
 		context.json(error!(INVALID_PASSWORD));
@@ -651,7 +651,7 @@ async fn docker_registry_login(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			base64::decode(value)
+			hex::decode(value)
 				.ok()
 				.map(|value| String::from_utf8(value).ok())
 				.flatten()
@@ -701,7 +701,7 @@ async fn docker_registry_login(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(401)
 			.body(
@@ -761,7 +761,7 @@ async fn docker_registry_authenticate(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			base64::decode(value)
+			hex::decode(value)
 				.ok()
 				.map(|value| String::from_utf8(value).ok())
 				.flatten()
@@ -811,7 +811,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_database_connection(), username)
+		db::get_user_by_username(context.get_database_connection(), &username)
 			.await?
 			.status(401)
 			.body(
@@ -934,7 +934,7 @@ async fn docker_registry_authenticate(
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
-	let is_repo_name_valid = validator::is_docker_repo_name_valid(repo_name);
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repo_name);
 	if !is_repo_name_valid {
 		Error::as_result().status(400).body(
 			json!({
@@ -966,7 +966,7 @@ async fn docker_registry_authenticate(
 
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),
-		repo_name,
+		&repo_name,
 		&org.id,
 	)
 	.await?

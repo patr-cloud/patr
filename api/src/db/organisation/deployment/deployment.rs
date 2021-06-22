@@ -1,4 +1,9 @@
-use crate::{models::db_mapping::Deployment, query, query_as, Database};
+use crate::{
+	models::db_mapping::{Deployment, VolumeMount},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_deployment_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
@@ -13,7 +18,7 @@ pub async fn initialize_deployment_pre(
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
-			deployed_image TEXT,
+			upgrade_path_id BYTEA NOT NULL,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(			
 				(
 					registry = 'registry.docker.vicara.co' AND
@@ -69,6 +74,56 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *transaction)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployment_exposed_port(
+			deployment_id BYTEA CONSTRAINT deployment_exposed_fk_deployment_id
+				REFERENCES deployment(id),
+			port INTEGER NOT NULL
+				CONSTRAINT deployment_exposed_port_chk_port_u16
+					CHECK(port >= 0 AND port <= 65534),
+			CONSTRAINT deployment_exposed_port_pk
+				PRIMARY KEY(deployment_id, port)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_environment_variable(
+			deployment_id BYTEA
+				CONSTRAINT deployment_environment_variable_fk_deployment_id
+					REFERENCES deployment(id),
+			name VARCHAR(50) NOT NULL,
+			value VARCHAR(50) NOT NULL,
+			CONSTRAINT deployment_environment_variable_pk
+				PRIMARY KEY(deployment_id, name)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_persistent_volume(
+			deployment_id BYTEA
+				CONSTRAINT deployment_persistent_volume_fk_deployment_id
+					REFERENCES deployment(id),
+			name VARCHAR(50) NOT NULL,
+			path VARCHAR(255) NOT NULL,
+			CONSTRAINT deployment_persistent_volume_pk
+				PRIMARY KEY(deployment_id, name),
+			CONSTRAINT deployment_persistent_volume_uq_deployment_id_path
+				UNIQUE(deployment_id, path)
+		);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
 	Ok(())
 }
 
@@ -80,6 +135,15 @@ pub async fn initialize_deployment_post(
 		r#"
 		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *transaction)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_upgrade_path_id
+		FOREIGN KEY(upgrade_path_id) REFERENCES deployment_upgrade_path(id);
 		"#
 	)
 	.execute(&mut *transaction)
@@ -100,7 +164,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.docker.vicara.co', $3, NULL, $4, 0);
+			($1, $2, 'registry.docker.vicara.co', $3, NULL, $4);
 		"#,
 		deployment_id,
 		name,
@@ -125,7 +189,7 @@ pub async fn create_deployment_with_external_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, 0);
+			($1, $2, $3, NULL, $4, $5);
 		"#,
 		deployment_id,
 		name,
@@ -144,7 +208,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 	image_tag: &str,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -165,18 +229,14 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		organisation_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployments_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -194,18 +254,14 @@ pub async fn get_deployments_for_organisation(
 		organisation_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let row = query_as!(
+	Ok(query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -220,9 +276,7 @@ pub async fn get_deployment_by_id(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.next();
-
-	Ok(row)
+	.next())
 }
 
 pub async fn delete_deployment_by_id(
@@ -243,10 +297,197 @@ pub async fn delete_deployment_by_id(
 	.map(|_| ())
 }
 
-pub async fn get_all_deployments(
+pub async fn get_exposed_ports_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<u16>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.port as u16)
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn add_exposed_port_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	port: u16,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_exposed_port
+		VALUES
+			($1, $2);
+		"#,
+		deployment_id,
+		port as i32
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_exposed_ports_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_persistent_volumes_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<VolumeMount>, sqlx::Error> {
+	query_as!(
+		VolumeMount,
+		r#"
+		SELECT
+			*
+		FROM
+			deployment_persistent_volume
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn add_persistent_volume_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	name: &str,
+	path: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_persistent_volume
+		VALUES
+			($1, $2, $3);
+		"#,
+		deployment_id,
+		name,
+		path
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_persistent_volumes_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_persistent_volume
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.name, row.value))
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn add_environment_variable_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	key: &str,
+	value: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_environment_variable
+		VALUES
+			($1, $2, $3);
+		"#,
+		deployment_id,
+		key,
+		value
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_deployments_in_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_region: &str,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -255,10 +496,6 @@ pub async fn get_all_deployments(
 			deployment;
 		"#
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
-
-	Ok(rows)
+	.fetch_all(connection)
+	.await
 }

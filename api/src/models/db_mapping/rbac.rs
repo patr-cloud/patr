@@ -3,7 +3,6 @@ pub struct Resource {
 	pub name: String,
 	pub resource_type_id: Vec<u8>,
 	pub owner_id: Vec<u8>,
-	pub created: u64,
 }
 
 pub struct Role {

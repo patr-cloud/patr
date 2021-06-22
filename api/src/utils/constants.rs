@@ -51,7 +51,6 @@ impl FromStr for ResourceOwnerType {
 	}
 }
 
-#[allow(dead_code)]
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";

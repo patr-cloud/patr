@@ -11,7 +11,6 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
 		validator,
 		Error,
 		ErrorData,
@@ -23,7 +22,7 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(app);
+	let mut app = create_eve_app(&app);
 
 	// create new repository
 	app.post(
@@ -143,7 +142,7 @@ async fn create_docker_repository(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// check if repo name is valid
-	let is_repo_name_valid = validator::is_docker_repo_name_valid(repository);
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repository);
 	if !is_repo_name_valid {
 		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
 		return Ok(context);
@@ -156,7 +155,7 @@ async fn create_docker_repository(
 	// check if repository already exists
 	let check = db::get_repository_by_name(
 		context.get_database_connection(),
-		repository,
+		&repository,
 		&organisation_id,
 	)
 	.await?;
@@ -182,21 +181,20 @@ async fn create_docker_repository(
 	db::create_resource(
 		context.get_database_connection(),
 		resource_id,
-		repository,
+		&repository,
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
 			.get(rbac::resource_types::DOCKER_REPOSITORY)
 			.unwrap(),
 		&organisation_id,
-		get_current_time_millis(),
 	)
 	.await?;
 
 	db::create_docker_repository(
 		context.get_database_connection(),
 		resource_id,
-		repository,
+		&repository,
 		&organisation_id,
 	)
 	.await?;
