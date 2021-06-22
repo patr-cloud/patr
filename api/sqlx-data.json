@@ -1599,50 +1599,6 @@
       ]
     }
   },
-  "448ad6a9a4d3e878ade59dda75b6a511b9dee09fdb6bd31b49c97b60eceac41e": {
-    "query": "SELECT user_unverified_personal_email.* FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(user_unverified_personal_email.local, '@', domain.name) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "user_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "verification_token_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "verification_token_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -5193,6 +5149,50 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "e8476d5f9922fb82a5e249f9a4fc0ea4f3c2980892fcf79d236b2919941d250f": {
+    "query": "SELECT user_unverified_personal_email.* FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(local, '@', domain.name) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "e9190d8880f4128c2dd3c366e1e52de53a9552f30698c4da7d6085759af0938e": {

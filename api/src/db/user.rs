@@ -1549,6 +1549,39 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	Ok(rows.next())
 }
 
+pub async fn get_personal_email_to_be_verified_by_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email: &str,
+) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			user_unverified_personal_email.*
+		FROM
+			user_unverified_personal_email
+		INNER JOIN
+			domain
+		ON
+			domain.id = user_unverified_personal_email.domain_id
+		WHERE
+			CONCAT(local, '@', domain.name) = $1;
+		"#,
+		email
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PersonalEmailToBeVerified {
+		local: row.local,
+		domain_id: row.domain_id,
+		user_id: row.user_id,
+		verification_token_hash: row.verification_token_hash,
+		verification_token_expiry: row.verification_token_expiry as u64,
+	});
+
+	Ok(rows.next())
+}
+
 pub async fn delete_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -1597,6 +1630,43 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		"#,
 		user_id,
 		country_code,
+		phone_number
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PhoneNumberToBeVerified {
+		country_code: row.country_code,
+		phone_number: row.phone_number,
+		user_id: row.user_id,
+		verification_token_hash: row.verification_token_hash,
+		verification_token_expiry: row.verification_token_expiry as u64,
+	});
+
+	Ok(rows.next())
+}
+
+pub async fn get_personal_phone_number_to_be_verified_by_phone_number(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	phone_number: &str,
+) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
+	let mut rows = query!(
+		r#"
+		SELECT
+			user_unverified_phone_number.*
+		FROM
+			user_unverified_phone_number
+		INNER JOIN
+			phone_number_country_code
+		ON
+			user_unverified_phone_number.country_code = phone_number_country_code.country_code
+		WHERE
+			CONCAT(
+				'+',
+				phone_number_country_code.phone_code,
+				user_unverified_phone_number.phone_number
+			) = $1;
+		"#,
 		phone_number
 	)
 	.fetch_all(&mut *connection)
