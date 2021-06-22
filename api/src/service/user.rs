@@ -66,7 +66,7 @@ pub async fn verify_personal_email_address_for_user(
 		)
 		.await?
 		.status(400)
-		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+		.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(
 		otp,
@@ -87,6 +87,13 @@ pub async fn verify_personal_email_address_for_user(
 	}
 
 	db::add_personal_email_for_user(
+		connection,
+		user_id,
+		&email_verification_data.local,
+		&email_verification_data.domain_id,
+	)
+	.await?;
+	db::delete_personal_email_to_be_verified_for_user(
 		connection,
 		user_id,
 		&email_verification_data.local,
@@ -219,6 +226,18 @@ pub async fn delete_personal_email_address(
 	)
 	.await?;
 
+	let personal_email_count =
+		db::get_personal_email_count_for_domain_id(connection, &domain_id)
+			.await?;
+
+	if personal_email_count == 0 {
+		// first delete from personal domain
+		db::delete_personal_domain(connection, &domain_id).await?;
+
+		// then from the main domain table
+		db::delete_generic_domain(connection, &domain_id).await?;
+	}
+
 	Ok(())
 }
 
@@ -333,6 +352,13 @@ pub async fn verify_phone_number_for_user(
 	}
 
 	db::add_phone_number_for_user(
+		connection,
+		user_id,
+		&phone_verification_data.country_code,
+		&phone_verification_data.phone_number,
+	)
+	.await?;
+	db::delete_phone_number_to_be_verified_for_user(
 		connection,
 		user_id,
 		&phone_verification_data.country_code,

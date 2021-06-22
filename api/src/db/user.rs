@@ -3,19 +3,11 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		PhoneNumberToBeVerified,
-		User,
-		UserLogin,
-		UserPhoneNumber,
-		UserToSignUp,
+		Organisation, PasswordResetRequest, PersonalEmailToBeVerified,
+		PhoneCountryCode, PhoneNumberToBeVerified, User, UserLogin,
+		UserPhoneNumber, UserToSignUp,
 	},
-	query,
-	query_as,
-	Database,
+	query, query_as, Database,
 };
 
 pub async fn initialize_users_pre(
@@ -716,7 +708,7 @@ pub async fn initialize_users_post(
 	Ok(())
 }
 
-pub async fn get_user_by_username_or_email(
+pub async fn get_user_by_username_email_or_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
@@ -739,10 +731,19 @@ pub async fn get_user_by_username_or_email(
 		ON
 			domain.id = personal_email.domain_id OR
 			domain.id = organisation_email.domain_id
+		LEFT JOIN
+			user_phone_number
+		ON
+			user_phone_number.user_id = "user".id
+		LEFT JOIN
+			phone_number_country_code
+		ON
+			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
 			"user".username = $1 OR
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1;
+			CONCAT(organisation_email.local, '@', domain.name) = $1 OR
+			CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;
 		"#,
 		user_id
 	)
@@ -1540,74 +1541,29 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	Ok(rows.next())
 }
 
-pub async fn get_personal_email_to_be_verified_by_email(
+pub async fn delete_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	email: &str,
-) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	user_id: &[u8],
+	email_local: &str,
+	domain_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
 		r#"
-		SELECT 
-			user_unverified_personal_email.*
-		FROM
+		DELETE FROM
 			user_unverified_personal_email
-		INNER JOIN
-			domain
-		ON
-			domain.id = user_unverified_personal_email.domain_id
 		WHERE
-			CONCAT(user_unverified_personal_email.local, '@', domain.name) = $1;
+			user_id = $1 AND
+			local = $2 AND
+			domain_id = $3;
 		"#,
-		email
+		user_id,
+		email_local,
+		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| PersonalEmailToBeVerified {
-		local: row.local,
-		domain_id: row.domain_id,
-		user_id: row.user_id,
-		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
-	});
+	.execute(&mut *connection)
+	.await?;
 
-	Ok(rows.next())
-}
-
-pub async fn get_personal_phone_number_to_be_verified_by_phone_number(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	phone_number: &str,
-) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
-		r#"
-		SELECT
-			user_unverified_phone_number.*
-		FROM
-			user_unverified_phone_number
-		INNER JOIN
-			phone_number_country_code
-		ON
-			user_unverified_phone_number.country_code = phone_number_country_code.country_code
-		WHERE
-			CONCAT(
-				'+',
-				phone_number_country_code.phone_code,
-				user_unverified_phone_number.phone_number
-			) = $1;
-		"#,
-		phone_number
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| PhoneNumberToBeVerified {
-		country_code: row.country_code,
-		phone_number: row.phone_number,
-		user_id: row.user_id,
-		verification_token_hash: row.verification_token_hash,
-		verification_token_expiry: row.verification_token_expiry as u64,
-	});
-
-	Ok(rows.next())
+	Ok(())
 }
 
 pub async fn get_phone_number_to_be_verified_for_user(
@@ -1647,6 +1603,31 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	});
 
 	Ok(rows.next())
+}
+
+pub async fn delete_phone_number_to_be_verified_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	country_code: &str,
+	phone_number: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			user_unverified_phone_number
+		WHERE
+			user_id = $1 AND
+			country_code = $2 AND
+			phone_number = $3;
+		"#,
+		user_id,
+		country_code,
+		phone_number
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 pub async fn add_personal_email_for_user(
@@ -2264,7 +2245,6 @@ pub async fn get_phone_country_by_country_code(
 	Ok(rows.into_iter().next())
 }
 
-#[allow(dead_code)]
 pub async fn add_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -2313,6 +2293,31 @@ pub async fn get_personal_emails_for_user(
 	.collect();
 
 	Ok(rows)
+}
+
+pub async fn get_personal_email_count_for_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+) -> Result<u64, sqlx::Error> {
+	let count = query!(
+		r#"
+		SELECT
+			COUNT(personal_email.domain_id) as "count!"
+		FROM
+			personal_email
+		WHERE
+			personal_email.domain_id = $1;
+		"#,
+		domain_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.next()
+	.map(|row| row.count)
+	.unwrap_or(0);
+
+	Ok(count as u64)
 }
 
 pub async fn get_phone_numbers_for_user(

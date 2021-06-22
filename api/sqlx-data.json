@@ -1300,98 +1300,6 @@
       "nullable": []
     }
   },
-  "3b740727a3984187ee1fedd25b647ba7d770e095675c1394ddfa6af2e6554bd8": {
-    "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "dob",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "bio",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "location",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "created",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 9,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "backup_email_domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 11,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "3cb20f213827519db975ea8e9b37a716ddbabeaba861ec1c9f7cb9485dded728": {
     "query": "UPDATE organisation_domain SET is_verified = TRUE WHERE id = $1;",
     "describe": {
@@ -1898,6 +1806,98 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "4e8616d4daa9832e8fac49fad2745fed52cf8b10196cd4e04706b7c45ea0e307": {
+    "query": "SELECT \"user\".* FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN organisation_email ON organisation_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = organisation_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(organisation_email.local, '@', domain.name) = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
@@ -2616,6 +2616,20 @@
       "nullable": []
     }
   },
+  "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
+    "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "7b5c68437d1c2c6686003926f6d821aa3bc72e8d29b392393d86173f9c76284a": {
     "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'deployment', $5, $6, NULL);",
     "describe": {
@@ -3329,6 +3343,20 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
+    "query": "DELETE FROM user_unverified_phone_number WHERE user_id = $1 AND country_code = $2 AND phone_number = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bpchar",
+          "Text"
+        ]
       },
       "nullable": []
     }
@@ -4525,6 +4553,26 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "d804031c51fffec0b41dda4db1854bf360dacedcbf11e61467b3f77546568db6": {
+    "query": "SELECT COUNT(personal_email.domain_id) as \"count!\" FROM personal_email WHERE personal_email.domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
