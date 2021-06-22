@@ -53,7 +53,7 @@ def check_clippy():
         "name": "Check clippy suggestions",
         "image": "rustlang/rust:nightly",
         "commands": [
-            "cargo clippy"
+            "cargo clippy -- -D warnings"
         ]
     }
 
@@ -79,6 +79,8 @@ def notify_on_failure(ctx):
 
 **Author**
 {}
+
+More details can be found in the [build logs]({{{{build.link}}}})
 
 Please fix before merging
 """.format(get_author_list())

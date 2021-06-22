@@ -5,7 +5,13 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{User, UserLogin},
+		db_mapping::{
+			JoinUser,
+			PreferredRecoveryOption,
+			User,
+			UserLogin,
+			UserToSignUp,
+		},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -89,7 +95,7 @@ pub async fn is_phone_number_allowed(
 		db::get_phone_country_by_country_code(connection, phone_country_code)
 			.await?
 			.status(400)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
 	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
 	let user = db::get_user_by_phone_number(connection, &phone_number).await?;
@@ -125,7 +131,7 @@ pub async fn create_user_join_request(
 	org_email_local: Option<&str>,
 	org_domain_name: Option<&str>,
 	organisation_name: Option<&str>,
-) -> Result<String, Error> {
+) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
 		Error::as_result()
@@ -140,6 +146,7 @@ pub async fn create_user_join_request(
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
+	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
 	let backup_email_local;
 	let backup_email_domain_id;
@@ -171,21 +178,15 @@ pub async fn create_user_join_request(
 			}
 
 			// extract the email_local and domain name from it
-			let (email_local, domain_name) = backup_email
-				.split_once('@')
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
+			// split email into 2 parts and get domain_id
+			let (email_local, domain_id) =
+				service::split_email_with_domain_id(connection, backup_email)
+					.await?;
 
-			// Assign values
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(
-				service::ensure_personal_domain_exists(connection, domain_name)
-					.await?
-					.as_bytes()
-					.to_vec(),
-			);
 			phone_country_code = None;
 			phone_number = None;
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(domain_id);
 		}
 		// If both or neither recovery options are provided
 		_ => {
@@ -264,7 +265,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -275,6 +276,26 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+			// let check = backup_email_domain_id.map(|s| s.to_vec())
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local,
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: Some(org_email_local.to_string()),
+				org_domain_name: Some(org_domain_name.to_string()),
+				organisation_name: Some(organisation_name.to_string()),
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 		ResourceOwnerType::Personal => {
 			db::set_personal_user_to_be_signed_up(
@@ -282,7 +303,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -290,10 +311,29 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local,
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: None,
+				org_domain_name: None,
+				organisation_name: None,
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 	}
 
-	Ok(otp)
+	Ok((response, otp))
 }
 
 // Creates a login in the db and returns it
@@ -418,12 +458,14 @@ pub async fn generate_access_token(
 	Ok(jwt)
 }
 
-// function to reset password
-// TODO: Remove otp from response
+// this function takes care of generating an OTP and sending it
+// to the preferred Recovery option chosen by the user.
+// response will NOT contain the OTP
 pub async fn forgot_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-) -> Result<(String, String), Error> {
+	preferred_recovery_option: PreferredRecoveryOption,
+) -> Result<(), Error> {
 	let user = db::get_user_by_username_or_email(connection, &user_id)
 		.await?
 		.status(200)
@@ -444,18 +486,15 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	// TODO don't unwrap in case of phone number backup
-	let domain = db::get_personal_domain_by_id(
+	service::send_forgot_password_otp(
 		connection,
-		user.backup_email_domain_id.unwrap().as_ref(),
+		user,
+		preferred_recovery_option,
+		&otp,
 	)
-	.await?
-	.status(500)?;
+	.await?;
 
-	Ok((
-		otp,
-		format!("{}@{}", user.backup_email_local.unwrap(), domain.name),
-	))
+	Ok(())
 }
 
 pub async fn reset_password(
@@ -496,17 +535,7 @@ pub async fn join_user(
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<
-	(
-		String,
-		Uuid,
-		Uuid,
-		Option<String>,
-		Option<String>,
-		Option<String>,
-	),
-	Error,
-> {
+) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
@@ -743,13 +772,13 @@ pub async fn join_user(
 
 	let (jwt, login_id, refresh_token) =
 		sign_in_user(connection, user_id, &config).await?;
-
-	Ok((
+	let response = JoinUser {
 		jwt,
 		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,
 		backup_phone_number_to,
-	))
+	};
+	Ok(response)
 }

@@ -4,10 +4,11 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
-use crate::{db, service, utils::Error, Database};
+use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -80,7 +81,7 @@ pub async fn generate_new_refresh_token_for_user(
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
 	if otp < 10 {
 		format!("00000{}", otp)
@@ -100,4 +101,69 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+pub async fn split_email_with_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email_address: &str,
+) -> Result<(String, Vec<u8>), Error> {
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name)
+			.await?
+			.as_bytes()
+			.to_vec();
+
+	Ok((email_local.to_string(), domain_id))
+}
+
+pub fn mask_email_local(local: &str) -> String {
+	if local.is_empty() {
+		String::from("*")
+	} else if local.len() <= 2 {
+		local.chars().map(|_| '*').collect()
+	} else if local.len() > 2 && local.len() <= 4 {
+		if let Some(first) = local.chars().next() {
+			format!("{}***", first)
+		} else {
+			String::from("*")
+		}
+	} else {
+		let mut chars = local.chars();
+		let first = if let Some(first) = chars.next() {
+			first
+		} else {
+			return String::from("*");
+		};
+		let last = if let Some(last) = chars.last() {
+			last
+		} else {
+			return String::from("*");
+		};
+		format!(
+			"{}{}{}",
+			first,
+			if local.len() < 10 { "****" } else { "********" },
+			last
+		)
+	}
+}
+
+pub fn mask_phone_number(phone_number: &str) -> String {
+	let mut chars = phone_number.chars();
+	let first = if let Some(first) = chars.next() {
+		first
+	} else {
+		return String::from("******");
+	};
+	let last = if let Some(last) = chars.last() {
+		last
+	} else {
+		return String::from("******");
+	};
+	format!("{}******{}", first, last)
 }
