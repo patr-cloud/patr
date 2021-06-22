@@ -839,9 +839,13 @@ pub async fn get_user_by_phone_number(
 			"user".*
 		FROM
 			"user"
+		INNER JOIN
+			user_phone_number
+		ON
+			"user".id = user_phone_number.user_id
 		WHERE
-			backup_phone_country_code = $1 AND
-			backup_phone_number = $2;
+			user_phone_number.country_code = $1 AND
+			user_phone_number.number = $2;
 		"#,
 		country_code,
 		phone_number
@@ -1182,20 +1186,20 @@ pub async fn get_user_to_sign_up_by_username(
 	let mut rows = query!(
 		r#"
 		SELECT
-			user_to_sign_up.username,
-			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
-			user_to_sign_up.password,
-			user_to_sign_up.first_name,
-			user_to_sign_up.last_name,
-			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
-			user_to_sign_up.backup_phone_country_code,
-			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
-			user_to_sign_up.otp_hash,
-			user_to_sign_up.otp_expiry
+			username,
+			account_type as "account_type: ResourceOwnerType",
+			password,
+			first_name,
+			last_name,
+			backup_email_local,
+			backup_email_domain_id,
+			backup_phone_country_code,
+			backup_phone_number,
+			org_email_local,
+			org_domain_name,
+			organisation_name,
+			otp_hash,
+			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1234,20 +1238,20 @@ pub async fn get_user_to_sign_up_by_phone_number(
 	let mut rows = query!(
 		r#"
 		SELECT
-			user_to_sign_up.username,
-			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
-			user_to_sign_up.password,
-			user_to_sign_up.first_name,
-			user_to_sign_up.last_name,
-			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
-			user_to_sign_up.backup_phone_country_code,
-			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
-			user_to_sign_up.otp_hash,
-			user_to_sign_up.otp_expiry
+			username,
+			account_type as "account_type: ResourceOwnerType",
+			password,
+			first_name,
+			last_name,
+			backup_email_local,
+			backup_email_domain_id,
+			backup_phone_country_code,
+			backup_phone_number,
+			org_email_local,
+			org_domain_name,
+			organisation_name,
+			otp_hash,
+			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1342,20 +1346,20 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 	let mut rows = query!(
 		r#"
 		SELECT
-			user_to_sign_up.username,
-			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
-			user_to_sign_up.password,
-			user_to_sign_up.first_name,
-			user_to_sign_up.last_name,
-			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
-			user_to_sign_up.backup_phone_country_code,
-			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
-			user_to_sign_up.otp_hash,
-			user_to_sign_up.otp_expiry
+			username,
+			account_type as "account_type: ResourceOwnerType",
+			password,
+			first_name,
+			last_name,
+			backup_email_local,
+			backup_email_domain_id,
+			backup_phone_country_code,
+			backup_phone_number,
+			org_email_local,
+			org_domain_name,
+			organisation_name,
+			otp_hash,
+			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1393,20 +1397,20 @@ pub async fn get_user_to_sign_up_by_org_domain_name(
 	let mut rows = query!(
 		r#"
 		SELECT
-			user_to_sign_up.username,
-			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
-			user_to_sign_up.password,
-			user_to_sign_up.first_name,
-			user_to_sign_up.last_name,
-			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
-			user_to_sign_up.backup_phone_country_code,
-			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
-			user_to_sign_up.otp_hash,
-			user_to_sign_up.otp_expiry
+			username,
+			account_type as "account_type: ResourceOwnerType",
+			password,
+			first_name,
+			last_name,
+			backup_email_local,
+			backup_email_domain_id,
+			backup_phone_country_code,
+			backup_phone_number,
+			org_email_local,
+			org_domain_name,
+			organisation_name,
+			otp_hash,
+			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
@@ -1640,7 +1644,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	let mut rows = query!(
 		r#"
 		SELECT
-			user_unverified_phone_number.*
+			*
 		FROM
 			user_unverified_phone_number
 		WHERE

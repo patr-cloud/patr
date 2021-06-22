@@ -43,7 +43,7 @@ pub async fn ensure_personal_domain_exists(
 	} else {
 		// check if personal domain given by the user is registerd as a Org
 		// domain
-		if !is_domain_name_allowed(connection, domain_name).await? {
+		if !is_domain_used_for_sign_up(connection, domain_name).await? {
 			Error::as_result()
 				.status(400)
 				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())?;
@@ -85,7 +85,7 @@ pub async fn add_domain_to_organisation(
 		} else {
 			// check if personal domain given by the user is registerd as a Org
 			// domain
-			if !is_domain_name_allowed(connection, domain_name).await? {
+			if !is_domain_used_for_sign_up(connection, domain_name).await? {
 				Error::as_result()
 					.status(400)
 					.body(error!(DOMAIN_EXISTS).to_string())?;
@@ -158,7 +158,7 @@ pub async fn is_domain_verified(
 	Ok(response.is_some())
 }
 
-pub async fn is_domain_name_allowed(
+async fn is_domain_used_for_sign_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<bool, Error> {
