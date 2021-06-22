@@ -92,6 +92,13 @@ pub async fn verify_personal_email_address_for_user(
 		&email_verification_data.domain_id,
 	)
 	.await?;
+	db::delete_personal_email_to_be_verified_for_user(
+		connection,
+		user_id,
+		&email_verification_data.local,
+		&email_verification_data.domain_id,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -332,6 +339,13 @@ pub async fn verify_phone_number_for_user(
 	}
 
 	db::add_phone_number_for_user(
+		connection,
+		user_id,
+		&phone_verification_data.country_code,
+		&phone_verification_data.phone_number,
+	)
+	.await?;
+	db::delete_phone_number_to_be_verified_for_user(
 		connection,
 		user_id,
 		&phone_verification_data.country_code,
