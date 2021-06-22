@@ -225,6 +225,18 @@ pub async fn delete_personal_email_address(
 	)
 	.await?;
 
+	let personal_email_count =
+		db::get_personal_email_count_for_domain_id(connection, &domain_id)
+			.await?;
+
+	if personal_email_count == 0 {
+		// first delete from personal domain
+		db::delete_personal_domain(connection, &domain_id).await?;
+
+		// then from the main domain table
+		db::delete_generic_domain(connection, &domain_id).await?;
+	}
+
 	Ok(())
 }
 
