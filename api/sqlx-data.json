@@ -2312,20 +2312,6 @@
       "nullable": []
     }
   },
-  "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
-    "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "7b5c68437d1c2c6686003926f6d821aa3bc72e8d29b392393d86173f9c76284a": {
     "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'deployment', $5, $6, NULL);",
     "describe": {
@@ -4129,6 +4115,26 @@
       "nullable": []
     }
   },
+  "d804031c51fffec0b41dda4db1854bf360dacedcbf11e61467b3f77546568db6": {
+    "query": "SELECT COUNT(personal_email.domain_id) as \"count!\" FROM personal_email WHERE personal_email.domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "d955de6b97c96a200a4ae7f6e45d3fe56fb54e450aa63c113063240d8257ae73": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE organisation_name = $1;",
     "describe": {
@@ -4843,20 +4849,6 @@
         true,
         false
       ]
-    }
-  },
-  "f0d1c045e7f3635600bde98d66825408ea767790c621eeed8e565dbfbc9c386b": {
-    "query": "DELETE FROM user_unverified_phone_number WHERE user_id = $1 AND country_code = $2 AND phone_number = $3",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bpchar",
-          "Text"
-        ]
-      },
-      "nullable": []
     }
   },
   "f40ff9a243ec7163aaf4231c178cac648d143ff785d045e31e517eb493d0d986": {
