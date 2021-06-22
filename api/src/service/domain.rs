@@ -12,7 +12,12 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{constants::ResourceOwnerType, validator, Error},
+	utils::{
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		validator,
+		Error,
+	},
 	Database,
 };
 
@@ -24,6 +29,13 @@ pub async fn ensure_personal_domain_exists(
 		Error::as_result()
 			.status(400)
 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	}
+
+	// check if personal domain given by the user is registerd as a Org domain
+	if !is_domain_name_allowed(connection, domain_name).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string());
 	}
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
@@ -62,7 +74,12 @@ pub async fn add_domain_to_organisation(
 			.status(400)
 			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	}
-
+	// check if personal domain given by the user is registerd as a Org domain
+	if !is_domain_name_allowed(connection, domain_name).await? {
+		return Error::as_result()
+			.status(400)
+			.body(error!(DOMAIN_EXISTS).to_string());
+	}
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceOwnerType::Personal = domain.r#type {
@@ -139,4 +156,19 @@ pub async fn is_domain_verified(
 	handle.abort();
 
 	Ok(response.is_some())
+}
+
+pub async fn is_domain_name_allowed(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_name: &str,
+) -> Result<bool, Error> {
+	let org_domain_status =
+		db::get_user_to_sign_up_by_org_domain_name(connection, domain_name)
+			.await?;
+	if let Some(org_domain_status) = org_domain_status {
+		if org_domain_status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }

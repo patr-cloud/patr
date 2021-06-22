@@ -44,6 +44,114 @@
       "nullable": []
     }
   },
+  "05085c64dd6d54db659422bbbed2fad49ff35d2e2c5229f425de699072767b51": {
+    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up WHERE org_domain_name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceOwnerType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "organisation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "org_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "org_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "organisation_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
   "05b6d33feb18545eda08444aaceb0df59d41f3487a9af37b982975ffbc31c637": {
     "query": "UPDATE organisation_domain SET is_verified = FALSE WHERE id = $1;",
     "describe": {
@@ -919,6 +1027,50 @@
       "nullable": []
     }
   },
+  "2da0119de89d61a107aab3bd17e5dbab1da7b1fe12e94d0fb9a8e15e40348be5": {
+    "query": "SELECT user_unverified_phone_number.* FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE CONCAT( '+', phone_number_country_code.phone_code, user_unverified_phone_number.phone_number ) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "2dfba0dc072e1de9c4fc4976210f8d85d204f97567f6d9d0496398a53f04b4ab": {
     "query": "DELETE FROM portus_tunnel WHERE id = $1;",
     "describe": {
@@ -1534,6 +1686,50 @@
         ]
       },
       "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "448ad6a9a4d3e878ade59dda75b6a511b9dee09fdb6bd31b49c97b60eceac41e": {
+    "query": "SELECT user_unverified_personal_email.* FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(user_unverified_personal_email.local, '@', domain.name) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
         false,
         false
       ]

@@ -69,6 +69,15 @@ pub async fn is_email_allowed(
 	if user.is_some() {
 		return Ok(false);
 	}
+	// check if the email has already been registered for verifying
+	let verify_status =
+		db::get_personal_email_to_be_verified_by_email(connection, email)
+			.await?;
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
 
 	let sign_up_status =
 		db::get_user_to_sign_up_by_email(connection, email).await?;
@@ -102,6 +111,20 @@ pub async fn is_phone_number_allowed(
 
 	if user.is_some() {
 		return Ok(false);
+	}
+
+	// check if the email has already been registered for verifying
+	let verify_status =
+		db::get_personal_phone_number_to_be_verified_by_phone_number(
+			connection,
+			&phone_number,
+		)
+		.await?;
+
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
 	}
 
 	let sign_up_status =
