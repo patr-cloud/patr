@@ -77,8 +77,12 @@ pub mod request_keys {
 	pub const ORGANISATION_NAME: &str = "organisationName";
 	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const EMAILS: &str = "emails";
 	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
 	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
+	pub const PHONE_NUMBERS: &str = "phoneNumbers";
+	pub const COUNTRY_CODE: &str = "countryCode";
+	pub const PHONE_NUMBER: &str = "phoneNumber";
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
@@ -143,6 +147,7 @@ pub mod request_keys {
 	pub const ENTRY_POINTS: &str = "entryPoints";
 	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
+	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
 	pub const URL: &str = "url";
 	pub const DEFAULT: &str = "default";
 }

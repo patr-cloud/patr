@@ -5,7 +5,6 @@ use crate::{
 	Database,
 };
 
-// TODO these haven't been migrated to postgres yet
 pub async fn initialize_application_pre(
 	transaction: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {

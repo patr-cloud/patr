@@ -100,7 +100,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.docker.vicara.co', $3, NULL, $4, 0);
+			($1, $2, 'registry.docker.vicara.co', $3, NULL, $4, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -125,7 +125,7 @@ pub async fn create_deployment_with_external_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, 0);
+			($1, $2, $3, NULL, $4, $5, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -165,9 +165,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		organisation_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
+	.await?;
 
 	Ok(rows)
 }
@@ -194,9 +192,7 @@ pub async fn get_deployments_for_organisation(
 		organisation_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
+	.await?;
 
 	Ok(rows)
 }
@@ -256,9 +252,7 @@ pub async fn get_all_deployments(
 		"#
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.collect();
+	.await?;
 
 	Ok(rows)
 }
