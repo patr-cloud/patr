@@ -508,7 +508,7 @@ pub async fn join_user(
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
-		.body(error!(INVALID_OTP).to_string())?;
+		.body(error!(OTP_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
