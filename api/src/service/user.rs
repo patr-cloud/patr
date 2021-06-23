@@ -66,7 +66,7 @@ pub async fn verify_personal_email_address_for_user(
 		)
 		.await?
 		.status(400)
-		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
+		.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(
 		otp,
