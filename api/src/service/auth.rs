@@ -69,6 +69,15 @@ pub async fn is_email_allowed(
 	if user.is_some() {
 		return Ok(false);
 	}
+	// check if the email has already been registered for verifying
+	let verify_status =
+		db::get_personal_email_to_be_verified_by_email(connection, email)
+			.await?;
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
 
 	let sign_up_status =
 		db::get_user_to_sign_up_by_email(connection, email).await?;
@@ -95,18 +104,39 @@ pub async fn is_phone_number_allowed(
 		db::get_phone_country_by_country_code(connection, phone_country_code)
 			.await?
 			.status(400)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
-	let user = db::get_user_by_phone_number(connection, &phone_number).await?;
+	let user = db::get_user_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
 
 	if user.is_some() {
 		return Ok(false);
 	}
 
-	let sign_up_status =
-		db::get_user_to_sign_up_by_phone_number(connection, &phone_number)
-			.await?;
+	// check if the email has already been registered for verifying
+	let verify_status = db::get_phone_number_to_be_verified_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+
+	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
 
 	if let Some(status) = sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
@@ -178,21 +208,15 @@ pub async fn create_user_join_request(
 			}
 
 			// extract the email_local and domain name from it
-			let (email_local, domain_name) = backup_email
-				.split_once('@')
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
+			// split email into 2 parts and get domain_id
+			let (email_local, domain_id) =
+				service::split_email_with_domain_id(connection, backup_email)
+					.await?;
 
-			// Assign values
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(
-				service::ensure_personal_domain_exists(connection, domain_name)
-					.await?
-					.as_bytes()
-					.to_vec(),
-			);
 			phone_country_code = None;
 			phone_number = None;
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(domain_id);
 		}
 		// If both or neither recovery options are provided
 		_ => {
@@ -271,7 +295,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -290,7 +314,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code
@@ -309,7 +333,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -324,7 +348,7 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: backup_email_local.map(|s| s.to_string()),
+				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
 				backup_phone_country_code: phone_country_code
@@ -472,10 +496,11 @@ pub async fn forgot_password(
 	user_id: &str,
 	preferred_recovery_option: PreferredRecoveryOption,
 ) -> Result<(), Error> {
-	let user = db::get_user_by_username_or_email(connection, &user_id)
-		.await?
-		.status(200)
-		.body(error!(USER_NOT_FOUND).to_string())?;
+	let user =
+		db::get_user_by_username_email_or_phone_number(connection, &user_id)
+			.await?
+			.status(200)
+			.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
 	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
@@ -545,7 +570,7 @@ pub async fn join_user(
 	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
 		.await?
 		.status(200)
-		.body(error!(INVALID_OTP).to_string())?;
+		.body(error!(OTP_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 

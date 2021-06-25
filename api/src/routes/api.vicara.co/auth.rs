@@ -105,7 +105,7 @@ async fn sign_in(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_data = db::get_user_by_username_or_email(
+	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -512,7 +512,7 @@ async fn reset_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = db::get_user_by_username_or_email(
+	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id,
 	)
@@ -846,7 +846,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	// check if access type is respository
+	// check if access type is repository
 	if access_type != request_keys::REPOSITORY {
 		Error::as_result().status(400).body(
 			json!({
@@ -1093,7 +1093,7 @@ async fn list_recovery_options(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = db::get_user_by_username_or_email(
+	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id,
 	)
