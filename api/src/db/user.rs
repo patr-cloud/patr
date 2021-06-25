@@ -330,7 +330,10 @@ pub async fn initialize_users_post(
 				PRIMARY KEY(country_code, phone_number),
 			CONSTRAINT
 				user_univerified_phone_number_uq_country_code_phone_number
-				UNIQUE(user_id, country_code, phone_number)
+				UNIQUE(user_id, country_code, phone_number),
+			CONSTRAINT user_unverified_phone_number_chk_cntry_cd_uppr_case CHECK(
+				country_code = upper(country_code)
+			)
 		);
 		"#
 	)
@@ -384,6 +387,12 @@ pub async fn initialize_users_post(
 			),
 			CONSTRAINT user_to_sign_up_chk_org_eml_lwr_case CHECK(
 				org_email_local = lower(org_email_local)
+			),
+			CONSTRAINT user_to_sign_up_chk_org_dmn_nm_lwr_case CHECK(
+				org_domain_name = lower(org_domain_name)
+			),
+			CONSTRAINT user_to_sign_up_chk_org_nm_lwr_case CHECK(
+				organisation_name = lower(organisation_name)
 			),
 			CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK(
 				(

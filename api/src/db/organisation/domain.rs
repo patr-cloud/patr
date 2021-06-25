@@ -19,7 +19,10 @@ pub async fn initialize_domain_pre(
 			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE,
 			type RESOURCE_OWNER_TYPE NOT NULL,
-			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
+			CONSTRAINT domain_uq_name_type UNIQUE(id, type),
+			CONSTRAINT domain_nm_lwr_case CHECK(
+				name = lower(name)
+			)
 		);
 		"#
 	)
