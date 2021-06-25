@@ -148,7 +148,8 @@ async fn sign_up(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -246,11 +247,12 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
-		username,
+		&username,
 		account_type,
 		password,
 		(first_name, last_name),
@@ -259,7 +261,7 @@ async fn sign_up(
 		backup_phone_number,
 		org_email_local.as_deref(),
 		org_domain_name.as_deref(),
-		organisation_name,
+		organisation_name.as_deref(),
 	)
 	.await?;
 
@@ -461,7 +463,8 @@ async fn forgot_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let preferred_recovery_option = body
 		.get(request_keys::PREFERRED_RECOVERY_OPTION)
@@ -476,7 +479,7 @@ async fn forgot_password(
 	// otp to the preferred recovery option
 	service::forgot_password(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 		preferred_recovery_option,
 	)
 	.await?;
@@ -510,11 +513,12 @@ async fn reset_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	.status(400)
