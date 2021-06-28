@@ -21,7 +21,7 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT domain_uq_name UNIQUE
 				CONSTRAINT domain_chk_name_is_lower_case 
 					CHECK(
-						name = lower(name)
+						name = LOWER(name)
 					),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			CONSTRAINT domain_uq_name_type UNIQUE(id, type)

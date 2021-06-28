@@ -30,7 +30,7 @@ pub async fn initialize_users_pre(
 			username VARCHAR(100) NOT NULL
 				CONSTRAINT user_uk_username UNIQUE
 				CONSTRAINT user_chk_username_is_lower_case CHECK(
-					username = lower(username)
+					username = LOWER(username)
 				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
@@ -44,12 +44,12 @@ pub async fn initialize_users_pre(
 			/* Recovery options */
 			backup_email_local VARCHAR(64)
 				CONSTRAINT user_chk_backup_email_is_lower_case CHECK(
-					backup_email_local = lower(backup_email_local)
+					backup_email_local = LOWER(backup_email_local)
 				),
 			backup_email_domain_id BYTEA,
 			backup_phone_country_code CHAR(2)
 				CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK(
-					backup_phone_country_code = upper(backup_phone_country_code)
+					backup_phone_country_code = UPPER(backup_phone_country_code)
 				),
 			backup_phone_number VARCHAR(15),
 
@@ -155,7 +155,7 @@ pub async fn initialize_users_post(
 					DEFERRABLE INITIALLY IMMEDIATE,
 			local VARCHAR(64) NOT NULL
 				CONSTRAINT personal_email_chk_local_is_lower_case CHECK(
-					local = lower(local)
+					local = LOWER(local)
 				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT personal_email_fk_domain_id
@@ -188,7 +188,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT organisation_email_fk_user_id REFERENCES "user"(id),
 			local VARCHAR(64) NOT NULL
 				CONSTRAINT organisation_email_chk_local_is_lower_case CHECK(
-					local = lower(local)
+					local = LOWER(local)
 				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT organisation_email_fk_domain_id
@@ -218,7 +218,7 @@ pub async fn initialize_users_post(
 			country_code CHAR(2)
 				CONSTRAINT phone_number_country_code_pk PRIMARY KEY
 				CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
-					country_code = upper(country_code)
+					country_code = UPPER(country_code)
 				),
 			phone_code VARCHAR(5) NOT NULL,
 			country_name VARCHAR(80) NOT NULL
@@ -250,7 +250,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_phone_number_fk_country_code
 					REFERENCES phone_number_country_code(country_code)
 				CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
-					country_code = upper(country_code)
+					country_code = UPPER(country_code)
 				),
 			number VARCHAR(15) NOT NULL
 				CONSTRAINT user_phone_number_chk_number_valid CHECK(
@@ -284,7 +284,7 @@ pub async fn initialize_users_post(
 		CREATE TABLE user_unverified_personal_email(
 			local VARCHAR(64) NOT NULL
 				CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK(
-					local = lower(local)
+					local = LOWER(local)
 				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT user_unverified_personal_email_fk_domain_id
@@ -316,7 +316,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_unverified_phone_number_fk_country_code
 					REFERENCES phone_number_country_code(country_code)
 				CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(
-					country_code = upper(country_code)
+					country_code = UPPER(country_code)
 				),
 			phone_number VARCHAR(15) NOT NULL,
 			user_id BYTEA NOT NULL
@@ -344,7 +344,7 @@ pub async fn initialize_users_post(
 		CREATE TABLE user_to_sign_up(
 			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY
 				CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK(
-					username = lower(username)
+					username = LOWER(username)
 				),
 			account_type RESOURCE_OWNER_TYPE NOT NULL,
 
@@ -355,7 +355,7 @@ pub async fn initialize_users_post(
 			/* Personal email address OR backup email */
 			backup_email_local VARCHAR(64)
 				CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK(
-					backup_email_local = lower(backup_email_local)
+					backup_email_local = LOWER(backup_email_local)
 				),
 			backup_email_domain_id BYTEA
 				CONSTRAINT user_to_sign_up_fk_backup_email_domain_id
@@ -365,7 +365,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_fk_backup_phone_country_code
 					REFERENCES phone_number_country_code(country_code)
 				CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK(
-					backup_phone_country_code = upper(backup_phone_country_code)
+					backup_phone_country_code = UPPER(backup_phone_country_code)
 				),
 			backup_phone_number VARCHAR(15)
 				CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK(
@@ -377,15 +377,15 @@ pub async fn initialize_users_post(
 			/* Organisation email address */
 			org_email_local VARCHAR(64)
 				CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK(
-					org_email_local = lower(org_email_local)
+					org_email_local = LOWER(org_email_local)
 				),
 			org_domain_name VARCHAR(100)
 				CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK(
-					org_domain_name = lower(org_domain_name)
+					org_domain_name = LOWER(org_domain_name)
 				),
 			organisation_name VARCHAR(100)
 				CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK(
-					organisation_name = lower(organisation_name)
+					organisation_name = LOWER(organisation_name)
 				),
 			otp_hash TEXT NOT NULL,
 			otp_expiry BIGINT NOT NULL
