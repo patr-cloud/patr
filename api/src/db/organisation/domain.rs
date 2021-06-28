@@ -17,7 +17,12 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE domain(
 			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE,
+			name VARCHAR(255) NOT NULL 
+				CONSTRAINT domain_uq_name UNIQUE
+				CONSTRAINT domain_chk_name_is_lower_case 
+					CHECK(
+						name = LOWER(name)
+					),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
 		);
