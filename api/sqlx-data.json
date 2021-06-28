@@ -343,6 +343,16 @@
       ]
     }
   },
+  "140d323e64dea0fbf1b88d8e3b88a9da49b04cd17f656f7d85d1b19e957506e7": {
+    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK( local = lower(local) ), domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "15754548332233512bc74364ad9ebb4ee076cfa1c8555b5c4740c12d2c85b4b0": {
     "query": "SELECT DISTINCT organisation.* FROM organisation LEFT JOIN organisation_user ON organisation.id = organisation_user.organisation_id WHERE organisation.super_admin_id = $1 OR organisation_user.user_id = $1;",
     "describe": {
@@ -881,16 +891,6 @@
   },
   "29c6c0c77ee4addddb5f2fe4400fa72bb8b8b8e850d297e12886a94e64f46100": {
     "query": "CREATE TABLE role( id BYTEA CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BYTEA NOT NULL CONSTRAINT role_fk_owner_id REFERENCES organisation(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "2b26754f715cd24d4c6a7a19629d527031d7d485b2b94af5c0eb0efdfb639d9d": {
-    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id), CONSTRAINT user_unverified_personal_eml_chk_local_lwr_case CHECK( local = lower(local) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1462,16 +1462,6 @@
       ]
     }
   },
-  "460f7aeb9a8a7884034239518a99ca0f8b89c0d9980f9320bfa57f234636ab8e": {
-    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_chk_cntry_cd_uppr_case CHECK( country_code = upper(country_code) ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -1482,8 +1472,8 @@
       "nullable": []
     }
   },
-  "4796189178bdf43e69d0adce5c1c81ba54f2420ec9a2e33884a8cb84acabd21d": {
-    "query": "ALTER TABLE deployment_upgrade_path ADD CONSTRAINT deployment_upgrade_path_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+  "475b3e7c961f50874a2b4272e9152513d008763a18e5813b51981bf84c537b28": {
+    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT personal_email_chk_local_is_lower_case CHECK( local = lower(local) ), domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1492,8 +1482,8 @@
       "nullable": []
     }
   },
-  "498c9c729402d4c61a9b035c41c87e69c81d721cf271c913453c1fb3f9dc907e": {
-    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL, CONSTRAINT phone_number_country_code_chk_cntry_cd_uppr_case CHECK( country_code = upper(country_code) ) );",
+  "4796189178bdf43e69d0adce5c1c81ba54f2420ec9a2e33884a8cb84acabd21d": {
+    "query": "ALTER TABLE deployment_upgrade_path ADD CONSTRAINT deployment_upgrade_path_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2487,26 +2477,6 @@
       "nullable": []
     }
   },
-  "68aaf4574977c67d6d2444f92e42aeb0b4c34bcb9ab4978c700fb4ce1bd2c008": {
-    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_chk_local_lwr_case CHECK( local = lower(local) ), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "694227dd7060f318e3f426ca31e1000f5f1309ceefed766f13b3c5243af67e4b": {
-    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), phone_number VARCHAR(15) NOT NULL, user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number), CONSTRAINT user_unverified_phone_number_chk_cntry_cd_uppr_case CHECK( country_code = upper(country_code) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "6c94bc5aacfc930de629e301219041a5c28fa769bda7fc1e06e1e54c5af154c2": {
     "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'redirect', NULL, NULL, $5);",
     "describe": {
@@ -2519,6 +2489,16 @@
           "Varchar",
           "Text"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "6caa729231464cf0de7aefa9b9ce817cf13ffa4f0c8bf728aece3b2f4b1e369f": {
+    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = upper(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -2672,8 +2652,8 @@
       "nullable": []
     }
   },
-  "79888ac05d5c688d76ec2fd0f92e2a72686709730400a817e67f86d69357ebf2": {
-    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY, account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_usrnm_lwr_case CHECK( username = lower(username) ), CONSTRAINT user_to_sign_up_chk_bckp_eml_lwr_case CHECK( backup_email_local = lower(backup_email_local) ), CONSTRAINT user_to_sign_up_chk_bckp_phn_cntry_cd_uppr_case CHECK( backup_phone_country_code = upper(backup_phone_country_code) ), CONSTRAINT user_to_sign_up_chk_org_eml_lwr_case CHECK( org_email_local = lower(org_email_local) ), CONSTRAINT user_to_sign_up_chk_org_dmn_nm_lwr_case CHECK( org_domain_name = lower(org_domain_name) ), CONSTRAINT user_to_sign_up_chk_org_nm_lwr_case CHECK( organisation_name = lower(organisation_name) ), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+  "79422dea31892efedbf8b1e23321c61f2f3153542cf0f30360c1c4e372cee956": {
+    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT organisation_email_chk_local_is_lower_case CHECK( local = lower(local) ), domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3239,6 +3219,16 @@
       "nullable": []
     }
   },
+  "901099949720115e501b8986bac0398d460e50f95cfe4ff798e66f6e9957d315": {
+    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = upper(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9074e096dfede5cb33579024b8259a835b5f641b60eca882b4dde3ac93bbd0dd": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'organisation', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'organisation', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, org_email_local = EXCLUDED.org_email_local, org_domain_name = EXCLUDED.org_domain_name, organisation_name = EXCLUDED.organisation_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -3465,16 +3455,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "a302c8d74bb51f9ca2c47d27cb626e067a18dad27bb14fb19888bdd5ff36d3d5": {
-    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT organisation_email_chk_local_lwr_case CHECK( local = lower(local) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -4056,16 +4036,6 @@
       ]
     }
   },
-  "be2138f9b2b233c0739433992cc16d601b3e6dc9297ddf3e62eff463c88399da": {
-    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE, type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type), CONSTRAINT domain_nm_lwr_case CHECK( name = lower(name) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "c0899a72fa033932f79fa55f6459db87a007a92cc5c8913f25888f8350553aa0": {
     "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'proxy', NULL, NULL, $5);",
     "describe": {
@@ -4289,6 +4259,16 @@
       ]
     }
   },
+  "c54ee6eaa5bc44cff7f89eaf3ad581945e2cbafb6ce4e5ff17a5ea3c19a3756c": {
+    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = upper(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
     "query": "SELECT \"user\".*, domain.name FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id INNER JOIN resource ON organisation_domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN \"user\" ON organisation.super_admin_id = \"user\".id WHERE organisation_domain.id = $1;",
     "describe": {
@@ -4417,6 +4397,16 @@
           "Varchar",
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "c8ccd681a264d31d63d308db0c5be94e81f0a1b3ebc543abdfd472b5dc5973f9": {
+    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = lower(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = lower(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = upper(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -4592,6 +4582,16 @@
   },
   "d342f4227b05134b27ad0f8bf9d94ae9bb5c6d708211a1830e84b975cebd7dae": {
     "query": "CREATE TABLE deployment_persistent_volume( deployment_id BYTEA CONSTRAINT deployment_persistent_volume_fk_deployment_id REFERENCES deployment(id), name VARCHAR(50) NOT NULL, path VARCHAR(255) NOT NULL, CONSTRAINT deployment_persistent_volume_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_persistent_volume_uq_deployment_id_path UNIQUE(deployment_id, path) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "d4777fbc6c96ffe23a9e9accef18d6a8503e55664d0c72d4aa2916815574e72e": {
+    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE CONSTRAINT domain_chk_name_is_lower_case CHECK( name = lower(name) ), type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5284,6 +5284,16 @@
       ]
     }
   },
+  "ede77f1453cb99dcf744a4cd604d62112e922dc82ef96675e83756898d10833d": {
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK( username = lower(username) ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK( backup_email_local = lower(backup_email_local) ), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK( backup_phone_country_code = upper(backup_phone_country_code) ), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK( org_email_local = lower(org_email_local) ), org_domain_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK( org_domain_name = lower(org_domain_name) ), organisation_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK( organisation_name = lower(organisation_name) ), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "f40ff9a243ec7163aaf4231c178cac648d143ff785d045e31e517eb493d0d986": {
     "query": "DELETE FROM deployment_persistent_volume WHERE deployment_id = $1;",
     "describe": {
@@ -5451,16 +5461,6 @@
         false,
         false
       ]
-    }
-  },
-  "ff79dd1acf429972097c0d650cb31a2a47e0fed6c6c6e5c4d67fa8e3d8e3c4ed": {
-    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT user_chk_usrnm_lwr_case CHECK( username = lower(username) ), CONSTRAINT user_chk_bckp_eml_lwr_case CHECK( backup_email_local = lower(backup_email_local) ), CONSTRAINT user_chk_bckp_phn_cntry_cd_uppr_case CHECK( backup_phone_country_code = upper(backup_phone_country_code) ), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   }
 }
