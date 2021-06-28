@@ -4,9 +4,16 @@ use serde_json::{json, Value};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error, pin_fn, service,
+	db,
+	error,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
