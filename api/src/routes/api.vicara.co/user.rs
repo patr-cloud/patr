@@ -4,16 +4,9 @@ use serde_json::{json, Value};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
-	pin_fn,
-	service,
+	db, error, pin_fn, service,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -122,8 +115,20 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
-	app.get("/logins", []); // TODO list all logins here
-	app.get("/logins/:loginId/info", []); // TODO list all information about a particular login here
+	app.get(
+		"/logins",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
+		],
+	); // TODO list all logins here
+	app.get(
+		"/logins/:loginId/info",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
+		],
+	); // TODO list all information about a particular login here
 	app.delete("/logins/:loginId", []); // TODO delete a particular login ID and invalidate it
 	app.get(
 		"/:username/info",
@@ -694,6 +699,66 @@ async fn change_password(
 
 	context.json(json!({
 		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn get_all_logins_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let logins = db::get_all_logins_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.map(|login| {
+		let id = login.login_id.encode_hex::<String>();
+		json!({
+			request_keys::LOGIN_ID: id,
+			request_keys::USER_ID: &user_id,
+			request_keys::TOKEN_EXPIRY: login.token_expiry,
+			request_keys::LAST_LOGIN: login.last_login,
+			request_keys::LAST_ACTIVITY: login.last_activity
+		})
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::LOGINS: logins
+	}));
+	Ok(context)
+}
+
+async fn get_login_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let login_id = context
+		.get_param(request_keys::LOGIN_ID)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.clone();
+
+	let login_id = hex::decode(login_id)?;
+
+	let login =
+		db::get_user_login(context.get_database_connection(), &login_id)
+			.await?
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::USER_ID: login.user_id,
+		request_keys::LOGIN_ID: login.login_id,
+		request_keys::TOKEN_EXPIRY: login.token_expiry,
+		request_keys::LAST_LOGIN: login.last_login,
+		request_keys::LAST_ACTIVITY: login.last_activity
 	}));
 	Ok(context)
 }
