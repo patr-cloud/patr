@@ -1,4 +1,4 @@
-use crate::{models::db_mapping::Organisation, query, Database};
+use crate::{models::db_mapping::Organisation, query, query_as, Database};
 
 mod application;
 mod deployment;
@@ -107,20 +107,18 @@ pub async fn create_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
-	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			organisation
 		VALUES
-			($1, $2, $3, $4, $5);
+			($1, $2, $3, $4);
 		"#,
 		organisation_id,
 		name,
 		super_admin_id,
 		true,
-		created as i64,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -132,7 +130,8 @@ pub async fn get_organisation_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let mut rows = query!(
+	let row = query_as!(
+		Organisation,
 		r#"
 		SELECT
 			*
@@ -146,22 +145,17 @@ pub async fn get_organisation_info(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| Organisation {
-		id: row.id,
-		name: row.name,
-		super_admin_id: row.super_admin_id,
-		active: row.active,
-		created: row.created as u64,
-	});
+	.next();
 
-	Ok(rows.next())
+	Ok(row)
 }
 
 pub async fn get_organisation_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 ) -> Result<Option<Organisation>, sqlx::Error> {
-	let mut rows = query!(
+	let row = query_as!(
+		Organisation,
 		r#"
 		SELECT
 			*
@@ -175,15 +169,9 @@ pub async fn get_organisation_by_name(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| Organisation {
-		id: row.id,
-		name: row.name,
-		super_admin_id: row.super_admin_id,
-		active: row.active,
-		created: row.created as u64,
-	});
+	.next();
 
-	Ok(rows.next())
+	Ok(row)
 }
 
 pub async fn update_organisation_name(

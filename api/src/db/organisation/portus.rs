@@ -62,21 +62,19 @@ pub async fn create_new_portus_tunnel(
 	ssh_port: u16,
 	exposed_port: u16,
 	tunnel_name: &str,
-	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			portus_tunnel
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			($1, $2, $3, $4, $5);
 		"#,
 		id,
 		username,
 		ssh_port as i32,
 		exposed_port as i32,
-		tunnel_name,
-		created as i64,
+		tunnel_name
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -128,7 +126,6 @@ pub async fn get_portus_tunnel_by_name(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -158,7 +155,6 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -189,7 +185,6 @@ pub async fn is_portus_port_available(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next().is_none())
@@ -223,7 +218,6 @@ pub async fn get_portus_tunnels_for_organisation(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	})
 	.collect();
 

@@ -72,7 +72,6 @@ pub async fn create_organisation(
 		resource_id,
 		organisation_name,
 		super_admin_id,
-		get_current_time_millis(),
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;

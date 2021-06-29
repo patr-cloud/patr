@@ -95,7 +95,8 @@ async fn sign_in(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -106,7 +107,7 @@ async fn sign_in(
 
 	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	.status(200)
@@ -147,7 +148,8 @@ async fn sign_up(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -179,6 +181,7 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// store email as lowercase
 	let backup_email = body
 		.get(request_keys::BACKUP_EMAIL)
 		.map(|param| {
@@ -187,8 +190,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store Phone Country Code as uppercase
 	let backup_phone_country_code = body
 		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
 		.map(|param| {
@@ -197,7 +202,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_uppercase());
 
 	let backup_phone_number = body
 		.get(request_keys::BACKUP_PHONE_NUMBER)
@@ -209,6 +215,7 @@ async fn sign_up(
 		})
 		.transpose()?;
 
+	// store org email as lower case
 	let org_email_local = body
 		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
 		.map(|param| {
@@ -217,8 +224,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store org domain name as lower case
 	let org_domain_name = body
 		.get(request_keys::DOMAIN)
 		.map(|param| {
@@ -227,7 +236,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let organisation_name = body
 		.get(request_keys::ORGANISATION_NAME)
@@ -237,20 +247,21 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
-		username,
+		&username,
 		account_type,
 		password,
 		(first_name, last_name),
-		backup_email,
-		backup_phone_country_code,
+		backup_email.as_deref(),
+		backup_phone_country_code.as_deref(),
 		backup_phone_number,
-		org_email_local,
-		org_domain_name,
-		organisation_name,
+		org_email_local.as_deref(),
+		org_domain_name.as_deref(),
+		organisation_name.as_deref(),
 	)
 	.await?;
 
@@ -318,7 +329,8 @@ async fn join(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let config = context.get_state().config.clone();
 
@@ -326,7 +338,7 @@ async fn join(
 		context.get_database_connection(),
 		&config,
 		otp,
-		username,
+		&username,
 	)
 	.await?;
 
@@ -399,11 +411,12 @@ async fn is_email_valid(
 	let email_address = query
 		.get(request_keys::EMAIL)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_email_allowed(
 		context.get_database_connection(),
-		email_address,
+		&email_address,
 	)
 	.await?;
 
@@ -423,11 +436,12 @@ async fn is_username_valid(
 	let username = query
 		.get(request_keys::USERNAME)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_username_allowed(
 		context.get_database_connection(),
-		username,
+		&username,
 	)
 	.await?;
 
@@ -449,7 +463,8 @@ async fn forgot_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let preferred_recovery_option = body
 		.get(request_keys::PREFERRED_RECOVERY_OPTION)
@@ -464,7 +479,7 @@ async fn forgot_password(
 	// otp to the preferred recovery option
 	service::forgot_password(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 		preferred_recovery_option,
 	)
 	.await?;
@@ -498,11 +513,12 @@ async fn reset_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	.status(400)

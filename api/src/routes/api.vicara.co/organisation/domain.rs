@@ -241,11 +241,12 @@ async fn add_domain_to_organisation(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let domain_id = service::add_domain_to_organisation(
 		context.get_database_connection(),
-		domain_name,
+		&domain_name,
 		&organisation_id,
 	)
 	.await?;

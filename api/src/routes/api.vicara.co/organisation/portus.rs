@@ -213,7 +213,6 @@ async fn get_tunnels_for_organisation(
 			request_keys::USERNAME: tunnel.username,
 			request_keys::SSH_PORT: tunnel.ssh_port,
 			request_keys::EXPOSED_PORT: tunnel.exposed_port,
-			request_keys::CREATED: tunnel.created,
 			request_keys::NAME: tunnel.name,
 			request_keys::SERVER_IP: service::get_server_ip_address(),
 		})
@@ -255,7 +254,6 @@ async fn get_info_for_tunnel(
 		request_keys::USERNAME: tunnel.username,
 		request_keys::SSH_PORT: tunnel.ssh_port,
 		request_keys::EXPOSED_PORT: tunnel.exposed_port,
-		request_keys::CREATED: tunnel.created,
 		request_keys::NAME: tunnel.name,
 		request_keys::SERVER_IP: service::get_server_ip_address()
 	}));
@@ -393,7 +391,6 @@ async fn create(
 		ssh_port,
 		exposed_port,
 		tunnel_name,
-		created,
 	)
 	.await;
 

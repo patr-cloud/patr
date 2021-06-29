@@ -184,7 +184,11 @@ async fn get_user_info_by_username(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let username = context.get_param(request_keys::USERNAME).unwrap().clone();
+	let username = context
+		.get_param(request_keys::USERNAME)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let user_data =
 		db::get_user_by_username(context.get_database_connection(), &username)
@@ -310,12 +314,14 @@ async fn add_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
-		email_address,
+		&email_address,
 		&user_id,
 	)
 	.await?;
@@ -385,12 +391,13 @@ async fn update_backup_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	service::update_user_backup_email(
 		context.get_database_connection(),
 		&user_id,
-		email_address,
+		&email_address,
 	)
 	.await?;
 
@@ -413,7 +420,8 @@ async fn update_backup_phone_number(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_uppercase();
 
 	let phone_number = body
 		.get(request_keys::BACKUP_PHONE_NUMBER)
@@ -449,7 +457,8 @@ async fn delete_personal_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	service::delete_personal_email_address(
 		context.get_database_connection(),
@@ -477,7 +486,9 @@ async fn add_phone_number_for_user(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_uppercase();
+
 	let phone_number = body
 		.get(request_keys::PHONE_NUMBER)
 		.map(|value| value.as_str())
@@ -488,14 +499,14 @@ async fn add_phone_number_for_user(
 	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
 		&user_id,
-		country_code,
+		&country_code,
 		phone_number,
 	)
 	.await?;
 
 	service::send_phone_number_verification_otp(
 		context.get_database_connection(),
-		country_code,
+		&country_code,
 		phone_number,
 		&otp,
 	)
@@ -519,7 +530,8 @@ async fn verify_phone_number(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_uppercase();
 
 	let phone_number = body
 		.get(request_keys::PHONE_NUMBER)
@@ -539,7 +551,7 @@ async fn verify_phone_number(
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
-		country_code,
+		&country_code,
 		phone_number,
 		otp,
 	)
@@ -564,7 +576,8 @@ async fn delete_phone_number(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_uppercase();
 
 	let phone_number = body
 		.get(request_keys::PHONE_NUMBER)
@@ -576,7 +589,7 @@ async fn delete_phone_number(
 	service::delete_phone_number(
 		context.get_database_connection(),
 		&user_id,
-		country_code,
+		&country_code,
 		phone_number,
 	)
 	.await?;
@@ -598,7 +611,8 @@ async fn verify_email_address(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let otp = body
 		.get(request_keys::VERIFICATION_TOKEN)
@@ -606,12 +620,13 @@ async fn verify_email_address(
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
 		&user_id,
-		email_address,
+		&email_address,
 		otp,
 	)
 	.await?;
@@ -637,8 +652,7 @@ async fn get_organisations_for_user(
 		json!({
 			request_keys::ID: org.id.encode_hex::<String>(),
 			request_keys::NAME: org.name,
-			request_keys::ACTIVE: org.active,
-			request_keys::CREATED: org.created
+			request_keys::ACTIVE: org.active
 		})
 	})
 	.collect::<Vec<_>>();
