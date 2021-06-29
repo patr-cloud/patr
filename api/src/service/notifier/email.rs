@@ -218,3 +218,17 @@ where
 
 	Ok(())
 }
+
+#[cfg(debug_assertions)]
+async fn send_email<TEmail>(
+	_body: TEmail,
+	to: Mailbox,
+	_reply_to: Option<Mailbox>,
+	_subject: &str,
+) -> Result<(), Error>
+where
+	TEmail: EmailTemplate,
+{
+	log::trace!("Sending email to {}", to);
+	Ok(())
+}

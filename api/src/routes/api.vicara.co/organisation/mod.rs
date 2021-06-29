@@ -153,7 +153,7 @@ async fn is_name_available(
 		.get(request_keys::NAME)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
+		.to_lowercase();
 
 	let allowed = service::is_organisation_name_allowed(
 		context.get_database_connection(),
@@ -179,12 +179,14 @@ async fn create_new_organisation(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let org_id = service::create_organisation(
 		context.get_database_connection(),
-		organisation_name,
+		&organisation_name,
 		&user_id,
 	)
 	.await?;
@@ -215,7 +217,8 @@ async fn update_organisation_info(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	if name.is_none() {
 		// No parameters to update
@@ -239,7 +242,7 @@ async fn update_organisation_info(
 	db::update_organisation_name(
 		context.get_database_connection(),
 		&organisation_id,
-		name,
+		&name,
 	)
 	.await?;
 

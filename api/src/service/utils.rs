@@ -4,10 +4,11 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use eve_rs::AsError;
 use hex::ToHex;
 use uuid::Uuid;
 
-use crate::{db, service, utils::Error, Database};
+use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -102,6 +103,8 @@ pub fn get_refresh_token_expiry() -> u64 {
 /// # Returns
 /// This function returns Result<(String, String), Error> containing strings
 /// refresh token and hashed form of it
+///
+/// [`Transaction`]: Transaction
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -157,6 +160,37 @@ pub fn generate_new_otp() -> String {
 #[cfg(feature = "sample-data")]
 pub fn generate_new_otp() -> String {
 	"000000".to_string()
+}
+
+/// # Description
+/// this function is used to split the email into local and domain
+/// and extract the domain id from it
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `email_address` - a string containing the email address to be split
+///
+/// # Returns
+/// this function returns a `Result<(String, Vec<u8>)>` either containing a tuple of string of email local and
+/// an unsigned 8 bit integer Vec containing domain id or an error
+///
+/// [`Transaction`]: Transaction
+pub async fn split_email_with_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email_address: &str,
+) -> Result<(String, Vec<u8>), Error> {
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name)
+			.await?
+			.as_bytes()
+			.to_vec();
+
+	Ok((email_local.to_string(), domain_id))
 }
 
 /// # Description
