@@ -1,7 +1,7 @@
 use crate::{models::db_mapping::PortusTunnel, query, Database};
 
 pub async fn initialize_portus_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing portus tables");
 	query!(
@@ -19,7 +19,7 @@ pub async fn initialize_portus_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -31,14 +31,14 @@ pub async fn initialize_portus_pre(
 		(name);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_portus_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up portus tables initialization");
 	query!(
@@ -48,7 +48,7 @@ pub async fn initialize_portus_post(
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

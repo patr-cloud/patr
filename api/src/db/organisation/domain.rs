@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub async fn initialize_domain_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing domain tables");
 
@@ -23,7 +23,7 @@ pub async fn initialize_domain_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -39,7 +39,7 @@ pub async fn initialize_domain_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -51,7 +51,7 @@ pub async fn initialize_domain_pre(
 		(is_verified);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -67,14 +67,14 @@ pub async fn initialize_domain_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_domain_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up domain tables initialization");
 	query!(
@@ -84,7 +84,7 @@ pub async fn initialize_domain_post(
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

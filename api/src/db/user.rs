@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub async fn initialize_users_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
 	query!(
@@ -63,7 +63,7 @@ pub async fn initialize_users_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -75,7 +75,7 @@ pub async fn initialize_users_pre(
 		(created);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -99,7 +99,7 @@ pub async fn initialize_users_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -111,7 +111,7 @@ pub async fn initialize_users_pre(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -128,14 +128,14 @@ pub async fn initialize_users_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_users_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up user tables initialization");
 	query!(
@@ -154,7 +154,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -166,7 +166,7 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -182,7 +182,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -194,7 +194,7 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -207,7 +207,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -219,7 +219,7 @@ pub async fn initialize_users_post(
 		(phone_code);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -243,7 +243,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -255,7 +255,7 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -282,7 +282,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -309,7 +309,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -383,7 +383,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -395,7 +395,7 @@ pub async fn initialize_users_post(
 		(otp_expiry);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -407,7 +407,7 @@ pub async fn initialize_users_post(
 		(username, otp_expiry);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -427,7 +427,7 @@ pub async fn initialize_users_post(
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// add user id as a foreign key
@@ -448,7 +448,7 @@ pub async fn initialize_users_post(
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -710,7 +710,7 @@ pub async fn initialize_users_post(
 			($$ZW$$, $$263$$, $$Zimbabwe$$);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())

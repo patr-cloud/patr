@@ -3,7 +3,7 @@ use semver::Version;
 use crate::{app::App, query, Database};
 
 pub async fn initialize_meta_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing meta tables");
 	query!(
@@ -14,13 +14,13 @@ pub async fn initialize_meta_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 pub async fn initialize_meta_post(
-	_transaction: &mut <Database as sqlx::Database>::Connection,
+	_connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up meta tables initialization");
 	Ok(())

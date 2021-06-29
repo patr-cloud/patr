@@ -13,7 +13,7 @@ pub use drive::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing organisation tables");
 	query!(
@@ -30,7 +30,7 @@ pub async fn initialize_organisations_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -42,7 +42,7 @@ pub async fn initialize_organisations_pre(
 		(super_admin_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -54,7 +54,7 @@ pub async fn initialize_organisations_pre(
 		(active);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Ref: https://www.postgresql.org/docs/13/datatype-enum.html
@@ -66,20 +66,20 @@ pub async fn initialize_organisations_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
-	application::initialize_application_pre(&mut *transaction).await?;
-	domain::initialize_domain_pre(&mut *transaction).await?;
-	drive::initialize_drive_pre(&mut *transaction).await?;
-	portus::initialize_portus_pre(&mut *transaction).await?;
-	deployment::initialize_deployment_pre(&mut *transaction).await?;
+	application::initialize_application_pre(connection).await?;
+	domain::initialize_domain_pre(connection).await?;
+	drive::initialize_drive_pre(connection).await?;
+	portus::initialize_portus_pre(connection).await?;
+	deployment::initialize_deployment_pre(connection).await?;
 
 	Ok(())
 }
 
 pub async fn initialize_organisations_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up organisation tables initialization");
 	query!(
@@ -90,14 +90,14 @@ pub async fn initialize_organisations_post(
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
-	application::initialize_application_post(&mut *transaction).await?;
-	domain::initialize_domain_post(&mut *transaction).await?;
-	drive::initialize_drive_post(&mut *transaction).await?;
-	portus::initialize_portus_post(&mut *transaction).await?;
-	deployment::initialize_deployment_post(&mut *transaction).await?;
+	application::initialize_application_post(connection).await?;
+	domain::initialize_domain_post(connection).await?;
+	drive::initialize_drive_post(connection).await?;
+	portus::initialize_portus_post(connection).await?;
+	deployment::initialize_deployment_post(connection).await?;
 
 	Ok(())
 }

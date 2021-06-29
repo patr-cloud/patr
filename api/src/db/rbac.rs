@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub async fn initialize_rbac_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing rbac tables");
 
@@ -28,7 +28,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -49,7 +49,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -61,7 +61,7 @@ pub async fn initialize_rbac_pre(
 		(owner_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles belong to an organisation
@@ -77,7 +77,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -89,7 +89,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Users belong to an organisation through a role
@@ -108,7 +108,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -120,7 +120,7 @@ pub async fn initialize_rbac_pre(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -132,7 +132,7 @@ pub async fn initialize_rbac_pre(
 		(user_id, organisation_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles that have permissions on a resource type
@@ -153,7 +153,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -165,7 +165,7 @@ pub async fn initialize_rbac_pre(
 		(role_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -177,7 +177,7 @@ pub async fn initialize_rbac_pre(
 		(role_id, resource_type_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles that have permissions on a specific resource
@@ -198,7 +198,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -210,7 +210,7 @@ pub async fn initialize_rbac_pre(
 		(role_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -222,7 +222,7 @@ pub async fn initialize_rbac_pre(
 		(role_id, resource_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -282,7 +282,7 @@ pub async fn initialize_rbac_post(
 }
 
 pub async fn get_all_organisation_roles_for_user(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<HashMap<String, OrgPermissions>, sqlx::Error> {
 	let mut orgs: HashMap<String, OrgPermissions> = HashMap::new();
@@ -300,7 +300,7 @@ pub async fn get_all_organisation_roles_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *transaction)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	for org_role in org_roles {
@@ -317,7 +317,7 @@ pub async fn get_all_organisation_roles_for_user(
 			"#,
 			org_role.role_id
 		)
-		.fetch_all(&mut *transaction)
+		.fetch_all(&mut *connection)
 		.await?;
 
 		let resource_types = query!(
@@ -331,7 +331,7 @@ pub async fn get_all_organisation_roles_for_user(
 			"#,
 			org_role.role_id
 		)
-		.fetch_all(&mut *transaction)
+		.fetch_all(&mut *connection)
 		.await?;
 
 		if let Some(permission) = orgs.get_mut(&org_id) {
@@ -417,7 +417,7 @@ pub async fn get_all_organisation_roles_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *transaction)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	for org_details in orgs_details {

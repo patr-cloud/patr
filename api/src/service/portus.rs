@@ -73,7 +73,7 @@ pub const fn get_server_ip_address() -> &'static str {
 
 /// function to get an available port.
 pub async fn assign_available_port(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<u16, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;
@@ -88,7 +88,7 @@ pub async fn assign_available_port(
 			continue;
 		}
 		let port_available =
-			db::is_portus_port_available(transaction, port).await?;
+			db::is_portus_port_available(connection, port).await?;
 		if !port_available {
 			continue;
 		}

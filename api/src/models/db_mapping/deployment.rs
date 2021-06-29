@@ -1,3 +1,5 @@
+use std::{fmt::Display, str::FromStr};
+
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -99,4 +101,47 @@ impl Deployment {
 			))
 		}
 	}
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "DEPLOYMENT_RUNNER_STATUS", rename_all = "lowercase")]
+pub enum DeploymentStatus {
+	Alive,
+	Starting,
+	#[sqlx(rename = "shutting down")]
+	ShuttingDown,
+	Dead,
+}
+
+impl Display for DeploymentStatus {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Alive => write!(f, "alive"),
+			Self::Starting => write!(f, "starting"),
+			Self::ShuttingDown => write!(f, "shutting down"),
+			Self::Dead => write!(f, "dead"),
+		}
+	}
+}
+
+impl FromStr for DeploymentStatus {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"alive" => Ok(Self::Alive),
+			"starting" => Ok(Self::Starting),
+			"shutting down" => Ok(Self::ShuttingDown),
+			"dead" => Ok(Self::Dead),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+pub struct DeploymentRunner {
+	pub id: Vec<u8>,
+	pub last_updated: u64,
+	pub container_id: Option<Vec<u8>>,
 }
