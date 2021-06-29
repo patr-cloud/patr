@@ -90,7 +90,7 @@ pub async fn is_email_allowed(
 		.status(500)
 }
 /// # Description
-/// The function is_phone_number_allowed() will check if the phone number
+/// This function is used to check if the phone number
 /// already exists and is according to the criteria for the phone number
 ///
 /// # Arguments
@@ -131,7 +131,7 @@ pub async fn is_phone_number_allowed(
 }
 
 /// # Description
-/// Creates a new user to be signed up and returns an OTP, this function will
+/// This function is used to create a new user to be signed up and returns an OTP, this function will
 /// validate details given by the user, then a resource will be generated for
 /// the user according to the type of the account
 ///
@@ -386,7 +386,7 @@ pub async fn create_user_join_request(
 }
 
 /// # Description
-/// This functions creates a record when a user logs into the system, this
+/// This function is used to create a record when a user logs into the system, this
 /// record contains six things:
 /// 1. login_id
 /// login_id is used to give to a unique identity to the current logged in user
@@ -491,7 +491,7 @@ pub async fn sign_in_user(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `login_id` - an unsigned 8 bit integer array which represents the id of
-///   the user
+/// the user
 ///
 /// # Returns
 /// This function returns `Result<UserLogin, Error>` containing an instance of
@@ -523,7 +523,7 @@ pub async fn get_user_login_for_login_id(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `config` - An object of [`Settings`] struct which stores configuration of
-///   the whole API
+/// the whole API
 /// * `user_login` - an object of struct [`UserLogin`]
 ///
 /// # Returns

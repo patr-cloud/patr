@@ -136,8 +136,7 @@ pub async fn add_domain_to_organisation(
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `domain_id` - An unsigned 8 bit integer array containing id of
-///   organisation domain
+/// * `domain_id` - An unsigned 8 bit integer array containing id of organisation domain
 ///
 /// # Returns
 /// Returns a Result<bool, Error> containing a bool whether the domain is
