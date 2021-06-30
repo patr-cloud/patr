@@ -61,29 +61,7 @@ pub async fn monitor_deployments() {
 	}
 
 	// Continously monitor deployments
-	loop {
-		let running_deployments =
-			db::get_deployments_from_deployment_runner_with_status(
-				connection, 
-				DeploymentStatus::Alive,
-			)
-			.await?;
-
-		let pseudo_running_deployments =
-			db::get_deployments_from_deployment(connection).await?;
-		let dead_deployments =
-			db::get_list_of_deployments_from_deployment_runner_with_status(
-				connection, DeploymentStatus::ShuttingDown,
-			)
-			.await?;
-
-		let faulty_deployments =
-			pseudo_running_deployments.intersect(dead_deployments);
-
-		start_task_for_deployments(connection, faulty_deployments).await?;
-
-		//TODO: graceful shutdown
-	}
+	loop {}
 }
 
 async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {

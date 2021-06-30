@@ -380,20 +380,6 @@ pub async fn generate_new_container_id(
 	Ok(uuid)
 }
 
-pub async fn get_deployments_from_deployment_runner_with_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	status: DeploymentStatus
-) -> Result<Vec<DeploymentRunner>, sqlx::Error> {
-	let rows = query_as!(
-		r#"
-		SELECT
-			*
-		FROM
-		
-		"#
-	)
-}
-
 pub async fn get_inoperative_deployment_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Option<DeploymentRunner>, sqlx::Error> {
