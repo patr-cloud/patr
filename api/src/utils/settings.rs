@@ -166,8 +166,7 @@ impl DockerRegistrySettings {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DigitalOceanSettings {
-	pub name: String,
-	pub key: String
+	pub digitaloceanApiKey: String
 }
 
 impl Display for RunningEnvironment {

@@ -59,8 +59,5 @@
 		"privateKey": "",
 		"publicKey": ""
 	},
-	"digitalOcean": {
-		"name": "deployerTool",
-		"key": "key123"
-	}
+	"digitaloceanApiKey": "key"
 }
