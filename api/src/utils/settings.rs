@@ -66,6 +66,7 @@ pub struct Settings {
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
+	pub digital_ocean: DigitalOceanSettings
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -160,6 +161,13 @@ impl DockerRegistrySettings {
 	pub fn public_key_der(&self) -> &[u8] {
 		self.public_key_der.as_ref().unwrap().as_ref()
 	}
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DigitalOceanSettings {
+	pub name: String,
+	pub key: String
 }
 
 impl Display for RunningEnvironment {

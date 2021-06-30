@@ -4,20 +4,20 @@ use serde::{Deserialize, Serialize};
 
 // TODO: create a enum or struct for
 // region: 
-// Datacenter Name	Geographic Location	            Slug (for the API and doctl )
-// NYC1         	New York City, United States	nyc1
-// NYC2	            New York City, United States	nyc2
-// NYC3	            New York City, United States	nyc3
-// AMS2	            Amsterdam, the Netherlands	    ams2
-// AMS3	            Amsterdam, the Netherlands	    ams3
-// SFO1	            San Francisco, United States	sfo1
-// SFO2	            San Francisco, United States	sfo2
-// SFO3	            San Francisco, United States	sfo3
-// SGP1	            Singapore	                    sgp1
-// LON1	            London, United Kingdom	        lon1
-// FRA1	            Frankfurt, Germany	            fra1
-// TOR1	            Toronto, Canada                 tor1
-// BLR1	            Bangalore, India	            blr1
+// Datacenter Name  Geographic Location             Slug (for the API and doctl )
+// NYC1             New York City, United States    nyc1
+// NYC2             New York City, United States    nyc2
+// NYC3             New York City, United States    nyc3
+// AMS2             Amsterdam, the Netherlands      ams2
+// AMS3             Amsterdam, the Netherlands      ams3
+// SFO1             San Francisco, United States    sfo1
+// SFO2             San Francisco, United States    sfo2
+// SFO3             San Francisco, United States    sfo3
+// SGP1             Singapore                       sgp1
+// LON1             London, United Kingdom          lon1
+// FRA1             Frankfurt, Germany              fra1
+// TOR1             Toronto, Canada                 tor1
+// BLR1             Bangalore, India                blr1
 
 
 #[derive(Debug, Deserialize, Serialize)]

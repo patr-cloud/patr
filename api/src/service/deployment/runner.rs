@@ -122,14 +122,12 @@ async fn get_servers_from_cloud_provider(
 	// TODO call digital ocean API here
 	use reqwest::{header, Client};
 
-	use crate::{
-		models::{DropletDetails}
-	};
+	use crate::{models::{deployment::cloud_providers::digital_ocean::{self, DropletDetails}}};
 
 	let mut headers = header::HeaderMap::new();
 	
     headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Authorization", format!("Bearer {}", settings.s3.key).parse().unwrap());
+    headers.insert("Authorization", format!("Bearer {}", settings.digital_ocean.key).parse().unwrap());
 
 	let droplets =  Client::new()
 		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
