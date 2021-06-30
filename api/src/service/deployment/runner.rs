@@ -62,7 +62,27 @@ pub async fn monitor_deployments() {
 
 	// Continously monitor deployments
 	loop {
-		
+		let running_deployments =
+			db::get_deployments_from_deployment_runner_with_status(
+				connection, 
+				DeploymentStatus::Alive,
+			)
+			.await?;
+
+		let pseudo_running_deployments =
+			db::get_deployments_from_deployment(connection).await?;
+		let dead_deployments =
+			db::get_list_of_deployments_from_deployment_runner_with_status(
+				connection, DeploymentStatus::ShuttingDown,
+			)
+			.await?;
+
+		let faulty_deployments =
+			pseudo_running_deployments.intersect(dead_deployments);
+
+		start_task_for_deployments(connection, faulty_deployments).await?;
+
+		//TODO: graceful shutdown
 	}
 }
 
@@ -122,26 +142,6 @@ async fn get_servers_from_cloud_provider(
 	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
 	// TODO call digital ocean API here
-	/*
-	extern crate reqwest;
-	use reqwest::header;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut headers = header::HeaderMap::new();
-    headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Authorization", "Bearer $DIGITALOCEAN_TOKEN".parse().unwrap());
-
-    let res = reqwest::Client::new()
-        .get("https://api.digitalocean.com/v2/sizes")
-        .headers(headers)
-        .send()?
-        .text()?;
-    println!("{}", res);
-
-    Ok(())
-}
-
-	*/
 	use reqwest::{header, Client};
 
 	use crate::{
@@ -164,7 +164,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut private_server_ip_addresses = Vec::new();
 		
 	for droplet in droplets {
-		private_server_ip_addresses.push(IpAddr::V4(droplet.networks.v4[0].ip_address));
+		private_server_ip_addresses.push(IpAddr::V6(droplet.networks.v6[0].ip_address));
 	}
 
 	Ok(private_server_ip_addresses)
