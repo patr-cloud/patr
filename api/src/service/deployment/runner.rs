@@ -1,6 +1,6 @@
 use std::{
 	collections::HashSet,
-	net::{IpAddr, Ipv4Addr},
+	net::{IpAddr},
 	time::Duration,
 };
 
@@ -129,7 +129,7 @@ async fn get_servers_from_cloud_provider(
 	headers.insert("Content-Type", "application/json".parse().unwrap());
 	headers.insert(
 		"Authorization",
-		format!("Bearer {}", settings.digital_ocean.digitaloceanApiKey)
+		format!("Bearer {}", settings.digital_ocean_api_key)
 			.parse()
 			.unwrap(),
 	);
