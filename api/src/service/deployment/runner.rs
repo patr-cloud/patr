@@ -61,7 +61,9 @@ pub async fn monitor_deployments() {
 	}
 
 	// Continously monitor deployments
-	loop {}
+	loop {
+		
+	}
 }
 
 async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
@@ -117,10 +119,55 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 
 #[cfg(debug_assertions)]
 async fn get_servers_from_cloud_provider(
-	_settings: &Settings,
+	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
 	// TODO call digital ocean API here
-	Ok(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)])
+	/*
+	extern crate reqwest;
+	use reqwest::header;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut headers = header::HeaderMap::new();
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    headers.insert("Authorization", "Bearer $DIGITALOCEAN_TOKEN".parse().unwrap());
+
+    let res = reqwest::Client::new()
+        .get("https://api.digitalocean.com/v2/sizes")
+        .headers(headers)
+        .send()?
+        .text()?;
+    println!("{}", res);
+
+    Ok(())
+}
+
+	*/
+	use reqwest::{header, Client};
+
+	use crate::{
+		models::{DropletDetails}
+	};
+
+	let mut headers = header::HeaderMap::new();
+	
+    headers.insert("Content-Type", "application/json".parse().unwrap());
+    headers.insert("Authorization", format!("Bearer {}", settings.s3.key).parse().unwrap());
+
+	let droplets =  Client::new()
+		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
+		.headers(headers)
+		.send()
+		.await?
+		.json::<Vec<DropletDetails>>()
+		.await?;
+
+	let mut private_server_ip_addresses = Vec::new();
+		
+	for droplet in droplets {
+		private_server_ip_addresses.push(IpAddr::V4(droplet.networks.v4[0].ip_address));
+	}
+
+	Ok(private_server_ip_addresses)
 }
 
 #[cfg(not(debug_assertions))]
