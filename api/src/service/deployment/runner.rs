@@ -122,14 +122,19 @@ async fn get_servers_from_cloud_provider(
 	// TODO call digital ocean API here
 	use reqwest::{header, Client};
 
-	use crate::{models::{deployment::cloud_providers::digital_ocean::{DropletDetails}}};
+	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
 
 	let mut headers = header::HeaderMap::new();
-	
-    headers.insert("Content-Type", "application/json".parse().unwrap());
-    headers.insert("Authorization", format!("Bearer {}", settings.digital_ocean.digitaloceanApiKey).parse().unwrap());
 
-	let droplets =  Client::new()
+	headers.insert("Content-Type", "application/json".parse().unwrap());
+	headers.insert(
+		"Authorization",
+		format!("Bearer {}", settings.digital_ocean.digitaloceanApiKey)
+			.parse()
+			.unwrap(),
+	);
+
+	let droplets = Client::new()
 		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
 		.headers(headers)
 		.send()
@@ -138,9 +143,10 @@ async fn get_servers_from_cloud_provider(
 		.await?;
 
 	let mut private_server_ip_addresses = Vec::new();
-		
+
 	for droplet in droplets {
-		private_server_ip_addresses.push(IpAddr::V6(droplet.networks.v6[0].ip_address));
+		private_server_ip_addresses
+			.push(IpAddr::V6(droplet.networks.v6[0].ip_address));
 	}
 
 	Ok(private_server_ip_addresses)

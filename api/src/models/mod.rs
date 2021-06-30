@@ -1,7 +1,7 @@
 pub mod db_mapping;
+pub mod deployment;
 pub mod error;
 pub mod rbac;
-pub mod deployment;
 
 mod access_token_data;
 mod docker_registry_token;
