@@ -1,8 +1,4 @@
-use std::{
-	collections::HashSet,
-	net::{IpAddr},
-	time::Duration,
-};
+use std::{collections::HashSet, net::IpAddr, time::Duration};
 
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
