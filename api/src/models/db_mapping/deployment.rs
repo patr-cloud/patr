@@ -2,6 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use sqlx::types::ipnetwork::IpNetwork;
 
 use crate::{db, error, utils::Error, Database};
 
@@ -140,8 +141,14 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
+#[derive(Debug)]
 pub struct DeploymentRunner {
 	pub id: Vec<u8>,
 	pub last_updated: u64,
 	pub container_id: Option<Vec<u8>>,
+}
+
+pub struct DeploymentApplicationServer {
+	pub server_ip: IpNetwork,
+	pub server_type: String,
 }

@@ -1,6 +1,7 @@
 use std::{
 	collections::HashSet,
 	net::{IpAddr, Ipv4Addr},
+	ops::DerefMut,
 	time::Duration,
 };
 
@@ -14,8 +15,9 @@ use uuid::Uuid;
 
 use crate::{
 	db,
+	models::db_mapping::{Deployment, DeploymentApplicationServer},
 	service,
-	utils::{settings::Settings, Error},
+	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
 
@@ -38,7 +40,7 @@ pub async fn monitor_deployments() {
 	loop {
 		match register_runner(&app.database).await {
 			Ok(value) => {
-				runner_id = value;
+				runner_id = value.as_bytes().to_vec();
 				break;
 			}
 			Err(error) => {
@@ -47,6 +49,7 @@ pub async fn monitor_deployments() {
 			}
 		}
 	}
+	log::info!("Registered with runnerId `{}`", hex::encode(&runner_id));
 
 	// Register all application servers
 	loop {
@@ -61,7 +64,69 @@ pub async fn monitor_deployments() {
 	}
 
 	// Continously monitor deployments
-	loop {}
+	loop {
+		if *SHOULD_EXIT.read().await {
+			// should exit. Wait for all runners to stop and quit
+
+			// Set container_id of runner to null first.
+			// If that fails, wait for at least 10 seconds so that the
+			// last_updated is invalidated
+			if let Err(error) =
+				unset_container_id_for_runner(&app.database, &runner_id).await
+			{
+				log::error!(
+					"Error unsetting container_id: {}",
+					error.get_error()
+				);
+				time::sleep(Duration::from_secs(10)).await;
+			}
+
+			while !DEPLOYMENTS.lock().await.is_empty() {
+				// Wait for 1 second and try again
+				time::sleep(Duration::from_millis(1000)).await;
+			}
+			break;
+		}
+
+		// If the runner is supposed to be running, check for deployments to
+		// run, run them and regularly update the runner status
+		if let Ok(deployments) = get_deployments_to_run(&app.database).await {
+			for deployment in deployments {
+				task::spawn(monitor_deployment(
+					app.database.clone(),
+					runner_id.clone(),
+					deployment,
+				));
+			}
+		} else {
+			if let Err(error) =
+				update_runner_status(&app.database, &runner_id).await
+			{
+				log::error!(
+					"Error updating runner status: {}",
+					error.get_error()
+				);
+			}
+			time::sleep(Duration::from_millis(1000)).await;
+			continue;
+		}
+		// Every 2.5 seconds, update the runner status. 1 minute later, recheck
+		// for deployments again
+		for _ in 0..=24 {
+			if let Err(error) =
+				update_runner_status(&app.database, &runner_id).await
+			{
+				log::error!(
+					"Error updating runner status: {}",
+					error.get_error()
+				);
+			}
+			if *SHOULD_EXIT.read().await {
+				break;
+			}
+			time::sleep(Duration::from_millis(2500)).await;
+		}
+	}
 }
 
 async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
@@ -94,6 +159,7 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 						runner.container_id.as_deref(),
 					)
 					.await?;
+					container_id = Uuid::from_slice(&runner.id)?;
 					break;
 				} else {
 					continue;
@@ -156,6 +222,95 @@ async fn register_application_servers(
 
 	connection.commit().await?;
 	Ok(())
+}
+
+async fn get_deployments_to_run(
+	pool: &Pool<Database>,
+) -> Result<Vec<Deployment>, Error> {
+	let deployments = db::get_deployments_not_running_for_runner(
+		&mut pool.begin().await?.deref_mut(),
+	)
+	.await?;
+
+	Ok(deployments)
+}
+
+async fn update_runner_status(
+	pool: &Pool<Database>,
+	runner_id: &[u8],
+) -> Result<(), Error> {
+	db::update_deployment_runner_last_updated(
+		pool.acquire().await?.deref_mut(),
+		runner_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn unset_container_id_for_runner(
+	pool: &Pool<Database>,
+	runner_id: &[u8],
+) -> Result<(), Error> {
+	log::error!("Unsetting for {}", hex::encode(runner_id));
+	db::update_deployment_runner_container_id(
+		pool.acquire().await?.deref_mut(),
+		runner_id,
+		None,
+		Some(runner_id),
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn monitor_deployment(
+	pool: Pool<Database>,
+	runner_id: Vec<u8>,
+	deployment: Deployment,
+) {
+	// First, find available server to deploy to
+	let server = {
+		let server;
+		loop {
+			match get_available_server_for_deployment(&pool, 1, 1).await {
+				Ok(value) => {
+					server = value;
+					break;
+				}
+				Err(error) => {
+					log::error!(
+						"Error getting servers for deployment: {}",
+						error.get_error()
+					);
+					time::sleep(Duration::from_millis(500)).await;
+					continue;
+				}
+			}
+		}
+		server
+	};
+
+	if let Some(server) = server {
+	} else {
+		// Need to create a new server
+	}
+}
+
+async fn get_available_server_for_deployment(
+	pool: &Pool<Database>,
+	memory_requirement: u16,
+	cpu_requirement: u8,
+) -> Result<Option<DeploymentApplicationServer>, Error> {
+	let server = db::get_available_deployment_server_for_deployment(
+		pool.acquire().await?.deref_mut(),
+		memory_requirement,
+		cpu_requirement,
+	)
+	.await?;
+
+	Ok(server)
 }
 
 // async fn run_deployment(
