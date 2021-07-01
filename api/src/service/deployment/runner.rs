@@ -115,7 +115,6 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 async fn get_servers_from_cloud_provider(
 	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
-	// TODO call digital ocean API here
 	use reqwest::{header, Client};
 
 	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
@@ -130,22 +129,25 @@ async fn get_servers_from_cloud_provider(
 			.unwrap(),
 	);
 
-	let droplets = Client::new()
+	let private_ipv4_address = Client::new()
 		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
 		.headers(headers)
 		.send()
 		.await?
 		.json::<Vec<DropletDetails>>()
-		.await?;
+		.await?
+		.into_iter()
+		.filter_map(|droplet| {
+			droplet
+				.networks
+				.v4
+				.into_iter()
+				.find(|ipv4| ipv4.ip_address.is_private())
+		})
+		.map(|ip_add| IpAddr::V4(ip_add.ip_address))
+		.collect();
 
-	let mut private_server_ip_addresses = Vec::new();
-
-	for droplet in droplets {
-		private_server_ip_addresses
-			.push(IpAddr::V6(droplet.networks.v6[0].ip_address));
-	}
-
-	Ok(private_server_ip_addresses)
+	Ok(private_ipv4_address)
 }
 
 #[cfg(not(debug_assertions))]

@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use serde::{Deserialize, Serialize};
 
@@ -120,4 +120,19 @@ pub struct DropletDetails {
 	pub next_backup_window: NextBackupWindow,
 	pub tags: Vec<String>,
 	pub vpc_uuid: String,
+}
+
+impl DropletDetails {
+	pub fn get_private_ip(&self) -> Vec<IpAddr> {
+		let private_ip = Vec::new();
+		if !self.networks.v4.is_empty() {
+			for ip in self.networks.v4 {
+				if ip.ip_address.is_private() {
+					private_ip.push(IpAddr::V4(ip.ip_address));
+				}
+			}
+		}
+
+		return private_ip;
+	}
 }
