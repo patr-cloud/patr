@@ -434,7 +434,7 @@ async fn update_backup_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		&phone_number,
+		phone_number,
 	)
 	.await?;
 

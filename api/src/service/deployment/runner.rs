@@ -47,15 +47,11 @@ pub async fn monitor_deployments() {
 	log::info!("Registered with runnerId `{}`", hex::encode(&runner_id));
 
 	// Register all application servers
-	loop {
-		if let Err(error) =
-			register_application_servers(&app.database, &app.config).await
-		{
-			log::error!("Error registering servers: {}", error.get_error());
-			time::sleep(Duration::from_millis(1000)).await;
-		} else {
-			break;
-		}
+	while let Err(error) =
+		register_application_servers(&app.database, &app.config).await
+	{
+		log::error!("Error registering servers: {}", error.get_error());
+		time::sleep(Duration::from_millis(1000)).await;
 	}
 
 	// Continously monitor deployments
@@ -233,7 +229,7 @@ async fn register_application_servers(
 		&mut connection,
 		servers
 			.into_iter()
-			.map(|server| IpNetwork::from(server))
+			.map(IpNetwork::from)
 			.collect::<Vec<_>>()
 			.as_ref(),
 	)

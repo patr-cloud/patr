@@ -565,7 +565,7 @@ pub async fn join_user(
 	otp: &str,
 	username: &str,
 ) -> Result<JoinUser, Error> {
-	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
+	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
 		.status(200)
 		.body(error!(OTP_EXPIRED).to_string())?;

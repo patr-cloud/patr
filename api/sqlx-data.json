@@ -32,6 +32,19 @@
       "nullable": []
     }
   },
+  "08d76855085bbcfc14ee04200e78ebaaac30869fd93c783f26c39fb95082171a": {
+    "query": "UPDATE deployment_runner SET container_id = $1 WHERE id = $2 AND container_id IS NULL;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "0a2cc71507a5b323a1030851aecd6df7b5de12a1af0dd73016d27e8e83865025": {
     "query": "CREATE TABLE docker_registry_repository( id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY, organisation_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_fk_id REFERENCES organisation(id), name VARCHAR(255) NOT NULL, CONSTRAINT docker_registry_repository_uq_organisation_id_name UNIQUE(organisation_id, name) );",
     "describe": {
@@ -251,6 +264,45 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "156649aadc25ee05e3e2fb7b02131bf18eb534f04871a34d1ebce9f0efc73854": {
+    "query": "SELECT deployment_application_server.server_ip as \"server_ip!\", deployment_application_server.server_type as \"server_type!\", ( deployment_application_server_type.memory - running_deployments.memory_used ) as \"memory_available\", ( deployment_application_server_type.cpu - running_deployments.cpu_used ) as \"cpu_available\" FROM deployment_application_server INNER JOIN deployment_application_server_type ON deployment_application_server.server_type = deployment_application_server_type.type INNER JOIN ( SELECT current_server, COUNT(current_server) as \"memory_used\", COUNT(current_server) as \"cpu_used\" FROM deployment_runner_deployment GROUP BY current_server ) as \"running_deployments\" ON running_deployments.current_server = deployment_application_server.server_ip WHERE ( deployment_application_server_type.memory - running_deployments.memory_used ) >= $1 AND ( deployment_application_server_type.cpu - running_deployments.cpu_used ) >= $2 ORDER BY memory_available, cpu_available;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "server_ip!",
+          "type_info": "Inet"
+        },
+        {
+          "ordinal": 1,
+          "name": "server_type!",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "memory_available",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "cpu_available",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        true,
+        null,
+        null
+      ]
     }
   },
   "15754548332233512bc74364ad9ebb4ee076cfa1c8555b5c4740c12d2c85b4b0": {
@@ -763,6 +815,16 @@
       "nullable": []
     }
   },
+  "2b767403c8cd9b10fb46ad860f09a0587d8fd1ae1cbd609bf45095213929e310": {
+    "query": "CREATE TABLE deployment_application_server_type( type TEXT CONSTRAINT deployment_application_server_type_pk PRIMARY KEY, memory INT NOT NULL, cpu SMALLINT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "2c6890a2f076c5c33f50d50c39f833a450b72939fedc94b33a324a32df9249e9": {
     "query": "INSERT INTO deployment_runner VALUES ($1, $2, $3);",
     "describe": {
@@ -1036,16 +1098,6 @@
   },
   "3a520b119fa3ee7b6704e7daa3e632b5f072223159051c10b2feb14e4af4f6af": {
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_organisation_id FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "3a905fb8f2a7f3423a51fee03e13ab9509de3fcffff72703d3f0203e0612be7c": {
-    "query": "CREATE INDEX deployment_runner_idx_last_updated ON deployment_runner USING GIST(last_updated);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1981,16 +2033,6 @@
       ]
     }
   },
-  "612971db32df322421bdeb1ab7a54e4c04f7d714fdf4a05fdf86a2f4410878a0": {
-    "query": "CREATE INDEX deployment_runner_deployment_idx_last_updated ON deployment_runner_deployment USING GIST(last_updated);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "64ee3e30253dd21f030ad8dd3047dca1ac5dcd8e080942cc25bc21a75bad37ed": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, org_email_local, org_domain_name, organisation_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE org_domain_name = $1;",
     "describe": {
@@ -2267,6 +2309,19 @@
       "nullable": []
     }
   },
+  "78cee086d5289d7ad6ac7b05fc7b64877f478737000bf04f289bc5cc34e0ca65": {
+    "query": "UPDATE deployment_runner SET last_updated = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
     "describe": {
@@ -2323,6 +2378,16 @@
         false,
         false
       ]
+    }
+  },
+  "7ce0f4b0dd54f29d7e447c27d221f770718ef6199fa783a0f812766f9ad77a38": {
+    "query": "CREATE TABLE deployment_application_server( server_ip INET CONSTRAINT deployment_application_server_pk PRIMARY KEY, /* TODO add region here later */ server_type TEXT CONSTRAINT deployment_application_server_fk_server_type REFERENCES deployment_application_server_type(type) /* TODO come up with a convention for ↑ this name */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
@@ -3039,6 +3104,62 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "aafc1d6cb2d4adafe67c292aeac2734074785d8fbeb31de37f4e451c0db187d3": {
+    "query": "SELECT * FROM deployment WHERE id NOT IN ( SELECT deployment.id FROM deployment_runner_deployment INNER JOIN deployment ON deployment_runner_deployment.deployment_id = deployment.id INNER JOIN deployment_runner ON deployment_runner_deployment.runner_id = deployment_runner.id WHERE deployment_runner_deployment.status != 'dead' AND deployment_runner_deployment.last_updated >= $1 AND deployment_runner.last_updated >= $1 );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "deployed_image",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true
+      ]
     }
   },
   "ab946fe7f8938408e571a2117c1542bfa8898dc0e5dccef8d39d26a3a94b8225": {
@@ -3901,16 +4022,6 @@
       ]
     }
   },
-  "cebd26b8637e52df8e3d51d42d8136d280f646fd564c8762f1cd1715a9563b6c": {
-    "query": "CREATE TABLE deployment_application_server( server_ip INET CONSTRAINT deployment_application_server_pk PRIMARY KEY, /* TODO add region here later */ server_type TEXT NOT NULL DEFAULT 'do-server-1' /* TODO come up with a convention for ↑ this name */ );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -4574,16 +4685,6 @@
       ]
     }
   },
-  "ec6fc33b127d2c5466102d1c28bc537b0d884b26df67640624312a820b7790a0": {
-    "query": "CREATE TABLE deployment_runner_deployment( deployment_id BYTEA CONSTRAINT deployment_runner_deployment_pk PRIMARY KEY, runner_id BYTEA NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT deployment_runner_chk_last_updated_unsigned CHECK(last_updated >= 0), status DEPLOYMENT_RUNNER_STATUS NOT NULL DEFAULT 'alive' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "f47843b0cfa619dcf1f2a8837ab5de40f1bd9ac1b1d2ed31d1c6c7dd86391193": {
     "query": "SELECT * FROM deployment_runner WHERE container_id = NULL OR last_updated < $1;",
     "describe": {
@@ -4696,6 +4797,16 @@
   },
   "fbf96508ddb92444286d889223e4a72db2034fc7d6a9bd8896777a0f86afab2d": {
     "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, deployed_image TEXT, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "fd298c9818b9729982d1d0fac769afa568065fd62ea79d8b79651995154aeb77": {
+    "query": "CREATE TABLE deployment_runner_deployment( deployment_id BYTEA CONSTRAINT deployment_runner_deployment_pk PRIMARY KEY CONSTRAINT deployment_runner_deployment_fk_deployment_id REFERENCES deployment(id), runner_id BYTEA NOT NULL CONSTRAINT deployment_runner_deployment_fk_runner_id REFERENCES deployment_runner(id), last_updated BIGINT NOT NULL CONSTRAINT deployment_runner_chk_last_updated_unsigned CHECK(last_updated >= 0), current_server INET NOT NULL CONSTRAINT deployment_runner_deployment_fk_current_server REFERENCES deployment_application_server(server_ip), status DEPLOYMENT_RUNNER_STATUS NOT NULL DEFAULT 'alive' );",
     "describe": {
       "columns": [],
       "parameters": {

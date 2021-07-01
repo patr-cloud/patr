@@ -46,8 +46,8 @@ pub async fn send_user_sign_up_otp(
 	{
 		let email = get_user_email(
 			connection,
-			&backup_email_domain_id,
-			&backup_email_local,
+			backup_email_domain_id,
+			backup_email_local,
 		)
 		.await?;
 
@@ -60,8 +60,8 @@ pub async fn send_user_sign_up_otp(
 		// check if phone number is given as a backup
 		let phone_number = get_user_phone_number(
 			connection,
-			&phone_country_code,
-			&phone_number,
+			phone_country_code,
+			phone_number,
 		)
 		.await?;
 
@@ -85,8 +85,8 @@ pub async fn send_password_changed_notification(
 	{
 		let email = get_user_email(
 			connection,
-			&backup_email_domain_id,
-			&backup_email_local,
+			backup_email_domain_id,
+			backup_email_local,
 		)
 		.await?;
 
@@ -101,8 +101,8 @@ pub async fn send_password_changed_notification(
 	{
 		let phone_number = get_user_phone_number(
 			connection,
-			&phone_country_code,
-			&phone_number,
+			phone_country_code,
+			phone_number,
 		)
 		.await?;
 
@@ -123,8 +123,8 @@ pub async fn send_user_reset_password_notification(
 	{
 		let phone_number = get_user_phone_number(
 			connection,
-			&phone_country_code,
-			&phone_number,
+			phone_country_code,
+			phone_number,
 		)
 		.await?;
 
@@ -138,8 +138,8 @@ pub async fn send_user_reset_password_notification(
 	{
 		let email = get_user_email(
 			connection,
-			&backup_email_domain_id,
-			&backup_email_local,
+			backup_email_domain_id,
+			backup_email_local,
 		)
 		.await?;
 

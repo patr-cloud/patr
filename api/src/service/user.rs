@@ -134,7 +134,7 @@ pub async fn update_user_backup_email(
 	user_id: &[u8],
 	email_address: &str,
 ) -> Result<(), Error> {
-	if !validator::is_email_valid(&email_address) {
+	if !validator::is_email_valid(email_address) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_EMAIL).to_string())?;
@@ -146,7 +146,7 @@ pub async fn update_user_backup_email(
 	// finally if everything checks out then change the personal email
 	db::update_backup_email_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&email_local,
 		&domain_id,
 	)
@@ -177,9 +177,9 @@ pub async fn update_user_backup_phone_number(
 
 	db::update_backup_phone_number_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&country_code.country_code,
-		&phone_number,
+		phone_number,
 	)
 	.await
 	.status(400)
@@ -196,7 +196,7 @@ pub async fn delete_personal_email_address(
 	let (email_local, domain_id) =
 		service::split_email_with_domain_id(connection, email_address).await?;
 
-	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
+	let user_data = db::get_user_by_user_id(connection, user_id).await?;
 
 	let user_data = if let Some(user_data) = user_data {
 		user_data
@@ -219,7 +219,7 @@ pub async fn delete_personal_email_address(
 
 	db::delete_personal_email_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&email_local,
 		&domain_id,
 	)
@@ -246,7 +246,7 @@ pub async fn delete_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
-	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
+	let user_data = db::get_user_by_user_id(connection, user_id).await?;
 
 	let user_data = if let Some(user_data) = user_data {
 		user_data
@@ -271,9 +271,9 @@ pub async fn delete_phone_number(
 
 	db::delete_phone_number_for_user(
 		connection,
-		&user_id,
-		&country_code,
-		&phone_number,
+		user_id,
+		country_code,
+		phone_number,
 	)
 	.await?;
 
@@ -303,9 +303,9 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 	db::add_phone_number_to_be_verified_for_user(
 		connection,
-		&country_code,
-		&phone_number,
-		&user_id,
+		country_code,
+		phone_number,
+		user_id,
 		&verification_token,
 		token_expiry,
 	)
