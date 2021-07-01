@@ -9,7 +9,14 @@ use tokio::{
 };
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::db_mapping::{Deployment, DeploymentApplicationServer}, service, utils::{get_current_time_millis, settings::Settings, Error}};
+use crate::{
+	db,
+	error,
+	models::db_mapping::{Deployment, DeploymentApplicationServer},
+	service,
+	utils::{get_current_time_millis, settings::Settings, Error},
+	Database,
+};
 
 lazy_static::lazy_static! {
 	static ref DEPLOYMENTS: Mutex<HashSet<Vec<u8>>> = Mutex::new(HashSet::new());
@@ -83,7 +90,7 @@ pub async fn monitor_deployments() {
 					app.database.clone(),
 					runner_id.clone(),
 					deployment,
-					app.config.clone()
+					app.config.clone(),
 				));
 			}
 		} else {
@@ -168,7 +175,6 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 
 	Ok(container_id)
 }
-
 
 async fn get_servers_from_cloud_provider(
 	settings: &Settings,
@@ -281,7 +287,7 @@ async fn monitor_deployment(
 	pool: Pool<Database>,
 	_runner_id: Vec<u8>,
 	_deployment: Deployment,
-	settings: Settings
+	settings: Settings,
 ) {
 	// First, find available server to deploy to
 	let server = {
@@ -311,10 +317,11 @@ async fn monitor_deployment(
 		use openssh::*;
 
 		match Session::connect(
-			format!("ssh:://{}",server.server_ip.to_string()), 
-			KnownHosts::Strict
+			format!("ssh:://{}", server.server_ip.to_string()),
+			KnownHosts::Strict,
 		)
-		.await {
+		.await
+		{
 			Ok(value) => {
 				log::info!("Session created successfully!");
 			}
@@ -322,7 +329,6 @@ async fn monitor_deployment(
 				log::error!("Error in connecting the server");
 			}
 		}
-		
 	} else {
 		// Need to create a new server
 	}
@@ -342,7 +348,6 @@ async fn get_available_server_for_deployment(
 
 	Ok(server)
 }
-
 
 // async fn run_deployment(
 // 	connection: &mut <Database as sqlx::Database>::Connection,

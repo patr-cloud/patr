@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // TODO: create a enum or struct for
 // region:
-// Datacenter Name  Geographic Location             Slug (for the API and doctl) 
+// Datacenter Name  Geographic Location             Slug (for the API and doctl)
 // NYC1             New York City, United States    nyc1
 // NYC2             New York City, United States    nyc2
 // NYC3             New York City, United States    nyc3
@@ -130,5 +130,5 @@ pub struct DropletRequest {
 	pub vpc_uuid: Option<String>,
 	pub user_data: Option<String>,
 	pub volumes: Option<Vec<String>>,
-	pub tags: Option<Vec<String>>
+	pub tags: Option<Vec<String>>,
 }
