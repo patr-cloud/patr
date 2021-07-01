@@ -138,13 +138,14 @@ async fn get_servers_from_cloud_provider(
 		.await?
 		.into_iter()
 		.filter_map(|droplet| {
-			droplet
-				.networks
-				.v4
-				.into_iter()
-				.find(|ipv4| ipv4.is_private())
+			droplet.networks.v4.into_iter().find_map(|ipv4| {
+				if ipv4.r#type == "private" {
+					Some(IpAddr::V4(ipv4.ip_address))
+				} else {
+					None
+				}
+			})
 		})
-		.map(|ip_add| IpAddr::V4(ip_add.ip_address))
 		.collect();
 
 	Ok(private_ipv4_address)
