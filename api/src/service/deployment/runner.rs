@@ -1,8 +1,4 @@
-use std::{
-	collections::HashSet,
-	net::{IpAddr, Ipv4Addr},
-	time::Duration,
-};
+use std::{collections::HashSet, net::IpAddr, time::Duration};
 
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
@@ -117,10 +113,42 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 
 #[cfg(debug_assertions)]
 async fn get_servers_from_cloud_provider(
-	_settings: &Settings,
+	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
-	// TODO call digital ocean API here
-	Ok(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)])
+	use reqwest::{header, Client};
+
+	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
+
+	let mut headers = header::HeaderMap::new();
+
+	headers.insert("Content-Type", "application/json".parse().unwrap());
+	headers.insert(
+		"Authorization",
+		format!("Bearer {}", settings.digital_ocean_api_key)
+			.parse()
+			.unwrap(),
+	);
+
+	let private_ipv4_address = Client::new()
+		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
+		.headers(headers)
+		.send()
+		.await?
+		.json::<Vec<DropletDetails>>()
+		.await?
+		.into_iter()
+		.filter_map(|droplet| {
+			droplet.networks.v4.into_iter().find_map(|ipv4| {
+				if ipv4.r#type == "private" {
+					Some(IpAddr::V4(ipv4.ip_address))
+				} else {
+					None
+				}
+			})
+		})
+		.collect();
+
+	Ok(private_ipv4_address)
 }
 
 #[cfg(not(debug_assertions))]
