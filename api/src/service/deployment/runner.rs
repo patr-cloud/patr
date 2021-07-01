@@ -1,9 +1,4 @@
-use std::{
-	collections::HashSet,
-	net::{IpAddr, Ipv4Addr},
-	ops::DerefMut,
-	time::Duration,
-};
+use std::{collections::HashSet, net::IpAddr, ops::DerefMut, time::Duration};
 
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
@@ -181,18 +176,42 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 	Ok(container_id)
 }
 
+#[cfg(not(debug_assertions))]
+async fn get_servers_from_cloud_provider(
+	settings: &Settings,
+) -> Result<Vec<IpAddr>, Error> {
+	use reqwest::Client;
+
+	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
+
+	let private_ipv4_address = Client::new()
+		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
+		.bearer_auth(&settings.digital_ocean_api_key)
+		.send()
+		.await?
+		.json::<Vec<DropletDetails>>()
+		.await?
+		.into_iter()
+		.filter_map(|droplet| {
+			droplet.networks.v4.into_iter().find_map(|ipv4| {
+				if ipv4.r#type == "private" {
+					Some(IpAddr::V4(ipv4.ip_address))
+				} else {
+					None
+				}
+			})
+		})
+		.collect();
+
+	Ok(private_ipv4_address)
+}
+
 #[cfg(debug_assertions)]
 async fn get_servers_from_cloud_provider(
 	_settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
-	// TODO call digital ocean API here
-	Ok(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)])
-}
+	use std::net::Ipv4Addr;
 
-#[cfg(not(debug_assertions))]
-async fn get_servers_from_cloud_provider(
-	_settings: &Settings,
-) -> Result<Vec<IpAddr>, Error> {
 	// TODO call digital ocean API here
 	Ok(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)])
 }
@@ -267,8 +286,8 @@ async fn unset_container_id_for_runner(
 
 async fn monitor_deployment(
 	pool: Pool<Database>,
-	runner_id: Vec<u8>,
-	deployment: Deployment,
+	_runner_id: Vec<u8>,
+	_deployment: Deployment,
 ) {
 	// First, find available server to deploy to
 	let server = {
@@ -292,7 +311,9 @@ async fn monitor_deployment(
 		server
 	};
 
-	if let Some(server) = server {
+	if let Some(_server) = server {
+		// TODO now that there's a server available, open a reverse tunnel, get
+		// the docker socket, and run the image on it.
 	} else {
 		// Need to create a new server
 	}

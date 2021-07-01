@@ -116,11 +116,26 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TABLE deployment_application_server_type(
+			type TEXT
+				CONSTRAINT deployment_application_server_type_pk PRIMARY KEY,
+			memory INT NOT NULL,
+			cpu SMALLINT NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment_application_server(
 			server_ip INET
 				CONSTRAINT deployment_application_server_pk PRIMARY KEY,
 			/* TODO add region here later */
-			server_type TEXT NOT NULL DEFAULT 'do-server-1'
+			server_type TEXT
+				CONSTRAINT deployment_application_server_fk_server_type
+					REFERENCES deployment_application_server_type(type)
 			/* TODO come up with a convention for ↑ this name */
 		);
 		"#
@@ -154,6 +169,9 @@ pub async fn initialize_deployment_pre(
 			last_updated BIGINT NOT NULL
 				CONSTRAINT deployment_runner_chk_last_updated_unsigned
 					CHECK(last_updated >= 0),
+			current_server INET NOT NULL
+				CONSTRAINT deployment_runner_deployment_fk_current_server
+					REFERENCES deployment_application_server(server_ip),
 			status DEPLOYMENT_RUNNER_STATUS NOT NULL DEFAULT 'alive'
 		);
 		"#
@@ -608,19 +626,63 @@ pub async fn get_available_deployment_server_for_deployment(
 	memory_requirement: u16,
 	cpu_requirement: u8,
 ) -> Result<Option<DeploymentApplicationServer>, sqlx::Error> {
-	// TODO
-	let row = query_as!(
-		DeploymentApplicationServer,
+	let row = query!(
 		r#"
 		SELECT
-			*
+			deployment_application_server.server_ip as "server_ip!",
+			deployment_application_server.server_type as "server_type!",
+			(
+				deployment_application_server_type.memory -
+				running_deployments.memory_used
+			) as "memory_available",
+			(
+				deployment_application_server_type.cpu -
+				running_deployments.cpu_used
+			) as "cpu_available"
 		FROM
-			deployment_application_server;
-		"#
+			deployment_application_server
+		INNER JOIN
+			deployment_application_server_type
+		ON
+			deployment_application_server.server_type =
+				deployment_application_server_type.type
+		INNER JOIN
+			(
+				SELECT
+					current_server,
+					COUNT(current_server) as "memory_used",
+					COUNT(current_server) as "cpu_used"
+				FROM
+					deployment_runner_deployment
+				GROUP BY
+					current_server
+			) as "running_deployments"
+		ON
+			running_deployments.current_server =
+				deployment_application_server.server_ip
+		WHERE
+			(
+				deployment_application_server_type.memory -
+				running_deployments.memory_used
+			) >= $1 AND
+			(
+				deployment_application_server_type.cpu -
+				running_deployments.cpu_used
+			) >= $2
+		ORDER BY
+			memory_available,
+			cpu_available;
+		"#,
+		memory_requirement as i32,
+		cpu_requirement as i16
 	)
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
+	.map(|row| DeploymentApplicationServer {
+		server_ip: row.server_ip,
+		server_type: row.server_type,
+	})
 	.next();
 
 	Ok(row)

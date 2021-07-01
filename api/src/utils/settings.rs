@@ -66,6 +66,7 @@ pub struct Settings {
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
+	pub digital_ocean_api_key: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
