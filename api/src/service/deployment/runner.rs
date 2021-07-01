@@ -1,5 +1,6 @@
 use std::{collections::HashSet, net::IpAddr, ops::DerefMut, time::Duration};
 
+use eve_rs::AsError;
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
 	sync::{Mutex, RwLock},
@@ -8,13 +9,7 @@ use tokio::{
 };
 use uuid::Uuid;
 
-use crate::{
-	db,
-	models::db_mapping::{Deployment, DeploymentApplicationServer},
-	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
-	Database,
-};
+use crate::{Database, db, error, models::db_mapping::{Deployment, DeploymentApplicationServer}, service, utils::{get_current_time_millis, settings::Settings, Error}};
 
 lazy_static::lazy_static! {
 	static ref DEPLOYMENTS: Mutex<HashSet<Vec<u8>>> = Mutex::new(HashSet::new());
@@ -23,6 +18,7 @@ lazy_static::lazy_static! {
 
 pub async fn monitor_deployments() {
 	let app = service::get_app().clone();
+
 	task::spawn(async {
 		tokio::signal::ctrl_c()
 			.await
@@ -87,6 +83,7 @@ pub async fn monitor_deployments() {
 					app.database.clone(),
 					runner_id.clone(),
 					deployment,
+					app.config.clone()
 				));
 			}
 		} else {
@@ -172,7 +169,7 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 	Ok(container_id)
 }
 
-#[cfg(not(debug_assertions))]
+
 async fn get_servers_from_cloud_provider(
 	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
@@ -202,7 +199,7 @@ async fn get_servers_from_cloud_provider(
 	Ok(private_ipv4_address)
 }
 
-#[cfg(debug_assertions)]
+#[cfg(not(debug_assertions))]
 async fn get_servers_from_cloud_provider(
 	_settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
@@ -284,6 +281,7 @@ async fn monitor_deployment(
 	pool: Pool<Database>,
 	_runner_id: Vec<u8>,
 	_deployment: Deployment,
+	settings: Settings
 ) {
 	// First, find available server to deploy to
 	let server = {
@@ -307,9 +305,24 @@ async fn monitor_deployment(
 		server
 	};
 
-	if let Some(_server) = server {
+	if let Some(server) = server {
 		// TODO now that there's a server available, open a reverse tunnel, get
 		// the docker socket, and run the image on it.
+		use openssh::*;
+
+		match Session::connect(
+			format!("ssh:://{}",server.server_ip.to_string()), 
+			KnownHosts::Strict
+		)
+		.await {
+			Ok(value) => {
+				log::info!("Session created successfully!");
+			}
+			Err(error) => {
+				log::error!("Error in connecting the server");
+			}
+		}
+		
 	} else {
 		// Need to create a new server
 	}
@@ -329,6 +342,7 @@ async fn get_available_server_for_deployment(
 
 	Ok(server)
 }
+
 
 // async fn run_deployment(
 // 	connection: &mut <Database as sqlx::Database>::Connection,

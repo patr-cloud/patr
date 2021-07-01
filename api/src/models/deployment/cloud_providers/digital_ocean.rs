@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 // TODO: create a enum or struct for
 // region:
-// Datacenter Name  Geographic Location             Slug (for the API and doctl
-// ) NYC1             New York City, United States    nyc1
+// Datacenter Name  Geographic Location             Slug (for the API and doctl) 
+// NYC1             New York City, United States    nyc1
 // NYC2             New York City, United States    nyc2
 // NYC3             New York City, United States    nyc3
 // AMS2             Amsterdam, the Netherlands      ams2
@@ -20,7 +20,6 @@ use serde::{Deserialize, Serialize};
 // BLR1             Bangalore, India                blr1
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct DigitalOceanImage {
 	pub id: String,
 	pub distribution: String,
@@ -42,7 +41,6 @@ pub enum DropletStatus {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct IpV4Address {
 	pub ip_address: Ipv4Addr,
 	pub netmask: Ipv4Addr,
@@ -51,7 +49,6 @@ pub struct IpV4Address {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct IpV6Address {
 	pub ip_address: Ipv6Addr,
 	pub netmask: Ipv6Addr,
@@ -60,21 +57,18 @@ pub struct IpV6Address {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct NetworkDetails {
 	pub v4: Vec<IpV4Address>,
 	pub v6: Vec<IpV6Address>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct NextBackupWindow {
 	pub start: String,
 	pub end: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct RegionDetails {
 	pub name: String,
 	pub slug: String,
@@ -84,7 +78,6 @@ pub struct RegionDetails {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct SizeObject {
 	pub slug: String,
 	pub memory: String,
@@ -99,7 +92,6 @@ pub struct SizeObject {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
 pub struct DropletDetails {
 	pub id: String,
 	pub name: String,
@@ -120,4 +112,23 @@ pub struct DropletDetails {
 	pub next_backup_window: NextBackupWindow,
 	pub tags: Vec<String>,
 	pub vpc_uuid: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DropletRequest {
+	pub region: String,
+	pub name: String,
+	pub size: String,
+	pub image: String,
+	// stores ssh fingerprint
+	// after image, these details are not mandatory
+	pub ssh_keys: Option<Vec<String>>,
+	pub backups: Option<bool>,
+	pub ipv6: Option<bool>,
+	pub private_networking: Option<bool>,
+	pub vpc_uuid: Option<String>,
+	pub user_data: Option<String>,
+	pub volumes: Option<Vec<String>>,
+	pub tags: Option<Vec<String>>
 }
