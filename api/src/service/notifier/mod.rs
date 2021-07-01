@@ -58,12 +58,9 @@ pub async fn send_user_sign_up_otp(
 		.zip(user.backup_phone_number.as_ref())
 	{
 		// check if phone number is given as a backup
-		let phone_number = get_user_phone_number(
-			connection,
-			phone_country_code,
-			phone_number,
-		)
-		.await?;
+		let phone_number =
+			get_user_phone_number(connection, phone_country_code, phone_number)
+				.await?;
 
 		sms::send_user_verification_otp(&phone_number, otp).await?;
 	}
@@ -99,12 +96,9 @@ pub async fn send_password_changed_notification(
 		.as_ref()
 		.zip(user.backup_phone_number.as_ref())
 	{
-		let phone_number = get_user_phone_number(
-			connection,
-			phone_country_code,
-			phone_number,
-		)
-		.await?;
+		let phone_number =
+			get_user_phone_number(connection, phone_country_code, phone_number)
+				.await?;
 
 		sms::send_password_changed_notification(&phone_number).await?;
 	}
@@ -121,12 +115,9 @@ pub async fn send_user_reset_password_notification(
 		.as_ref()
 		.zip(user.backup_phone_number.as_ref())
 	{
-		let phone_number = get_user_phone_number(
-			connection,
-			phone_country_code,
-			phone_number,
-		)
-		.await?;
+		let phone_number =
+			get_user_phone_number(connection, phone_country_code, phone_number)
+				.await?;
 
 		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
