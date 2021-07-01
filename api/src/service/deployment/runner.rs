@@ -118,18 +118,21 @@ pub async fn monitor_deployments() {
 }
 
 async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
-	let mut connection = pool.begin().await?;
 	let mut container_id;
 
 	loop {
-		container_id = db::generate_new_container_id(&mut connection).await?;
-		let outdated_runner =
-			db::get_inoperative_deployment_runner(&mut connection).await?;
+		container_id =
+			db::generate_new_container_id(pool.acquire().await?.deref_mut())
+				.await?;
+		let outdated_runner = db::get_inoperative_deployment_runner(
+			pool.acquire().await?.deref_mut(),
+		)
+		.await?;
 		let runner = if let Some(runner) = outdated_runner {
 			runner
 		} else {
 			db::register_new_deployment_runner(
-				&mut connection,
+				pool.acquire().await?.deref_mut(),
 				container_id.as_bytes(),
 			)
 			.await?;
@@ -137,27 +140,30 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 		};
 
 		db::update_deployment_runner_container_id(
-			&mut connection,
+			pool.acquire().await?.deref_mut(),
 			&runner.id,
 			Some(container_id.as_bytes()),
 			runner.container_id.as_deref(),
 		)
 		.await?;
-		let runner = if let Some(runner) =
-			db::get_deployment_runner_by_id(&mut connection, &runner.id).await?
+		let runner = if let Some(runner) = db::get_deployment_runner_by_id(
+			pool.acquire().await?.deref_mut(),
+			&runner.id,
+		)
+		.await?
 		{
 			runner
 		} else {
-			time::sleep(Duration::from_millis(100)).await;
 			continue;
 		};
 
 		if runner.container_id.as_deref() != Some(container_id.as_bytes()) {
+			time::sleep(Duration::from_millis(100)).await;
 			continue;
 		}
 
 		db::update_deployment_runner_container_id(
-			&mut connection,
+			pool.acquire().await?.deref_mut(),
 			&runner.id,
 			Some(runner.id.as_ref()),
 			runner.container_id.as_deref(),
@@ -166,7 +172,6 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 		container_id = Uuid::from_slice(&runner.id)?;
 		break;
 	}
-	connection.commit().await?;
 
 	Ok(container_id)
 }
