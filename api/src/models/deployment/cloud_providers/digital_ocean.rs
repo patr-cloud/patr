@@ -50,6 +50,16 @@ pub struct IpV4Address {
 	pub r#type: String,
 }
 
+impl IpV4Address {
+	pub fn is_private(&self) -> bool {
+		if self.r#type == "private" {
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct IpV6Address {

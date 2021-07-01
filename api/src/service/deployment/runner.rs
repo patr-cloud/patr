@@ -30,19 +30,19 @@ pub async fn monitor_deployments() {
 	});
 
 	// Register runner
-	// let runner_id;
-	// loop {
-	// 	match register_runner(&app.database).await {
-	// 		Ok(value) => {
-	// 			runner_id = value;
-	// 			break;
-	// 		}
-	// 		Err(error) => {
-	// 			log::error!("Error registering runner: {}", error.get_error());
-	// 			time::sleep(Duration::from_millis(500)).await;
-	// 		}
-	// 	}
-	// }
+	let runner_id;
+	loop {
+		match register_runner(&app.database).await {
+			Ok(value) => {
+				runner_id = value;
+				break;
+			}
+			Err(error) => {
+				log::error!("Error registering runner: {}", error.get_error());
+				time::sleep(Duration::from_millis(500)).await;
+			}
+		}
+	}
 
 	// Register all application servers
 	loop {
@@ -142,7 +142,7 @@ async fn get_servers_from_cloud_provider(
 				.networks
 				.v4
 				.into_iter()
-				.find(|ipv4| ipv4.ip_address.is_private())
+				.find(|ipv4| ipv4.is_private())
 		})
 		.map(|ip_add| IpAddr::V4(ip_add.ip_address))
 		.collect();
