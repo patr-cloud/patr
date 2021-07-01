@@ -31,19 +31,16 @@ pub async fn monitor_deployments() {
 	});
 
 	// Register runner
-	let runner_id;
-	loop {
-		match register_runner(&app.database).await {
-			Ok(value) => {
-				runner_id = value.as_bytes().to_vec();
-				break;
-			}
+	let runner_id = loop {
+		break match register_runner(&app.database).await {
+			Ok(value) => value.as_bytes().to_vec(),
 			Err(error) => {
 				log::error!("Error registering runner: {}", error.get_error());
 				time::sleep(Duration::from_millis(500)).await;
+				continue;
 			}
-		}
-	}
+		};
+	};
 	log::info!("Registered with runnerId `{}`", hex::encode(&runner_id));
 
 	// Register all application servers
@@ -128,36 +125,8 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 		container_id = db::generate_new_container_id(&mut connection).await?;
 		let outdated_runner =
 			db::get_inoperative_deployment_runner(&mut connection).await?;
-		if let Some(runner) = outdated_runner {
-			db::update_deployment_runner_container_id(
-				&mut connection,
-				&runner.id,
-				Some(container_id.as_bytes()),
-				runner.container_id.as_deref(),
-			)
-			.await?;
-			if let Some(runner) =
-				db::get_deployment_runner_by_id(&mut connection, &runner.id)
-					.await?
-			{
-				if runner.container_id.as_deref() ==
-					Some(container_id.as_bytes())
-				{
-					db::update_deployment_runner_container_id(
-						&mut connection,
-						&runner.id,
-						Some(runner.id.as_ref()),
-						runner.container_id.as_deref(),
-					)
-					.await?;
-					container_id = Uuid::from_slice(&runner.id)?;
-					break;
-				} else {
-					continue;
-				}
-			} else {
-				continue;
-			}
+		let runner = if let Some(runner) = outdated_runner {
+			runner
 		} else {
 			db::register_new_deployment_runner(
 				&mut connection,
@@ -165,7 +134,37 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 			)
 			.await?;
 			break;
+		};
+
+		db::update_deployment_runner_container_id(
+			&mut connection,
+			&runner.id,
+			Some(container_id.as_bytes()),
+			runner.container_id.as_deref(),
+		)
+		.await?;
+		let runner = if let Some(runner) =
+			db::get_deployment_runner_by_id(&mut connection, &runner.id).await?
+		{
+			runner
+		} else {
+			time::sleep(Duration::from_millis(100)).await;
+			continue;
+		};
+
+		if runner.container_id.as_deref() != Some(container_id.as_bytes()) {
+			continue;
 		}
+
+		db::update_deployment_runner_container_id(
+			&mut connection,
+			&runner.id,
+			Some(runner.id.as_ref()),
+			runner.container_id.as_deref(),
+		)
+		.await?;
+		container_id = Uuid::from_slice(&runner.id)?;
+		break;
 	}
 	connection.commit().await?;
 
@@ -208,7 +207,6 @@ async fn get_servers_from_cloud_provider(
 ) -> Result<Vec<IpAddr>, Error> {
 	use std::net::Ipv4Addr;
 
-	// TODO call digital ocean API here
 	Ok(vec![IpAddr::V4(Ipv4Addr::LOCALHOST)])
 }
 

@@ -142,6 +142,19 @@
       ]
     }
   },
+  "124c4789134d31861ed5682f3769ca275c6ead752b6681258b087ee7c85c8eb3": {
+    "query": "UPDATE deployment SET deployed_image = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "12c34449cfa4241ca44c599f0f712a3a19f2ea9ff96985f16ee65d64c92f1a33": {
     "query": "CREATE TYPE DEPLOYMENT_RUNNER_STATUS AS ENUM( 'alive', 'starting', 'shutting down', 'dead' );",
     "describe": {
@@ -299,7 +312,7 @@
       },
       "nullable": [
         false,
-        true,
+        false,
         null,
         null
       ]
