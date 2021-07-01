@@ -390,9 +390,9 @@ pub async fn generate_new_container_id(
 			SELECT
 				*
 			FROM
-				"user"
+				deployment_runner
 			WHERE
-				id = $1;
+				container_id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
@@ -404,6 +404,28 @@ pub async fn generate_new_container_id(
 	}
 
 	Ok(uuid)
+}
+
+pub async fn update_deployment_deployed_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	deployed_image: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			deployed_image = $1
+		WHERE
+			id = $2;
+		"#,
+		deployed_image,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_inoperative_deployment_runner(
