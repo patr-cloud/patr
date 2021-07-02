@@ -21,7 +21,7 @@ use crate::{
 /// * `repository_id` - An Option<&str> containing either a repository id of
 ///   type string or `None`
 /// * `image_name` - An Option<&str> containing either an image name of type
-///    string or `None`
+///   string or `None`
 /// * `image_tag` - a string containing tags of docker image
 ///
 /// # Returns
@@ -110,12 +110,12 @@ pub async fn create_deployment_in_organisation(
 /// * `deployment_id` -  an unsigned 8 bit integer array containing the id of
 ///   deployment
 /// * `exposed_ports` - an unsigned 16 bit integer array containing the exposed
-///    ports of deployment
+///   ports of deployment
 /// * `environment_variables` - a string containing the url of docker registry
 /// * `repository_id` - An Option<&str> containing either a repository id of
 ///   type string or `None`
 /// * `image_name` - An Option<&str> containing either an image name of type
-///    string or `None`
+///   string or `None`
 /// * `image_tag` - a string containing tags of docker image
 ///
 /// # Returns
@@ -185,7 +185,7 @@ pub async fn update_configuration_for_deployment(
 ///   organisation
 /// * `name` - a string containing the name of deployment
 /// * `machine_types` - an array of type [`MachineType`] containing the details
-///    about machine type
+///   about machine type
 /// * `default_machine_type` - a default configuration of type ['MachineType`]
 ///
 /// # Returns
@@ -305,7 +305,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 ///   the upgrade path
 /// * `name` - a string containing name of the deployment
 /// * `machine_types` - an array of type [`MachineType`] containing the details
-///    about machine type
+///   about machine type
 ///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
