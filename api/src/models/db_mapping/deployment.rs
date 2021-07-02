@@ -141,13 +141,13 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
-#[derive(Debug)]
 pub struct DeploymentRunner {
 	pub id: Vec<u8>,
 	pub last_updated: u64,
 	pub container_id: Option<Vec<u8>>,
 }
 
+#[derive(Clone)]
 pub struct DeploymentApplicationServer {
 	pub server_ip: IpNetwork,
 	pub server_type: String,

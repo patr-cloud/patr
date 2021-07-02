@@ -1,5 +1,8 @@
 use std::{collections::HashSet, net::IpAddr, ops::DerefMut, time::Duration};
 
+use futures::StreamExt;
+use openssh::*;
+use shiplift::{builder::ContainerListOptionsBuilder, ContainerFilter, Docker};
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
 	sync::{Mutex, RwLock},
@@ -21,7 +24,7 @@ lazy_static::lazy_static! {
 	static ref SHOULD_EXIT: RwLock<bool> = RwLock::new(false);
 }
 
-pub async fn monitor_deployments() {
+pub async fn monitor_all_deployments() {
 	let app = service::get_app().clone();
 
 	task::spawn(async {
@@ -52,7 +55,10 @@ pub async fn monitor_deployments() {
 			if let Err(error) =
 				unset_container_id_for_runner(&app.database, &runner_id).await
 			{
-				log::error!("Error unsetting container_id: {}", error.get_error());
+				log::error!(
+					"Error unsetting container_id: {}",
+					error.get_error()
+				);
 				time::sleep(Duration::from_secs(10)).await;
 			}
 			return;
@@ -94,6 +100,7 @@ pub async fn monitor_deployments() {
 					app.database.clone(),
 					runner_id.clone(),
 					deployment,
+					app.config.clone(),
 				));
 			}
 		} else {
@@ -304,17 +311,41 @@ async fn unset_container_id_for_runner(
 
 async fn monitor_deployment(
 	pool: Pool<Database>,
-	_runner_id: Vec<u8>,
-	_deployment: Deployment,
+	runner_id: Vec<u8>,
+	deployment: Deployment,
+	settings: Settings,
 ) {
-	// First, find available server to deploy to
-	let server = {
-		let server;
-		loop {
-			match get_available_server_for_deployment(&pool, 1, 1).await {
-				Ok(value) => {
-					server = value;
-					break;
+	let mut deployments = DEPLOYMENTS.lock().await;
+	if deployments.contains(&deployment.id) {
+		// Some other task is already running this deployment.
+		// Exit and let the other task handle it
+		return;
+	}
+	deployments.insert(deployment.id.clone());
+	drop(deployments);
+
+	let mut old_deployed_server: Option<DeploymentApplicationServer> = None;
+
+	loop {
+		if *SHOULD_EXIT.read().await {
+			break;
+		}
+		// First, find available server to deploy to
+		let server = loop {
+			break match get_available_server_for_deployment(&pool, 1, 1).await {
+				Ok(Some(server)) => server,
+				Ok(None) => {
+					match create_new_application_server(&settings).await {
+						Ok(server) => server,
+						Err(error) => {
+							log::error!(
+								"Error creating new application server: {}",
+								error.get_error()
+							);
+							time::sleep(Duration::from_millis(5000)).await;
+							continue;
+						}
+					}
 				}
 				Err(error) => {
 					log::error!(
@@ -324,32 +355,65 @@ async fn monitor_deployment(
 					time::sleep(Duration::from_millis(500)).await;
 					continue;
 				}
-			}
-		}
-		server
-	};
+			};
+		};
 
-	if let Some(server) = server {
-		// TODO now that there's a server available, open a reverse tunnel, get
+		// now that there's a server available, open a reverse tunnel, get
 		// the docker socket, and run the image on it.
-		use openssh::*;
+		let server_ip = server.server_ip.ip();
+		let mut error_count = 0;
+		let ssh_result = loop {
+			if error_count >= 5 {
+				// 5 attempts to connect to the server has failed.
+				// TODO Mark the server as inactive and find another server
+				break Err(Error::empty());
+			}
+			break match Session::connect(
+				format!("ssh://deployment@{}", server_ip),
+				KnownHosts::Add,
+			)
+			.await
+			{
+				Ok(session) => Ok(session),
+				Err(error) => {
+					error_count += 1;
+					log::error!(
+						"Unable to connect to server `{}`: {}",
+						server_ip,
+						error
+					);
+					time::sleep(Duration::from_millis(1000)).await;
+					continue;
+				}
+			};
+		};
+		let _ssh_connection = if let Ok(session) = ssh_result {
+			session
+		} else {
+			continue;
+		};
+		// TODO open reverse tunnel using `_ssh_connection` here
+		let docker = Docker::unix(format!(
+			"./application-server-{}-docker.sock",
+			server_ip
+		));
 
-		match Session::connect(
-			format!("ssh:://{}", server.server_ip.to_string()),
-			KnownHosts::Strict,
-		)
-		.await
-		{
-			Ok(value) => {
-				log::info!("Session created successfully!");
-			}
-			Err(error) => {
-				log::error!("Error in connecting the server");
-			}
+		// Monitor deployment here
+		loop {
+			let stats = if let Some(Ok(stats)) = docker
+				.containers()
+				.get(format!("deployment-{}", hex::encode(&deployment.id)))
+				.stats()
+				.next()
+				.await
+			{
+				stats
+			} else {
+				continue;
+			};
 		}
-	} else {
-		// Need to create a new server
 	}
+	DEPLOYMENTS.lock().await.remove(&deployment.id);
 }
 
 async fn get_available_server_for_deployment(
@@ -367,166 +431,24 @@ async fn get_available_server_for_deployment(
 	Ok(server)
 }
 
-// async fn run_deployment(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// ) -> Result<(), Error> {
-// 	let container_id = db::generate_new_container_id(&mut *connection).await?;
-// 	let inoperative_runner =
-// 		db::get_list_of_inoperative_runners(connection).await?;
+#[cfg(not(debug_assertions))]
+async fn create_new_application_server(
+	settings: &Settings,
+) -> Result<DeploymentApplicationServer, Error> {
+	// TODO create server using DO APIs
+	Err(Error::empty())
+}
 
-// 	let mut runner;
+#[cfg(debug_assertions)]
+async fn create_new_application_server(
+	_settings: &Settings,
+) -> Result<DeploymentApplicationServer, Error> {
+	use std::net::Ipv4Addr;
 
-// 	if inoperative_runner.is_empty() {
-// 		if let Some(operative_runner) =
-// 			db::get_runner_with_least_deployments(connection).await?
-// 		{
-// 			runner = operative_runner;
-// 		} else {
-// 			runner = db::create_new_runner(connection).await?;
-// 		}
-// 	} else {
-// 		runner = inoperative_runner[0];
-// 	}
-// 	// Not sure how this step can be executed here If the container ID was set
-// 	// to the randomly generated value, assume the lock was acquired
-// 	// successfully. Else, try again and acquire another runner’s lock.
-// 	db::add_container_for_runner();
+	use sqlx::types::ipnetwork::Ipv4Network;
 
-// 	loop {
-// 		// TODO: Store list of servers available from the cloud provider.
-// 		// In case any servers are not present in the DB, add them
-// 		// If any extra servers are in the DB, remove them.
-
-// 		// TODO: make enum for status
-// 		let running_deployments =
-// 			db::get_list_of_deployments_from_deployment_runner_with_status(
-// 				connection, "runnning",
-// 			)
-// 			.await?;
-// 		let pseudo_running_deployments =
-// 			db::get_list_of_deployments_from_deployment(connection).await?;
-// 		let dead_deployments =
-// 			db::get_list_of_deployments_from_deployment_runner_with_status(
-// 				connection, "stopped",
-// 			)
-// 			.await?;
-
-// 		let faulty_deployments =
-// 			pseudo_running_deployments.intersect(dead_deployments);
-
-// 		start_task_for_deployments(connection, faulty_deployments).await?;
-
-// 		//TODO: graceful shutdown
-// 	}
-
-// 	// let app = service::get_app().clone();
-// 	// let mut should_exit = task::spawn(tokio::signal::ctrl_c());
-// 	// let container_id = hex::encode(Uuid::new_v4().as_bytes());
-// 	// loop {
-// 	// 	// Db stores the PRIMARY KEY(IP address, region) as server details
-// 	// 	// Each server has it's own "alive" status independent of the runner's
-// 	// 	// "alive" status. If a server's "alive" status isn't updated in a long
-// 	// 	// time, any runners in the same region can take over
-
-// 	// 	// Find the list of servers running on the cloud provider
-// 	// 	// Find the list of servers registered with the db
-// 	// 	// Register any new server and unregister any old server
-
-// 	// 	// Find the list of deployments to deploy.
-// 	// 	// Then start deployment monitor for each of them
-// 	// 	// Then wait for, idk like 1 minute
-// 	// 	let result = start_all_deployment_monitors(app.database.clone()).await;
-// 	// 	if let Err(error) = result {
-// 	// 		log::error!(
-// 	// 			"Unable to start deployment monitors: {}",
-// 	// 			error.get_error()
-// 	// 		);
-// 	// 	}
-// 	// 	for _ in 0..60 {
-// 	// 		time::sleep(Duration::from_secs(1)).await;
-// 	// 		if (&mut should_exit).now_or_never().is_some() {
-// 	// 			return;
-// 	// 		}
-// 	// 	}
-// 	// }
-// 	Ok(())
-// }
-
-// async fn start_task_for_deployments(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// 	faulty_deployments: Deployment,
-// ) -> Result<(), Error> {
-// 	for image in faulty_deployments {
-// 		let server_list =
-// 			db::get_suitable_servers_list(connection, image).await?;
-// 		set_docker_limits_for_container(connection, image).await?;
-// 		loop {
-// 			// TODO: figure out a way to determine system usage
-// 			let system_usage = get_system_usage().await?;
-// 			if system_usage.overall_usage >= image.usage_limit {
-// 				if server_limits_crossed(system_usage.overall_usage) {
-// 					find_servers_with_usage(image)
-// 				}
-// 			}
-// 			sleep(10);
-// 		}
-// 	}
-
-// 	Ok(())
-// }
-
-// async fn start_all_deployment_monitors(
-// 	pool: Pool<Database>,
-// ) -> Result<(), Error> {
-// 	let mut connection = pool.acquire().await?;
-
-// 	let deployments = db::get_all_deployments(&mut connection).await?;
-// 	// TODO change this to "get all deployments that are not already running",
-// 	// which will get deployments that haven't been updated in the last 10
-// 	// seconds.
-// 	let running_deployments = DEPLOYMENTS.lock().await;
-// 	for deployment in deployments {
-// 		if !running_deployments.contains(&deployment.id) {
-// 			task::spawn(monitor_deployment(pool.clone(), deployment.id));
-// 		}
-// 	}
-// 	drop(running_deployments);
-
-// 	Ok(())
-// }
-
-// async fn monitor_deployment(pool: Pool<Database>, deployment_id: Vec<u8>) {
-// 	loop {
-// 		// Monitor deployment every 10 seconds
-// 		time::sleep(Duration::from_secs(10)).await;
-
-// 		let mut connection = match pool.acquire().await {
-// 			Ok(connection) => connection,
-// 			Err(error) => {
-// 				log::error!("Unable to aquire db connection: {}", error);
-// 				continue;
-// 			}
-// 		};
-// 		let result =
-// 			db::get_deployment_by_id(&mut connection, &deployment_id).await;
-// 		let deployment = match result {
-// 			Ok(deployment) => deployment,
-// 			Err(error) => {
-// 				log::error!("Unable to get deployment: {}", error);
-// 				continue;
-// 			}
-// 		};
-// 		if let Some(deployment) = deployment {
-// 			// TODO check if the `deployment` is doing okay
-// 		} else {
-// 			// If the deployment doesn't exist in the DB, stop monitoring
-// 			log::info!("Deployment `{}` doesn't exist in the database anymore. Will stop
-// monitoring it.", 				hex::encode(&deployment_id));
-// 			break;
-// 		}
-// 		drop(connection);
-// 	}
-// 	let mut deployments = DEPLOYMENTS.lock().await;
-// 	deployments.remove(&deployment_id);
-// 	drop(deployments);
-// }
+	Ok(DeploymentApplicationServer {
+		server_ip: IpNetwork::V4(Ipv4Network::from(Ipv4Addr::LOCALHOST)),
+		server_type: String::from("default"),
+	})
+}
