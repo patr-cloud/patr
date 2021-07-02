@@ -23,6 +23,7 @@ lazy_static::lazy_static! {
 
 pub async fn monitor_deployments() {
 	let app = service::get_app().clone();
+
 	task::spawn(async {
 		tokio::signal::ctrl_c()
 			.await
@@ -328,9 +329,24 @@ async fn monitor_deployment(
 		server
 	};
 
-	if let Some(_server) = server {
+	if let Some(server) = server {
 		// TODO now that there's a server available, open a reverse tunnel, get
 		// the docker socket, and run the image on it.
+		use openssh::*;
+
+		match Session::connect(
+			format!("ssh:://{}", server.server_ip.to_string()),
+			KnownHosts::Strict,
+		)
+		.await
+		{
+			Ok(value) => {
+				log::info!("Session created successfully!");
+			}
+			Err(error) => {
+				log::error!("Error in connecting the server");
+			}
+		}
 	} else {
 		// Need to create a new server
 	}
