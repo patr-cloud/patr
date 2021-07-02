@@ -14,6 +14,21 @@ mod sms;
 pub use email::*;
 pub use sms::*;
 
+/// # Description
+/// This function is used to send sign_in complete notification
+/// 
+/// # Arguments
+/// * `welcome_email` - an Option<String> containing either String which has user's personal or 
+/// organisation email to send a welcome notification to or `None`
+/// * `backup_email` - an Option<String> containing either String which has user's backup email
+/// to send a verification email to or `None`
+/// * `backup_phone_number` - an Option<String> containing either String which has user's backup phone
+/// number to send a verification sms to or `None`
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error 
+///
 pub async fn send_sign_up_complete_notification(
 	welcome_email: Option<String>,
 	backup_email: Option<String>,
@@ -33,6 +48,19 @@ pub async fn send_sign_up_complete_notification(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to send otp to user's email for sign-up
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`UserToSignUp`] 
+/// * `otp` - a string containing otp to be sent
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_sign_up_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: UserToSignUp,
@@ -71,8 +99,20 @@ pub async fn send_user_sign_up_otp(
 	Ok(())
 }
 
-// This function will send the given otp to all the backup options available for
-// the given user.
+
+/// # Description
+/// This function is used to send the given otp to all the backup options available for 
+/// the given user.
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user 
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_password_changed_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
@@ -111,7 +151,18 @@ pub async fn send_password_changed_notification(
 	Ok(())
 }
 
-// reset password
+/// # Description
+/// This function is used to sent user reset password notification
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user 
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_reset_password_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
@@ -148,6 +199,20 @@ pub async fn send_user_reset_password_notification(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to send otp incase the user forgets the password
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user
+/// * `recovery_option` - an object of type [`PreferredRecoveryOption`]
+/// * `otp` - a string containing otp to be sent to user
+///  
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_forgot_password_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
@@ -194,6 +259,20 @@ pub async fn send_forgot_password_otp(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to get the user's email address
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_id` - An unsigned 8 bit integer array containing id of 
+/// organisation domain
+/// * `email_string` - a string containing user's email_local
+///  
+/// # Returns
+/// This function returns `Result<String, Error>` containing user's email address or
+/// an error
+///
+/// [`Transaction`]: Transaction
 async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
@@ -206,6 +285,19 @@ async fn get_user_email(
 	Ok(email)
 }
 
+/// # Description
+/// This function is used to get the user's complete phone number
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `country_code` - a string containing 2 letter country code
+/// * `phone_number` - a string containing user's phone number
+///  
+/// # Returns
+/// This function returns `Result<String, Error>` containing user's complete phone number or
+/// an error
+///
+/// [`Transaction`]: Transaction
 async fn get_user_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,

@@ -1,5 +1,17 @@
 use crate::utils::Error;
 
+/// # Description
+/// This function is used to send user verification otp
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing phone number of user
+/// * `otp` - a string containing otp to be sent to user
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_verification_otp(
 	phone_number: &str,
 	otp: &str,
@@ -16,6 +28,17 @@ pub async fn send_user_verification_otp(
 	.await
 }
 
+/// # Description
+/// This function is used to send password change notification to user
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing phone number of user
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_password_changed_notification(
 	phone_number: &str,
 ) -> Result<(), Error> {
@@ -31,6 +54,18 @@ pub async fn send_password_changed_notification(
 	.await
 }
 
+/// # Description
+/// This function is used send the otp when the user forget's the password
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing phone number of user
+/// * `otp` - a string containing otp to be sent to user
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_forgot_password_otp(
 	phone_number: &str,
 	otp: &str,
@@ -49,6 +84,17 @@ pub async fn send_forgot_password_otp(
 	.await
 }
 
+/// # Description
+/// This function is used to send reset password notification to the user
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing phone number of the user
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_reset_password_notification(
 	phone_number: &str,
 ) -> Result<(), Error> {
@@ -64,6 +110,18 @@ pub async fn send_user_reset_password_notification(
 	.await
 }
 
+/// # Description
+/// This function is used to send registration sms to the user's
+/// backup phone number
+/// 
+/// # Arguments
+/// * `phone_number` - a string containing user's phone number
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_backup_registration_sms(
 	phone_number: &str,
 ) -> Result<(), Error> {
@@ -79,6 +137,16 @@ pub async fn send_backup_registration_sms(
 	.await
 }
 
+/// # Description
+/// This function is used to send sms to the given number via twilio's api
+/// 
+/// # Arguments
+/// * `to_number` - a string containing phone number
+/// * `body` - a string containing body of the message to be sent
+/// 
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 #[cfg(not(debug_assertions))]
 async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 	use reqwest::Client;
@@ -122,6 +190,8 @@ async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 	}
 }
 
+/// # Description 
+/// This function is used to send dummy sms, only for development purpose
 #[cfg(debug_assertions)]
 async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 	log::trace!("Sending sms with body: {:#?} to {}", body, to_number);
