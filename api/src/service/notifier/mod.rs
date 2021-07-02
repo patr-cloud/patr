@@ -95,14 +95,15 @@ pub async fn send_user_sign_up_otp(
 	}
 }
 
+
 /// # Description
-/// This function is used to send the given otp to all the backup options
-/// available for the given user.
-///
+/// This function is used to send the given otp to all the backup options available for 
+/// the given user.
+/// 
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user` - an object of type [`User`] containing all details of user
-///
+/// * `user` - an object of type [`User`] containing all details of user 
+/// 
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
@@ -112,7 +113,7 @@ pub async fn send_password_changed_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	// chcek if email is given as a backup option
+	// check if email is given as a backup option
 	if let Some((backup_email_domain_id, backup_email_local)) = user
 		.backup_email_domain_id
 		.as_ref()
