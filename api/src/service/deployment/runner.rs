@@ -1,6 +1,5 @@
 use std::{collections::HashSet, net::IpAddr, ops::DerefMut, time::Duration};
 
-use eve_rs::AsError;
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
 	sync::{Mutex, RwLock},
@@ -11,7 +10,6 @@ use uuid::Uuid;
 
 use crate::{
 	db,
-	error,
 	models::db_mapping::{Deployment, DeploymentApplicationServer},
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
@@ -90,7 +88,6 @@ pub async fn monitor_deployments() {
 					app.database.clone(),
 					runner_id.clone(),
 					deployment,
-					app.config.clone(),
 				));
 			}
 		} else {
@@ -176,6 +173,7 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 	Ok(container_id)
 }
 
+#[cfg(not(debug_assertions))]
 async fn get_servers_from_cloud_provider(
 	settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
@@ -205,7 +203,7 @@ async fn get_servers_from_cloud_provider(
 	Ok(private_ipv4_address)
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(debug_assertions)]
 async fn get_servers_from_cloud_provider(
 	_settings: &Settings,
 ) -> Result<Vec<IpAddr>, Error> {
@@ -287,7 +285,6 @@ async fn monitor_deployment(
 	pool: Pool<Database>,
 	_runner_id: Vec<u8>,
 	_deployment: Deployment,
-	settings: Settings,
 ) {
 	// First, find available server to deploy to
 	let server = {
