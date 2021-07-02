@@ -583,7 +583,7 @@ pub async fn get_user_login_for_login_id(
 /// * `user_login` - an object of struct [`UserLogin`]
 ///
 /// # Returns
-/// This function returns a `Result<String, Error>` containing a string
+/// This function returns a `Result<String, Error>` containing a jwt token
 ///
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(

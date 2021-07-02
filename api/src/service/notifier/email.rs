@@ -139,7 +139,7 @@ pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 struct BackupNotificationEmail {}
 
 /// # Description
-/// This function is used to send the regstration info to back up email of the
+/// This function is used to send the registration info to back up email of the
 /// user
 ///
 /// # Arguments
@@ -167,7 +167,10 @@ pub async fn send_backup_registration_mail(
 ///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
-/// error
+/// errors
+/// 
+/// [`TEmail`]: TEmail
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
