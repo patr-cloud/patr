@@ -16,11 +16,11 @@ use crate::{
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
 ///   organisation
-/// 	* `name` - a string containing the name of deployment
-/// 	* `registry` - a string containing the url of docker registry
+/// * `name` - a string containing the name of deployment
+/// * `registry` - a string containing the url of docker registry
 /// * `repository_id` - An Option<&str> containing either a repository id of
 ///   type string or `None`
-/// 	* `image_name` - An Option<&str> containing either an image name of type
+/// * `image_name` - An Option<&str> containing either an image name of type
 ///    string or `None`
 /// * `image_tag` - a string containing tags of docker image
 ///
@@ -109,12 +109,12 @@ pub async fn create_deployment_in_organisation(
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `deployment_id` -  an unsigned 8 bit integer array containing the id of
 ///   deployment
-/// 	* `exposed_ports` - an unsigned 16 bit integer array containing the exposed
+/// * `exposed_ports` - an unsigned 16 bit integer array containing the exposed
 ///    ports of deployment
-/// 	* `environment_variables` - a string containing the url of docker registry
+/// * `environment_variables` - a string containing the url of docker registry
 /// * `repository_id` - An Option<&str> containing either a repository id of
 ///   type string or `None`
-/// 	* `image_name` - An Option<&str> containing either an image name of type
+/// * `image_name` - An Option<&str> containing either an image name of type
 ///    string or `None`
 /// * `image_tag` - a string containing tags of docker image
 ///
@@ -183,8 +183,8 @@ pub async fn update_configuration_for_deployment(
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
 ///   organisation
-/// 	* `name` - a string containing the name of deployment
-/// 	* `machine_types` - an array of type [`MachineType`] containing the details
+/// * `name` - a string containing the name of deployment
+/// * `machine_types` - an array of type [`MachineType`] containing the details
 ///    about machine type
 /// * `default_machine_type` - a default configuration of type ['MachineType`]
 ///
@@ -303,8 +303,8 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `upgrade_path_id` -  an unsigned 8 bit integer array containing the id of
 ///   the upgrade path
-/// 	* `name` - a string containing name of the deployment
-/// 	* `machine_types` - an array of type [`MachineType`] containing the details
+/// * `name` - a string containing name of the deployment
+/// * `machine_types` - an array of type [`MachineType`] containing the details
 ///    about machine type
 ///
 /// # Returns
