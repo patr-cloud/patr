@@ -47,6 +47,15 @@ pub async fn monitor_deployments() {
 	while let Err(error) =
 		register_application_servers(&app.database, &app.config).await
 	{
+		if *SHOULD_EXIT.read().await {
+			if let Err(error) =
+				unset_container_id_for_runner(&app.database, &runner_id).await
+			{
+				log::error!("Error unsetting container_id: {}", error.get_error());
+				time::sleep(Duration::from_secs(10)).await;
+			}
+			return;
+		}
 		log::error!("Error registering servers: {}", error.get_error());
 		time::sleep(Duration::from_millis(1000)).await;
 	}
@@ -121,6 +130,9 @@ async fn register_runner(pool: &Pool<Database>) -> Result<Uuid, Error> {
 	let mut container_id;
 
 	loop {
+		if *SHOULD_EXIT.read().await {
+			return Err(Error::empty());
+		}
 		container_id =
 			db::generate_new_container_id(pool.acquire().await?.deref_mut())
 				.await?;
@@ -224,9 +236,15 @@ async fn register_application_servers(
 
 	let mut connection = pool.begin().await?;
 
-	for server in servers.iter() {
+	for (index, server) in servers.iter().enumerate() {
 		db::register_deployment_application_server(&mut connection, server)
 			.await?;
+
+		// Every 10th iteration, check if it should exit, to prevent
+		// unnecessarry showdown of the application
+		if index % 10 == 0 && *SHOULD_EXIT.read().await {
+			return Err(Error::empty());
+		}
 	}
 	db::remove_excess_deployment_application_servers(
 		&mut connection,
