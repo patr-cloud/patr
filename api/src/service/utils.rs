@@ -171,8 +171,9 @@ pub fn generate_new_otp() -> String {
 /// * `email_address` - a string containing the email address to be split
 ///
 /// # Returns
-/// this function returns a `Result<(String, Vec<u8>)>` either containing a tuple of string of email local and
-/// an unsigned 8 bit integer Vec containing domain id or an error
+/// this function returns a `Result<(String, Vec<u8>)>` either containing a
+/// tuple of string of email local and an unsigned 8 bit integer Vec containing
+/// domain id or an error
 ///
 /// [`Transaction`]: Transaction
 pub async fn split_email_with_domain_id(

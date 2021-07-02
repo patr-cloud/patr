@@ -193,9 +193,9 @@ pub async fn is_phone_number_allowed(
 }
 
 /// # Description
-/// This function is used to create a new user to be signed up and returns an OTP, this function will
-/// validate details given by the user, then a resource will be generated for
-/// the user according to the type of the account
+/// This function is used to create a new user to be signed up and returns an
+/// OTP, this function will validate details given by the user, then a resource
+/// will be generated for the user according to the type of the account
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -442,8 +442,8 @@ pub async fn create_user_join_request(
 }
 
 /// # Description
-/// This function is used to create a record when a user logs into the system, this
-/// record contains six things:
+/// This function is used to create a record when a user logs into the system,
+/// this record contains six things:
 /// 1. login_id
 /// login_id is used to give to a unique identity to the current logged in user
 /// 2. user_id

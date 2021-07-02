@@ -161,14 +161,15 @@ pub async fn send_backup_registration_mail(
 /// # Arguments
 /// * `body` - body of the mail of the type [`TEmail`]
 /// * `to` - recipient's email address of type [`Mailbox`]
-/// * `reply_to` - An Option<Mailbox> containing instance of [`Mailbox`] containing email of recipient 
+/// * `reply_to` - An Option<Mailbox> containing instance of [`Mailbox`]
+///   containing email of recipient
 /// to be replied or `None`
-/// * `subject` - a string containing subject of the email 
+/// * `subject` - a string containing subject of the email
 ///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// errors
-/// 
+///
 /// [`TEmail`]: TEmail
 #[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
