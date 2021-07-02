@@ -1,4 +1,4 @@
-use crate::utils::Error;
+use crate::{service::notifier, utils::Error, Database};
 
 /// # Description
 /// This function is used to send user verification otp
@@ -132,6 +132,42 @@ pub async fn send_backup_registration_sms(
 			"This phone number is now set as the backup phone ",
 			"for the Vicara's deployment tool. ",
 			"If this was not you, please login or contact support immediately"
+		),
+	)
+	.await
+}
+
+/// # Description
+/// This function is used to send otp to verify user's phone number
+/// 
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `country_code` - a string containing 2 letter country code
+/// * `phone_number` - a string containing phone number of user
+/// * `otp` - a string containing otp to be sent for verification
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_phone_number_verification_otp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
+	phone_number: &str,
+	otp: &str,
+) -> Result<(), Error> {
+	let phone_number =
+		notifier::get_user_phone_number(connection, country_code, phone_number)
+			.await?;
+	send_sms(
+		&phone_number,
+		format!(
+			"{}{}{}{}",
+			"We recieved a new phone number addition request from your account.",
+			" Please enter this otp to complete the process: ",
+			otp,
+			" If this was not you, please contact support immediately."
 		),
 	)
 	.await
