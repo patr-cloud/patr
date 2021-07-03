@@ -1,11 +1,32 @@
 use std::{
 	collections::HashSet,
 	future::Future,
+	io::ErrorKind,
 	net::IpAddr,
 	ops::DerefMut,
 	time::Duration,
 };
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord,
+			CreateDnsRecordParams,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+			UpdateDnsRecord,
+			UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use futures::StreamExt;
 use openssh::*;
@@ -18,7 +39,9 @@ use shiplift::{
 };
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
+	io::AsyncWriteExt,
 	net::{TcpStream, ToSocketAddrs},
+	process::Command,
 	sync::{Mutex, RwLock},
 	task,
 	time,
@@ -475,6 +498,7 @@ async fn monitor_deployment(
 			&runner_id,
 			&mut deployment,
 			&server_ip,
+			&settings,
 		)
 		.await
 		{
@@ -616,26 +640,32 @@ async fn run_deployment_on_application_server(
 	runner_id: &[u8],
 	deployment: &mut Deployment,
 	server: &IpAddr,
+	settings: &Settings,
 ) -> Result<(), Error> {
 	// now that there's a server available, mark the running of the server,
 	// open a reverse tunnel, and run the image using a docker socket on it.
-	let _ssh_connection = retry_with_delay_or_fail(
+
+	// open reverse tunnel
+	let socket =
+		format!("./{}-{}-docker.sock", hex::encode(&deployment.id), server);
+	let _command = retry_with_delay_or_fail(
 		|| async {
-			Session::connect(
-				format!("ssh://deployment@{}", server),
-				KnownHosts::Add,
-			)
-			.await
-			.status(500)
+			let command = Command::new("ssh")
+				.arg(format!("deployment@{}", server))
+				.arg("-R")
+				.arg(format!("/var/run/docker.sock:{}", socket))
+				.kill_on_drop(true)
+				.spawn()?;
+
+			Ok(command)
 		},
 		5,
 		500,
-		format!("Error while opening connection to server `{}`", server),
+		"Unable to open reverse tunnel",
 	)
 	.await?;
-	// TODO open reverse tunnel using `_ssh_connection` here
-	let docker =
-		Docker::unix(format!("./application-server-{}-docker.sock", server));
+
+	let docker = Docker::unix(socket);
 	let container_name = format!("deployment-{}", hex::encode(&deployment.id));
 	let mut assigned_port = 0;
 	let mut last_updated = get_current_time_millis();
@@ -706,7 +736,14 @@ async fn run_deployment_on_application_server(
 				.await?[0];
 
 				if new_port != assigned_port {
-					// TODO Update NGINX
+					// Update NGINX
+					update_nginx_with_domain(
+						&format!("{}.vicara.tech", hex::encode(&deployment.id)),
+						server,
+						new_port,
+						settings,
+					)
+					.await?;
 				}
 				assigned_port = new_port;
 			}
@@ -733,7 +770,14 @@ async fn run_deployment_on_application_server(
 			.await?[0];
 
 			if new_port != assigned_port {
-				// TODO Update NGINX
+				// Update NGINX
+				update_nginx_with_domain(
+					&format!("{}.vicara.tech", hex::encode(&deployment.id)),
+					server,
+					new_port,
+					settings,
+				)
+				.await?;
 			}
 			assigned_port = new_port;
 		}
@@ -1003,7 +1047,7 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 				.name(container_name)
 				.auto_remove(true)
 				.cpus(cpu_limit)
-				.memory(memory_limit) // 1 GiB
+				.memory(memory_limit)
 				.restart_policy("always", 100)
 				.privileged(false);
 			for (index, port) in exposed_ports.iter().enumerate() {
@@ -1022,4 +1066,249 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 		"Error creating container",
 	)
 	.await
+}
+
+async fn update_nginx_with_domain(
+	domain: &str,
+	server: &IpAddr,
+	port: u32,
+	settings: &Settings,
+) -> Result<(), Error> {
+	retry_with_delay_or_fail(
+		|| update_dns(domain, settings),
+		5,
+		1000,
+		"Unable to update DNS",
+	)
+	.await?;
+
+	retry_with_delay_or_fail(
+		|| update_nginx(domain, server, port),
+		5,
+		1000,
+		"Unable to update DNS",
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_dns(domain: &str, settings: &Settings) -> Result<(), Error> {
+	let credentials = Credentials::UserAuthToken {
+		token: settings.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = Client::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let response = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("vicara.tech")),
+				..Default::default()
+			},
+		})
+		.await?;
+	let zone = response.result.into_iter().next().status(500)?;
+	let zone_identifier = zone.id.as_str();
+	let expected_dns_record = DnsContent::CNAME {
+		content: String::from("proxy.vicara.co"),
+	};
+
+	let response = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(String::from(domain)),
+				..Default::default()
+			},
+		})
+		.await?;
+	let dns_record = response.result.into_iter().find(|record| {
+		if let DnsContent::CNAME { .. } = record.content {
+			record.name == domain
+		} else {
+			false
+		}
+	});
+	if let Some(record) = dns_record {
+		if let DnsContent::CNAME { content } = record.content {
+			if content != "proxy.vicara.co" {
+				client
+					.request(&UpdateDnsRecord {
+						zone_identifier,
+						identifier: record.id.as_str(),
+						params: UpdateDnsRecordParams {
+							content: expected_dns_record,
+							name: domain,
+							proxied: Some(true),
+							ttl: Some(1),
+						},
+					})
+					.await?;
+			}
+		}
+	} else {
+		// Create
+		client
+			.request(&CreateDnsRecord {
+				zone_identifier,
+				params: CreateDnsRecordParams {
+					content: expected_dns_record,
+					name: domain.replace("vicara.tech", "").as_str(),
+					ttl: Some(1),
+					priority: None,
+					proxied: Some(true),
+				},
+			})
+			.await?;
+	}
+
+	Ok(())
+}
+
+async fn update_nginx(
+	domain: &str,
+	server: &IpAddr,
+	port: u32,
+) -> Result<(), Error> {
+	let session = retry_with_delay_or_fail(
+		|| async {
+			let session = Session::connect(
+				"ssh://deployment@proxy.vicara.co",
+				KnownHosts::Add,
+			)
+			.await?;
+			Ok(session)
+		},
+		5,
+		1000,
+		"Unable to connect to proxy server",
+	)
+	.await?;
+
+	let mut sftp = session.sftp();
+	let result = sftp
+		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
+		.await;
+	if let Err(openssh::Error::Remote(error)) = result {
+		if error.kind() == ErrorKind::NotFound {
+			// File doesn't exist
+			// Generate certs
+			let mut writer = sftp
+				.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+				.await?;
+			writer
+				.write_all(
+					format!(
+						r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	location {path} {{
+		proxy_pass http://{server}:{port};
+	}}
+
+	include snippets/letsencrypt.conf;
+}}
+"#,
+						domain = domain,
+						port = port,
+						path = "/",
+						server = server,
+					)
+					.as_bytes(),
+				)
+				.await?;
+
+			let reload_result = session
+				.command("nginx")
+				.arg("-s")
+				.arg("reload")
+				.spawn()?
+				.wait()
+				.await?;
+			if !reload_result.success() {
+				return Err(Error::empty());
+			}
+
+			let certificate_result = session
+				.command("certbot")
+				.arg("certonly")
+				.arg("-d")
+				.arg(&domain)
+				.arg("--webroot")
+				.arg("-w")
+				.arg("/var/www/letsencrypt")
+				.spawn()?
+				.wait()
+				.await?;
+			if !certificate_result.success() {
+				return Err(Error::empty());
+			}
+		}
+		return Err(error.into());
+	}
+
+	// Certs exist. Continue
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	return 301 https://{domain}$request_uri$is_args$args;
+}}
+
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+
+	ssl_certificate /etc/letsencrypt/live/deployment.vicara.tech/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/deployment.vicara.tech/privkey.pem;
+
+	location {path} {{
+		proxy_pass http://{server}:{port};
+	}}
+
+	include snippets/letsencrypt.conf;
+}}
+"#,
+				domain = domain,
+				port = port,
+				path = "/",
+				server = server,
+			)
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+	drop(sftp);
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	Ok(())
 }
