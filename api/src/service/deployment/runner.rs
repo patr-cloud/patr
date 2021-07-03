@@ -1,10 +1,24 @@
-use std::{collections::HashSet, net::IpAddr, ops::DerefMut, time::Duration};
+use std::{
+	collections::HashSet,
+	future::Future,
+	net::IpAddr,
+	ops::DerefMut,
+	time::Duration,
+};
 
+use eve_rs::AsError;
 use futures::StreamExt;
 use openssh::*;
-use shiplift::{builder::ContainerListOptionsBuilder, ContainerFilter, Docker};
+use rand::Rng;
+use shiplift::{
+	rep::ContainerDetails,
+	ContainerOptions,
+	Docker,
+	Error as ShipliftError,
+};
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
+	net::{TcpStream, ToSocketAddrs},
 	sync::{Mutex, RwLock},
 	task,
 	time,
@@ -12,8 +26,13 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-	db,
-	models::db_mapping::{Deployment, DeploymentApplicationServer},
+	db::{self, add_running_deployment_details},
+	models::db_mapping::{
+		Deployment,
+		DeploymentApplicationServer,
+		DeploymentRunnerDeployment,
+		DeploymentStatus,
+	},
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
@@ -312,7 +331,7 @@ async fn unset_container_id_for_runner(
 async fn monitor_deployment(
 	pool: Pool<Database>,
 	runner_id: Vec<u8>,
-	deployment: Deployment,
+	mut deployment: Deployment,
 	settings: Settings,
 ) {
 	let mut deployments = DEPLOYMENTS.lock().await;
@@ -324,17 +343,69 @@ async fn monitor_deployment(
 	deployments.insert(deployment.id.clone());
 	drop(deployments);
 
-	let mut old_deployed_server: Option<DeploymentApplicationServer> = None;
+	// Register deployment to be running on this runner
+	let runner = if let Ok(runner) =
+		get_registered_runner_for_deployment(&pool, &runner_id, &deployment)
+			.await
+	{
+		runner
+	} else {
+		DEPLOYMENTS.lock().await.remove(&deployment.id);
+		return;
+	};
 
-	loop {
-		if *SHOULD_EXIT.read().await {
-			break;
-		}
-		// First, find available server to deploy to
-		let server = loop {
-			break match get_available_server_for_deployment(&pool, 1, 1).await {
-				Ok(Some(server)) => server,
-				Ok(None) => {
+	let mut first_run = true;
+
+	while !*SHOULD_EXIT.read().await {
+		let server_ip = match (first_run, &runner) {
+			// If the first_run is true AND if there's an existing IP
+			(true, Some(runner)) => {
+				first_run = false;
+				runner.current_server.ip()
+			}
+			// If either first_run is false OR if there's no runner
+			_ => {
+				// Check to make sure some other runner hasn't taken over this
+				// deployment
+				let is_runner_managing_deployment = if let Ok(value) =
+					retry_with_delay_or_exit(
+						|| {
+							is_deployment_managed_by_runner(
+								&pool,
+								&deployment.id,
+								&runner_id,
+							)
+						},
+						250,
+						"Error getting running deployment details",
+					)
+					.await
+				{
+					value
+				} else {
+					break;
+				};
+				if !is_runner_managing_deployment {
+					break;
+				}
+
+				// First, find available server to deploy to
+				let server = if let Ok(server) = retry_with_delay_or_exit(
+					|| get_available_server_for_deployment(&pool, 1, 1),
+					500,
+					"Error getting servers for deployment",
+				)
+				.await
+				{
+					server
+				} else {
+					break;
+				};
+
+				// If there is not available server to deploy to, create one
+				let server = if let Some(server) = server {
+					server
+				} else {
 					match create_new_application_server(&settings).await {
 						Ok(server) => server,
 						Err(error) => {
@@ -346,71 +417,79 @@ async fn monitor_deployment(
 							continue;
 						}
 					}
-				}
-				Err(error) => {
-					log::error!(
-						"Error getting servers for deployment: {}",
-						error.get_error()
-					);
-					time::sleep(Duration::from_millis(500)).await;
-					continue;
-				}
-			};
-		};
+				};
+				let server_ip = server.server_ip.ip();
 
-		// now that there's a server available, open a reverse tunnel, get
-		// the docker socket, and run the image on it.
-		let server_ip = server.server_ip.ip();
-		let mut error_count = 0;
-		let ssh_result = loop {
-			if error_count >= 5 {
-				// 5 attempts to connect to the server has failed.
-				// TODO Mark the server as inactive and find another server
-				break Err(Error::empty());
-			}
-			break match Session::connect(
-				format!("ssh://deployment@{}", server_ip),
-				KnownHosts::Add,
-			)
-			.await
-			{
-				Ok(session) => Ok(session),
-				Err(error) => {
-					error_count += 1;
-					log::error!(
-						"Unable to connect to server `{}`: {}",
-						server_ip,
-						error
-					);
-					time::sleep(Duration::from_millis(1000)).await;
-					continue;
-				}
-			};
-		};
-		let _ssh_connection = if let Ok(session) = ssh_result {
-			session
-		} else {
-			continue;
-		};
-		// TODO open reverse tunnel using `_ssh_connection` here
-		let docker = Docker::unix(format!(
-			"./application-server-{}-docker.sock",
-			server_ip
-		));
+				// If this is the first run, insert into the DB the details
+				// of the running server. If this is not the first run, just
+				// update the server IP only.
+				if first_run {
+					if retry_with_delay_or_fail(
+						|| async {
+							add_running_deployment_details(
+								pool.acquire().await?.deref_mut(),
+								&deployment.id,
+								&runner_id,
+								get_current_time_millis(),
+								&IpNetwork::from(server_ip),
+								&DeploymentStatus::Alive,
+							)
+							.await?;
+							Ok(())
+						},
+						5,
+						500,
+						"Error inserting deployment runner details",
+					)
+					.await
+					.is_err()
+					{
+						break;
+					}
+				} else if retry_with_delay_or_exit(
+					|| async {
+						db::update_running_deployment_server_ip(
+							pool.acquire().await?.deref_mut(),
+							&IpNetwork::from(server_ip),
+							&deployment.id,
+							&runner_id,
+						)
+						.await?;
 
-		// Monitor deployment here
-		loop {
-			let stats = if let Some(Ok(stats)) = docker
-				.containers()
-				.get(format!("deployment-{}", hex::encode(&deployment.id)))
-				.stats()
-				.next()
+						Ok(())
+					},
+					250,
+					"Error updating current server IP",
+				)
 				.await
-			{
-				stats
-			} else {
-				continue;
-			};
+				.is_err()
+				{
+					break;
+				}
+				server_ip
+			}
+		};
+
+		if let Err(error) = run_deployment_on_application_server(
+			&pool,
+			&runner_id,
+			&mut deployment,
+			&server_ip,
+		)
+		.await
+		{
+			// If there's been an error, re-run it
+			log::error!(
+				"Error running deployment `{}` on server `{}`: {}. {}",
+				hex::encode(&deployment.id),
+				server_ip,
+				error.get_error(),
+				"Will try again on another server"
+			);
+			continue;
+		} else {
+			// If there's no error, then it's a graceful exit
+			break;
 		}
 	}
 	DEPLOYMENTS.lock().await.remove(&deployment.id);
@@ -451,4 +530,496 @@ async fn create_new_application_server(
 		server_ip: IpNetwork::V4(Ipv4Network::from(Ipv4Addr::LOCALHOST)),
 		server_type: String::from("default"),
 	})
+}
+
+async fn get_registered_runner_for_deployment(
+	pool: &Pool<Database>,
+	runner_id: &[u8],
+	deployment: &Deployment,
+) -> Result<Option<DeploymentRunnerDeployment>, Error> {
+	let runner = retry_with_delay_or_exit(
+		|| async {
+			let runner = db::get_running_deployment_details_by_id(
+				pool.acquire().await?.deref_mut(),
+				&deployment.id,
+			)
+			.await?;
+
+			Ok(runner)
+		},
+		250,
+		"Unable to update database of deployment runner",
+	)
+	.await?;
+
+	if let Some(deployment_runner) = runner {
+		// There's already a runner trying to run this deployment
+		// If it's the current runner, make sure you have the lock on
+		// `DEPLOYMENTS` and proceed
+		if deployment_runner.runner_id == runner_id {
+			if !DEPLOYMENTS.lock().await.contains(&deployment.id) {
+				// If you don't have the lock, there's something wrong. Just
+				// exit. Relaunching the runner tasks will take care of it.
+				Err(Error::empty())
+			} else {
+				Ok(Some(deployment_runner))
+			}
+		} else {
+			// There's some other runner trying to access it. Check if it's
+			// outdated. If it is, take over.
+			if deployment_runner.last_updated >=
+				get_current_time_millis() - (1000 * 10)
+			{
+				// Last updated was within the last 10 seconds. Not outdated
+				Err(Error::empty())
+			} else {
+				retry_with_delay_or_exit(
+					|| async {
+						db::update_running_deployment_runner(
+							pool.acquire().await?.deref_mut(),
+							runner_id,
+							&deployment_runner.runner_id,
+						)
+						.await?;
+
+						Ok(())
+					},
+					250,
+					format!(
+						"Error updating runnerId of deployment `{}`",
+						hex::encode(&deployment.id)
+					),
+				)
+				.await?;
+
+				let runner_details = db::get_running_deployment_details_by_id(
+					pool.acquire().await?.deref_mut(),
+					&deployment.id,
+				)
+				.await?
+				.status(500)?;
+
+				if runner_details.runner_id == runner_id {
+					Ok(Some(runner_details))
+				} else {
+					Err(Error::empty())
+				}
+			}
+		}
+	} else {
+		Ok(None)
+	}
+}
+
+async fn run_deployment_on_application_server(
+	pool: &Pool<Database>,
+	runner_id: &[u8],
+	deployment: &mut Deployment,
+	server: &IpAddr,
+) -> Result<(), Error> {
+	// now that there's a server available, mark the running of the server,
+	// open a reverse tunnel, and run the image using a docker socket on it.
+	let _ssh_connection = retry_with_delay_or_fail(
+		|| async {
+			Session::connect(
+				format!("ssh://deployment@{}", server),
+				KnownHosts::Add,
+			)
+			.await
+			.status(500)
+		},
+		5,
+		500,
+		format!("Error while opening connection to server `{}`", server),
+	)
+	.await?;
+	// TODO open reverse tunnel using `_ssh_connection` here
+	let docker =
+		Docker::unix(format!("./application-server-{}-docker.sock", server));
+	let container_name = format!("deployment-{}", hex::encode(&deployment.id));
+	let mut assigned_port = 0;
+	let mut last_updated = get_current_time_millis();
+
+	// Monitor deployment here
+	loop {
+		if *SHOULD_EXIT.read().await {
+			break;
+		}
+		// Check to make sure some other runner hasn't taken over this
+		// deployment
+		let is_runner_managing_deployment = retry_with_delay_or_exit(
+			|| is_deployment_managed_by_runner(pool, &deployment.id, runner_id),
+			250,
+			"Error getting running deployment details",
+		)
+		.await?;
+		if !is_runner_managing_deployment {
+			break;
+		}
+
+		// Poll deployment
+		let container_info =
+			get_container_details(&docker, &container_name).await?;
+
+		let new_deployment = retry_with_delay_or_exit(
+			|| async {
+				let deployment = db::get_deployment_by_id(
+					pool.acquire().await?.deref_mut(),
+					&deployment.id,
+				)
+				.await?;
+				Ok(deployment)
+			},
+			250,
+			"Unable to get deployment information",
+		)
+		.await?;
+		if let Some(new_deployment) = new_deployment {
+			*deployment = new_deployment;
+		} else {
+			break;
+		}
+
+		if let Some(info) = container_info {
+			// A docker container is running
+			let deployed_image = if let Some(image) = &deployment.deployed_image
+			{
+				image.as_str()
+			} else {
+				// deployed_image is null. Stop the docker container and quit
+				delete_container(&docker, &container_name).await?;
+				break;
+			};
+
+			if deployed_image != info.config.image {
+				// Deployed image is different from running image. Rerun
+				delete_container(&docker, &container_name).await?;
+				let new_port = run_container_in_server(
+					&docker,
+					server,
+					&container_name,
+					deployed_image,
+					1.0,
+					1024 * 1024 * 1024, // 1 GiB
+					[8080],
+				)
+				.await?[0];
+
+				if new_port != assigned_port {
+					// TODO Update NGINX
+				}
+				assigned_port = new_port;
+			}
+		} else {
+			// Container is not running.
+			let deployed_image = if let Some(image) = &deployment.deployed_image
+			{
+				// If the deployed image not null, deploy with that image
+				image.as_str()
+			} else {
+				// If the deployed image is null, exit
+				break;
+			};
+
+			let new_port = run_container_in_server(
+				&docker,
+				server,
+				&container_name,
+				deployed_image,
+				1.0,
+				1024 * 1024 * 1024, // 1 GiB
+				[8080],
+			)
+			.await?[0];
+
+			if new_port != assigned_port {
+				// TODO Update NGINX
+			}
+			assigned_port = new_port;
+		}
+		let (cpu, memory) = retry_with_delay_or_fail(
+			|| async {
+				// Get stats of container here
+				let mut stats =
+					docker.containers().get(&container_name).stats();
+				let prestats = stats.next().await.status(500)??;
+				let stats = stats.next().await.status(500)??;
+
+				// Ref: https://docs.docker.com/engine/api/v1.41/#operation/ContainerStats
+				let cpu_delta = stats.cpu_stats.cpu_usage.total_usage -
+					prestats.cpu_stats.cpu_usage.total_usage;
+				let num_cpus = 1f64;
+				let system_cpu_delta = stats.cpu_stats.system_cpu_usage -
+					prestats.cpu_stats.system_cpu_usage;
+				let used_memory =
+					stats.memory_stats.usage - stats.memory_stats.stats.cache;
+				let available_memory = stats.memory_stats.limit;
+
+				Ok((
+					(cpu_delta / system_cpu_delta) as f64 * num_cpus * 100.0,
+					(used_memory / available_memory) as f64 * 100.0,
+				))
+			},
+			5,
+			100,
+			"Error polling deployment",
+		)
+		.await?;
+
+		let _ = retry_with_delay_or_fail(
+			|| async {
+				db::add_deployment_running_stats(
+					pool.acquire().await?.deref_mut(),
+					&deployment.id,
+					cpu,
+					memory,
+					get_current_time_millis(),
+				)
+				.await?;
+				Ok(())
+			},
+			5,
+			250,
+			"Error updating running deployment stats",
+		)
+		.await;
+
+		for _ in 0..=3 {
+			let time_to_sleep = (
+				last_updated + (2500)
+				// 10 seconds
+			)
+			.checked_sub(get_current_time_millis());
+			if let Some(time) = time_to_sleep {
+				time::sleep(Duration::from_millis(time)).await;
+			} else {
+				// It took too long to poll deployment. Is the server being
+				// overloaded?
+				log::error!(
+					"Time to sleep is negative. The server might be overloaded"
+				);
+			}
+			last_updated = retry_with_delay_or_exit(
+				|| async {
+					let time = get_current_time_millis();
+					db::update_running_deployment_last_updated(
+						pool.acquire().await?.deref_mut(),
+						time,
+						&deployment.id,
+						runner_id,
+					)
+					.await?;
+
+					Ok(time)
+				},
+				250,
+				"Error updating last updated for deployment",
+			)
+			.await?;
+		}
+	}
+	if let Err(error) = db::delete_running_deployment_details(
+		pool.acquire().await?.deref_mut(),
+		&deployment.id,
+	)
+	.await
+	{
+		log::error!("Error deleting deployment running details: {}", error);
+		time::sleep(Duration::from_millis(1000 * 10)).await;
+	}
+
+	Ok(())
+}
+
+async fn is_deployment_managed_by_runner(
+	pool: &Pool<Database>,
+	deployment_id: &[u8],
+	runner_id: &[u8],
+) -> Result<bool, Error> {
+	let runner_details = db::get_running_deployment_details_by_id(
+		pool.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?;
+	if let Some(runner) = runner_details {
+		Ok(runner.runner_id == runner_id)
+	} else {
+		Ok(false)
+	}
+}
+
+async fn retry_with_delay_or_exit<TFunction, TFuture, TReturn, TMessage>(
+	function: TFunction,
+	delay_ms: u64,
+	error_message: TMessage,
+) -> Result<TReturn, Error>
+where
+	TFunction: Fn() -> TFuture,
+	TFuture: Future<Output = Result<TReturn, Error>>,
+	TMessage: AsRef<str>,
+{
+	loop {
+		break match function().await {
+			Ok(value) => Ok(value),
+			Err(error) => {
+				log::error!(
+					"{}: {}",
+					error_message.as_ref(),
+					error.get_error()
+				);
+				if *SHOULD_EXIT.read().await {
+					Err(Error::empty())
+				} else {
+					time::sleep(Duration::from_millis(delay_ms)).await;
+					continue;
+				}
+			}
+		};
+	}
+}
+
+async fn retry_with_delay_or_fail<TFunction, TFuture, TReturn, TMessage>(
+	function: TFunction,
+	max_tries: u8,
+	delay_ms: u64,
+	error_message: TMessage,
+) -> Result<TReturn, Error>
+where
+	TFunction: Fn() -> TFuture,
+	TFuture: Future<Output = Result<TReturn, Error>>,
+	TMessage: AsRef<str>,
+{
+	let mut error_count = 0;
+	loop {
+		break match function().await {
+			Ok(value) => Ok(value),
+			Err(error) => {
+				log::error!(
+					"{}: {}",
+					error_message.as_ref(),
+					error.get_error()
+				);
+				error_count += 1;
+				if error_count >= max_tries {
+					Err(error)
+				} else {
+					time::sleep(Duration::from_millis(delay_ms)).await;
+					continue;
+				}
+			}
+		};
+	}
+}
+
+async fn get_available_port_on_server(server: &IpAddr) -> u32 {
+	// Assign a random, available port
+	let low = 1025;
+	let high = 65535;
+	let restricted_ports = [9000];
+	let mut assigned_port;
+	loop {
+		assigned_port = rand::thread_rng().gen_range(low..high);
+		if restricted_ports.contains(&assigned_port) {
+			continue;
+		}
+		let port_open =
+			is_port_open(format!("{}:{}", server, assigned_port)).await;
+		if port_open {
+			continue;
+		}
+		break;
+	}
+	assigned_port
+}
+
+async fn is_port_open<A: ToSocketAddrs>(addr: A) -> bool {
+	TcpStream::connect(addr).await.is_ok()
+}
+
+async fn delete_container(
+	docker: &Docker,
+	container_name: &str,
+) -> Result<(), Error> {
+	retry_with_delay_or_exit(
+		|| async {
+			docker
+				.containers()
+				.get(container_name)
+				.stop(Some(Duration::from_secs(30)))
+				.await?;
+			docker.containers().get(container_name).delete().await?;
+
+			Ok(())
+		},
+		250,
+		"Error stopping and deleting container",
+	)
+	.await
+}
+
+async fn get_container_details(
+	docker: &Docker,
+	container_name: &str,
+) -> Result<Option<ContainerDetails>, Error> {
+	retry_with_delay_or_fail(
+		|| async {
+			let inspect =
+				docker.containers().get(container_name).inspect().await;
+			if let Err(ShipliftError::Fault { code, .. }) = inspect {
+				if code.as_u16() == 404 {
+					// Container doesn't exist
+					Ok(None)
+				} else {
+					Err(Error::empty())
+				}
+			} else if let Ok(details) = inspect {
+				Ok(Some(details))
+			} else {
+				Err(Error::empty())
+			}
+		},
+		5,
+		250,
+		"Error polling deployment",
+	)
+	.await
+}
+
+async fn run_container_in_server<const PORT_COUNT: usize>(
+	docker: &Docker,
+	server: &IpAddr,
+	container_name: &str,
+	image: &str,
+	cpu_limit: f64,
+	memory_limit: u64,
+	exposed_ports: [u32; PORT_COUNT],
+) -> Result<[u32; PORT_COUNT], Error> {
+	retry_with_delay_or_fail(
+		|| async {
+			let mut mapped_ports = [0; PORT_COUNT];
+
+			let mut builder = ContainerOptions::builder(image);
+			builder
+				.name(container_name)
+				.auto_remove(true)
+				.cpus(cpu_limit)
+				.memory(memory_limit) // 1 GiB
+				.restart_policy("always", 100)
+				.privileged(false);
+			for (index, port) in exposed_ports.iter().enumerate() {
+				let mapped_port = get_available_port_on_server(server).await;
+				mapped_ports[index] = mapped_port;
+				builder.expose(*port, "tcp", mapped_port);
+			}
+
+			docker.containers().create(&builder.build()).await?;
+			docker.containers().get(container_name).inspect().await?;
+
+			Ok(mapped_ports)
+		},
+		5,
+		1000,
+		"Error creating container",
+	)
+	.await
 }

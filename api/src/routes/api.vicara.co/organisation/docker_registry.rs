@@ -203,7 +203,7 @@ async fn create_docker_repository(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ID: resource_id
+		request_keys::ID: hex::encode(resource_id)
 	}));
 
 	Ok(context)

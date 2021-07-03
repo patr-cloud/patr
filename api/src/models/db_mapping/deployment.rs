@@ -152,3 +152,11 @@ pub struct DeploymentApplicationServer {
 	pub server_ip: IpNetwork,
 	pub server_type: String,
 }
+
+pub struct DeploymentRunnerDeployment {
+	pub deployment_id: Vec<u8>,
+	pub runner_id: Vec<u8>,
+	pub last_updated: u64,
+	pub current_server: IpNetwork,
+	pub status: DeploymentStatus,
+}

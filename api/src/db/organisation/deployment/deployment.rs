@@ -8,6 +8,8 @@ use crate::{
 		Deployment,
 		DeploymentApplicationServer,
 		DeploymentRunner,
+		DeploymentRunnerDeployment,
+		DeploymentStatus,
 	},
 	query,
 	query_as,
@@ -164,8 +166,8 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_runner_deployment_fk_deployment_id
 					REFERENCES deployment(id),
 			runner_id BYTEA NOT NULL
-			CONSTRAINT deployment_runner_deployment_fk_runner_id
-				REFERENCES deployment_runner(id),
+				CONSTRAINT deployment_runner_deployment_fk_runner_id
+					REFERENCES deployment_runner(id),
 			last_updated BIGINT NOT NULL
 				CONSTRAINT deployment_runner_chk_last_updated_unsigned
 					CHECK(last_updated >= 0),
@@ -186,6 +188,40 @@ pub async fn initialize_deployment_pre(
 	// 	ON
 	// 		deployment_runner_deployment
 	// 	USING GIST(last_updated);
+	// 	"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_running_stats(
+			deployment_id BYTEA
+				CONSTRAINT deployment_running_stats_pk PRIMARY KEY
+				CONSTRAINT deployment_running_stats_fk_deployment_id
+					REFERENCES deployment(id),
+			cpu_usage DOUBLE PRECISION NOT NULL
+				CONSTRAINT deployment_running_stats_chk_cpu_usage_unsigned
+					CHECK(cpu_usage >= 0),
+			memory_usage DOUBLE PRECISION NOT NULL
+				CONSTRAINT deployment_running_stats_chk_memory_usage_unsigned
+					CHECK(memory_usage >= 0),
+			timestamp BIGINT NOT NULL
+				CONSTRAINT deployment_running_stats_chk_timestamp_unsigned
+					CHECK(timestamp >= 0)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// query!(
+	// 	r#"
+	// 	CREATE INDEX
+	// 		deployment_running_stats_idx_timestamp
+	// 	ON
+	// 		deployment_running_stats
+	// 	USING GIST(timestamp);
 	// 	"#
 	// )
 	// .execute(&mut *connection)
@@ -613,7 +649,8 @@ pub async fn get_deployments_not_running_for_runner(
 					deployment_runner_deployment.status != 'dead' AND
 					deployment_runner_deployment.last_updated >= $1 AND
 					deployment_runner.last_updated >= $1
-			);
+			) AND
+			deployed_image IS NOT NULL;
 		"#,
 		(get_current_time_millis() - (1000 * 10)) as i64
 	)
@@ -708,4 +745,178 @@ pub async fn get_available_deployment_server_for_deployment(
 	.next();
 
 	Ok(row)
+}
+
+pub async fn get_running_deployment_details_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Option<DeploymentRunnerDeployment>, sqlx::Error> {
+	let row = query!(
+		r#"
+		SELECT
+			deployment_id,
+			runner_id,
+			last_updated,
+			current_server,
+			status as "status: DeploymentStatus"
+		FROM
+			deployment_runner_deployment
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| DeploymentRunnerDeployment {
+		deployment_id: row.deployment_id,
+		runner_id: row.runner_id,
+		last_updated: row.last_updated as u64,
+		current_server: row.current_server,
+		status: row.status,
+	})
+	.next();
+
+	Ok(row)
+}
+
+pub async fn update_running_deployment_runner(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	new_runner_id: &[u8],
+	old_runner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_runner_deployment
+		SET
+			runner_id = $1
+		WHERE
+			runner_id = $2;
+		"#,
+		new_runner_id,
+		old_runner_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_running_deployment_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	runner_id: &[u8],
+	last_updated: u64,
+	current_server: &IpNetwork,
+	status: &DeploymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_runner_deployment
+		VALUES
+			($1, $2, $3, $4, $5);
+		"#,
+		deployment_id,
+		runner_id,
+		last_updated as i64,
+		current_server,
+		status as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_running_deployment_server_ip(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	server_ip: &IpNetwork,
+	deployment_id: &[u8],
+	runner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_runner_deployment
+		SET
+			current_server = $1
+		WHERE
+			deployment_id = $2 AND
+			runner_id = $3;
+		"#,
+		server_ip,
+		deployment_id,
+		runner_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_running_deployment_last_updated(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	last_updated: u64,
+	deployment_id: &[u8],
+	runner_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_runner_deployment
+		SET
+			last_updated = $1
+		WHERE
+			deployment_id = $2 AND
+			runner_id = $3;
+		"#,
+		last_updated as i64,
+		deployment_id,
+		runner_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_deployment_running_stats(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	cpu_usage: f64,
+	memory_usage: f64,
+	timestamp: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_running_stats
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		deployment_id,
+		cpu_usage,
+		memory_usage,
+		timestamp as i64
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_running_deployment_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_runner_deployment
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
