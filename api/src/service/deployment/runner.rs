@@ -247,7 +247,7 @@ async fn get_servers_from_cloud_provider(
 	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
 
 	let private_ipv4_address = Client::new()
-		.get("https://api.digitalocean.com/v2/droplets?per_page=200")
+		.get("https://api.digitalocean.com/v2/droplets?per_page=200&tag_name=application-server")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.send()
 		.await?
