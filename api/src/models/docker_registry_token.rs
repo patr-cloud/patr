@@ -90,7 +90,7 @@ impl RegistryToken {
 	pub fn parse(token: &str, public_key: &[u8]) -> Result<Self, JWTError> {
 		let decode_key = DecodingKey::from_ec_der(public_key);
 		let TokenData { header: _, claims } = jsonwebtoken::decode(
-			&token,
+			token,
 			&decode_key,
 			&Validation {
 				validate_exp: false,

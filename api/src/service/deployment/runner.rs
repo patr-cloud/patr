@@ -752,8 +752,8 @@ async fn run_deployment_on_application_server(
 				let new_port = run_container_in_server(
 					&docker,
 					server,
-					&pool,
-					&settings,
+					pool,
+					settings,
 					&container_name,
 					deployed_image,
 					1.0,
@@ -788,8 +788,8 @@ async fn run_deployment_on_application_server(
 			let new_port = run_container_in_server(
 				&docker,
 				server,
-				&pool,
-				&settings,
+				pool,
+				settings,
 				&container_name,
 				deployed_image,
 				1.0,
@@ -1086,7 +1086,7 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 				config.docker_registry.issuer.clone(),
 				iat,
 				god_username.clone(),
-				&config,
+				config,
 				vec![RegistryTokenAccess {
 					r#type: "repository".to_string(),
 					name: if let Some((repo, _)) = image.split_once(':') {
@@ -1096,8 +1096,7 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 					} else {
 						image
 					}
-					.replace("registry.vicara.tech/", "")
-					.to_string(),
+					.replace("registry.vicara.tech/", ""),
 					actions: vec!["pull".to_string()],
 				}],
 			)
