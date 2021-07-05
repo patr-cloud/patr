@@ -25,25 +25,25 @@ pub async fn initialize_deployment_pre(
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co',
+			registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech',
 			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			deployed_image TEXT,
-			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(			
+			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
-					registry = 'registry.docker.vicara.co' AND
+					registry = 'registry.vicara.tech' AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
 				)
-				 OR
+				OR
 				(
-					registry != 'registry.docker.vicara.co' AND
+					registry != 'registry.vicara.tech' AND
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
-			)	
+			)
 		);
 		"#
 	)
@@ -135,7 +135,7 @@ pub async fn initialize_deployment_pre(
 			server_ip INET
 				CONSTRAINT deployment_application_server_pk PRIMARY KEY,
 			/* TODO add region here later */
-			server_type TEXT
+			server_type TEXT NOT NULL
 				CONSTRAINT deployment_application_server_fk_server_type
 					REFERENCES deployment_application_server_type(type)
 			/* TODO come up with a convention for ↑ this name */
@@ -197,7 +197,6 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment_running_stats(
 			deployment_id BYTEA
-				CONSTRAINT deployment_running_stats_pk PRIMARY KEY
 				CONSTRAINT deployment_running_stats_fk_deployment_id
 					REFERENCES deployment(id),
 			cpu_usage DOUBLE PRECISION NOT NULL
@@ -208,7 +207,9 @@ pub async fn initialize_deployment_pre(
 					CHECK(memory_usage >= 0),
 			timestamp BIGINT NOT NULL
 				CONSTRAINT deployment_running_stats_chk_timestamp_unsigned
-					CHECK(timestamp >= 0)
+					CHECK(timestamp >= 0),
+			CONSTRAINT deployment_running_stats_pk
+				PRIMARY KEY(deployment_id, timestamp)
 		);
 		"#
 	)
@@ -258,7 +259,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.docker.vicara.co', $3, NULL, $4, NULL);
+			($1, $2, 'registry.vicara.tech', $3, NULL, $4, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -587,16 +588,18 @@ pub async fn get_deployment_runner_by_id(
 pub async fn register_deployment_application_server(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	server_ip: &IpAddr,
+	server_type: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment_application_server
 		VALUES
-			($1, DEFAULT)
+			($1, $2)
 		ON CONFLICT DO NOTHING;
 		"#,
-		IpNetwork::from(server_ip.clone())
+		IpNetwork::from(server_ip.clone()),
+		server_type
 	)
 	.execute(&mut *connection)
 	.await
@@ -692,11 +695,21 @@ pub async fn get_available_deployment_server_for_deployment(
 			deployment_application_server.server_type as "server_type!",
 			(
 				deployment_application_server_type.memory -
-				running_deployments.memory_used
+				CASE
+					WHEN running_deployments.memory_used IS NULL THEN
+						0
+					ELSE
+						running_deployments.memory_used
+				END
 			) as "memory_available",
 			(
 				deployment_application_server_type.cpu -
-				running_deployments.cpu_used
+				CASE
+					WHEN running_deployments.cpu_used IS NULL THEN
+						0
+					ELSE
+						running_deployments.cpu_used
+				END
 			) as "cpu_available"
 		FROM
 			deployment_application_server
@@ -705,7 +718,7 @@ pub async fn get_available_deployment_server_for_deployment(
 		ON
 			deployment_application_server.server_type =
 				deployment_application_server_type.type
-		INNER JOIN
+		LEFT JOIN
 			(
 				SELECT
 					current_server,
@@ -722,11 +735,21 @@ pub async fn get_available_deployment_server_for_deployment(
 		WHERE
 			(
 				deployment_application_server_type.memory -
-				running_deployments.memory_used
+				CASE
+					WHEN running_deployments.memory_used IS NULL THEN
+						0
+					ELSE
+						running_deployments.memory_used
+				END
 			) >= $1 AND
 			(
 				deployment_application_server_type.cpu -
-				running_deployments.cpu_used
+				CASE
+					WHEN running_deployments.cpu_used IS NULL THEN
+						0
+					ELSE
+						running_deployments.cpu_used
+				END
 			) >= $2
 		ORDER BY
 			memory_available,

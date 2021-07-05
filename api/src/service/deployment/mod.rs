@@ -23,7 +23,7 @@ pub async fn create_deployment_in_organisation(
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry and docker hub is allowed
 	match registry {
-		"registry.docker.vicara.co" | "registry.hub.docker.com" => (),
+		"registry.vicara.tech" | "registry.hub.docker.com" => (),
 		_ => {
 			Error::as_result()
 				.status(400)
@@ -48,7 +48,7 @@ pub async fn create_deployment_in_organisation(
 	)
 	.await?;
 
-	if registry == "registry.docker.vicara.co" {
+	if registry == "registry.vicara.tech" {
 		if let Some(repository_id) = repository_id {
 			let repository_id = hex::decode(repository_id)
 				.status(400)

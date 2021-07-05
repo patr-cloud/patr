@@ -4,6 +4,7 @@ use std::{
 	io::ErrorKind,
 	net::IpAddr,
 	ops::DerefMut,
+	process::Stdio,
 	time::Duration,
 };
 
@@ -36,9 +37,12 @@ use shiplift::{
 	ContainerOptions,
 	Docker,
 	Error as ShipliftError,
+	PullOptions,
+	RegistryAuth,
 };
 use sqlx::{types::ipnetwork::IpNetwork, Pool};
 use tokio::{
+	fs,
 	io::AsyncWriteExt,
 	net::{TcpStream, ToSocketAddrs},
 	process::Command,
@@ -50,14 +54,24 @@ use uuid::Uuid;
 
 use crate::{
 	db::{self, add_running_deployment_details},
-	models::db_mapping::{
-		Deployment,
-		DeploymentApplicationServer,
-		DeploymentRunnerDeployment,
-		DeploymentStatus,
+	models::{
+		db_mapping::{
+			Deployment,
+			DeploymentApplicationServer,
+			DeploymentRunnerDeployment,
+			DeploymentStatus,
+		},
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
 	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{
+		get_current_time,
+		get_current_time_millis,
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -244,15 +258,16 @@ async fn get_servers_from_cloud_provider(
 ) -> Result<Vec<IpAddr>, Error> {
 	use reqwest::Client;
 
-	use crate::models::deployment::cloud_providers::digital_ocean::DropletDetails;
+	use crate::models::deployment::cloud_providers::digital_ocean::DropletResponse;
 
 	let private_ipv4_address = Client::new()
 		.get("https://api.digitalocean.com/v2/droplets?per_page=200&tag_name=application-server")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.send()
 		.await?
-		.json::<Vec<DropletDetails>>()
+		.json::<DropletResponse>()
 		.await?
+		.droplets
 		.into_iter()
 		.filter_map(|droplet| {
 			droplet.networks.v4.into_iter().find_map(|ipv4| {
@@ -287,8 +302,12 @@ async fn register_application_servers(
 	let mut connection = pool.begin().await?;
 
 	for (index, server) in servers.iter().enumerate() {
-		db::register_deployment_application_server(&mut connection, server)
-			.await?;
+		db::register_deployment_application_server(
+			&mut connection,
+			server,
+			"default",
+		)
+		.await?;
 
 		// Every 10th iteration, check if it should exit, to prevent
 		// unnecessarry showdown of the application
@@ -408,7 +427,7 @@ async fn monitor_deployment(
 				} else {
 					break;
 				};
-				if !is_runner_managing_deployment {
+				if !first_run && !is_runner_managing_deployment {
 					break;
 				}
 
@@ -648,13 +667,19 @@ async fn run_deployment_on_application_server(
 	// open reverse tunnel
 	let socket =
 		format!("./{}-{}-docker.sock", hex::encode(&deployment.id), server);
+	if fs::metadata(&socket).await.is_ok() {
+		let _ = fs::remove_file(&socket).await;
+	}
 	let _command = retry_with_delay_or_fail(
 		|| async {
 			let command = Command::new("ssh")
 				.arg(format!("deployment@{}", server))
-				.arg("-R")
-				.arg(format!("/var/run/docker.sock:{}", socket))
+				.arg("-L")
+				.arg(format!("{}:/var/run/docker.sock", socket))
 				.kill_on_drop(true)
+				.stdin(Stdio::piped())
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
 				.spawn()?;
 
 			Ok(command)
@@ -727,11 +752,13 @@ async fn run_deployment_on_application_server(
 				let new_port = run_container_in_server(
 					&docker,
 					server,
+					&pool,
+					&settings,
 					&container_name,
 					deployed_image,
 					1.0,
 					1024 * 1024 * 1024, // 1 GiB
-					[8080],
+					[80],
 				)
 				.await?[0];
 
@@ -761,11 +788,13 @@ async fn run_deployment_on_application_server(
 			let new_port = run_container_in_server(
 				&docker,
 				server,
+				&pool,
+				&settings,
 				&container_name,
 				deployed_image,
 				1.0,
 				1024 * 1024 * 1024, // 1 GiB
-				[8080],
+				[80],
 			)
 			.await?[0];
 
@@ -1032,6 +1061,8 @@ async fn get_container_details(
 async fn run_container_in_server<const PORT_COUNT: usize>(
 	docker: &Docker,
 	server: &IpAddr,
+	pool: &Pool<Database>,
+	config: &Settings,
 	container_name: &str,
 	image: &str,
 	cpu_limit: f64,
@@ -1042,13 +1073,57 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 		|| async {
 			let mut mapped_ports = [0; PORT_COUNT];
 
+			let god_user = db::get_user_by_user_id(
+				pool.acquire().await?.deref_mut(),
+				rbac::GOD_USER_ID.get().unwrap().as_bytes(),
+			)
+			.await?
+			.status(500)?;
+			let god_username = god_user.username;
+			// generate token as password
+			let iat = get_current_time().as_secs();
+			let token = RegistryToken::new(
+				config.docker_registry.issuer.clone(),
+				iat,
+				god_username.clone(),
+				&config,
+				vec![RegistryTokenAccess {
+					r#type: "repository".to_string(),
+					name: if let Some((repo, _)) = image.split_once(':') {
+						repo
+					} else if let Some((repo, _)) = image.split_once('@') {
+						repo
+					} else {
+						image
+					}
+					.replace("registry.vicara.tech/", "")
+					.to_string(),
+					actions: vec!["pull".to_string()],
+				}],
+			)
+			.to_string(
+				config.docker_registry.private_key.as_ref(),
+				config.docker_registry.public_key_der(),
+			)?;
+			// get token object using the above token string
+			let registry_auth = RegistryAuth::builder()
+				.username(god_username)
+				.password(token)
+				.build();
+			let mut stream = docker.images().pull(
+				&PullOptions::builder()
+					.image(image)
+					.auth(registry_auth)
+					.build(),
+			);
+			while stream.next().await.is_some() {}
+
 			let mut builder = ContainerOptions::builder(image);
 			builder
 				.name(container_name)
 				.auto_remove(true)
 				.cpus(cpu_limit)
 				.memory(memory_limit)
-				.restart_policy("always", 100)
 				.privileged(false);
 			for (index, port) in exposed_ports.iter().enumerate() {
 				let mapped_port = get_available_port_on_server(server).await;
@@ -1057,7 +1132,7 @@ async fn run_container_in_server<const PORT_COUNT: usize>(
 			}
 
 			docker.containers().create(&builder.build()).await?;
-			docker.containers().get(container_name).inspect().await?;
+			docker.containers().get(container_name).start().await?;
 
 			Ok(mapped_ports)
 		},
@@ -1117,7 +1192,7 @@ async fn update_dns(domain: &str, settings: &Settings) -> Result<(), Error> {
 	let zone = response.result.into_iter().next().status(500)?;
 	let zone_identifier = zone.id.as_str();
 	let expected_dns_record = DnsContent::CNAME {
-		content: String::from("proxy.vicara.co"),
+		content: String::from("proxy.vicara.tech"),
 	};
 
 	let response = client
@@ -1138,7 +1213,7 @@ async fn update_dns(domain: &str, settings: &Settings) -> Result<(), Error> {
 	});
 	if let Some(record) = dns_record {
 		if let DnsContent::CNAME { content } = record.content {
-			if content != "proxy.vicara.co" {
+			if content != "proxy.vicara.tech" {
 				client
 					.request(&UpdateDnsRecord {
 						zone_identifier,
@@ -1180,7 +1255,7 @@ async fn update_nginx(
 	let session = retry_with_delay_or_fail(
 		|| async {
 			let session = Session::connect(
-				"ssh://deployment@proxy.vicara.co",
+				"ssh://root@proxy.vicara.tech",
 				KnownHosts::Add,
 			)
 			.await?;
@@ -1242,6 +1317,10 @@ server {{
 			let certificate_result = session
 				.command("certbot")
 				.arg("certonly")
+				.arg("--agree-tos")
+				.arg("-m")
+				.arg("postmaster@vicara.co")
+				.arg("--no-eff-email")
 				.arg("-d")
 				.arg(&domain)
 				.arg("--webroot")
@@ -1278,10 +1357,15 @@ server {{
 	listen [::]:443 ssl http2;
 	server_name {domain};
 
-	ssl_certificate /etc/letsencrypt/live/deployment.vicara.tech/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/deployment.vicara.tech/privkey.pem;
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
 
 	location {path} {{
+		proxy_set_header   X-Forwarded-Proto $scheme;
+		proxy_set_header   Host              $host;
+		proxy_set_header   X-Real-IP         $remote_addr;
+		proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+		proxy_set_header Host $host;
 		proxy_pass http://{server}:{port};
 	}}
 

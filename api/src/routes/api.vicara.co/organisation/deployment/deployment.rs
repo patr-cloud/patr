@@ -171,7 +171,7 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
-		if deployment.registry == "registry.docker.vicara.co" {
+		if deployment.registry == "registry.vicara.tech" {
 			Some(json!({
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,

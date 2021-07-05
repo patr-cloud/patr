@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DigitalOceanImage {
-	pub id: String,
+	pub id: u64,
 	pub distribution: String,
 	pub slug: String,
 	pub public: bool,
@@ -44,7 +44,7 @@ pub enum DropletStatus {
 pub struct IpV4Address {
 	pub ip_address: Ipv4Addr,
 	pub netmask: Ipv4Addr,
-	pub gateway: Ipv4Addr,
+	pub gateway: String,
 	pub r#type: String,
 }
 
@@ -52,7 +52,7 @@ pub struct IpV4Address {
 pub struct IpV6Address {
 	pub ip_address: Ipv6Addr,
 	pub netmask: Ipv6Addr,
-	pub gateway: Ipv6Addr,
+	pub gateway: String,
 	pub r#type: String,
 }
 
@@ -80,7 +80,7 @@ pub struct RegionDetails {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SizeObject {
 	pub slug: String,
-	pub memory: String,
+	pub memory: u64,
 	pub vcpus: u16,
 	pub disk: u64,
 	pub transfer: f64,
@@ -92,8 +92,13 @@ pub struct SizeObject {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct DropletResponse {
+	pub droplets: Vec<DropletDetails>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DropletDetails {
-	pub id: String,
+	pub id: u64,
 	pub name: String,
 	pub memory: u64,
 	pub vcpus: u16,
@@ -104,12 +109,12 @@ pub struct DropletDetails {
 	pub backup_ids: Vec<String>,
 	pub snapshot_ids: Vec<String>,
 	pub features: Vec<String>,
-	pub region: Vec<RegionDetails>,
+	pub region: RegionDetails,
 	pub image: DigitalOceanImage,
 	pub size: SizeObject,
 	pub size_slug: String,
 	pub networks: NetworkDetails,
-	pub next_backup_window: NextBackupWindow,
+	pub next_backup_window: Option<NextBackupWindow>,
 	pub tags: Vec<String>,
 	pub vpc_uuid: String,
 }

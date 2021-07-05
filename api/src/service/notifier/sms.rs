@@ -112,7 +112,7 @@ async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 		service,
 	};
 
-	let config = service::get_config();
+	let config = service::get_settings();
 	let client = Client::new();
 	let response = client
 		.post(format!(

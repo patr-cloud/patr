@@ -73,6 +73,12 @@ pub fn create_sub_app(
 			docker_registry_token_endpoint
 		))],
 	);
+	app.get(
+		"/docker-registry-token",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
+	);
 
 	app.post(
 		"/list-recovery-options",
@@ -818,8 +824,15 @@ async fn docker_registry_authenticate(
 	// check if user is GOD_USER then return the token
 	if username == god_user.username {
 		// return token.
-		context.json(json!({ request_keys::TOKEN: password }));
-		return Ok(context);
+		if RegistryToken::parse(
+			password,
+			context.get_state().config.docker_registry.public_key_der(),
+		)
+		.is_ok()
+		{
+			context.json(json!({ request_keys::TOKEN: password }));
+			return Ok(context);
+		}
 	}
 
 	let success = service::validate_hash(password, &user.password)?;

@@ -65,7 +65,7 @@ impl Deployment {
 		&self,
 		connection: &mut <Database as sqlx::Database>::Connection,
 	) -> Result<String, Error> {
-		if self.registry == "registry.docker.vicara.co" {
+		if self.registry == "registry.vicara.tech" {
 			let docker_repository = db::get_docker_repository_by_id(
 				&mut *connection,
 				self.repository_id
@@ -87,7 +87,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				"registry.docker.vicara.co",
+				"registry.vicara.tech",
 				organisation.name,
 				docker_repository.name
 			))
@@ -147,7 +147,7 @@ pub struct DeploymentRunner {
 	pub container_id: Option<Vec<u8>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DeploymentApplicationServer {
 	pub server_ip: IpNetwork,
 	pub server_type: String,

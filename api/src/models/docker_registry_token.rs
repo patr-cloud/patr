@@ -1,4 +1,12 @@
-use jsonwebtoken::{errors::Error, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{
+	errors::Error as JWTError,
+	Algorithm,
+	DecodingKey,
+	EncodingKey,
+	Header,
+	TokenData,
+	Validation,
+};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -52,7 +60,7 @@ impl RegistryToken {
 		&self,
 		private_key: &[u8],
 		public_key: &[u8],
-	) -> Result<String, Error> {
+	) -> Result<String, JWTError> {
 		let hash: Vec<u8> = Sha256::digest(public_key)
 			.to_vec()
 			.into_iter()
@@ -77,5 +85,19 @@ impl RegistryToken {
 			&self,
 			&EncodingKey::from_ec_pem(private_key)?,
 		)
+	}
+
+	pub fn parse(token: &str, public_key: &[u8]) -> Result<Self, JWTError> {
+		let decode_key = DecodingKey::from_ec_der(public_key);
+		let TokenData { header: _, claims } = jsonwebtoken::decode(
+			&token,
+			&decode_key,
+			&Validation {
+				validate_exp: false,
+				algorithms: vec![Algorithm::ES256],
+				..Default::default()
+			},
+		)?;
+		Ok(claims)
 	}
 }

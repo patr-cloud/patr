@@ -103,7 +103,7 @@ where
 
 	use crate::service;
 
-	let settings = service::get_config();
+	let settings = service::get_settings();
 	let mut builder = Message::builder()
 		.from(settings.email.from.parse()?)
 		.to(to.clone())
