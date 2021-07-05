@@ -314,10 +314,23 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
             resource
 		ON
 			deployment.id = resource.id
+		LEFT JOIN
+			docker_registry_repository
+		ON
+			docker_registry_repository.id = deployment.repository_id
 		WHERE
-            image_name = $1 AND
+			(
+				(
+					registry = 'registry.vicara.tech' AND
+					docker_registry_repository.name = $1
+				) OR
+				(
+					registry != 'registry.vicara.tech' AND
+					image_name = $1
+				)
+			) AND
 			image_tag = $2 AND
-            resource.owner_id = $3;
+			resource.owner_id = $3;
 		"#,
 		image_name,
 		image_tag,
