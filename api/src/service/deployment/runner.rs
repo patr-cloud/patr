@@ -819,18 +819,20 @@ async fn run_deployment_on_application_server(
 				let stats = stats.next().await.status(500)??;
 
 				// Ref: https://docs.docker.com/engine/api/v1.41/#operation/ContainerStats
-				let cpu_delta = stats.cpu_stats.cpu_usage.total_usage -
-					prestats.cpu_stats.cpu_usage.total_usage;
+				let cpu_delta = (stats.cpu_stats.cpu_usage.total_usage -
+					prestats.cpu_stats.cpu_usage.total_usage)
+					as f64;
 				let num_cpus = 1f64;
-				let system_cpu_delta = stats.cpu_stats.system_cpu_usage -
-					prestats.cpu_stats.system_cpu_usage;
-				let used_memory =
-					stats.memory_stats.usage - stats.memory_stats.stats.cache;
-				let available_memory = stats.memory_stats.limit;
+				let system_cpu_delta = (stats.cpu_stats.system_cpu_usage -
+					prestats.cpu_stats.system_cpu_usage)
+					as f64;
+				let used_memory = (stats.memory_stats.usage -
+					stats.memory_stats.stats.cache) as f64;
+				let available_memory = stats.memory_stats.limit as f64;
 
 				Ok((
-					(cpu_delta / system_cpu_delta) as f64 * num_cpus * 100.0,
-					(used_memory / available_memory) as f64 * 100.0,
+					(cpu_delta / system_cpu_delta) * num_cpus * 100.0,
+					(used_memory / available_memory) * 100.0,
 				))
 			},
 			5,
@@ -1020,7 +1022,6 @@ async fn delete_container(
 				.get(container_name)
 				.stop(Some(Duration::from_secs(30)))
 				.await?;
-			docker.containers().get(container_name).delete().await?;
 
 			Ok(())
 		},
