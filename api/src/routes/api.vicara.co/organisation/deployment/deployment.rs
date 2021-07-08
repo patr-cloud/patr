@@ -20,17 +20,18 @@ use crate::{
 };
 
 /// # Description
-/// This function is used to create a sub app for every endpoint listed. It creates an eve app
-/// which binds the endpoint with functions.
-/// 
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
 /// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
 /// database connections.
-/// 
+///
 /// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
-/// of [`App`] and Error
-/// 
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
@@ -236,24 +237,26 @@ pub fn create_sub_app(
 
 /// # Description
 /// This function is used to list of all the deployments present with the user
-/// required inputs: 
+/// required inputs:
 /// OrganisationId in url
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success:
 ///    deployments: []
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn list_deployments(
@@ -312,20 +315,22 @@ async fn list_deployments(
 /// }
 /// ```
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success:
 ///    deploymentId:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn create_deployment(
@@ -401,15 +406,17 @@ async fn create_deployment(
 /// required inputs:
 /// auth token in the headers
 /// DeploymentId in url
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///     success: true or false,
@@ -454,17 +461,19 @@ async fn get_deployment_info(
 
 /// # Description
 /// This function is used to get the configuration of the deployment
-/// required inputs: 
+/// required inputs:
 /// deploymentId
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success:
@@ -473,7 +482,7 @@ async fn get_deployment_info(
 ///    persistentVolumes: []
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_deployment_config(
@@ -532,21 +541,23 @@ async fn get_deployment_config(
 ///    persistentVolumes: []
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 pub async fn update_deployment_config(
@@ -626,15 +637,17 @@ pub async fn update_deployment_config(
 /// This function is used to delete deployment
 /// required inputs:
 /// deploymentId in the url
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
