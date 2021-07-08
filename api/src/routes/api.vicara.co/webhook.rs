@@ -36,6 +36,19 @@ use crate::{
 	utils::{get_current_time, Error, ErrorData, EveContext, EveMiddleware},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It creates an eve app
+/// which binds the endpoint with functions.
+/// 
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// database connections.
+/// 
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
+/// of [`App`] and Error
+/// 
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -51,6 +64,20 @@ pub fn create_sub_app(
 // TODO: change hard coded port value to deployment's given port.
 // use newly refactored table to first fetch port id and then get port number
 // from it NOTE: hardcoded port is 3090
+/// # Description
+/// This function is used to handle all the notifications of the API
+/// NOTE: this file is to be refactored, so more of the documentation are yet to be made
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

@@ -17,6 +17,19 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It creates an eve app
+/// which binds the endpoint with functions.
+/// 
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// database connections.
+/// 
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
+/// of [`App`] and Error
+/// 
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -135,6 +148,40 @@ pub fn create_sub_app(
 	app
 }
 
+/// # Description
+/// This function is used to get the user's information.
+/// required inputs:
+/// auth token in headers
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+///    username:
+///    firstName:
+///    lastName:
+///    birthday:
+///    bio:
+///    location:
+///    created:
+///    emails:
+///    phoneNumbers: 
+///    {
+///       countryCode:
+///       number:
+///    }
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -180,6 +227,41 @@ async fn get_user_info(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get user info by supplying the username
+/// required inputs: 
+/// ```
+/// {
+///    username:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false,
+///    username:,
+///    firstName:,
+///    lastName:,
+///    birthday:,
+///    bio:,
+///    location:,
+///    created:,
+///    emails: [
+///    ],
+///    phoneNumbers: []
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_user_info_by_username(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -205,6 +287,36 @@ async fn get_user_info_by_username(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update the user information 
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    firstName:
+///    lastName:
+///    dob:
+///    bio:
+///    location:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -303,6 +415,32 @@ async fn update_user_info(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to add a new email address
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    email:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn add_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -332,6 +470,28 @@ async fn add_email_address(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list the email addresses registered with user
+/// required inputs:
+/// auth token in headers
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+///    emails: []
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -351,6 +511,32 @@ async fn list_email_addresses(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list the phone numbers registered user the user
+/// required inputs: 
+/// auth token in headers
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+///    phoneNumbers: 
+///    {
+///       countryCode:
+///       phoneNumber:
+///    }
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -378,6 +564,32 @@ async fn list_phone_numbers(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update the back up email address of the user
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    backupEMail: new backupEmail
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_backup_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -407,6 +619,33 @@ async fn update_backup_email_address(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update the backup phone number of the user
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    backupPhoneCountryCode:
+///    backupPhoneNumber:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_backup_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -444,6 +683,32 @@ async fn update_backup_phone_number(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to delete a personal email address
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    email:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_personal_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -473,6 +738,33 @@ async fn delete_personal_email_address(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to add phone number to  the user's account
+/// required inputs:
+/// auth token in the headers
+/// ```
+/// {
+///    countryCode:
+///    phoneNumber:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn add_phone_number_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -519,6 +811,34 @@ async fn add_phone_number_for_user(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to verify user's phone number 
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    countryCode:
+///    phoneNumber:
+///    verificationToken: 
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn verify_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -563,6 +883,33 @@ async fn verify_phone_number(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to delete user's phone number 
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    countryCode:
+///    phoneNumber:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -600,6 +947,33 @@ async fn delete_phone_number(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to verify user's email address
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    email:
+///    verificationToken:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn verify_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -637,6 +1011,37 @@ async fn verify_email_address(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get a list of all organisations in which the user is a member
+/// required inputs:
+/// auth token in headers
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false,
+///    organisations:
+///    [
+///       {
+///           id: ,
+///           name: ,
+///           acitve: ,
+///           created:         
+///    
+///       }
+///    ]
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_organisations_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -665,6 +1070,33 @@ async fn get_organisations_for_user(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to change the password of user 
+/// required inputs:
+/// auth token from headers
+/// ```
+/// {
+///    newPassword:
+///    password:
+/// }
+/// ```
+/// 
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
+/// 
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
+/// output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+/// 
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn change_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
