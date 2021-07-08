@@ -210,7 +210,7 @@ async fn update_organisation_info(
 	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	let name = body
-		.get(request_keys::FIRST_NAME)
+		.get(request_keys::NAME)
 		.map(|value| {
 			value
 				.as_str()
