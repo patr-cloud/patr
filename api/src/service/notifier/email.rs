@@ -91,7 +91,7 @@ async fn send_email<TEmail>(
 	subject: &str,
 ) -> Result<(), Error>
 where
-	TEmail: EmailTemplate,
+	TEmail: EmailTemplate + Send + Sync + 'static,
 {
 	use lettre::{
 		transport::smtp::authentication::Credentials,
@@ -100,37 +100,52 @@ where
 		Message,
 		Tokio1Executor,
 	};
+	use tokio::{task, task::JoinHandle};
 
 	use crate::service;
 
-	let settings = service::get_config();
-	let mut builder = Message::builder()
-		.from(settings.email.from.parse()?)
-		.to(to.clone())
-		.subject(subject);
-	if let Some(reply_to) = reply_to {
-		builder = builder.reply_to(reply_to);
-	}
-	let message = builder.multipart(body.render_body().await?)?;
+	let subject = subject.to_string();
+	let join_handle: JoinHandle<Result<_, Error>> = task::spawn(async move {
+		let settings = service::get_config();
+		let mut builder = Message::builder()
+			.from(settings.email.from.parse()?)
+			.to(to.clone())
+			.subject(subject);
+		if let Some(reply_to) = reply_to {
+			builder = builder.reply_to(reply_to);
+		}
 
-	let credentials = Credentials::new(
-		settings.email.username.clone(),
-		settings.email.password.clone(),
-	);
+		let message = builder.multipart(body.render_body().await?)?;
 
-	let send_result = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
-		&settings.email.host,
-	)?
-	.credentials(credentials)
-	.port(settings.email.port)
-	.build::<Tokio1Executor>()
-	.send(message)
-	.await;
+		let credentials = Credentials::new(
+			settings.email.username.clone(),
+			settings.email.password.clone(),
+		);
 
-	if let Err(error) = send_result {
-		// TODO log this error
-		log::error!("Unable to send email to `{}`: {}", to, error);
-	}
+		let response = AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(
+			&settings.email.host,
+		)?
+		.credentials(credentials)
+		.port(settings.email.port)
+		.build::<Tokio1Executor>()
+		.send(message)
+		.await?;
+
+		if !response.is_positive() {
+			log::error!("Error sending email to `{}`: {}", to, response.code());
+		}
+
+		Ok(())
+	});
+
+	let _ = task::spawn(async {
+		let result = join_handle.await;
+
+		if let Ok(Err(error)) = result {
+			// TODO log this error
+			log::error!("Unable to send email: {}", error.get_error());
+		}
+	});
 
 	Ok(())
 }

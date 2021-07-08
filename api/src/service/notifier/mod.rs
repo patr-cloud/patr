@@ -39,10 +39,8 @@ pub async fn send_user_sign_up_otp(
 	otp: &str,
 ) -> Result<(), Error> {
 	// chcek if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -51,11 +49,9 @@ pub async fn send_user_sign_up_otp(
 		)
 		.await?;
 
-		email::send_user_verification_otp(email.parse()?, otp).await?;
-	} else if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+		email::send_user_verification_otp(email.parse()?, otp).await
+	} else if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		// check if phone number is given as a backup
 		let phone_number = get_user_phone_number(
@@ -65,10 +61,12 @@ pub async fn send_user_sign_up_otp(
 		)
 		.await?;
 
-		sms::send_user_verification_otp(&phone_number, otp).await?;
+		sms::send_user_verification_otp(&phone_number, otp).await
+	} else {
+		Err(Error::empty()
+			.status(400)
+			.body(error!(NO_RECOVERY_OPTIONS).to_string()))
 	}
-
-	Ok(())
 }
 
 // This function will send the given otp to all the backup options available for
@@ -111,15 +109,13 @@ pub async fn send_password_changed_notification(
 	Ok(())
 }
 
-// reset password
+/// After the password has been reset
 pub async fn send_user_reset_password_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+	if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -131,10 +127,8 @@ pub async fn send_user_reset_password_notification(
 		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
 
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -163,15 +157,15 @@ pub async fn send_forgot_password_otp(
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				&user
-					.backup_email_local
+				user.backup_email_local
+					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?;
 
 			// send email
-			email::send_forgot_password_otp(email.parse()?, otp).await?;
+			email::send_forgot_password_otp(email.parse()?, otp).await
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
 			let phone_number = get_user_phone_number(
@@ -180,18 +174,16 @@ pub async fn send_forgot_password_otp(
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				&user
-					.backup_phone_number
+				user.backup_phone_number
+					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?;
 			// send SMS
-			sms::send_forgot_password_otp(&phone_number, otp).await?;
+			sms::send_forgot_password_otp(&phone_number, otp).await
 		}
-	};
-
-	Ok(())
+	}
 }
 
 async fn get_user_email(
