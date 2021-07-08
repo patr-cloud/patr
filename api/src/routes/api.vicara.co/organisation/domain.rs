@@ -19,17 +19,18 @@ use crate::{
 };
 
 /// # Description
-/// This function is used to create a sub app for every endpoint listed. It creates an eve app
-/// which binds the endpoint with functions.
-/// 
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
 /// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
 /// database connections.
-/// 
+///
 /// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
-/// of [`App`] and Error
-/// 
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
@@ -209,23 +210,25 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to get the list of domains present under the organisation
-/// required inputs:
+/// This function is used to get the list of domains present under the
+/// organisation required inputs:
 /// auth token in headers
 /// organisation id in url
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
-///    domains: 
+///    domains:
 ///    [
 ///       {
 ///          id:
@@ -235,7 +238,7 @@ pub fn create_sub_app(
 ///    ]
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_domains_for_organisation(
@@ -270,7 +273,7 @@ async fn get_domains_for_organisation(
 }
 
 /// # Description
-/// This function is used to add a domain to the organisation 
+/// This function is used to add a domain to the organisation
 /// required inputs:
 /// auth token in headers
 /// organisation id in url
@@ -279,22 +282,24 @@ async fn get_domains_for_organisation(
 ///     domain:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
-///    domainId: 
+///    domainId:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn add_domain_to_organisation(
@@ -331,30 +336,32 @@ async fn add_domain_to_organisation(
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under the organisation
-/// required inputs:
+/// This function is used to verify a domain which is to be registered under the
+/// organisation required inputs:
 /// auth token in headers
 /// organisation id in the url
 /// ```
 /// {
-///     domainId: 
+///     domainId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn verify_domain_in_organisation(
@@ -402,8 +409,8 @@ async fn verify_domain_in_organisation(
 }
 
 /// # Description
-/// This function is used to get details about a domain registered under the organisation 
-/// required inputs:
+/// This function is used to get details about a domain registered under the
+/// organisation required inputs:
 /// auth token in the headers
 /// organisation id in the url
 /// ```
@@ -411,32 +418,34 @@ async fn verify_domain_in_organisation(
 ///     domainId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
 ///    domainId: ,
 ///    name: ,
 ///    verified: true
-/// } 
+/// }
 /// if not verified
 /// {
 ///    success: true or false,
 ///    domainId: ,
 ///    name: ,
 ///    verified: true,
-///    verificationToken: 
+///    verificationToken:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_domain_info_in_organisation(
@@ -492,30 +501,32 @@ async fn get_domain_info_in_organisation(
 }
 
 /// # Description
-/// This function is used to delete the domain registered under the organisation 
+/// This function is used to delete the domain registered under the organisation
 /// required inputs:
-/// auth token in the headers 
+/// auth token in the headers
 /// organisation id in the url
 /// ```
 /// {
-///    domainId: 
+///    domainId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn delete_domain_in_organisation(

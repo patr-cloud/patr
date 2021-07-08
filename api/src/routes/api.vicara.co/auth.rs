@@ -27,17 +27,18 @@ use crate::{
 };
 
 /// # Description
-/// This function is used to create a sub app for every endpoint listed. It creates an eve app
-/// which binds the endpoint with functions.
-/// 
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
 /// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
 /// database connections.
-/// 
+///
 /// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
-/// of [`App`] and Error
-/// 
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
 /// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
@@ -106,24 +107,26 @@ pub fn create_sub_app(
 ///    password:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 ///    accessToken:
-///    RefreshToken: 
+///    RefreshToken:
 ///    LoginId:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn sign_in(
@@ -188,7 +191,7 @@ async fn sign_in(
 ///    username:
 ///    password:
 ///    accountType: personal
-///    firstName: 
+///    firstName:
 ///    lastName:
 ///    backupEmail:
 ///    backupPhoneCountryCode:
@@ -201,9 +204,9 @@ async fn sign_in(
 ///    username:
 ///    password:
 ///    accountType: personal
-///    firstName: 
+///    firstName:
 ///    lastName:
-///    backupEmail: 
+///    backupEmail:
 ///    backupPhoneCountryCode:
 ///    backupPhoneNumber:
 ///    organisationEmailLocal:
@@ -211,24 +214,26 @@ async fn sign_in(
 ///    organisationName:
 /// }
 /// ```
-/// 
-/// In above paramters the user is only allowed to add email or phone number as a back up.
-/// Both of them cannot be supplied
-/// 
+///
+/// In above paramters the user is only allowed to add email or phone number as
+/// a back up. Both of them cannot be supplied
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn sign_up(
@@ -374,24 +379,26 @@ async fn sign_up(
 }
 
 /// # Description
-/// This function is used to sign-out the user, there will be an otp sent to user's backup email or phone number
-/// required inputs:
-/// loginId in authorization header 
-/// 
+/// This function is used to sign-out the user, there will be an otp sent to
+/// user's backup email or phone number required inputs:
+/// loginId in authorization header
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn sign_out(
@@ -427,29 +434,31 @@ async fn sign_out(
 }
 
 /// # Description
-/// this function is used to verify the user's registration and register the user
-/// required inputs: 
+/// this function is used to verify the user's registration and register the
+/// user required inputs:
 /// ```
 /// {
 ///    verificationToken:
 ///    username:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn join(
@@ -500,8 +509,8 @@ async fn join(
 }
 
 /// # Description
-/// This function is used to get a new access token for a currently logged in user
-/// required inputs:
+/// This function is used to get a new access token for a currently logged in
+/// user required inputs:
 /// refresh token in authorization header
 /// example: Authorization: <insert refreshToken>
 /// ```
@@ -509,22 +518,24 @@ async fn join(
 ///    loginId: email or username
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 ///    accessToken:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_access_token(
@@ -579,22 +590,24 @@ async fn get_access_token(
 ///    email:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true false
 ///    available: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn is_email_valid(
@@ -630,22 +643,24 @@ async fn is_email_valid(
 ///    username:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 ///    available: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn is_username_valid(
@@ -674,30 +689,32 @@ async fn is_username_valid(
 }
 
 /// # Description
-/// This function is used to recover the user's account incase the user forgots the password 
-/// by sending a recovery link or otp to user's registered backup email or phone number
-/// required inputs:
+/// This function is used to recover the user's account incase the user forgots
+/// the password by sending a recovery link or otp to user's registered backup
+/// email or phone number required inputs:
 /// ```
 /// {
 ///    userId:
 ///    preferredRecoveryOption: BackupPhoneNumber or BackupEmail
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn forgot_password(
@@ -748,21 +765,23 @@ async fn forgot_password(
 ///    userId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn reset_password(
@@ -820,7 +839,7 @@ async fn reset_password(
 }
 
 /// # Description
-/// This function is used to authenticate and login into the docker registry 
+/// This function is used to authenticate and login into the docker registry
 /// required inputs:
 /// auth token in headers
 /// ```
@@ -831,16 +850,16 @@ async fn reset_password(
 ///    offline_token:
 /// }
 /// ```
-/// 
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    token:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
@@ -866,24 +885,26 @@ async fn docker_registry_token_endpoint(
 /// {
 ///    client_id: ,
 ///    offline_token: ,
-///    service: 
+///    service:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
-///    token: 
+///    token:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
@@ -1064,21 +1085,23 @@ async fn docker_registry_login(
 /// This function is used to authenticate the user for docker registry
 /// required inputs:
 /// auth token in the headers
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
-///    token: 
+///    token:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_authenticate(
@@ -1432,22 +1455,22 @@ async fn docker_registry_authenticate(
 }
 
 /// # Description
-/// This function is used to list the revocery options the user has given 
+/// This function is used to list the revocery options the user has given
 /// input required:
 /// auth token in the headers
 /// {
 ///    userId: username or email
 /// }
-/// 
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// {
-///    backupPhoneNumber: 
-///    backupEmail: 
+///    backupPhoneNumber:
+///    backupEmail:
 ///    success: true or false
 /// }
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn list_recovery_options(

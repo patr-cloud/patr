@@ -24,17 +24,18 @@ use crate::{
 type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 
 /// # Description
-/// This function is used to create a sub app for every endpoint listed. It creates an eve app
-/// which binds the endpoint with functions.
-/// 
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
 /// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of api including the
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
 /// database connections.
-/// 
+///
 /// # Returns
-/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>` containing context, middleware, object
-/// of [`App`] and Error
-/// 
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
 /// [`App`]: App
 pub fn creare_sub_app(
 	app: &App,
@@ -210,19 +211,21 @@ pub fn creare_sub_app(
 /// required inputs:
 /// auth token in the headers
 /// organisation id in the url
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
-///    tunnels: 
+///    tunnels:
 ///    [
 ///       {
 ///          id: ,
@@ -231,12 +234,12 @@ pub fn creare_sub_app(
 ///          exposedPort: ,
 ///          created: ,
 ///          name: ,
-///          serverIp: 
+///          serverIp:
 ///       }
 ///    ]
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_tunnels_for_organisation(
@@ -285,15 +288,17 @@ async fn get_tunnels_for_organisation(
 ///     tunnelId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
@@ -306,7 +311,7 @@ async fn get_tunnels_for_organisation(
 ///    serverIp:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_info_for_tunnel(
@@ -349,24 +354,26 @@ async fn get_info_for_tunnel(
 /// organisation id in the url
 /// ```
 /// {
-///    tunnelId: 
+///    tunnelId:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn delete_tunnel(
@@ -409,18 +416,20 @@ async fn delete_tunnel(
 /// organisation id in the url
 /// ```
 /// {
-///     name: 
+///     name:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
@@ -431,10 +440,10 @@ async fn delete_tunnel(
 ///    serverIp: ,
 ///    sshPort: ,
 ///    created: ,
-///    exposedPort: 
+///    exposedPort:
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn create(
@@ -584,7 +593,7 @@ async fn create(
 }
 
 /// # Description
-/// This function is used to get the content for the bash script 
+/// This function is used to get the content for the bash script
 /// required inputs:
 /// auth token in the headers
 /// organisation id in the url
@@ -595,18 +604,20 @@ async fn create(
 /// 	exposedServerPort: ,
 /// 	serverSSHPort: ,
 /// 	serverIPAddress: ,
-/// 	serverUserName: 
+/// 	serverUserName:
 /// }
 /// ```
-/// 
+///
 /// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response, database connection, body, 
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the function
-/// 
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
 /// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of [`EveContext`] or an error 
-/// output:
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
 /// ```
 /// {
 ///    success: true or false,
@@ -618,7 +629,7 @@ async fn create(
 /// 	serverUserName:  -> server username
 /// }
 /// ```
-/// 
+///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn get_bash_script(
