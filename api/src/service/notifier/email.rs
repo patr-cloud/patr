@@ -156,17 +156,22 @@ pub async fn send_backup_registration_mail(
 }
 
 /// # Description
-/// This function is used to send the email
-/// 
+/// This function is used to send the email to a recipient
+///
 /// # Arguments
-/// * `body` - a trait which is used to build body of the message, deifinition here: [`TEmail`]
-/// * `to` - Represents an email address with an optional name for the
-/// sender/recipient.
-/// * `reply_to` - An Option of struct [`Mailbox`], it is either None or email of recipient's email id. 
-/// * `subject` - A string containing the subject of the mail 
+/// * `body` - body of the mail of the type [`TEmail`]
+/// * `to` - recipient's email address of type [`Mailbox`]
+/// * `reply_to` - An Option<Mailbox> containing instance of [`Mailbox`]
+///   containing email of recipient
+/// to be replied or `None`
+/// * `subject` - a string containing subject of the email
+///
 /// # Returns
-/// 
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// errors
+///
 /// [`TEmail`]: TEmail
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
@@ -215,5 +220,19 @@ where
 		log::error!("Unable to send email to `{}`: {}", to, error);
 	}
 
+	Ok(())
+}
+
+#[cfg(debug_assertions)]
+async fn send_email<TEmail>(
+	_body: TEmail,
+	to: Mailbox,
+	_reply_to: Option<Mailbox>,
+	_subject: &str,
+) -> Result<(), Error>
+where
+	TEmail: EmailTemplate,
+{
+	log::trace!("Sending email to {}", to);
 	Ok(())
 }

@@ -33,10 +33,24 @@ pub async fn is_organisation_name_allowed(
 			.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
 	}
 
-	db::get_organisation_by_name(connection, organisation_name)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+	let org =
+		db::get_organisation_by_name(connection, organisation_name).await?;
+	if org.is_some() {
+		return Ok(false);
+	}
+
+	let org_sign_up_status = db::get_user_to_sign_up_by_organisation_name(
+		connection,
+		organisation_name,
+	)
+	.await?;
+
+	if let Some(status) = org_sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
 /// # Description

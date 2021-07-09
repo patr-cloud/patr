@@ -26,6 +26,20 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -84,6 +98,37 @@ pub fn create_sub_app(
 	app
 }
 
+/// # Description
+/// This function will enable the user to sign in into the api
+/// required inputs:
+/// ```
+/// {
+///    userId: username or email address
+///    password:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    accessToken:
+///    RefreshToken:
+///    LoginId:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn sign_in(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -95,7 +140,8 @@ async fn sign_in(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -104,7 +150,7 @@ async fn sign_in(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_data = db::get_user_by_username_or_email(
+	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -136,6 +182,60 @@ async fn sign_in(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to register the user
+/// required inputs:
+/// Personal account:
+/// ```
+/// {
+///    username:
+///    password:
+///    accountType: personal
+///    firstName:
+///    lastName:
+///    backupEmail:
+///    backupPhoneCountryCode:
+///    backupPhoneNumber:
+/// }
+/// ```
+/// Organisation account:
+/// ```
+/// {
+///    username:
+///    password:
+///    accountType: personal
+///    firstName:
+///    lastName:
+///    backupEmail:
+///    backupPhoneCountryCode:
+///    backupPhoneNumber:
+///    organisationEmailLocal:
+///    domain:
+///    organisationName:
+/// }
+/// ```
+///
+/// In above paramters the user is only allowed to add email or phone number as
+/// a back up. Both of them cannot be supplied
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn sign_up(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -147,7 +247,8 @@ async fn sign_up(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let password = body
 		.get(request_keys::PASSWORD)
@@ -179,6 +280,7 @@ async fn sign_up(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// store email as lowercase
 	let backup_email = body
 		.get(request_keys::BACKUP_EMAIL)
 		.map(|param| {
@@ -187,8 +289,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store Phone Country Code as uppercase
 	let backup_phone_country_code = body
 		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
 		.map(|param| {
@@ -197,7 +301,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_uppercase());
 
 	let backup_phone_number = body
 		.get(request_keys::BACKUP_PHONE_NUMBER)
@@ -209,6 +314,7 @@ async fn sign_up(
 		})
 		.transpose()?;
 
+	// store org email as lower case
 	let org_email_local = body
 		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
 		.map(|param| {
@@ -217,8 +323,10 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
+	// store org domain name as lower case
 	let org_domain_name = body
 		.get(request_keys::DOMAIN)
 		.map(|param| {
@@ -227,7 +335,8 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let organisation_name = body
 		.get(request_keys::ORGANISATION_NAME)
@@ -237,20 +346,21 @@ async fn sign_up(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
-		username,
+		&username,
 		account_type,
 		password,
 		(first_name, last_name),
-		backup_email,
-		backup_phone_country_code,
+		backup_email.as_deref(),
+		backup_phone_country_code.as_deref(),
 		backup_phone_number,
-		org_email_local,
-		org_domain_name,
-		organisation_name,
+		org_email_local.as_deref(),
+		org_domain_name.as_deref(),
+		organisation_name.as_deref(),
 	)
 	.await?;
 
@@ -268,6 +378,29 @@ async fn sign_up(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to sign-out the user, there will be an otp sent to
+/// user's backup email or phone number required inputs:
+/// loginId in authorization header
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -300,6 +433,34 @@ async fn sign_out(
 	Ok(context)
 }
 
+/// # Description
+/// this function is used to verify the user's registration and register the
+/// user required inputs:
+/// ```
+/// {
+///    verificationToken:
+///    username:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn join(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -318,7 +479,8 @@ async fn join(
 		.map(|param| param.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let config = context.get_state().config.clone();
 
@@ -326,7 +488,7 @@ async fn join(
 		context.get_database_connection(),
 		&config,
 		otp,
-		username,
+		&username,
 	)
 	.await?;
 
@@ -346,6 +508,36 @@ async fn join(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get a new access token for a currently logged in
+/// user required inputs:
+/// refresh token in authorization header
+/// example: Authorization: <insert refreshToken>
+/// ```
+/// {
+///    loginId: email or username
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    accessToken:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_access_token(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -390,6 +582,34 @@ async fn get_access_token(
 	Ok(context)
 }
 
+/// # Description
+/// this function is used to check if the email address is valid or not
+/// required inputs:
+/// ```
+/// {
+///    email:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true false
+///    available: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -399,11 +619,12 @@ async fn is_email_valid(
 	let email_address = query
 		.get(request_keys::EMAIL)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_email_allowed(
 		context.get_database_connection(),
-		email_address,
+		&email_address,
 	)
 	.await?;
 
@@ -414,6 +635,34 @@ async fn is_email_valid(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to check if the username id valid or not
+/// required inputs:
+/// ```
+/// {
+///    username:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    available: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -423,11 +672,12 @@ async fn is_username_valid(
 	let username = query
 		.get(request_keys::USERNAME)
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let allowed = service::is_username_allowed(
 		context.get_database_connection(),
-		username,
+		&username,
 	)
 	.await?;
 
@@ -438,6 +688,35 @@ async fn is_username_valid(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to recover the user's account incase the user forgots
+/// the password by sending a recovery link or otp to user's registered backup
+/// email or phone number required inputs:
+/// ```
+/// {
+///    userId:
+///    preferredRecoveryOption: BackupPhoneNumber or BackupEmail
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn forgot_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -449,7 +728,8 @@ async fn forgot_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
 	let preferred_recovery_option = body
 		.get(request_keys::PREFERRED_RECOVERY_OPTION)
@@ -464,7 +744,7 @@ async fn forgot_password(
 	// otp to the preferred recovery option
 	service::forgot_password(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 		preferred_recovery_option,
 	)
 	.await?;
@@ -475,6 +755,35 @@ async fn forgot_password(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to reset the password of user
+/// required inputs:
+/// ```
+/// {
+///    password:
+///    verificationToken:
+///    userId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn reset_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -498,11 +807,12 @@ async fn reset_password(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
-	let user = db::get_user_by_username_or_email(
+	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		user_id,
+		&user_id,
 	)
 	.await?
 	.status(400)
@@ -528,6 +838,30 @@ async fn reset_password(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to authenticate and login into the docker registry
+/// required inputs:
+/// auth token in headers
+/// ```
+/// {
+///    scope:
+///    client_id:
+///    service:
+///    offline_token:
+/// }
+/// ```
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    token:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
 	context: EveContext,
 	next: NextHandler<EveContext, ErrorData>,
@@ -543,6 +877,36 @@ async fn docker_registry_token_endpoint(
 	}
 }
 
+/// # Description
+/// This function is used to login into the docker registry
+/// required input:
+/// auth token in the headers
+/// ```
+/// {
+///    client_id: ,
+///    offline_token: ,
+///    service:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    token:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn docker_registry_login(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -717,6 +1081,29 @@ async fn docker_registry_login(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to authenticate the user for docker registry
+/// required inputs:
+/// auth token in the headers
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    token:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn docker_registry_authenticate(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -834,7 +1221,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	// check if access type is respository
+	// check if access type is repository
 	if access_type != request_keys::REPOSITORY {
 		Error::as_result().status(400).body(
 			json!({
@@ -1067,6 +1454,25 @@ async fn docker_registry_authenticate(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list the revocery options the user has given
+/// input required:
+/// auth token in the headers
+/// {
+///    userId: username or email
+/// }
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// {
+///    backupPhoneNumber:
+///    backupEmail:
+///    success: true or false
+/// }
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_recovery_options(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1081,7 +1487,7 @@ async fn list_recovery_options(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user = db::get_user_by_username_or_email(
+	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
 		user_id,
 	)

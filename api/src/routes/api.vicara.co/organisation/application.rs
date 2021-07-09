@@ -17,6 +17,20 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -129,7 +143,37 @@ pub fn create_sub_app(
 	app
 }
 
-/// Function to list out all the application in an organisation.
+/// # Description
+/// This function is used to list out all the application in an organisation
+/// required inputs:
+/// auth token in headers
+/// organisation id in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    applications:
+///    [
+///       {
+///          id: ,
+///          name: ,
+///       }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_applications(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -154,13 +198,43 @@ async fn get_applications(
 	.collect::<Vec<_>>();
 
 	context.json(json!({
-		request_keys::SUCCESS : true,
+		request_keys::SUCCESS: true,
 		request_keys::APPLICATIONS: applications,
 	}));
 	Ok(context)
 }
 
-/// get details for an application
+/// # Description
+/// This function is used to get details for an application
+/// required inputs:
+/// auth token in headers
+/// organisation id in url
+/// ```
+/// {
+///    applicationId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    applicationId: ,
+///    name:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_application_info_in_organisation(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -182,14 +256,44 @@ async fn get_application_info_in_organisation(
 
 	// add response to context json
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::APPLICATION_ID : application_id,
-		request_keys::NAME : application.name,
+		request_keys::SUCCESS: true,
+		request_keys::APPLICATION_ID: application_id,
+		request_keys::NAME: application.name,
 	}));
 	Ok(context)
 }
 
-/// List out all the versions of an application.
+/// # Description
+/// This function is used to list out all the versions of an application.
+/// required inputs:
+/// auth token in headers
+/// organisation id in url
+/// ```
+/// {
+///    applicationId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    applicationId: ,
+///    versions: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_all_versions_for_application(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -220,9 +324,9 @@ async fn get_all_versions_for_application(
 
 	// send true, application id, and versions.
 	context.json(json!({
-		request_keys::SUCCESS : true,
-		request_keys::APPLICATION_ID : application_id_string,
-		request_keys::VERSIONS : versions
+		request_keys::SUCCESS: true,
+		request_keys::APPLICATION_ID: application_id_string,
+		request_keys::VERSIONS: versions
 	}));
 	Ok(context)
 }

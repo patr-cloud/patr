@@ -26,6 +26,22 @@ mod portus;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions. This file
+/// contains major enpoints which are meant for the organisations, and all other
+/// endpoints will come uder these
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -103,6 +119,34 @@ pub fn create_sub_app(
 	sub_app
 }
 
+/// # Description
+/// This function is used to get details about the organisation
+/// required inputs:
+/// auth token in the headers
+/// organisation id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    organisationId: ,
+///    name: ,
+///    active: true or false,
+///    created:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_organisation_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -143,6 +187,35 @@ async fn get_organisation_info(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to check if the organisation name is available or not
+/// required inputs:
+/// auth token in the headers
+/// ```
+/// {
+///     name:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    allowed: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn is_name_available(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -153,7 +226,7 @@ async fn is_name_available(
 		.get(request_keys::NAME)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
+		.to_lowercase();
 
 	let allowed = service::is_organisation_name_allowed(
 		context.get_database_connection(),
@@ -168,6 +241,35 @@ async fn is_name_available(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to create new organisation
+/// required inputs:
+/// auth token in the headers
+/// ```
+/// {
+///     organisationName:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    organisationId:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn create_new_organisation(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -179,12 +281,14 @@ async fn create_new_organisation(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let org_id = service::create_organisation(
 		context.get_database_connection(),
-		organisation_name,
+		&organisation_name,
 		&user_id,
 	)
 	.await?;
@@ -197,6 +301,35 @@ async fn create_new_organisation(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update the organisation details
+/// required inputs:
+/// auth token in the headers
+/// organisation id in the url
+/// ```
+/// {
+///     name:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_organisation_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -215,7 +348,8 @@ async fn update_organisation_info(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.map(|val| val.to_lowercase());
 
 	if name.is_none() {
 		// No parameters to update
@@ -239,7 +373,7 @@ async fn update_organisation_info(
 	db::update_organisation_name(
 		context.get_database_connection(),
 		&organisation_id,
-		name,
+		&name,
 	)
 	.await?;
 
