@@ -47,9 +47,9 @@ serde = { version = "1.0.114", features = ["serde_derive"] }
 serde_json = "1.0.57"
 sha2 = "0.9.3"
 shiplift = "0.7"
-sqlx = { version = "0.5", features = ["mysql", "postgres", "runtime-tokio-rustls", "offline"] }
-strum = "0.20.0"
-strum_macros = "0.20.1"
+sqlx = { version = "0.5", features = ["postgres", "runtime-tokio-rustls", "offline"] }
+strum = "0.21.0"
+strum_macros = "0.21.0"
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.20"
 uuid = "0.8.1"
