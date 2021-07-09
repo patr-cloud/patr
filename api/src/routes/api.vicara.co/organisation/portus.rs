@@ -600,11 +600,11 @@ async fn create(
 /// ```
 /// {
 ///      localPort: ,
-/// 	 localHostName: ,
-/// 	 exposedServerPort: ,
-/// 	 serverSSHPort: ,
-/// 	 serverIPAddress: ,
-/// 	 serverUserName:
+///      localHostName: ,
+///      exposedServerPort: ,
+///      serverSSHPort: ,
+///      serverIPAddress: ,
+///      serverUserName:
 /// }
 /// ```
 ///
