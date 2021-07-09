@@ -599,12 +599,12 @@ async fn create(
 /// organisation id in the url
 /// ```
 /// {
-/// 	localPort: ,
-/// 	localHostName: ,
-/// 	exposedServerPort: ,
-/// 	serverSSHPort: ,
-/// 	serverIPAddress: ,
-/// 	serverUserName:
+///      localPort: ,
+/// 	 localHostName: ,
+/// 	 exposedServerPort: ,
+/// 	 serverSSHPort: ,
+/// 	 serverIPAddress: ,
+/// 	 serverUserName:
 /// }
 /// ```
 ///
@@ -620,13 +620,13 @@ async fn create(
 /// [`EveContext`] or an error output:
 /// ```
 /// {
-///    success: true or false,
-/// 	localPort: , -> port number
-/// 	localHostName: , -> hostname
-/// 	exposedServerPort: , -> exposed port number
-/// 	serverSSHPort: , -> server ssh port number
-/// 	serverIPAddress: , -> server ip address
-/// 	serverUserName:  -> server username
+///      success: true or false,
+///      localPort: , -> port number
+///      localHostName: , -> hostname
+///      exposedServerPort: , -> exposed port number
+///      serverSSHPort: , -> server ssh port number
+///      serverIPAddress: , -> server ip address
+///      serverUserName:  -> server username
 /// }
 /// ```
 ///
