@@ -95,15 +95,14 @@ pub async fn send_user_sign_up_otp(
 	}
 }
 
-
 /// # Description
-/// This function is used to send the given otp to all the backup options available for 
-/// the given user.
-/// 
+/// This function is used to send the given otp to all the backup options
+/// available for the given user.
+///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `user` - an object of type [`User`] containing all details of user 
-/// 
+/// * `user` - an object of type [`User`] containing all details of user
+///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
