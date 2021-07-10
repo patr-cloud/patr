@@ -120,9 +120,9 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to get details about the organisation
+/// This function is used to get details about an organisation
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 ///
 /// # Arguments
@@ -190,7 +190,7 @@ async fn get_organisation_info(
 /// # Description
 /// This function is used to check if the organisation name is available or not
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///     name:
@@ -244,7 +244,7 @@ async fn is_name_available(
 /// # Description
 /// This function is used to create new organisation
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///     organisationName:
@@ -304,7 +304,7 @@ async fn create_new_organisation(
 /// # Description
 /// This function is used to update the organisation details
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {

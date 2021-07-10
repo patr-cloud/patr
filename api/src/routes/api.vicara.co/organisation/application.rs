@@ -146,7 +146,7 @@ pub fn create_sub_app(
 /// # Description
 /// This function is used to list out all the application in an organisation
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// organisation id in url
 ///
 /// # Arguments
@@ -207,7 +207,7 @@ async fn get_applications(
 /// # Description
 /// This function is used to get details for an application
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// organisation id in url
 /// ```
 /// {
@@ -266,7 +266,7 @@ async fn get_application_info_in_organisation(
 /// # Description
 /// This function is used to list out all the versions of an application.
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// organisation id in url
 /// ```
 /// {

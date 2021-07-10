@@ -209,7 +209,7 @@ pub fn creare_sub_app(
 /// # Description
 /// This function is used to get list of tunnels for the organisation
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 ///
 /// # Arguments
@@ -281,7 +281,7 @@ async fn get_tunnels_for_organisation(
 /// # Description
 /// This function is used to get information for given tunnel/tunnelId
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
@@ -350,7 +350,7 @@ async fn get_info_for_tunnel(
 /// # Description
 /// This function is used to to delete tunnel by tunnelId
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
@@ -412,7 +412,7 @@ async fn delete_tunnel(
 /// # Description
 /// This function is used to create a new tunnel
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
@@ -595,7 +595,7 @@ async fn create(
 /// # Description
 /// This function is used to get the content for the bash script
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {

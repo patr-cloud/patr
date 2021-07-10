@@ -143,9 +143,9 @@ pub fn create_sub_app(
 // 	"repoName"
 // }
 /// # Description
-/// This function is a middleware which creates a new docker repository
+/// This middleware creates a new docker repository
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// organisation id in url
 /// ```
 /// {
@@ -252,9 +252,9 @@ async fn create_docker_repository(
 }
 
 /// # Description
-/// This function is used to list the docker repositories registered under
-/// organisation required inputs:
-/// auth token in headers
+/// This function is used to list the docker repositories registered under organisation 
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in url
 ///
 /// # Arguments
@@ -313,9 +313,9 @@ async fn list_docker_repositories(
 }
 
 /// # Description
-/// This function is used to delete the docker repository present under the
-/// organisation required inputs:
-/// auth token in headers
+/// This function is used to delete the docker repository present under the organisation 
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in url
 /// ```
 /// {

@@ -67,7 +67,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 }
 
 /// # Description
-/// This function is used to verify the email address of the user, by comparing
+/// This function is used to verify the email address of the user, by verifying
 /// the otp
 ///
 /// # Arguments

@@ -297,7 +297,7 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 }
 
 /// # Description
-/// This function creates the deployment according to the upgrade-path
+/// This function updates the deployment according to the upgrade-path
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]

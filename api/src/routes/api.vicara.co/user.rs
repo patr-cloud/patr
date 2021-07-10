@@ -152,7 +152,7 @@ pub fn create_sub_app(
 /// # Description
 /// This function is used to get the user's information.
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -231,7 +231,7 @@ async fn get_user_info(
 }
 
 /// # Description
-/// This function is used to get user info by supplying the username
+/// This function is used to get user info through username
 /// required inputs:
 /// ```
 /// {
@@ -293,9 +293,9 @@ async fn get_user_info_by_username(
 }
 
 /// # Description
-/// This function is used to update the user information
+/// This function is used to update the user's information
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    firstName:
@@ -425,7 +425,7 @@ async fn update_user_info(
 /// # Description
 /// This function is used to add a new email address
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    email:
@@ -482,7 +482,7 @@ async fn add_email_address(
 /// # Description
 /// This function is used to list the email addresses registered with user
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -523,9 +523,9 @@ async fn list_email_addresses(
 }
 
 /// # Description
-/// This function is used to list the phone numbers registered user the user
+/// This function is used to list the phone numbers registered with the user
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -580,7 +580,7 @@ async fn list_phone_numbers(
 /// # Description
 /// This function is used to update the back up email address of the user
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    backupEMail: new backupEmail
@@ -637,7 +637,7 @@ async fn update_backup_email_address(
 /// # Description
 /// This function is used to update the backup phone number of the user
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    backupPhoneCountryCode:
@@ -703,7 +703,7 @@ async fn update_backup_phone_number(
 /// # Description
 /// This function is used to delete a personal email address
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    email:
@@ -760,7 +760,7 @@ async fn delete_personal_email_address(
 /// # Description
 /// This function is used to add phone number to  the user's account
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    countryCode:
@@ -835,7 +835,7 @@ async fn add_phone_number_for_user(
 /// # Description
 /// This function is used to verify user's phone number
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    countryCode:
@@ -909,7 +909,7 @@ async fn verify_phone_number(
 /// # Description
 /// This function is used to delete user's phone number
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    countryCode:
@@ -975,7 +975,7 @@ async fn delete_phone_number(
 /// # Description
 /// This function is used to verify user's email address
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// ```
 /// {
 ///    email:
@@ -1039,9 +1039,9 @@ async fn verify_email_address(
 }
 
 /// # Description
-/// This function is used to get a list of all organisations in which the user
-/// is a member required inputs:
-/// auth token in headers
+/// This function is used to get a list of all organisations in which the user is a member 
+/// required inputs:
+/// auth token in the authorization headers
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,

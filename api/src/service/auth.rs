@@ -33,7 +33,7 @@ use crate::{
 };
 
 /// # Description
-/// The function is_username_allowed() will check if the username already exists
+/// This function is used to check if the username already exists
 /// and is according to the criteria for the username
 ///
 /// # Arguments
@@ -74,7 +74,7 @@ pub async fn is_username_allowed(
 }
 
 /// # Description
-/// The function is_email_allowed() will check if the email already exists and
+/// This function is used to check if the email already exists and
 /// is according to the criteria for the email
 ///
 /// # Arguments
@@ -122,7 +122,7 @@ pub async fn is_email_allowed(
 }
 /// # Description
 /// This function is used to check if the phone number
-/// already exists and is according to the criteria for the phone number
+/// already exists and is valid
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -443,7 +443,7 @@ pub async fn create_user_join_request(
 
 /// # Description
 /// This function is used to create a record when a user logs into the system,
-/// this record contains six things:
+/// this record contains six parameters:
 /// 1. login_id
 /// login_id is used to give to a unique identity to the current logged in user
 /// 2. user_id
@@ -542,7 +542,7 @@ pub async fn sign_in_user(
 }
 
 /// # Description
-/// This function is used to get the log in details of the user
+/// This function is used to get the login details of the user
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]

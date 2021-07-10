@@ -55,7 +55,7 @@ pub async fn send_password_changed_notification(
 }
 
 /// # Description
-/// This function is used send the otp when the user forget's the password
+/// This function is used send the otp when the user forgets the password
 ///
 /// # Arguments
 /// * `phone_number` - a string containing phone number of user

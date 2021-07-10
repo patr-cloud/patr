@@ -20,7 +20,7 @@ pub async fn start_container(
 }
 
 /// # Description
-/// This function is used to stop the docker container
+/// This function is used to stop a docker container
 ///
 /// # Arguments
 /// * `docker` - An instance of [`Docker`]
@@ -38,7 +38,7 @@ pub async fn stop_container(
 }
 
 /// # Description
-/// This function is used to stop and delete the docker container
+/// This function is used to stop and delete a docker container
 ///
 /// # Arguments
 /// * `docker` - An instance of [`Docker`]

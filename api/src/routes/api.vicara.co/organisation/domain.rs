@@ -210,9 +210,9 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to get the list of domains present under the
-/// organisation required inputs:
-/// auth token in headers
+/// This function is used to get the list of domains present under the organisation 
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in url
 ///
 /// # Arguments
@@ -273,9 +273,9 @@ async fn get_domains_for_organisation(
 }
 
 /// # Description
-/// This function is used to add a domain to the organisation
+/// This function is used to add a domain to an organisation
 /// required inputs:
-/// auth token in headers
+/// auth token in the authorization headers
 /// organisation id in url
 /// ```
 /// {
@@ -336,9 +336,9 @@ async fn add_domain_to_organisation(
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under the
-/// organisation required inputs:
-/// auth token in headers
+/// This function is used to verify a domain which is to be registered under an organisation 
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
@@ -409,9 +409,9 @@ async fn verify_domain_in_organisation(
 }
 
 /// # Description
-/// This function is used to get details about a domain registered under the
-/// organisation required inputs:
-/// auth token in the headers
+/// This function is used to get details about a domain registered under the organisation 
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
@@ -503,7 +503,7 @@ async fn get_domain_info_in_organisation(
 /// # Description
 /// This function is used to delete the domain registered under the organisation
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {

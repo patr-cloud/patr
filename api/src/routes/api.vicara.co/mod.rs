@@ -13,8 +13,7 @@ mod webhook;
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
 /// creates an eve app which binds the endpoint with functions. This file
-/// contains major enpoints of the API, and all other endpoints will come uder
-/// these
+/// contains major enpoints of the API, and all other endpoints will come uder this
 ///
 /// # Arguments
 /// * `app` - an object of type [`App`] which contains all the configuration of

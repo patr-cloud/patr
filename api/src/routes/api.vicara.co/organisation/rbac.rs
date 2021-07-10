@@ -290,9 +290,9 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to list all the roles available with the organisation
+/// This function is used to list all the roles available within the organisation
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// orgnisation id in the url
 ///
 /// # Arguments
@@ -361,7 +361,7 @@ async fn list_all_roles(
 /// # Description
 /// This function is used to list all the permissions available in the API
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -422,8 +422,8 @@ async fn list_all_permissions(
 }
 
 /// # Description
-/// This function is used to get the list of all the resource types available in
-/// the API required inputs:
+/// This function is used to get the list of all the resource types available in the API 
+/// required inputs:
 /// auth token in the description
 /// organisation id in the url
 ///
@@ -486,7 +486,7 @@ async fn list_all_resource_types(
 /// # Description
 /// This function is used to get the list of permissions for the role
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// role id in the url
 /// ```
@@ -700,7 +700,7 @@ async fn create_role(
 /// # Description
 /// This function is used to update the permissions of the role
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// role id in the url
 /// ```
@@ -851,7 +851,7 @@ async fn update_role_permissions(
 /// # Description
 /// This function is used to delete a role
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// role id in the url
 ///
@@ -897,7 +897,7 @@ async fn delete_role(
 /// # Description
 /// This function is used to get details about the resource
 /// required inputs:
-/// auth token in the headers
+/// auth token in the authorization headers
 /// organisation id in the url
 /// ```
 /// {
