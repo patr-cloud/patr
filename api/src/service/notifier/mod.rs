@@ -19,7 +19,8 @@ pub use sms::*;
 ///
 /// # Arguments
 /// * `welcome_email` - an Option<String> containing either String which has
-/// user's personal or organisation email to send a welcome notification to or `None`
+/// user's personal or organisation email to send a welcome notification to or
+/// `None`
 /// * `backup_email` - an Option<String> containing either String which has
 /// user's backup email to send a verification email to or `None`
 /// * `backup_phone_number` - an Option<String> containing either String which

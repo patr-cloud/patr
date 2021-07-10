@@ -1039,7 +1039,8 @@ async fn verify_email_address(
 }
 
 /// # Description
-/// This function is used to get a list of all organisations in which the user is a member 
+/// This function is used to get a list of all organisations in which the user
+/// is a member
 /// required inputs:
 /// auth token in the authorization headers
 ///

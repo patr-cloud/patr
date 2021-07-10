@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// # Description
-/// This function is used to check if the organisation name is valid 
+/// This function is used to check if the organisation name is valid
 /// or if it is already present in the database
 ///
 /// # Arguments

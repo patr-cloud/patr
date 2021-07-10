@@ -31,8 +31,8 @@ use crate::{
 /// creates an eve app which binds the endpoint with functions.
 ///
 /// # Arguments
-/// * `app` - an object of type [`App`] which contains all the configuration of api including the
-/// database connections.
+/// * `app` - an object of type [`App`] which contains all the configuration of
+/// api including the database connections.
 ///
 /// # Returns
 /// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
@@ -379,7 +379,7 @@ async fn sign_up(
 
 /// # Description
 /// This function is used to sign-out the user, there will be an otp sent to
-/// user's backup email or phone number 
+/// user's backup email or phone number
 /// required inputs:
 /// auth token in the authorization headers
 ///
@@ -434,7 +434,8 @@ async fn sign_out(
 }
 
 /// # Description
-/// this function is used to verify the user's registration and register the user
+/// this function is used to verify the user's registration and register the
+/// user
 /// required inputs:
 /// ```
 /// {
@@ -509,8 +510,8 @@ async fn join(
 }
 
 /// # Description
-/// This function is used to get a new access token for a currently logged in user
-/// required inputs:
+/// This function is used to get a new access token for a currently logged in
+/// user required inputs:
 /// refresh token in authorization header
 /// example: Authorization: <insert refreshToken>
 /// ```
@@ -689,8 +690,9 @@ async fn is_username_valid(
 }
 
 /// # Description
-/// This function is used to recover the user's account incase the user forget's the password
-/// by sending a recovery link or otp to user's registered backup email or phone number 
+/// This function is used to recover the user's account incase the user forget's
+/// the password by sending a recovery link or otp to user's registered backup
+/// email or phone number
 /// required inputs:
 /// ```
 /// {
@@ -879,7 +881,7 @@ async fn docker_registry_token_endpoint(
 
 /// # Description
 /// This function is used to login into the docker registry
-/// required input:
+/// required inputs:
 /// auth token in the authorization headers
 /// ```
 /// {
@@ -1456,7 +1458,7 @@ async fn docker_registry_authenticate(
 
 /// # Description
 /// This function is used to list the recovery options the user has given
-/// required input:
+/// required inputs:
 /// auth token in the authorization headers
 /// {
 ///    userId: username or email

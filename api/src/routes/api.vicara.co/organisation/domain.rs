@@ -210,7 +210,8 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to get the list of domains present under the organisation 
+/// This function is used to get the list of domains present under the
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// organisation id in url
@@ -336,7 +337,8 @@ async fn add_domain_to_organisation(
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under an organisation 
+/// This function is used to verify a domain which is to be registered under an
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// organisation id in the url
@@ -409,7 +411,8 @@ async fn verify_domain_in_organisation(
 }
 
 /// # Description
-/// This function is used to get details about a domain registered under the organisation 
+/// This function is used to get details about a domain registered under the
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// organisation id in the url

@@ -290,7 +290,8 @@ pub fn create_sub_app(
 }
 
 /// # Description
-/// This function is used to list all the roles available within the organisation
+/// This function is used to list all the roles available within the
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// orgnisation id in the url
@@ -422,7 +423,8 @@ async fn list_all_permissions(
 }
 
 /// # Description
-/// This function is used to get the list of all the resource types available in the API 
+/// This function is used to get the list of all the resource types available in
+/// the API
 /// required inputs:
 /// auth token in the description
 /// organisation id in the url

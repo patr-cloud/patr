@@ -252,7 +252,8 @@ async fn create_docker_repository(
 }
 
 /// # Description
-/// This function is used to list the docker repositories registered under organisation 
+/// This function is used to list the docker repositories registered under
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// organisation id in url
@@ -313,7 +314,8 @@ async fn list_docker_repositories(
 }
 
 /// # Description
-/// This function is used to delete the docker repository present under the organisation 
+/// This function is used to delete the docker repository present under the
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
 /// organisation id in url
