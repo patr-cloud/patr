@@ -216,7 +216,6 @@ async fn list_deployments(
 				request_keys::REGISTRY: deployment.registry,
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
-				"deployedImage": deployment.deployed_image,
 			}))
 		} else {
 			Some(json!({
@@ -225,7 +224,6 @@ async fn list_deployments(
 				request_keys::REGISTRY: deployment.registry,
 				request_keys::IMAGE_NAME: deployment.image_name?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
-				"deployedImage": deployment.deployed_image,
 			}))
 		}
 	})
@@ -393,7 +391,6 @@ async fn get_deployment_info(
 			request_keys::REGISTRY: deployment.registry,
 			request_keys::IMAGE_NAME: deployment.image_name,
 			request_keys::IMAGE_TAG: deployment.image_tag,
-			"deployedImage": deployment.deployed_image
 		}
 	}));
 	Ok(context)
