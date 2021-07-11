@@ -405,6 +405,7 @@ async fn create_deployment(
 /// This function is used to get the information about a specific deployment
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// DeploymentId in url
 ///
 /// # Arguments

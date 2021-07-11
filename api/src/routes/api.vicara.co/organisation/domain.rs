@@ -214,6 +214,7 @@ pub fn create_sub_app(
 /// organisation
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// organisation id in url
 ///
 /// # Arguments
@@ -277,6 +278,7 @@ async fn get_domains_for_organisation(
 /// This function is used to add a domain to an organisation
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// organisation id in url
 /// ```
 /// {
@@ -341,6 +343,7 @@ async fn add_domain_to_organisation(
 /// organisation
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// organisation id in the url
 /// ```
 /// {
@@ -415,6 +418,7 @@ async fn verify_domain_in_organisation(
 /// organisation
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// organisation id in the url
 /// ```
 /// {
@@ -507,6 +511,7 @@ async fn get_domain_info_in_organisation(
 /// This function is used to delete the domain registered under the organisation
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// organisation id in the url
 /// ```
 /// {

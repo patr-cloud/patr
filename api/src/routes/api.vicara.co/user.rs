@@ -153,6 +153,7 @@ pub fn create_sub_app(
 /// This function is used to get the user's information.
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -296,6 +297,7 @@ async fn get_user_info_by_username(
 /// This function is used to update the user's information
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    firstName:
@@ -426,6 +428,7 @@ async fn update_user_info(
 /// This function is used to add a new email address
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    email:
@@ -483,6 +486,7 @@ async fn add_email_address(
 /// This function is used to list the email addresses registered with user
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -526,6 +530,7 @@ async fn list_email_addresses(
 /// This function is used to list the phone numbers registered with the user
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -581,6 +586,7 @@ async fn list_phone_numbers(
 /// This function is used to update the back up email address of the user
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    backupEMail: new backupEmail
@@ -638,6 +644,7 @@ async fn update_backup_email_address(
 /// This function is used to update the backup phone number of the user
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    backupPhoneCountryCode:
@@ -704,6 +711,7 @@ async fn update_backup_phone_number(
 /// This function is used to delete a personal email address
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    email:
@@ -761,6 +769,7 @@ async fn delete_personal_email_address(
 /// This function is used to add phone number to  the user's account
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    countryCode:
@@ -836,6 +845,7 @@ async fn add_phone_number_for_user(
 /// This function is used to verify user's phone number
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    countryCode:
@@ -910,6 +920,7 @@ async fn verify_phone_number(
 /// This function is used to delete user's phone number
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    countryCode:
@@ -976,6 +987,7 @@ async fn delete_phone_number(
 /// This function is used to verify user's email address
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    email:
@@ -1043,6 +1055,7 @@ async fn verify_email_address(
 /// is a member
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,

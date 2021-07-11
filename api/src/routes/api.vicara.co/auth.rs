@@ -381,6 +381,7 @@ async fn sign_up(
 /// This function is used to sign-out the user, there will be an otp sent to
 /// user's backup email or phone number
 /// required inputs:
+/// example: Authorization: <insert authToken>
 /// auth token in the authorization headers
 ///
 /// # Arguments
@@ -845,6 +846,7 @@ async fn reset_password(
 /// This function is used to authenticate and login into the docker registry
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    scope:
@@ -884,6 +886,7 @@ async fn docker_registry_token_endpoint(
 /// This function is used to login into the docker registry
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// ```
 /// {
 ///    client_id: ,
@@ -1088,7 +1091,7 @@ async fn docker_registry_login(
 /// This function is used to authenticate the user for docker registry
 /// required inputs:
 /// auth token in the authorization headers
-///
+/// example: Authorization: <insert authToken>
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
 ///   database connection, body,
@@ -1461,6 +1464,7 @@ async fn docker_registry_authenticate(
 /// This function is used to list the recovery options the user has given
 /// required inputs:
 /// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
 /// {
 ///    userId: username or email
 /// }
