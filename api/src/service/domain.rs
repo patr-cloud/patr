@@ -21,6 +21,21 @@ use crate::{
 	Database,
 };
 
+/// # Description
+/// This function checks if the personal domain exists, if it does not contain
+/// domain this function will add the domain in the database and if the domain
+/// is already present in organisation's table it will return an error
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_name` - A string which contains domain name of user's personal
+///   email id
+///
+/// # Returns
+/// This function returns Result<Uuid, Error> which contains domain_id as uuid
+/// or an error
+///
+///[`Transaction`]: Transaction
 pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
@@ -65,6 +80,21 @@ pub async fn ensure_personal_domain_exists(
 	}
 }
 
+/// # Description
+/// This function adds the organisation domain into the database
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_name` - a string which contains domain name of user's personal
+///   email id
+/// * `organisation_id` - an unsigned 8 bit integer array which contains id of
+///   the organisation
+///
+/// # Returns
+/// This function returns Result<Uuid, Error> containing uuid of domain uuid or
+/// an error
+///
+///[`Transaction`]: Transaction
 pub async fn add_domain_to_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
@@ -120,6 +150,19 @@ pub async fn add_domain_to_organisation(
 	Ok(domain_uuid)
 }
 
+/// # Description
+/// This function checks if the domain is verified or not
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_id` - an unsigned 8 bit integer array containing id of
+/// organisation domain
+///
+/// # Returns
+/// Returns a Result<bool, Error> containing a bool whether the domain is
+/// verified or not or an error
+///
+/// [`Transaction`]: Transaction
 // TODO make domain store the registrar and
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
@@ -159,6 +202,19 @@ pub async fn is_domain_verified(
 	Ok(response.is_some())
 }
 
+/// # Description
+/// This function is used to check if the organisation domain was used during
+/// the sign up or not
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_name` - a string containing name of the organisation domain
+///
+/// # Returns
+/// Returns a Result<bool, Error> containing a bool whether the domain is
+/// used for sign up or not or an error
+///
+/// [`Transaction`]: Transaction
 async fn is_domain_used_for_sign_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,

@@ -19,6 +19,20 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -157,6 +171,30 @@ pub fn create_sub_app(
 	app
 }
 
+/// # Description
+/// This function is used to list of all the deployments present with the user
+/// required inputs:
+/// OrganisationId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    deployments: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -200,6 +238,39 @@ async fn list_deployments(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to create a new deployment
+/// required inputs
+/// auth token in the header
+/// organisation id in parameter
+/// ```
+/// {
+///    name:
+///    registry:
+///    repositoryId:
+///    imageName:
+///    imageTag:
+/// }
+/// ```
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    deploymentId:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn create_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -268,6 +339,37 @@ async fn create_deployment(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get the information about a specific deployment
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// DeploymentId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///     success: true or false,
+///     deployment:
+///     {
+///         name: ,
+///         registry: ,
+///         imageName: ,
+///         imageTag: ,
+///     }
+/// }
+/// ```
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -297,6 +399,94 @@ async fn get_deployment_info(
 	Ok(context)
 }
 
+/*
+Documentation for functions yet to come:
+
+
+fn get_deployment_config:
+/// # Description
+/// This function is used to get the configuration of the deployment
+/// required inputs:
+/// deploymentId
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    environmentVariables: []
+///    exposedPorts: []
+///    persistentVolumes: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+
+
+fn update_deployment_config:
+/// # Description
+/// This function is used to store the port, env variables and mount path
+/// required inputs:
+/// ```
+/// {
+///    exposedPorts:[]
+///    environmentVariables:[]
+///    persistentVolumes: []
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+*/
+
+/// # Description
+/// This function is used to delete deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

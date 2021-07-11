@@ -20,6 +20,20 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -129,6 +143,36 @@ pub fn create_sub_app(
 // {
 // 	"repoName"
 // }
+/// # Description
+/// This middleware creates a new docker repository
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in url
+/// ```
+/// {
+///    repository: ,
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    id:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn create_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -209,6 +253,38 @@ async fn create_docker_repository(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list the docker repositories registered under
+/// organisation
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    repository:
+///    [
+///       {
+///          id: ,
+///          name:
+///       }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_docker_repositories(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -239,6 +315,36 @@ async fn list_docker_repositories(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to delete the docker repository present under the
+/// organisation
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in url
+/// ```
+/// {
+///    repositoryId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

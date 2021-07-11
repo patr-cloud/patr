@@ -19,6 +19,20 @@ use crate::{
 	},
 };
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -275,6 +289,39 @@ pub fn create_sub_app(
 	sub_app
 }
 
+/// # Description
+/// This function is used to list all the roles available within the
+/// organisation
+/// required inputs:
+/// auth token in the authorization headers
+/// orgnisation id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    roles:
+///    [
+///        {
+///           roleId: ,
+///           name: ,
+///           description: -> only there if there some description present,
+///        }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_all_roles(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -312,6 +359,37 @@ async fn list_all_roles(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list all the permissions available in the API
+/// required inputs:
+/// auth token in the authorization headers
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    permissions:
+///    [
+///       {
+///           id: ,
+///           name: ,
+///           description: -> only available when there is some description given about the permission,
+///       }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_all_permissions(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -344,6 +422,37 @@ async fn list_all_permissions(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get the list of all the resource types available in
+/// the API
+/// required inputs:
+/// auth token in the description
+/// organisation id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    resourceTypes:
+///    [
+///       resourceTypeId: ,
+///       name: ,
+///       description: -> only available when there is a description about the resource type
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_all_resource_types(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -376,6 +485,53 @@ async fn list_all_resource_types(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get the list of permissions for the role
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in the url
+/// role id in the url
+/// ```
+/// {
+///     roleId: ,
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    resourcePermissions:
+///    [
+///        {
+///            id: ,
+///            name: ,
+///            descrpition: -> only available when there is some description given resource permission
+///        }
+///    ],
+///    resourceTypePermissions:
+///    [
+///        {
+///            id: ,
+///            name: ,
+///            descrpition: -> only available when there is some description given resource type permission
+///        }
+///    ]
+///
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_permissions_for_role(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -463,6 +619,37 @@ async fn get_permissions_for_role(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to create a new role
+/// required inputs:
+/// auth token in the header
+/// organisation id in the url
+/// ```
+/// {
+///     name: ,
+///     description: , -> not mandatory
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    roleId:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn create_role(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -512,6 +699,37 @@ async fn create_role(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update the permissions of the role
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in the url
+/// role id in the url
+/// ```
+/// {
+///     resourcePermissions: [],
+///     resourceTypePermissions: []
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_role_permissions(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -632,6 +850,31 @@ async fn update_role_permissions(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to delete a role
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in the url
+/// role id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_role(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -653,6 +896,41 @@ async fn delete_role(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to get details about the resource
+/// required inputs:
+/// auth token in the authorization headers
+/// organisation id in the url
+/// ```
+/// {
+///     resourceId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    resource:
+///    {
+///        id: ,
+///        name: ,
+///        resourceType: ,
+///    }
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_resource_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

@@ -8,6 +8,20 @@ use crate::{
 	Database,
 };
 
+/// # Description
+/// This functions adds personal email id to the email_address to be verified
+/// table
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `email_address` - a string containing email address of user
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+///
+/// # Returns
+/// This function returns Result<(), Error> containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
@@ -51,6 +65,20 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to verify the email address of the user, by verifying
+/// the otp
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+/// * `email_address` - a string containing email address of user
+/// * `otp` - a string containing One-Time-Password
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn verify_personal_email_address_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -103,6 +131,20 @@ pub async fn verify_personal_email_address_for_user(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to change the password of the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+/// * `old_password` - a string containing previous password of the user
+/// * `new_password` - a string containing new password of the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn change_password_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
