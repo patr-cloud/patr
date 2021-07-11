@@ -23,6 +23,20 @@ use crate::{
 };
 type StdErrorType = Box<dyn StdError + Send + Sync + 'static>;
 
+/// # Description
+/// This function is used to create a sub app for every endpoint listed. It
+/// creates an eve app which binds the endpoint with functions.
+///
+/// # Arguments
+/// * `app` - an object of type [`App`] which contains all the configuration of
+///   api including the
+/// database connections.
+///
+/// # Returns
+/// this function returns `EveApp<EveContext, EveMiddleware, App, ErrorData>`
+/// containing context, middleware, object of [`App`] and Error
+///
+/// [`App`]: App
 pub fn creare_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -192,6 +206,43 @@ pub fn creare_sub_app(
 	sub_app
 }
 
+/// # Description
+/// This function is used to get list of tunnels for the organisation
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// organisation id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    tunnels:
+///    [
+///       {
+///          id: ,
+///          username: ,
+///          sshPort: ,
+///          exposedPort: ,
+///          created: ,
+///          name: ,
+///          serverIp:
+///       }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_tunnels_for_organisation(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -228,7 +279,43 @@ async fn get_tunnels_for_organisation(
 	Ok(context)
 }
 
-// fn to get information for given tunnel/tunnelId
+/// # Description
+/// This function is used to get information for given tunnel/tunnelId
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// organisation id in the url
+/// ```
+/// {
+///     tunnelId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    tunnelId: ,
+///    username: ,
+///    sshPort: ,
+///    exposedPort: ,
+///    created: ,
+///    name: ,
+///    serverIp:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_info_for_tunnel(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -262,7 +349,36 @@ async fn get_info_for_tunnel(
 	Ok(context)
 }
 
-// fn to delete tunnel by tunnelId
+/// # Description
+/// This function is used to to delete tunnel by tunnelId
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// organisation id in the url
+/// ```
+/// {
+///    tunnelId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn delete_tunnel(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -296,6 +412,44 @@ async fn delete_tunnel(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to create a new tunnel
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// organisation id in the url
+/// ```
+/// {
+///     name:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    id: ,
+///    name: ,
+///    username: ,
+///    password: ,
+///    serverIp: ,
+///    sshPort: ,
+///    created: ,
+///    exposedPort:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn create(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -442,14 +596,47 @@ async fn create(
 	Ok(context)
 }
 
-// {
-// 	localPort,
-// 	localHostName,
-// 	exposedServerPort,
-//	serverSSHPort
-// 	serverIPAddress,
-// 	serverUserName
-// }
+/// # Description
+/// This function is used to get the content for the bash script
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// organisation id in the url
+/// ```
+/// {
+///      localPort: ,
+///      localHostName: ,
+///      exposedServerPort: ,
+///      serverSSHPort: ,
+///      serverIPAddress: ,
+///      serverUserName:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///      success: true or false,
+///      localPort: , -> port number
+///      localHostName: , -> hostname
+///      exposedServerPort: , -> exposed port number
+///      serverSSHPort: , -> server ssh port number
+///      serverIPAddress: , -> server ip address
+///      serverUserName:  -> server username
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn get_bash_script(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,

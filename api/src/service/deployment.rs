@@ -9,6 +9,26 @@ use crate::{
 	Database,
 };
 
+/// # Description
+/// This function creates a deployment under an organisation account
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
+///   organisation
+/// * `name` - a string containing the name of deployment
+/// * `registry` - a string containing the url of docker registry
+/// * `repository_id` - An Option<&str> containing either a repository id of
+///   type string or `None`
+/// * `image_name` - An Option<&str> containing either an image name of type
+///   string or `None`
+/// * `image_tag` - a string containing tags of docker image
+///
+/// # Returns
+/// This function returns Result<Uuid, Error> containing an uuid of the
+/// deployment or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn create_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
@@ -82,6 +102,27 @@ pub async fn create_deployment_in_organisation(
 	Ok(deployment_uuid)
 }
 
+/// # Description
+/// This function updates the deployment configuration
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `deployment_id` -  an unsigned 8 bit integer array containing the id of
+///   deployment
+/// * `exposed_ports` - an unsigned 16 bit integer array containing the exposed
+///   ports of deployment
+/// * `environment_variables` - a string containing the url of docker registry
+/// * `repository_id` - An Option<&str> containing either a repository id of
+///   type string or `None`
+/// * `image_name` - An Option<&str> containing either an image name of type
+///   string or `None`
+/// * `image_tag` - a string containing tags of docker image
+///
+/// # Returns
+/// This function returns Result<Uuid, Error> containing an uuid of the
+/// deployment or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn update_configuration_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -135,6 +176,24 @@ pub async fn update_configuration_for_deployment(
 	Ok(())
 }
 
+/// # Description
+/// This function creates the deployment according to the upgrade-path
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
+///   organisation
+/// * `name` - a string containing the name of deployment
+/// * `machine_types` - an array of type [`MachineType`] containing the details
+///   about machine type
+/// * `default_machine_type` - a default configuration of type ['MachineType`]
+///
+/// # Returns
+/// This function returns Result<Uuid, Error> containing an uuid of the
+/// deployment or an error
+///
+/// [`Transaction`]: Transaction
+/// [`MachineType`]: MachineType
 pub async fn create_deployment_upgrade_path_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
@@ -237,6 +296,23 @@ pub async fn create_deployment_upgrade_path_in_organisation(
 	Ok(upgrade_path_uuid)
 }
 
+/// # Description
+/// This function updates the deployment according to the upgrade-path
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `upgrade_path_id` -  an unsigned 8 bit integer array containing the id of
+///   the upgrade path
+/// * `name` - a string containing name of the deployment
+/// * `machine_types` - an array of type [`MachineType`] containing the details
+///   about machine type
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+/// [`MachineType`]: MachineType
 pub async fn update_deployment_upgrade_path(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	upgrade_path_id: &[u8],
@@ -307,6 +383,33 @@ pub async fn update_deployment_upgrade_path(
 	Ok(())
 }
 
+/// # Description
+/// This function creates the deployment entry point for the deployment
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
+///   organisation
+/// * `sub_domain` - a string containing the sub domain for deployment
+/// * `domain_id` - An unsigned 8 bit integer array containing id of
+///   organisation domain
+/// * `path` - a string containing the path for the deployment
+/// * `entry_point_type` - a string containing the type of entry point
+/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
+///   array containing
+/// the id of deployment or `None`
+/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
+///   containing port
+/// of deployment or an `None`
+/// * `url` - an Option<&str> containing a string of the url for the image to be
+///   deployed
+///
+/// # Returns
+/// This function returns `Result<uuid, Error>` containing uuid of the entry
+/// point or an error
+///
+/// [`Transaction`]: Transaction
+/// [`MachineType`]: MachineType
 pub async fn create_deployment_entry_point_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
@@ -426,6 +529,28 @@ pub async fn create_deployment_entry_point_in_organisation(
 	Ok(entry_point_uuid)
 }
 
+/// # Description
+/// This function updates the deployment entry point for the deployment
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `entry_point_id` - an unsigned
+/// * `entry_point_type` - a string containing the type of entry point
+/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
+///   array containing
+/// the id of deployment or `None`
+/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
+///   containing port
+/// of deployment or an `None`
+/// * `url` - an Option<&str> containing a string of the url for the image to be
+///   deployed
+///
+/// # Returns
+/// This function returns `Result<uuid, Error>` containing uuid of the entry
+/// point or an error
+///
+/// [`Transaction`]: Transaction
+/// [`MachineType`]: MachineType
 pub async fn update_deployment_entry_point(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	entry_point_id: &[u8],

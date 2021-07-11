@@ -1,7 +1,23 @@
 use semver::Version;
 
+/// This module is used to migrate the database to updated version
 use crate::{db, utils::constants, Database};
 
+/// # Description
+/// The function is used to migrate the database from the current version to a
+/// version set in ['Constants`]
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `from_version` - A struct containing version of the DB, more info here:
+///   [`Version`]: Version
+///
+/// # Return
+/// This function returns Result<(), Error> containing an empty response or
+/// sqlx::error
+///
+/// [`Constants`]: api/src/utils/constants.rs
+/// [`Transaction`]: Transaction
 pub async fn migrate_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	from_version: Version,

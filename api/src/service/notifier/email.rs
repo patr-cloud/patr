@@ -9,6 +9,20 @@ struct UserSignUpVerificationEmail {
 	otp: String,
 }
 
+/// # Description
+/// This function is used to email the otp to user for account verification
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+/// More info here: [`Mailbox`]
+/// * `otp` - a string containing One Time Password to be sent to the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Mailbox`]: Mailbox
 pub async fn send_user_verification_otp(
 	email: Mailbox,
 	otp: &str,
@@ -30,6 +44,21 @@ struct ForgotPasswordEmail {
 	otp: String,
 }
 
+/// # Description
+/// This function is used to email the otp to user for verifiying change in
+/// password incase the user forgets the password
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+/// More info here: [`Mailbox`]
+/// * `otp` - a string containing One Time Password to be sent to the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Mailbox`]: Mailbox
 pub async fn send_forgot_password_otp(
 	email: Mailbox,
 	otp: &str,
@@ -49,6 +78,18 @@ pub async fn send_forgot_password_otp(
 #[template_path = "assets/emails/password-reset-notification/template.json"]
 struct PasswordResetEmail {}
 
+/// # Description
+/// This function is used to send the password reset notification
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Mailbox`]: Mailbox
 pub async fn send_user_reset_password_notification(
 	email: Mailbox,
 ) -> Result<(), Error> {
@@ -59,6 +100,16 @@ pub async fn send_user_reset_password_notification(
 #[template_path = "assets/emails/password-changed-notification/template.json"]
 struct PasswordChangedEmail {}
 
+/// # Description
+/// This function is used to send the password changed notification
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 pub async fn send_password_changed_notification(
 	email: Mailbox,
 ) -> Result<(), Error> {
@@ -69,6 +120,16 @@ pub async fn send_password_changed_notification(
 #[template_path = "assets/emails/sign-up-completed/template.json"]
 struct SignUpCompletedEmail {}
 
+/// # Description
+/// This function is used to send the sign up complete notification
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 	send_email(SignUpCompletedEmail {}, email, None, "").await
 }
@@ -77,12 +138,39 @@ pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 #[template_path = "assets/emails/backup-email-notification/template.json"]
 struct BackupNotificationEmail {}
 
+/// # Description
+/// This function is used to send the registration info to back up email of the
+/// user
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 pub async fn send_backup_registration_mail(
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(BackupNotificationEmail {}, email, None, "").await
 }
 
+/// # Description
+/// This function is used to send the email to a recipient
+///
+/// # Arguments
+/// * `body` - body of the mail of the type [`TEmail`]
+/// * `to` - recipient's email address of type [`Mailbox`]
+/// * `reply_to` - An Option<Mailbox> containing instance of [`Mailbox`]
+///   containing email of recipient
+/// to be replied or `None`
+/// * `subject` - a string containing subject of the email
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// errors
+///
+/// [`TEmail`]: TEmail
 #[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
