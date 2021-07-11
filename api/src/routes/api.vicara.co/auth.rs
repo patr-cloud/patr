@@ -511,7 +511,8 @@ async fn join(
 
 /// # Description
 /// This function is used to get a new access token for a currently logged in
-/// user required inputs:
+/// user
+/// required inputs:
 /// refresh token in authorization header
 /// example: Authorization: <insert refreshToken>
 /// ```
@@ -690,7 +691,7 @@ async fn is_username_valid(
 }
 
 /// # Description
-/// This function is used to recover the user's account incase the user forget's
+/// This function is used to recover the user's account incase the user forgets
 /// the password by sending a recovery link or otp to user's registered backup
 /// email or phone number
 /// required inputs:
