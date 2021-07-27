@@ -1,4 +1,10 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use futures::{StreamExt, TryStreamExt};
+use k8s_openapi::api::{core::v1::{Pod, Service}, networking::v1beta1::Ingress};
+use kube::{Api,Resource, CustomResourceExt, ResourceExt, api::{ListParams, PostParams, WatchEvent}};
+use kube_derive::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -128,6 +134,149 @@ pub async fn notification_handler(
 				&full_image_name,
 			)
 			.await?;
+
+			// deploy the image here controller
+			let kubernetes_client = kube::Client::try_default()
+        	.await
+        	.expect("Expected a valid KUBECONFIG environment variable.");
+
+			// Preparation of resources used by the `kube_runtime::Controller`
+			let deployment_pods: Api<Pod> = Api::namespaced(kubernetes_client.clone(), "default");
+			
+			let pod = serde_json::from_value(serde_json::json!({
+				"apiVersion": "v1",
+				"kind": "Pod",
+				"metadata": {
+					"name": &full_image_name
+				},
+				"spec": {
+					"containers": [
+						{
+							"name": format!("deployment-{}", hex::encode(&deployment.id)),
+							"image": "myregistry.azurecr.io/hello-world:v1",
+						},
+					],
+					"imagePullSecrets": {
+						"name": "regcred"
+					},
+					"ports": {
+            			"name": "http",
+              			"containerPort": "8080",
+						"readinessProbe": {
+							"httpGet": {
+								"path": "/",
+								"port": "8080"
+							},
+							"initialDelaySeconds": 10,
+						  	"periodSeconds": 10
+						},
+						"livenessProbe": {
+						  	"httpGet": {
+								"path": "/",
+								"port": "8080"
+							},
+							"initialDelaySeconds": "10",
+						  	"periodSeconds": "10"
+						}
+					}
+				}
+			}))?;
+
+			let deployment_service: Api<Service> = Api::namespaced(kubernetes_client.clone(), "default");
+
+			let pod_service = serde_json::from_value(serde_json::json!({
+				"apiVersion": "v1",
+				"kind": "Service",
+				"metadata" : {
+					"name": format!("{}_{}",&full_image_name, "service"),
+				},
+				"labels": {
+					"app.kubernetes.io/component": "webserver"
+				},
+				"spec": {
+					"ports": {
+						"name": "http",
+						"port": "80",
+						"targetPort": "http"
+					},
+					"type": "ClusterIP",
+					"selector": {
+						"app.kubernetes.io/component": "webserver"
+					}
+				}
+			}))?;
+
+			let deployment_ingress: Api<Ingress> = Api::namespaced(kubernetes_client.clone(), "default");
+
+			let pod_ingress = serde_json::from_value(serde_json::json!({
+				"apiVersion": "networking.k8s.io/v1beta1",
+				"kind": "Ingress",
+				"metadata": {
+					"annotations": {
+						"cert-manager.io/cluster-issuer": "letsencrypt-ingress-prod",
+						"kubernetes.io/ingress.class": "nginx",
+						"nginx.ingress.kubernetes.io/force-ssl-redirect": "true"
+					},
+					"name": "windows-docker-web"
+				},
+				"spec": {
+					"rules": {
+						"host": "windows-docker-web.az.fpcomplete.com",
+						"http": {
+							"paths": {
+								"backend": {
+									"serviceName": "windows-docker-web",
+									"servicePort": "80"
+								}
+							}
+						}
+					},
+					"tls": {
+						"hosts": "windows-docker-web.az.fpcomplete.com",
+						"secretName": "windows-docker-web-tls"
+					}
+				}
+			}))?;
+
+			let _pod = deployment_pods.create(
+				&PostParams::default(), 
+				&pod
+			)
+			.await?;
+
+			let _service = deployment_service.create(
+				&PostParams::default(), 
+				&pod_service
+			)
+			.await?;
+
+			let _ingress = deployment_ingress.create(
+				&PostParams::default(),
+				&pod_ingress
+			)
+			.await?;
+
+			// Start a watch call for pods matching our name
+			let lp = ListParams::default()
+					.fields(&format!("metadata.name={}", &full_image_name))
+					.timeout(10);
+			let mut stream = deployment_pods.watch(&lp, "0").await?.boxed();
+
+			// Observe the pods phase for 10 seconds
+			while let Some(status) = stream.try_next().await? {
+				match status {
+					WatchEvent::Added(o) => println!("Added {}", o.name()),
+					WatchEvent::Modified(o) => {
+						let s = o.status.as_ref().expect("status exists on pod");
+						let phase = s.phase.clone().unwrap_or_default();
+						println!("Modified: {} with phase: {}", o.name(), phase);
+					}
+					WatchEvent::Deleted(o) => println!("Deleted {}", o.name()),
+					WatchEvent::Error(e) => println!("Error {}", e),
+					_ => {}
+				}
+    		}
+			
 		}
 	}
 
