@@ -175,11 +175,11 @@ pub async fn notification_handler(
 					},
 					"ports": {
 						"name": "http",
-						  "containerPort": "8080",
+						  "containerPort": "80",
 						"readinessProbe": {
 							"httpGet": {
 								"path": "/",
-								"port": "8080"
+								"port": "80"
 							},
 							"initialDelaySeconds": 10,
 							  "periodSeconds": 10
@@ -187,7 +187,7 @@ pub async fn notification_handler(
 						"livenessProbe": {
 							  "httpGet": {
 								"path": "/",
-								"port": "8080"
+								"port": "80"
 							},
 							"initialDelaySeconds": "10",
 							  "periodSeconds": "10"
@@ -266,32 +266,6 @@ pub async fn notification_handler(
 			let _ingress = deployment_ingress
 				.create(&PostParams::default(), &pod_ingress)
 				.await?;
-
-			// Start a watch call for pods matching our name
-			let lp = ListParams::default()
-				.fields(&format!("metadata.name={}", &full_image_name))
-				.timeout(10);
-			let mut stream = deployment_pods.watch(&lp, "0").await?.boxed();
-
-			// Observe the pods phase for 10 seconds
-			while let Some(status) = stream.try_next().await? {
-				match status {
-					WatchEvent::Added(o) => println!("Added {}", o.name()),
-					WatchEvent::Modified(o) => {
-						let s =
-							o.status.as_ref().expect("status exists on pod");
-						let phase = s.phase.clone().unwrap_or_default();
-						println!(
-							"Modified: {} with phase: {}",
-							o.name(),
-							phase
-						);
-					}
-					WatchEvent::Deleted(o) => println!("Deleted {}", o.name()),
-					WatchEvent::Error(e) => println!("Error {}", e),
-					_ => {}
-				}
-			}
 		}
 	}
 
