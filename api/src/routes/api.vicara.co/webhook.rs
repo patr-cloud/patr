@@ -251,7 +251,7 @@ pub async fn notification_handler(
 					},
 					"tls": {
 						"hosts": format!("{}.vicara.tech", hex::encode(&deployment.id)),
-						"secretName": "windows-docker-web-tls"
+						"secretName": "vicara-secret"
 					}
 				}
 			}))?;
