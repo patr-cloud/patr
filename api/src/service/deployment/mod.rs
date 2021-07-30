@@ -9,9 +9,6 @@ use crate::{
 	Database,
 };
 
-mod runner;
-pub use self::runner::*;
-
 /// # Description
 /// This function creates a deployment under an organisation account
 ///

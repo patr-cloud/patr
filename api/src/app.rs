@@ -56,8 +56,6 @@ pub async fn start_server(app: App) {
 	let shutdown_signal = Some(get_shutdown_signal());
 	let api_server_task =
 		task::spawn(listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal));
-	let runner_task = task::spawn(service::monitor_all_deployments());
-	let _ = futures::join!(api_server_task, runner_task);
 }
 
 pub fn create_eve_app(
