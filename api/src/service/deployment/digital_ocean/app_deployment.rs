@@ -1,7 +1,18 @@
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{error, models::deployment::cloud_providers::digital_ocean::{App, AppConfig, AppSpec, Domains, Image, Services}, utils::{settings::Settings, Error}};
+use crate::{
+	error,
+	models::deployment::cloud_providers::digital_ocean::{
+		App,
+		AppConfig,
+		AppSpec,
+		Domains,
+		Image,
+		Services,
+	},
+	utils::{settings::Settings, Error},
+};
 
 pub async fn create_digital_ocean_application(
 	settings: &Settings,
@@ -16,16 +27,18 @@ pub async fn create_digital_ocean_application(
 				AppSpec {
 					name: hex::encode(&deployment_id),
 					region: "blr".to_string(),
-					domains: vec![
-						Domains {
-							// [ 4 .. 253 ] characters ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}\.?$
-							// The hostname for the domain
-							domain: format!("{}.vicara.tech", hex::encode(deployment_id)),
-							r#type: "DEFAULT".to_string(),
-							wildcard: false,
-							zone: "vicara.tech".to_string()
-						}
-					],
+					domains: vec![Domains {
+						// [ 4 .. 253 ] characters
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+						// }\.?$ The hostname for the domain
+						domain: format!(
+							"{}.vicara.tech",
+							hex::encode(deployment_id)
+						),
+						r#type: "DEFAULT".to_string(),
+						wildcard: false,
+						zone: "vicara.tech".to_string(),
+					}],
 					services: Some(vec![Services {
 						name: "default-service".to_string(),
 						git: None,

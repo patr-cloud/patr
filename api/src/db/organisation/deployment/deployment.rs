@@ -1,11 +1,4 @@
-use crate::{
-	models::db_mapping::{
-		Deployment
-	},
-	query,
-	query_as,
-	Database
-};
+use crate::{models::db_mapping::Deployment, query, query_as, Database};
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
