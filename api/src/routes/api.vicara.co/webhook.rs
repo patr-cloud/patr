@@ -1,14 +1,4 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use futures::{StreamExt, TryStreamExt};
-use k8s_openapi::api::{
-	core::v1::{Pod, Service},
-	networking::v1beta1::Ingress,
-};
-use kube::{
-	api::{ListParams, PostParams, WatchEvent},
-	Api,
-	ResourceExt,
-};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -16,6 +6,7 @@ use crate::{
 	error,
 	models::db_mapping::EventData,
 	pin_fn,
+	service,
 	utils::{Error, ErrorData, EveContext, EveMiddleware},
 };
 
@@ -139,133 +130,13 @@ pub async fn notification_handler(
 			)
 			.await?;
 
-			// deploy the image here controller
-			let kubernetes_client = kube::Client::try_default()
-				.await
-				.expect("Expected a valid KUBECONFIG environment variable.");
-
-			// Preparation of resources used by the `kube_runtime::Controller`
-			let deployment_pods: Api<Pod> =
-				Api::namespaced(kubernetes_client.clone(), "default");
-
-			// prepare pod json for kubernetes
-			let pod = serde_json::from_value(serde_json::json!({
-				"apiVersion": "v1",
-				"kind": "Pod",
-				"metadata": {
-					"name": &full_image_name,
-					"labels": {
-    					"app.kubernetes.io/component": "webserver"
-					}
-				},
-				"spec": {
-					"selector": {
-    					"matchLabels": {
-      						"app.kubernetes.io/component": "webserver"
-						},
-					},
-					"containers": [
-						{
-							"name": format!("deployment-{}", hex::encode(&deployment.id)),
-							"image": &full_image_name,
-						},
-					],
-					"imagePullSecrets": {
-						"name": "regcred"
-					},
-					"ports": {
-						"name": "http",
-						  "containerPort": "80",
-						"readinessProbe": {
-							"httpGet": {
-								"path": "/",
-								"port": "80"
-							},
-							"initialDelaySeconds": 10,
-							  "periodSeconds": 10
-						},
-						"livenessProbe": {
-							  "httpGet": {
-								"path": "/",
-								"port": "80"
-							},
-							"initialDelaySeconds": "10",
-							  "periodSeconds": "10"
-						}
-					}
-				}
-			}))?;
-
-			// Deployment service for exposing the app to the cluster and maintaining a contant ip address
-			let deployment_service: Api<Service> =
-				Api::namespaced(kubernetes_client.clone(), "default");
-
-			let pod_service = serde_json::from_value(serde_json::json!({
-				"apiVersion": "v1",
-				"kind": "Service",
-				"metadata" : {
-					"name": format!("deployment-{}-service", hex::encode(&deployment.id)),
-				},
-				"labels": {
-					"app.kubernetes.io/component": "webserver"
-				},
-				"spec": {
-					"ports": {
-						"name": "http",
-						"port": "80",
-						"targetPort": "http"
-					},
-					"type": "ClusterIP",
-					"selector": {
-						"app.kubernetes.io/component": "webserver"
-					}
-				}
-			}))?;
-
-			// Ingress for exposing the app to the internet
-			let deployment_ingress: Api<Ingress> =
-				Api::namespaced(kubernetes_client.clone(), "default");
-
-			let pod_ingress = serde_json::from_value(serde_json::json!({
-				"apiVersion": "networking.k8s.io/v1beta1",
-				"kind": "Ingress",
-				"metadata": {
-					"annotations": {
-						"cert-manager.io/cluster-issuer": "letsencrypt-ingress-prod",
-						"kubernetes.io/ingress.class": "nginx",
-						"nginx.ingress.kubernetes.io/force-ssl-redirect": "true"
-					},
-					"name": format!("deployment-{}", hex::encode(&deployment.id))
-				},
-				"spec": {
-					"rules": {
-						"host": format!("{}.vicara.tech", hex::encode(&deployment.id)),
-						"http": {
-							"paths": {
-								"backend": {
-									"serviceName": format!("deployment-{}-service", hex::encode(&deployment.id)),
-									"servicePort": "80"
-								}
-							}
-						}
-					},
-					"tls": {
-						"hosts": format!("{}.vicara.tech", hex::encode(&deployment.id)),
-						"secretName": "vicara-secret"
-					}
-				}
-			}))?;
-
-			let _pod =
-				deployment_pods.create(&PostParams::default(), &pod).await?;
-
-			let _service = deployment_service
-				.create(&PostParams::default(), &pod_service)
-				.await?;
-
-			let _ingress = deployment_ingress
-				.create(&PostParams::default(), &pod_ingress)
-				.await?;
+			service::push_to_digital_ocean_registry(
+				&image_name,
+				&tag,
+				&deployment.id,
+				context.get_state().config.clone(),
+			)
+			.await?;
 		}
 	}
 

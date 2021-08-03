@@ -1,3 +1,6 @@
+mod digital_ocean;
+
+pub use digital_ocean::*;
 use eve_rs::AsError;
 use uuid::Uuid;
 
@@ -8,7 +11,6 @@ use crate::{
 	utils::{get_current_time_millis, Error},
 	Database,
 };
-
 /// # Description
 /// This function creates a deployment under an organisation account
 ///
