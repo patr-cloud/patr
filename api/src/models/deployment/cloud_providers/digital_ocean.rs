@@ -27,22 +27,6 @@ pub enum DropletStatus {
 	Archive,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum Type {
-	UNSPECIFIED,
-	DEFAULT,
-	PRIMARY,
-	ALIAS,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum Engine {
-	UNSET,
-	MYSQL,
-	PG,
-	REDIS,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DigitalOceanImage {
 	pub id: u64,
@@ -179,7 +163,7 @@ pub struct AppSpec {
 pub struct Domains {
 	pub domain: String,
 	// Default unspecified
-	pub r#type: Option<Type>,
+	pub r#type: Option<String>,
 	pub wildcard: bool,
 	pub zone: Option<String>,
 }
@@ -273,7 +257,7 @@ pub struct Databases {
 	pub name: String,
 	pub db_name: Option<String>,
 	pub db_user: Option<String>,
-	pub engine: Option<Engine>,
+	pub engine: Option<String>,
 	pub production: Option<bool>,
 	pub version: Option<String>,
 }

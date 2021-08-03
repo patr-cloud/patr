@@ -411,6 +411,7 @@ pub async fn delete_deployment_by_id(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn generate_new_container_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
@@ -478,6 +479,7 @@ pub async fn update_deployment_deployed_image(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn get_inoperative_deployment_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Option<DeploymentRunner>, sqlx::Error> {
@@ -506,6 +508,7 @@ pub async fn get_inoperative_deployment_runner(
 	Ok(row)
 }
 
+#[allow(dead_code)]
 pub async fn register_new_deployment_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &[u8],
@@ -526,6 +529,7 @@ pub async fn register_new_deployment_runner(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn update_deployment_runner_container_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &[u8],
@@ -570,6 +574,7 @@ pub async fn update_deployment_runner_container_id(
 	}
 }
 
+#[allow(dead_code)]
 pub async fn get_deployment_runner_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &[u8],
@@ -598,6 +603,7 @@ pub async fn get_deployment_runner_by_id(
 	Ok(row)
 }
 
+#[allow(dead_code)]
 pub async fn register_deployment_application_server(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	server_ip: &IpAddr,
@@ -619,6 +625,7 @@ pub async fn register_deployment_application_server(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn remove_excess_deployment_application_servers(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	servers: &[IpNetwork],
@@ -637,6 +644,7 @@ pub async fn remove_excess_deployment_application_servers(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn get_deployments_not_running_for_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
@@ -674,6 +682,7 @@ pub async fn get_deployments_not_running_for_runner(
 	.await
 }
 
+#[allow(dead_code)]
 pub async fn update_deployment_runner_last_updated(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	runner_id: &[u8],
@@ -696,6 +705,7 @@ pub async fn update_deployment_runner_last_updated(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn get_available_deployment_server_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	memory_requirement: u16,
@@ -783,6 +793,7 @@ pub async fn get_available_deployment_server_for_deployment(
 	Ok(row)
 }
 
+#[allow(dead_code)]
 pub async fn get_running_deployment_details_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -817,6 +828,7 @@ pub async fn get_running_deployment_details_by_id(
 	Ok(row)
 }
 
+#[allow(dead_code)]
 pub async fn update_running_deployment_runner(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	new_runner_id: &[u8],
@@ -839,6 +851,7 @@ pub async fn update_running_deployment_runner(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn add_running_deployment_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -865,6 +878,7 @@ pub async fn add_running_deployment_details(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn update_running_deployment_server_ip(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	server_ip: &IpNetwork,
@@ -890,6 +904,7 @@ pub async fn update_running_deployment_server_ip(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn update_running_deployment_last_updated(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	last_updated: u64,
@@ -915,6 +930,7 @@ pub async fn update_running_deployment_last_updated(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn add_deployment_running_stats(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -939,6 +955,7 @@ pub async fn add_deployment_running_stats(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn delete_running_deployment_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],

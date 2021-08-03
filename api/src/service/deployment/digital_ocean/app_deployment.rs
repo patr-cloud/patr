@@ -1,13 +1,17 @@
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{error, models::deployment::cloud_providers::digital_ocean::{
+use crate::{
+	error,
+	models::deployment::cloud_providers::digital_ocean::{
 		App,
 		AppConfig,
 		AppSpec,
 		Image,
 		Services,
-	}, utils::{settings::Settings, Error}};
+	},
+	utils::{settings::Settings, Error},
+};
 
 pub async fn create_digital_ocean_application(
 	settings: &Settings,

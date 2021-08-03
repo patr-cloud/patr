@@ -55,15 +55,15 @@ pub async fn push_to_digital_ocean_registry(
 				.expect("failed to execute process")
 				.wait()
 				.expect("failed to push the image");
-			
-            if push_image.success() {
+
+			if push_image.success() {
 				println!("Image pushed successfully!");
 				// if the digital ocean app doesn't exists then update the app
 				if !digital_ocean_app_exists() {
 					create_digital_ocean_application(
 						&settings,
-						&deployment_id,
-						&tag,
+						deployment_id,
+						tag,
 					)
 					.await?;
 				}
@@ -107,5 +107,5 @@ pub async fn push_to_digital_ocean_registry(
 }
 
 pub fn digital_ocean_app_exists() -> bool {
-	return false;
+	false
 }

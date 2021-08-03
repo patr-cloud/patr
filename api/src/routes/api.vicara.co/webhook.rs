@@ -130,8 +130,12 @@ pub async fn notification_handler(
 			)
 			.await?;
 
+			let deployment_image_name = deployment
+				.get_full_image(context.get_database_connection())
+				.await?;
+
 			service::push_to_digital_ocean_registry(
-				&image_name,
+				&deployment_image_name,
 				&tag,
 				&deployment.id,
 				context.get_state().config.clone(),
