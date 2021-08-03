@@ -1,5 +1,3 @@
-use std::net::{Ipv4Addr, Ipv6Addr};
-
 use serde::{Deserialize, Serialize};
 
 // TODO: create a enum or struct for
@@ -19,125 +17,6 @@ use serde::{Deserialize, Serialize};
 // TOR1             Toronto, Canada                 tor1
 // BLR1             Bangalore, India                blr1
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum DropletStatus {
-	New,
-	Active,
-	Off,
-	Archive,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DigitalOceanImage {
-	pub id: u64,
-	pub distribution: String,
-	pub slug: String,
-	pub public: bool,
-	pub regions: Vec<String>,
-	pub created_at: String,
-	pub r#type: String,
-	pub min_disk_size: u32,
-	pub size_gigabytes: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct IpV4Address {
-	pub ip_address: Ipv4Addr,
-	pub netmask: Ipv4Addr,
-	pub gateway: String,
-	pub r#type: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct IpV6Address {
-	pub ip_address: Ipv6Addr,
-	pub netmask: Ipv6Addr,
-	pub gateway: String,
-	pub r#type: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct NetworkDetails {
-	pub v4: Vec<IpV4Address>,
-	pub v6: Vec<IpV6Address>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct NextBackupWindow {
-	pub start: String,
-	pub end: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct RegionDetails {
-	pub name: String,
-	pub slug: String,
-	pub sizes: Vec<String>,
-	pub features: Vec<String>,
-	pub available: bool,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct SizeObject {
-	pub slug: String,
-	pub memory: u64,
-	pub vcpus: u16,
-	pub disk: u64,
-	pub transfer: f64,
-	pub price_monthly: f64,
-	pub price_hourly: f64,
-	pub regions: Vec<String>,
-	pub available: bool,
-	pub description: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DropletResponse {
-	pub droplets: Vec<DropletDetails>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DropletDetails {
-	pub id: u64,
-	pub name: String,
-	pub memory: u64,
-	pub vcpus: u16,
-	pub disk: u16,
-	pub locked: bool,
-	pub created_at: String,
-	pub status: String,
-	pub backup_ids: Vec<String>,
-	pub snapshot_ids: Vec<String>,
-	pub features: Vec<String>,
-	pub region: RegionDetails,
-	pub image: DigitalOceanImage,
-	pub size: SizeObject,
-	pub size_slug: String,
-	pub networks: NetworkDetails,
-	pub next_backup_window: Option<NextBackupWindow>,
-	pub tags: Vec<String>,
-	pub vpc_uuid: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct DropletRequest {
-	pub region: String,
-	pub name: String,
-	pub size: String,
-	pub image: String,
-	// stores ssh fingerprint
-	// after image, these details are not mandatory
-	pub ssh_keys: Option<Vec<String>>,
-	pub backups: Option<bool>,
-	pub ipv6: Option<bool>,
-	pub private_networking: Option<bool>,
-	pub vpc_uuid: Option<String>,
-	pub user_data: Option<String>,
-	pub volumes: Option<Vec<String>>,
-	pub tags: Option<Vec<String>>,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AppConfig {
 	pub spec: AppSpec,
@@ -150,8 +29,8 @@ pub struct AppSpec {
 	// Enum: "ams" "nyc" "fra"
 	// The slug form of the geographical origin of the app.
 	// Default: nearest available
-	pub region: Option<String>,
-	pub domains: Option<Vec<Domains>>,
+	pub region: String,
+	pub domains: Vec<Domains>,
 	pub services: Option<Vec<Services>>,
 	pub static_sites: Option<Vec<StaticSites>>,
 	pub jobs: Option<Vec<Jobs>>,
@@ -163,9 +42,9 @@ pub struct AppSpec {
 pub struct Domains {
 	pub domain: String,
 	// Default unspecified
-	pub r#type: Option<String>,
+	pub r#type: String,
 	pub wildcard: bool,
-	pub zone: Option<String>,
+	pub zone: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -175,18 +54,18 @@ pub struct Services {
 	pub git: Option<Git>,
 	pub github: Option<GitProviders>,
 	pub gitlab: Option<GitProviders>,
-	pub image: Option<Image>,
+	pub image: Image,
 	pub dockerfile_path: Option<String>,
 	pub build_command: Option<String>,
 	pub run_command: Option<String>,
 	pub source_dir: Option<String>,
 	pub envs: Option<Vec<Envs>>,
 	pub environment_slug: Option<String>,
-	pub instance_count: Option<u64>,
-	pub instance_size_slug: Option<String>,
+	pub instance_count: u64,
+	pub instance_size_slug: String,
 	pub cors: Option<Cors>,
 	pub health_check: Option<HealthCheck>,
-	pub http_port: Option<Vec<u64>>,
+	pub http_port: Vec<u64>,
 	pub internal_ports: Option<Vec<u64>>,
 	pub routes: Option<Vec<Routes>>,
 }
@@ -320,7 +199,7 @@ pub struct HealthCheck {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Routes {
-	pub path: Option<String>,
+	pub path: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

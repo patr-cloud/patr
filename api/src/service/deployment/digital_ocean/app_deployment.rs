@@ -1,17 +1,7 @@
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{
-	error,
-	models::deployment::cloud_providers::digital_ocean::{
-		App,
-		AppConfig,
-		AppSpec,
-		Image,
-		Services,
-	},
-	utils::{settings::Settings, Error},
-};
+use crate::{error, models::deployment::cloud_providers::digital_ocean::{App, AppConfig, AppSpec, Domains, Image, Services}, utils::{settings::Settings, Error}};
 
 pub async fn create_digital_ocean_application(
 	settings: &Settings,
@@ -24,31 +14,40 @@ pub async fn create_digital_ocean_application(
 		.json(&AppConfig {
 			spec: {
 				AppSpec {
-					name: "deployment1".to_string(),
-					region: Some("blr".to_string()),
-					domains: None,
+					name: hex::encode(&deployment_id),
+					region: "blr".to_string(),
+					domains: vec![
+						Domains {
+							// [ 4 .. 253 ] characters ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}\.?$
+							// The hostname for the domain
+							domain: format!("{}.vicara.tech", hex::encode(deployment_id)),
+							r#type: "DEFAULT".to_string(),
+							wildcard: false,
+							zone: "vicara.tech".to_string()
+						}
+					],
 					services: Some(vec![Services {
-						name: "deployment-service".to_string(),
+						name: "default-service".to_string(),
 						git: None,
 						github: None,
 						gitlab: None,
-						image: Some(Image {
+						image: Image {
 							registry: None,
 							registry_type: Some("DOCR".to_string()),
 							repository: Some(hex::encode(deployment_id)),
 							tag: Some(tag.to_string()),
-						}),
+						},
 						dockerfile_path: None,
 						build_command: None,
 						run_command: None,
 						source_dir: None,
 						envs: None,
 						environment_slug: None,
-						instance_count: Some(1),
-						instance_size_slug: Some("basic-xs".to_string()),
+						instance_count: 1,
+						instance_size_slug: "basic-xs".to_string(),
 						cors: None,
 						health_check: None,
-						http_port: Some(vec![8080]),
+						http_port: vec![80],
 						internal_ports: None,
 						routes: None,
 					}]),

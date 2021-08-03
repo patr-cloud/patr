@@ -413,7 +413,6 @@ pub async fn get_notification_email_for_domain(
 	)))
 }
 
-#[allow(dead_code)]
 pub async fn delete_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],

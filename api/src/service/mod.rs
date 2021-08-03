@@ -59,7 +59,6 @@ pub(super) fn get_settings() -> &'static Settings {
 /// # Returns
 /// It returns the ```&'static``` variable [`APP`]
 /// [`APP`]: APP
-#[allow(dead_code)]
 pub(super) fn get_app() -> &'static App {
 	APP.get().expect("unable to get app")
 }
