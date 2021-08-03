@@ -18,6 +18,7 @@ use crate::{
 
 pub async fn push_to_digital_ocean_registry(
 	image_name: String,
+	tag: &str,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
