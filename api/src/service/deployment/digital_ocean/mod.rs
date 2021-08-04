@@ -1,12 +1,15 @@
 mod app_deployment;
 
-use std::ops::DerefMut;
+use std::{
+	ops::DerefMut,
+	process::{Command, Stdio},
+};
 
 pub use app_deployment::*;
 use eve_rs::AsError;
 use futures::StreamExt;
-use reqwest::{Client, Url, header};
-use shiplift::{Docker, PullOptions, RegistryAuth};
+use reqwest::{header, Client};
+use shiplift::{Docker, Image, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 
 use crate::{
@@ -66,47 +69,58 @@ async fn push_and_deploy_via_digital_ocean(
 	headers.insert("Content-Type", "application/tar".parse().unwrap());
 	headers.insert("X-Registry-Auth", auth_token.parse().unwrap());
 
-	let digital_ocean_tag = format!(
-		"registry.digitalocean.com/project-apex/{}",
-		hex::encode(deployment_id)
-	);
+	tag_docker_image(&image_name, tag).await?;
 
-	let docker_url = format!(
-		"unix:/var/run/docker.sock/v1.41/images/{}/tag?tag={}",
-		image_name, digital_ocean_tag
-	);	
-	let url = Url::parse(&docker_url)?;
+	// Login into the registry
 
-	let tag_response = Client::new()
-		.post(url)
-		.headers(headers.clone())
-		.send()
-		.await?
-		.text()
-		.await?;
+	let output = Command::new("doctl")
+		.arg("registry")
+		.arg("login")
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped())
+		.spawn()?
+		.wait()?;
 
-	let docker_url = format!(
-		"unix:/var/run/docker.sock/v1.41/images/{}/push",
-		image_name
-	);	
-	let url = Url::parse(&docker_url)?;
+	if output.success() {
+		let image_push = Command::new("docker")
+			.arg("push")
+			.arg(format!(
+				"registry.digitalocean.com/project-apex/{:?}",
+				hex::encode(&deployment_id)
+			))
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()?
+			.wait()?;
 
-	let push_image = Client::new()
-		.post(url)
-		.headers(headers.clone())
-		.send()
-		.await?
-		.text()
-		.await?;
+		if !digital_ocean_app_exists() && image_push.success() {
+			create_digital_ocean_application(&config, deployment_id, tag)
+				.await?;
 
-	if !digital_ocean_app_exists() {
-		create_digital_ocean_application(&config, deployment_id, tag).await?;
+			return Ok(format!(
+				"[TAG STATUS]: success\n [PUSH STATUS]: success"
+			));
+		}
 	}
 
-	return Ok(format!(
-		"[TAG STATUS]: {}\n [PUSH STATUS]: {}",
-		tag_response, push_image
-	));
+	Ok(format!("[TAG STATUS]: success\n [PUSH STATUS]: failure"))
+}
+
+async fn tag_docker_image(
+	image_name: &str,
+	image_tag: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+
+	let tag_options = TagOptions::builder()
+		.repo(&image_name.to_string())
+		.tag(&image_tag.to_string())
+		.build();
+	let image = Image::new(&docker, &image_name.to_string());
+
+	image.tag(&tag_options).await?;
+
+	Ok(())
 }
 
 async fn pull_image_from_registry(
