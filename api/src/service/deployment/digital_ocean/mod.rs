@@ -5,7 +5,7 @@ use std::ops::DerefMut;
 pub use app_deployment::*;
 use eve_rs::AsError;
 use futures::StreamExt;
-use reqwest::{header, Client};
+use reqwest::{Client, Url, header};
 use shiplift::{Docker, PullOptions, RegistryAuth};
 use tokio::task;
 
@@ -71,22 +71,28 @@ async fn push_and_deploy_via_digital_ocean(
 		hex::encode(deployment_id)
 	);
 
+	let docker_url = format!(
+		"unix:/var/run/docker.sock/v1.41/images/{}/tag?tag={}",
+		image_name, digital_ocean_tag
+	);	
+	let url = Url::parse(&docker_url)?;
+
 	let tag_response = Client::new()
-		.post(format!(
-			"http://localhost/v1.41/images/{}/tag?tag={}",
-			image_name, digital_ocean_tag
-		))
+		.post(url)
 		.headers(headers.clone())
 		.send()
 		.await?
 		.text()
 		.await?;
 
+	let docker_url = format!(
+		"unix:/var/run/docker.sock/v1.41/images/{}/push",
+		image_name
+	);	
+	let url = Url::parse(&docker_url)?;
+
 	let push_image = Client::new()
-		.post(format!(
-			"http://localhost/v1.41/images/{}/push",
-			digital_ocean_tag
-		))
+		.post(url)
 		.headers(headers.clone())
 		.send()
 		.await?
