@@ -25,14 +25,12 @@ use crate::{
 };
 
 pub async fn push_to_digital_ocean_registry(
-	image_name: String,
+	image_name: &str,
 	tag: &str,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	pull_image_from_registry(&config, &image_name).await?;
-	// make a reqwest to push to digital ocean registry
-	let image_details = image_name.clone();
+	let image_details = image_name.to_string();
 	let image_tag = tag.to_string();
 
 	task::spawn(async move {
@@ -63,6 +61,8 @@ async fn push_and_deploy_via_digital_ocean(
 	tag: &str,
 	image_name: &str,
 ) -> Result<String, Error> {
+	pull_image_from_registry(&config, image_name).await?;
+
 	let auth_token = get_digital_ocean_registry_auth_token(&config).await?;
 
 	let mut headers = header::HeaderMap::new();

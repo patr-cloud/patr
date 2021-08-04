@@ -135,7 +135,7 @@ pub async fn notification_handler(
 				.await?;
 
 			service::push_to_digital_ocean_registry(
-				deployment_image_name,
+				&deployment_image_name,
 				&tag,
 				deployment.id.to_vec(),
 				context.get_state().config.clone(),

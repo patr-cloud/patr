@@ -2,7 +2,6 @@ use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::types::ipnetwork::IpNetwork;
 
 use crate::{db, error, utils::Error, Database};
 
@@ -139,10 +138,4 @@ impl FromStr for DeploymentStatus {
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
-}
-
-#[derive(Clone, Debug)]
-pub struct DeploymentApplicationServer {
-	pub server_ip: IpNetwork,
-	pub server_type: String,
 }
