@@ -69,7 +69,7 @@ async fn push_and_deploy_via_digital_ocean(
 	headers.insert("Content-Type", "application/tar".parse().unwrap());
 	headers.insert("X-Registry-Auth", auth_token.parse().unwrap());
 
-	tag_docker_image(&image_name, tag).await?;
+	tag_docker_image(image_name, tag).await?;
 
 	// Login into the registry
 
@@ -97,13 +97,13 @@ async fn push_and_deploy_via_digital_ocean(
 			create_digital_ocean_application(&config, deployment_id, tag)
 				.await?;
 
-			return Ok(format!(
-				"[TAG STATUS]: success\n [PUSH STATUS]: success"
-			));
+			return Ok(
+				"[TAG STATUS]: success\n [PUSH STATUS]: success".to_string()
+			);
 		}
 	}
 
-	Ok(format!("[TAG STATUS]: success\n [PUSH STATUS]: failure"))
+	Ok("[TAG STATUS]: success\n [PUSH STATUS]: failure".to_string())
 }
 
 async fn tag_docker_image(
