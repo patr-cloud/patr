@@ -302,3 +302,14 @@ pub struct AppsDeploymentProgress {
 	pub running_steps: Option<u32>,
 	pub success_steps: Option<u32>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Auth {
+	#[serde(rename = "registry.digitalocean.com")]
+	pub registry: AuthToken,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AuthToken {
+	pub auth: String,
+}
