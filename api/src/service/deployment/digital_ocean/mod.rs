@@ -63,16 +63,16 @@ async fn push_and_deploy_via_digital_ocean(
 	tag: &str,
 	image_name: &str,
 ) -> Result<String, Error> {
-	pull_image_from_registry(&config, image_name, &tag).await?;
+	pull_image_from_registry(&config, image_name, tag).await?;
 
-	// new name for the docker image 
+	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/project-apex/{}",
 		hex::encode(deployment_id)
 	);
 
 	// rename the docker image with the digital ocean registry url
-	tag_docker_image(image_name, &new_repo_name, &tag).await?;
+	tag_docker_image(image_name, &new_repo_name, tag).await?;
 
 	// Get login details from digital ocean registry and decode from base 64 to
 	// binary
@@ -105,7 +105,10 @@ async fn push_and_deploy_via_digital_ocean(
 	if output.success() {
 		let image_push = Command::new("docker")
 			.arg("push")
-			.arg(format!("registry.digitalocean.com/project-apex/{}",hex::encode(&deployment_id)))
+			.arg(format!(
+				"registry.digitalocean.com/project-apex/{}",
+				hex::encode(&deployment_id)
+			))
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.spawn()?
@@ -122,9 +125,6 @@ async fn push_and_deploy_via_digital_ocean(
 			);
 		} else {
 			// TODO: add the function to create a new deployment
-			return Ok(
-				"[TAG STATUS]: success [PUSH STATUS]: success".to_string()
-			);
 		}
 	}
 
@@ -142,7 +142,6 @@ async fn tag_docker_image(
 		.repo(new_repo_name)
 		.tag(image_tag)
 		.build();
-
 
 	let image = Image::new(&docker, image_name);
 

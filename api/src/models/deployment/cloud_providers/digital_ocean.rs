@@ -31,14 +31,14 @@ pub struct AppSpec {
 	// Default: nearest available
 	pub region: String,
 	pub domains: Vec<Domains>,
-	pub services: Vec<Services>
+	pub services: Vec<Services>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Domains {
 	pub domain: String,
 	// Default unspecified
-	pub r#type: String
+	pub r#type: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -49,14 +49,14 @@ pub struct Services {
 	pub instance_count: u64,
 	pub instance_size_slug: String,
 	pub http_port: u64,
-	pub routes: Vec<Routes>
+	pub routes: Vec<Routes>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Image {
 	pub registry_type: String,
 	pub repository: String,
-	pub tag: String
+	pub tag: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -111,7 +111,7 @@ pub struct AllowOrigins {
 // Reponse body
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AppHolder {
-	pub app: App
+	pub app: App,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -133,7 +133,7 @@ pub struct App {
 	// Add field pub last_deployment_updated_at: Option<String>
 	pub live_domain: Option<String>,
 	pub live_url: Option<String>,
-	pub live_url_base: Option<String>
+	pub live_url_base: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -186,7 +186,7 @@ pub struct GeographicInformation {
 	pub data_centers: Vec<String>,
 	pub default: Option<bool>,
 	pub disabled: Option<bool>,
-	pub reason: Option<String>
+	pub reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
