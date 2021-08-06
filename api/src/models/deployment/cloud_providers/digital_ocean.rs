@@ -31,11 +31,7 @@ pub struct AppSpec {
 	// Default: nearest available
 	pub region: String,
 	pub domains: Vec<Domains>,
-	pub services: Option<Vec<Services>>,
-	pub static_sites: Option<Vec<StaticSites>>,
-	pub jobs: Option<Vec<Jobs>>,
-	pub workers: Option<Vec<Workers>>,
-	pub databases: Option<Vec<Databases>>,
+	pub services: Vec<Services>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -43,124 +39,26 @@ pub struct Domains {
 	pub domain: String,
 	// Default unspecified
 	pub r#type: String,
-	pub wildcard: bool,
-	pub zone: String,
+	pub wildcard: bool
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Services {
 	// ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
 	pub name: String,
-	pub git: Option<Git>,
-	pub github: Option<GitProviders>,
-	pub gitlab: Option<GitProviders>,
 	pub image: Image,
-	pub dockerfile_path: Option<String>,
-	pub build_command: Option<String>,
-	pub run_command: Option<String>,
-	pub source_dir: Option<String>,
-	pub envs: Option<Vec<Envs>>,
-	pub environment_slug: Option<String>,
 	pub instance_count: u64,
 	pub instance_size_slug: String,
-	pub cors: Option<Cors>,
-	pub health_check: Option<HealthCheck>,
-	pub http_port: Vec<u64>,
-	pub internal_ports: Option<Vec<u64>>,
-	pub routes: Option<Vec<Routes>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct StaticSites {
-	// Required, ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
-	pub name: String,
-	pub git: Option<Git>,
-	pub github: Option<GitProviders>,
-	pub gitlab: Option<GitProviders>,
-	pub image: Option<Image>,
-	pub dockerfile_path: Option<String>,
-	pub build_command: Option<String>,
-	pub run_command: Option<String>,
-	pub source_dir: Option<String>,
-	pub envs: Option<Vec<Envs>>,
-	pub environment_slug: Option<String>,
-	pub index_document: Option<String>,
-	pub error_document: Option<String>,
-	pub catchall_document: Option<String>,
-	pub output_dir: Option<String>,
-	pub cors: Option<Cors>,
-	pub routes: Option<Vec<Routes>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Jobs {
-	// Required, ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
-	pub name: String,
-	pub git: Option<Git>,
-	pub github: Option<GitProviders>,
-	pub gitlab: Option<GitProviders>,
-	pub image: Option<Image>,
-	pub dockerfile_path: Option<String>,
-	pub build_command: Option<String>,
-	pub run_command: Option<String>,
-	pub source_dir: Option<String>,
-	pub envs: Option<Vec<Envs>>,
-	pub environment_slug: Option<String>,
-	pub instance_count: Option<u64>,
-	pub instance_size_slug: Option<String>,
-	pub kind: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Workers {
-	// Required, ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
-	pub name: String,
-	pub git: Option<Git>,
-	pub github: Option<GitProviders>,
-	pub gitlab: Option<GitProviders>,
-	pub image: Option<Image>,
-	pub dockerfile_path: Option<String>,
-	pub build_command: Option<String>,
-	pub run_command: Option<String>,
-	pub source_dir: Option<String>,
-	pub envs: Option<Vec<Envs>>,
-	pub environment_slug: Option<String>,
-	pub instance_count: Option<u64>,
-	pub instance_size_slug: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Databases {
-	pub cluster_name: Option<String>,
-	// Required, ^[a-z][a-z0-9-]{0,30}[a-z0-9]$
-	pub name: String,
-	pub db_name: Option<String>,
-	pub db_user: Option<String>,
-	pub engine: Option<String>,
-	pub production: Option<bool>,
-	pub version: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Git {
-	pub branch: Option<String>,
-	pub repo_clone_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct GitProviders {
-	pub branch: Option<String>,
-	pub deploy_on_push: Option<bool>,
-	// example: digitalocean/sample-golang
-	pub repo: Option<String>,
+	pub http_port: u64,
+	pub routes: Vec<Routes>
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Image {
-	pub registry: Option<String>,
-	pub registry_type: Option<String>,
-	pub repository: Option<String>,
-	pub tag: Option<String>,
+	pub registry: String,
+	pub registry_type: String,
+	pub repository: String,
+	pub tag: String
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -215,23 +113,24 @@ pub struct AllowOrigins {
 // Reponse body
 #[derive(Debug, Deserialize, Serialize)]
 pub struct App {
-	pub active_deployment: Option<ActiveDeployment>,
-	pub created_at: String,
-	pub default_ingress: String,
-	pub domains: Option<AppDomains>,
 	pub id: String,
+	pub owner_uuid: String,
+	pub spec: AppSpec,
+	pub last_deployment_active_at: String,
+	pub created_at: String,
+	pub updated_at: String,
+	pub last_deployment_created_at: String,
+	pub region: GeographicInformation,
+	pub tier_slug: String,
+	pub active_deployment: Option<ActiveDeployment>,
+	pub default_ingress: Option<String>,
+	pub domains: Option<AppDomains>,
 	pub in_progress_deployment: Option<DeploymentProgress>,
 	// Not sure about removing the option
-	pub last_deployment_created_at: Option<String>,
 	// Add field pub last_deployment_updated_at: Option<String>
-	pub live_domain: String,
-	pub live_url: String,
-	pub live_url_base: String,
-	pub owner_uuid: String,
-	pub region: GeographicInformation,
-	pub spec: AppSpec,
-	pub tier_slug: String,
-	pub updated_at: String,
+	pub live_domain: Option<String>,
+	pub live_url: Option<String>,
+	pub live_url_base: Option<String>
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -246,7 +145,6 @@ pub struct ActiveDeployment {
 	pub progress: Option<AppsDeploymentProgress>,
 	pub services: Option<Vec<ComponentList>>,
 	pub spec: AppSpec,
-	pub static_sites: Option<Vec<StaticSites>>,
 	pub tier_slug: String,
 	pub updated_at: String,
 	pub workers: Option<Vec<ComponentList>>,
@@ -271,7 +169,6 @@ pub struct DeploymentProgress {
 	pub progress: Option<AppsDeploymentProgress>,
 	pub services: Option<Vec<ComponentList>>,
 	pub spec: Option<AppSpec>,
-	pub static_sites: Option<Vec<StaticSites>>,
 	pub tier_slug: Option<String>,
 	pub updated_at: Option<String>,
 	pub workers: Option<Vec<ComponentList>>,
@@ -279,14 +176,14 @@ pub struct DeploymentProgress {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GeographicInformation {
+	pub slug: String,
+	pub label: String,
+	pub flag: String,
 	pub continent: String,
 	pub data_centers: Vec<String>,
 	pub default: Option<bool>,
 	pub disabled: Option<bool>,
-	pub flag: String,
-	pub label: String,
-	pub reason: Option<String>,
-	pub slug: String,
+	pub reason: Option<String>
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -305,6 +202,11 @@ pub struct AppsDeploymentProgress {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Auth {
+	pub auths: Regsitry,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Regsitry {
 	#[serde(rename = "registry.digitalocean.com")]
 	pub registry: AuthToken,
 }

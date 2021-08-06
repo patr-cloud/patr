@@ -1,18 +1,7 @@
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{
-	error,
-	models::deployment::cloud_providers::digital_ocean::{
-		App,
-		AppConfig,
-		AppSpec,
-		Domains,
-		Image,
-		Services,
-	},
-	utils::{settings::Settings, Error},
-};
+use crate::{error, models::deployment::cloud_providers::digital_ocean::{App, AppConfig, AppSpec, Domains, Image, Routes, Services}, utils::{settings::Settings, Error}};
 
 pub async fn create_digital_ocean_application(
 	settings: &Settings,
@@ -35,51 +24,38 @@ pub async fn create_digital_ocean_application(
 							"{}.vicara.tech",
 							hex::encode(deployment_id)
 						),
-						r#type: "DEFAULT".to_string(),
-						wildcard: false,
-						zone: "vicara.tech".to_string(),
+						r#type: "PRIMARY".to_string(),
+						wildcard: false
 					}],
-					services: Some(vec![Services {
+					services: vec![Services {
 						name: "default-service".to_string(),
-						git: None,
-						github: None,
-						gitlab: None,
 						image: Image {
-							registry: None,
-							registry_type: Some("DOCR".to_string()),
-							repository: Some(hex::encode(deployment_id)),
-							tag: Some(tag.to_string()),
+							registry: "".to_string(),
+							registry_type: "DOCR".to_string(),
+							repository: hex::encode(deployment_id),
+							tag: tag.to_string(),
 						},
-						dockerfile_path: None,
-						build_command: None,
-						run_command: None,
-						source_dir: None,
-						envs: None,
-						environment_slug: None,
 						instance_count: 1,
 						instance_size_slug: "basic-xs".to_string(),
-						cors: None,
-						health_check: None,
-						http_port: vec![80],
-						internal_ports: None,
-						routes: None,
-					}]),
-					static_sites: None,
-					jobs: None,
-					workers: None,
-					databases: None,
+						http_port: 80,
+						routes: vec![Routes{
+							path: "/".to_string()
+						}]
+					}]
 				}
-			},
+			}
 		})
 		.send()
-		.await?
-		.json::<App>()
 		.await?;
 
-	if deploy_app.id.is_empty() {
-		Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
+	let deploy_app = deploy_app.text().await?;
+
+	println!("{:?}", deploy_app);
+
+	// if deploy_app.id.is_empty() {
+	// 	Error::as_result()
+	// 		.status(500)
+	// 		.body(error!(SERVER_ERROR).to_string())?;
+	// }
 	Ok(())
 }
