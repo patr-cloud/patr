@@ -1,8 +1,9 @@
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{error, models::deployment::cloud_providers::digital_ocean::{App, AppConfig, AppSpec, Domains, Image, Routes, Services}, utils::{settings::Settings, Error}};
+use crate::{error, models::deployment::cloud_providers::digital_ocean::{AppConfig, AppHolder, AppSpec, Domains, Image, Routes, Services}, utils::{settings::Settings, Error}};
 
+// create a new digital ocean application
 pub async fn create_digital_ocean_application(
 	settings: &Settings,
 	deployment_id: &[u8],
@@ -18,23 +19,23 @@ pub async fn create_digital_ocean_application(
 					region: "blr".to_string(),
 					domains: vec![Domains {
 						// [ 4 .. 253 ] characters
-						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-						// }\.?$ The hostname for the domain
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}\.?$ 
+						// The hostname for the domain
 						domain: format!(
 							"{}.vicara.tech",
 							hex::encode(deployment_id)
 						),
-						r#type: "PRIMARY".to_string(),
-						wildcard: false
+						// for now this has been set to PRIMARY
+						r#type: "PRIMARY".to_string()
 					}],
 					services: vec![Services {
 						name: "default-service".to_string(),
 						image: Image {
-							registry: "".to_string(),
 							registry_type: "DOCR".to_string(),
 							repository: hex::encode(deployment_id),
-							tag: tag.to_string(),
+							tag: tag.to_string()
 						},
+						// for now instance count is set to 1
 						instance_count: 1,
 						instance_size_slug: "basic-xs".to_string(),
 						http_port: 80,
@@ -46,16 +47,18 @@ pub async fn create_digital_ocean_application(
 			}
 		})
 		.send()
+		.await?
+		.json::<AppHolder>()
 		.await?;
 
-	let deploy_app = deploy_app.text().await?;
+	if deploy_app.app.id.is_empty() {
+		Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
-	println!("{:?}", deploy_app);
+	// TODO: update the deployment table with deployment id from digital ocean
+	// db::update_deployment_table_with_live_deployment_id(context).await?;
 
-	// if deploy_app.id.is_empty() {
-	// 	Error::as_result()
-	// 		.status(500)
-	// 		.body(error!(SERVER_ERROR).to_string())?;
-	// }
 	Ok(())
 }

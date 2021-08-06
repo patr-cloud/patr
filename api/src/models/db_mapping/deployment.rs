@@ -57,6 +57,7 @@ pub struct Deployment {
 	pub image_name: Option<String>,
 	pub image_tag: String,
 	pub deployed_image: Option<String>,
+	pub deployment_id: Option<String>
 }
 
 impl Deployment {

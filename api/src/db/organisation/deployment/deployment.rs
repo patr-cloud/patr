@@ -14,6 +14,7 @@ pub async fn initialize_deployment_pre(
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			deployed_image TEXT,
+			deployment_id TEXT,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.vicara.tech' AND
@@ -69,23 +70,6 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE deployment_runner(
-			id BYTEA CONSTRAINT deployment_runner_pk PRIMARY KEY,
-			last_updated BIGINT NOT NULL
-				CONSTRAINT deployment_runner_chk_last_updated_unsigned
-					CHECK(last_updated >= 0),
-			/* TODO add region here later */
-			container_id BYTEA
-				CONSTRAINT deployment_runner_uq_container_id UNIQUE
-			/* TODO add score here later */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// TODO this doesn't work as of now. Need to figure out GiST
 	// query!(
 	// 	r#"
@@ -99,71 +83,6 @@ pub async fn initialize_deployment_pre(
 	// .execute(&mut *connection)
 	// .await?;
 
-	query!(
-		r#"
-		CREATE TABLE deployment_application_server_type(
-			type TEXT
-				CONSTRAINT deployment_application_server_type_pk PRIMARY KEY,
-			memory INT NOT NULL,
-			cpu SMALLINT NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_application_server(
-			server_ip INET
-				CONSTRAINT deployment_application_server_pk PRIMARY KEY,
-			/* TODO add region here later */
-			server_type TEXT NOT NULL
-				CONSTRAINT deployment_application_server_fk_server_type
-					REFERENCES deployment_application_server_type(type)
-			/* TODO come up with a convention for ↑ this name */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_RUNNER_STATUS AS ENUM(
-			'alive',
-			'starting',
-			'shutting down',
-			'dead'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_runner_deployment(
-			deployment_id BYTEA
-				CONSTRAINT deployment_runner_deployment_pk PRIMARY KEY
-				CONSTRAINT deployment_runner_deployment_fk_deployment_id
-					REFERENCES deployment(id),
-			runner_id BYTEA NOT NULL
-				CONSTRAINT deployment_runner_deployment_fk_runner_id
-					REFERENCES deployment_runner(id),
-			last_updated BIGINT NOT NULL
-				CONSTRAINT deployment_runner_chk_last_updated_unsigned
-					CHECK(last_updated >= 0),
-			current_server INET NOT NULL
-				CONSTRAINT deployment_runner_deployment_fk_current_server
-					REFERENCES deployment_application_server(server_ip),
-			status DEPLOYMENT_RUNNER_STATUS NOT NULL DEFAULT 'alive'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// query!(
 	// 	r#"
 	// 	CREATE INDEX
@@ -175,29 +94,6 @@ pub async fn initialize_deployment_pre(
 	// )
 	// .execute(&mut *connection)
 	// .await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_running_stats(
-			deployment_id BYTEA
-				CONSTRAINT deployment_running_stats_fk_deployment_id
-					REFERENCES deployment(id),
-			cpu_usage DOUBLE PRECISION NOT NULL
-				CONSTRAINT deployment_running_stats_chk_cpu_usage_unsigned
-					CHECK(cpu_usage >= 0),
-			memory_usage DOUBLE PRECISION NOT NULL
-				CONSTRAINT deployment_running_stats_chk_memory_usage_unsigned
-					CHECK(memory_usage >= 0),
-			timestamp BIGINT NOT NULL
-				CONSTRAINT deployment_running_stats_chk_timestamp_unsigned
-					CHECK(timestamp >= 0),
-			CONSTRAINT deployment_running_stats_pk
-				PRIMARY KEY(deployment_id, timestamp)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	// query!(
 	// 	r#"
@@ -242,7 +138,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.vicara.tech', $3, NULL, $4, NULL);
+			($1, $2, 'registry.vicara.tech', $3, NULL, $4, NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -267,7 +163,7 @@ pub async fn create_deployment_with_external_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, NULL);
+			($1, $2, $3, NULL, $4, $5, NULL, NULL);
 		"#,
 		deployment_id,
 		name,

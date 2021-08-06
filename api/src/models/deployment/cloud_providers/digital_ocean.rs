@@ -31,15 +31,14 @@ pub struct AppSpec {
 	// Default: nearest available
 	pub region: String,
 	pub domains: Vec<Domains>,
-	pub services: Vec<Services>,
+	pub services: Vec<Services>
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Domains {
 	pub domain: String,
 	// Default unspecified
-	pub r#type: String,
-	pub wildcard: bool
+	pub r#type: String
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -55,7 +54,6 @@ pub struct Services {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Image {
-	pub registry: String,
 	pub registry_type: String,
 	pub repository: String,
 	pub tag: String
@@ -111,6 +109,11 @@ pub struct AllowOrigins {
 }
 
 // Reponse body
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppHolder {
+	pub app: App
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct App {
 	pub id: String,
