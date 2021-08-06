@@ -127,7 +127,7 @@ async fn push_and_deploy_via_digital_ocean(
 				"[TAG STATUS]: success [PUSH STATUS]: success".to_string()
 			);
 		} else if digital_ocean_app_status && image_push.success() {
-			// TODO: add the function to create a new deployment
+			// the function to create a new deployment
 			create_digital_ocean_deployment(&config, deployment_id).await?;
 		}
 	}
