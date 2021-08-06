@@ -115,7 +115,10 @@ async fn push_and_deploy_via_digital_ocean(
 			.wait()?;
 
 		// if the app exists then only create a deployment
-		if !digital_ocean_app_exists() && image_push.success() {
+		let digital_ocean_app_status =
+			digital_ocean_app_exists(deployment_id, &config).await?;
+
+		if !digital_ocean_app_status && image_push.success() {
 			// if the app doesn't exists then create a new app
 			create_digital_ocean_application(&config, deployment_id, tag)
 				.await?;
@@ -123,8 +126,9 @@ async fn push_and_deploy_via_digital_ocean(
 			return Ok(
 				"[TAG STATUS]: success [PUSH STATUS]: success".to_string()
 			);
-		} else {
+		} else if digital_ocean_app_status && image_push.success() {
 			// TODO: add the function to create a new deployment
+			create_digital_ocean_deployment(&config, deployment_id).await?;
 		}
 	}
 
@@ -208,9 +212,37 @@ async fn pull_image_from_registry(
 	Ok(())
 }
 
-pub fn digital_ocean_app_exists() -> bool {
+pub async fn digital_ocean_app_exists(
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<bool, Error> {
 	// TODO: add the logic to check if the app exists or not
-	false
+	let app = service::get_app().clone();
+	let deployment = db::get_deployment_by_id(
+		app.database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?;
+
+	if let Some(deployment_info) = deployment {
+		if let Some(deployment_id) = deployment_info.deployment_id {
+			let deployment_status = Client::new()
+				.get(format!(
+					"https://api.digitalocean.com/v2/apps/{}",
+					deployment_id
+				))
+				.bearer_auth(&config.digital_ocean_api_key)
+				.send()
+				.await?
+				.status();
+
+			if deployment_status.is_success() {
+				return Ok(true);
+			}
+		}
+	}
+
+	Ok(false)
 }
 
 async fn get_digital_ocean_registry_auth_token(

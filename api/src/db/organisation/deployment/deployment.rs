@@ -14,7 +14,8 @@ pub async fn initialize_deployment_pre(
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			deployed_image TEXT,
-			deployment_id TEXT,
+			deployment_id TEXT
+				CONSTRAINT deployment_uq_deployment_id UNIQUE,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.vicara.tech' AND
@@ -305,6 +306,28 @@ pub async fn update_deployment_deployed_image(
 			id = $2;
 		"#,
 		deployed_image,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_deployment_table_with_live_deployment_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	app_deployment_id: &str,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			deployment_id = $1
+		WHERE
+			id = $2
+		"#,
+		app_deployment_id,
 		deployment_id
 	)
 	.execute(&mut *connection)
