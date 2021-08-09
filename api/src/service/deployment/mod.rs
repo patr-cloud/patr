@@ -1,6 +1,6 @@
-mod digital_ocean;
+mod digitalocean;
 
-pub use digital_ocean::*;
+pub use digitalocean::*;
 use eve_rs::AsError;
 use uuid::Uuid;
 
@@ -41,10 +41,11 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 ) -> Result<Uuid, Error> {
-	// As of now, only our custom registry and docker hub is allowed
+	// As of now, only our custom registry is allowed
+	// Docker hub will also be allowed in the near future
 	match registry {
-		"registry.vicara.tech" | "registry.hub.docker.com" => (),
-		_ => {
+		"registry.vicara.tech" => (),
+		"registry.hub.docker.com" | _ => {
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
