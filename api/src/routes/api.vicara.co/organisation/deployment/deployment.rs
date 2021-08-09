@@ -508,13 +508,20 @@ async fn delete_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	// stop and delete the container running the image, if it exists
+	let config = context.get_state().config.clone();
+	service::delete_deployment_from_digital_ocean(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
 	db::delete_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?;
-
-	// TODO stop and delete the container running the image, if it exists
 
 	context.json(json!({
 		request_keys::SUCCESS: true

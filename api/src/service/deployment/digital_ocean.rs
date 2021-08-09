@@ -47,6 +47,7 @@ use crate::{
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},
+	Database,
 };
 
 pub async fn deploy_container_on_digitalocean(
@@ -152,6 +153,35 @@ pub async fn deploy_container_on_digitalocean(
 	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
 
 	Ok(())
+}
+
+pub async fn delete_deployment_from_digital_ocean(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let app_id = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)?
+		.digital_ocean_app_id;
+	let app_id = if let Some(app_id) = app_id {
+		app_id
+	} else {
+		return Ok(());
+	};
+
+	let response = Client::new()
+		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if response.is_success() {
+		Ok(())
+	} else {
+		Err(Error::empty())
+	}
 }
 
 async fn tag_docker_image(

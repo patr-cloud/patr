@@ -8,7 +8,7 @@ use crate::{error, utils::Error};
 
 pub const DATABASE_VERSION: Version = Version {
 	major: 0,
-	minor: 0,
+	minor: 3,
 	patch: 0,
 	pre: Prerelease::EMPTY,
 	build: BuildMetadata::EMPTY,
@@ -43,7 +43,8 @@ impl FromStr for ResourceOwnerType {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"personal" => Ok(Self::Personal),
-			"organisation" => Ok(Self::Organisation),
+			// Disabled for the demo
+			//"organisation" => Ok(Self::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
