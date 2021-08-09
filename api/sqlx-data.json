@@ -1040,6 +1040,19 @@
       "nullable": []
     }
   },
+  "3ea0f388cd41e76f3349d7261b9f084f31701b64ad3e3229ee4865709100d72c": {
+    "query": "UPDATE deployment SET digital_ocean_app_id = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "3fbd9b47a0e71cafd415cdedcede741d2f2ad4ef76b7feb8ecf226cf69ec8c05": {
     "query": "SELECT domain.name as \"name!\", organisation_domain.id as \"id!\", organisation_domain.domain_type as \"domain_type!: _\", organisation_domain.is_verified as \"is_verified!\" FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id WHERE is_verified = FALSE;",
     "describe": {
@@ -1195,7 +1208,7 @@
         },
         {
           "ordinal": 7,
-          "name": "deployment_id",
+          "name": "digital_ocean_app_id",
           "type_info": "Text"
         }
       ],
@@ -3153,7 +3166,7 @@
         },
         {
           "ordinal": 7,
-          "name": "deployment_id",
+          "name": "digital_ocean_app_id",
           "type_info": "Text"
         }
       ],
@@ -3855,7 +3868,7 @@
         },
         {
           "ordinal": 7,
-          "name": "deployment_id",
+          "name": "digital_ocean_app_id",
           "type_info": "Text"
         }
       ],
@@ -4444,19 +4457,6 @@
           "Varchar",
           "Text",
           "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "ebf379a2558e9faa67044d9be67206cc5a6377b55a58646fa5b8b6df6cfc54f4": {
-    "query": "UPDATE deployment SET deployment_id = $1 WHERE id = $2",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
         ]
       },
       "nullable": []

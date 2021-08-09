@@ -1,28 +1,33 @@
-use std::{ops::DerefMut, process::Stdio, str};
+use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord, CreateDnsRecordParams, DnsContent, ListDnsRecords,
+			ListDnsRecordsParams, UpdateDnsRecord, UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment, HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use futures::StreamExt;
 use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
-use tokio::process::Command;
+use tokio::{process::Command, time};
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		deployment::cloud_providers::digital_ocean::{
-			AppConfig,
-			AppHolder,
-			AppSpec,
-			Auth,
-			Domains,
-			Image,
-			Routes,
+			AppConfig, AppHolder, AppSpec, Auth, Domains, Image, Routes,
 			Services,
 		},
-		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
+		rbac, RegistryToken, RegistryTokenAccess,
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},
@@ -34,12 +39,15 @@ pub async fn deploy_container_on_digitalocean(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let client = Client::new();
+	let deployment_id_string = hex::encode(&deployment_id);
+
 	pull_image_from_registry(&image_name, &tag, &config).await?;
 
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/project-apex/{}",
-		hex::encode(&deployment_id)
+		deployment_id_string
 	);
 
 	// rename the docker image with the digital ocean registry url
@@ -47,7 +55,8 @@ pub async fn deploy_container_on_digitalocean(
 
 	// Get login details from digital ocean registry and decode from base 64 to
 	// binary
-	let auth_token = base64::decode(get_registry_auth_token(&config).await?)?;
+	let auth_token =
+		base64::decode(get_registry_auth_token(&config, &client).await?)?;
 
 	// Convert auth token from binary to utf8
 	let auth_token = str::from_utf8(&auth_token)?;
@@ -83,7 +92,7 @@ pub async fn deploy_container_on_digitalocean(
 		.arg("push")
 		.arg(format!(
 			"registry.digitalocean.com/project-apex/{}",
-			hex::encode(&deployment_id)
+			deployment_id_string
 		))
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
@@ -98,18 +107,22 @@ pub async fn deploy_container_on_digitalocean(
 	}
 
 	// if the app exists then only create a deployment
-	let app_exists = app_exists(&deployment_id, &config).await?;
+	let app_exists = app_exists(&deployment_id, &config, &client).await?;
 
 	if let Some(app_id) = app_exists {
 		// the function to create a new deployment
-		redeploy_application(&app_id, &config).await?;
+		redeploy_application(&app_id, &config, &client).await?;
 
 		Ok(())
 	} else {
 		// if the app doesn't exists then create a new app
-		create_app(&deployment_id, &tag, &config).await?;
+		let app_id = create_app(&deployment_id, &tag, &config, &client).await?;
 
-		// TODO update DNS
+		// wait for the app to be completed to be deployed
+		let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
+
+		// update DNS
+		update_dns(&deployment_id_string, &default_ingress, &config).await?;
 
 		Ok(())
 	}
@@ -189,6 +202,7 @@ async fn pull_image_from_registry(
 pub async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
+	client: &Client,
 ) -> Result<Option<String>, Error> {
 	let app = service::get_app().clone();
 	let deployment = db::get_deployment_by_id(
@@ -205,7 +219,7 @@ pub async fn app_exists(
 		return Ok(None);
 	};
 
-	let deployment_status = Client::new()
+	let deployment_status = client
 		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 		.bearer_auth(&config.digital_ocean_api_key)
 		.send()
@@ -221,8 +235,11 @@ pub async fn app_exists(
 	}
 }
 
-async fn get_registry_auth_token(config: &Settings) -> Result<String, Error> {
-	let registry = Client::new()
+async fn get_registry_auth_token(
+	config: &Settings,
+	client: &Client,
+) -> Result<String, Error> {
+	let registry = client
 		.get("https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true?expiry_seconds=86400")
 		.bearer_auth(&config.digital_ocean_api_key)
 		.send()
@@ -238,8 +255,9 @@ pub async fn create_app(
 	deployment_id: &[u8],
 	tag: &str,
 	settings: &Settings,
-) -> Result<(), Error> {
-	let deploy_app = Client::new()
+	client: &Client,
+) -> Result<String, Error> {
+	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.json(&AppConfig {
@@ -296,16 +314,17 @@ pub async fn create_app(
 	)
 	.await?;
 
-	Ok(())
+	Ok(deploy_app.app.id)
 }
 
 pub async fn redeploy_application(
 	app_id: &str,
 	config: &Settings,
+	client: &Client,
 ) -> Result<(), Error> {
 	// for now i am not deserializing the response of the request
 	// Can be added later if required
-	let deployment_info = Client::new()
+	let deployment_info = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
 			app_id
@@ -321,5 +340,127 @@ pub async fn redeploy_application(
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
 
+	Ok(())
+}
+
+async fn wait_for_deploy(
+	app_id: &str,
+	config: &Settings,
+	client: &Client,
+) -> String {
+	loop {
+		if let Some(ingress) = get_default_ingress(app_id, config, client).await
+		{
+			break ingress;
+		}
+		time::sleep(Duration::from_millis(1000)).await;
+	}
+}
+
+async fn get_default_ingress(
+	app_id: &str,
+	config: &Settings,
+	client: &Client,
+) -> Option<String> {
+	client
+		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await
+		.ok()?
+		.json::<AppHolder>()
+		.await
+		.ok()?
+		.app
+		.default_ingress
+}
+
+async fn update_dns(
+	sub_domain: &str,
+	default_ingress: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let full_domain = format!("{}.vicara.tech", sub_domain);
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("vicara.tech")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+
+	let expected_dns_record = DnsContent::CNAME {
+		content: String::from(default_ingress),
+	};
+
+	let response = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(full_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?;
+	let dns_record = response.result.into_iter().find(|record| {
+		if let DnsContent::CNAME { .. } = record.content {
+			record.name == full_domain
+		} else {
+			false
+		}
+	});
+
+	if let Some(record) = dns_record {
+		if let DnsContent::CNAME { content } = record.content {
+			if content != default_ingress {
+				client
+					.request(&UpdateDnsRecord {
+						zone_identifier,
+						identifier: record.id.as_str(),
+						params: UpdateDnsRecordParams {
+							content: expected_dns_record,
+							name: &full_domain,
+							proxied: Some(true),
+							ttl: Some(1),
+						},
+					})
+					.await?;
+			}
+		}
+	} else {
+		// Create
+		client
+			.request(&CreateDnsRecord {
+				zone_identifier,
+				params: CreateDnsRecordParams {
+					content: expected_dns_record,
+					name: sub_domain,
+					ttl: Some(1),
+					priority: None,
+					proxied: Some(true),
+				},
+			})
+			.await?;
+	}
 	Ok(())
 }
