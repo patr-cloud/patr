@@ -14,8 +14,8 @@ pub async fn initialize_deployment_pre(
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			deployed_image TEXT,
-			deployment_id TEXT
-				CONSTRAINT deployment_uq_deployment_id UNIQUE,
+			digital_ocean_app_id TEXT
+				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.vicara.tech' AND
