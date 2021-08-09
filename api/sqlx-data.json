@@ -602,16 +602,6 @@
       "nullable": []
     }
   },
-  "23054bd23d0cb70b1dbbe18a7a8726fd5d788f3f830abf25b44a491b9e3e591f": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, deployed_image TEXT, deployment_id TEXT, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.vicara.tech' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.vicara.tech' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "239bbb35218f13adc811f8f262b5e8f75233129cc332d2e53b6568706d8e88f8": {
     "query": "INSERT INTO resource VALUES ($1, $2, $3, $4, $5);",
     "describe": {
@@ -3664,6 +3654,16 @@
       ]
     }
   },
+  "c638a1965d1b817efc90e8fc1cd3ca66a19dd4fd9391ba823549c3166d4de6db": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, deployed_image TEXT, deployment_id TEXT CONSTRAINT deployment_uq_deployment_id UNIQUE, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.vicara.tech' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.vicara.tech' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
     "query": "SELECT \"user\".*, domain.name FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id INNER JOIN resource ON organisation_domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN \"user\" ON organisation.super_admin_id = \"user\".id WHERE organisation_domain.id = $1;",
     "describe": {
@@ -4444,6 +4444,19 @@
           "Varchar",
           "Text",
           "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "ebf379a2558e9faa67044d9be67206cc5a6377b55a58646fa5b8b6df6cfc54f4": {
+    "query": "UPDATE deployment SET deployment_id = $1 WHERE id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
         ]
       },
       "nullable": []
