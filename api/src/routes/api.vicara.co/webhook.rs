@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -133,14 +134,25 @@ pub async fn notification_handler(
 			let deployment_image_name = deployment
 				.get_full_image(context.get_database_connection())
 				.await?;
+			let tag = tag.clone();
+			let config = context.get_state().config.clone();
 
-			service::push_to_digital_ocean_registry(
-				&deployment_image_name,
-				&tag,
-				deployment.id.to_vec(),
-				context.get_state().config.clone(),
-			)
-			.await?;
+			task::spawn(async move {
+				let result = service::deploy_container_on_digitalocean(
+					deployment_image_name,
+					tag,
+					deployment.id,
+					config,
+				)
+				.await;
+
+				if let Err(error) = result {
+					log::info!(
+						"Error with the deployment, {}",
+						error.get_error()
+					);
+				}
+			});
 		}
 	}
 

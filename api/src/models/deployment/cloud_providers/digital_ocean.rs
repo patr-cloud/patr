@@ -205,11 +205,11 @@ pub struct AppsDeploymentProgress {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Auth {
-	pub auths: Regsitry,
+	pub auths: Registry,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Regsitry {
+pub struct Registry {
 	#[serde(rename = "registry.digitalocean.com")]
 	pub registry: AuthToken,
 }

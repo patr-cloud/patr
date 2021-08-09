@@ -313,7 +313,7 @@ pub async fn update_deployment_deployed_image(
 	.map(|_| ())
 }
 
-pub async fn update_deployment_table_with_live_deployment_id(
+pub async fn update_digital_ocean_app_id_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	app_deployment_id: &str,
 	deployment_id: &[u8],
@@ -323,9 +323,9 @@ pub async fn update_deployment_table_with_live_deployment_id(
 		UPDATE
 			deployment
 		SET
-			deployment_id = $1
+			digital_ocean_app_id = $1
 		WHERE
-			id = $2
+			id = $2;
 		"#,
 		app_deployment_id,
 		deployment_id
