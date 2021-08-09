@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[path = "api.vicara.co/mod.rs"]
 mod api_vicara_co;
 #[path = "assets.vicara.co/mod.rs"]
