@@ -1,8 +1,29 @@
-use crate::{models::db_mapping::Deployment, query, query_as, Database};
+use crate::{
+	models::db_mapping::{Deployment, DeploymentStatus},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
+			'created', /* Created, but nothing pushed to it yet */
+			'pushed', /* Something is pushed, but the system has not deployed it yet */
+			'deploying', /* Something is pushed, and the system is currently deploying it */
+			'running', /* Deployment is running successfully */
+			'stopped', /* Deployment is stopped by the user */
+			'errored', /* Deployment is stopped because of too many errors */
+			'deleted' /* Deployment is deleted by the user */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TABLE deployment(
@@ -13,6 +34,7 @@ pub async fn initialize_deployment_pre(
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
+			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			deployed_image TEXT,
 			digital_ocean_app_id TEXT
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
@@ -139,7 +161,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.vicara.tech', $3, NULL, $4, NULL, NULL);
+			($1, $2, 'registry.vicara.tech', $3, NULL, $4, 'created', NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -164,7 +186,7 @@ pub async fn create_deployment_with_external_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, NULL, NULL);
+			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -187,7 +209,15 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.repository_id,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.deployed_image,
+			deployment.digital_ocean_app_id
 		FROM
 			deployment
 		INNER JOIN
@@ -230,7 +260,15 @@ pub async fn get_deployments_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.repository_id,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.deployed_image,
+			deployment.digital_ocean_app_id
 		FROM
 			deployment
 		INNER JOIN
@@ -257,7 +295,15 @@ pub async fn get_deployment_by_id(
 		Deployment,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digital_ocean_app_id
 		FROM
 			deployment
 		WHERE
@@ -328,6 +374,28 @@ pub async fn update_digital_ocean_app_id_for_deployment(
 			id = $2;
 		"#,
 		app_deployment_id,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_deployment_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	status: &DeploymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			status = $1
+		WHERE
+			id = $2;
+		"#,
+		status as _,
 		deployment_id
 	)
 	.execute(&mut *connection)

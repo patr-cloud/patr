@@ -3,15 +3,21 @@ use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 use cloudflare::{
 	endpoints::{
 		dns::{
-			CreateDnsRecord, CreateDnsRecordParams, DnsContent, ListDnsRecords,
-			ListDnsRecordsParams, UpdateDnsRecord, UpdateDnsRecordParams,
+			CreateDnsRecord,
+			CreateDnsRecordParams,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+			UpdateDnsRecord,
+			UpdateDnsRecordParams,
 		},
 		zone::{ListZones, ListZonesParams},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
 		auth::Credentials,
-		Environment, HttpApiClientConfig,
+		Environment,
+		HttpApiClientConfig,
 	},
 };
 use eve_rs::AsError;
@@ -21,13 +27,23 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{process::Command, time};
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
+		db_mapping::DeploymentStatus,
 		deployment::cloud_providers::digital_ocean::{
-			AppConfig, AppHolder, AppSpec, Auth, Domains, Image, Routes,
+			AppConfig,
+			AppHolder,
+			AppSpec,
+			Auth,
+			Domains,
+			Image,
+			Routes,
 			Services,
 		},
-		rbac, RegistryToken, RegistryTokenAccess,
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},
@@ -41,6 +57,9 @@ pub async fn deploy_container_on_digitalocean(
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
+
+	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
+		.await;
 
 	pull_image_from_registry(&image_name, &tag, &config).await?;
 
@@ -109,11 +128,13 @@ pub async fn deploy_container_on_digitalocean(
 	// if the app exists then only create a deployment
 	let app_exists = app_exists(&deployment_id, &config, &client).await?;
 
+	let _ =
+		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
+			.await;
+
 	if let Some(app_id) = app_exists {
 		// the function to create a new deployment
 		redeploy_application(&app_id, &config, &client).await?;
-
-		Ok(())
 	} else {
 		// if the app doesn't exists then create a new app
 		let app_id = create_app(&deployment_id, &tag, &config, &client).await?;
@@ -123,9 +144,14 @@ pub async fn deploy_container_on_digitalocean(
 
 		// update DNS
 		update_dns(&deployment_id_string, &default_ingress, &config).await?;
-
-		Ok(())
 	}
+
+	let _ =
+		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
+			.await;
+	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
+
+	Ok(())
 }
 
 async fn tag_docker_image(
@@ -393,7 +419,7 @@ async fn update_dns(
 	} else {
 		return Err(Error::empty());
 	};
-	
+
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
@@ -462,5 +488,46 @@ async fn update_dns(
 			})
 			.await?;
 	}
+	Ok(())
+}
+
+async fn delete_docker_image(
+	deployment_id_string: &str,
+	image_name: &str,
+	tag: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+
+	docker
+		.images()
+		.get(format!(
+			"registry.digitalocean.com/project-apex/{}:latest",
+			deployment_id_string
+		))
+		.delete()
+		.await?;
+
+	docker
+		.images()
+		.get(format!("{}:{}", image_name, tag))
+		.delete()
+		.await?;
+
+	Ok(())
+}
+
+async fn update_deployment_status(
+	deployment_id: &[u8],
+	status: &DeploymentStatus,
+) -> Result<(), Error> {
+	let app = service::get_app();
+
+	db::update_deployment_status(
+		app.database.acquire().await?.deref_mut(),
+		deployment_id,
+		status,
+	)
+	.await?;
+
 	Ok(())
 }
