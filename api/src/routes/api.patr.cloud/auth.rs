@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Map};
@@ -9,7 +11,7 @@ use crate::{
 	models::{
 		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
-		rbac::{self, permissions, GOD_USER_ID},
+		rbac::{self, permissions, OrgPermissions, GOD_USER_ID},
 		RegistryToken,
 		RegistryTokenAccess,
 	},
@@ -1400,16 +1402,13 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id).status(500).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::SERVER_ERROR,
-				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let default_roles = OrgPermissions {
+		is_super_admin: false,
+		resource_types: HashMap::new(),
+		resources: HashMap::new(),
+	};
+	let required_role_for_user =
+		user_roles.get(&org_id).unwrap_or(&default_roles);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
