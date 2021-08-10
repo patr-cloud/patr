@@ -66,7 +66,7 @@ pub async fn deploy_container_on_digitalocean(
 
 	// new name for the docker image
 	let new_repo_name = format!(
-		"registry.digitalocean.com/project-apex/{}",
+		"registry.digitalocean.com/patr-cloud/{}",
 		deployment_id_string
 	);
 
@@ -111,7 +111,7 @@ pub async fn deploy_container_on_digitalocean(
 	let push_status = Command::new("docker")
 		.arg("push")
 		.arg(format!(
-			"registry.digitalocean.com/project-apex/{}",
+			"registry.digitalocean.com/patr-cloud/{}",
 			deployment_id_string
 		))
 		.stdout(Stdio::piped())
@@ -531,7 +531,7 @@ async fn delete_docker_image(
 	docker
 		.images()
 		.get(format!(
-			"registry.digitalocean.com/project-apex/{}:latest",
+			"registry.digitalocean.com/patr-cloud/{}:latest",
 			deployment_id_string
 		))
 		.delete()
