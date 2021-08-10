@@ -156,96 +156,6 @@
       "nullable": []
     }
   },
-  "1313e9b7345e378eccff29bad222a6533ccf50a9d69d08e2cd673bd3a8651343": {
-    "query": "SELECT * FROM \"user\" ORDER BY created DESC LIMIT 1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "dob",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "bio",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "location",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "created",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 9,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "backup_email_domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 11,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "140b335ed19341657d84d58a614bafcbed062124f5575c2dc6249adbbd12daea": {
     "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
     "describe": {
@@ -1209,6 +1119,96 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "3b6eab880413532e0812fc30a20ddb61b037543c908ea084b94c6da667bfeba9": {
+    "query": "SELECT * FROM \"user\" ORDER BY created LIMIT 1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "3be319c2ba802f3b5c8e3f3b262951a61f49aae4599de3f2a86d0ec4b3f86bf6": {
