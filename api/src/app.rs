@@ -218,7 +218,5 @@ async fn add_cors_headers(
 		return Ok(context);
 	}
 
-	let result = next(context).await;
-
-	result
+	next(context).await
 }
