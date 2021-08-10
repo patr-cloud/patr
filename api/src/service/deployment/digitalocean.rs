@@ -31,7 +31,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::DeploymentStatus,
-		deployment::cloud_providers::digital_ocean::{
+		deployment::cloud_providers::digitalocean::{
 			AppConfig,
 			AppHolder,
 			AppSpec,
