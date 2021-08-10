@@ -66,7 +66,7 @@ impl Deployment {
 		&self,
 		connection: &mut <Database as sqlx::Database>::Connection,
 	) -> Result<String, Error> {
-		if self.registry == "registry.vicara.tech" {
+		if self.registry == "registry.patr.cloud" {
 			let docker_repository = db::get_docker_repository_by_id(
 				&mut *connection,
 				self.repository_id
@@ -88,7 +88,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				"registry.vicara.tech",
+				"registry.patr.cloud",
 				organisation.name,
 				docker_repository.name
 			))

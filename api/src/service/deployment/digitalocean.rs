@@ -326,7 +326,7 @@ pub async fn create_app(
 						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
 						// }\.?$ The hostname for the domain
 						domain: format!(
-							"{}.vicara.tech",
+							"{}.patr.cloud",
 							hex::encode(deployment_id)
 						),
 						// for now this has been set to PRIMARY
@@ -436,7 +436,7 @@ async fn update_dns(
 	default_ingress: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let full_domain = format!("{}.vicara.tech", sub_domain);
+	let full_domain = format!("{}.patr.cloud", sub_domain);
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -453,7 +453,7 @@ async fn update_dns(
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
-				name: Some(String::from("vicara.tech")),
+				name: Some(String::from("patr.cloud")),
 				..Default::default()
 			},
 		})

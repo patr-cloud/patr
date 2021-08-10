@@ -256,6 +256,21 @@
       "nullable": []
     }
   },
+  "155302b5a5470a22c1cf4bf9d09afc3a7a0be759dbcebbf80131742737be68a8": {
+    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "15754548332233512bc74364ad9ebb4ee076cfa1c8555b5c4740c12d2c85b4b0": {
     "query": "SELECT DISTINCT organisation.* FROM organisation LEFT JOIN organisation_user ON organisation.id = organisation_user.organisation_id WHERE organisation.super_admin_id = $1 OR organisation_user.user_id = $1;",
     "describe": {
@@ -361,6 +376,16 @@
   },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "1823d5e9a531af6335bd8319531dec5362092c41e21f861335981b5d4c8f806a": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digital_ocean_app_id TEXT CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -535,16 +560,6 @@
           "Bytea",
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "20ddb7c3c07e96e478a7b325e7df0992e4723b4f38c97602cbf73cc66dfdee08": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digital_ocean_app_id TEXT CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.vicara.tech' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.vicara.tech' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -836,6 +851,91 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "2970c3b15bae9d31fc63a1e65ac913255d333f6f3dc22f415a89b121f4e67eda": {
+    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.deployed_image, deployment.digital_ocean_app_id FROM deployment INNER JOIN resource ON deployment.id = resource.id LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( registry != 'registry.patr.cloud' AND image_name = $1 ) ) AND image_tag = $2 AND resource.owner_id = $3;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digital_ocean_app_id",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true
       ]
     }
   },
@@ -4431,106 +4531,6 @@
       ],
       "parameters": {
         "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true
-      ]
-    }
-  },
-  "f4e59f35767d564285e8519cb925d765560562407adb898f45f68ef23e34b976": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.vicara.tech', $3, NULL, $4, 'created', NULL, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "f51fad79dd053b3c3408e2b27ff6d9d5d7e3000edf7d19c820efadf7a6ccd136": {
-    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.deployed_image, deployment.digital_ocean_app_id FROM deployment INNER JOIN resource ON deployment.id = resource.id LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( registry = 'registry.vicara.tech' AND docker_registry_repository.name = $1 ) OR ( registry != 'registry.vicara.tech' AND image_name = $1 ) ) AND image_tag = $2 AND resource.owner_id = $3;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digital_ocean_app_id",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Text",
           "Bytea"
         ]
       },

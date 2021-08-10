@@ -208,7 +208,7 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
-		if deployment.registry == "registry.vicara.tech" {
+		if deployment.registry == "registry.patr.cloud" {
 			Some(json!({
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
@@ -385,7 +385,7 @@ async fn get_deployment_info(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	context.json(
-		if deployment.registry == "registry.vicara.tech" {
+		if deployment.registry == "registry.patr.cloud" {
 			json!({
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,

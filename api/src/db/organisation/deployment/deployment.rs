@@ -29,7 +29,7 @@ pub async fn initialize_deployment_pre(
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech',
+			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
 			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
@@ -40,13 +40,13 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
-					registry = 'registry.vicara.tech' AND
+					registry = 'registry.patr.cloud' AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
 				)
 				OR
 				(
-					registry != 'registry.vicara.tech' AND
+					registry != 'registry.patr.cloud' AND
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
@@ -161,7 +161,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.vicara.tech', $3, NULL, $4, 'created', NULL, NULL);
+			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -231,11 +231,11 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		WHERE
 			(
 				(
-					registry = 'registry.vicara.tech' AND
+					registry = 'registry.patr.cloud' AND
 					docker_registry_repository.name = $1
 				) OR
 				(
-					registry != 'registry.vicara.tech' AND
+					registry != 'registry.patr.cloud' AND
 					image_name = $1
 				)
 			) AND
