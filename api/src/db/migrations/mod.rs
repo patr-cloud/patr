@@ -25,15 +25,22 @@ pub async fn migrate_database(
 	let migrations = vec!["0.0.0"];
 	let db_version = from_version.to_string();
 
-	let mut migrating = false;
+	// Find out which index in `migrations` is the current version
+	let version = migrations.iter().position(|version| *version == db_version);
+	let version_index = if let Some(version) = version {
+		version
+	} else {
+		return Ok(());
+	};
 
-	for migration_version in migrations {
-		if migration_version == db_version {
-			migrating = true;
-		}
-		if !migrating {
-			continue;
-		}
+	// From the nth version onwards, execute all migrations
+	for migration_version in migrations.into_iter().skip(
+		if version_index > 0 {
+			version_index - 1
+		} else {
+			0
+		},
+	) {
 		#[allow(clippy::single_match)]
 		match migration_version {
 			"0.0.0" => (),
