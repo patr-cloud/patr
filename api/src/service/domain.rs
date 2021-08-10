@@ -181,7 +181,7 @@ pub async fn is_domain_verified(
 	let handle = task::spawn(bg);
 	let mut response = client
 		.query(
-			Name::from_utf8(format!("vicaraVerify.{}", domain.name)).unwrap(),
+			Name::from_utf8(format!("patrVerify.{}", domain.name)).unwrap(),
 			DNSClass::IN,
 			RecordType::CNAME,
 		)
@@ -189,7 +189,7 @@ pub async fn is_domain_verified(
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!(
-				"{}.vicara.co",
+				"{}.patr.cloud",
 				domain_id.encode_hex::<String>()
 			))
 			.unwrap(),

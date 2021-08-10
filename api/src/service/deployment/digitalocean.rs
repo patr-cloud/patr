@@ -319,7 +319,10 @@ pub async fn create_app(
 		.json(&AppConfig {
 			spec: {
 				AppSpec {
-					name: hex::encode(&deployment_id),
+					name: format!(
+						"deployment-{}",
+						get_current_time().as_millis()
+					),
 					region: "blr".to_string(),
 					domains: vec![Domains {
 						// [ 4 .. 253 ] characters
@@ -407,7 +410,7 @@ async fn wait_for_deploy(
 	loop {
 		if let Some(ingress) = get_default_ingress(app_id, config, client).await
 		{
-			break ingress;
+			break ingress.replace("https://", "").replace("/", "");
 		}
 		time::sleep(Duration::from_millis(1000)).await;
 	}
