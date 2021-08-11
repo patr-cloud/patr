@@ -2,7 +2,6 @@ use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use sqlx::types::ipnetwork::IpNetwork;
 
 use crate::{db, error, utils::Error, Database};
 
@@ -57,7 +56,9 @@ pub struct Deployment {
 	pub repository_id: Option<Vec<u8>>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
+	pub status: DeploymentStatus,
 	pub deployed_image: Option<String>,
+	pub digital_ocean_app_id: Option<String>,
 }
 
 impl Deployment {
@@ -65,7 +66,7 @@ impl Deployment {
 		&self,
 		connection: &mut <Database as sqlx::Database>::Connection,
 	) -> Result<String, Error> {
-		if self.registry == "registry.vicara.tech" {
+		if self.registry == "registry.patr.cloud" {
 			let docker_repository = db::get_docker_repository_by_id(
 				&mut *connection,
 				self.repository_id
@@ -87,7 +88,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				"registry.vicara.tech",
+				"registry.patr.cloud",
 				organisation.name,
 				docker_repository.name
 			))
@@ -105,22 +106,27 @@ impl Deployment {
 }
 
 #[derive(sqlx::Type, Debug)]
-#[sqlx(type_name = "DEPLOYMENT_RUNNER_STATUS", rename_all = "lowercase")]
+#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
 pub enum DeploymentStatus {
-	Alive,
-	Starting,
-	#[sqlx(rename = "shutting down")]
-	ShuttingDown,
-	Dead,
+	Created,
+	Pushed,
+	Deploying,
+	Running,
+	Stopped,
+	Errored,
+	Deleted,
 }
 
 impl Display for DeploymentStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Alive => write!(f, "alive"),
-			Self::Starting => write!(f, "starting"),
-			Self::ShuttingDown => write!(f, "shutting down"),
-			Self::Dead => write!(f, "dead"),
+			Self::Created => write!(f, "created"),
+			Self::Pushed => write!(f, "pushed"),
+			Self::Deploying => write!(f, "deploying"),
+			Self::Running => write!(f, "running"),
+			Self::Stopped => write!(f, "stopped"),
+			Self::Errored => write!(f, "errored"),
+			Self::Deleted => write!(f, "deleted"),
 		}
 	}
 }
@@ -130,33 +136,16 @@ impl FromStr for DeploymentStatus {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"alive" => Ok(Self::Alive),
-			"starting" => Ok(Self::Starting),
-			"shutting down" => Ok(Self::ShuttingDown),
-			"dead" => Ok(Self::Dead),
+			"created" => Ok(Self::Created),
+			"pushed" => Ok(Self::Pushed),
+			"deploying" => Ok(Self::Deploying),
+			"running" => Ok(Self::Running),
+			"stopped" => Ok(Self::Stopped),
+			"errored" => Ok(Self::Errored),
+			"deleted" => Ok(Self::Deleted),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
-}
-
-pub struct DeploymentRunner {
-	pub id: Vec<u8>,
-	pub last_updated: u64,
-	pub container_id: Option<Vec<u8>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct DeploymentApplicationServer {
-	pub server_ip: IpNetwork,
-	pub server_type: String,
-}
-
-pub struct DeploymentRunnerDeployment {
-	pub deployment_id: Vec<u8>,
-	pub runner_id: Vec<u8>,
-	pub last_updated: u64,
-	pub current_server: IpNetwork,
-	pub status: DeploymentStatus,
 }

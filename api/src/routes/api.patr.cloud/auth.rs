@@ -1391,6 +1391,7 @@ async fn docker_registry_authenticate(
 	}
 
 	let org_id = org.id.encode_hex::<String>();
+	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
 	// get all org roles for the user using the id
 	let user_id = &user.id;
@@ -1400,42 +1401,40 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id).status(500).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::SERVER_ERROR,
-				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let required_role_for_user = user_roles.get(&org_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
-		let allowed = {
-			if let Some(permissions) = required_role_for_user
-				.resource_types
-				.get(&resource.resource_type_id)
-			{
-				permissions.contains(&permission.to_string())
+		let allowed =
+			if let Some(required_role_for_user) = required_role_for_user {
+				let resource_type_allowed = {
+					if let Some(permissions) = required_role_for_user
+						.resource_types
+						.get(&resource.resource_type_id)
+					{
+						permissions.contains(&permission.to_string())
+					} else {
+						false
+					}
+				};
+				let resource_allowed = {
+					if let Some(permissions) =
+						required_role_for_user.resources.get(&resource.id)
+					{
+						permissions.contains(&permission.to_string())
+					} else {
+						false
+					}
+				};
+				let is_super_admin = {
+					required_role_for_user.is_super_admin || {
+						user_id == god_user_id
+					}
+				};
+				resource_type_allowed || resource_allowed || is_super_admin
 			} else {
-				false
-			}
-		} || {
-			if let Some(permissions) =
-				required_role_for_user.resources.get(&resource.id)
-			{
-				permissions.contains(&permission.to_string())
-			} else {
-				false
-			}
-		} || {
-			required_role_for_user.is_super_admin || {
-				let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 				user_id == god_user_id
-			}
-		};
+			};
 		if !allowed {
 			continue;
 		}

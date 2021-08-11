@@ -18,13 +18,12 @@ use eve_rs::{
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
 use sqlx::Pool;
-use tokio::{signal, task, time};
+use tokio::{signal, time};
 
 use crate::{
 	error,
 	pin_fn,
 	routes,
-	service,
 	utils::{settings::Settings, Error, ErrorData, EveContext, EveMiddleware},
 	Database,
 };
@@ -54,10 +53,7 @@ pub async fn start_server(app: App) {
 
 	log::info!("Listening for connections on 127.0.0.1:{}", port);
 	let shutdown_signal = Some(get_shutdown_signal());
-	let api_server_task =
-		task::spawn(listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal));
-	let runner_task = task::spawn(service::monitor_all_deployments());
-	let _ = futures::join!(api_server_task, runner_task);
+	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
 }
 
 pub fn create_eve_app(
@@ -119,6 +115,14 @@ fn eve_error_handler(mut response: Response, error: Error) -> Response {
 	}
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
+
+	response.set_header("Access-Control-Allow-Origin", "*");
+	response.set_header("Access-Control-Allow-Methods", "*");
+	response.set_header(
+		"Access-Control-Allow-Headers",
+		"Content-Type,Authorization",
+	);
+
 	let default_error = error!(SERVER_ERROR).to_string();
 	response.set_body_bytes(
 		error

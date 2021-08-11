@@ -1,3 +1,6 @@
+mod digitalocean;
+
+pub use digitalocean::*;
 use eve_rs::AsError;
 use uuid::Uuid;
 
@@ -8,9 +11,6 @@ use crate::{
 	utils::{get_current_time_millis, Error},
 	Database,
 };
-
-mod runner;
-pub use self::runner::*;
 
 /// # Description
 /// This function creates a deployment under an organisation account
@@ -41,10 +41,11 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 ) -> Result<Uuid, Error> {
-	// As of now, only our custom registry and docker hub is allowed
+	// As of now, only our custom registry is allowed
+	// Docker hub will also be allowed in the near future
 	match registry {
-		"registry.vicara.tech" | "registry.hub.docker.com" => (),
-		_ => {
+		"registry.patr.cloud" => (),
+		"registry.hub.docker.com" | _ => {
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -68,7 +69,7 @@ pub async fn create_deployment_in_organisation(
 	)
 	.await?;
 
-	if registry == "registry.vicara.tech" {
+	if registry == "registry.patr.cloud" {
 		if let Some(repository_id) = repository_id {
 			let repository_id = hex::decode(repository_id)
 				.status(400)

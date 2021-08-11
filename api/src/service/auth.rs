@@ -859,7 +859,7 @@ pub async fn join_user(
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
-	let welcome_email_to; // Send the "welcome to vicara" email here
+	let welcome_email_to; // Send the "welcome to patr" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 

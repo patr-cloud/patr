@@ -22,7 +22,7 @@ pub async fn migrate_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	from_version: Version,
 ) -> Result<(), sqlx::Error> {
-	let migrations = vec!["0.0.0"];
+	let migrations = vec![];
 	let db_version = from_version.to_string();
 
 	let mut migrating = false;

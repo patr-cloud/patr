@@ -298,18 +298,24 @@ pub fn parse(input: TokenStream) -> TokenStream {
 					MultiPart::mixed()
 						.multipart(
 							MultiPart::alternative()
-								.singlepart(SinglePart::plain(String::from(#plain_content)))
-								.multipart(
-									MultiPart::related()
-										.singlepart(
-											SinglePart::html(String::from(
-												Handlebars::new()
-													.render_template(#html_content, &self)
-													.unwrap()
-											))
-										)
-										#(#inline_expanded)*
+								.singlepart(
+									SinglePart::plain(String::from(
+										Handlebars::new()
+											.render_template(#plain_content, &self)
+											.unwrap()
+									))
 								)
+								// .multipart(
+								// 	MultiPart::related()
+								// 		.singlepart(
+								// 			SinglePart::html(String::from(
+								// 				Handlebars::new()
+								// 					.render_template(#html_content, &self)
+								// 					.unwrap()
+								// 			))
+								// 		)
+								// 		#(#inline_expanded)*
+								// )
 						)
 						#(#attachments_expanded)*
 				)

@@ -3,7 +3,7 @@ authors = ["Rakshith Ravi <rakshith.ravi@gmx.com>"]
 default-run = "api"
 edition = "2018"
 name = "api"
-version = "0.1.0"
+version = "0.3.0"
 
 [features]
 default = []

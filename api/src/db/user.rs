@@ -1046,7 +1046,6 @@ pub async fn get_god_user_id(
 			"user"
 		ORDER BY
 			created
-		DESC
 		LIMIT 1;
 		"#
 	)

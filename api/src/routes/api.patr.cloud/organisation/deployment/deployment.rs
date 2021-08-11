@@ -1,6 +1,5 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -209,13 +208,14 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
-		if deployment.registry == "registry.vicara.tech" {
+		if deployment.registry == "registry.patr.cloud" {
 			Some(json!({
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
 				request_keys::REGISTRY: deployment.registry,
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
+				request_keys::STATUS: deployment.status.to_string(),
 			}))
 		} else {
 			Some(json!({
@@ -224,6 +224,7 @@ async fn list_deployments(
 				request_keys::REGISTRY: deployment.registry,
 				request_keys::IMAGE_NAME: deployment.image_name?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
+				request_keys::STATUS: deployment.status.to_string(),
 			}))
 		}
 	})
@@ -383,16 +384,27 @@ async fn get_deployment_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DEPLOYMENT: {
-			request_keys::DEPLOYMENT_ID: deployment.id.encode_hex::<String>(),
-			request_keys::NAME: deployment.name,
-			request_keys::REGISTRY: deployment.registry,
-			request_keys::IMAGE_NAME: deployment.image_name,
-			request_keys::IMAGE_TAG: deployment.image_tag,
-		}
-	}));
+	context.json(
+		if deployment.registry == "registry.patr.cloud" {
+			json!({
+				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+				request_keys::NAME: deployment.name,
+				request_keys::REGISTRY: deployment.registry,
+				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id.status(500)?),
+				request_keys::IMAGE_TAG: deployment.image_tag,
+				request_keys::STATUS: deployment.status.to_string(),
+			})
+		} else {
+			json!({
+				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
+				request_keys::NAME: deployment.name,
+				request_keys::REGISTRY: deployment.registry,
+				request_keys::IMAGE_NAME: deployment.image_name.status(500)?,
+				request_keys::IMAGE_TAG: deployment.image_tag,
+				request_keys::STATUS: deployment.status.to_string(),
+			})
+		},
+	);
 	Ok(context)
 }
 
@@ -496,13 +508,20 @@ async fn delete_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	// stop and delete the container running the image, if it exists
+	let config = context.get_state().config.clone();
+	service::delete_deployment_from_digital_ocean(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
 	db::delete_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?;
-
-	// TODO stop and delete the container running the image, if it exists
 
 	context.json(json!({
 		request_keys::SUCCESS: true

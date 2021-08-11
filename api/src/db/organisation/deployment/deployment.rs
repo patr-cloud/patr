@@ -1,19 +1,7 @@
-use std::net::IpAddr;
-
-use sqlx::types::ipnetwork::IpNetwork;
-use uuid::Uuid;
-
 use crate::{
-	models::db_mapping::{
-		Deployment,
-		DeploymentApplicationServer,
-		DeploymentRunner,
-		DeploymentRunnerDeployment,
-		DeploymentStatus,
-	},
+	models::db_mapping::{Deployment, DeploymentStatus},
 	query,
 	query_as,
-	utils::get_current_time_millis,
 	Database,
 };
 
@@ -22,24 +10,43 @@ pub async fn initialize_deployment_pre(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
+		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
+			'created', /* Created, but nothing pushed to it yet */
+			'pushed', /* Something is pushed, but the system has not deployed it yet */
+			'deploying', /* Something is pushed, and the system is currently deploying it */
+			'running', /* Deployment is running successfully */
+			'stopped', /* Deployment is stopped by the user */
+			'errored', /* Deployment is stopped because of too many errors */
+			'deleted' /* Deployment is deleted by the user */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			registry VARCHAR(255) NOT NULL DEFAULT 'registry.vicara.tech',
+			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
 			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
+			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			deployed_image TEXT,
+			digital_ocean_app_id TEXT
+				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
-					registry = 'registry.vicara.tech' AND
+					registry = 'registry.patr.cloud' AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
 				)
 				OR
 				(
-					registry != 'registry.vicara.tech' AND
+					registry != 'registry.patr.cloud' AND
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
@@ -86,23 +93,6 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE deployment_runner(
-			id BYTEA CONSTRAINT deployment_runner_pk PRIMARY KEY,
-			last_updated BIGINT NOT NULL
-				CONSTRAINT deployment_runner_chk_last_updated_unsigned
-					CHECK(last_updated >= 0),
-			/* TODO add region here later */
-			container_id BYTEA
-				CONSTRAINT deployment_runner_uq_container_id UNIQUE
-			/* TODO add score here later */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// TODO this doesn't work as of now. Need to figure out GiST
 	// query!(
 	// 	r#"
@@ -116,71 +106,6 @@ pub async fn initialize_deployment_pre(
 	// .execute(&mut *connection)
 	// .await?;
 
-	query!(
-		r#"
-		CREATE TABLE deployment_application_server_type(
-			type TEXT
-				CONSTRAINT deployment_application_server_type_pk PRIMARY KEY,
-			memory INT NOT NULL,
-			cpu SMALLINT NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_application_server(
-			server_ip INET
-				CONSTRAINT deployment_application_server_pk PRIMARY KEY,
-			/* TODO add region here later */
-			server_type TEXT NOT NULL
-				CONSTRAINT deployment_application_server_fk_server_type
-					REFERENCES deployment_application_server_type(type)
-			/* TODO come up with a convention for ↑ this name */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_RUNNER_STATUS AS ENUM(
-			'alive',
-			'starting',
-			'shutting down',
-			'dead'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_runner_deployment(
-			deployment_id BYTEA
-				CONSTRAINT deployment_runner_deployment_pk PRIMARY KEY
-				CONSTRAINT deployment_runner_deployment_fk_deployment_id
-					REFERENCES deployment(id),
-			runner_id BYTEA NOT NULL
-				CONSTRAINT deployment_runner_deployment_fk_runner_id
-					REFERENCES deployment_runner(id),
-			last_updated BIGINT NOT NULL
-				CONSTRAINT deployment_runner_chk_last_updated_unsigned
-					CHECK(last_updated >= 0),
-			current_server INET NOT NULL
-				CONSTRAINT deployment_runner_deployment_fk_current_server
-					REFERENCES deployment_application_server(server_ip),
-			status DEPLOYMENT_RUNNER_STATUS NOT NULL DEFAULT 'alive'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// query!(
 	// 	r#"
 	// 	CREATE INDEX
@@ -192,29 +117,6 @@ pub async fn initialize_deployment_pre(
 	// )
 	// .execute(&mut *connection)
 	// .await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_running_stats(
-			deployment_id BYTEA
-				CONSTRAINT deployment_running_stats_fk_deployment_id
-					REFERENCES deployment(id),
-			cpu_usage DOUBLE PRECISION NOT NULL
-				CONSTRAINT deployment_running_stats_chk_cpu_usage_unsigned
-					CHECK(cpu_usage >= 0),
-			memory_usage DOUBLE PRECISION NOT NULL
-				CONSTRAINT deployment_running_stats_chk_memory_usage_unsigned
-					CHECK(memory_usage >= 0),
-			timestamp BIGINT NOT NULL
-				CONSTRAINT deployment_running_stats_chk_timestamp_unsigned
-					CHECK(timestamp >= 0),
-			CONSTRAINT deployment_running_stats_pk
-				PRIMARY KEY(deployment_id, timestamp)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	// query!(
 	// 	r#"
@@ -259,7 +161,7 @@ pub async fn create_deployment_with_internal_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.vicara.tech', $3, NULL, $4, NULL);
+			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -284,7 +186,7 @@ pub async fn create_deployment_with_external_registry(
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, NULL);
+			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL);
 		"#,
 		deployment_id,
 		name,
@@ -307,7 +209,15 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.repository_id,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.deployed_image,
+			deployment.digital_ocean_app_id
 		FROM
 			deployment
 		INNER JOIN
@@ -321,11 +231,11 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		WHERE
 			(
 				(
-					registry = 'registry.vicara.tech' AND
+					registry = 'registry.patr.cloud' AND
 					docker_registry_repository.name = $1
 				) OR
 				(
-					registry != 'registry.vicara.tech' AND
+					registry != 'registry.patr.cloud' AND
 					image_name = $1
 				)
 			) AND
@@ -350,7 +260,15 @@ pub async fn get_deployments_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.*
+			deployment.id,
+			deployment.name,
+			deployment.registry,
+			deployment.repository_id,
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.deployed_image,
+			deployment.digital_ocean_app_id
 		FROM
 			deployment
 		INNER JOIN
@@ -377,7 +295,15 @@ pub async fn get_deployment_by_id(
 		Deployment,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digital_ocean_app_id
 		FROM
 			deployment
 		WHERE
@@ -411,51 +337,6 @@ pub async fn delete_deployment_by_id(
 	.map(|_| ())
 }
 
-pub async fn generate_new_container_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
-
-	let mut exists = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			deployment_runner
-		WHERE
-			container_id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.is_some();
-
-	while exists {
-		uuid = Uuid::new_v4();
-		exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				deployment_runner
-			WHERE
-				container_id = $1;
-			"#,
-			uuid.as_bytes().as_ref()
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.next()
-		.is_some();
-	}
-
-	Ok(uuid)
-}
-
 pub async fn update_deployment_deployed_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -478,478 +359,43 @@ pub async fn update_deployment_deployed_image(
 	.map(|_| ())
 }
 
-pub async fn get_inoperative_deployment_runner(
+pub async fn update_digital_ocean_app_id_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Option<DeploymentRunner>, sqlx::Error> {
-	let row = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			deployment_runner
-		WHERE
-			container_id = NULL OR
-			last_updated < $1;
-		"#,
-		(get_current_time_millis() - (1000 * 10)) as i64 // 10 seconds ago
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.map(|row| DeploymentRunner {
-		id: row.id,
-		last_updated: row.last_updated as u64,
-		container_id: row.container_id,
-	});
-
-	Ok(row)
-}
-
-pub async fn register_new_deployment_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	runner_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_runner
-		VALUES
-			($1, $2, $3);
-		"#,
-		runner_id,
-		get_current_time_millis() as i64,
-		runner_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_deployment_runner_container_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	runner_id: &[u8],
-	container_id: Option<&[u8]>,
-	old_container_id: Option<&[u8]>,
-) -> Result<(), sqlx::Error> {
-	if let Some(old_container_id) = old_container_id {
-		query!(
-			r#"
-			UPDATE
-				deployment_runner
-			SET
-				container_id = $1
-			WHERE
-				id = $2 AND
-				container_id = $3;
-			"#,
-			container_id,
-			runner_id,
-			old_container_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			UPDATE
-				deployment_runner
-			SET
-				container_id = $1
-			WHERE
-				id = $2 AND
-				container_id IS NULL;
-			"#,
-			container_id,
-			runner_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
-}
-
-pub async fn get_deployment_runner_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	runner_id: &[u8],
-) -> Result<Option<DeploymentRunner>, sqlx::Error> {
-	let row = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			deployment_runner
-		WHERE
-			id = $1;
-		"#,
-		runner_id
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.map(|row| DeploymentRunner {
-		id: row.id,
-		last_updated: row.last_updated as u64,
-		container_id: row.container_id,
-	});
-
-	Ok(row)
-}
-
-pub async fn register_deployment_application_server(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	server_ip: &IpAddr,
-	server_type: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_application_server
-		VALUES
-			($1, $2)
-		ON CONFLICT DO NOTHING;
-		"#,
-		IpNetwork::from(server_ip.clone()),
-		server_type
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn remove_excess_deployment_application_servers(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	servers: &[IpNetwork],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			deployment_application_server
-		WHERE
-			server_ip != ANY($1);
-		"#,
-		servers
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_deployments_not_running_for_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<Deployment>, sqlx::Error> {
-	query_as!(
-		Deployment,
-		r#"
-		SELECT
-			*
-		FROM
-			deployment
-		WHERE
-			id NOT IN (
-				SELECT
-					deployment.id
-				FROM
-					deployment_runner_deployment
-				INNER JOIN
-					deployment
-				ON
-					deployment_runner_deployment.deployment_id = deployment.id
-				INNER JOIN
-					deployment_runner
-				ON
-					deployment_runner_deployment.runner_id = deployment_runner.id
-				WHERE
-					deployment_runner_deployment.status != 'dead' AND
-					deployment_runner_deployment.last_updated >= $1 AND
-					deployment_runner.last_updated >= $1
-			) AND
-			deployed_image IS NOT NULL;
-		"#,
-		(get_current_time_millis() - (1000 * 10)) as i64
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-pub async fn update_deployment_runner_last_updated(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	runner_id: &[u8],
-	last_updated: u64,
+	app_deployment_id: &str,
+	deployment_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
-			deployment_runner
+			deployment
 		SET
-			last_updated = $1
+			digital_ocean_app_id = $1
 		WHERE
 			id = $2;
 		"#,
-		last_updated as i64,
-		runner_id,
+		app_deployment_id,
+		deployment_id
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn get_available_deployment_server_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	memory_requirement: u16,
-	cpu_requirement: u8,
-) -> Result<Option<DeploymentApplicationServer>, sqlx::Error> {
-	let row = query!(
-		r#"
-		SELECT
-			deployment_application_server.server_ip as "server_ip!",
-			deployment_application_server.server_type as "server_type!",
-			(
-				deployment_application_server_type.memory -
-				CASE
-					WHEN running_deployments.memory_used IS NULL THEN
-						0
-					ELSE
-						running_deployments.memory_used
-				END
-			) as "memory_available",
-			(
-				deployment_application_server_type.cpu -
-				CASE
-					WHEN running_deployments.cpu_used IS NULL THEN
-						0
-					ELSE
-						running_deployments.cpu_used
-				END
-			) as "cpu_available"
-		FROM
-			deployment_application_server
-		INNER JOIN
-			deployment_application_server_type
-		ON
-			deployment_application_server.server_type =
-				deployment_application_server_type.type
-		LEFT JOIN
-			(
-				SELECT
-					current_server,
-					COUNT(current_server) as "memory_used",
-					COUNT(current_server) as "cpu_used"
-				FROM
-					deployment_runner_deployment
-				GROUP BY
-					current_server
-			) as "running_deployments"
-		ON
-			running_deployments.current_server =
-				deployment_application_server.server_ip
-		WHERE
-			(
-				deployment_application_server_type.memory -
-				CASE
-					WHEN running_deployments.memory_used IS NULL THEN
-						0
-					ELSE
-						running_deployments.memory_used
-				END
-			) >= $1 AND
-			(
-				deployment_application_server_type.cpu -
-				CASE
-					WHEN running_deployments.cpu_used IS NULL THEN
-						0
-					ELSE
-						running_deployments.cpu_used
-				END
-			) >= $2
-		ORDER BY
-			memory_available,
-			cpu_available;
-		"#,
-		memory_requirement as i32,
-		cpu_requirement as i16
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| DeploymentApplicationServer {
-		server_ip: row.server_ip,
-		server_type: row.server_type,
-	})
-	.next();
-
-	Ok(row)
-}
-
-pub async fn get_running_deployment_details_by_id(
+pub async fn update_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-) -> Result<Option<DeploymentRunnerDeployment>, sqlx::Error> {
-	let row = query!(
-		r#"
-		SELECT
-			deployment_id,
-			runner_id,
-			last_updated,
-			current_server,
-			status as "status: DeploymentStatus"
-		FROM
-			deployment_runner_deployment
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id,
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| DeploymentRunnerDeployment {
-		deployment_id: row.deployment_id,
-		runner_id: row.runner_id,
-		last_updated: row.last_updated as u64,
-		current_server: row.current_server,
-		status: row.status,
-	})
-	.next();
-
-	Ok(row)
-}
-
-pub async fn update_running_deployment_runner(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	new_runner_id: &[u8],
-	old_runner_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment_runner_deployment
-		SET
-			runner_id = $1
-		WHERE
-			runner_id = $2;
-		"#,
-		new_runner_id,
-		old_runner_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn add_running_deployment_details(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	runner_id: &[u8],
-	last_updated: u64,
-	current_server: &IpNetwork,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		INSERT INTO
-			deployment_runner_deployment
-		VALUES
-			($1, $2, $3, $4, $5);
+		UPDATE
+			deployment
+		SET
+			status = $1
+		WHERE
+			id = $2;
 		"#,
-		deployment_id,
-		runner_id,
-		last_updated as i64,
-		current_server,
 		status as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_running_deployment_server_ip(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	server_ip: &IpNetwork,
-	deployment_id: &[u8],
-	runner_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment_runner_deployment
-		SET
-			current_server = $1
-		WHERE
-			deployment_id = $2 AND
-			runner_id = $3;
-		"#,
-		server_ip,
-		deployment_id,
-		runner_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn update_running_deployment_last_updated(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	last_updated: u64,
-	deployment_id: &[u8],
-	runner_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment_runner_deployment
-		SET
-			last_updated = $1
-		WHERE
-			deployment_id = $2 AND
-			runner_id = $3;
-		"#,
-		last_updated as i64,
-		deployment_id,
-		runner_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn add_deployment_running_stats(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	cpu_usage: f64,
-	memory_usage: f64,
-	timestamp: u64,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_running_stats
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		deployment_id,
-		cpu_usage,
-		memory_usage,
-		timestamp as i64
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn delete_running_deployment_details(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			deployment_runner_deployment
-		WHERE
-			deployment_id = $1;
-		"#,
 		deployment_id
 	)
 	.execute(&mut *connection)
