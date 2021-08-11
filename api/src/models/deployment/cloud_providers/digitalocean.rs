@@ -218,3 +218,8 @@ pub struct Registry {
 pub struct AuthToken {
 	pub auth: String,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RedeployAppRequest {
+	pub force_build: bool,
+}

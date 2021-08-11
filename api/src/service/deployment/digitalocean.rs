@@ -38,6 +38,7 @@ use crate::{
 			Auth,
 			Domains,
 			Image,
+			RedeployAppRequest,
 			Routes,
 			Services,
 		},
@@ -59,27 +60,34 @@ pub async fn deploy_container_on_digitalocean(
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
 
+	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
 		.await;
 
+	log::trace!("Pulling image from registry");
 	pull_image_from_registry(&image_name, &tag, &config).await?;
+	log::trace!("Image pulled");
 
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/patr-cloud/{}",
 		deployment_id_string
 	);
+	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	tag_docker_image(&image_name, &new_repo_name).await?;
+	tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	log::trace!("Image tagged");
 
 	// Get login details from digital ocean registry and decode from base 64 to
 	// binary
 	let auth_token =
 		base64::decode(get_registry_auth_token(&config, &client).await?)?;
+	log::trace!("Got auth token");
 
 	// Convert auth token from binary to utf8
 	let auth_token = str::from_utf8(&auth_token)?;
+	log::trace!("Decoded auth token as {}", auth_token);
 
 	// get username and password from the auth token
 	let (username, password) = auth_token
@@ -100,57 +108,70 @@ pub async fn deploy_container_on_digitalocean(
 		.spawn()?
 		.wait()
 		.await?;
+	log::trace!("Logged into DO registry");
 
 	if !output.success() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
+	log::trace!("Login was success");
 
+	let do_image_name = format!(
+		"registry.digitalocean.com/patr-cloud/{}",
+		deployment_id_string
+	);
 	// if the loggin in is successful the push the docker image to registry
 	let push_status = Command::new("docker")
 		.arg("push")
-		.arg(format!(
-			"registry.digitalocean.com/patr-cloud/{}",
-			deployment_id_string
-		))
+		.arg(&do_image_name)
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
 		.spawn()?
 		.wait()
 		.await?;
+	log::trace!("Pushing to DO to {}", do_image_name);
 
 	if !push_status.success() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
+	log::trace!("Pushed to DO");
 
 	// if the app exists then only create a deployment
 	let app_exists = app_exists(&deployment_id, &config, &client).await?;
+	log::trace!("App exists as {:?}", app_exists);
 
 	let _ =
 		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
 			.await;
 
-	if let Some(app_id) = app_exists {
+	let app_id = if let Some(app_id) = app_exists {
 		// the function to create a new deployment
 		redeploy_application(&app_id, &config, &client).await?;
+		log::trace!("App redeployed");
+		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id = create_app(&deployment_id, &tag, &config, &client).await?;
+		let app_id = create_app(&deployment_id, &config, &client).await?;
+		log::trace!("App created");
+		app_id
+	};
 
-		// wait for the app to be completed to be deployed
-		let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
+	// wait for the app to be completed to be deployed
+	let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
+	log::trace!("App ingress is at {}", default_ingress);
 
-		// update DNS
-		update_dns(&deployment_id_string, &default_ingress, &config).await?;
-	}
+	// update DNS
+	update_dns(&deployment_id_string, &default_ingress, &config).await?;
+	log::trace!("DNS Updated");
 
 	let _ =
 		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
 			.await;
 	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
+	log::trace!("Docker image deleted");
 
 	Ok(())
 }
@@ -186,13 +207,14 @@ pub async fn delete_deployment_from_digital_ocean(
 
 async fn tag_docker_image(
 	image_name: &str,
+	tag: &str,
 	new_repo_name: &str,
 ) -> Result<(), Error> {
 	let docker = Docker::new();
 
 	docker
 		.images()
-		.get(image_name)
+		.get(format!("{}:{}", image_name, tag))
 		.tag(
 			&TagOptions::builder()
 				.repo(new_repo_name)
@@ -309,7 +331,6 @@ async fn get_registry_auth_token(
 // create a new digital ocean application
 pub async fn create_app(
 	deployment_id: &[u8],
-	tag: &str,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
@@ -317,40 +338,35 @@ pub async fn create_app(
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.json(&AppConfig {
-			spec: {
-				AppSpec {
-					name: format!(
-						"deployment-{}",
-						get_current_time().as_millis()
+			spec: AppSpec {
+				name: format!("deployment-{}", get_current_time().as_millis()),
+				region: "blr".to_string(),
+				domains: vec![Domains {
+					// [ 4 .. 253 ] characters
+					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+					// }\.?$ The hostname for the domain
+					domain: format!(
+						"{}.patr.cloud",
+						hex::encode(deployment_id)
 					),
-					region: "blr".to_string(),
-					domains: vec![Domains {
-						// [ 4 .. 253 ] characters
-						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-						// }\.?$ The hostname for the domain
-						domain: format!(
-							"{}.patr.cloud",
-							hex::encode(deployment_id)
-						),
-						// for now this has been set to PRIMARY
-						r#type: "PRIMARY".to_string(),
+					// for now this has been set to PRIMARY
+					r#type: "PRIMARY".to_string(),
+				}],
+				services: vec![Services {
+					name: "default-service".to_string(),
+					image: Image {
+						registry_type: "DOCR".to_string(),
+						repository: hex::encode(deployment_id),
+						tag: "latest".to_string(),
+					},
+					// for now instance count is set to 1
+					instance_count: 1,
+					instance_size_slug: "basic-xs".to_string(),
+					http_port: 80,
+					routes: vec![Routes {
+						path: "/".to_string(),
 					}],
-					services: vec![Services {
-						name: "default-service".to_string(),
-						image: Image {
-							registry_type: "DOCR".to_string(),
-							repository: hex::encode(deployment_id),
-							tag: tag.to_string(),
-						},
-						// for now instance count is set to 1
-						instance_count: 1,
-						instance_size_slug: "basic-xs".to_string(),
-						http_port: 80,
-						routes: vec![Routes {
-							path: "/".to_string(),
-						}],
-					}],
-				}
+				}],
 			},
 		})
 		.send()
@@ -383,17 +399,18 @@ pub async fn redeploy_application(
 ) -> Result<(), Error> {
 	// for now i am not deserializing the response of the request
 	// Can be added later if required
-	let deployment_info = client
-		.get(format!(
+	let status = client
+		.post(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
 			app_id
 		))
 		.bearer_auth(&config.digital_ocean_api_key)
+		.json(&RedeployAppRequest { force_build: true })
 		.send()
 		.await?
 		.status();
 
-	if deployment_info.is_client_error() || deployment_info.is_server_error() {
+	if !status.is_success() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
