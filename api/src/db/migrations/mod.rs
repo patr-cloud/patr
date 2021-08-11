@@ -1,5 +1,7 @@
 use semver::Version;
 
+mod from_v0;
+
 /// This module is used to migrate the database to updated version
 use crate::{db, utils::constants, Database};
 
@@ -9,8 +11,8 @@ use crate::{db, utils::constants, Database};
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `from_version` - A struct containing version of the DB, more info here:
-///   [`Version`]: Version
+/// * `current_db_version` - A struct containing version of the DB, more info
+///   here: [`Version`]: Version
 ///
 /// # Return
 /// This function returns Result<(), Error> containing an empty response or
@@ -20,28 +22,47 @@ use crate::{db, utils::constants, Database};
 /// [`Transaction`]: Transaction
 pub async fn migrate_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	from_version: Version,
+	current_db_version: Version,
 ) -> Result<(), sqlx::Error> {
-	let migrations = vec![];
-	let db_version = from_version.to_string();
+	// Take a list of migrations available in the code.
+	// Skip elements on the list until your current version is the same as the
+	// migrating version
+	// Then start migrating versions one by one until the end
+	let migrations_from = get_migrations()
+		.into_iter()
+		.map(|version| {
+			Version::parse(version).expect("unable to parse version")
+		})
+		.skip_while(|version| version != &current_db_version);
 
-	let mut migrating = false;
-
-	for migration_version in migrations {
-		if migration_version == db_version {
-			migrating = true;
-		}
-		if !migrating {
-			continue;
-		}
-		#[allow(clippy::single_match)]
-		match migration_version {
-			"0.0.0" => (),
-			_ => (),
+	for version in migrations_from {
+		match (version.major, version.minor, version.patch) {
+			(0, ..) => from_v0::migrate(&mut *connection, version).await?,
+			_ => panic!(
+				"Migration from version {} is not implemented yet!",
+				version
+			),
 		}
 	}
 
 	db::set_database_version(connection, &constants::DATABASE_VERSION).await?;
 
 	Ok(())
+}
+
+/// # Description
+/// The function is used to get a list of all migrations to migrate the database
+/// from
+///
+/// # Return
+/// This function returns [&'static str; _] containing a list of all migration
+/// versions
+fn get_migrations() -> Vec<&'static str> {
+	vec![
+		from_v0::get_migrations(),
+		// from_v0_4::get_migrations(),
+	]
+	.into_iter()
+	.flatten()
+	.collect()
 }
