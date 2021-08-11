@@ -118,7 +118,10 @@ fn eve_error_handler(mut response: Response, error: Error) -> Response {
 
 	response.set_header("Access-Control-Allow-Origin", "*");
 	response.set_header("Access-Control-Allow-Methods", "*");
-	response.set_header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+	response.set_header(
+		"Access-Control-Allow-Headers",
+		"Content-Type,Authorization",
+	);
 
 	let default_error = error!(SERVER_ERROR).to_string();
 	response.set_body_bytes(
