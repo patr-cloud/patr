@@ -28,14 +28,14 @@ pub async fn migrate_database(
 	// Skip elements on the list until your current version is the same as the
 	// migrating version
 	// Then start migrating versions one by one until the end
-	let mut migrations_from = get_migrations()
+	let migrations_from = get_migrations()
 		.into_iter()
 		.map(|version| {
 			Version::parse(version).expect("unable to parse version")
 		})
 		.skip_while(|version| version != &current_db_version);
 
-	while let Some(version) = migrations_from.next() {
+	for version in migrations_from {
 		match (version.major, version.minor, version.patch) {
 			(0, ..) => from_v0::migrate(&mut *connection, version).await?,
 			_ => panic!(
