@@ -57,7 +57,7 @@ pub async fn migrate_database(
 /// # Return
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
-const fn get_migrations() -> Vec<&'static str> {
+fn get_migrations() -> Vec<&'static str> {
 	vec![
 		from_v0::get_migrations(),
 		// from_v0_4::get_migrations(),

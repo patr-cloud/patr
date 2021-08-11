@@ -39,7 +39,7 @@ pub async fn migrate(
 /// # Return
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
-pub const fn get_migrations() -> Vec<&'static str> {
+pub fn get_migrations() -> Vec<&'static str> {
 	vec![
 		from_v0_3::get_migrations(),
 		// from_v0_4::get_migrations(),
