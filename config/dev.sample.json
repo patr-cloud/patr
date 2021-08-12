@@ -29,8 +29,8 @@
 	"redis": {
 		"host": "localhost",
 		"port": 6379,
-		"user": "root",
-		"password": "redis",
+		"user": null,
+		"password": null,
 		"database": "api",
 		"connectionLimit": 10
 	},

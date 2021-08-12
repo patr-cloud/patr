@@ -34,6 +34,7 @@ use crate::{
 /// deployment or an error
 ///
 /// [`Transaction`]: Transaction
+#[allow(clippy::wildcard_in_or_patterns)]
 pub async fn create_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],

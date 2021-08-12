@@ -38,7 +38,7 @@ pub fn parse_config() -> Settings {
 	}
 
 	settings
-		.merge(Environment::with_prefix("APP_"))
+		.merge(Environment::with_prefix("APP").separator("_"))
 		.expect("unable to merge with environment variables");
 
 	let mut settings: Settings =
