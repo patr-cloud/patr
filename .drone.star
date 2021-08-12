@@ -44,7 +44,7 @@ def get_pipeline_steps(ctx):
     elif is_pr(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code("Build code in release mode offline",
+            build_code("Build code offline",
                        release=True, sqlx_offline=True),
             # Check if formatting is fine
             check_formatting("Check formatting"),
@@ -56,7 +56,7 @@ def get_pipeline_steps(ctx):
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code in release mode with live database",
+            check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
         ], [
             database_service(get_database_password())
@@ -64,7 +64,7 @@ def get_pipeline_steps(ctx):
     elif is_pr(ctx, "master"):
         return ([
             # Build in release mode
-            build_code("Build code in release mode offline",
+            build_code("Build code mode offline",
                        release=True, sqlx_offline=True),
             # Check if formatting is fine
             check_formatting("Check formatting"),
@@ -76,7 +76,7 @@ def get_pipeline_steps(ctx):
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code in release mode with live database",
+            check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
         ], [
             database_service(get_database_password())
@@ -100,7 +100,7 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code("Build code in release mode offline",
+            build_code("Build code offline",
                        release=True, sqlx_offline=True),
 
             copy_config("Copy sample config"),  # Create sample config
@@ -109,7 +109,7 @@ def get_pipeline_steps(ctx):
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code in release mode with live database",
+            check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
 
             # TODO Deploy
@@ -119,7 +119,7 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "master"):
         return ([
             # Build in release mode
-            build_code("Build code in release mode offline",
+            build_code("Build code offline",
                        release=True, sqlx_offline=True),
 
             copy_config("Copy sample config"),  # Create sample config
@@ -128,7 +128,7 @@ def get_pipeline_steps(ctx):
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code in release mode with live database",
+            check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
 
             # TODO Deploy
@@ -159,7 +159,7 @@ def build_code(step_name, release, sqlx_offline):
         release_flag = "--release"
 
     return {
-        "name": "Build project",
+        "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo build {}".format(release_flag)
@@ -174,7 +174,7 @@ def build_code(step_name, release, sqlx_offline):
 
 def check_formatting(step_name):
     return {
-        "name": "Check code formatting",
+        "name": step_name,
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo fmt -- --check"
@@ -184,7 +184,7 @@ def check_formatting(step_name):
 
 def check_clippy(step_name):
     return {
-        "name": "Check clippy suggestions",
+        "name": step_name,
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo clippy -- -D warnings"
@@ -194,7 +194,7 @@ def check_clippy(step_name):
 
 def copy_config(step_name):
     return {
-        "name": "Copy sample config",
+        "name": step_name,
         "image": "rust:1",
         "commands": [
             "cp config/dev.sample.json config/dev.json",
@@ -205,7 +205,7 @@ def copy_config(step_name):
 
 def init_database(step_name, env):
     return {
-        "name": "Initialize database",
+        "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo run -- --db-only"
@@ -216,7 +216,7 @@ def init_database(step_name, env):
 
 def clean_api_build(step_name):
     return {
-        "name": "Clean up build cache",
+        "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo clean -p api"
@@ -236,7 +236,7 @@ def check_code(step_name, release, sqlx_offline):
         release_flag = "--release"
 
     return {
-        "name": "Build project",
+        "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo check {}".format(release_flag)
