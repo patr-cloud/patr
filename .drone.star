@@ -1,4 +1,5 @@
 def main(ctx):
+    print(ctx)
     (steps, services) = get_pipeline_steps(ctx)
     return {
         "kind": "pipeline",
@@ -109,7 +110,7 @@ def get_pipeline_steps(ctx):
 
 
 def is_pr(ctx, to_branch):
-    return ctx.build.event == "pull_request" and ctx.build.branch == to_branch
+    return ctx.build.event == "pull_request" and ctx.build.target == to_branch
 
 
 def is_push(ctx, on_branch):
