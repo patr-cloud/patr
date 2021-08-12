@@ -8,7 +8,7 @@ def main(ctx):
     return {
         "kind": "pipeline",
         "type": "docker",
-        "name": "Default"
+        "name": "Default",
         "steps": steps,
         "services": services,
 
