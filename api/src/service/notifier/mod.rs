@@ -15,7 +15,9 @@ pub use email::*;
 pub use sms::*;
 
 /// # Description
-/// This function is used to send sign_in complete notification
+/// This function is used to notify the user that their sign up has been
+/// successfully completed. This will ideally introduce them to the platform and
+/// give them details on what they can do
 ///
 /// # Arguments
 /// * `welcome_email` - an Option<String> containing either String which has
@@ -47,7 +49,7 @@ pub async fn send_sign_up_complete_notification(
 }
 
 /// # Description
-/// This function is used to send otp to user's email for sign-up
+/// This function is used to send otp to the user for sign-up
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -94,8 +96,8 @@ pub async fn send_user_sign_up_otp(
 }
 
 /// # Description
-/// This function is used to send the given otp to all the backup options
-/// available for the given user.
+/// This function is used to notify the user on all the backup options that
+/// their password has been changed
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -111,10 +113,8 @@ pub async fn send_password_changed_notification(
 	user: User,
 ) -> Result<(), Error> {
 	// check if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -125,10 +125,8 @@ pub async fn send_password_changed_notification(
 		email::send_password_changed_notification(email.parse()?).await?;
 	}
 	// check if phone number is given as a backup
-	if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+	if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -142,7 +140,7 @@ pub async fn send_password_changed_notification(
 }
 
 /// # Description
-/// This function is used to send the user reset password notification
+/// This function is used to notify the user that their password has been reset
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -183,7 +181,8 @@ pub async fn send_user_reset_password_notification(
 }
 
 /// # Description
-/// This function is used to send otp incase the user forgets the password
+/// This function is used to send otp incase the user forgets their password and
+/// requests for a reset of their password
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -240,7 +239,8 @@ pub async fn send_forgot_password_otp(
 }
 
 /// # Description
-/// This function is used to get the user's email address
+/// This function is used to get the user's email address, from a local email
+/// and a domain ID
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -266,7 +266,8 @@ async fn get_user_email(
 }
 
 /// # Description
-/// This function is used to get the user's complete phone number
+/// This function is used to get the user's complete phone number, with the
+/// country code
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]

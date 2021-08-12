@@ -136,6 +136,8 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
+	// Disabled for the demo
+	/*
 	app.get("/logins", []); // TODO list all logins here
 	app.get("/logins/:loginId/info", []); // TODO list all information about a particular login here
 	app.delete("/logins/:loginId", []); // TODO delete a particular login ID and invalidate it
@@ -146,6 +148,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
 		],
 	);
+	*/
 	app
 }
 
@@ -697,7 +700,7 @@ async fn update_backup_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		&phone_number,
+		phone_number,
 	)
 	.await?;
 
@@ -1100,8 +1103,7 @@ async fn get_organisations_for_user(
 		json!({
 			request_keys::ID: org.id.encode_hex::<String>(),
 			request_keys::NAME: org.name,
-			request_keys::ACTIVE: org.active,
-			request_keys::CREATED: org.created
+			request_keys::ACTIVE: org.active
 		})
 	})
 	.collect::<Vec<_>>();

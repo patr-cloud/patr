@@ -20,7 +20,7 @@ pub async fn send_user_verification_otp(
 		phone_number,
 		format!(
 			"{}{}{}",
-			"Thank you for signing up for Vicara's deployment tool. ",
+			"Thank you for signing up for Patr. ",
 			"The OTP to register your account is: ",
 			otp
 		),
@@ -46,8 +46,8 @@ pub async fn send_password_changed_notification(
 		phone_number,
 		format!(
 			"{}{}{}",
-			"Your account password for Vicara's ",
-			"deployment tool has recently been updated. ",
+			"Your account password for Patr ",
+			"has recently been updated. ",
 			"If this was not you, please login or contact support immediately"
 		),
 	)
@@ -102,8 +102,8 @@ pub async fn send_user_reset_password_notification(
 		phone_number,
 		format!(
 			"{}{}{}",
-			"Your account password for Vicara's ",
-			"deployment tool has recently been reset. ",
+			"Your account password for Patr ",
+			"has recently been reset. ",
 			"If this was not you, please contact support immediately"
 		),
 	)
@@ -130,7 +130,7 @@ pub async fn send_backup_registration_sms(
 		format!(
 			"{}{}{}",
 			"This phone number is now set as the backup phone ",
-			"for the Vicara's deployment tool. ",
+			"for the Patr. ",
 			"If this was not you, please login or contact support immediately"
 		),
 	)
@@ -193,7 +193,7 @@ async fn send_sms(to_number: &str, body: String) -> Result<(), Error> {
 		service,
 	};
 
-	let config = service::get_config();
+	let config = service::get_settings();
 	let client = Client::new();
 	let response = client
 		.post(format!(

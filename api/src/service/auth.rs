@@ -49,7 +49,7 @@ pub async fn is_username_allowed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_username_valid(&username) {
+	if !validator::is_username_valid(username) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_USERNAME).to_string())?;
@@ -91,7 +91,7 @@ pub async fn is_email_allowed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_email_valid(&email) {
+	if !validator::is_email_valid(email) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_EMAIL).to_string())?;
@@ -245,7 +245,7 @@ pub async fn create_user_join_request(
 	}
 
 	// Check if the password passes standards
-	if !validator::is_password_valid(&password) {
+	if !validator::is_password_valid(password) {
 		Error::as_result()
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
@@ -303,7 +303,6 @@ pub async fn create_user_join_request(
 	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 
@@ -345,7 +344,7 @@ pub async fn create_user_join_request(
 
 			let user_sign_up = db::get_user_to_sign_up_by_organisation_name(
 				connection,
-				&organisation_name,
+				organisation_name,
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
@@ -530,9 +529,9 @@ pub async fn sign_in_user(
 ) -> Result<(String, Uuid, Uuid), Error> {
 	let refresh_token = Uuid::new_v4();
 
-	let user_login = create_login_for_user(connection, &user_id).await?;
+	let user_login = create_login_for_user(connection, user_id).await?;
 
-	let jwt = generate_access_token(connection, &config, &user_login).await?;
+	let jwt = generate_access_token(connection, config, &user_login).await?;
 
 	Ok((
 		jwt,
@@ -656,13 +655,12 @@ pub async fn forgot_password(
 	preferred_recovery_option: PreferredRecoveryOption,
 ) -> Result<(), Error> {
 	let user =
-		db::get_user_by_username_email_or_phone_number(connection, &user_id)
+		db::get_user_by_username_email_or_phone_number(connection, user_id)
 			.await?
 			.status(200)
 			.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 
@@ -711,7 +709,7 @@ pub async fn reset_password(
 	user_id: &[u8],
 ) -> Result<(), Error> {
 	let reset_request =
-		db::get_password_reset_request_for_user(connection, &user_id).await?;
+		db::get_password_reset_request_for_user(connection, user_id).await?;
 
 	if reset_request.is_none() {
 		Error::as_result()
@@ -730,9 +728,9 @@ pub async fn reset_password(
 
 	let new_password = service::hash(new_password.as_bytes())?;
 
-	db::update_user_password(connection, &user_id, &new_password).await?;
+	db::update_user_password(connection, user_id, &new_password).await?;
 
-	db::delete_password_reset_request_for_user(connection, &user_id).await?;
+	db::delete_password_reset_request_for_user(connection, user_id).await?;
 
 	Ok(())
 }
@@ -769,7 +767,7 @@ pub async fn join_user(
 	otp: &str,
 	username: &str,
 ) -> Result<JoinUser, Error> {
-	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
+	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
 		.status(200)
 		.body(error!(OTP_EXPIRED).to_string())?;
@@ -820,8 +818,8 @@ pub async fn join_user(
 		db::add_personal_email_for_user(
 			connection,
 			user_id,
-			&email_local,
-			&domain_id,
+			email_local,
+			domain_id,
 		)
 		.await?;
 	} else if let Some((phone_country_code, phone_number)) = user_data
@@ -832,8 +830,8 @@ pub async fn join_user(
 		db::add_phone_number_for_user(
 			connection,
 			user_id,
-			&phone_country_code,
-			&phone_number,
+			phone_country_code,
+			phone_number,
 		)
 		.await?;
 	} else {
@@ -861,7 +859,7 @@ pub async fn join_user(
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
-	let welcome_email_to; // Send the "welcome to vicara" email here
+	let welcome_email_to; // Send the "welcome to patr" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
@@ -905,7 +903,7 @@ pub async fn join_user(
 			backup_email_to = Some(format!(
 				"{}@{}",
 				email_local,
-				db::get_personal_domain_by_id(connection, &domain_id)
+				db::get_personal_domain_by_id(connection, domain_id)
 					.await?
 					.status(500)?
 					.name
@@ -918,7 +916,7 @@ pub async fn join_user(
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				&phone_country_code,
+				phone_country_code,
 			)
 			.await?
 			.status(500)?;
@@ -943,7 +941,7 @@ pub async fn join_user(
 			welcome_email_to = Some(format!(
 				"{}@{}",
 				email_local,
-				db::get_personal_domain_by_id(connection, &domain_id)
+				db::get_personal_domain_by_id(connection, domain_id)
 					.await?
 					.status(500)?
 					.name
@@ -956,7 +954,7 @@ pub async fn join_user(
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				&phone_country_code,
+				phone_country_code,
 			)
 			.await?
 			.status(500)?;
@@ -988,7 +986,7 @@ pub async fn join_user(
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
 	let (jwt, login_id, refresh_token) =
-		sign_in_user(connection, user_id, &config).await?;
+		sign_in_user(connection, user_id, config).await?;
 	let response = JoinUser {
 		jwt,
 		login_id,

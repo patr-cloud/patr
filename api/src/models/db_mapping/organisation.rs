@@ -5,7 +5,6 @@ pub struct Organisation {
 	pub name: String,
 	pub super_admin_id: Vec<u8>,
 	pub active: bool,
-	pub created: u64,
 }
 
 pub struct Domain {

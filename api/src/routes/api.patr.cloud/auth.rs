@@ -42,7 +42,7 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(&app);
+	let mut app = create_eve_app(app);
 
 	app.post(
 		"/sign-in",
@@ -81,6 +81,12 @@ pub fn create_sub_app(
 		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
 	app.post(
+		"/docker-registry-token",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			docker_registry_token_endpoint
+		))],
+	);
+	app.get(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
@@ -157,7 +163,7 @@ async fn sign_in(
 	.status(200)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(&password, &user_data.password)?;
+	let success = service::validate_hash(password, &user_data.password)?;
 
 	if !success {
 		context.json(error!(INVALID_PASSWORD));
@@ -988,7 +994,7 @@ async fn docker_registry_login(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			hex::decode(value)
+			base64::decode(value)
 				.ok()
 				.map(|value| String::from_utf8(value).ok())
 				.flatten()
@@ -1038,7 +1044,7 @@ async fn docker_registry_login(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_database_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), username)
 			.await?
 			.status(401)
 			.body(
@@ -1121,7 +1127,7 @@ async fn docker_registry_authenticate(
 		.get_header("Authorization")
 		.map(|value| value.replace("Basic ", ""))
 		.map(|value| {
-			hex::decode(value)
+			base64::decode(value)
 				.ok()
 				.map(|value| String::from_utf8(value).ok())
 				.flatten()
@@ -1171,7 +1177,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 	let user =
-		db::get_user_by_username(context.get_database_connection(), &username)
+		db::get_user_by_username(context.get_database_connection(), username)
 			.await?
 			.status(401)
 			.body(
@@ -1195,8 +1201,15 @@ async fn docker_registry_authenticate(
 	// check if user is GOD_USER then return the token
 	if username == god_user.username {
 		// return token.
-		context.json(json!({ request_keys::TOKEN: password }));
-		return Ok(context);
+		if RegistryToken::parse(
+			password,
+			context.get_state().config.docker_registry.public_key_der(),
+		)
+		.is_ok()
+		{
+			context.json(json!({ request_keys::TOKEN: password }));
+			return Ok(context);
+		}
 	}
 
 	let success = service::validate_hash(password, &user.password)?;
@@ -1294,7 +1307,7 @@ async fn docker_registry_authenticate(
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
-	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repo_name);
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(repo_name);
 	if !is_repo_name_valid {
 		Error::as_result().status(400).body(
 			json!({
@@ -1326,7 +1339,7 @@ async fn docker_registry_authenticate(
 
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),
-		&repo_name,
+		repo_name,
 		&org.id,
 	)
 	.await?
@@ -1378,6 +1391,7 @@ async fn docker_registry_authenticate(
 	}
 
 	let org_id = org.id.encode_hex::<String>();
+	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
 	// get all org roles for the user using the id
 	let user_id = &user.id;
@@ -1387,42 +1401,40 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id).status(500).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::SERVER_ERROR,
-				request_keys::MESSAGE: ErrorMessage::USER_ROLE_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
+	let required_role_for_user = user_roles.get(&org_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
-		let allowed = {
-			if let Some(permissions) = required_role_for_user
-				.resource_types
-				.get(&resource.resource_type_id)
-			{
-				permissions.contains(&permission.to_string())
+		let allowed =
+			if let Some(required_role_for_user) = required_role_for_user {
+				let resource_type_allowed = {
+					if let Some(permissions) = required_role_for_user
+						.resource_types
+						.get(&resource.resource_type_id)
+					{
+						permissions.contains(&permission.to_string())
+					} else {
+						false
+					}
+				};
+				let resource_allowed = {
+					if let Some(permissions) =
+						required_role_for_user.resources.get(&resource.id)
+					{
+						permissions.contains(&permission.to_string())
+					} else {
+						false
+					}
+				};
+				let is_super_admin = {
+					required_role_for_user.is_super_admin || {
+						user_id == god_user_id
+					}
+				};
+				resource_type_allowed || resource_allowed || is_super_admin
 			} else {
-				false
-			}
-		} || {
-			if let Some(permissions) =
-				required_role_for_user.resources.get(&resource.id)
-			{
-				permissions.contains(&permission.to_string())
-			} else {
-				false
-			}
-		} || {
-			required_role_for_user.is_super_admin || {
-				let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 				user_id == god_user_id
-			}
-		};
+			};
 		if !allowed {
 			continue;
 		}

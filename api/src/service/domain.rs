@@ -69,7 +69,7 @@ pub async fn ensure_personal_domain_exists(
 		db::create_generic_domain(
 			connection,
 			domain_id,
-			&domain_name,
+			domain_name,
 			&ResourceOwnerType::Personal,
 		)
 		.await?;
@@ -135,12 +135,13 @@ pub async fn add_domain_to_organisation(
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
 		organisation_id,
+		get_current_time_millis(),
 	)
 	.await?;
 	db::create_generic_domain(
 		connection,
 		domain_id,
-		&domain_name,
+		domain_name,
 		&ResourceOwnerType::Organisation,
 	)
 	.await?;
@@ -168,7 +169,7 @@ pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
-	let domain = db::get_organisation_domain_by_id(connection, &domain_id)
+	let domain = db::get_organisation_domain_by_id(connection, domain_id)
 		.await?
 		.status(200)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -180,7 +181,7 @@ pub async fn is_domain_verified(
 	let handle = task::spawn(bg);
 	let mut response = client
 		.query(
-			Name::from_utf8(format!("vicaraVerify.{}", domain.name)).unwrap(),
+			Name::from_utf8(format!("patrVerify.{}", domain.name)).unwrap(),
 			DNSClass::IN,
 			RecordType::CNAME,
 		)
@@ -188,7 +189,7 @@ pub async fn is_domain_verified(
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!(
-				"{}.vicara.co",
+				"{}.patr.cloud",
 				domain_id.encode_hex::<String>()
 			))
 			.unwrap(),

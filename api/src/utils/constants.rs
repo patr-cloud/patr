@@ -8,7 +8,7 @@ use crate::{error, utils::Error};
 
 pub const DATABASE_VERSION: Version = Version {
 	major: 0,
-	minor: 0,
+	minor: 3,
 	patch: 0,
 	pre: Prerelease::EMPTY,
 	build: BuildMetadata::EMPTY,
@@ -42,8 +42,9 @@ impl FromStr for ResourceOwnerType {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(ResourceOwnerType::Personal),
-			"organisation" => Ok(ResourceOwnerType::Organisation),
+			"personal" => Ok(Self::Personal),
+			// Disabled for the demo
+			//"organisation" => Ok(Self::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -51,6 +52,7 @@ impl FromStr for ResourceOwnerType {
 	}
 }
 
+#[allow(dead_code)]
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";
@@ -149,4 +151,5 @@ pub mod request_keys {
 	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
 	pub const URL: &str = "url";
 	pub const DEFAULT: &str = "default";
+	pub const STATUS: &str = "status";
 }

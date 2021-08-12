@@ -55,8 +55,8 @@ impl AccessTokenData {
 		user: ExposedUserData,
 	) -> Self {
 		AccessTokenData {
-			iss: String::from("https://api.vicara.co"),
-			aud: String::from("https://*.vicara.co"),
+			iss: String::from("https://api.patr.cloud"),
+			aud: String::from("https://*.patr.cloud"),
 			iat,
 			typ: String::from("accessToken"),
 			exp,

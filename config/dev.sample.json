@@ -58,5 +58,6 @@
 		"registryUrl": "localhost:5000",
 		"privateKey": "",
 		"publicKey": ""
-	}
+	},
+	"digitalOceanApiKey": "key"
 }

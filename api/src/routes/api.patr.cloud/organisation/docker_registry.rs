@@ -1,3 +1,4 @@
+use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -6,10 +7,12 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
+		validator,
 		Error,
 		ErrorData,
 		EveContext,
@@ -34,15 +37,15 @@ use crate::{
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
-	let mut app = create_eve_app(&app);
+	let mut app = create_eve_app(app);
 
-	// List all applications
-	app.get(
+	// create new repository
+	app.post(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::application::LIST,
-				api_macros::closure_as_pinned_box!(|mut context| {
+				permissions::organisation::docker_registry::CREATE,
+				closure_as_pinned_box!(|mut context| {
 					let org_id_string = context
 						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
@@ -65,27 +68,26 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(get_applications)),
+			EveMiddleware::CustomFunction(pin_fn!(create_docker_repository)),
 		],
 	);
 
-	// get details for an application
 	app.get(
-		"/:applicationId",
+		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::application::VIEW_DETAILS,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let application_id_string = context
-						.get_param(request_keys::APPLICATION_ID)
+				permissions::organisation::docker_registry::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
 						.unwrap();
-					let application_id = hex::decode(&application_id_string)
+					let organisation_id = hex::decode(&org_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&application_id,
+						&organisation_id,
 					)
 					.await?;
 
@@ -98,30 +100,25 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				get_application_info_in_organisation
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(list_docker_repositories)),
 		],
 	);
 
-	// get list of versions for an application
-	app.get(
-		"/:applicationId/versions",
+	app.delete(
+		"/:repositoryId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::application::LIST_VERSIONS,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let application_id_string = context
-						.get_param(request_keys::APPLICATION_ID)
-						.unwrap();
-					let application_id = hex::decode(&application_id_string)
+				permissions::organisation::docker_registry::DELETE,
+				closure_as_pinned_box!(|mut context| {
+					let repo_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					// check if resource with the given application id exists.
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&application_id,
+						&repository_id,
 					)
 					.await?;
 
@@ -134,20 +131,133 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				get_all_versions_for_application
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository)),
 		],
 	);
 
 	app
 }
 
+// middleware to create a new docker repository
+// possible request body to create repository
+// {
+// 	"repoName"
+// }
 /// # Description
-/// This function is used to list out all the application in an organisation
+/// This middleware creates a new docker repository
 /// required inputs:
 /// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
+/// organisation id in url
+/// ```
+/// {
+///    repository: ,
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    id:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn create_docker_repository(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	// check if the token is valid
+	let body = context.get_body_object().clone();
+	let repository = body
+		.get(request_keys::REPOSITORY)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// check if repo name is valid
+	let is_repo_name_valid = validator::is_docker_repo_name_valid(repository);
+	if !is_repo_name_valid {
+		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
+		return Ok(context);
+	}
+
+	let org_id_string =
+		context.get_param(request_keys::ORGANISATION_ID).unwrap();
+	let organisation_id = hex::decode(&org_id_string).unwrap();
+
+	// check if repository already exists
+	let check = db::get_repository_by_name(
+		context.get_database_connection(),
+		repository,
+		&organisation_id,
+	)
+	.await?;
+
+	if check.is_some() {
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_EXISTS).to_string())?;
+	}
+
+	// split the repo nam in 2 halfs, and validate org, and repo name
+	let resource_id =
+		db::generate_new_resource_id(context.get_database_connection()).await?;
+	let resource_id = resource_id.as_bytes();
+
+	// safe to assume that org id is present here
+	let organisation_id =
+		context.get_param(request_keys::ORGANISATION_ID).unwrap();
+	let organisation_id = hex::decode(&organisation_id).unwrap();
+
+	// call function to add repo details to the table
+	// `docker_registry_repository` add a new resource
+	db::create_resource(
+		context.get_database_connection(),
+		resource_id,
+		repository,
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DOCKER_REPOSITORY)
+			.unwrap(),
+		&organisation_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
+	db::create_docker_repository(
+		context.get_database_connection(),
+		resource_id,
+		repository,
+		&organisation_id,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ID: hex::encode(resource_id)
+	}));
+
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to list the docker repositories registered under
+/// organisation
+/// required inputs:
+/// auth token in the authorization headers
 /// organisation id in url
 ///
 /// # Arguments
@@ -163,11 +273,11 @@ pub fn create_sub_app(
 /// ```
 /// {
 ///    success: true or false,
-///    applications:
+///    repository:
 ///    [
 ///       {
 ///          id: ,
-///          name: ,
+///          name:
 ///       }
 ///    ]
 /// }
@@ -175,45 +285,45 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_applications(
+async fn list_docker_repositories(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-			.unwrap();
+	let org_id_string =
+		context.get_param(request_keys::ORGANISATION_ID).unwrap();
+	let organisation_id = hex::decode(&org_id_string).unwrap();
 
-	let applications = db::get_applications_in_organisation(
+	let repositories = db::get_docker_repositories_for_organisation(
 		context.get_database_connection(),
 		&organisation_id,
 	)
 	.await?
 	.into_iter()
-	.map(|application| {
-		let id = application.id.encode_hex::<String>(); // get application id
+	.map(|repository| {
 		json!({
-			request_keys::ID : id,
-			request_keys::NAME : application.name,
+			request_keys::ID: repository.id.encode_hex::<String>(),
+			request_keys::NAME: repository.name,
 		})
 	})
 	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::APPLICATIONS: applications,
+		request_keys::REPOSITORIES: repositories
 	}));
+
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to get details for an application
+/// This function is used to delete the docker repository present under the
+/// organisation
 /// required inputs:
 /// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
 /// organisation id in url
 /// ```
 /// {
-///    applicationId:
+///    repositoryId:
 /// }
 /// ```
 ///
@@ -229,107 +339,38 @@ async fn get_applications(
 /// [`EveContext`] or an error output:
 /// ```
 /// {
-///    success: true or false,
-///    applicationId: ,
-///    name:
+///    success: true or false
 /// }
 /// ```
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_application_info_in_organisation(
+async fn delete_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let application_id =
-		context.get_param(request_keys::APPLICATION_ID).unwrap();
-	let application_id = hex::decode(application_id).unwrap();
-	let application = db::get_application_by_id(
+	let repo_id_string =
+		context.get_param(request_keys::REPOSITORY_ID).unwrap();
+	let repository_id = hex::decode(&repo_id_string).unwrap();
+
+	db::get_docker_repository_by_id(
 		context.get_database_connection(),
-		&application_id,
+		&repository_id,
+	)
+	.await?
+	.status(200)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// TODO delete from docker registry using its API
+
+	db::delete_docker_repository_by_id(
+		context.get_database_connection(),
+		&repository_id,
 	)
 	.await?;
 
-	// since the resource/application is already been checked in
-	// ResourceTokenAuthenticator, application cannot be null, else, the code
-	// would not reach at this point Hence, it is safe to unwrap the
-	// application.
-	let application = application.unwrap();
-
-	// add response to context json
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::APPLICATION_ID: application_id,
-		request_keys::NAME: application.name,
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to list out all the versions of an application.
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-/// organisation id in url
-/// ```
-/// {
-///    applicationId:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    applicationId: ,
-///    versions: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_all_versions_for_application(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let application_id_string = context
-		.get_param(request_keys::APPLICATION_ID)
-		.unwrap()
-		.clone();
-
-	// it is safe to unwrap as the a resource for the given application already
-	// exists.
-	let application_id = hex::decode(&application_id_string).unwrap();
-
-	// call fetch query for the given application id.
-	let versions = db::get_all_versions_for_application(
-		context.get_database_connection(),
-		&application_id,
-	)
-	.await?
-	.into_iter()
-	.map(|version| {
-		json!({
-			request_keys::APPLICATION_ID: application_id,
-			request_keys::VERSION : version.version
-		})
-	})
-	.collect::<Vec<_>>();
-
-	// send true, application id, and versions.
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::APPLICATION_ID: application_id_string,
-		request_keys::VERSIONS: versions
 	}));
 	Ok(context)
 }

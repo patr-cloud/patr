@@ -1,9 +1,10 @@
-#[path = "api.vicara.co/mod.rs"]
-mod api_vicara_co;
-#[path = "assets.vicara.co/mod.rs"]
-mod assets_vicara_co;
-#[path = "auth.vicara.co/mod.rs"]
-mod auth_vicara_co;
+#[allow(dead_code)]
+#[path = "api.patr.cloud/mod.rs"]
+mod api_patr_cloud;
+#[path = "assets.patr.cloud/mod.rs"]
+mod assets_patr_cloud;
+#[path = "auth.patr.cloud/mod.rs"]
+mod auth_patr_cloud;
 
 use eve_rs::App as EveApp;
 
@@ -21,16 +22,16 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::DomainRouter(
-				String::from("api.vicara.co"),
-				Box::new(api_vicara_co::create_sub_app(app)),
+				String::from("api.patr.cloud"),
+				Box::new(api_patr_cloud::create_sub_app(app)),
 			),
 			EveMiddleware::DomainRouter(
-				String::from("assets.vicara.co"),
-				Box::new(assets_vicara_co::create_sub_app(app)),
+				String::from("assets.patr.cloud"),
+				Box::new(assets_patr_cloud::create_sub_app(app)),
 			),
 			EveMiddleware::DomainRouter(
-				String::from("auth.vicara.co"),
-				Box::new(auth_vicara_co::create_sub_app(app)),
+				String::from("auth.patr.cloud"),
+				Box::new(auth_patr_cloud::create_sub_app(app)),
 			),
 		],
 	);

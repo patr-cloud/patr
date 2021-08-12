@@ -264,7 +264,6 @@ async fn get_tunnels_for_organisation(
 			request_keys::USERNAME: tunnel.username,
 			request_keys::SSH_PORT: tunnel.ssh_port,
 			request_keys::EXPOSED_PORT: tunnel.exposed_port,
-			request_keys::CREATED: tunnel.created,
 			request_keys::NAME: tunnel.name,
 			request_keys::SERVER_IP: service::get_server_ip_address(),
 		})
@@ -342,7 +341,6 @@ async fn get_info_for_tunnel(
 		request_keys::USERNAME: tunnel.username,
 		request_keys::SSH_PORT: tunnel.ssh_port,
 		request_keys::EXPOSED_PORT: tunnel.exposed_port,
-		request_keys::CREATED: tunnel.created,
 		request_keys::NAME: tunnel.name,
 		request_keys::SERVER_IP: service::get_server_ip_address()
 	}));
@@ -494,7 +492,7 @@ async fn create(
 	// check if container name already exists
 	let portus_tunnel = db::get_portus_tunnel_by_name(
 		context.get_database_connection(),
-		&tunnel_name,
+		tunnel_name,
 	)
 	.await?;
 
@@ -536,6 +534,7 @@ async fn create(
 			.get(rbac::resource_types::PORTUS)
 			.unwrap(),
 		&organisation_id,
+		get_current_time_millis(),
 	)
 	.await;
 
@@ -545,8 +544,7 @@ async fn create(
 		&username,
 		ssh_port,
 		exposed_port,
-		&tunnel_name,
-		created,
+		tunnel_name,
 	)
 	.await;
 

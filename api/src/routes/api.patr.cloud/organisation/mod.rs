@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::rbac,
 	pin_fn,
 	service,
 	utils::{
@@ -54,6 +54,8 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_organisation_info)),
 		],
 	);
+	// Disabled for the demo
+	/*
 	sub_app.post(
 		"/:organisationId/info",
 		[
@@ -89,6 +91,7 @@ pub fn create_sub_app(
 		"/:organisationId/application",
 		application::create_sub_app(app),
 	);
+	*/
 	sub_app.use_sub_app(
 		"/:organisationId/deployment",
 		deployment::create_sub_app(app),
@@ -97,6 +100,9 @@ pub fn create_sub_app(
 		"/:organisationId/docker-registry",
 		docker_registry::create_sub_app(app),
 	);
+
+	// Disabled for the demo
+	/*
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
 	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
 	sub_app
@@ -116,6 +122,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
 		],
 	);
+	*/
 	sub_app
 }
 
@@ -181,8 +188,7 @@ async fn get_organisation_info(
 		request_keys::SUCCESS: true,
 		request_keys::ORGANISATION_ID: org_id_string,
 		request_keys::NAME: organisation.name,
-		request_keys::ACTIVE: organisation.active,
-		request_keys::CREATED: organisation.created,
+		request_keys::ACTIVE: organisation.active
 	}));
 	Ok(context)
 }

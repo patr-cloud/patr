@@ -1,9 +1,9 @@
 //! # Overview
 //! This module is for setting up the configuration of the API, when the API
-//! starts running the data in form of [`Settings`] struct is transferred to the
-//! APP_SETTINGS variable which is then can be used in other parts of API
+//! starts running the data in form of [`App`] struct is transferred to the
+//! APP variable which is then can be used in other parts of API
 //!
-//! [`Settings`]: Settings
+//! [`App`]: App
 mod auth;
 mod deployment;
 mod docker;
@@ -24,33 +24,41 @@ pub use portus::*;
 pub use user::*;
 pub use utils::*;
 
-use crate::utils::settings::Settings;
+use crate::{app::App, utils::settings::Settings};
 
-/// stores the configuration of the whole API
-static APP_SETTINGS: once_cell::sync::OnceCell<Settings> =
-	once_cell::sync::OnceCell::new();
+/// stores the configuration and database of the whole API
+static APP: once_cell::sync::OnceCell<App> = once_cell::sync::OnceCell::new();
 
 /// # Description
-/// This function is used to insert into [`APP_SETTINGS`] after the API starts
+/// This function is used to insert into [`APP`] after the API starts
 ///
 /// # Arguments
-/// * `config` - An instance of struct [`Settings`]
+/// * `app` - An instance of struct [`App`]
 ///
-/// [`Settings`]: Settings
-/// [`API_SETTINGS`]: API_SETTINGS
-pub fn initialize(config: &Settings) {
-	let mut config = config.clone();
-	config.password_pepper = base64::encode(&config.password_pepper);
-	APP_SETTINGS
-		.set(config)
-		.expect("unable to set app settings");
+/// [`App`]: App
+/// [`APP`]: APP
+pub fn initialize(app: &App) {
+	let mut app = app.clone();
+	app.config.password_pepper = base64::encode(&app.config.password_pepper);
+	APP.set(app).expect("unable to set app settings");
 }
+
 /// # Description
 /// This function is used to retrieve the configuration of API
 ///
 /// # Returns
-/// It returns a ```&'static``` variable [`APP_SETTINGS`]
-/// [`APP_SETTINGS`]: APP_SETTINGS
-pub(super) fn get_config() -> &'static Settings {
-	APP_SETTINGS.get().expect("unable to get app settings")
+/// It returns the `Settings` of the ```&'static``` variable [`APP`]
+/// [`APP`]: APP
+pub(super) fn get_settings() -> &'static Settings {
+	&APP.get().expect("unable to get app settings").config
+}
+
+/// # Description
+/// This function is used to retrieve the app data of API
+///
+/// # Returns
+/// It returns the ```&'static``` variable [`APP`]
+/// [`APP`]: APP
+pub(super) fn get_app() -> &'static App {
+	APP.get().expect("unable to get app")
 }
