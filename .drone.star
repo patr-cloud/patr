@@ -1,43 +1,144 @@
 def main(ctx):
+    (steps, services) = get_pipeline_steps(ctx)
     return {
         "kind": "pipeline",
         "type": "docker",
         "name": "Default",
-        "steps": get_pipeline(ctx),
-
-        "trigger": {
-            "event": [
-                "push",
-                "pull_request"
-            ]
-        }
+        "steps": steps,
+        "services": services
     }
 
-def get_pipeline(ctx):
-    if is_pr(ctx):
-        return [
-            build_code(),
-            check_formatting(),
-            check_clippy(),
-            notify_on_failure(ctx)
-        ]
+
+def get_pipeline_steps(ctx):
+    if is_pr(ctx, "develop"):
+        return ([
+            # Build in debug mode
+            build_code(release: False, sqlx_offline: True),
+            check_formatting(),  # Check if formatting is fine
+            check_clippy(),  # Check clippy lints
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: False, sqlx_offline: False),
+        ], [
+            database_service(get_database_password())
+        ])
+    elif is_pr(ctx, "staging"):
+        return ([
+            # Build in release mode
+            build_code(release: True, sqlx_offline: True),
+            check_formatting(),  # Check if formatting is fine
+            check_clippy(),  # Check clippy lints
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: True, sqlx_offline: False),
+        ], [
+            database_service(get_database_password())
+        ])
+    elif is_pr(ctx, "master"):
+        return ([
+            # Build in release mode
+            build_code(release: True, sqlx_offline: True),
+            check_formatting(),  # Check if formatting is fine
+            check_clippy(),  # Check clippy lints
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: True, sqlx_offline: False),
+        ], [
+            database_service(get_database_password())
+        ])
+    elif is_push(ctx, "develop"):
+        return ([
+            # Build in debug mode
+            build_code(release: False, sqlx_offline: True),
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: False, sqlx_offline: False),
+        ], [
+            database_service(get_database_password())
+        ])
+    elif is_push(ctx, "staging"):
+        return ([
+            # Build in release mode
+            build_code(release: True, sqlx_offline: True),
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: True, sqlx_offline: False),
+
+            # TODO Deploy
+        ], [
+            database_service(get_database_password())
+        ])
+    elif is_push(ctx, "master"):
+        return ([
+            # Build in release mode
+            build_code(release: True, sqlx_offline: True),
+
+            copy_config(),  # Create sample config
+            init_database(env: get_app_db_environment()),  # Run --db-only
+
+            clean_api_build(),  # Clean build cache of `api`
+            # Run cargo check again, but this time with SQLX_OFFLINE=false
+            check_code(release: True, sqlx_offline: False),
+
+            # TODO Deploy
+        ], [
+            database_service(get_database_password())
+        ])
     else:
-        return [
-            build_code(),
-            notify_on_failure(ctx)
-        ]
+        return []
 
-def is_pr(ctx):
-    return ctx.build.event == "pull_request"
 
-def build_code():
+def is_pr(ctx, to_branch):
+    return ctx.build.event == "pull_request" and ctx.build.branch == to_branch
+
+def is_push(ctx, on_branch):
+    return ctx.build.event == "push" and ctx.build.branch == on_branch
+
+
+def build_code(release, sqlx_offline):
+    offline="false"
+    if sqlx_offline == True:
+        offline="true"
+    else:
+        offline="false"
+
+    release_flag=""
+    if release == True:
+        release_flag="--release"
+
     return {
         "name": "Build project",
         "image": "rust:1",
         "commands": [
-            "cargo check"
-        ]
+            "cargo build {}".format(release_flag)
+        ],
+        "environment": {
+            "SQLX_OFFLINE={}".format(offline),
+            "DATABASE_URL=postgres://postgres:{}@database:5432/api".format(
+                get_database_password())
+        }
     }
+
 
 def check_formatting():
     return {
@@ -48,6 +149,7 @@ def check_formatting():
         ]
     }
 
+
 def check_clippy():
     return {
         "name": "Check clippy suggestions",
@@ -57,57 +159,77 @@ def check_clippy():
         ]
     }
 
-def notify_on_failure(ctx):
+def copy_config():
     return {
-        "name": "Notify if build failed",
-        "image": "appleboy/drone-discord",
-        "settings": {
-            "webhook_id": {
-                "from_secret": "webhook_id"
-            },
-            "webhook_token": {
-                "from_secret": "webhook_token"
-            },
-            "message": """
-**Build failed**
-----------------
+        "name": "Copy sample config",
+        "image": "rust:1",
+        "commands": [
+            "cp config/dev.sample.json config/dev.json",
+            "cp config/dev.sample.json config/prod.json"
+        ]
+    }
 
-**Commit message**
-```
-{{{{commit.message}}}}
-```
+def init_database(env):
+    return {
+        "name": "Initialize database",
+        "image": "rust:1",
+        "commands": [
+            "cargo run -- --db-only"
+        ],
+        "environment": env
+    }
 
-**Author**
-{}
+def clean_api_build():
+    return {
+        "name": "Clean up build cache",
+        "image": "rust:1",
+        "commands": [
+            "cargo clean -p api"
+        ]
+    }
 
-More details can be found in the [build logs]({{{{build.link}}}})
+def check_code(release, sqlx_offline):
+    offline = "false"
+    if sqlx_offline == True:
+        offline = "true"
+    else:
+        offline = "false"
 
-Please fix before merging
-""".format(get_author_list())
-        },
-        "when": {
-            "branch": [
-                "master",
-                "staging",
-                "develop"
-            ],
-            "status": ["failure"]
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+
+    return {
+        "name": "Build project",
+        "image": "rust:1",
+        "commands": [
+            "cargo check {}".format(release_flag)
+        ],
+        "environment": {
+            "SQLX_OFFLINE={}".format(offline),
+            "DATABASE_URL=postgres://postgres:{}@database:5432/api".format(
+                get_database_password())
         }
     }
 
-def get_author_list():
-    code = ""
-    authors = {
-        "abhishek": "427846410101325825",
-        "tsgowtham": "328247582835081237",
-        "rakshith": "455822434919120926",
-        "manjeet.arneja": "434292143507374080",
-        "aniket.jain": "764032015041036320",
-        "samyak.gangwal": "429563803315994624",
-        "satyam.jha": "417720780835782657",
-        "rohit.singh": "688020346451918929",
-        "sanskar.biswal": "688020277829173337"
+def database_service(pwd):
+    return {
+        "name": "database",
+        "image": "postgres",
+        "environment": {
+            "POSTGRES_PASSWORD": pwd,
+            "POSTGRES_DB": "api"
+        }
     }
-    for author in authors:
-        code += "{{{{#equal commit.author \"{}\"}}}}<@{}>{{{{/equal}}}}".format(author, authors[author])
-    return code
+
+def get_database_password():
+    return "dAtAbAsEpAsSwOrD"
+
+def get_app_db_environment():
+    return {
+        "APP_DATABASE_HOST": "database",
+        "APP_DATABASE_PORT": 3306,
+        "APP_DATABASE_USER": "postgres",
+        "APP_DATABASE_PASSWORD": get_database_password(),
+        "APP_DATABASE_DATABASE": "api"
+    }
