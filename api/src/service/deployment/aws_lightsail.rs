@@ -29,7 +29,7 @@ pub async fn deploy_container_on_aws_lightsail(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	let deployment_id_string = hex::encode(&deployment_id);
+	let deployment_id_string = "f65494a0b7494b07803ba0199ffc9afb".to_string();
 
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
@@ -48,11 +48,129 @@ pub async fn deploy_container_on_aws_lightsail(
 	tag_docker_image(&image_name, &tag, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
+	// Get credentails for aws lightsail
+	let client = lightsail::Client::from_env();
+
 	let service_name = hex::encode(&deployment_id);
 	// TODO: find a better name for label
 	let label_name = "deployment_label".to_string();
 
-	// TODO: add region details
+	let _ =
+		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
+			.await;
+
+	let app_existence = app_exists(&service_name, &client).await?;
+	if app_existence {
+		// TODO: add region details and extract this part into a function
+		let output = Command::new("aws")
+			.arg("lightsail")
+			.arg("push-container-image")
+			.arg("--service-name")
+			.arg(&service_name)
+			.arg("--image")
+			.arg(&new_repo_name)
+			.arg("--region")
+			.arg("us-east-2")
+			.arg("--label")
+			.arg(&label_name)
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()?
+			.wait()?;
+
+		if !output.success() {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+		log::trace!("pushed the container into aws registry");
+
+		log::trace!("container service exists as {}", &service_name);
+		deploy_application(&service_name, &client).await?;
+		log::trace!("App re-deployed");
+	} else {
+		// create container service
+		log::trace!("creating new container service");
+		create_container_service_and_deploy(
+			&service_name,
+			&new_repo_name,
+			&label_name,
+			&client,
+		)
+		.await?;
+	}
+	// wait for the app to be completed to be deployed
+	let default_url = get_default_url(&service_name, &client).await?;
+	log::trace!("default url is {}", default_url);
+
+	// update DNS
+	update_dns(&deployment_id_string, &default_url, &config).await?;
+	log::trace!("DNS Updated");
+
+	let _ =
+		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
+			.await;
+	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
+	log::trace!("Docker image deleted");
+
+	Ok(())
+}
+
+async fn create_container_service_and_deploy(
+	service_name: &str,
+	label_name: &str,
+	new_repo_name: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	let container_service = client
+		.create_container_service()
+		.set_service_name(Some(service_name.to_string()))
+		.scale(1) //setting the default number of containers to 1
+		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
+		.public_domain_names(
+			"patr-cloud".to_string(),
+			vec![format!("{}.patr.cloud", service_name)], /* getting this
+			                                               * error here: The
+			                                               * specified certificate
+			                                               * does not exist
+			                                               * for cert name
+			                                               * patr-cloud for
+			                                               * service 00 */
+		)
+		.send()
+		.await;
+
+	if let Err(error) = container_service {
+		log::info!("Error during creation of service, {}", error);
+		return Ok(());
+	}
+
+	loop {
+		let container_status = client
+			.get_container_services()
+			.service_name(service_name.to_string())
+			.send()
+			.await;
+
+		if let Err(error) = container_status {
+			log::info!("Error during fetching status of deployment, {}", error);
+
+			return Ok(());
+		} else if let Ok(container_status) = container_status {
+			if let Some(container_services) =
+				container_status.container_services
+			{
+				if let Some(container_state) = &container_services[0].state {
+					if *container_state == ContainerServiceState::Ready {
+						break;
+					}
+				}
+			}
+		}
+	}
+	log::trace!("container service created");
+
+	// TODO: add region details and extract this part into a function
 	let output = Command::new("aws")
 		.arg("lightsail")
 		.arg("push-container-image")
@@ -74,85 +192,11 @@ pub async fn deploy_container_on_aws_lightsail(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
-
 	log::trace!("pushed the container into aws registry");
 
-	// TODO: add the logic for the case when app exists
-	// let app_exists = app_exists(&deployment_id, &config, &client).await?;
-	// log::trace!("App exists as {:?}", app_exists);
+	log::trace!("creating container deployment");
 
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
-			.await;
-
-	// Get credentails for aws lightsail
-	let client = lightsail::Client::from_env();
-
-	let app_existence = app_exists(&service_name, &client).await?;
-	if app_existence {
-		log::trace!("container service exists as {}", &service_name);
-		redeploy_application(&service_name, &client).await?;
-		log::trace!("App redeployed");
-	} else {
-		// create container service
-		log::trace!("creating new container service");
-		create_container_service_and_deploy(&service_name, &client).await?;
-	}
-	// wait for the app to be completed to be deployed
-	let default_url = get_default_url(&service_name, &client).await?;
-	log::trace!("default url is {}", default_url);
-
-	// update DNS
-	update_dns(&deployment_id_string, &default_url, &config).await?;
-	log::trace!("DNS Updated");
-
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
-			.await;
-	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
-	log::trace!("Docker image deleted");
-
-	Ok(())
-}
-
-async fn create_container_service_and_deploy(
-	service_name: &str,
-	client: &lightsail::Client,
-) -> Result<(), Error> {
-	// get latest container
-	let deployment_request =
-		make_deployment_for_latest_image(service_name, client).await?;
-
-	let _container_service = client
-		.create_container_service()
-		.set_service_name(Some(service_name.to_string()))
-		.deployment(deployment_request)
-		.scale(1) //setting the default number of containers to 1
-		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
-		.public_domain_names(
-			"patr-cloud".to_string(),
-			vec![format!("{}.patr.cloud", service_name)],
-		)
-		.send()
-		.await?;
-
-	loop {
-		let container_status = client
-			.get_container_services()
-			.service_name(service_name.to_string())
-			.send()
-			.await?;
-		if let Some(container_services) = container_status.container_services {
-			if let Some(container_state) = &container_services[0].state {
-				if *container_state == ContainerServiceState::Ready {
-					break;
-				}
-			}
-		}
-	}
-	log::trace!("container service created");
-
-	// TODO: Handle errors
+	deploy_application(&service_name, client).await?;
 
 	Ok(())
 }
@@ -163,40 +207,36 @@ async fn app_exists(
 ) -> Result<bool, Error> {
 	let container_service = client
 		.get_container_services()
-		.service_name("6afdefea5dee4c789c2f56d4ff9aee9f".to_string())
+		.service_name(service_name.to_string())
 		.send()
-		.await?;
-	// TODO: refactor this
-	if let Some(container_service) = container_service.container_services {
-		if let Some(container_service) = container_service.get(0) {
-			if let Some(container_service_name) =
-				&container_service.container_service_name
-			{
-				if service_name == container_service_name {
-					return Ok(true);
-				}
-			}
-		}
+		.await;
+
+	if let Err(_) = container_service {
+		log::trace!("App not found");
+	} else {
+		return Ok(true);
 	}
 	Ok(false)
 }
 
-async fn redeploy_application(
+async fn deploy_application(
 	service_name: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
 	let deployment_request =
 		make_deployment_for_latest_image(service_name, client).await?;
 
-	let _application = client
+	let application = client
 		.create_container_service_deployment()
 		.set_containers(deployment_request.containers)
 		.set_service_name(Some(service_name.to_string()))
 		.set_public_endpoint(deployment_request.public_endpoint)
 		.send()
-		.await?;
+		.await;
 
-	// TODO: handle errors
+	if let Err(error) = application {
+		log::info!("Error during deployment of app, {}", error);
+	}
 
 	Ok(())
 }
