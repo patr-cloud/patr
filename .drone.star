@@ -1,12 +1,23 @@
 def main(ctx):
-    print(ctx)
     (steps, services) = get_pipeline_steps(ctx)
+    branch = ""
+    if len(steps) == 0:
+        branch = "skip-ci"
+    else:
+        branch = ctx.build.branch
     return {
         "kind": "pipeline",
         "type": "docker",
-        "name": "{} - {} - {} - {}".format(ctx.build.event, ctx.build.target, ctx.build.source, ctx.build.branch),
+        "name": "Default"
         "steps": steps,
-        "services": services
+        "services": services,
+
+        "trigger": {
+            "when": {
+                "event": ctx.build.event,
+                "branch": branch
+            }
+        }
     }
 
 
@@ -110,7 +121,7 @@ def get_pipeline_steps(ctx):
 
 
 def is_pr(ctx, to_branch):
-    return ctx.build.event == "pull_request" and ctx.build.target == to_branch
+    return ctx.build.event == "pull_request" and ctx.build.branch == to_branch
 
 
 def is_push(ctx, on_branch):
