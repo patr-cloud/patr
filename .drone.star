@@ -111,20 +111,21 @@ def get_pipeline_steps(ctx):
 def is_pr(ctx, to_branch):
     return ctx.build.event == "pull_request" and ctx.build.branch == to_branch
 
+
 def is_push(ctx, on_branch):
     return ctx.build.event == "push" and ctx.build.branch == on_branch
 
 
 def build_code(release, sqlx_offline):
-    offline="false"
+    offline = "false"
     if sqlx_offline == True:
-        offline="true"
+        offline = "true"
     else:
-        offline="false"
+        offline = "false"
 
-    release_flag=""
+    release_flag = ""
     if release == True:
-        release_flag="--release"
+        release_flag = "--release"
 
     return {
         "name": "Build project",
@@ -133,8 +134,8 @@ def build_code(release, sqlx_offline):
             "cargo build {}".format(release_flag)
         ],
         "environment": {
-            "SQLX_OFFLINE={}".format(offline),
-            "DATABASE_URL=postgres://postgres:{}@database:5432/api".format(
+            "SQLX_OFFLINE": offline,
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
                 get_database_password())
         }
     }
@@ -159,6 +160,7 @@ def check_clippy():
         ]
     }
 
+
 def copy_config():
     return {
         "name": "Copy sample config",
@@ -168,6 +170,7 @@ def copy_config():
             "cp config/dev.sample.json config/prod.json"
         ]
     }
+
 
 def init_database(env):
     return {
@@ -179,6 +182,7 @@ def init_database(env):
         "environment": env
     }
 
+
 def clean_api_build():
     return {
         "name": "Clean up build cache",
@@ -187,6 +191,7 @@ def clean_api_build():
             "cargo clean -p api"
         ]
     }
+
 
 def check_code(release, sqlx_offline):
     offline = "false"
@@ -206,11 +211,12 @@ def check_code(release, sqlx_offline):
             "cargo check {}".format(release_flag)
         ],
         "environment": {
-            "SQLX_OFFLINE={}".format(offline),
-            "DATABASE_URL=postgres://postgres:{}@database:5432/api".format(
+            "SQLX_OFFLINE": offline,
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
                 get_database_password())
         }
     }
+
 
 def database_service(pwd):
     return {
@@ -222,8 +228,10 @@ def database_service(pwd):
         }
     }
 
+
 def get_database_password():
     return "dAtAbAsEpAsSwOrD"
+
 
 def get_app_db_environment():
     return {
