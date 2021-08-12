@@ -105,7 +105,7 @@ def get_pipeline_steps(ctx):
             database_service(get_database_password())
         ])
     else:
-        return []
+        return ([], [])
 
 
 def is_pr(ctx, to_branch):
