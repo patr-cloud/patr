@@ -451,7 +451,7 @@ async fn get_default_ingress(
 		.default_ingress
 }
 
-async fn update_dns(
+pub async fn update_dns(
 	sub_domain: &str,
 	default_ingress: &str,
 	config: &Settings,
@@ -541,7 +541,7 @@ async fn update_dns(
 	Ok(())
 }
 
-async fn delete_docker_image(
+pub async fn delete_docker_image(
 	deployment_id_string: &str,
 	image_name: &str,
 	tag: &str,

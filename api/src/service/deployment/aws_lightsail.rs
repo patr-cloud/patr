@@ -83,49 +83,111 @@ pub async fn deploy_container_on_aws_lightsail(
 		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
 			.await;
 
-	// create container service
-	log::trace!("creating container service");
-	create_container_service_and_deploy().await?;
+	// Get credentails for aws lightsail
+	let client = lightsail::Client::from_env();
 
-	// TODO: use similar logic for further process
-	// let app_id = if let Some(app_id) = app_exists {
-	// 	// the function to create a new deployment
-	// 	redeploy_application(&app_id, &config, &client).await?;
-	// 	log::trace!("App redeployed");
-	// 	app_id
-	// } else {
-	// 	// if the app doesn't exists then create a new app
-	// 	let app_id = create_app(&deployment_id, &config, &client).await?;
-	// 	log::trace!("App created");
-	// 	app_id
-	// };
+	let app_existence = app_exists(&service_name, &client).await?;
+	if app_existence {
+		log::trace!("container service exists as {}", &service_name);
+		redeploy_application(&service_name, &client).await?;
+		log::trace!("App redeployed");
+	} else {
+		// create container service
+		log::trace!("creating new container service");
+		create_container_service_and_deploy(&service_name, &client).await?;
+	}
+	// wait for the app to be completed to be deployed
+	let default_url = wait_for_deploy(&client).await?;
+	log::trace!("default url is {}", default_url);
 
-	// // wait for the app to be completed to be deployed
-	// let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
-	// log::trace!("App ingress is at {}", default_ingress);
+	// update DNS
+	update_dns(&deployment_id_string, &default_url, &config).await?;
+	log::trace!("DNS Updated");
 
-	// // update DNS
-	// update_dns(&deployment_id_string, &default_ingress, &config).await?;
-	// log::trace!("DNS Updated");
-
-	// let _ =
-	// 	update_deployment_status(&deployment_id, &DeploymentStatus::Running)
-	// 		.await;
-	// let _ = delete_docker_image(&deployment_id_string, &image_name,
-	// &tag).await; log::trace!("Docker image deleted");
+	let _ =
+		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
+			.await;
+	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
+	log::trace!("Docker image deleted");
 
 	Ok(())
 }
 
-pub async fn create_container_service_and_deploy() -> Result<(), Error> {
-	let client = lightsail::Client::from_env();
-
+async fn create_container_service_and_deploy(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
 	// get latest container
-	// TODO: extract this part to a function so that it can be used by the
-	// update part
+	let deployment_request =
+		make_deployment_for_latest_image(service_name, client).await?;
+
+	let container_service = client
+		.create_container_service()
+		.set_service_name(Some(service_name.to_string()))
+		.deployment(deployment_request)
+		.scale(1) //setting the default number of containers to 1
+		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
+		.send()
+		.await?;
+
+	loop {
+		let container_status = client
+			.get_container_services()
+			.service_name(service_name.to_string())
+			.send()
+			.await?;
+		if let Some(container_services) = container_status.container_services {
+			if let Some(container_state) = &container_services[0].state {
+				if *container_state == ContainerServiceState::Ready {
+					break;
+				}
+			}
+		}
+	}
+	log::trace!("container service created");
+
+	Ok(())
+}
+
+async fn app_exists(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<bool, Error> {
+	let container_service = client
+		.get_container_services()
+		.service_name("6afdefea5dee4c789c2f56d4ff9aee9f".to_string())
+		.send()
+		.await?;
+	// TODO: refactor this
+	if let Some(container_service) = container_service.container_services {
+		if let Some(container_service) = container_service.get(0) {
+			if let Some(container_service_name) =
+				&container_service.container_service_name
+			{
+				if service_name == container_service_name {
+					return Ok(true);
+				}
+			}
+		}
+	}
+	Ok(false)
+}
+
+async fn redeploy_application(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	let application = client.create_container_service_deployment();
+	Ok(())
+}
+
+async fn make_deployment_for_latest_image(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<ContainerServiceDeploymentRequest, Error> {
 	let container_info = client
 		.get_container_images()
-		.service_name("service_name".to_string())
+		.service_name(service_name.to_string())
 		.send()
 		.await?;
 
@@ -170,34 +232,13 @@ pub async fn create_container_service_and_deploy() -> Result<(), Error> {
 
 	// create deployment request
 	let deployment_request = ContainerServiceDeploymentRequest::builder()
-		.containers("container_name".to_string(), deployment_container)
+		.containers(service_name.to_string(), deployment_container)
 		.set_public_endpoint(Some(public_endpoint_request))
 		.build();
 
-	let container_service = client
-		.create_container_service()
-		.set_service_name(Some("set_service_name".to_string()))
-		.deployment(deployment_request)
-		.scale(1) //setting the default number of containers to 1
-		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
-		.send()
-		.await?;
+	return Ok(deployment_request);
+}
 
-	loop {
-		let container_status = client
-			.get_container_services()
-			.service_name("default-service-1".to_string())
-			.send()
-			.await?;
-		if let Some(container_services) = container_status.container_services {
-			if let Some(container_state) = &container_services[0].state {
-				if *container_state == ContainerServiceState::Ready {
-					break;
-				}
-			}
-		}
-	}
-	log::trace!("container service created");
-
-	Ok(())
+async fn wait_for_deploy(client: &lightsail::Client) -> Result<String, Error> {
+	Ok("url".to_string())
 }
