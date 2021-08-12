@@ -23,19 +23,42 @@ def get_pipeline_steps(ctx):
     if is_pr(ctx, "develop"):
         return ([
             # Build in debug mode
-            build_code("Build code offline", release=False, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=False,
+                sqlx_offline=True
+            ),
             # Check if formatting is fine
-            check_formatting("Check formatting"),
-            check_clippy("Check clippy lints"),  # Check clippy lints
+            check_formatting("Check formatting", None),
+            # Check clippy lints
+            check_clippy("Check clippy lints", None),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                [
+                    "Build code offline",
+                    "Check formatting",
+                    "Check clippy lints"
+                ]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=False, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=False,
+                sqlx_offline=False
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -43,20 +66,42 @@ def get_pipeline_steps(ctx):
     elif is_pr(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code("Build code offline",
-                       release=True, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=True,
+                sqlx_offline=True
+            ),
             # Check if formatting is fine
-            check_formatting("Check formatting"),
-            check_clippy("Check clippy lints"),  # Check clippy lints
+            check_formatting("Check formatting", None),
+            # Check clippy lints
+            check_clippy("Check clippy lints", None),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                [
+                    "Build code offline",
+                    "Check formatting",
+                    "Check clippy lints"
+                ]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=True, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=True,
+                sqlx_offline=False
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -64,20 +109,42 @@ def get_pipeline_steps(ctx):
     elif is_pr(ctx, "master"):
         return ([
             # Build in release mode
-            build_code("Build code mode offline",
-                       release=True, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=True,
+                sqlx_offline=True
+            ),
             # Check if formatting is fine
-            check_formatting("Check formatting"),
-            check_clippy("Check clippy lints"),  # Check clippy lints
+            check_formatting("Check formatting", None),
+            # Check clippy lints
+            check_clippy("Check clippy lints", None),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                [
+                    "Build code offline",
+                    "Check formatting",
+                    "Check clippy lints"
+                ]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=True, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=True,
+                sqlx_offline=False
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -85,16 +152,34 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "develop"):
         return ([
             # Build in debug mode
-            build_code("Build code offline", release=False, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=False,
+                sqlx_offline=True
+            ),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                ["Build code offline"]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=False, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=False,
+                sqlx_offline=False
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -102,17 +187,34 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code("Build code offline",
-                       release=True, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=True,
+                sqlx_offline=True
+            ),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                ["Build code offline"]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=True, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=True,
+                sqlx_offline=False
+            ),
 
             # TODO Deploy
         ], [
@@ -122,17 +224,34 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "master"):
         return ([
             # Build in release mode
-            build_code("Build code offline",
-                       release=True, sqlx_offline=True),
+            build_code(
+                "Build code offline",
+                None,
+                release=True,
+                sqlx_offline=True
+            ),
 
-            copy_config("Copy sample config"),  # Create sample config
-            init_database("Initialize database",
-                          env=get_app_running_environment()),  # Run --db-only
+            # Create sample config
+            copy_config(
+                "Copy sample config",
+                ["Build code offline"]
+            ),
+            # Run --db-only
+            init_database(
+                "Initialize database",
+                ["Copy sample config"],
+                env=get_app_running_environment()
+            ),
 
-            clean_api_build("Clean build cache"),  # Clean build cache of `api`
+            # Clean build cache of `api`
+            clean_api_build("Clean build cache", ["Initialize database"]),
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code("Recheck code with live database",
-                       release=True, sqlx_offline=False),
+            check_code(
+                "Recheck code with live database",
+                ["Clean build cache"],
+                release=True,
+                sqlx_offline=False
+            ),
 
             # TODO Deploy
         ], [
@@ -151,7 +270,7 @@ def is_push(ctx, on_branch):
     return ctx.build.event == "push" and ctx.build.branch == on_branch
 
 
-def build_code(step_name, release, sqlx_offline):
+def build_code(step_name, dependencies, release, sqlx_offline):
     offline = "false"
     if sqlx_offline == True:
         offline = "true"
@@ -172,63 +291,69 @@ def build_code(step_name, release, sqlx_offline):
             "SQLX_OFFLINE": offline,
             "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
                 get_database_password())
-        }
+        },
+        "depends_on": dependencies
     }
 
 
-def check_formatting(step_name):
+def check_formatting(step_name, dependencies):
     return {
         "name": step_name,
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo fmt -- --check"
-        ]
+        ],
+        "depends_on": dependencies
     }
 
 
-def check_clippy(step_name):
+def check_clippy(step_name, dependencies):
     return {
         "name": step_name,
         "image": "rustlang/rust:nightly",
         "commands": [
             "cargo clippy -- -D warnings"
-        ]
+        ],
+        "depends_on": dependencies
     }
 
 
-def copy_config(step_name):
+def copy_config(step_name, dependencies):
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
             "cp config/dev.sample.json config/dev.json",
             "cp config/dev.sample.json config/prod.json"
-        ]
+        ],
+        "depends_on": dependencies
     }
 
 
-def init_database(step_name, env):
+def init_database(step_name, dependencies, env):
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo run -- --db-only"
         ],
-        "environment": env
+        "environment": env,
+        "depends_on": dependencies
     }
 
 
-def clean_api_build(step_name):
+def clean_api_build(step_name, dependencies):
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
             "cargo clean -p api"
-        ]
+        ],
+        "depends_on": dependencies
     }
 
 
-def check_code(step_name, release, sqlx_offline):
+def check_code(step_name, dependencies, release, sqlx_offline):
     offline = "false"
     if sqlx_offline == True:
         offline = "true"
@@ -249,7 +374,8 @@ def check_code(step_name, release, sqlx_offline):
             "SQLX_OFFLINE": offline,
             "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
                 get_database_password())
-        }
+        },
+        "depends_on": dependencies
     }
 
 
