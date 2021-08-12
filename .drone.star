@@ -25,76 +25,92 @@ def get_pipeline_steps(ctx):
     if is_pr(ctx, "develop"):
         return ([
             # Build in debug mode
-            build_code(release=False, sqlx_offline=True),
-            check_formatting(),  # Check if formatting is fine
-            check_clippy(),  # Check clippy lints
+            build_code("Build code offline", release=False, sqlx_offline=True),
+            # Check if formatting is fine
+            check_formatting("Check formatting"),
+            check_clippy("Check clippy lints"),  # Check clippy lints
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=False, sqlx_offline=False),
+            check_code("Recheck code with live database",
+                       release=False, sqlx_offline=False),
         ], [
             database_service(get_database_password())
         ])
     elif is_pr(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code(release=True, sqlx_offline=True),
-            check_formatting(),  # Check if formatting is fine
-            check_clippy(),  # Check clippy lints
+            build_code("Build code in release mode offline",
+                       release=True, sqlx_offline=True),
+            # Check if formatting is fine
+            check_formatting("Check formatting"),
+            check_clippy("Check clippy lints"),  # Check clippy lints
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=True, sqlx_offline=False),
+            check_code("Recheck code in release mode with live database",
+                       release=True, sqlx_offline=False),
         ], [
             database_service(get_database_password())
         ])
     elif is_pr(ctx, "master"):
         return ([
             # Build in release mode
-            build_code(release=True, sqlx_offline=True),
-            check_formatting(),  # Check if formatting is fine
-            check_clippy(),  # Check clippy lints
+            build_code("Build code in release mode offline",
+                       release=True, sqlx_offline=True),
+            # Check if formatting is fine
+            check_formatting("Check formatting"),
+            check_clippy("Check clippy lints"),  # Check clippy lints
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=True, sqlx_offline=False),
+            check_code("Recheck code in release mode with live database",
+                       release=True, sqlx_offline=False),
         ], [
             database_service(get_database_password())
         ])
     elif is_push(ctx, "develop"):
         return ([
             # Build in debug mode
-            build_code(release=False, sqlx_offline=True),
+            build_code("Build code offline", release=False, sqlx_offline=True),
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=False, sqlx_offline=False),
+            check_code("Recheck code with live database",
+                       release=False, sqlx_offline=False),
         ], [
             database_service(get_database_password())
         ])
     elif is_push(ctx, "staging"):
         return ([
             # Build in release mode
-            build_code(release=True, sqlx_offline=True),
+            build_code("Build code in release mode offline",
+                       release=True, sqlx_offline=True),
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=True, sqlx_offline=False),
+            check_code("Recheck code in release mode with live database",
+                       release=True, sqlx_offline=False),
 
             # TODO Deploy
         ], [
@@ -103,14 +119,17 @@ def get_pipeline_steps(ctx):
     elif is_push(ctx, "master"):
         return ([
             # Build in release mode
-            build_code(release=True, sqlx_offline=True),
+            build_code("Build code in release mode offline",
+                       release=True, sqlx_offline=True),
 
-            copy_config(),  # Create sample config
-            init_database(env=get_app_db_environment()),  # Run --db-only
+            copy_config("Copy sample config"),  # Create sample config
+            init_database("Initialize database",
+                          env=get_app_db_environment()),  # Run --db-only
 
-            clean_api_build(),  # Clean build cache of `api`
+            clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
-            check_code(release=True, sqlx_offline=False),
+            check_code("Recheck code in release mode with live database",
+                       release=True, sqlx_offline=False),
 
             # TODO Deploy
         ], [
@@ -128,7 +147,7 @@ def is_push(ctx, on_branch):
     return ctx.build.event == "push" and ctx.build.branch == on_branch
 
 
-def build_code(release, sqlx_offline):
+def build_code(step_name, release, sqlx_offline):
     offline = "false"
     if sqlx_offline == True:
         offline = "true"
@@ -153,7 +172,7 @@ def build_code(release, sqlx_offline):
     }
 
 
-def check_formatting():
+def check_formatting(step_name):
     return {
         "name": "Check code formatting",
         "image": "rustlang/rust:nightly",
@@ -163,7 +182,7 @@ def check_formatting():
     }
 
 
-def check_clippy():
+def check_clippy(step_name):
     return {
         "name": "Check clippy suggestions",
         "image": "rustlang/rust:nightly",
@@ -173,7 +192,7 @@ def check_clippy():
     }
 
 
-def copy_config():
+def copy_config(step_name):
     return {
         "name": "Copy sample config",
         "image": "rust:1",
@@ -184,7 +203,7 @@ def copy_config():
     }
 
 
-def init_database(env):
+def init_database(step_name, env):
     return {
         "name": "Initialize database",
         "image": "rust:1",
@@ -195,7 +214,7 @@ def init_database(env):
     }
 
 
-def clean_api_build():
+def clean_api_build(step_name):
     return {
         "name": "Clean up build cache",
         "image": "rust:1",
@@ -205,7 +224,7 @@ def clean_api_build():
     }
 
 
-def check_code(release, sqlx_offline):
+def check_code(step_name, release, sqlx_offline):
     offline = "false"
     if sqlx_offline == True:
         offline = "true"
