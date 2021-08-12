@@ -10,16 +10,7 @@ use lightsail::model::{
 	EndpointRequest,
 };
 
-use crate::{
-	error,
-	models::db_mapping::DeploymentStatus,
-	service::{
-		pull_image_from_registry,
-		tag_docker_image,
-		update_deployment_status,
-	},
-	utils::{settings::Settings, Error},
-};
+use crate::{error, models::db_mapping::DeploymentStatus, service::{delete_docker_image, pull_image_from_registry, tag_docker_image, update_deployment_status, update_dns}, utils::{settings::Settings, Error}};
 
 pub async fn deploy_container_on_aws_lightsail(
 	image_name: String,
@@ -97,7 +88,7 @@ pub async fn deploy_container_on_aws_lightsail(
 		create_container_service_and_deploy(&service_name, &client).await?;
 	}
 	// wait for the app to be completed to be deployed
-	let default_url = wait_for_deploy(&client).await?;
+	let default_url = get_default_url(&service_name, &client).await?;
 	log::trace!("default url is {}", default_url);
 
 	// update DNS
@@ -127,6 +118,7 @@ async fn create_container_service_and_deploy(
 		.deployment(deployment_request)
 		.scale(1) //setting the default number of containers to 1
 		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
+        .public_domain_names("patr-cloud".to_string(), vec![format!("{}.patr.cloud", service_name)])
 		.send()
 		.await?;
 
@@ -145,6 +137,8 @@ async fn create_container_service_and_deploy(
 		}
 	}
 	log::trace!("container service created");
+
+    // TODO: Handle errors
 
 	Ok(())
 }
@@ -177,7 +171,21 @@ async fn redeploy_application(
 	service_name: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
-	let application = client.create_container_service_deployment();
+    let deployment_request = make_deployment_for_latest_image(
+        service_name,
+        client
+    ).await?;
+
+    let application = client
+        .create_container_service_deployment()
+        .set_containers(deployment_request.containers)
+        .set_service_name(Some(service_name.to_string()))
+        .set_public_endpoint(deployment_request.public_endpoint)
+        .send()
+        .await?;
+
+    // TODO: handle errors
+
 	Ok(())
 }
 
@@ -239,6 +247,23 @@ async fn make_deployment_for_latest_image(
 	return Ok(deployment_request);
 }
 
-async fn wait_for_deploy(client: &lightsail::Client) -> Result<String, Error> {
-	Ok("url".to_string())
+async fn get_default_url(service_name: &str, client: &lightsail::Client) -> Result<String, Error> {
+    let container_service = client
+        .get_container_services()
+        .service_name(service_name.to_string())
+        .send()
+        .await?;
+    
+    if let Some(container_service) = container_service.container_services {
+        let container_service = container_service.get(0);
+        if let Some(container_service_info) = container_service {
+            if let Some(url) = &container_service_info.url {
+                return Ok(url.to_string());
+            }
+        }
+    }
+    
+	Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?
 }
