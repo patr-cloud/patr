@@ -30,13 +30,14 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code("Recheck code with live database",
                        release=False, sqlx_offline=False),
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     elif is_pr(ctx, "staging"):
@@ -50,13 +51,14 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     elif is_pr(ctx, "master"):
@@ -70,13 +72,14 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code("Recheck code with live database",
                        release=True, sqlx_offline=False),
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     elif is_push(ctx, "develop"):
@@ -86,13 +89,14 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
             check_code("Recheck code with live database",
                        release=False, sqlx_offline=False),
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     elif is_push(ctx, "staging"):
@@ -103,7 +107,7 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
@@ -112,6 +116,7 @@ def get_pipeline_steps(ctx):
 
             # TODO Deploy
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     elif is_push(ctx, "master"):
@@ -122,7 +127,7 @@ def get_pipeline_steps(ctx):
 
             copy_config("Copy sample config"),  # Create sample config
             init_database("Initialize database",
-                          env=get_app_db_environment()),  # Run --db-only
+                          env=get_app_running_environment()),  # Run --db-only
 
             clean_api_build("Clean build cache"),  # Clean build cache of `api`
             # Run cargo check again, but this time with SQLX_OFFLINE=false
@@ -131,6 +136,7 @@ def get_pipeline_steps(ctx):
 
             # TODO Deploy
         ], [
+            redis_service(),
             database_service(get_database_password())
         ])
     else:
@@ -258,15 +264,24 @@ def database_service(pwd):
     }
 
 
+def redis_service():
+    return {
+        "name": "cache",
+        "image": "redis"
+    }
+
+
 def get_database_password():
     return "dAtAbAsEpAsSwOrD"
 
 
-def get_app_db_environment():
+def get_app_running_environment():
     return {
         "APP_DATABASE_HOST": "database",
         "APP_DATABASE_PORT": 5432,
         "APP_DATABASE_USER": "postgres",
         "APP_DATABASE_PASSWORD": get_database_password(),
-        "APP_DATABASE_DATABASE": "api"
+        "APP_DATABASE_DATABASE": "api",
+
+        "APP_DATABASE_HOST": "cache",
     }
