@@ -249,7 +249,7 @@ def check_code(step_name, release, sqlx_offline):
 
 def database_service(pwd):
     return {
-        "name": "database.service",
+        "name": "database",
         "image": "postgres",
         "environment": {
             "POSTGRES_PASSWORD": pwd,
@@ -264,8 +264,8 @@ def get_database_password():
 
 def get_app_db_environment():
     return {
-        "APP_DATABASE_HOST": "database.service",
-        "APP_DATABASE_PORT": 3306,
+        "APP_DATABASE_HOST": "database",
+        "APP_DATABASE_PORT": 5432,
         "APP_DATABASE_USER": "postgres",
         "APP_DATABASE_PASSWORD": get_database_password(),
         "APP_DATABASE_DATABASE": "api"
