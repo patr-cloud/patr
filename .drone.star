@@ -13,10 +13,8 @@ def main(ctx):
         "services": services,
 
         "trigger": {
-            "when": {
-                "event": ctx.build.event,
-                "branch": branch
-            }
+            "event": [ctx.build.event],
+            "branch": [branch]
         }
     }
 
