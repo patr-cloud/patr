@@ -283,5 +283,5 @@ def get_app_running_environment():
         "APP_DATABASE_PASSWORD": get_database_password(),
         "APP_DATABASE_DATABASE": "api",
 
-        "APP_DATABASE_HOST": "cache",
+        "APP_REDIS_HOST": "cache",
     }
