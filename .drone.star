@@ -4,7 +4,7 @@ def main(ctx):
     return {
         "kind": "pipeline",
         "type": "docker",
-        "name": "Default",
+        "name": "{} - {} - {} - {}".format(ctx.event, ctx.build.target, ctx.build.source, ctx.build.branch),
         "steps": steps,
         "services": services
     }
