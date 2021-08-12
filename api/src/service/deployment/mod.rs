@@ -1,5 +1,7 @@
+mod aws_lightsail;
 mod digitalocean;
 
+pub use aws_lightsail::*;
 pub use digitalocean::*;
 use eve_rs::AsError;
 use uuid::Uuid;

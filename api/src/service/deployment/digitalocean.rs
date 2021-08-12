@@ -205,7 +205,7 @@ pub async fn delete_deployment_from_digital_ocean(
 	}
 }
 
-async fn tag_docker_image(
+pub async fn tag_docker_image(
 	image_name: &str,
 	tag: &str,
 	new_repo_name: &str,
@@ -226,7 +226,7 @@ async fn tag_docker_image(
 	Ok(())
 }
 
-async fn pull_image_from_registry(
+pub async fn pull_image_from_registry(
 	image_name: &str,
 	tag: &str,
 	config: &Settings,
@@ -566,7 +566,7 @@ async fn delete_docker_image(
 	Ok(())
 }
 
-async fn update_deployment_status(
+pub async fn update_deployment_status(
 	deployment_id: &[u8],
 	status: &DeploymentStatus,
 ) -> Result<(), Error> {
