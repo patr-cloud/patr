@@ -1,22 +1,26 @@
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use eve_rs::AsError;
-use lightsail::{
-	model::{
-		Container, ContainerServiceDeploymentRequest,
-		ContainerServicePowerName, ContainerServiceProtocol,
-		ContainerServiceState, EndpointRequest,
-	},
-	Config, Region,
+use lightsail::model::{
+	Container,
+	ContainerServiceDeploymentRequest,
+	ContainerServiceHealthCheckConfig,
+	ContainerServicePowerName,
+	ContainerServiceProtocol,
+	ContainerServiceState,
+	EndpointRequest,
 };
-use sqlx::encode;
+use tokio::process::Command;
 
 use crate::{
 	error,
 	models::db_mapping::DeploymentStatus,
 	service::{
-		delete_docker_image, pull_image_from_registry, tag_docker_image,
-		update_deployment_status, update_dns,
+		delete_docker_image,
+		pull_image_from_registry,
+		tag_docker_image,
+		update_deployment_status,
+		update_dns,
 	},
 	utils::{settings::Settings, Error},
 };
@@ -27,7 +31,8 @@ pub async fn deploy_container_on_aws_lightsail(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	let image_name = image_name.replace("registry.patr.cloud", "localhost:5000");
+	// let image_name = image_name.replace("registry.patr.cloud",
+	// "localhost:5000");
 	let deployment_id_string = hex::encode(&deployment_id);
 
 	log::trace!("Deploying deployment: {}", deployment_id_string);
@@ -35,7 +40,7 @@ pub async fn deploy_container_on_aws_lightsail(
 		.await;
 
 	log::trace!("Pulling image from registry");
-	pull_image_from_registry(&image_name, &tag, &config).await?;
+	// pull_image_from_registry(&image_name, &tag, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -52,7 +57,7 @@ pub async fn deploy_container_on_aws_lightsail(
 
 	let service_name = hex::encode(&deployment_id);
 	// TODO: find a better name for label
-	let label_name = "deployment_label".to_string();
+	let label_name = "deployment-label".to_string();
 
 	let _ =
 		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
@@ -75,7 +80,8 @@ pub async fn deploy_container_on_aws_lightsail(
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.spawn()?
-			.wait()?;
+			.wait()
+			.await?;
 
 		if !output.success() {
 			return Err(Error::empty()
@@ -86,14 +92,14 @@ pub async fn deploy_container_on_aws_lightsail(
 
 		log::trace!("container service exists as {}", &service_name);
 		deploy_application(&service_name, &client).await?;
-		log::trace!("App re-deployed");
+		log::trace!("App deployed");
 	} else {
 		// create container service
 		log::trace!("creating new container service");
 		create_container_service_and_deploy(
 			&service_name,
-			&new_repo_name,
 			&label_name,
+			&new_repo_name,
 			&client,
 		)
 		.await?;
@@ -184,7 +190,8 @@ async fn create_container_service_and_deploy(
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
 		.spawn()?
-		.wait()?;
+		.wait()
+		.await?;
 
 	if !output.success() {
 		return Err(Error::empty()
@@ -224,18 +231,14 @@ async fn deploy_application(
 ) -> Result<(), Error> {
 	let deployment_request =
 		make_deployment_for_latest_image(service_name, client).await?;
-	log::trace!("deployment request created");
-	let application = client
+	let _application = client
 		.create_container_service_deployment()
 		.set_containers(deployment_request.containers)
 		.set_service_name(Some(service_name.to_string()))
 		.set_public_endpoint(deployment_request.public_endpoint)
 		.send()
-		.await;
-	log::trace!("created the deployment");
-	if let Err(error) = application {
-		log::info!("Error during deployment of app, {}", error);
-	}
+		.await?;
+	log::trace!("created the deployment successfully");
 
 	Ok(())
 }
@@ -245,51 +248,52 @@ async fn make_deployment_for_latest_image(
 	client: &lightsail::Client,
 ) -> Result<ContainerServiceDeploymentRequest, Error> {
 	log::trace!("getting container list");
-	println!("service_name:{}", service_name);
 	let container_info = client
 		.get_container_images()
 		.service_name(service_name.to_string())
 		.send()
 		.await?;
-	println!("container info:{:#?}", container_info);
+
 	if container_info.container_images.is_none() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
-	log::trace!("recieved the container iamges");
+	log::trace!("recieved the container images");
 	let image_list = container_info.container_images.unwrap();
 
 	let container_image = image_list.get(0);
-	println!("{:#?}", container_image);
 	if container_image.is_none() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
-	println!("after check: {:#?}", container_image);
 	let container_image = container_image.unwrap();
 
 	let container_image = container_image.image.as_ref();
-	println!("before match: {:#?}", container_image);
 	let container_image_name = match container_image {
 		Some(image) => image,
 		None => Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?,
 	};
-	println!("after match: {:#?}", container_image);
 	log::trace!("adding image to deployment container");
 	let deployment_container = Container::builder()
 		// image naming convention -> :service_name.label_name.
 		.image(container_image_name)
-		.ports("80".to_string(), ContainerServiceProtocol::Https)
+		.ports("80".to_string(), ContainerServiceProtocol::Http)
+		.build();
+
+	// setting container health check config
+	let health_check = ContainerServiceHealthCheckConfig::builder()
+		.path("/".to_string())
 		.build();
 
 	// public endpoint request
 	let public_endpoint_request = EndpointRequest::builder()
-		.container_name(container_image_name)
+		.container_name(&service_name.to_string())
 		.container_port(80)
+		.set_health_check(Some(health_check))
 		.build();
 
 	// create deployment request
