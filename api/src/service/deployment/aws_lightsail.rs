@@ -403,7 +403,7 @@ async fn update_container_service_with_patr_domain(
 
 async fn create_certificate_for_deployment(
 	service_name: &str,
-	client: &lightsail::Client
+	client: &lightsail::Client,
 ) -> Result<(), Error> {
 	client
 		.create_certificate()
