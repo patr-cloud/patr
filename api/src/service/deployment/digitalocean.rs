@@ -1,25 +1,5 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
-use cloudflare::{
-	endpoints::{
-		dns::{
-			CreateDnsRecord,
-			CreateDnsRecordParams,
-			DnsContent,
-			ListDnsRecords,
-			ListDnsRecordsParams,
-			UpdateDnsRecord,
-			UpdateDnsRecordParams,
-		},
-		zone::{ListZones, ListZonesParams},
-	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
-};
 use eve_rs::AsError;
 use futures::StreamExt;
 use reqwest::Client;
@@ -61,8 +41,11 @@ pub async fn deploy_container_on_digitalocean(
 	let deployment_id_string = hex::encode(&deployment_id);
 
 	log::trace!("Deploying deployment: {}", deployment_id_string);
-	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
-		.await;
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Pushed,
+	)
+	.await;
 
 	log::trace!("Pulling image from registry");
 	pull_image_from_registry(&image_name, &tag, &config).await?;
@@ -143,9 +126,11 @@ pub async fn deploy_container_on_digitalocean(
 	let app_exists = app_exists(&deployment_id, &config, &client).await?;
 	log::trace!("App exists as {:?}", app_exists);
 
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
-			.await;
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await;
 
 	let app_id = if let Some(app_id) = app_exists {
 		// the function to create a new deployment
@@ -164,13 +149,17 @@ pub async fn deploy_container_on_digitalocean(
 	log::trace!("App ingress is at {}", default_ingress);
 
 	// update DNS
-	update_dns(&deployment_id_string, &default_ingress, &config).await?;
+	super::add_cname_record(&deployment_id_string, &default_ingress, &config).await?;
 	log::trace!("DNS Updated");
 
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Running,
+	)
+	.await;
 	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
+		super::delete_docker_image(&deployment_id_string, &image_name, &tag)
 			.await;
-	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
 	log::trace!("Docker image deleted");
 
 	Ok(())
@@ -449,135 +438,4 @@ async fn get_default_ingress(
 		.ok()?
 		.app
 		.default_ingress
-}
-
-async fn update_dns(
-	sub_domain: &str,
-	default_ingress: &str,
-	config: &Settings,
-) -> Result<(), Error> {
-	let full_domain = format!("{}.patr.cloud", sub_domain);
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zone_identifier = client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some(String::from("patr.cloud")),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.status(500)?
-		.id;
-	let zone_identifier = zone_identifier.as_str();
-
-	let expected_dns_record = DnsContent::CNAME {
-		content: String::from(default_ingress),
-	};
-
-	let response = client
-		.request(&ListDnsRecords {
-			zone_identifier,
-			params: ListDnsRecordsParams {
-				name: Some(full_domain.clone()),
-				..Default::default()
-			},
-		})
-		.await?;
-	let dns_record = response.result.into_iter().find(|record| {
-		if let DnsContent::CNAME { .. } = record.content {
-			record.name == full_domain
-		} else {
-			false
-		}
-	});
-
-	if let Some(record) = dns_record {
-		if let DnsContent::CNAME { content } = record.content {
-			if content != default_ingress {
-				client
-					.request(&UpdateDnsRecord {
-						zone_identifier,
-						identifier: record.id.as_str(),
-						params: UpdateDnsRecordParams {
-							content: expected_dns_record,
-							name: &full_domain,
-							proxied: Some(true),
-							ttl: Some(1),
-						},
-					})
-					.await?;
-			}
-		}
-	} else {
-		// Create
-		client
-			.request(&CreateDnsRecord {
-				zone_identifier,
-				params: CreateDnsRecordParams {
-					content: expected_dns_record,
-					name: sub_domain,
-					ttl: Some(1),
-					priority: None,
-					proxied: Some(true),
-				},
-			})
-			.await?;
-	}
-	Ok(())
-}
-
-async fn delete_docker_image(
-	deployment_id_string: &str,
-	image_name: &str,
-	tag: &str,
-) -> Result<(), Error> {
-	let docker = Docker::new();
-
-	docker
-		.images()
-		.get(format!(
-			"registry.digitalocean.com/patr-cloud/{}:latest",
-			deployment_id_string
-		))
-		.delete()
-		.await?;
-
-	docker
-		.images()
-		.get(format!("{}:{}", image_name, tag))
-		.delete()
-		.await?;
-
-	Ok(())
-}
-
-async fn update_deployment_status(
-	deployment_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), Error> {
-	let app = service::get_app();
-
-	db::update_deployment_status(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
 }
