@@ -138,7 +138,7 @@ pub async fn notification_handler(
 			let config = context.get_state().config.clone();
 
 			// TODO: make this as a parameter
-			let cloud_platform = CloudPlatform::DigitalOcean;
+			let cloud_platform = CloudPlatform::AwsLightsail;
 
 			task::spawn(async move {
 				let result = match cloud_platform {

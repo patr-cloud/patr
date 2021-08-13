@@ -1,24 +1,22 @@
 use std::process::{Command, Stdio};
 
 use eve_rs::AsError;
-use lightsail::model::{
-	Container,
-	ContainerServiceDeploymentRequest,
-	ContainerServicePowerName,
-	ContainerServiceProtocol,
-	ContainerServiceState,
-	EndpointRequest,
+use lightsail::{
+	model::{
+		Container, ContainerServiceDeploymentRequest,
+		ContainerServicePowerName, ContainerServiceProtocol,
+		ContainerServiceState, EndpointRequest,
+	},
+	Config, Region,
 };
+use sqlx::encode;
 
 use crate::{
 	error,
 	models::db_mapping::DeploymentStatus,
 	service::{
-		delete_docker_image,
-		pull_image_from_registry,
-		tag_docker_image,
-		update_deployment_status,
-		update_dns,
+		delete_docker_image, pull_image_from_registry, tag_docker_image,
+		update_deployment_status, update_dns,
 	},
 	utils::{settings::Settings, Error},
 };
@@ -29,7 +27,8 @@ pub async fn deploy_container_on_aws_lightsail(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	let deployment_id_string = "f65494a0b7494b07803ba0199ffc9afb".to_string();
+	let image_name = image_name.replace("registry.patr.cloud", "localhost:5000");
+	let deployment_id_string = hex::encode(&deployment_id);
 
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
@@ -127,16 +126,16 @@ async fn create_container_service_and_deploy(
 		.set_service_name(Some(service_name.to_string()))
 		.scale(1) //setting the default number of containers to 1
 		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
-		.public_domain_names(
-			"patr-cloud".to_string(),
-			vec![format!("{}.patr.cloud", service_name)], /* getting this
-			                                               * error here: The
-			                                               * specified certificate
-			                                               * does not exist
-			                                               * for cert name
-			                                               * patr-cloud for
-			                                               * service 00 */
-		)
+		// .public_domain_names(
+		// 	"patr-cloud".to_string(),
+		// 	vec![format!("{}.patr.cloud", service_name)], /* getting this
+		// 	                                               * error here: The
+		// 	                                               * specified certificate
+		// 	                                               * does not exist
+		// 	                                               * for cert name
+		// 	                                               * patr-cloud for
+		// 	                                               * service 00 */
+		// )
 		.send()
 		.await;
 
@@ -225,7 +224,7 @@ async fn deploy_application(
 ) -> Result<(), Error> {
 	let deployment_request =
 		make_deployment_for_latest_image(service_name, client).await?;
-
+	log::trace!("deployment request created");
 	let application = client
 		.create_container_service_deployment()
 		.set_containers(deployment_request.containers)
@@ -233,7 +232,7 @@ async fn deploy_application(
 		.set_public_endpoint(deployment_request.public_endpoint)
 		.send()
 		.await;
-
+	log::trace!("created the deployment");
 	if let Err(error) = application {
 		log::info!("Error during deployment of app, {}", error);
 	}
@@ -245,39 +244,42 @@ async fn make_deployment_for_latest_image(
 	service_name: &str,
 	client: &lightsail::Client,
 ) -> Result<ContainerServiceDeploymentRequest, Error> {
+	log::trace!("getting container list");
+	println!("service_name:{}", service_name);
 	let container_info = client
 		.get_container_images()
 		.service_name(service_name.to_string())
 		.send()
 		.await?;
-
+	println!("container info:{:#?}", container_info);
 	if container_info.container_images.is_none() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
-
+	log::trace!("recieved the container iamges");
 	let image_list = container_info.container_images.unwrap();
 
 	let container_image = image_list.get(0);
-
+	println!("{:#?}", container_image);
 	if container_image.is_none() {
 		Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
-
+	println!("after check: {:#?}", container_image);
 	let container_image = container_image.unwrap();
 
 	let container_image = container_image.image.as_ref();
-
+	println!("before match: {:#?}", container_image);
 	let container_image_name = match container_image {
 		Some(image) => image,
 		None => Error::as_result()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?,
 	};
-
+	println!("after match: {:#?}", container_image);
+	log::trace!("adding image to deployment container");
 	let deployment_container = Container::builder()
 		// image naming convention -> :service_name.label_name.
 		.image(container_image_name)
@@ -295,7 +297,7 @@ async fn make_deployment_for_latest_image(
 		.containers(service_name.to_string(), deployment_container)
 		.set_public_endpoint(Some(public_endpoint_request))
 		.build();
-
+	log::trace!("deployment request created");
 	Ok(deployment_request)
 }
 
