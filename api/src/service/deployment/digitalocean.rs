@@ -164,6 +164,7 @@ pub async fn deploy_container_on_digitalocean(
 	log::trace!("App ingress is at {}", default_ingress);
 
 	// update DNS
+	log::trace!("updating DNS");
 	update_dns(&deployment_id_string, &default_ingress, &config).await?;
 	log::trace!("DNS Updated");
 
@@ -469,7 +470,6 @@ pub async fn update_dns(
 	} else {
 		return Err(Error::empty());
 	};
-
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
@@ -484,11 +484,9 @@ pub async fn update_dns(
 		.status(500)?
 		.id;
 	let zone_identifier = zone_identifier.as_str();
-
 	let expected_dns_record = DnsContent::CNAME {
 		content: String::from(default_ingress),
 	};
-
 	let response = client
 		.request(&ListDnsRecords {
 			zone_identifier,

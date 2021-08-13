@@ -1,9 +1,10 @@
-use std::process::Stdio;
+use std::{process::Stdio, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::model::{
 	Container,
 	ContainerServiceDeploymentRequest,
+	ContainerServiceDeploymentState,
 	ContainerServiceHealthCheckConfig,
 	ContainerServicePowerName,
 	ContainerServiceProtocol,
@@ -105,18 +106,40 @@ pub async fn deploy_container_on_aws_lightsail(
 	// wait for the app to be completed to be deployed
 	let default_url = get_default_url(&service_name, &client).await?;
 	log::trace!("default url is {}", default_url);
+	log::trace!("checking deployment status");
+	let deployment_status = wait_for_deployment(&service_name, &client).await?;
 
-	// update DNS
-	update_dns(&deployment_id_string, &default_url, &config).await?;
-	log::trace!("DNS Updated");
+	match deployment_status {
+		ContainerServiceDeploymentState::Active => {
+			// update DNS
+			log::trace!("deployment up");
+			log::trace!("updating DNS");
+			update_dns(&deployment_id_string, &default_url, &config).await?;
+			log::trace!("DNS Updated");
+			tokio::time::sleep(Duration::from_secs(5)).await;
+			log::trace!("creating certificate");
+			create_certificate_for_deployment(&service_name, &client).await?;
+			// update container service with patr domain
+			update_container_service_with_patr_domain(&service_name, &client)
+				.await?;
 
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
+			let _ = update_deployment_status(
+				&deployment_id,
+				&DeploymentStatus::Running,
+			)
 			.await;
-	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
-	log::trace!("Docker image deleted");
-
-	Ok(())
+			let _ =
+				delete_docker_image(&deployment_id_string, &image_name, &tag)
+					.await;
+			log::trace!("Docker image deleted");
+			return Ok(());
+		}
+		_ => {
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+		}
+	}
 }
 
 async fn create_container_service_and_deploy(
@@ -130,16 +153,6 @@ async fn create_container_service_and_deploy(
 		.set_service_name(Some(service_name.to_string()))
 		.scale(1) //setting the default number of containers to 1
 		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
-		// .public_domain_names(
-		// 	"patr-cloud".to_string(),
-		// 	vec![format!("{}.patr.cloud", service_name)], /* getting this
-		// 	                                               * error here: The
-		// 	                                               * specified certificate
-		// 	                                               * does not exist
-		// 	                                               * for cert name
-		// 	                                               * patr-cloud for
-		// 	                                               * service 00 */
-		// )
 		.send()
 		.await;
 
@@ -235,7 +248,7 @@ async fn deploy_application(
 		.set_service_name(Some(service_name.to_string()))
 		.set_public_endpoint(deployment_request.public_endpoint)
 		.send()
-		.await?;
+		.await;
 	log::trace!("created the deployment successfully");
 
 	Ok(())
@@ -325,4 +338,79 @@ async fn get_default_url(
 	Error::as_result()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?
+}
+
+async fn wait_for_deployment(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<ContainerServiceDeploymentState, Error> {
+	// TODO: refactor this
+	loop {
+		let service_deployment_output = client
+			.get_container_service_deployments()
+			.service_name(service_name.to_string())
+			.send()
+			.await?;
+
+		if let Some(deployment_list) = service_deployment_output.deployments {
+			if let Some(service_deployment) = deployment_list.get(0) {
+				if let Some(deployment_state) = &service_deployment.state {
+					match deployment_state {
+						ContainerServiceDeploymentState::Active => {
+							return Ok(ContainerServiceDeploymentState::Active)
+						}
+						ContainerServiceDeploymentState::Failed => {
+							break;
+						}
+						ContainerServiceDeploymentState::Activating => {
+							continue;
+						}
+						ContainerServiceDeploymentState::Inactive => {
+							return Ok(
+								ContainerServiceDeploymentState::Inactive,
+							)
+						}
+						ContainerServiceDeploymentState::Unknown(_) => {
+							return Error::as_result()
+								.status(500)
+								.body(error!(SERVER_ERROR).to_string())?;
+						}
+						_ => {}
+					};
+				}
+			}
+		}
+	}
+	Ok(ContainerServiceDeploymentState::Failed)
+}
+
+async fn update_container_service_with_patr_domain(
+	service_name: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	client
+		.update_container_service()
+		.service_name(&service_name.to_string())
+		.public_domain_names(
+			"patr-cloud".to_string(),
+			vec![format!("{}.patr.cloud", service_name)],
+		)
+		.send()
+		.await?;
+
+	Ok(())
+}
+
+async fn create_certificate_for_deployment(
+	service_name: &str,
+	client: &lightsail::Client
+) -> Result<(), Error> {
+	client
+		.create_certificate()
+		.certificate_name(format!("{}.patr.cloud", service_name))
+		.domain_name(format!("{}.patr.cloud", service_name))
+		.send()
+		.await?;
+	log::trace!("certificate created");
+	Ok(())
 }
