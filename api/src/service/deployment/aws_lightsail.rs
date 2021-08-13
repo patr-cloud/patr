@@ -31,8 +31,6 @@ pub async fn deploy_container_on_aws_lightsail(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	// let image_name = image_name.replace("registry.patr.cloud",
-	// "localhost:5000");
 	let deployment_id_string = hex::encode(&deployment_id);
 
 	log::trace!("Deploying deployment: {}", deployment_id_string);
@@ -40,7 +38,7 @@ pub async fn deploy_container_on_aws_lightsail(
 		.await;
 
 	log::trace!("Pulling image from registry");
-	// pull_image_from_registry(&image_name, &tag, &config).await?;
+	pull_image_from_registry(&image_name, &tag, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
