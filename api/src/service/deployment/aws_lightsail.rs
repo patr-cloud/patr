@@ -132,13 +132,11 @@ pub async fn deploy_container_on_aws_lightsail(
 				delete_docker_image(&deployment_id_string, &image_name, &tag)
 					.await;
 			log::trace!("Docker image deleted");
-			return Ok(());
+			Ok(())
 		}
-		_ => {
-			return Error::as_result()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?;
-		}
+		_ => Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
 	}
 }
 
@@ -213,7 +211,7 @@ async fn create_container_service_and_deploy(
 
 	log::trace!("creating container deployment");
 
-	deploy_application(&service_name, client).await?;
+	deploy_application(service_name, client).await?;
 
 	Ok(())
 }
@@ -228,7 +226,7 @@ async fn app_exists(
 		.send()
 		.await;
 
-	if let Err(_) = container_service {
+	if container_service.is_err() {
 		log::trace!("App not found");
 	} else {
 		return Ok(true);

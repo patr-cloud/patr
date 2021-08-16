@@ -117,6 +117,7 @@ pub enum DeploymentStatus {
 	Deleted,
 }
 
+#[allow(dead_code)]
 pub enum CloudPlatform {
 	AwsLightsail,
 	DigitalOcean,
