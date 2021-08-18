@@ -1,9 +1,7 @@
 mod digitalocean;
-mod managed_database;
 
 pub use digitalocean::*;
 use eve_rs::AsError;
-pub use managed_database::*;
 use uuid::Uuid;
 
 use crate::{

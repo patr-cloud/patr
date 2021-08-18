@@ -155,4 +155,6 @@ pub mod request_keys {
 	pub const ENGINE: &str = "engine";
 	pub const NUM_NODES: &str = "numNodes";
 	pub const REGION: &str = "region";
+	pub const URI: &str = "uri";
+	pub const HOST: &str = "host";
 }

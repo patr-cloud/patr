@@ -106,7 +106,7 @@ async fn create_new_database_cluster(
 
 	let config = context.get_state().config.clone();
 
-	service::create_new_database_cluster(
+	let database_config = service::create_new_database_cluster(
 		context.get_database_connection(),
 		config,
 		name,
@@ -117,10 +117,19 @@ async fn create_new_database_cluster(
 		&organisation_id,
 	)
 	.await?;
+
 	// name: String, version: String, engine: version, num_nodes: int, region:
 	// String TODO: maybe create a table for do-database in DB
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		request_keys::NAME: database_config.name,
+		request_keys::ENGINE: database_config.engine,
+		request_keys::VERSION: database_config.version,
+		request_keys::URI: database_config.connection.uri,
+		request_keys::HOST: database_config.connection.host,
+		request_keys::PORT: database_config.connection.port,
+		request_keys::USERNAME: database_config.connection.user,
+		request_keys::PASSWORD: database_config.connection.password
 	}));
 	Ok(context)
 }

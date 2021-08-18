@@ -265,6 +265,7 @@ pub struct DbConnection {
 	pub host: String,
 	pub user: String,
 	pub password: String,
+	pub port: u64,
 	pub ssl: bool,
 }
 

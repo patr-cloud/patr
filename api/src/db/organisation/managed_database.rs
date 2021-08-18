@@ -1,15 +1,14 @@
 use api_macros::query;
 
-use crate::Database;
+use crate::{Database, models::db_mapping::ManagedDatabaseStatus};
 
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		CREATE TYPE DATABASE_STATUS AS ENUM(
+		CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM(
 			'creating', /* Started the creation of database */
-			'created', /* Successfully created the database */
 			'running', /* Database is running successfully */
 			'stopped', /* Database is stopped by the user */
 			'errored', /* Database encountered errors */
@@ -25,13 +24,21 @@ pub async fn initialize_managed_database_pre(
 		CREATE TABLE managed_database(
 			id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			status DATABASE_STATUS NOT NULL Default 'creating',
+			status MANAGED_DATABASE_STATUS NOT NULL Default 'creating',
 			database_id TEXT
 				CONSTRAINT managed_database_uq_database_id UNIQUE,
 			db_service TEXT,
-			organisation_id BYTEA NOT NULL
-				CONSTRAINT managed_database_fk_id
-					REFERENCES organisation(id)
+			organisation_id BYTEA NOT NULL,
+			CONSTRAINT managed_database_chk_if_db_service_and_db_id_is_valid CHECK(
+				(
+					database_id IS NOT NULL AND
+					db_service IS NOT NULL
+				) OR
+				(
+					database_id IS NULL AND
+					db_service IS NULL
+				)
+			)
 		);
 		"#
 	)
@@ -78,6 +85,28 @@ pub async fn create_managed_database(
 		database_id,
 		db_service,
 		organisation_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_managed_database_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
+	status: &ManagedDatabaseStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			status = $1
+		WHERE
+			id = $2;
+		"#,
+		status as _,
+		id
 	)
 	.execute(&mut *connection)
 	.await
