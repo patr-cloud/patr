@@ -119,7 +119,7 @@ def get_pipeline_steps(ctx):
             redis_service(),
             database_service(get_database_password())
         ])
-    elif is_push(ctx, "staging"):
+    elif is_push(ctx, "develop"):
         return ([
             # Build in debug mode
             build_code(
@@ -150,7 +150,7 @@ def get_pipeline_steps(ctx):
             redis_service(),
             database_service(get_database_password())
         ])
-    elif is_push(ctx, "develop"):
+    elif is_push(ctx, "staging"):
         return ([
             # Build in release mode
             build_code(
@@ -178,7 +178,7 @@ def get_pipeline_steps(ctx):
 
             # Deploy
             prepare_assets("Prepare release assets"),
-            create_gitea_release("Create Gitea Release", staging=True),
+            create_gitea_release("Create Gitea Release", staging=True)
         ], [
             redis_service(),
             database_service(get_database_password())
