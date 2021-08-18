@@ -2,12 +2,14 @@ use crate::{models::db_mapping::Organisation, query, query_as, Database};
 
 mod application;
 mod deployment;
+mod managed_database;
 mod domain;
 mod drive;
 mod portus;
 
 pub use application::*;
 pub use deployment::*;
+pub use managed_database::*;
 pub use domain::*;
 pub use drive::*;
 pub use portus::*;
@@ -74,6 +76,7 @@ pub async fn initialize_organisations_pre(
 	drive::initialize_drive_pre(connection).await?;
 	portus::initialize_portus_pre(connection).await?;
 	deployment::initialize_deployment_pre(connection).await?;
+	managed_database::initialize_managed_database_pre(connection).await?;
 
 	Ok(())
 }
@@ -98,6 +101,7 @@ pub async fn initialize_organisations_post(
 	drive::initialize_drive_post(connection).await?;
 	portus::initialize_portus_post(connection).await?;
 	deployment::initialize_deployment_post(connection).await?;
+	managed_database::initialize_deployment_post(connection).await?;
 
 	Ok(())
 }

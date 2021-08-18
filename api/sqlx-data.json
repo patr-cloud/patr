@@ -3143,6 +3143,22 @@
       "nullable": []
     }
   },
+  "a4440027bdb319e3959a551cd38ac490ce4231d9defe9159898c5a87a0edbe0b": {
+    "query": "INSERT INTO managed_database VALUES ($1, $2, 'creating', $3, $4, $5);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Text",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
     "query": "ALTER TABLE application ADD CONSTRAINT application_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -3277,6 +3293,16 @@
       ]
     }
   },
+  "ac332e26906b48d04cade9b9ff7b5f12e34c9e00238cc59fa5da82bf06d27e80": {
+    "query": "CREATE TYPE DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'created', /* Successfully created the database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "ad518f514ee3b113ee29f433b52f6acbf2e50a93050913fdc37b7cefd519efcc": {
     "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT organisation_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
     "describe": {
@@ -3380,6 +3406,16 @@
         false,
         false
       ]
+    }
+  },
+  "b44ae4eacd7cafd59df999eb76c6b5eb32255b5663afb028ae9d50d35ddaef53": {
+    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, status DATABASE_STATUS NOT NULL Default 'creating', database_id TEXT CONSTRAINT managed_database_uq_database_id UNIQUE, db_service TEXT, organisation_id BYTEA NOT NULL CONSTRAINT managed_database_fk_id REFERENCES organisation(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "b4d622915f6f0f0d5765d48e13394a021569866553db2c1935025cd26c4d268a": {
@@ -3889,6 +3925,16 @@
         false,
         false
       ]
+    }
+  },
+  "cbf218b296179c78c8ba9de48642fe1cea45bad400132d1539ed94f43e15f14b": {
+    "query": "ALTER TABLE managed_database ADD CONSTRAINT managed_database_repository_fk_id_organisation_id FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {

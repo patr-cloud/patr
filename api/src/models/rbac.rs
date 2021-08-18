@@ -92,6 +92,18 @@ pub mod permissions {
 			pub const PULL: &str = "organisation::dockerRegistry::pull";
 		}
 
+		pub mod managed_database {
+			pub const CREATE: &str = "organisation::managedDatabase::create";
+			#[allow(dead_code)]
+			pub const LIST: &str = "organisation::managedDatabase::list";
+			#[allow(dead_code)]
+			pub const DELETE: &str = "organisation::managedDatabase::delete";
+			#[allow(dead_code)]
+			pub const INFO: &str = "organisation::managedDatabase::info";
+			#[allow(dead_code)]
+			pub const EDIT: &str = "organisation::managedDatabase::edit";
+		}
+
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";
@@ -109,6 +121,7 @@ pub mod resource_types {
 	pub const APPLICATION: &str = "application";
 	pub const PORTUS: &str = "portus";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
+	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";

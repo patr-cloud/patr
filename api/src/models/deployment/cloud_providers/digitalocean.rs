@@ -223,3 +223,68 @@ pub struct AuthToken {
 pub struct RedeployAppRequest {
 	pub force_build: bool,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseConfig {
+	pub name: String,
+	pub engine: String,
+	pub version: Option<String>,
+	pub num_nodes: u64,
+	pub size: String,
+	pub region: String,
+	// TODO: add backup and restore details
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseResponse {
+	pub database: DatabaseInfo,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseInfo {
+	pub id: String,
+	pub name: String,
+	pub engine: String,
+	pub version: String,
+	pub num_nodes: u32,
+	pub size: String,
+	pub region: String,
+	pub status: String,
+	pub created_at: String,
+	pub db_names: Option<Vec<String>>,
+	pub connection: DbConnection,
+	pub private_connection: DbConnection,
+	pub users: Option<Vec<DatabaseUser>>,
+	pub maintenance_window: Option<MaintenanceWindow>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DbConnection {
+	pub uri: String,
+	pub database: String,
+	pub host: String,
+	pub user: String,
+	pub password: String,
+	pub ssl: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseUser {
+	pub name: String,
+	pub role: String, // "primary" "normal"
+	pub password: String,
+	pub mysql_settings: Option<MysqlSettings>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MaintenanceWindow {
+	pub day: String,
+	pub hour: String,
+	pub pending: bool,
+	pub description: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MysqlSettings {
+	pub auth_plugin: String, // "mysql_native_password" "caching_sha2_password"
+}

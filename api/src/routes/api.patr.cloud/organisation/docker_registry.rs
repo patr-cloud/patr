@@ -211,7 +211,7 @@ async fn create_docker_repository(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	// split the repo nam in 2 halfs, and validate org, and repo name
+	// split the repo nam in 2 halves, and validate org, and repo name
 	let resource_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
 	let resource_id = resource_id.as_bytes();

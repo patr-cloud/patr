@@ -152,4 +152,7 @@ pub mod request_keys {
 	pub const URL: &str = "url";
 	pub const DEFAULT: &str = "default";
 	pub const STATUS: &str = "status";
+	pub const ENGINE: &str = "engine";
+	pub const NUM_NODES: &str = "numNodes";
+	pub const REGION: &str = "region";
 }
