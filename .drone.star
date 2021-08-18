@@ -178,7 +178,7 @@ def get_pipeline_steps(ctx):
 
             # Deploy
             prepare_assets("Prepare release assets"),
-            create_gitea_release("Create Gitea Release", staging=True),
+            create_gitea_release("Create Gitea Release", staging=True)
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -235,15 +235,17 @@ def build_code(step_name, release, sqlx_offline):
     else:
         offline = "false"
 
-    release_flag = ""
+    build_cmd = ""
     if release == True:
-        release_flag = "--release"
+        build_cmd = "cargo build --release"
+    else:
+        build_cmd = "cargo build"
 
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
-            "cargo build {}".format(release_flag)
+            build_cmd
         ],
         "environment": {
             "SQLX_OFFLINE": offline,
