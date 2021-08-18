@@ -5,7 +5,7 @@ use crate::Database;
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-    query!(
+	query!(
 		r#"
 		CREATE TYPE DATABASE_STATUS AS ENUM(
 			'creating', /* Started the creation of database */
@@ -38,8 +38,7 @@ pub async fn initialize_managed_database_pre(
 	.execute(&mut *connection)
 	.await?;
 
-    Ok(())
-
+	Ok(())
 }
 
 pub async fn initialize_deployment_post(
@@ -65,7 +64,7 @@ pub async fn create_managed_database(
 	name: &str,
 	database_id: &str,
 	db_service: &str,
-	organisation_id: &[u8]
+	organisation_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

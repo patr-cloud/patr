@@ -2,16 +2,16 @@ use crate::{models::db_mapping::Organisation, query, query_as, Database};
 
 mod application;
 mod deployment;
-mod managed_database;
 mod domain;
 mod drive;
+mod managed_database;
 mod portus;
 
 pub use application::*;
 pub use deployment::*;
-pub use managed_database::*;
 pub use domain::*;
 pub use drive::*;
+pub use managed_database::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(

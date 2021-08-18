@@ -22,8 +22,8 @@ mod application;
 mod deployment;
 mod docker_registry;
 mod domain;
-mod portus;
 mod managed_database;
+mod portus;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 

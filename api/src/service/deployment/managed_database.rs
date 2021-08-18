@@ -3,13 +3,22 @@ use std::collections::HashMap;
 use eve_rs::AsError;
 use reqwest::Client;
 
-use crate::{Database, db, error, models::{deployment::cloud_providers::digitalocean::{
-		DatabaseConfig,
-		DatabaseResponse,
-	}, rbac}, utils::{Error, get_current_time_millis, settings::Settings}};
+use crate::{
+	db,
+	error,
+	models::{
+		deployment::cloud_providers::digitalocean::{
+			DatabaseConfig,
+			DatabaseResponse,
+		},
+		rbac,
+	},
+	utils::{get_current_time_millis, settings::Settings, Error},
+	Database,
+};
 
 pub async fn create_new_database_cluster(
-    connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	settings: Settings,
 	name: &str,
 	version: Option<&str>,
@@ -23,7 +32,7 @@ pub async fn create_new_database_cluster(
 	let organisation_id = hex::encode(&organisation_id);
 	let region = parse_region(region)?;
 
-	let db_name = format!("{}-{}",organisation_id, name);
+	let db_name = format!("{}-{}", organisation_id, name);
 
 	let database_cluster = client
 		.post("https://api.digitalocean.com/v2/databases")
@@ -41,8 +50,7 @@ pub async fn create_new_database_cluster(
 		.json::<DatabaseResponse>()
 		.await?;
 
-	let resource_id =
-		db::generate_new_resource_id(connection).await?;
+	let resource_id = db::generate_new_resource_id(connection).await?;
 	let resource_id = resource_id.as_bytes();
 
 	let organisation_id = hex::decode(&organisation_id).unwrap();
@@ -61,14 +69,15 @@ pub async fn create_new_database_cluster(
 	)
 	.await?;
 
-    db::create_managed_database(
+	db::create_managed_database(
 		connection,
 		resource_id,
 		&database_cluster.database.name,
 		&database_cluster.database.id,
 		"DigitalOcean",
-		&organisation_id
-	).await?;
+		&organisation_id,
+	)
+	.await?;
 	Ok(())
 }
 

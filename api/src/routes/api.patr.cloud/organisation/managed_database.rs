@@ -107,7 +107,7 @@ async fn create_new_database_cluster(
 	let config = context.get_state().config.clone();
 
 	service::create_new_database_cluster(
-        context.get_database_connection(),
+		context.get_database_connection(),
 		config,
 		name,
 		version,
