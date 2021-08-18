@@ -177,7 +177,7 @@ def get_pipeline_steps(ctx):
             ),
 
             # Deploy
-            prepare_release_assets("Prepare release assets"),
+            prepare_assets("Prepare release assets"),
             create_gitea_release("Create Gitea Release", staging=True),
         ], [
             redis_service(),
@@ -210,7 +210,7 @@ def get_pipeline_steps(ctx):
             ),
 
             # Deploy
-            prepare_release_assets("Prepare release assets"),
+            prepare_assets("Prepare release assets"),
             create_gitea_release("Create Gitea Release", staging=False),
         ], [
             redis_service(),
