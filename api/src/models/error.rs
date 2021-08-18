@@ -2,6 +2,8 @@
 pub mod id {
 	pub const USER_NOT_FOUND: &str = "userNotFound";
 	pub const EMAIL_NOT_VERIFIED: &str = "emailNotVerified";
+	pub const EMAIL_NOT_FOUND: &str = "emailNotFound";
+	pub const PHONE_NUMBER_NOT_FOUND: &str = "phoneNumberNotFound";
 	pub const INVALID_PASSWORD: &str = "invalidPassword";
 	pub const INVALID_EMAIL: &str = "invalidEmail";
 	pub const INVALID_CREDENTIALS: &str = "invalidCredentials";
@@ -23,6 +25,8 @@ pub mod id {
 	pub const TOKEN_NOT_FOUND: &str = "tokenNotFound";
 	pub const EMAIL_TOKEN_NOT_FOUND: &str = "emailTokenNotFound";
 	pub const EMAIL_TOKEN_EXPIRED: &str = "emailTokenExpired";
+	pub const PHONE_NUMBER_TOKEN_NOT_FOUND: &str = "phoneTokenNotFound";
+	pub const PHONE_NUMBER_TOKEN_EXPIRED: &str = "phoneTokenNotFound";
 	pub const INVALID_OTP: &str = "invalidOtp";
 	pub const OTP_EXPIRED: &str = "otpExpired";
 	pub const NOT_FOUND: &str = "notFound";
@@ -32,18 +36,25 @@ pub mod id {
 	pub const DUPLICATE_USER: &str = "duplicateUser";
 	pub const DOMAIN_UNVERIFIED: &str = "domainUnverified";
 	pub const REPOSITORY_ALREADY_EXISTS: &str = "repositoryAlreadyExists";
+	pub const REPOSITORY_NOT_FOUND: &str = "repositoryNotFound";
 	pub const INVALID_REQUEST: &str = "invalidRequest";
 	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
 	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =
 		"domainBelongsToOrganisation";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
+	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
+	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
+		"cannotDeleteBackupPhoneNumber";
+	pub const DOMAIN_EXISTS: &str = "domainExists";
 }
 
 #[allow(dead_code)]
 pub mod message {
 	pub const USER_NOT_FOUND: &str = "The document you are looking for is either deleted or has been moved. Please check your link again";
 	pub const EMAIL_NOT_VERIFIED: &str = "Your email address is not verified";
+	pub const EMAIL_NOT_FOUND: &str = "The email address sent by the client could not be found in the database.";
+	pub const PHONE_NUMBER_NOT_FOUND: &str = "The phone number is not found";
 	pub const INVALID_PASSWORD: &str = "Your password is incorrect";
 	pub const INVALID_EMAIL: &str = "Your email address is invalid";
 	pub const INVALID_CREDENTIALS: &str = "Your credentials are not valid";
@@ -70,6 +81,8 @@ pub mod message {
 		"You do not have the permission to perform that action";
 	pub const SERVER_ERROR: &str =
 		"An internal server error has occured. Please try again later";
+	pub const LOGIN_FAILURE: &str =
+		"An error occured during logging into the registry please check your credentials";
 	pub const EMAIL_TAKEN: &str = "Sorry. That email address is already in use";
 	pub const USERNAME_TAKEN: &str = "Sorry. That username is taken";
 	pub const PHONE_NUMBER_TAKEN: &str =
@@ -80,6 +93,10 @@ pub mod message {
 		"Your link seems to be invalid. Please request for a new link again";
 	pub const EMAIL_TOKEN_EXPIRED: &str =
 		"Your link has expired. Please request for a new link again";
+	pub const PHONE_NUMBER_TOKEN_NOT_FOUND: &str =
+		"Your otp seems to be invalid. Please request for a new otp again";
+	pub const PHONE_NUMBER_TOKEN_EXPIRED: &str =
+		"Your otp has expired. Please request for a new otp again";
 	pub const INVALID_OTP: &str = "That OTP seems to be invalid";
 	pub const OTP_EXPIRED: &str =
 		"That OTP seems to have been expired. Please request a new one";
@@ -94,6 +111,7 @@ pub mod message {
 		"That domain is unverified. Check your verification settings";
 	pub const REPOSITORY_ALREADY_EXISTS: &str =
 		"The given repository already exists";
+	pub const REPOSITORY_NOT_FOUND: &str = "The repository does not exist";
 	pub const ACCESS_TYPE_NOT_PRESENT: &str =
 		"Access type not present in request";
 	pub const INVALID_ACCESS_TYPE: &str = "Invalid access type sent by client";
@@ -126,4 +144,7 @@ pub mod message {
 		"That domain seems to belong to an organisation. Please choose a personal domain instead. If this problem persists, please contact us";
 	pub const NO_RECOVERY_OPTIONS: &str =
 		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
+	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
+	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
+	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 }

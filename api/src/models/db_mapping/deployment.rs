@@ -1,4 +1,9 @@
+use std::{fmt::Display, str::FromStr};
+
+use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+
+use crate::{db, error, utils::Error, Database};
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
@@ -48,10 +53,99 @@ pub struct Deployment {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub registry: String,
-	pub image_name: String,
+	pub repository_id: Option<Vec<u8>>,
+	pub image_name: Option<String>,
 	pub image_tag: String,
-	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
-	pub port: u16,
+	pub status: DeploymentStatus,
+	pub deployed_image: Option<String>,
+	pub digital_ocean_app_id: Option<String>,
+}
+
+impl Deployment {
+	pub async fn get_full_image(
+		&self,
+		connection: &mut <Database as sqlx::Database>::Connection,
+	) -> Result<String, Error> {
+		if self.registry == "registry.patr.cloud" {
+			let docker_repository = db::get_docker_repository_by_id(
+				&mut *connection,
+				self.repository_id
+					.as_ref()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?,
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+			let organisation = db::get_organisation_info(
+				&mut *connection,
+				&docker_repository.organisation_id,
+			)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+			Ok(format!(
+				"{}/{}/{}",
+				"registry.patr.cloud",
+				organisation.name,
+				docker_repository.name
+			))
+		} else {
+			Ok(format!(
+				"{}/{}",
+				self.registry,
+				self.image_name
+					.as_ref()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?
+			))
+		}
+	}
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
+pub enum DeploymentStatus {
+	Created,
+	Pushed,
+	Deploying,
+	Running,
+	Stopped,
+	Errored,
+	Deleted,
+}
+
+impl Display for DeploymentStatus {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Created => write!(f, "created"),
+			Self::Pushed => write!(f, "pushed"),
+			Self::Deploying => write!(f, "deploying"),
+			Self::Running => write!(f, "running"),
+			Self::Stopped => write!(f, "stopped"),
+			Self::Errored => write!(f, "errored"),
+			Self::Deleted => write!(f, "deleted"),
+		}
+	}
+}
+
+impl FromStr for DeploymentStatus {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"created" => Ok(Self::Created),
+			"pushed" => Ok(Self::Pushed),
+			"deploying" => Ok(Self::Deploying),
+			"running" => Ok(Self::Running),
+			"stopped" => Ok(Self::Stopped),
+			"errored" => Ok(Self::Errored),
+			"deleted" => Ok(Self::Deleted),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
 }

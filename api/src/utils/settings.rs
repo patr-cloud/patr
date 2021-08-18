@@ -38,7 +38,7 @@ pub fn parse_config() -> Settings {
 	}
 
 	settings
-		.merge(Environment::with_prefix("APP_"))
+		.merge(Environment::with_prefix("APP").separator("_"))
 		.expect("unable to merge with environment variables");
 
 	let mut settings: Settings =
@@ -59,13 +59,14 @@ pub struct Settings {
 	pub jwt_secret: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
-	pub mysql: MysqlSettings,
+	pub database: DatabaseSettings,
 	pub mongodb: MongoDbSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
+	pub digital_ocean_api_key: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -80,7 +81,7 @@ pub struct S3Settings {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct MysqlSettings {
+pub struct DatabaseSettings {
 	pub host: String,
 	pub port: u16,
 	pub user: String,

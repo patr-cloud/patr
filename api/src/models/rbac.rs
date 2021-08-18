@@ -20,7 +20,6 @@ pub struct OrgPermissions {
 	                                                    * have on it */
 }
 
-#[allow(dead_code)]
 #[api_macros::iterable_module(consts, recursive = true)]
 pub mod permissions {
 	pub mod organisation {
@@ -32,6 +31,7 @@ pub mod permissions {
 			pub const DELETE: &str = "organisation::domain::delete";
 		}
 
+		#[allow(dead_code)]
 		pub mod application {
 			pub const LIST: &str = "organisation::application::list";
 			pub const ADD: &str = "organisation::application::add";
@@ -54,20 +54,49 @@ pub mod permissions {
 			pub const CREATE: &str = "organisation::deployment::create";
 			pub const INFO: &str = "organisation::deployment::info";
 			pub const DELETE: &str = "organisation::deployment::delete";
+			#[allow(dead_code)]
+			pub const EDIT: &str = "organisation::deployment::edit";
+
+			#[allow(dead_code)]
+			pub mod upgrade_path {
+				pub const LIST: &str =
+					"organisation::deployment::upgradePath::list";
+				pub const CREATE: &str =
+					"organisation::deployment::upgradePath::create";
+				pub const INFO: &str =
+					"organisation::deployment::upgradePath::info";
+				pub const DELETE: &str =
+					"organisation::deployment::upgradePath::delete";
+				pub const EDIT: &str =
+					"organisation::deployment::upgradePath::edit";
+			}
+
+			#[allow(dead_code)]
+			pub mod entry_point {
+				pub const LIST: &str =
+					"organisation::deployment::entryPoint::list";
+				pub const CREATE: &str =
+					"organisation::deployment::entryPoint::create";
+				pub const EDIT: &str =
+					"organisation::deployment::entryPoint::edit";
+				pub const DELETE: &str =
+					"organisation::deployment::entryPoint::delete";
+			}
 		}
 
 		pub mod docker_registry {
-			pub const CREATE: &str = "organisation::docker_registry::create";
-			pub const LIST: &str = "organisation::docker_registry::list";
-			pub const DELETE: &str = "organisation::docker_registry::delete";
-			pub const PUSH: &str = "organisation::docker_registry::push";
-			pub const PULL: &str = "organisation::docker_registry::pull";
+			pub const CREATE: &str = "organisation::dockerRegistry::create";
+			pub const LIST: &str = "organisation::dockerRegistry::list";
+			pub const DELETE: &str = "organisation::dockerRegistry::delete";
+			pub const PUSH: &str = "organisation::dockerRegistry::push";
+			pub const PULL: &str = "organisation::dockerRegistry::pull";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
 		pub const CREATE_ROLE: &str = "organisation::createRole";
 		pub const EDIT_ROLE: &str = "organisation::editRole";
 		pub const DELETE_ROLE: &str = "organisation::deleteRole";
+		#[allow(dead_code)]
 		pub const EDIT_INFO: &str = "organisation::editInfo";
 	}
 }
@@ -81,4 +110,6 @@ pub mod resource_types {
 	pub const PORTUS: &str = "portus";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const DEPLOYMENT: &str = "deployment";
+	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
+	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";
 }

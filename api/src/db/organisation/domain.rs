@@ -1,78 +1,193 @@
-use sqlx::{MySql, Transaction};
+use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{Domain, OrganisationDomain, PersonalDomain},
 	query,
 	query_as,
 	utils::constants::ResourceOwnerType,
+	Database,
 };
 
 pub async fn initialize_domain_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing domain tables");
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS domain (
-			id BINARY(16) PRIMARY KEY,
-			name VARCHAR(255) UNIQUE NOT NULL,
-			type ENUM('personal', 'organisation') NOT NULL,
-			KEY(id, type)
+		CREATE TABLE domain(
+			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
+			name VARCHAR(255) NOT NULL 
+				CONSTRAINT domain_uq_name UNIQUE
+				CONSTRAINT domain_chk_name_is_lower_case 
+					CHECK(
+						name = LOWER(name)
+					),
+			type RESOURCE_OWNER_TYPE NOT NULL,
+			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS organisation_domain (
-			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal', 'organisation') NOT NULL,
+		CREATE TABLE organisation_domain (
+			id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT organisation_domain_chk_dmn_typ
+					CHECK(domain_type = 'organisation'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
-			CONSTRAINT CHECK(domain_type = 'organisation')
+			CONSTRAINT organisation_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS personal_domain (
-			id BINARY(16) PRIMARY KEY,
-			domain_type ENUM('personal', 'organisation') NOT NULL,
-			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type),
-			CONSTRAINT CHECK(domain_type = 'personal')
+		CREATE INDEX
+			organisation_domain_idx_is_verified
+		ON
+			organisation_domain
+		(is_verified);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE personal_domain (
+			id BYTEA
+				CONSTRAINT personal_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT personal_domain_chk_dmn_typ
+					CHECK(domain_type = 'personal'),
+			CONSTRAINT personal_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_domain_post(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
-		ALTER TABLE domain
-		ADD CONSTRAINT
+		ALTER TABLE organisation_domain
+		ADD CONSTRAINT organisation_domain_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
+pub async fn generate_new_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	// If it exists in the resource table, it can't be used
+	// because organisation domains are a resource
+	// If it exists in the domain table, it can't be used
+	// since personal domains are a type of domains
+	let mut exists = {
+		query!(
+			r#"
+			SELECT
+				*
+			FROM
+				resource
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.next()
+		.is_some()
+	} || {
+		query!(
+			r#"
+			SELECT
+				id,
+				name,
+				type as "type: ResourceOwnerType"
+			FROM
+				domain
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.next()
+		.is_some()
+	};
+
+	while exists {
+		uuid = Uuid::new_v4();
+		exists = {
+			query!(
+				r#"
+				SELECT
+					*
+				FROM
+					resource
+				WHERE
+					id = $1;
+				"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_all(&mut *connection)
+			.await?
+			.into_iter()
+			.next()
+			.is_some()
+		} || {
+			query!(
+				r#"
+				SELECT
+					id,
+					name,
+					type as "type: ResourceOwnerType"
+				FROM
+					domain
+				WHERE
+					id = $1;
+				"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_all(&mut *connection)
+			.await?
+			.into_iter()
+			.next()
+			.is_some()
+		}
+	}
+
+	Ok(uuid)
+}
+
 pub async fn create_generic_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 	domain_name: &str,
 	domain_type: &ResourceOwnerType,
@@ -82,19 +197,19 @@ pub async fn create_generic_domain(
 		INSERT INTO
 			domain
 		VALUES
-			(?, ?, ?);
+			($1, $2, $3);
 		"#,
 		domain_id,
 		domain_name,
-		domain_type.to_string()
+		domain_type as _
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn add_to_organisation_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -102,17 +217,17 @@ pub async fn add_to_organisation_domain(
 		INSERT INTO
 			organisation_domain
 		VALUES
-			(?, 'organisation', FALSE);
+			($1, 'organisation', FALSE);
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn add_to_personal_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -120,17 +235,17 @@ pub async fn add_to_personal_domain(
 		INSERT INTO
 			personal_domain
 		VALUES
-			(?, 'personal');
+			($1, 'personal');
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn get_domains_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
@@ -139,8 +254,8 @@ pub async fn get_domains_for_organisation(
 		SELECT
 			domain.name,
 			organisation_domain.id,
-			organisation_domain.domain_type,
-			organisation_domain.is_verified as `is_verified: bool`
+			organisation_domain.domain_type as "domain_type: _",
+			organisation_domain.is_verified
 		FROM
 			domain
 		INNER JOIN
@@ -152,25 +267,25 @@ pub async fn get_domains_for_organisation(
 		ON
 			domain.id = resource.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn get_all_unverified_domains(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
 		OrganisationDomain,
 		r#"
 		SELECT
-			domain.name,
-			organisation_domain.id,
-			organisation_domain.domain_type,
-			organisation_domain.is_verified as `is_verified: bool`
+			domain.name as "name!",
+			organisation_domain.id as "id!",
+			organisation_domain.domain_type as "domain_type!: _",
+			organisation_domain.is_verified as "is_verified!"
 		FROM
 			organisation_domain
 		INNER JOIN
@@ -181,12 +296,12 @@ pub async fn get_all_unverified_domains(
 			is_verified = FALSE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn set_domain_as_verified(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -196,26 +311,26 @@ pub async fn set_domain_as_verified(
 		SET
 			is_verified = TRUE
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 pub async fn get_all_verified_domains(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
 	query_as!(
 		OrganisationDomain,
 		r#"
 		SELECT
-			domain.name,
-			organisation_domain.id,
-			organisation_domain.domain_type,
-			organisation_domain.is_verified as `is_verified: bool`
+			domain.name as "name!",
+			organisation_domain.id as "id!",
+			organisation_domain.domain_type as "domain_type!: _",
+			organisation_domain.is_verified as "is_verified!"
 		FROM
 			organisation_domain
 		INNER JOIN
@@ -226,12 +341,12 @@ pub async fn get_all_verified_domains(
 			is_verified = TRUE;
 		"#
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await
 }
 
 pub async fn set_domain_as_unverified(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -241,24 +356,24 @@ pub async fn set_domain_as_unverified(
 		SET
 			is_verified = FALSE
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		domain_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
 // TODO get the correct email based on permission
 pub async fn get_notification_email_for_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<String>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			user.*,
+			"user".*,
 			domain.name
 		FROM
 			organisation_domain
@@ -275,15 +390,15 @@ pub async fn get_notification_email_for_domain(
 		ON
 			resource.owner_id = organisation.id
 		INNER JOIN
-			user
+			"user"
 		ON
-			organisation.super_admin_id = user.id
+			organisation.super_admin_id = "user".id
 		WHERE
-			organisation_domain.id = ?;
+			organisation_domain.id = $1;
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	if rows.is_empty() {
@@ -298,9 +413,8 @@ pub async fn get_notification_email_for_domain(
 	)))
 }
 
-#[allow(dead_code)]
 pub async fn delete_personal_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -308,7 +422,7 @@ pub async fn delete_personal_domain(
 		DELETE FROM
 			personal_domain
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		domain_id
 	)
@@ -319,7 +433,7 @@ pub async fn delete_personal_domain(
 }
 
 pub async fn delete_domain_from_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -327,7 +441,7 @@ pub async fn delete_domain_from_organisation(
 		DELETE FROM
 			organisation_domain
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		domain_id
 	)
@@ -338,7 +452,7 @@ pub async fn delete_domain_from_organisation(
 }
 
 pub async fn delete_generic_domain(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -346,7 +460,7 @@ pub async fn delete_generic_domain(
 		DELETE FROM
 			domain
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		domain_id
 	)
@@ -357,7 +471,7 @@ pub async fn delete_generic_domain(
 }
 
 pub async fn get_organisation_domain_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<OrganisationDomain>, sqlx::Error> {
 	let rows = query_as!(
@@ -366,8 +480,8 @@ pub async fn get_organisation_domain_by_id(
 		SELECT
 			domain.name,
 			organisation_domain.id,
-			organisation_domain.domain_type,
-			organisation_domain.is_verified as `is_verified: bool`
+			organisation_domain.domain_type as "domain_type: _",
+			organisation_domain.is_verified
 		FROM
 			organisation_domain
 		INNER JOIN
@@ -375,18 +489,18 @@ pub async fn get_organisation_domain_by_id(
 		ON
 			domain.id = organisation_domain.id
 		WHERE
-			domain.id = ?;
+			domain.id = $1;
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
 }
 
 pub async fn get_personal_domain_by_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<PersonalDomain>, sqlx::Error> {
 	let rows = query_as!(
@@ -394,7 +508,8 @@ pub async fn get_personal_domain_by_id(
 		r#"
 		SELECT
 			domain.name,
-			personal_domain.*
+			personal_domain.id,
+			personal_domain.domain_type as "domain_type: _"
 		FROM
 			personal_domain
 		INNER JOIN
@@ -402,33 +517,35 @@ pub async fn get_personal_domain_by_id(
 		ON
 			domain.id = personal_domain.id
 		WHERE
-			domain.id = ?;
+			domain.id = $1;
 		"#,
 		domain_id
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
 }
 
 pub async fn get_domain_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<Option<Domain>, sqlx::Error> {
 	let rows = query_as!(
 		Domain,
 		r#"
 		SELECT
-			*
+			id,
+			name,
+			type as "type: _"
 		FROM
 			domain
 		WHERE
-			name = ?;
+			name = $1;
 		"#,
 		domain_name
 	)
-	.fetch_all(connection)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	Ok(rows.into_iter().next())
