@@ -5,13 +5,12 @@ use eve_rs::AsError;
 use crate::{error, utils::Error};
 
 // TODO: implement other queries for this
-#[allow(dead_code)]
 pub struct ManagedDatabase {
 	pub id: Vec<u8>,
 	pub name: String,
-    pub status: ManagedDatabaseStatus,
+	pub status: ManagedDatabaseStatus,
 	pub database_id: Option<String>,
-    pub db_service: Option<String>,
+	pub db_service: Option<String>,
 	pub organisation_id: Vec<u8>,
 }
 
@@ -27,7 +26,7 @@ pub enum ManagedDatabaseStatus {
 impl Display for ManagedDatabaseStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-            Self::Creating => write!(f, "creating"),
+			Self::Creating => write!(f, "creating"),
 			Self::Running => write!(f, "running"),
 			Self::Errored => write!(f, "errored"),
 			Self::Deleted => write!(f, "deleted"),

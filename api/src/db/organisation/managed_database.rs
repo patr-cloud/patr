@@ -1,6 +1,9 @@
-use api_macros::query;
+use api_macros::{query, query_as};
 
-use crate::{Database, models::db_mapping::ManagedDatabaseStatus};
+use crate::{
+	models::db_mapping::{ManagedDatabase, ManagedDatabaseStatus},
+	Database,
+};
 
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -111,4 +114,32 @@ pub async fn update_managed_database_status(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_all_database_clusters_for_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
+	let rows = query_as!(
+		ManagedDatabase,
+		r#"
+		SELECT
+			id,
+			name,
+			status as "status: _",
+			database_id,
+			db_service,
+			organisation_id
+		FROM
+			managed_database
+		WHERE
+			organisation_id = $1 AND
+			database_id IS NOT NULL;
+		"#,
+		organisation_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows)
 }

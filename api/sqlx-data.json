@@ -4323,6 +4323,69 @@
       "nullable": []
     }
   },
+  "e50da6d3bf9ee0a63adcb3d41ef3078e6fe09ad1b0164d1b779f80be746830b5": {
+    "query": "SELECT id, name, status as \"status: _\", database_id, db_service, organisation_id FROM managed_database WHERE organisation_id = $1 AND database_id IS NOT NULL;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "database_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "db_service",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "e55e29119f1536b6d47e809a8042ff6f7c376ace4be149cb87049ecd308278e0": {
     "query": "SELECT * FROM organisation WHERE super_admin_id = $1;",
     "describe": {

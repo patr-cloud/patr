@@ -157,4 +157,6 @@ pub mod request_keys {
 	pub const REGION: &str = "region";
 	pub const URI: &str = "uri";
 	pub const HOST: &str = "host";
+	pub const CREATED_AT: &str = "createdAt";
+	pub const DATABASE_CLUSTERS: &str = "databaseClusters";
 }

@@ -102,6 +102,34 @@ pub async fn create_new_database_cluster(
 	Ok(database_cluster.database)
 }
 
+pub async fn get_all_database_clusters_for_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	settings: Settings,
+	organisation_id: &[u8],
+) -> Result<Vec<DatabaseResponse>, Error> {
+	let clusters = db::get_all_database_clusters_for_organisation(
+		connection,
+		organisation_id,
+	)
+	.await?;
+
+	let mut cluster_list = Vec::new();
+	let client = Client::new();
+	for cluster in clusters {
+		if cluster.database_id.is_some() {
+			let managed_db_cluster = get_cluster_from_digital_ocean(
+				&client,
+				&settings,
+				&cluster.database_id.unwrap(),
+			)
+			.await?;
+			cluster_list.push(managed_db_cluster);
+		}
+	}
+
+	Ok(cluster_list)
+}
+
 // TODO: refactor this
 fn parse_region(region: &str) -> Result<&str, Error> {
 	let mut data_centers = HashMap::new();
@@ -149,16 +177,9 @@ async fn wait_for_database_cluster_to_be_online(
 ) -> Result<(), Error> {
 	let start = Instant::now();
 	loop {
-		let database_status = client
-			.get(format!(
-				"https://api.digitalocean.com/v2/databases/{}",
-				cloud_db_id
-			))
-			.bearer_auth(&settings.digital_ocean_api_key)
-			.send()
-			.await?
-			.json::<DatabaseResponse>()
-			.await?;
+		let database_status =
+			get_cluster_from_digital_ocean(&client, &settings, &cloud_db_id)
+				.await?;
 
 		if database_status.database.status == "online".to_string() {
 			db::update_managed_database_status(
@@ -212,16 +233,9 @@ async fn wait_and_delete_the_running_database(
 ) -> Result<(), Error> {
 	let app = super::get_app();
 	loop {
-		let database_status = client
-			.get(format!(
-				"https://api.digitalocean.com/v2/databases/{}",
-				cloud_db_id
-			))
-			.bearer_auth(&settings.digital_ocean_api_key)
-			.send()
-			.await?
-			.json::<DatabaseResponse>()
-			.await?;
+		let database_status =
+			get_cluster_from_digital_ocean(client, settings, &cloud_db_id)
+				.await?;
 
 		if database_status.database.status == "online".to_string() {
 			delete_database(
@@ -236,6 +250,24 @@ async fn wait_and_delete_the_running_database(
 		}
 	}
 	Ok(())
+}
+
+async fn get_cluster_from_digital_ocean(
+	client: &Client,
+	settings: &Settings,
+	cloud_db_id: &str,
+) -> Result<DatabaseResponse, Error> {
+	let database_status = client
+		.get(format!(
+			"https://api.digitalocean.com/v2/databases/{}",
+			cloud_db_id
+		))
+		.bearer_auth(&settings.digital_ocean_api_key)
+		.send()
+		.await?
+		.json::<DatabaseResponse>()
+		.await?;
+	Ok(database_status)
 }
 
 pub async fn delete_database(
