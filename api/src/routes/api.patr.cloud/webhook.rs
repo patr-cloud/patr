@@ -138,7 +138,7 @@ pub async fn notification_handler(
 			let config = context.get_state().config.clone();
 
 			// TODO: make this as a parameter
-			let cloud_platform = CloudPlatform::AwsLightsail;
+			let cloud_platform = CloudPlatform::Aws;
 
 			task::spawn(async move {
 				let result = match cloud_platform {
@@ -151,8 +151,8 @@ pub async fn notification_handler(
 						)
 						.await
 					}
-					CloudPlatform::AwsLightsail => {
-						service::deploy_container_on_aws_lightsail(
+					CloudPlatform::Aws => {
+						service::deploy_container_on_aws(
 							deployment_image_name,
 							tag,
 							deployment.id,
