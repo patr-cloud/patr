@@ -176,7 +176,9 @@ def get_pipeline_steps(ctx):
                 sqlx_offline=False
             ),
 
-            # TODO Deploy
+            # Deploy
+            prepare_assets("Prepare release assets"),
+            create_gitea_release("Create Gitea Release", staging=True),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -207,7 +209,9 @@ def get_pipeline_steps(ctx):
                 sqlx_offline=False
             ),
 
-            # TODO Deploy
+            # Deploy
+            prepare_assets("Prepare release assets"),
+            create_gitea_release("Create Gitea Release", staging=False),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -322,6 +326,42 @@ def check_code(step_name, release, sqlx_offline):
             "SQLX_OFFLINE": offline,
             "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
                 get_database_password())
+        }
+    }
+
+
+def prepare_assets(step_name):
+    return {
+        "name": step_name,
+        "image": "vicarahq/debian-zip",
+        "commands": [
+            "zip -r assets.zip assets/*",
+            "echo -n \"v\" > version",
+            "cat api/Cargo.toml | grep -m 1 version | tr -d \"version = \\\"\" >> version"
+        ]
+    }
+
+
+def create_gitea_release(step_name, staging):
+    return {
+        "name": step_name,
+        "image": "plugins/gitea-release",
+        "settings": {
+            "api_key": {
+                "from_secret": "gitea_token"
+            },
+            "base_url": "https://develop.vicara.co",
+            "files": [
+                "./target/release/api",
+                "assets.zip"
+            ],
+            "checksum": [
+                "sha256",
+                "sha512"
+            ],
+            "prerelease": staging,
+            "title": "version",
+            "note": "CHANGELOG.md"
         }
     }
 
