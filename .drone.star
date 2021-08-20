@@ -337,7 +337,7 @@ def prepare_assets(step_name):
         "commands": [
             "zip -r assets.zip assets/*",
             "echo -n \"v\" > version",
-            #"bash -c \"cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \\\"' >> version\""
+            "'bash -c \"cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \\\"' >> version\"'"
         ]
     }
 
