@@ -94,7 +94,10 @@ pub async fn deploy_container_on_aws(
 	log::trace!("DNS Updated");
 	time::sleep(Duration::from_secs(5)).await;
 	log::trace!("creating certificate");
-	create_certificate_for_deployment(&deployment_id_string, &client).await?;
+	let (c_name, c_value) =
+		create_certificate_for_deployment(&deployment_id_string, &client)
+			.await?;
+	update_dns(&c_name, &c_value, &config).await?;
 	// update container service with patr domain
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
@@ -320,13 +323,57 @@ async fn update_container_service_with_patr_domain(
 async fn create_certificate_for_deployment(
 	deployment_id: &str,
 	client: &lightsail::Client,
-) -> Result<(), Error> {
-	client
+) -> Result<(String, String), Error> {
+	let certificte_name = client
 		.create_certificate()
 		.certificate_name(format!("{}.patr.cloud", deployment_id))
 		.domain_name(format!("{}.patr.cloud", deployment_id))
 		.send()
-		.await?;
+		.await?
+		.certificate
+		.map(|certificate_summary| certificate_summary.certificate_name)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let certificate_domain_validation_record = client
+		.get_certificates()
+		.certificate_name(certificte_name)
+		.include_certificate_details(true)
+		.send()
+		.await?
+		.certificates
+		.map(|certificate_summary_list| {
+			certificate_summary_list.into_iter().next()
+		})
+		.flatten()
+		.map(|certificate_summary| certificate_summary.certificate_detail)
+		.flatten()
+		.map(|cert| cert.domain_validation_records)
+		.flatten()
+		.map(|domain_validation_record| {
+			domain_validation_record.into_iter().next()
+		})
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let c_name = certificate_domain_validation_record
+		.clone()
+		.resource_record
+		.map(|record| record.name)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let c_value = certificate_domain_validation_record
+		.clone()
+		.resource_record
+		.map(|record| record.value)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
 	log::trace!("certificate created");
-	Ok(())
+	Ok((c_name, c_value))
 }
