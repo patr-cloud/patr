@@ -2,9 +2,13 @@ use std::{process::Stdio, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::model::{
-	Container, ContainerServiceDeploymentRequest,
-	ContainerServiceDeploymentState, ContainerServicePowerName,
-	ContainerServiceProtocol, ContainerServiceState, EndpointRequest,
+	Container,
+	ContainerServiceDeploymentRequest,
+	ContainerServiceDeploymentState,
+	ContainerServicePowerName,
+	ContainerServiceProtocol,
+	ContainerServiceState,
+	EndpointRequest,
 };
 use tokio::{process::Command, time};
 
@@ -12,8 +16,11 @@ use crate::{
 	error,
 	models::db_mapping::DeploymentStatus,
 	service::{
-		delete_docker_image, pull_image_from_registry, tag_docker_image,
-		update_deployment_status, update_dns,
+		delete_docker_image,
+		pull_image_from_registry,
+		tag_docker_image,
+		update_deployment_status,
+		update_dns,
 	},
 	utils::{settings::Settings, Error},
 };
