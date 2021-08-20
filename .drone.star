@@ -336,7 +336,7 @@ def prepare_assets(step_name):
         "image": "vicarahq/debian-zip",
         "commands": [
             "zip -r assets.zip assets/*",
-            #"echo -n \"v\" > version",
+            "echo -n \"v\" > version",
             #"bash -c \"cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \\\"' >> version\""
         ]
     }
