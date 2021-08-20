@@ -178,7 +178,7 @@ def get_pipeline_steps(ctx):
 
             # Deploy
             prepare_assets("Prepare release assets"),
-            # create_gitea_release("Create Gitea Release", staging=True)
+            create_gitea_release("Create Gitea Release", staging=True)
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -337,7 +337,7 @@ def prepare_assets(step_name):
         "commands": [
             "zip -r assets.zip assets/*",
             "echo -n \"v\" > version",
-            "'bash -c \"cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \\\"' >> version\"'"
+            "tr -d 'version = \\\"' >> version < <(grep -m 1 version < <(cat api/Cargo.toml))"
         ]
     }
 
