@@ -1,5 +1,6 @@
 def main(ctx):
     (steps, services) = get_pipeline_steps(ctx)
+    print(steps)
     branch = ""
     if len(steps) == 0:
         branch = "skip-ci"
