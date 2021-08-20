@@ -1,6 +1,5 @@
 def main(ctx):
     (steps, services) = get_pipeline_steps(ctx)
-    print(steps)
     branch = ""
     if len(steps) == 0:
         branch = "skip-ci"
@@ -249,9 +248,8 @@ def build_code(step_name, release, sqlx_offline):
             build_cmd
         ],
         "environment": {
-            "SQLX_OFFLINE": offline,
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
-                get_database_password())
+            "SQLX_OFFLINE": "{}".format(offline).lower(),
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -326,9 +324,8 @@ def check_code(step_name, release, sqlx_offline):
             "cargo check {}".format(release_flag)
         ],
         "environment": {
-            "SQLX_OFFLINE": offline,
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
-                get_database_password())
+            "SQLX_OFFLINE": "{}".format(offline).lower(),
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -340,7 +337,7 @@ def prepare_assets(step_name):
         "commands": [
             "zip -r assets.zip assets/*",
             "echo -n \"v\" > version",
-            "cat api/Cargo.toml | grep -m 1 version | tr -d \"version = \\\"\" >> version"
+            "bash -c \"cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \\\"' >> version\""
         ]
     }
 
