@@ -38,6 +38,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=False,
                 env=get_app_running_environment()
             ),
 
@@ -71,6 +72,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -104,6 +106,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -135,6 +138,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=False,
                 env=get_app_running_environment()
             ),
 
@@ -164,6 +168,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -197,6 +202,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -285,12 +291,17 @@ def copy_config(step_name):
     }
 
 
-def init_database(step_name, env):
+def init_database(step_name, release, env):
+    bin_location = ""
+    if release == True:
+        bin_location = "./target/release/api"
+    else:
+        bin_location = "./target/debug/api"
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
-            "cargo run -- --db-only"
+            "{} --db-only".format(bin_location)
         ],
         "environment": env
     }
