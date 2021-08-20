@@ -176,8 +176,8 @@ def get_pipeline_steps(ctx):
                 sqlx_offline=False
             ),
 
-            # # Deploy
-            # prepare_assets("Prepare release assets"),
+            # Deploy
+            prepare_assets("Prepare release assets"),
             # create_gitea_release("Create Gitea Release", staging=True)
         ], [
             redis_service(),
