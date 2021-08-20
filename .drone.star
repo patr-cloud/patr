@@ -338,7 +338,7 @@ def prepare_assets(step_name):
             "zip -r assets.zip assets/*",
             "echo -n \"v\" > version",
             "grep -m 1 version > version-grep < api/Cargo.toml",
-            "tr -d 'version = \\\"' >> version < version-grep"
+            "tr -d 'version = \"' >> version < version-grep"
         ]
     }
 
