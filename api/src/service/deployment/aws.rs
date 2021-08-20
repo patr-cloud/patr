@@ -94,10 +94,10 @@ pub async fn deploy_container_on_aws(
 	log::trace!("DNS Updated");
 	time::sleep(Duration::from_secs(5)).await;
 	log::trace!("creating certificate");
-	let (c_name, c_value) =
+	let (cname, value) =
 		create_certificate_for_deployment(&deployment_id_string, &client)
 			.await?;
-	update_dns(&c_name, &c_value, &config).await?;
+	update_dns(&cname, &value, &config).await?;
 	// update container service with patr domain
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
@@ -358,22 +358,13 @@ async fn create_certificate_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let c_name = certificate_domain_validation_record
-		.clone()
+	let (cname, value) = certificate_domain_validation_record
 		.resource_record
-		.map(|record| record.name)
-		.flatten()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let c_value = certificate_domain_validation_record
-		.clone()
-		.resource_record
-		.map(|record| record.value)
+		.map(|record| record.name.zip(record.value))
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
 	log::trace!("certificate created");
-	Ok((c_name, c_value))
+	Ok((cname, value))
 }
