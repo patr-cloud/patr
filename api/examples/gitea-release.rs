@@ -76,6 +76,7 @@ async fn main() {
 				system_proto, system_host, repo_owner, repo_name, release_id
 			))
 			.header("Authorization", format!("token {}", gitea_token))
+			.query(&[("name", name)])
 			.multipart(
 				Form::new().text("name", name).part(
 					"attachment",
@@ -84,7 +85,8 @@ async fn main() {
 							"unable to read file `{}`",
 							asset
 						)),
-					),
+					)
+					.file_name(name),
 				),
 			)
 			.send()
@@ -93,7 +95,7 @@ async fn main() {
 		if response.status().is_success() {
 			println!("Successfully uploaded {}", name);
 		} else {
-			panic!("Error uploading asset: {:#?}", response);
+			panic!("Error uploading asset: {:#?}", response.text().await);
 		}
 	}
 }
