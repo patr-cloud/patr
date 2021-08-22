@@ -1,18 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_macros::version;
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
 use semver::Version;
 
 use crate::{error, utils::Error};
 
-pub const DATABASE_VERSION: Version = Version {
-	major: 0,
-	minor: 0,
-	patch: 0,
-	pre: vec![],
-	build: vec![],
-};
+pub const DATABASE_VERSION: Version = version!();
 
 pub const APP_NAME: &str = crate_name!();
 pub const APP_VERSION: &str = crate_version!();
@@ -21,6 +16,8 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum ResourceOwnerType {
 	Personal,
 	Organisation,
@@ -40,8 +37,9 @@ impl FromStr for ResourceOwnerType {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(ResourceOwnerType::Personal),
-			"organisation" => Ok(ResourceOwnerType::Organisation),
+			"personal" => Ok(Self::Personal),
+			// Disabled for the demo
+			//"organisation" => Ok(Self::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -49,6 +47,7 @@ impl FromStr for ResourceOwnerType {
 	}
 }
 
+#[allow(dead_code)]
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";
@@ -74,8 +73,12 @@ pub mod request_keys {
 	pub const ORGANISATION_NAME: &str = "organisationName";
 	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
+	pub const EMAILS: &str = "emails";
 	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
 	pub const BACKUP_PHONE_NUMBER: &str = "backupPhoneNumber";
+	pub const PHONE_NUMBERS: &str = "phoneNumbers";
+	pub const COUNTRY_CODE: &str = "countryCode";
+	pub const PHONE_NUMBER: &str = "phoneNumber";
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
@@ -130,5 +133,18 @@ pub mod request_keys {
 	pub const IMAGE_TAG: &str = "imageTag";
 	pub const SUB_DOMAIN: &str = "subDomain";
 	pub const PATH: &str = "path";
+	pub const ENVIRONMENT_VARIABLES: &str = "environmentVariables";
+	pub const PERSISTENT_VOLUMES: &str = "volumes";
+	pub const EXPOSED_PORTS: &str = "ports";
+	pub const UPGRADE_PATH_ID: &str = "upgradePathId";
+	pub const UPGRADE_PATHS: &str = "upgradePaths";
+	pub const MACHINE_TYPES: &str = "machineTypes";
+	pub const ENTRY_POINT_ID: &str = "entryPointId";
+	pub const ENTRY_POINTS: &str = "entryPoints";
+	pub const ENTRY_POINT_TYPE: &str = "entryPointType";
 	pub const PORT: &str = "port";
+	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
+	pub const URL: &str = "url";
+	pub const DEFAULT: &str = "default";
+	pub const STATUS: &str = "status";
 }

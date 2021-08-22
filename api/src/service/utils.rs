@@ -4,11 +4,11 @@ use argon2::{
 	PasswordHash,
 	Version,
 };
+use eve_rs::AsError;
 use hex::ToHex;
-use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
-use crate::{db, service, utils::Error};
+use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -20,6 +20,17 @@ lazy_static::lazy_static! {
 	).unwrap();
 }
 
+/// # Description
+/// This function is used to validate the hashed password using [`static@ARGON`]
+///
+/// # Arguments
+/// * `pwd` - a string containing password of the user
+/// * `hashed` - a string containing hashed password of the user
+///
+/// # Returns
+/// This function returns `Result<bool, Error>` containing bool stating the the
+/// password is successfully validated or not or an error
+/// [`static@ARGON`]: static@ARGON
 pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 	Ok(ARGON
 		.verify_password(
@@ -29,11 +40,20 @@ pub fn validate_hash(pwd: &str, hashed: &str) -> Result<bool, Error> {
 		.is_ok())
 }
 
-/// function to get token hash
+/// # Description
+/// This function is used to get token hash
+///
+/// # Arguments
+/// * `pwd` - an unsigned 8 bit integer array containing hashed password of the
+/// user
+///
+/// # Returns
+/// This function returns `Result<String, Error>` containing hashed password or
+/// an error
 pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 	let salt = format!(
 		"{}{}",
-		service::get_config().password_pepper,
+		service::get_settings().password_pepper,
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON
@@ -42,24 +62,51 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 		.map_err(|_| Error::empty())
 }
 
-// 2 hours
+/// # Description
+/// This function is used to get join token expiry
+/// set to: `2 hours`
+///
+/// # Returns
+/// This function returns unsigned 64 bit integer (unix time)
 pub fn get_join_token_expiry() -> u64 {
 	1000 * 60 * 60 * 2
 }
 
-// 3 days
+/// # Description
+/// This function is used to get access token expiry
+/// set to: `3 days`
+///
+/// # Returns
+/// This function returns unsigned 64 bit integer (unix time)
 pub fn get_access_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 3
 }
 
-// 30 days
+/// # Description
+/// This function is used to get refresh token expiry
+/// set to: `30 days`
+///
+/// # Returns
+/// This function returns unsigned 64 bit integer (unix time)
 pub fn get_refresh_token_expiry() -> u64 {
 	1000 * 60 * 60 * 24 * 30
 }
 
-// check if the hash is not in the database
+/// # Description
+/// This function is used to generate a new refresh token and check if the token
+/// is already present or not in the database
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+///
+/// # Returns
+/// This function returns Result<(String, String), Error> containing strings
+/// refresh token and hashed form of it
+///
+/// [`Transaction`]: Transaction
 pub async fn generate_new_refresh_token_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
 	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
@@ -77,13 +124,25 @@ pub async fn generate_new_refresh_token_for_user(
 	Ok((refresh_token, hashed))
 }
 
+#[cfg(all(feature = "sample-data", release))]
+pub fn sample_data_not_allowed_in_release_mode() {
+	compile_error!("Populating sample data is not allowed in release mode");
+}
+
+/// # Description
+/// this function is used to generate a new otp, but for development purpose
+/// this function will not be used, it will only be used in production or
+/// testing
+///
+/// # Returns
+/// returns a string containing a 6 digit One-Time-Password
 #[cfg(not(feature = "sample-data"))]
 pub fn generate_new_otp() -> String {
 	use rand::Rng;
 
-	let otp: u32 = rand::thread_rng().gen_range(0, 1_000_000);
+	let otp: u32 = rand::thread_rng().gen_range(0..1_000_000);
 
-	if otp < 10 {
+	let otp = if otp < 10 {
 		format!("00000{}", otp)
 	} else if otp < 100 {
 		format!("0000{}", otp)
@@ -91,14 +150,115 @@ pub fn generate_new_otp() -> String {
 		format!("000{}", otp)
 	} else if otp < 10000 {
 		format!("00{}", otp)
-	} else if otp < 100000 {
+	} else if otp < 100_000 {
 		format!("0{}", otp)
 	} else {
 		format!("{}", otp)
+	};
+	format!("{}-{}", &otp[..3], &otp[3..])
+}
+
+/// # Description
+/// this function is used to generate a new otp only during the development time
+///
+/// # Returns
+/// returns a string containing a 6 digit One-Time-Password (000000)
+#[cfg(feature = "sample-data")]
+pub fn generate_new_otp() -> String {
+	"000-000".to_string()
+}
+
+/// # Description
+/// this function is used to split the email into local and domain
+/// and extract the domain id from it
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `email_address` - a string containing the email address to be split
+///
+/// # Returns
+/// this function returns a `Result<(String, Vec<u8>)>` either containing a
+/// tuple of string of email local and an unsigned 8 bit integer Vec containing
+/// domain id or an error
+///
+/// [`Transaction`]: Transaction
+pub async fn split_email_with_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	email_address: &str,
+) -> Result<(String, Vec<u8>), Error> {
+	let (email_local, domain_name) = email_address
+		.split_once('@')
+		.status(400)
+		.body(error!(INVALID_EMAIL).to_string())?;
+
+	let domain_id =
+		service::ensure_personal_domain_exists(connection, domain_name)
+			.await?
+			.as_bytes()
+			.to_vec();
+
+	Ok((email_local.to_string(), domain_id))
+}
+
+/// # Description
+/// this function is used to mask the email local by "*" character
+///
+/// # Arguments
+/// * `local` - a string containing email_local
+///
+/// # Returns
+/// this function returns a `String` containg masked email local
+pub fn mask_email_local(local: &str) -> String {
+	if local.is_empty() {
+		String::from("*")
+	} else if local.len() <= 2 {
+		local.chars().map(|_| '*').collect()
+	} else if local.len() > 2 && local.len() <= 4 {
+		if let Some(first) = local.chars().next() {
+			format!("{}***", first)
+		} else {
+			String::from("*")
+		}
+	} else {
+		let mut chars = local.chars();
+		let first = if let Some(first) = chars.next() {
+			first
+		} else {
+			return String::from("*");
+		};
+		let last = if let Some(last) = chars.last() {
+			last
+		} else {
+			return String::from("*");
+		};
+		format!(
+			"{}{}{}",
+			first,
+			if local.len() < 10 { "****" } else { "********" },
+			last
+		)
 	}
 }
 
-#[cfg(feature = "sample-data")]
-pub fn generate_new_otp() -> String {
-	"000000".to_string()
+/// # Description
+/// this function is used to mask the phone number by "*" character
+///
+/// # Arguments
+/// * `phone_number` - a string containing phone_number
+///
+/// # Returns
+/// this function returns a `String` containg masked phone number
+pub fn mask_phone_number(phone_number: &str) -> String {
+	let mut chars = phone_number.chars();
+	let first = if let Some(first) = chars.next() {
+		first
+	} else {
+		return String::from("******");
+	};
+	let last = if let Some(last) = chars.last() {
+		last
+	} else {
+		return String::from("******");
+	};
+	format!("{}******{}", first, last)
 }

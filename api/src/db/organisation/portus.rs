@@ -1,39 +1,54 @@
-use sqlx::{MySql, Transaction};
-
-use crate::{models::db_mapping::PortusTunnel, query, query_as};
+use crate::{models::db_mapping::PortusTunnel, query, Database};
 
 pub async fn initialize_portus_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing Portus tables");
+	log::info!("Initializing portus tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS portus_tunnel (
-			id BINARY(16) PRIMARY KEY,
+		CREATE TABLE portus_tunnel(
+			id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL,
-			ssh_port SMALLINT UNSIGNED NOT NULL,
-			exposed_port SMALLINT UNSIGNED NOT NULL,
-			name VARCHAR(50) NOT NULL,
-			created BIGINT UNSIGNED NOT NULL
+			ssh_port INTEGER NOT NULL
+				CONSTRAINT portus_tunnel_chk_ssh_port_u16
+					CHECK(ssh_port >= 0 AND ssh_port <= 65534),
+			exposed_port INTEGER NOT NULL
+				CONSTRAINT portus_tunnel_chk_exposed_port_u16
+					CHECK(exposed_port >= 0 AND exposed_port <= 65534),
+			name VARCHAR(50) NOT NULL
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			portus_tunnel_idx_name
+		ON
+			portus_tunnel
+		(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
 pub async fn initialize_portus_post(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up portus tables initialization");
 	query!(
 		r#"
 		ALTER TABLE portus_tunnel
-		ADD CONSTRAINT 
+		ADD CONSTRAINT portus_tunnel_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -41,29 +56,27 @@ pub async fn initialize_portus_post(
 
 // query to add user information with port and container details
 pub async fn create_new_portus_tunnel(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &[u8],
 	username: &str,
-	ssh_port: u32,
-	exposed_port: u32,
+	ssh_port: u16,
+	exposed_port: u16,
 	tunnel_name: &str,
-	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			portus_tunnel
 		VALUES
-			(?, ?, ?, ?, ?, ?);
+			($1, $2, $3, $4, $5);
 		"#,
 		id,
 		username,
-		ssh_port,
-		exposed_port,
-		tunnel_name,
-		created,
+		ssh_port as i32,
+		exposed_port as i32,
+		tunnel_name
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -71,7 +84,7 @@ pub async fn create_new_portus_tunnel(
 
 // query to remove portus tunnel from database
 pub async fn delete_portus_tunnel(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -79,89 +92,109 @@ pub async fn delete_portus_tunnel(
 		DELETE FROM
 			portus_tunnel
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		tunnel_id
 	)
-	.execute(connection)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 /// function to check if container exists with the given tunnel name
 pub async fn get_portus_tunnel_by_name(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_name: &str,
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
-	let rows = query_as!(
-		PortusTunnel,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			name = ?;
+			name = $1;
 		"#,
 		tunnel_name
 	)
-	.fetch_all(connection)
-	.await?;
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn get_portus_tunnel_by_tunnel_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	tunnel_id: &[u8],
 ) -> Result<Option<PortusTunnel>, sqlx::Error> {
-	let rows = query_as!(
-		PortusTunnel,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			id = ?;
+			id = $1;
 		"#,
 		tunnel_id
 	)
-	.fetch_all(connection)
-	.await?;
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn is_portus_port_available(
-	connection: &mut Transaction<'_, MySql>,
-	port: u32,
+	connection: &mut <Database as sqlx::Database>::Connection,
+	port: u16,
 ) -> Result<bool, sqlx::Error> {
-	let rows = query!(
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
 		FROM
 			portus_tunnel
 		WHERE
-			ssh_port = ? OR
-			exposed_port = ?;
+			ssh_port = $1 OR
+			exposed_port = $1;
 		"#,
-		port,
-		port
+		port as i32
 	)
-	.fetch_all(connection)
-	.await?;
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+	});
 
-	Ok(rows.is_empty())
+	Ok(rows.next().is_none())
 }
 
 pub async fn get_portus_tunnels_for_organisation(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<PortusTunnel>, sqlx::Error> {
-	query_as!(
-		PortusTunnel,
+	let rows = query!(
 		r#"
 		SELECT 
 			portus_tunnel.*
@@ -172,10 +205,21 @@ pub async fn get_portus_tunnels_for_organisation(
 		ON 
 			resource.id = portus_tunnel.id
 		WHERE
-			resource.owner_id = ?;
+			resource.owner_id = $1;
 		"#,
 		organisation_id
 	)
-	.fetch_all(connection)
-	.await
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| PortusTunnel {
+		id: row.id,
+		name: row.name,
+		username: row.username,
+		exposed_port: row.exposed_port as u16,
+		ssh_port: row.ssh_port as u16,
+	})
+	.collect();
+
+	Ok(rows)
 }

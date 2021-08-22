@@ -1,33 +1,33 @@
 use semver::Version;
-use sqlx::{MySql, Transaction};
 
-use crate::{app::App, query};
+use crate::{app::App, query, Database};
 
 pub async fn initialize_meta_pre(
-	transaction: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing meta tables");
 	query!(
 		r#"
-		CREATE TABLE IF NOT EXISTS meta_data (
-			id VARCHAR(100) PRIMARY KEY,
+		CREATE TABLE meta_data(
+			id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY,
 			value TEXT NOT NULL
 		);
 		"#
 	)
-	.execute(transaction)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
 
 pub async fn initialize_meta_post(
-	_transaction: &mut Transaction<'_, MySql>,
+	_connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Finishing up meta tables initialization");
 	Ok(())
 }
 
 pub async fn set_database_version(
-	app: &App,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	version: &Version,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -35,17 +35,17 @@ pub async fn set_database_version(
 		INSERT INTO
 			meta_data
 		VALUES
-			('version_major', ?),
-			('version_minor', ?),
-			('version_patch', ?)
-		ON DUPLICATE KEY UPDATE
-			value = VALUES(value);
+			('version_major', $1),
+			('version_minor', $2),
+			('version_patch', $3)
+		ON CONFLICT(id) DO UPDATE SET
+			value = EXCLUDED.value;
 		"#,
-		version.major,
-		version.minor,
-		version.patch
+		version.major.to_string(),
+		version.minor.to_string(),
+		version.patch.to_string()
 	)
-	.execute(&app.mysql)
+	.execute(&mut *connection)
 	.await?;
 	Ok(())
 }
@@ -53,7 +53,9 @@ pub async fn set_database_version(
 pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 	let rows = query!(
 		r#"
-		SELECT * FROM
+		SELECT
+			*
+		FROM
 			meta_data
 		WHERE
 			id = 'version_major' OR
@@ -61,7 +63,7 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 			id = 'version_patch';
 		"#,
 	)
-	.fetch_all(&app.mysql)
+	.fetch_all(&app.database)
 	.await?;
 
 	let mut version = Version::new(0, 0, 0);

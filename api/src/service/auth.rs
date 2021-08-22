@@ -1,12 +1,22 @@
 use eve_rs::AsError;
-use sqlx::{MySql, Transaction};
 use uuid::Uuid;
 
+/// This module validates user info and performs tasks related to user
+/// authentication The flow of this file will be:
+/// 1. An endpoint will be called from routes layer and the arguments will
+/// be supplied to the functions in this file, then the functions might
+/// connect with db and return what was required for the endpoint
 use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{User, UserLogin},
+		db_mapping::{
+			JoinUser,
+			PreferredRecoveryOption,
+			User,
+			UserLogin,
+			UserToSignUp,
+		},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -19,41 +29,114 @@ use crate::{
 		validator,
 		Error,
 	},
+	Database,
 };
 
+/// # Description
+/// This function is used to check if the username already exists
+/// and is according to the criteria for the username
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `username` - A string which contains username to be validated
+///
+/// # Return
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the username is valid or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn is_username_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_username_valid(&username) {
+	if !validator::is_username_valid(username) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_USERNAME).to_string())?;
 	}
-	db::get_user_by_username(connection, username)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
+
+	let user = db::get_user_by_username(connection, username).await?;
+	if user.is_some() {
+		return Ok(false);
+	}
+
+	// check if user is registered for signup
+	let sign_up_status =
+		db::get_user_to_sign_up_by_username(connection, username).await?;
+
+	if let Some(status) = sign_up_status {
+		// return in-valid (`false`) if expiry is greater than current time
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
+/// # Description
+/// This function is used to check if the email already exists and
+/// is according to the criteria for the email
+///
+/// # Arguments
+/// * `connection` - database save point, more details here:
+/// [`Transaction`]
+/// * `email` - A string which contains username to be validated
+///
+/// # Return
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the email is valid or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn is_email_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_email_valid(&email) {
+	if !validator::is_email_valid(email) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	db::get_user_by_email(connection, email)
-		.await
-		.map(|user| user.is_none())
-		.status(500)
-}
+	let user = db::get_user_by_email(connection, email).await?;
+	if user.is_some() {
+		return Ok(false);
+	}
+	// check if the email has already been registered for verifying
+	let verify_status =
+		db::get_personal_email_to_be_verified_by_email(connection, email)
+			.await?;
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
 
+	let sign_up_status =
+		db::get_user_to_sign_up_by_email(connection, email).await?;
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
+}
+/// # Description
+/// This function is used to check if the phone number
+/// already exists and is valid
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `phone_country_code` - A string which contains phone number country code
+/// * `phone_number` - A string which contains phone_number to be validated
+///
+/// # Return
+///
+/// This function returns a Result<bool, Error> which contains either a bool
+/// which says if the phone number is valid or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn is_phone_number_allowed(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<bool, Error> {
@@ -67,20 +150,80 @@ pub async fn is_phone_number_allowed(
 		db::get_phone_country_by_country_code(connection, phone_country_code)
 			.await?
 			.status(400)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	db::get_user_by_phone_number(
+	let user = db::get_user_by_phone_number(
 		connection,
-		&format!("+{}{}", country_code.phone_code, phone_number),
+		&country_code.country_code,
+		phone_number,
 	)
-	.await
-	.map(|user| user.is_none())
-	.status(500)
+	.await?;
+
+	if user.is_some() {
+		return Ok(false);
+	}
+
+	// check if the email has already been registered for verifying
+	let verify_status = db::get_phone_number_to_be_verified_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(verify_status) = verify_status {
+		if verify_status.verification_token_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+
+	let sign_up_status = db::get_user_to_sign_up_by_phone_number(
+		connection,
+		&country_code.country_code,
+		phone_number,
+	)
+	.await?;
+
+	if let Some(status) = sign_up_status {
+		if status.otp_expiry > get_current_time_millis() {
+			return Ok(false);
+		}
+	}
+	Ok(true)
 }
 
-/// Creates a new user to be signed up and returns an OTP
+/// # Description
+/// This function is used to create a new user to be signed up and returns an
+/// OTP, this function will validate details given by the user, then a resource
+/// will be generated for the user according to the type of the account
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `username` - A string which contains username
+/// * `account_type` - An enum object which contains the type of resource
+///   {Personal, Organisation}
+/// * `password` - A string which contains password of the user
+/// * `first_name` - A string which contains first name of the user
+/// * `last_name` - A string which contains last name of the user
+/// * `backup_email` - A string which contains recovery email of the user
+/// * `backup_phone_country_code` - A string which contains phone number country
+///   code
+/// * `backup_phone_number` - A string which contains phone number of of user
+/// * `org_email_local` - A string which contains a pre-existing email_local of
+///   the user's
+/// organisation email
+/// * `org_domain_name` - A string which contains domain name of the user's
+///   organisation's email id
+/// * `organisation_name` - A string which contains user's organisation name.
+///
+/// # Return
+/// This function returns a `Result<string, error>` which contains either
+/// one-time-password to confirm user's email id or phone number and hence
+/// complete the registration or an error
+///
+/// [`Transaction`]: Transaction
 pub async fn create_user_join_request(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	account_type: ResourceOwnerType,
 	password: &str,
@@ -93,7 +236,7 @@ pub async fn create_user_join_request(
 	org_email_local: Option<&str>,
 	org_domain_name: Option<&str>,
 	organisation_name: Option<&str>,
-) -> Result<String, Error> {
+) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
 		Error::as_result()
@@ -102,12 +245,13 @@ pub async fn create_user_join_request(
 	}
 
 	// Check if the password passes standards
-	if !validator::is_password_valid(&password) {
+	if !validator::is_password_valid(password) {
 		Error::as_result()
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
+	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
 	let backup_email_local;
 	let backup_email_domain_id;
@@ -139,21 +283,15 @@ pub async fn create_user_join_request(
 			}
 
 			// extract the email_local and domain name from it
-			let (email_local, domain_name) = backup_email
-				.split_once('@')
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
+			// split email into 2 parts and get domain_id
+			let (email_local, domain_id) =
+				service::split_email_with_domain_id(connection, backup_email)
+					.await?;
 
-			// Assign values
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(
-				service::ensure_personal_domain_exists(connection, domain_name)
-					.await?
-					.as_bytes()
-					.to_vec(),
-			);
 			phone_country_code = None;
 			phone_number = None;
+			backup_email_local = Some(email_local);
+			backup_email_domain_id = Some(domain_id);
 		}
 		// If both or neither recovery options are provided
 		_ => {
@@ -162,15 +300,9 @@ pub async fn create_user_join_request(
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	}
-	let backup_email_domain_id =
-		if let Some(ref domain_id) = backup_email_domain_id {
-			Some(domain_id.as_slice())
-		} else {
-			None
-		};
+	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
 
@@ -212,7 +344,7 @@ pub async fn create_user_join_request(
 
 			let user_sign_up = db::get_user_to_sign_up_by_organisation_name(
 				connection,
-				&organisation_name,
+				organisation_name,
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
@@ -237,7 +369,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -248,6 +380,26 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+			// let check = backup_email_domain_id.map(|s| s.to_vec())
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local,
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: Some(org_email_local.to_string()),
+				org_domain_name: Some(org_domain_name.to_string()),
+				organisation_name: Some(organisation_name.to_string()),
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 		ResourceOwnerType::Personal => {
 			db::set_personal_user_to_be_signed_up(
@@ -255,7 +407,7 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local,
+				backup_email_local.as_deref(),
 				backup_email_domain_id,
 				phone_country_code,
 				phone_number,
@@ -263,16 +415,63 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
+
+			response = UserToSignUp {
+				username: username.to_string(),
+				account_type: ResourceOwnerType::Organisation,
+				password,
+				first_name: first_name.to_string(),
+				last_name: last_name.to_string(),
+				backup_email_local,
+				backup_email_domain_id: backup_email_domain_id
+					.map(|s| s.to_vec()),
+				backup_phone_country_code: phone_country_code
+					.map(|s| s.to_string()),
+				backup_phone_number: phone_number.map(|s| s.to_string()),
+				org_email_local: None,
+				org_domain_name: None,
+				organisation_name: None,
+				otp_hash: token_hash,
+				otp_expiry: token_expiry,
+			}
 		}
 	}
 
-	Ok(otp)
+	Ok((response, otp))
 }
 
-// Creates a login in the db and returns it
-// loginId and refresh_token are separate things
+/// # Description
+/// This function is used to create a record when a user logs into the system,
+/// this record contains six parameters:
+/// 1. login_id
+/// login_id is used to give to a unique identity to the current logged in user
+/// 2. user_id
+/// user_id is the identity of the user currently logged in
+/// 3. last_activity
+/// last_activity is the most recent task the user has performed on the api,
+/// when the user logs in, the last activity is set to the time of login
+/// 4. last_login
+/// last_login used to show the last time user was logged in. When the user logs
+/// in, last_login updates with the time of log in
+/// 5. refresh_token
+/// refresh_token is used to generate access token, and access token is for
+/// authenticating the user for the current session
+/// 6. token_expiry
+/// token_expiry is used to set the expiry time for newly generated refresh
+/// token
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
+///
+/// # Returns
+/// This function returns a `Result<UserLogin, error>` which contains an
+/// instance of UserLogin or an error
+///
+/// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
@@ -303,18 +502,36 @@ pub async fn create_login_for_user(
 	Ok(user_login)
 }
 
-/// function to sign in a user
-/// Returns: JWT (String), Refresh Token (Uuid)
+/// # Description
+/// This function is used to log in a user, it calls [`create_login_for_user()`]
+/// to get [`UserLogin`] object using which it generates a new refresh token and
+/// then generate an access token through the newly generated refresh token
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+///   the whole API
+///
+/// # Returns
+/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing
+/// jwt, login_id, and refresh token or an error
+///
+/// [`create_login_for_user()`]: self.create_login_for_user()
+/// [`UserLogin`]: UserLogin
+/// [`Transaction`]: Transaction
+/// [`Settings]: Settings
 pub async fn sign_in_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	config: &Settings,
 ) -> Result<(String, Uuid, Uuid), Error> {
 	let refresh_token = Uuid::new_v4();
 
-	let user_login = create_login_for_user(connection, &user_id).await?;
+	let user_login = create_login_for_user(connection, user_id).await?;
 
-	let jwt = generate_access_token(connection, &config, &user_login).await?;
+	let jwt = generate_access_token(connection, config, &user_login).await?;
 
 	Ok((
 		jwt,
@@ -323,8 +540,22 @@ pub async fn sign_in_user(
 	))
 }
 
+/// # Description
+/// This function is used to get the login details of the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `login_id` - an unsigned 8 bit integer array which represents the id of
+/// the user
+///
+/// # Returns
+/// This function returns `Result<UserLogin, Error>` containing an instance of
+/// UserLogin or an error
+///
+/// [`UserLogin`]: UserLogin
+/// [`Transaction`]: Transaction
 pub async fn get_user_login_for_login_id(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &[u8],
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
@@ -341,9 +572,21 @@ pub async fn get_user_login_for_login_id(
 
 	Ok(user_login)
 }
-
+/// # Description
+/// This function is used to generate access token for the logged in user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+/// the whole API
+/// * `user_login` - an object of struct [`UserLogin`]
+///
+/// # Returns
+/// This function returns a `Result<String, Error>` containing a jwt token
+///
+/// [`Transaction`]: Transaction
 pub async fn generate_access_token(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	user_login: &UserLogin,
 ) -> Result<String, Error> {
@@ -377,7 +620,13 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(iat, exp, orgs, user);
+	let token_data = AccessTokenData::new(
+		iat,
+		exp,
+		orgs,
+		hex::encode(&user_login.login_id),
+		user,
+	);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
@@ -385,19 +634,33 @@ pub async fn generate_access_token(
 	Ok(jwt)
 }
 
-// function to reset password
-// TODO: Remove otp from response
+/// # Description
+/// This function takes care of generating an OTP and sending it
+/// to the preferred Recovery option chosen by the user.
+/// response will NOT contain the OTP
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn forgot_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-) -> Result<(String, String), Error> {
-	let user = db::get_user_by_username_or_email(connection, &user_id)
-		.await?
-		.status(200)
-		.body(error!(USER_NOT_FOUND).to_string())?;
+	preferred_recovery_option: PreferredRecoveryOption,
+) -> Result<(), Error> {
+	let user =
+		db::get_user_by_username_email_or_phone_number(connection, user_id)
+			.await?
+			.status(200)
+			.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry = get_current_time_millis() + (1000 * 60 * 60 * 2); // 2 hours
 
@@ -411,28 +674,42 @@ pub async fn forgot_password(
 	)
 	.await?;
 
-	// TODO don't unwrap in case of phone number backup
-	let domain = db::get_personal_domain_by_id(
+	service::send_forgot_password_otp(
 		connection,
-		user.backup_email_domain_id.unwrap().as_ref(),
+		user,
+		preferred_recovery_option,
+		&otp,
 	)
-	.await?
-	.status(500)?;
+	.await?;
 
-	Ok((
-		otp,
-		format!("{}@{}", user.backup_email_local.unwrap(), domain.name),
-	))
+	Ok(())
 }
 
+/// # Description
+/// This function updates the password of user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `new_password` - a string containing new password of user
+/// * `token` - a string containing a reset request token to verify if the reset
+///   password request is
+/// valid or not
+/// * `user_id` - an unsigned 8 bit integer array which represents the id of the
+///   user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn reset_password(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	new_password: &str,
 	token: &str,
 	user_id: &[u8],
 ) -> Result<(), Error> {
 	let reset_request =
-		db::get_password_reset_request_for_user(connection, &user_id).await?;
+		db::get_password_reset_request_for_user(connection, user_id).await?;
 
 	if reset_request.is_none() {
 		Error::as_result()
@@ -451,33 +728,49 @@ pub async fn reset_password(
 
 	let new_password = service::hash(new_password.as_bytes())?;
 
-	db::update_user_password(connection, &user_id, &new_password).await?;
+	db::update_user_password(connection, user_id, &new_password).await?;
 
-	db::delete_password_reset_request_for_user(connection, &user_id).await?;
+	db::delete_password_reset_request_for_user(connection, user_id).await?;
 
 	Ok(())
 }
 
+/// # Description
+/// This function is used to register user in database
+/// required parameters for personal account:
+///     1. username
+///     2. password
+///     3. account_type
+///     4. first_name
+///     5. last_name
+///     6. (backup_email_local, backup_email_domain_id) OR
+///     7. (backup_phone_country_code, backup_phone_number)
+/// extra parameters required for organisation account:
+///     1. domain_name
+///     2. organisation_name
+///     3. backup_email
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `config` - An object of [`Settings`] struct which stores configuration of
+///   the whole API
+/// * `otp` - A string which contains One-Time-Password
+/// * `username` - A string containing username of the user
+/// # Returns
+/// This function returns `Result<JoinUser, Error>` containing a struct called
+/// [`JoinUser`]
+///
+/// [`Transaction`]: Transaction
+/// ['JoinUser`]: JoinUser
 pub async fn join_user(
-	connection: &mut Transaction<'_, MySql>,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	otp: &str,
 	username: &str,
-) -> Result<
-	(
-		String,
-		Uuid,
-		Uuid,
-		Option<String>,
-		Option<String>,
-		Option<String>,
-	),
-	Error,
-> {
-	let user_data = db::get_user_to_sign_up_by_username(connection, &username)
+) -> Result<JoinUser, Error> {
+	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
 		.status(200)
-		.body(error!(INVALID_OTP).to_string())?;
+		.body(error!(OTP_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
@@ -492,22 +785,6 @@ pub async fn join_user(
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
 	}
-
-	// For a personal account, get:
-	// - username
-	// - password
-	// - account_type
-	// - first_name
-	// - last_name
-
-	//
-	// - (backup_email_local, backup_email_domain_id) OR
-	// - (backup_phone_country_code, backup_phone_number)
-
-	// For an organisation account, also get:
-	// - domain_name
-	// - organisation_name
-	// - backup_email
 
 	// First create user,
 	// Then create an organisation if an org account,
@@ -526,40 +803,23 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	let backup_email_local =
-		if let Some(ref value) = user_data.backup_email_local {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_email_domain_id =
-		if let Some(ref value) = user_data.backup_email_domain_id {
-			Some(value.as_slice())
-		} else {
-			None
-		};
+	let backup_email_local = user_data.backup_email_local.as_deref();
+	let backup_email_domain_id = user_data.backup_email_domain_id.as_deref();
 	let backup_phone_country_code =
-		if let Some(ref value) = user_data.backup_phone_country_code {
-			Some(value.as_str())
-		} else {
-			None
-		};
-	let backup_phone_number =
-		if let Some(ref value) = user_data.backup_phone_number {
-			Some(value.as_str())
-		} else {
-			None
-		};
+		user_data.backup_phone_country_code.as_deref();
+	let backup_phone_number = user_data.backup_phone_number.as_deref();
+	db::begin_deferred_constraints(connection).await?;
 
 	if let Some((email_local, domain_id)) = user_data
 		.backup_email_local
 		.as_ref()
 		.zip(user_data.backup_email_domain_id.as_ref())
 	{
-		db::create_orphaned_personal_email(
+		db::add_personal_email_for_user(
 			connection,
-			&email_local,
-			&domain_id,
+			user_id,
+			email_local,
+			domain_id,
 		)
 		.await?;
 	} else if let Some((phone_country_code, phone_number)) = user_data
@@ -567,10 +827,11 @@ pub async fn join_user(
 		.as_ref()
 		.zip(user_data.backup_phone_number.as_ref())
 	{
-		db::create_orphaned_phone_number(
+		db::add_phone_number_for_user(
 			connection,
-			&phone_country_code,
-			&phone_number,
+			user_id,
+			phone_country_code,
+			phone_number,
 		)
 		.await?;
 	} else {
@@ -596,19 +857,14 @@ pub async fn join_user(
 		backup_phone_number,
 	)
 	.await?;
+	db::end_deferred_constraints(connection).await?;
 
-	let account_type = user_data
-		.account_type
-		.parse::<ResourceOwnerType>()
-		.ok()
-		.unwrap();
-
-	let welcome_email_to; // Send the "welcome to vicara" email here
+	let welcome_email_to; // Send the "welcome to patr" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
 	// For an organisation, create the organisation and domain
-	if let ResourceOwnerType::Organisation = account_type {
+	if let ResourceOwnerType::Organisation = user_data.account_type {
 		let organisation_id = service::create_organisation(
 			connection,
 			&user_data.organisation_name.unwrap(),
@@ -647,7 +903,7 @@ pub async fn join_user(
 			backup_email_to = Some(format!(
 				"{}@{}",
 				email_local,
-				db::get_personal_domain_by_id(connection, &domain_id)
+				db::get_personal_domain_by_id(connection, domain_id)
 					.await?
 					.status(500)?
 					.name
@@ -660,7 +916,7 @@ pub async fn join_user(
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				&phone_country_code,
+				phone_country_code,
 			)
 			.await?
 			.status(500)?;
@@ -685,7 +941,7 @@ pub async fn join_user(
 			welcome_email_to = Some(format!(
 				"{}@{}",
 				email_local,
-				db::get_personal_domain_by_id(connection, &domain_id)
+				db::get_personal_domain_by_id(connection, domain_id)
 					.await?
 					.status(500)?
 					.name
@@ -698,7 +954,7 @@ pub async fn join_user(
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
-				&phone_country_code,
+				phone_country_code,
 			)
 			.await?
 			.status(500)?;
@@ -727,51 +983,17 @@ pub async fn join_user(
 	)
 	.await?;
 
-	if let Some((email_local, domain_id)) = user_data
-		.backup_email_local
-		.as_ref()
-		.zip(user_data.backup_email_domain_id.as_ref())
-	{
-		db::set_user_for_personal_email(
-			connection,
-			user_id,
-			&email_local,
-			&domain_id,
-		)
-		.await?;
-	} else if let Some((phone_country_code, phone_number)) = user_data
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user_data.backup_phone_number.as_ref())
-	{
-		db::set_user_for_phone_number(
-			connection,
-			user_id,
-			&phone_country_code,
-			&phone_number,
-		)
-		.await?;
-	} else {
-		log::error!(
-			"Got neither backup email, nor backup phone number while signing up user: {}",
-			user_data.username
-		);
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
-
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
 	let (jwt, login_id, refresh_token) =
-		sign_in_user(connection, user_id, &config).await?;
-
-	Ok((
+		sign_in_user(connection, user_id, config).await?;
+	let response = JoinUser {
 		jwt,
 		login_id,
 		refresh_token,
 		welcome_email_to,
 		backup_email_to,
 		backup_phone_number_to,
-	))
+	};
+	Ok(response)
 }
