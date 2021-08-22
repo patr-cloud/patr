@@ -56,8 +56,8 @@ async fn main() {
 	let release_id = response
 		.get("id")
 		.expect("cannot find ID in response")
-		.as_str()
-		.expect("ID in response is not a string");
+		.as_u64()
+		.expect("ID in response is not an integer");
 	for (name, asset) in IntoIter::new([
 		("assets.zip", "./assets.zip"),
 		("api", "./target/release/api"),
