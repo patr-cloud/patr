@@ -1,4 +1,4 @@
-use std::env;
+use std::{array::IntoIter, env};
 
 use clap::crate_version;
 use reqwest::multipart::{Form, Part};
@@ -59,10 +59,10 @@ async fn main() {
 		.expect("cannot find ID in response")
 		.as_str()
 		.expect("ID in response is not a string");
-	for (name, asset) in [
+	for (name, asset) in IntoIter::new([
 		("assets.zip", "./assets.zip"),
 		("api", "./target/release/api"),
-	] {
+	]) {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
