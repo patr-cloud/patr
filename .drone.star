@@ -361,7 +361,7 @@ def create_gitea_release(step_name, staging):
         "name": step_name,
         "image": "rust:1",
         "commands": [
-            "cargo run {} --example gitea_release".format(release_flag)
+            "cargo run {} --example gitea-release".format(release_flag)
         ],
         "environment": {
             "GITEA_TOKEN": {
