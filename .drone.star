@@ -346,33 +346,27 @@ def prepare_assets(step_name):
         "name": step_name,
         "image": "vicarahq/debian-zip",
         "commands": [
-            "zip -r assets.zip assets/*",
-            "echo -n \"v\" > version",
-            "cat api/Cargo.toml | grep -m 1 version | tr -d 'version = \"' >> version"
+            "zip -r assets.zip assets/*"
         ]
     }
 
 
 def create_gitea_release(step_name, staging):
+    release_flag = ""
+    if staging == True:
+        release_flag = "--release"
+    else:
+        release_flag = ""
     return {
         "name": step_name,
-        "image": "plugins/gitea-release",
-        "settings": {
-            "api_key": {
+        "image": "rust:1",
+        "commands": [
+            "cargo run {} --example gitea_release".format(release_flag)
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
-            },
-            "base_url": "https://develop.vicara.co",
-            "files": [
-                "./target/release/api",
-                "assets.zip"
-            ],
-            "checksum": [
-                "sha256",
-                "sha512"
-            ],
-            "prerelease": staging,
-            "title": "version",
-            "note": "CHANGELOG.md"
+            }
         }
     }
 
