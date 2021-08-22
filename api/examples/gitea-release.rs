@@ -12,7 +12,6 @@ async fn main() {
 	println!("Creating release for version {}...", crate_version);
 
 	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
-	let commit = env::var("DRONE_COMMIT").expect("DRONE_COMMIT is not set");
 
 	let system_host = "develop.vicara.co";
 	let system_proto = "https";
@@ -47,7 +46,7 @@ async fn main() {
 			"name": release_version,
 			"prerelease": branch == "staging",
 			"tag_name": release_version,
-			"target_commitish": commit
+			"target_commitish": branch
 		}))
 		.send()
 		.await
