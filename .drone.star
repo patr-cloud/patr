@@ -366,6 +366,9 @@ def create_gitea_release(step_name, staging):
         "environment": {
             "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
+            },
+            "GITEA_IP": {
+                "from_secret": "gitea_ip"
             }
         }
     }

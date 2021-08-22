@@ -12,6 +12,19 @@ async fn main() {
 	println!("Creating release for version {}...", crate_version);
 
 	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
+
+	let system_host = env::var("DRONE_SYSTEM_HOSTNAME")
+		.expect("DRONE_SYSTEM_HOSTNAME is not set");
+	let system_proto =
+		env::var("DRONE_SYSTEM_PROTO").expect("DRONE_SYSTEM_PROTO is not set");
+
+	let repo_owner =
+		env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER is not set");
+	let repo_name =
+		env::var("DRONE_REPO_NAME").expect("DRONE_REPO_NAME is not set");
+
+	let gitea_ip = env::var("GITEA_IP").expect("GITEA_IP is not set");
+	let gitea_token = env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set");
 	let release_version = {
 		let version = Version::parse(crate_version)
 			.expect("unable to parse crate version");
@@ -24,18 +37,21 @@ async fn main() {
 		)
 	};
 
-	let client = reqwest::Client::new();
+	let client = reqwest::Client::builder()
+		.resolve(
+			&system_host,
+			gitea_ip
+				.parse()
+				.expect("cannot convert IP address to SocketAddr"),
+		)
+		.build()
+		.expect("unable to build reqwest client");
 	let response = client
-		.post(
-			"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases"
-		)
-		.header(
-			"Authorization",
-			format!(
-				"token {}",
-				env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set")
-			),
-		)
+		.post(format!(
+			"{}://{}/api/v1/repos/{}/{}/releases",
+			system_proto, system_host, repo_owner, repo_name
+		))
+		.header("Authorization", format!("token {}", gitea_token))
 		.json(&json!({
 			"name": release_version,
 			"prerelease": branch == "staging",
@@ -65,16 +81,10 @@ async fn main() {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
-				"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases/{}/assets",
-				release_id
+				"{}://{}/api/v1/repos/{}/{}/releases/{}/assets",
+				system_proto, system_host, repo_owner, repo_name, release_id
 			))
-			.header(
-				"Authorization",
-				format!(
-					"token {}",
-					env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set")
-				),
-			)
+			.header("Authorization", format!("token {}", gitea_token))
 			.multipart(
 				Form::new().text("name", name).part(
 					"attachment",
