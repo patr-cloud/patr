@@ -27,7 +27,7 @@ async fn main() {
 	let client = reqwest::Client::new();
 	let response = client
 		.post(format!(
-			"https://{}/repos/{}/{}/releases",
+			"https://{}/api/v1/repos/{}/{}/releases",
 			env::var("DRONE_SYSTEM_HOST").expect("DRONE_SYSTEM_HOST not set"),
 			env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER not set"),
 			env::var("DRONE_REPO_NAME").expect("DRONE_REPO_NAME not set")
@@ -48,10 +48,11 @@ async fn main() {
 		.send()
 		.await
 		.expect("unable to send request")
-		.json::<Value>()
+		.text()
 		.await
-		.expect("unable to parse response as JSON");
-	println!("Release created. Got response: {:#?}", response);
+		.expect("unable to parse response as text");
+	println!("Release created. Got response: {}", response);
+	let response: Value = serde_json::from_str(&response).expect("unable to parse response as JSON");
 
 	println!("Uploading assets...");
 	let release_id = response
@@ -66,7 +67,7 @@ async fn main() {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
-				"https://{}/repos/{}/{}/releases/{}/assets",
+				"https://{}/api/v1/repos/{}/{}/releases/{}/assets",
 				env::var("DRONE_SYSTEM_HOST")
 					.expect("DRONE_SYSTEM_HOST not set"),
 				env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER not set"),
