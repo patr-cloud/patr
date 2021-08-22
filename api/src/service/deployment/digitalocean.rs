@@ -164,6 +164,7 @@ pub async fn deploy_container_on_digitalocean(
 	log::trace!("App ingress is at {}", default_ingress);
 
 	// update DNS
+	log::trace!("updating DNS");
 	update_dns(&deployment_id_string, &default_ingress, &config).await?;
 	log::trace!("DNS Updated");
 
@@ -205,7 +206,7 @@ pub async fn delete_deployment_from_digital_ocean(
 	}
 }
 
-async fn tag_docker_image(
+pub async fn tag_docker_image(
 	image_name: &str,
 	tag: &str,
 	new_repo_name: &str,
@@ -226,7 +227,7 @@ async fn tag_docker_image(
 	Ok(())
 }
 
-async fn pull_image_from_registry(
+pub async fn pull_image_from_registry(
 	image_name: &str,
 	tag: &str,
 	config: &Settings,
@@ -451,7 +452,7 @@ async fn get_default_ingress(
 		.default_ingress
 }
 
-async fn update_dns(
+pub async fn update_dns(
 	sub_domain: &str,
 	default_ingress: &str,
 	config: &Settings,
@@ -469,7 +470,6 @@ async fn update_dns(
 	} else {
 		return Err(Error::empty());
 	};
-
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
@@ -484,11 +484,9 @@ async fn update_dns(
 		.status(500)?
 		.id;
 	let zone_identifier = zone_identifier.as_str();
-
 	let expected_dns_record = DnsContent::CNAME {
 		content: String::from(default_ingress),
 	};
-
 	let response = client
 		.request(&ListDnsRecords {
 			zone_identifier,
@@ -541,7 +539,7 @@ async fn update_dns(
 	Ok(())
 }
 
-async fn delete_docker_image(
+pub async fn delete_docker_image(
 	deployment_id_string: &str,
 	image_name: &str,
 	tag: &str,
@@ -566,7 +564,7 @@ async fn delete_docker_image(
 	Ok(())
 }
 
-async fn update_deployment_status(
+pub async fn update_deployment_status(
 	deployment_id: &[u8],
 	status: &DeploymentStatus,
 ) -> Result<(), Error> {

@@ -30,7 +30,7 @@ http:
 auth:
   silly:
     realm: http://localhost:3000/auth/docker-registry-token
-    service: Docker registry
+    service: Docker Registry
   # token:
   #   realm: http://localhost:3000/auth/docker-registry-token
   #   service: Docker registry

@@ -5,7 +5,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::EventData,
+	models::db_mapping::{CloudPlatform, EventData},
 	pin_fn,
 	service,
 	utils::{Error, ErrorData, EveContext, EveMiddleware},
@@ -137,14 +137,30 @@ pub async fn notification_handler(
 			let tag = tag.clone();
 			let config = context.get_state().config.clone();
 
+			// TODO: make this as a parameter
+			let cloud_platform = CloudPlatform::Aws;
+
 			task::spawn(async move {
-				let result = service::deploy_container_on_digitalocean(
-					deployment_image_name,
-					tag,
-					deployment.id,
-					config,
-				)
-				.await;
+				let result = match cloud_platform {
+					CloudPlatform::DigitalOcean => {
+						service::deploy_container_on_digitalocean(
+							deployment_image_name,
+							tag,
+							deployment.id,
+							config,
+						)
+						.await
+					}
+					CloudPlatform::Aws => {
+						service::deploy_container_on_aws(
+							deployment_image_name,
+							tag,
+							deployment.id,
+							config,
+						)
+						.await
+					}
+				};
 
 				if let Err(error) = result {
 					log::info!(
