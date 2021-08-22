@@ -26,12 +26,9 @@ async fn main() {
 
 	let client = reqwest::Client::new();
 	let response = client
-		.post(format!(
-			"https://{}/api/v1/repos/{}/{}/releases",
-			env::var("DRONE_SYSTEM_HOST").expect("DRONE_SYSTEM_HOST not set"),
-			env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER not set"),
-			env::var("DRONE_REPO_NAME").expect("DRONE_REPO_NAME not set")
-		))
+		.post(
+			"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases"
+		)
 		.header(
 			"Authorization",
 			format!(
@@ -52,7 +49,8 @@ async fn main() {
 		.await
 		.expect("unable to parse response as text");
 	println!("Release created. Got response: {}", response);
-	let response: Value = serde_json::from_str(&response).expect("unable to parse response as JSON");
+	let response: Value = serde_json::from_str(&response)
+		.expect("unable to parse response as JSON");
 
 	println!("Uploading assets...");
 	let release_id = response
@@ -67,11 +65,7 @@ async fn main() {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
-				"https://{}/api/v1/repos/{}/{}/releases/{}/assets",
-				env::var("DRONE_SYSTEM_HOST")
-					.expect("DRONE_SYSTEM_HOST not set"),
-				env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER not set"),
-				env::var("DRONE_REPO_NAME").expect("DRONE_REPO_NAME not set"),
+				"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases/{}/assets",
 				release_id
 			))
 			.header(
