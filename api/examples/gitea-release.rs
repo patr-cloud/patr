@@ -40,7 +40,7 @@ async fn main() {
 	let client = reqwest::Client::builder()
 		.resolve(
 			&system_host,
-			gitea_ip
+			format!("{}:443", gitea_ip)
 				.parse()
 				.expect("cannot convert IP address to SocketAddr"),
 		)
