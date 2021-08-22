@@ -13,10 +13,8 @@ async fn main() {
 
 	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
 
-	let system_host = env::var("DRONE_SYSTEM_HOSTNAME")
-		.expect("DRONE_SYSTEM_HOSTNAME is not set");
-	let system_proto =
-		env::var("DRONE_SYSTEM_PROTO").expect("DRONE_SYSTEM_PROTO is not set");
+	let system_host = "develop.vicara.co";
+	let system_proto = "https";
 
 	let repo_owner =
 		env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER is not set");
