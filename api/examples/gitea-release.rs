@@ -46,11 +46,13 @@ async fn main() {
 		)
 		.build()
 		.expect("unable to build reqwest client");
+	let url = format!(
+		"{}://{}/api/v1/repos/{}/{}/releases",
+		system_proto, system_host, repo_owner, repo_name
+	);
+	println!("Posting to {}", url);
 	let response = client
-		.post(format!(
-			"{}://{}/api/v1/repos/{}/{}/releases",
-			system_proto, system_host, repo_owner, repo_name
-		))
+		.post(url)
 		.header("Authorization", format!("token {}", gitea_token))
 		.json(&json!({
 			"name": release_version,
