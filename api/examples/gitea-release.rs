@@ -12,6 +12,16 @@ async fn main() {
 	println!("Creating release for version {}...", crate_version);
 
 	let branch = env::var("DRONE_BRANCH").expect("DRONE_BRANCH is not set");
+
+	let system_host = "develop.vicara.co";
+	let system_proto = "https";
+
+	let repo_owner =
+		env::var("DRONE_REPO_OWNER").expect("DRONE_REPO_OWNER is not set");
+	let repo_name =
+		env::var("DRONE_REPO_NAME").expect("DRONE_REPO_NAME is not set");
+
+	let gitea_token = env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set");
 	let release_version = {
 		let version = Version::parse(crate_version)
 			.expect("unable to parse crate version");
@@ -25,17 +35,13 @@ async fn main() {
 	};
 
 	let client = reqwest::Client::new();
+	let url = format!(
+		"{}://{}/api/v1/repos/{}/{}/releases",
+		system_proto, system_host, repo_owner, repo_name
+	);
 	let response = client
-		.post(
-			"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases"
-		)
-		.header(
-			"Authorization",
-			format!(
-				"token {}",
-				env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set")
-			),
-		)
+		.post(url)
+		.header("Authorization", format!("token {}", gitea_token))
 		.json(&json!({
 			"name": release_version,
 			"prerelease": branch == "staging",
@@ -65,16 +71,11 @@ async fn main() {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
-				"https://develop.vicara.co/api/v1/repos/rakshith/vicara-api/releases/{}/assets",
-				release_id
+				"{}://{}/api/v1/repos/{}/{}/releases/{}/assets",
+				system_proto, system_host, repo_owner, repo_name, release_id
 			))
-			.header(
-				"Authorization",
-				format!(
-					"token {}",
-					env::var("GITEA_TOKEN").expect("GITEA_TOKEN not set")
-				),
-			)
+			.header("Authorization", format!("token {}", gitea_token))
+			.query(&[("name", name)])
 			.multipart(
 				Form::new().text("name", name).part(
 					"attachment",
@@ -83,7 +84,8 @@ async fn main() {
 							"unable to read file `{}`",
 							asset
 						)),
-					),
+					)
+					.file_name(name),
 				),
 			)
 			.send()
@@ -92,7 +94,7 @@ async fn main() {
 		if response.status().is_success() {
 			println!("Successfully uploaded {}", name);
 		} else {
-			panic!("Error uploading asset: {:#?}", response);
+			panic!("Error uploading asset: {:#?}", response.text().await);
 		}
 	}
 }

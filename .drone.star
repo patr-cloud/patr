@@ -359,11 +359,15 @@ def create_gitea_release(step_name, staging):
         "name": step_name,
         "image": "rust:1",
         "commands": [
+            "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             "cargo run {} --example gitea-release".format(release_flag)
         ],
         "environment": {
             "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
+            },
+            "GITEA_IP": {
+                "from_secret": "gitea_ip"
             }
         }
     }
