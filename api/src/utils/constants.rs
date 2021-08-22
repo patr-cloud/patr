@@ -1,18 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_macros::version;
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
-use semver::{BuildMetadata, Prerelease, Version};
+use semver::Version;
 
 use crate::{error, utils::Error};
 
-pub const DATABASE_VERSION: Version = Version {
-	major: 0,
-	minor: 3,
-	patch: 0,
-	pre: Prerelease::EMPTY,
-	build: BuildMetadata::EMPTY,
-};
+pub const DATABASE_VERSION: Version = version!();
 
 pub const APP_NAME: &str = crate_name!();
 pub const APP_VERSION: &str = crate_version!();
