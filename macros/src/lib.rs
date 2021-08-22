@@ -1,9 +1,7 @@
-use proc_macro::TokenStream;
+use std::fmt::Display;
 
-extern crate proc_macro;
-extern crate serde;
-extern crate serde_json;
-extern crate syn;
+use proc_macro::TokenStream;
+use quote::quote;
 
 mod closure_as_pinned_box;
 mod config;
@@ -13,6 +11,7 @@ mod query;
 mod query_as;
 mod render;
 mod settings_component;
+mod version;
 
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
@@ -52,4 +51,16 @@ pub fn iterable_module(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_derive(SettingsComponent)]
 pub fn settings_component(input: TokenStream) -> TokenStream {
 	settings_component::parse(input)
+}
+
+#[proc_macro]
+pub fn version(input: TokenStream) -> TokenStream {
+	version::parse(input)
+}
+
+fn compiler_error<TDisplay: Display>(message: TDisplay) -> TokenStream {
+	let message = message.to_string();
+	TokenStream::from(quote! {
+		compile_error!(#message);
+	})
 }

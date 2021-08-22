@@ -38,6 +38,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=False,
                 env=get_app_running_environment()
             ),
 
@@ -71,6 +72,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -104,6 +106,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -135,6 +138,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=False,
                 env=get_app_running_environment()
             ),
 
@@ -164,6 +168,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -197,6 +202,7 @@ def get_pipeline_steps(ctx):
             # Run --db-only
             init_database(
                 "Initialize database",
+                release=True,
                 env=get_app_running_environment()
             ),
 
@@ -246,9 +252,8 @@ def build_code(step_name, release, sqlx_offline):
             "cargo build {}".format(release_flag)
         ],
         "environment": {
-            "SQLX_OFFLINE": offline,
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
-                get_database_password())
+            "SQLX_OFFLINE": "{}".format(offline).lower(),
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -284,12 +289,17 @@ def copy_config(step_name):
     }
 
 
-def init_database(step_name, env):
+def init_database(step_name, release, env):
+    bin_location = ""
+    if release == True:
+        bin_location = "./target/release/api"
+    else:
+        bin_location = "./target/debug/api"
     return {
         "name": step_name,
         "image": "rust:1",
         "commands": [
-            "cargo run -- --db-only"
+            "{} --db-only".format(bin_location)
         ],
         "environment": env
     }
@@ -323,9 +333,8 @@ def check_code(step_name, release, sqlx_offline):
             "cargo check {}".format(release_flag)
         ],
         "environment": {
-            "SQLX_OFFLINE": offline,
-            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(
-                get_database_password())
+            "SQLX_OFFLINE": "{}".format(offline).lower(),
+            "DATABASE_URL": "postgres://postgres:{}@database:5432/api".format(get_database_password())
         }
     }
 
@@ -335,33 +344,27 @@ def prepare_assets(step_name):
         "name": step_name,
         "image": "vicarahq/debian-zip",
         "commands": [
-            "zip -r assets.zip assets/*",
-            "echo -n \"v\" > version",
-            "cat api/Cargo.toml | grep -m 1 version | tr -d \"version = \\\"\" >> version"
+            "zip -r assets.zip assets/*"
         ]
     }
 
 
 def create_gitea_release(step_name, staging):
+    release_flag = ""
+    if staging == True:
+        release_flag = "--release"
+    else:
+        release_flag = ""
     return {
         "name": step_name,
-        "image": "plugins/gitea-release",
-        "settings": {
-            "api_key": {
+        "image": "rust:1",
+        "commands": [
+            "cargo run {} --example gitea-release".format(release_flag)
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
                 "from_secret": "gitea_token"
-            },
-            "base_url": "https://develop.vicara.co",
-            "files": [
-                "./target/release/api",
-                "assets.zip"
-            ],
-            "checksum": [
-                "sha256",
-                "sha512"
-            ],
-            "prerelease": staging,
-            "title": "version",
-            "note": "CHANGELOG.md"
+            }
         }
     }
 
