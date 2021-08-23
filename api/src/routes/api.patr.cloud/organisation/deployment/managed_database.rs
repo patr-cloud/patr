@@ -163,6 +163,7 @@ async fn create_new_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// not compulsory
 	let num_nodes = body
 		.get(request_keys::NUM_NODES)
 		.map(|value| value.as_u64())

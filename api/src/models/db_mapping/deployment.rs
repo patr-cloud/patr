@@ -149,3 +149,22 @@ impl FromStr for DeploymentStatus {
 		}
 	}
 }
+
+pub enum CloudPlatform {
+	Aws,
+	DigitalOcean,
+}
+
+impl FromStr for CloudPlatform {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"aws" => Ok(Self::Aws),
+			"digital_ocean" => Ok(Self::DigitalOcean),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}

@@ -4,14 +4,12 @@ mod application;
 mod deployment;
 mod domain;
 mod drive;
-mod managed_database;
 mod portus;
 
 pub use application::*;
 pub use deployment::*;
 pub use domain::*;
 pub use drive::*;
-pub use managed_database::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(
@@ -76,7 +74,6 @@ pub async fn initialize_organisations_pre(
 	drive::initialize_drive_pre(connection).await?;
 	portus::initialize_portus_pre(connection).await?;
 	deployment::initialize_deployment_pre(connection).await?;
-	managed_database::initialize_managed_database_pre(connection).await?;
 
 	Ok(())
 }
@@ -101,7 +98,6 @@ pub async fn initialize_organisations_post(
 	drive::initialize_drive_post(connection).await?;
 	portus::initialize_portus_post(connection).await?;
 	deployment::initialize_deployment_post(connection).await?;
-	managed_database::initialize_deployment_post(connection).await?;
 
 	Ok(())
 }

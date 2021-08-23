@@ -22,7 +22,6 @@ mod application;
 mod deployment;
 mod docker_registry;
 mod domain;
-mod managed_database;
 mod portus;
 #[path = "./rbac.rs"]
 mod rbac_routes;
@@ -100,10 +99,6 @@ pub fn create_sub_app(
 	sub_app.use_sub_app(
 		"/:organisationId/docker-registry",
 		docker_registry::create_sub_app(app),
-	);
-	sub_app.use_sub_app(
-		"/:organisationId/managed-database",
-		managed_database::create_sub_app(app),
 	);
 	// Disabled for the demo
 	/*

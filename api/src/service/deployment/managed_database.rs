@@ -16,6 +16,7 @@ use crate::{
 		},
 		rbac,
 	},
+	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
@@ -231,7 +232,7 @@ async fn wait_and_delete_the_running_database(
 	cloud_db_id: &str,
 	client: &Client,
 ) -> Result<(), Error> {
-	let app = super::get_app();
+	let app = service::get_app();
 	loop {
 		let database_status =
 			get_cluster_from_digital_ocean(client, settings, &cloud_db_id)
