@@ -38,6 +38,7 @@ pub async fn initialize_deployment_pre(
 			deployed_image TEXT,
 			digital_ocean_app_id TEXT
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
+			region TEXT NOT NULL DEFAULT 'do-blr',
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -217,7 +218,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id
+			deployment.digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		INNER JOIN
@@ -268,7 +270,8 @@ pub async fn get_deployments_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id
+			deployment.digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		INNER JOIN
@@ -303,7 +306,8 @@ pub async fn get_deployment_by_id(
 			image_tag,
 			status as "status: _",
 			deployed_image,
-			digital_ocean_app_id
+			digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		WHERE

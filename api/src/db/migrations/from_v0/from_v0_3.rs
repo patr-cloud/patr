@@ -1,6 +1,6 @@
 use semver::Version;
 
-use crate::Database;
+use crate::{Database, query};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -40,12 +40,22 @@ pub async fn migrate(
 pub fn get_migrations() -> Vec<&'static str> {
 	vec![
 		"0.3.0",
-		// "0.3.1",
 	]
 }
 
 async fn migrate_from_v0_3_0(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	// Add region column
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN region TEXT NOT NULL
+		DEFAULT 'do-blr';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

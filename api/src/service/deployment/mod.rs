@@ -60,7 +60,6 @@ use crate::{
 /// deployment or an error
 ///
 /// [`Transaction`]: Transaction
-#[allow(clippy::wildcard_in_or_patterns)]
 pub async fn create_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
@@ -69,12 +68,13 @@ pub async fn create_deployment_in_organisation(
 	repository_id: Option<&str>,
 	image_name: Option<&str>,
 	image_tag: &str,
+	region: &str,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
 	match registry {
 		"registry.patr.cloud" => (),
-		"registry.hub.docker.com" | _ => {
+		_ => {
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -124,6 +124,7 @@ pub async fn create_deployment_in_organisation(
 				status: DeploymentStatus::Created,
 				deployed_image: None,
 				digital_ocean_app_id: None,
+				region: region.to_string(),
 			}
 			.get_full_image(connection)
 			.await?;
@@ -153,6 +154,7 @@ pub async fn create_deployment_in_organisation(
 			status: DeploymentStatus::Created,
 			deployed_image: None,
 			digital_ocean_app_id: None,
+			region: region.to_string(),
 		}
 		.get_full_image(connection)
 		.await?;
@@ -194,6 +196,154 @@ pub async fn create_deployment_in_organisation(
 	});
 
 	Ok(deployment_uuid)
+}
+
+pub async fn start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, &deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let image_name = if let Some(deployed_image) = deployment.deployed_image {
+		deployed_image
+	} else {
+		deployment.get_full_image(connection).await?
+	};
+	let image_tag = deployment.image_tag;
+	let config = config.clone();
+	let region = region.to_string();
+
+	db::update_deployment_deployed_image(
+		connection,
+		deployment_id,
+		&image_name,
+	)
+	.await?;
+
+	match provider {
+		"do" => {
+			task::spawn(async move {
+				let result = service::deploy_container_on_digitalocean(
+					image_name,
+					image_tag,
+					region,
+					deployment.id,
+					config,
+				)
+				.await;
+
+				if let Err(error) = result {
+					log::info!(
+						"Error with the deployment, {}",
+						error.get_error()
+					);
+				}
+			});
+		}
+		"aws" => {
+			task::spawn(async move {
+				let result = service::deploy_container_on_aws(
+					image_name,
+					image_tag,
+					deployment.id,
+					config,
+				)
+				.await;
+
+				if let Err(error) = result {
+					log::info!(
+						"Error with the deployment, {}",
+						error.get_error()
+					);
+				}
+			});
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
+
+	Ok(())
+}
+
+pub async fn start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, &deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let image_name = if let Some(deployed_image) = deployment.deployed_image {
+		deployed_image
+	} else {
+		deployment.get_full_image(connection).await?
+	};
+	let image_tag = deployment.image_tag;
+	let config = config.clone();
+
+	db::update_deployment_deployed_image(
+		connection,
+		deployment_id,
+		&image_name,
+	)
+	.await?;
+
+	match provider {
+		"do" => task::spawn(async move {
+			let result = service::deploy_container_on_digitalocean(
+				image_name,
+				image_tag,
+				deployment.id,
+				config,
+			)
+			.await;
+
+			if let Err(error) = result {
+				log::info!("Error with the deployment, {}", error.get_error());
+			}
+		}),
+		"aws" => task::spawn(async move {
+			let result = service::deploy_container_on_aws(
+				image_name,
+				image_tag,
+				deployment.id,
+				config,
+			)
+			.await;
+
+			if let Err(error) = result {
+				log::info!("Error with the deployment, {}", error.get_error());
+			}
+		}),
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()))
+		}
+	}
+
+	Ok(())
 }
 
 async fn add_cname_record(
@@ -326,127 +476,3 @@ async fn update_deployment_status(
 
 	Ok(())
 }
-
-/*
-Documentation for functions yet to come:
-
-
-fn update_configuration_for_deployment:
-/// # Description
-/// This function updates the deployment configuration
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `deployment_id` -  an unsigned 8 bit integer array containing the id of
-///   deployment
-/// * `exposed_ports` - an unsigned 16 bit integer array containing the exposed
-///   ports of deployment
-/// * `environment_variables` - a string containing the url of docker registry
-/// * `repository_id` - An Option<&str> containing either a repository id of
-///   type string or `None`
-/// * `image_name` - An Option<&str> containing either an image name of type
-///   string or `None`
-/// * `image_tag` - a string containing tags of docker image
-///
-/// # Returns
-/// This function returns Result<Uuid, Error> containing an uuid of the
-/// deployment or an error
-///
-/// [`Transaction`]: Transaction
-
-
-fn create_deployment_upgrade_path_in_organisation:
-/// # Description
-/// This function creates the deployment according to the upgrade-path
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
-/// * `name` - a string containing the name of deployment
-/// * `machine_types` - an array of type [`MachineType`] containing the details
-///   about machine type
-/// * `default_machine_type` - a default configuration of type ['MachineType`]
-///
-/// # Returns
-/// This function returns Result<Uuid, Error> containing an uuid of the
-/// deployment or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
-
-
-fn update_deployment_upgrade_path:
-/// # Description
-/// This function updates the deployment according to the upgrade-path
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `upgrade_path_id` -  an unsigned 8 bit integer array containing the id of
-///   the upgrade path
-/// * `name` - a string containing name of the deployment
-/// * `machine_types` - an array of type [`MachineType`] containing the details
-///   about machine type
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
-
-
-fn create_deployment_entry_point_in_organisation:
-/// # Description
-/// This function creates the deployment entry point for the deployment
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
-/// * `sub_domain` - a string containing the sub domain for deployment
-/// * `domain_id` - An unsigned 8 bit integer array containing id of
-///   organisation domain
-/// * `path` - a string containing the path for the deployment
-/// * `entry_point_type` - a string containing the type of entry point
-/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
-///   array containing
-/// the id of deployment or `None`
-/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
-///   containing port
-/// of deployment or an `None`
-/// * `url` - an Option<&str> containing a string of the url for the image to be
-///   deployed
-///
-/// # Returns
-/// This function returns `Result<uuid, Error>` containing uuid of the entry
-/// point or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
-
-
-fn update_deployment_entry_point:
-/// # Description
-/// This function updates the deployment entry point for the deployment
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `entry_point_id` - an unsigned
-/// * `entry_point_type` - a string containing the type of entry point
-/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
-///   array containing
-/// the id of deployment or `None`
-/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
-///   containing port
-/// of deployment or an `None`
-/// * `url` - an Option<&str> containing a string of the url for the image to be
-///   deployed
-///
-/// # Returns
-/// This function returns `Result<uuid, Error>` containing uuid of the entry
-/// point or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
-*/

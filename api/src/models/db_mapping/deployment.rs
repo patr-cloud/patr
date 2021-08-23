@@ -59,6 +59,7 @@ pub struct Deployment {
 	pub status: DeploymentStatus,
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
+	pub region: String,
 }
 
 impl Deployment {

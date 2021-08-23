@@ -34,6 +34,7 @@ use crate::{
 pub async fn deploy_container_on_digitalocean(
 	image_name: String,
 	tag: String,
+	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
@@ -139,7 +140,7 @@ pub async fn deploy_container_on_digitalocean(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id = create_app(&deployment_id, &config, &client).await?;
+		let app_id = create_app(&deployment_id, region, &config, &client).await?;
 		log::trace!("App created");
 		app_id
 	};
@@ -320,6 +321,7 @@ async fn get_registry_auth_token(
 // create a new digital ocean application
 pub async fn create_app(
 	deployment_id: &[u8],
+	region: String,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
@@ -329,7 +331,7 @@ pub async fn create_app(
 		.json(&AppConfig {
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
-				region: "blr".to_string(),
+				region,
 				domains: vec![Domains {
 					// [ 4 .. 253 ] characters
 					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,

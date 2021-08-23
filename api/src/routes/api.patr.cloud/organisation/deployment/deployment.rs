@@ -470,56 +470,16 @@ async fn get_deployment_info(
 	Ok(context)
 }
 
-/*
-Documentation for functions yet to come:
-
-
-fn get_deployment_config:
 /// # Description
-/// This function is used to get the configuration of the deployment
+/// This function is used to start a deployment
 /// required inputs:
-/// deploymentId
+/// deploymentId in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
 ///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-///    environmentVariables: []
-///    exposedPorts: []
-///    persistentVolumes: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-
-
-fn update_deployment_config:
-/// # Description
-/// This function is used to store the port, env variables and mount path
-/// required inputs:
-/// ```
-/// {
-///    exposedPorts:[]
-///    environmentVariables:[]
-///    persistentVolumes: []
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
 ///   function
 ///
 /// # Returns
@@ -533,7 +493,74 @@ fn update_deployment_config:
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-*/
+async fn start_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// start the container running the image, if doesn't exist
+	let config = context.get_state().config.clone();
+	service::start_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to stop a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn stop_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// stop the running container, if it exists
+	let config = context.get_state().config.clone();
+	service::stop_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
 
 /// # Description
 /// This function is used to delete deployment
@@ -565,10 +592,6 @@ async fn delete_deployment(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
