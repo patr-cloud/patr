@@ -1,6 +1,8 @@
+mod aws;
 mod digitalocean;
 mod managed_database;
 
+pub use aws::*;
 pub use digitalocean::*;
 use eve_rs::AsError;
 pub use managed_database::*;
