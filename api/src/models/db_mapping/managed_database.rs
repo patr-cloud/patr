@@ -2,6 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
 
+use super::CloudPlatform;
 use crate::{error, utils::Error};
 
 // TODO: implement other queries for this
@@ -9,8 +10,17 @@ pub struct ManagedDatabase {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub status: ManagedDatabaseStatus,
-	pub database_id: Option<String>,
-	pub db_service: Option<String>,
+	pub cloud_database_id: Option<String>,
+	pub db_provider_name: CloudPlatform,
+	pub engine: Option<String>,
+	pub version: Option<String>,
+	pub num_nodes: Option<i32>,
+	pub size: Option<String>,
+	pub region: Option<String>,
+	pub host: Option<String>,
+	pub port: Option<i32>,
+	pub username: Option<String>,
+	pub password: Option<String>,
 	pub organisation_id: Vec<u8>,
 }
 

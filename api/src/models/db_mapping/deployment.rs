@@ -117,12 +117,6 @@ pub enum DeploymentStatus {
 	Deleted,
 }
 
-#[allow(dead_code)]
-pub enum CloudPlatform {
-	Aws,
-	DigitalOcean,
-}
-
 impl Display for DeploymentStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -156,9 +150,20 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "CLOUD_PLATFORM", rename_all = "lowercase")]
 pub enum CloudPlatform {
 	Aws,
 	DigitalOcean,
+}
+
+impl Display for CloudPlatform {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			CloudPlatform::Aws => write!(f, "aws"),
+			CloudPlatform::DigitalOcean => write!(f, "digitalocean"),
+		}
+	}
 }
 
 impl FromStr for CloudPlatform {
@@ -167,7 +172,7 @@ impl FromStr for CloudPlatform {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"aws" => Ok(Self::Aws),
-			"digital_ocean" => Ok(Self::DigitalOcean),
+			"digitalocean" => Ok(Self::DigitalOcean),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

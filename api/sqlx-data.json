@@ -10,6 +10,31 @@
       "nullable": []
     }
   },
+  "03a3c7497515d9b0b05296a5d0affa280a2eb5edd95cafc6d2023751805597f7": {
+    "query": "INSERT INTO managed_database VALUES ($1, $2, NULL, $3, NULL, NULL, NULL, NULL, NULL, 'creating', NULL, NULL, NULL, NULL, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
     "describe": {
@@ -1821,6 +1846,16 @@
       "nullable": []
     }
   },
+  "5a67a07f8d6284004a7c916cd10d1921bf24ef60f3c1d09cf48c080faf100c14": {
+    "query": "CREATE TYPE CLOUD_PLATFORM AS ENUM( 'aws', 'digitalocean' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "5b2c77ea3a5cb8b691f7a5ba6f122c2fe324137ef48330812aa7bc5776481e2d": {
     "query": "INSERT INTO meta_data VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;",
     "describe": {
@@ -3179,22 +3214,6 @@
       "nullable": []
     }
   },
-  "a4440027bdb319e3959a551cd38ac490ce4231d9defe9159898c5a87a0edbe0b": {
-    "query": "INSERT INTO managed_database VALUES ($1, $2, 'creating', $3, $4, $5);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Text",
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
     "query": "ALTER TABLE application ADD CONSTRAINT application_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -3917,6 +3936,43 @@
       "nullable": []
     }
   },
+  "c96e2f7ae1cb5a136435ec43ada197db3b7900d6a6cea88c8e3a8c258c0dab6e": {
+    "query": "UPDATE managed_database SET cloud_database_id = $1, engine = $2, version = $3, num_nodes = $4, size = $5, region = $6, status = $7, host = $8, port = $9, username = $10, password = $11 WHERE organisation_id = $12 AND name = $13;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Int4",
+          "Text",
+          "Text",
+          {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Int4",
+          "Text",
+          "Text",
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "caeb5f3b7381d0c70558202479f3bf4d45c58eaceca120e1cbf1bced01385f61": {
     "query": "SELECT * FROM application WHERE id = $1;",
     "describe": {
@@ -4023,16 +4079,6 @@
       ]
     }
   },
-  "d23c6cf5f5580ac9ff97c640320d3e1fb127160cb430d7d96cdc741587ab1a59": {
-    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', database_id TEXT CONSTRAINT managed_database_uq_database_id UNIQUE, db_service TEXT, organisation_id BYTEA NOT NULL, CONSTRAINT managed_database_chk_if_db_service_and_db_id_is_valid CHECK( ( database_id IS NOT NULL AND db_service IS NOT NULL ) OR ( database_id IS NULL AND db_service IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
     "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
@@ -4115,6 +4161,133 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "dd5a0d404fe05f0a01608083a3e59a89e53114b7f81c68f242866d45c176ad2d": {
+    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine, version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id FROM managed_database WHERE organisation_id = $1 AND cloud_database_id IS NOT NULL;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "cloud_database_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "db_provider_name: CloudPlatform",
+          "type_info": {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "engine",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "num_nodes",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "size",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "host",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 11,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 12,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
     }
   },
   "dea649e4f9bfdbd55c4502fa51d5417cbfbec3b72543cc9c82c7acc7cadd6a37": {
@@ -4321,69 +4494,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "e50da6d3bf9ee0a63adcb3d41ef3078e6fe09ad1b0164d1b779f80be746830b5": {
-    "query": "SELECT id, name, status as \"status: _\", database_id, db_service, organisation_id FROM managed_database WHERE organisation_id = $1 AND database_id IS NOT NULL;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "managed_database_status",
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "database_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "db_service",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 5,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false
-      ]
     }
   },
   "e55e29119f1536b6d47e809a8042ff6f7c376ace4be149cb87049ecd308278e0": {
@@ -4841,6 +4951,16 @@
         false,
         false
       ]
+    }
+  },
+  "fecbbb845e48449ca393a11f3bad002c1f24417afb12e52cb938556f51a85182": {
+    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, cloud_database_id TEXT CONSTRAINT managed_database_uq_cloud_database_id UNIQUE, db_provider_name CLOUD_PLATFORM NOT NULL, engine TEXT, version TEXT, num_nodes INTEGER, size TEXT, region TEXT, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', host TEXT, port INTEGER, username TEXT, password TEXT, organisation_id BYTEA NOT NULL, CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, organisation_id), CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_id_is_valid CHECK( ( cloud_database_id IS NOT NULL AND engine IS NOT NULL AND version IS NOT NULL AND num_nodes IS NOT NULL AND size IS NOT NULL AND region IS NOT NULL AND host IS NOT NULL AND port IS NOT NULL AND username IS NOT NULL AND password IS NOT NULL ) OR ( cloud_database_id IS NULL AND engine IS NULL AND version IS NULL AND num_nodes IS NULL AND size IS NULL AND region IS NULL AND host IS NULL AND port IS NULL AND username IS NULL AND password IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "ff908727dc27ddb488aafa68cb7b32c061cc8ecfe14870095e35762ba4aecb9a": {

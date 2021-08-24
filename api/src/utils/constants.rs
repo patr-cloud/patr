@@ -154,5 +154,5 @@ pub mod request_keys {
 	pub const HOST: &str = "host";
 	pub const CREATED_AT: &str = "createdAt";
 	pub const DATABASE_CLUSTERS: &str = "databaseClusters";
-	pub const CLOUD_SERVICE: &str = "cloudService";
+	pub const CLOUD_PLATFORM: &str = "cloudPlatform";
 }

@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{db_mapping::CloudPlatform, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -163,13 +163,16 @@ async fn create_new_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// not compulsory
+	// only compulsory for digital ocean
 	let num_nodes = body
 		.get(request_keys::NUM_NODES)
-		.map(|value| value.as_u64())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.map(|value| {
+			value
+				.as_u64()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
 
 	let region = body
 		.get(request_keys::REGION)
@@ -178,10 +181,18 @@ async fn create_new_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let cloud_platform = body
+		.get(request_keys::CLOUD_PLATFORM)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|c| c.parse::<CloudPlatform>().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let config = context.get_state().config.clone();
 
-	let database_config = service::create_new_database_cluster(
-		context.get_database_connection(),
+	service::create_new_database_cluster(
 		config,
 		name,
 		version,
@@ -189,19 +200,13 @@ async fn create_new_database_cluster(
 		num_nodes,
 		region,
 		&organisation_id,
+		cloud_platform,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::NAME: database_config.name,
-		request_keys::ENGINE: database_config.engine,
-		request_keys::VERSION: database_config.version,
-		request_keys::URI: database_config.connection.uri,
-		request_keys::HOST: database_config.connection.host,
-		request_keys::PORT: database_config.connection.port,
-		request_keys::USERNAME: database_config.connection.user,
-		request_keys::PASSWORD: database_config.connection.password
+		request_keys::STATUS: "creating"
 	}));
 	Ok(context)
 }
