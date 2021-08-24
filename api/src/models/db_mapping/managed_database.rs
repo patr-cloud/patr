@@ -1,11 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
+use serde::{Deserialize, Serialize};
 
 use super::CloudPlatform;
 use crate::{error, utils::Error};
 
-// TODO: implement other queries for this
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ManagedDatabase {
 	pub id: Vec<u8>,
 	pub name: String,
@@ -24,7 +25,7 @@ pub struct ManagedDatabase {
 	pub organisation_id: Vec<u8>,
 }
 
-#[derive(sqlx::Type, Debug)]
+#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
 #[sqlx(type_name = "MANAGED_DATABASE_STATUS", rename_all = "lowercase")]
 pub enum ManagedDatabaseStatus {
 	Creating,

@@ -3663,6 +3663,134 @@
       "nullable": []
     }
   },
+  "be67ff678ff8d9740b79fc5907c938fa97e63d69af2f1e94b663530d5d0c5e06": {
+    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine, version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id FROM managed_database WHERE name = $1 AND organisation_id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "cloud_database_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "db_provider_name: CloudPlatform",
+          "type_info": {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "engine",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "num_nodes",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "size",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "host",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 11,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 12,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "c15856afd2d20efc5c583ab00efa4bb41de007cffffaf361ee2715a73f5546d1": {
     "query": "SELECT \"user\".* FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;",
     "describe": {

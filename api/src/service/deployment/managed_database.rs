@@ -14,6 +14,7 @@ use crate::{
 		db_mapping::{CloudPlatform, ManagedDatabaseStatus},
 		deployment::cloud_providers::digitalocean::{
 			DatabaseConfig,
+			DatabaseInfo,
 			DatabaseResponse,
 		},
 		rbac,
@@ -313,7 +314,7 @@ async fn wait_and_delete_the_running_database(
 				.await?;
 
 		if database_status.database.status == *"online" {
-			delete_database(
+			delete_managed_database(
 				app.database.acquire().await?.deref_mut(),
 				settings,
 				database_id,
@@ -345,7 +346,35 @@ async fn get_cluster_from_digital_ocean(
 	Ok(database_status)
 }
 
-pub async fn delete_database(
+pub async fn get_managed_database_info_for_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	settings: &Settings,
+	name: &str,
+	organisation_id: &[u8],
+) -> Result<(DatabaseInfo, ManagedDatabaseStatus), Error> {
+	let cloud_db = db::get_managed_database_by_name_and_org_id(
+		connection,
+		name,
+		organisation_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let status = cloud_db.status;
+	let cloud_db_id = cloud_db
+		.cloud_database_id
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let client = Client::new();
+	let database_info =
+		get_cluster_from_digital_ocean(&client, settings, &cloud_db_id).await?;
+
+	Ok((database_info.database, status))
+}
+
+pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	settings: &Settings,
 	database_id: &[u8],

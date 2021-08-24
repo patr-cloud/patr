@@ -246,3 +246,44 @@ pub async fn update_managed_database(
 	.await?;
 	Ok(())
 }
+
+pub async fn get_managed_database_by_name_and_org_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+	organisation_id: &[u8],
+) -> Result<Option<ManagedDatabase>, sqlx::Error> {
+	let row = query_as!(
+		ManagedDatabase,
+		r#"
+		SELECT
+			id,
+			name,
+			cloud_database_id,
+			db_provider_name as "db_provider_name: CloudPlatform",
+			engine,
+			version,
+			num_nodes,
+			size,
+			region,
+			status as "status: _",
+			host,
+			port,
+			username,
+			password,
+			organisation_id
+		FROM
+			managed_database
+		WHERE
+			name = $1 AND
+			organisation_id = $2;
+		"#,
+		name,
+		organisation_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.next();
+
+	Ok(row)
+}
