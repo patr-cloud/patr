@@ -268,7 +268,8 @@ pub async fn stop_deployment(
 				.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
-			aws::delete_deployment(connection, deployment_id, config, region).await?;
+			aws::delete_deployment(connection, deployment_id, config, region)
+				.await?;
 		}
 		_ => {
 			return Err(Error::empty()

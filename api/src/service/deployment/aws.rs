@@ -13,8 +13,9 @@ use lightsail::model::{
 use tokio::{process::Command, time};
 
 use crate::{
+	db,
 	error,
-	models::db_mapping::DeploymentStatus,
+	models::db_mapping::{CloudPlatform, DeploymentStatus},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -139,12 +140,33 @@ pub(super) async fn delete_deployment(
 }
 
 pub(super) async fn get_container_logs(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	_config: &Settings,
 ) -> Result<String, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if provider.parse().ok() != Some(CloudPlatform::Aws) {
+		log::error!(
+			"Provider in deployment region is {}, but AWS logs were requested.",
+			provider
+		);
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client();
+	let client = get_lightsail_client(region);
 	let logs = client
 		.get_container_log()
 		.set_service_name(Some(hex::encode(&deployment_id)))
