@@ -48,7 +48,7 @@ pub async fn deploy_container_on_aws(
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
-	let client = lightsail::Client::from_env();
+	let client = get_lightsail_client();
 
 	let label_name = "latest".to_string();
 
@@ -116,10 +116,26 @@ pub async fn deploy_container_on_aws(
 
 pub async fn delete_deployment_from_aws(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-	_deployment_id: &[u8],
+	deployment_id: &[u8],
 	_config: &Settings,
 ) -> Result<(), Error> {
-	unimplemented!("TODO delete deployments")
+	// Get credentails for aws lightsail
+	let client = get_lightsail_client();
+	client
+		.delete_container_service()
+		.set_service_name(Some(hex::encode(&deployment_id)))
+		.send()
+		.await
+		.map_err(|err| {
+			log::error!("Error during creation of service, {}", err);
+			err
+		})?;
+
+	Ok(())
+}
+
+fn get_lightsail_client() -> lightsail::Client {
+	lightsail::Client::from_env()
 }
 
 async fn create_container_service(
