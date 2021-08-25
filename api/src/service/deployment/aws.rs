@@ -49,7 +49,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client();
+	let client = get_lightsail_client(&region);
 
 	let label_name = "latest".to_string();
 
@@ -121,9 +121,10 @@ pub(super) async fn delete_deployment(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	_config: &Settings,
+	region: &str,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client();
+	let client = get_lightsail_client(region);
 	client
 		.delete_container_service()
 		.set_service_name(Some(hex::encode(&deployment_id)))
@@ -168,8 +169,12 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
-fn get_lightsail_client() -> lightsail::Client {
-	lightsail::Client::from_env()
+fn get_lightsail_client(region: &str) -> lightsail::Client {
+	let deployment_region = lightsail::Region::new(region.to_string());
+	let client_builder = lightsail::Config::builder()
+		.region(Some(deployment_region))
+		.build();
+	lightsail::Client::from_conf(client_builder)
 }
 
 async fn create_container_service(
