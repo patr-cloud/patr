@@ -197,6 +197,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.get(
+		"/:deploymentId/logs",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_logs)),
+		],
+	);
+
 	// Delete a deployment
 	app.delete(
 		"/:deploymentId/",
@@ -578,6 +609,53 @@ async fn stop_deployment(
 }
 
 /// # Description
+/// This function is used to get the logs of a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_logs(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// stop the running container, if it exists
+	let config = context.get_state().config.clone();
+	let logs = service::get_deployment_container_logs(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::LOGS: logs,
+	}));
+	Ok(context)
+}
+
+/// # Description
 /// This function is used to delete deployment
 /// required inputs:
 /// deploymentId in the url
@@ -610,7 +688,7 @@ async fn delete_deployment(
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::delete_deployment_from_digital_ocean(
+	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,

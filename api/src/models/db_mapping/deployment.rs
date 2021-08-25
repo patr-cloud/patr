@@ -151,7 +151,7 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CloudPlatform {
 	Aws,
 	DigitalOcean,
