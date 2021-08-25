@@ -127,7 +127,7 @@ pub async fn delete_deployment_from_aws(
 		.send()
 		.await
 		.map_err(|err| {
-			log::error!("Error during creation of service, {}", err);
+			log::error!("Error during deletion of service, {}", err);
 			err
 		})?;
 
