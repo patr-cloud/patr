@@ -22,6 +22,7 @@ use crate::{
 pub async fn deploy_container_on_aws(
 	image_name: String,
 	tag: String,
+	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
@@ -48,7 +49,7 @@ pub async fn deploy_container_on_aws(
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client();
+	let client = get_lightsail_client(region.clone());
 
 	let label_name = "latest".to_string();
 
@@ -64,6 +65,7 @@ pub async fn deploy_container_on_aws(
 			&deployment_id_string,
 			&new_repo_name,
 			&label_name,
+			&region,
 		)
 		.await?;
 		log::trace!("pushed the container into aws registry");
@@ -76,6 +78,7 @@ pub async fn deploy_container_on_aws(
 			&label_name,
 			&new_repo_name,
 			&client,
+			&region,
 		)
 		.await?
 	};
@@ -118,9 +121,10 @@ pub async fn delete_deployment_from_aws(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	_config: &Settings,
+	region: &str,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client();
+	let client = get_lightsail_client(region.to_string());
 	client
 		.delete_container_service()
 		.set_service_name(Some(hex::encode(&deployment_id)))
@@ -134,8 +138,12 @@ pub async fn delete_deployment_from_aws(
 	Ok(())
 }
 
-fn get_lightsail_client() -> lightsail::Client {
-	lightsail::Client::from_env()
+fn get_lightsail_client(region: String) -> lightsail::Client {
+	let deployment_region = lightsail::Region::new(region);
+	let client_builder = lightsail::Config::builder()
+		.region(Some(deployment_region))
+		.build();
+	lightsail::Client::from_conf(client_builder)
 }
 
 async fn create_container_service(
@@ -143,6 +151,7 @@ async fn create_container_service(
 	label_name: &str,
 	new_repo_name: &str,
 	client: &lightsail::Client,
+	region: &str,
 ) -> Result<String, Error> {
 	let created_service = client
 		.create_container_service()
@@ -182,7 +191,8 @@ async fn create_container_service(
 	}
 	log::trace!("container service created");
 
-	push_image_to_lightsail(deployment_id, new_repo_name, label_name).await?;
+	push_image_to_lightsail(deployment_id, new_repo_name, label_name, region)
+		.await?;
 	log::trace!("pushed the container into aws registry");
 
 	let default_url = created_service
@@ -282,6 +292,7 @@ async fn push_image_to_lightsail(
 	deployment_id: &str,
 	new_repo_name: &str,
 	label_name: &str,
+	region: &str,
 ) -> Result<(), Error> {
 	let output = Command::new("aws")
 		.arg("lightsail")
@@ -291,7 +302,7 @@ async fn push_image_to_lightsail(
 		.arg("--image")
 		.arg(format!("{}:latest", new_repo_name))
 		.arg("--region")
-		.arg("us-east-2")
+		.arg(region)
 		.arg("--label")
 		.arg(&label_name)
 		.stdout(Stdio::piped())
