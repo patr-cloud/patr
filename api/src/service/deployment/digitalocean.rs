@@ -10,7 +10,9 @@ use crate::{
 	models::{
 		db_mapping::DeploymentStatus,
 		deployment::cloud_providers::digitalocean::{
+			AppAggregateLogsResponse,
 			AppConfig,
+			AppDeploymentsResponse,
 			AppHolder,
 			AppSpec,
 			Auth,
@@ -26,7 +28,7 @@ use crate::{
 	Database,
 };
 
-pub async fn deploy_container_on_digitalocean(
+pub(super) async fn deploy_container(
 	image_name: String,
 	tag: String,
 	region: String,
@@ -164,7 +166,7 @@ pub async fn deploy_container_on_digitalocean(
 	Ok(())
 }
 
-pub async fn delete_deployment_from_digital_ocean(
+pub(super) async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	config: &Settings,
@@ -193,7 +195,54 @@ pub async fn delete_deployment_from_digital_ocean(
 	}
 }
 
-pub async fn app_exists(
+pub(super) async fn get_container_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<String, Error> {
+	let client = Client::new();
+
+	let app_id = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.map(|deployment| deployment.digital_ocean_app_id)
+		.flatten()
+		.status(500)?;
+
+	let deployment_id = client
+		.get(format!(
+			"https://api.digitalocean.com/v2/apps/{}/deployments",
+			app_id
+		))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.json::<AppDeploymentsResponse>()
+		.await?
+		.deployments
+		.into_iter()
+		.next()
+		.map(|deployment| deployment.id)
+		.status(500)?;
+
+	let log_url = client
+		.get(format!(
+			"https://api.digitalocean.com/v2/apps/{}/deployments/{}/logs",
+			app_id, deployment_id
+		))
+		.query(&[("type", "RUN")])
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.json::<AppAggregateLogsResponse>()
+		.await?
+		.live_url;
+
+	let logs = client.get(log_url).send().await?.text().await?;
+
+	Ok(logs)
+}
+
+async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
 	client: &Client,
@@ -245,7 +294,7 @@ async fn get_registry_auth_token(
 }
 
 // create a new digital ocean application
-pub async fn create_app(
+async fn create_app(
 	deployment_id: &[u8],
 	region: String,
 	settings: &Settings,
@@ -309,7 +358,7 @@ pub async fn create_app(
 	Ok(deploy_app.app.id)
 }
 
-pub async fn redeploy_application(
+async fn redeploy_application(
 	app_id: &str,
 	config: &Settings,
 	client: &Client,

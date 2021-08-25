@@ -19,7 +19,7 @@ use crate::{
 	Database,
 };
 
-pub async fn deploy_container_on_aws(
+pub(super) async fn deploy_container(
 	image_name: String,
 	tag: String,
 	region: String,
@@ -117,7 +117,7 @@ pub async fn deploy_container_on_aws(
 	Ok(())
 }
 
-pub async fn delete_deployment_from_aws(
+pub(super) async fn delete_deployment(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	_config: &Settings,
@@ -135,6 +135,37 @@ pub async fn delete_deployment_from_aws(
 		})?;
 
 	Ok(())
+}
+
+pub(super) async fn get_container_logs(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	_config: &Settings,
+) -> Result<String, Error> {
+	// Get credentails for aws lightsail
+	let client = get_lightsail_client();
+	let logs = client
+		.get_container_log()
+		.set_service_name(Some(hex::encode(&deployment_id)))
+		.set_container_name(Some(hex::encode(&deployment_id)))
+		.send()
+		.await
+		.map_err(|err| {
+			log::error!("Error during deletion of service, {}", err);
+			err
+		})?
+		.log_events
+		.map(|events| {
+			events
+				.into_iter()
+				.filter_map(|event| event.message)
+				.collect::<Vec<_>>()
+				.join("\n")
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	Ok(logs)
 }
 
 fn get_lightsail_client() -> lightsail::Client {

@@ -148,4 +148,5 @@ pub mod request_keys {
 	pub const DEFAULT: &str = "default";
 	pub const STATUS: &str = "status";
 	pub const REGION: &str = "region";
+	pub const LOGS: &str = "logs";
 }

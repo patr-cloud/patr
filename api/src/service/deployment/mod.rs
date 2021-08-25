@@ -29,7 +29,6 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
-pub use self::{aws::*, digitalocean::*};
 use crate::{
 	db,
 	error,
@@ -188,7 +187,7 @@ pub async fn start_deployment(
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
-				let result = service::deploy_container_on_digitalocean(
+				let result = digitalocean::deploy_container(
 					image_name,
 					image_tag,
 					region,
@@ -212,7 +211,7 @@ pub async fn start_deployment(
 		}
 		Ok(CloudPlatform::Aws) => {
 			task::spawn(async move {
-				let result = service::deploy_container_on_aws(
+				let result = aws::deploy_container(
 					image_name,
 					image_tag,
 					region,
@@ -265,20 +264,11 @@ pub async fn stop_deployment(
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			service::delete_deployment_from_digital_ocean(
-				connection,
-				deployment_id,
-				config,
-			)
-			.await?;
+			digitalocean::delete_deployment(connection, deployment_id, config)
+				.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
-			service::delete_deployment_from_aws(
-				connection,
-				deployment_id,
-				config,
-			)
-			.await?;
+			aws::delete_deployment(connection, deployment_id, config).await?;
 		}
 		_ => {
 			return Err(Error::empty()
@@ -288,6 +278,40 @@ pub async fn stop_deployment(
 	}
 
 	Ok(())
+}
+
+pub async fn get_deployment_container_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<String, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, _) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let logs = match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			digitalocean::get_container_logs(connection, deployment_id, config)
+				.await?
+		}
+		Ok(CloudPlatform::Aws) => {
+			aws::get_container_logs(connection, deployment_id, config).await?
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	};
+
+	Ok(logs)
 }
 
 async fn add_cname_record(

@@ -223,3 +223,20 @@ pub struct AuthToken {
 pub struct RedeployAppRequest {
 	pub force_build: bool,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppDeploymentsResponse {
+	pub deployments: Vec<AppDeploymentResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppDeploymentResponse {
+	pub id: String,
+	// add more later if required
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppAggregateLogsResponse {
+	pub live_url: String,
+	// add more later if required
+}
