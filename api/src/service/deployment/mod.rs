@@ -185,8 +185,8 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	match provider {
-		"do" => {
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
 				let result = service::deploy_container_on_digitalocean(
 					image_name,
@@ -210,11 +210,12 @@ pub async fn start_deployment(
 				}
 			});
 		}
-		"aws" => {
+		Ok(CloudPlatform::Aws) => {
 			task::spawn(async move {
 				let result = service::deploy_container_on_aws(
 					image_name,
 					image_tag,
+					region,
 					deployment_id.clone(),
 					config,
 				)
