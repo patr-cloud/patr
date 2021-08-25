@@ -254,7 +254,7 @@ pub async fn stop_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (provider, _) = deployment
+	let (provider, region) = deployment
 		.region
 		.split_once('-')
 		.status(500)
@@ -277,6 +277,7 @@ pub async fn stop_deployment(
 				connection,
 				deployment_id,
 				config,
+				region,
 			)
 			.await?;
 		}
