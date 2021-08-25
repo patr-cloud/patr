@@ -77,6 +77,7 @@ pub async fn deploy_container_on_aws(
 			&deployment_id_string,
 			&label_name,
 			&new_repo_name,
+			&region,
 			&client,
 			&region,
 		)
@@ -150,6 +151,7 @@ async fn create_container_service(
 	deployment_id: &str,
 	label_name: &str,
 	new_repo_name: &str,
+	region: &str,
 	client: &lightsail::Client,
 	region: &str,
 ) -> Result<String, Error> {
