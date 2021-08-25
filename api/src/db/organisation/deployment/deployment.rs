@@ -156,18 +156,20 @@ pub async fn create_deployment_with_internal_registry(
 	name: &str,
 	repository_id: &[u8],
 	image_tag: &str,
+	region: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);
+			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5);
 		"#,
 		deployment_id,
 		name,
 		repository_id,
-		image_tag
+		image_tag,
+		region
 	)
 	.execute(&mut *connection)
 	.await
@@ -181,19 +183,21 @@ pub async fn create_deployment_with_external_registry(
 	registry: &str,
 	image_name: &str,
 	image_tag: &str,
+	region: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL);
+			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6);
 		"#,
 		deployment_id,
 		name,
 		registry,
 		image_name,
-		image_tag
+		image_tag,
+		region
 	)
 	.execute(&mut *connection)
 	.await

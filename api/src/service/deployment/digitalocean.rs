@@ -1,9 +1,7 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
 use eve_rs::AsError;
-use futures::StreamExt;
 use reqwest::Client;
-use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{process::Command, time};
 
 use crate::{
@@ -22,9 +20,6 @@ use crate::{
 			Routes,
 			Services,
 		},
-		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},
@@ -49,7 +44,7 @@ pub async fn deploy_container_on_digitalocean(
 	.await;
 
 	log::trace!("Pulling image from registry");
-	pull_image_from_registry(&image_name, &tag, &config).await?;
+	super::pull_image_from_registry(&image_name, &tag, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -60,7 +55,7 @@ pub async fn deploy_container_on_digitalocean(
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	super::tag_docker_image(&image_name, &tag, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get login details from digital ocean registry and decode from base 64 to
@@ -140,7 +135,8 @@ pub async fn deploy_container_on_digitalocean(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id = create_app(&deployment_id, region, &config, &client).await?;
+		let app_id =
+			create_app(&deployment_id, region, &config, &client).await?;
 		log::trace!("App created");
 		app_id
 	};
@@ -150,7 +146,9 @@ pub async fn deploy_container_on_digitalocean(
 	log::trace!("App ingress is at {}", default_ingress);
 
 	// update DNS
-	super::add_cname_record(&deployment_id_string, &default_ingress, &config).await?;
+	log::trace!("updating DNS");
+	super::add_cname_record(&deployment_id_string, &default_ingress, &config)
+		.await?;
 	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(
@@ -193,78 +191,6 @@ pub async fn delete_deployment_from_digital_ocean(
 	} else {
 		Err(Error::empty())
 	}
-}
-
-async fn tag_docker_image(
-	image_name: &str,
-	tag: &str,
-	new_repo_name: &str,
-) -> Result<(), Error> {
-	let docker = Docker::new();
-
-	docker
-		.images()
-		.get(format!("{}:{}", image_name, tag))
-		.tag(
-			&TagOptions::builder()
-				.repo(new_repo_name)
-				.tag("latest")
-				.build(),
-		)
-		.await?;
-
-	Ok(())
-}
-
-async fn pull_image_from_registry(
-	image_name: &str,
-	tag: &str,
-	config: &Settings,
-) -> Result<(), Error> {
-	let app = service::get_app().clone();
-	let god_username = db::get_user_by_user_id(
-		app.database.acquire().await?.deref_mut(),
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
-	)
-	.await?
-	.status(500)?
-	.username;
-
-	// generate token as password
-	let iat = get_current_time().as_secs();
-	let token = RegistryToken::new(
-		config.docker_registry.issuer.clone(),
-		iat,
-		god_username.clone(),
-		config,
-		vec![RegistryTokenAccess {
-			r#type: "repository".to_string(),
-			name: image_name.to_string(),
-			actions: vec!["pull".to_string()],
-		}],
-	)
-	.to_string(
-		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
-	)?;
-
-	// get token object using the above token string
-	let registry_auth = RegistryAuth::builder()
-		.username(god_username)
-		.password(token)
-		.build();
-
-	let docker = Docker::new();
-	let mut stream = docker.images().pull(
-		&PullOptions::builder()
-			.image(format!("{}:{}", &image_name, tag))
-			.auth(registry_auth)
-			.build(),
-	);
-
-	while stream.next().await.is_some() {}
-
-	Ok(())
 }
 
 pub async fn app_exists(

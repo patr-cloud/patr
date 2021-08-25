@@ -1,3 +1,4 @@
+mod aws;
 mod digitalocean;
 
 use std::ops::DerefMut;
@@ -22,21 +23,29 @@ use cloudflare::{
 		HttpApiClientConfig,
 	},
 };
-pub use digitalocean::*;
 use eve_rs::AsError;
-use shiplift::Docker;
+use futures::StreamExt;
+use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
+pub use self::{aws::*, digitalocean::*};
 use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{Deployment, DeploymentStatus},
+		db_mapping::{CloudPlatform, DeploymentStatus},
 		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
 	service,
-	utils::{get_current_time_millis, settings::Settings, Error},
+	utils::{
+		get_current_time,
+		get_current_time_millis,
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -98,7 +107,6 @@ pub async fn create_deployment_in_organisation(
 		get_current_time_millis(),
 	)
 	.await?;
-	let full_image_name;
 
 	if registry == "registry.patr.cloud" {
 		if let Some(repository_id) = repository_id {
@@ -112,22 +120,8 @@ pub async fn create_deployment_in_organisation(
 				name,
 				&repository_id,
 				image_tag,
+				region,
 			)
-			.await?;
-
-			full_image_name = Deployment {
-				id: deployment_id.to_vec(),
-				name: name.to_string(),
-				registry: registry.to_string(),
-				repository_id: Some(repository_id),
-				image_name: None,
-				image_tag: image_tag.to_string(),
-				status: DeploymentStatus::Created,
-				deployed_image: None,
-				digital_ocean_app_id: None,
-				region: region.to_string(),
-			}
-			.get_full_image(connection)
 			.await?;
 		} else {
 			return Err(Error::empty()
@@ -142,22 +136,8 @@ pub async fn create_deployment_in_organisation(
 			registry,
 			image_name,
 			image_tag,
+			region,
 		)
-		.await?;
-
-		full_image_name = Deployment {
-			id: deployment_id.to_vec(),
-			name: name.to_string(),
-			registry: registry.to_string(),
-			repository_id: None,
-			image_name: Some(image_name.to_string()),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Created,
-			deployed_image: None,
-			digital_ocean_app_id: None,
-			region: region.to_string(),
-		}
-		.get_full_image(connection)
 		.await?;
 	} else {
 		return Err(Error::empty()
@@ -177,7 +157,7 @@ pub async fn start_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
-	let deployment = db::get_deployment_by_id(connection, &deployment_id)
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -196,10 +176,11 @@ pub async fn start_deployment(
 	let image_tag = deployment.image_tag;
 	let config = config.clone();
 	let region = region.to_string();
+	let deployment_id = deployment.id;
 
 	db::update_deployment_deployed_image(
 		connection,
-		deployment_id,
+		&deployment_id,
 		Some(&image_name),
 	)
 	.await?;
@@ -211,7 +192,7 @@ pub async fn start_deployment(
 					image_name,
 					image_tag,
 					region,
-					deployment.id,
+					deployment_id.clone(),
 					config,
 				)
 				.await;
@@ -234,7 +215,7 @@ pub async fn start_deployment(
 				let result = service::deploy_container_on_aws(
 					image_name,
 					image_tag,
-					deployment.id,
+					deployment_id.clone(),
 					config,
 				)
 				.await;
@@ -267,7 +248,7 @@ pub async fn stop_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
-	let deployment = db::get_deployment_by_id(connection, &deployment_id)
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -281,8 +262,8 @@ pub async fn stop_deployment(
 	db::update_deployment_deployed_image(connection, deployment_id, None)
 		.await?;
 
-	match provider {
-		"do" => {
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
 			service::delete_deployment_from_digital_ocean(
 				connection,
 				deployment_id,
@@ -290,7 +271,7 @@ pub async fn stop_deployment(
 			)
 			.await?;
 		}
-		"aws" => {
+		Ok(CloudPlatform::Aws) => {
 			service::delete_deployment_from_aws(
 				connection,
 				deployment_id,
@@ -435,6 +416,78 @@ async fn update_deployment_status(
 		status,
 	)
 	.await?;
+
+	Ok(())
+}
+
+async fn tag_docker_image(
+	image_name: &str,
+	tag: &str,
+	new_repo_name: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+
+	docker
+		.images()
+		.get(format!("{}:{}", image_name, tag))
+		.tag(
+			&TagOptions::builder()
+				.repo(new_repo_name)
+				.tag("latest")
+				.build(),
+		)
+		.await?;
+
+	Ok(())
+}
+
+async fn pull_image_from_registry(
+	image_name: &str,
+	tag: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let app = service::get_app().clone();
+	let god_username = db::get_user_by_user_id(
+		app.database.acquire().await?.deref_mut(),
+		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
+	)
+	.await?
+	.status(500)?
+	.username;
+
+	// generate token as password
+	let iat = get_current_time().as_secs();
+	let token = RegistryToken::new(
+		config.docker_registry.issuer.clone(),
+		iat,
+		god_username.clone(),
+		config,
+		vec![RegistryTokenAccess {
+			r#type: "repository".to_string(),
+			name: image_name.to_string(),
+			actions: vec!["pull".to_string()],
+		}],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	// get token object using the above token string
+	let registry_auth = RegistryAuth::builder()
+		.username(god_username)
+		.password(token)
+		.build();
+
+	let docker = Docker::new();
+	let mut stream = docker.images().pull(
+		&PullOptions::builder()
+			.image(format!("{}:{}", &image_name, tag))
+			.auth(registry_auth)
+			.build(),
+	);
+
+	while stream.next().await.is_some() {}
 
 	Ok(())
 }

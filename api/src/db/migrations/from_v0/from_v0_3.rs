@@ -1,6 +1,6 @@
 use semver::Version;
 
-use crate::{Database, query};
+use crate::{query, Database};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -38,9 +38,7 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec![
-		"0.3.0",
-	]
+	vec!["0.3.0"]
 }
 
 async fn migrate_from_v0_3_0(

@@ -150,3 +150,32 @@ impl FromStr for DeploymentStatus {
 		}
 	}
 }
+
+#[allow(dead_code)]
+pub enum CloudPlatform {
+	Aws,
+	DigitalOcean,
+}
+
+impl Display for CloudPlatform {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Aws => write!(f, "aws"),
+			Self::DigitalOcean => write!(f, "do"),
+		}
+	}
+}
+
+impl FromStr for CloudPlatform {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"aws" | "amazon" | "amazon_web_services" => Ok(Self::Aws),
+			"do" | "digitalocean" | "digital_ocean" => Ok(Self::DigitalOcean),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
