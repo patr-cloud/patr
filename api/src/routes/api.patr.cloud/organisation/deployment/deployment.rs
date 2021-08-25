@@ -278,6 +278,7 @@ async fn list_deployments(
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			}))
 		} else {
 			Some(json!({
@@ -287,6 +288,7 @@ async fn list_deployments(
 				request_keys::IMAGE_NAME: deployment.image_name?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			}))
 		}
 	})
@@ -382,6 +384,15 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let region = body
+		.get(request_keys::REGION)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
 	let deployment_id = service::create_deployment_in_organisation(
 		context.get_database_connection(),
 		&organisation_id,
@@ -390,6 +401,8 @@ async fn create_deployment(
 		repository_id,
 		image_name,
 		image_tag,
+		region,
+		&config,
 	)
 	.await?;
 
@@ -455,6 +468,7 @@ async fn get_deployment_info(
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id.status(500)?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			})
 		} else {
 			json!({
@@ -464,6 +478,7 @@ async fn get_deployment_info(
 				request_keys::IMAGE_NAME: deployment.image_name.status(500)?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			})
 		},
 	);

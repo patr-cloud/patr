@@ -344,23 +344,40 @@ pub async fn delete_deployment_by_id(
 pub async fn update_deployment_deployed_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	deployed_image: &str,
+	deployed_image: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			deployed_image = $1
-		WHERE
-			id = $2;
-		"#,
-		deployed_image,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(deployed_image) = deployed_image {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deployed_image = $1
+			WHERE
+				id = $2;
+			"#,
+			deployed_image,
+			deployment_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deployed_image = NULL
+			WHERE
+				id = $1;
+			"#,
+			deployment_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn update_digital_ocean_app_id_for_deployment(

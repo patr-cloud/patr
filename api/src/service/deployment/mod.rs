@@ -69,6 +69,7 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
+	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -164,36 +165,9 @@ pub async fn create_deployment_in_organisation(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	let image_tag = image_tag.to_string();
-	let deployment_id = deployment_id.to_vec();
-
-	task::spawn(async move {
-		let deploy_result = service::deploy_container_on_digitalocean(
-			full_image_name.clone(),
-			image_tag,
-			deployment_id.clone(),
-			service::get_settings().clone(),
-		)
-		.await;
-
-		let app = service::get_app().database.acquire().await;
-		if let Ok(mut connection) = app {
-			let _ = if deploy_result.is_ok() {
-				db::update_deployment_deployed_image(
-					&mut connection,
-					&deployment_id,
-					&full_image_name,
-				)
-				.await
-			} else {
-				update_deployment_status(
-					&deployment_id,
-					&DeploymentStatus::Errored,
-				)
-				.await
-			};
-		}
-	});
+	// Deploy the app as soon as it's created, so that any existing images can
+	// be deployed
+	service::start_deployment(connection, deployment_id, config).await?;
 
 	Ok(deployment_uuid)
 }
@@ -226,7 +200,7 @@ pub async fn start_deployment(
 	db::update_deployment_deployed_image(
 		connection,
 		deployment_id,
-		&image_name,
+		Some(&image_name),
 	)
 	.await?;
 
@@ -243,6 +217,11 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
+					let _ = update_deployment_status(
+						&deployment_id,
+						&DeploymentStatus::Errored,
+					)
+					.await;
 					log::info!(
 						"Error with the deployment, {}",
 						error.get_error()
@@ -261,6 +240,11 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
+					let _ = update_deployment_status(
+						&deployment_id,
+						&DeploymentStatus::Errored,
+					)
+					.await;
 					log::info!(
 						"Error with the deployment, {}",
 						error.get_error()
@@ -278,7 +262,7 @@ pub async fn start_deployment(
 	Ok(())
 }
 
-pub async fn start_deployment(
+pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	config: &Settings,
@@ -288,58 +272,36 @@ pub async fn start_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (provider, region) = deployment
+	let (provider, _) = deployment
 		.region
 		.split_once('-')
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let image_name = if let Some(deployed_image) = deployment.deployed_image {
-		deployed_image
-	} else {
-		deployment.get_full_image(connection).await?
-	};
-	let image_tag = deployment.image_tag;
-	let config = config.clone();
-
-	db::update_deployment_deployed_image(
-		connection,
-		deployment_id,
-		&image_name,
-	)
-	.await?;
+	db::update_deployment_deployed_image(connection, deployment_id, None)
+		.await?;
 
 	match provider {
-		"do" => task::spawn(async move {
-			let result = service::deploy_container_on_digitalocean(
-				image_name,
-				image_tag,
-				deployment.id,
+		"do" => {
+			service::delete_deployment_from_digital_ocean(
+				connection,
+				deployment_id,
 				config,
 			)
-			.await;
-
-			if let Err(error) = result {
-				log::info!("Error with the deployment, {}", error.get_error());
-			}
-		}),
-		"aws" => task::spawn(async move {
-			let result = service::deploy_container_on_aws(
-				image_name,
-				image_tag,
-				deployment.id,
+			.await?;
+		}
+		"aws" => {
+			service::delete_deployment_from_aws(
+				connection,
+				deployment_id,
 				config,
 			)
-			.await;
-
-			if let Err(error) = result {
-				log::info!("Error with the deployment, {}", error.get_error());
-			}
-		}),
+			.await?;
+		}
 		_ => {
 			return Err(Error::empty()
 				.status(500)
-				.body(error!(SERVER_ERROR).to_string()))
+				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
 
