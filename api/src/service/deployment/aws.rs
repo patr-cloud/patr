@@ -49,7 +49,7 @@ pub async fn deploy_container_on_aws(
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client(region.clone());
+	let client = get_lightsail_client(&region);
 
 	let label_name = "latest".to_string();
 
@@ -79,7 +79,6 @@ pub async fn deploy_container_on_aws(
 			&new_repo_name,
 			&region,
 			&client,
-			&region,
 		)
 		.await?
 	};
@@ -125,7 +124,7 @@ pub async fn delete_deployment_from_aws(
 	region: &str,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
-	let client = get_lightsail_client(region.to_string());
+	let client = get_lightsail_client(region);
 	client
 		.delete_container_service()
 		.set_service_name(Some(hex::encode(&deployment_id)))
@@ -139,8 +138,8 @@ pub async fn delete_deployment_from_aws(
 	Ok(())
 }
 
-fn get_lightsail_client(region: String) -> lightsail::Client {
-	let deployment_region = lightsail::Region::new(region);
+fn get_lightsail_client(region: &str) -> lightsail::Client {
+	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))
 		.build();
@@ -153,7 +152,6 @@ async fn create_container_service(
 	new_repo_name: &str,
 	region: &str,
 	client: &lightsail::Client,
-	region: &str,
 ) -> Result<String, Error> {
 	let created_service = client
 		.create_container_service()
