@@ -50,7 +50,7 @@ pub(super) async fn deploy_container(
 
 	// new name for the docker image
 	let new_repo_name = format!(
-		"registry.digitalocean.com/aracivtest/{}",
+		"registry.digitalocean.com/patr-cloud/{}",
 		deployment_id_string
 	);
 	log::trace!("Pushing to {}", new_repo_name);
@@ -98,7 +98,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Login was success");
 
 	let do_image_name = format!(
-		"registry.digitalocean.com/aracivtest/{}",
+		"registry.digitalocean.com/patr-cloud/{}",
 		deployment_id_string
 	);
 	// if the loggin in is successful the push the docker image to registry

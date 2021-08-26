@@ -27,7 +27,6 @@ pub(super) async fn deploy_container(
 	config: Settings,
 ) -> Result<(), Error> {
 	let deployment_id_string = hex::encode(&deployment_id);
-	let image_id = image_id.replace("registry.patr.cloud", "localhost:5000");
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -100,7 +99,21 @@ pub(super) async fn deploy_container(
 		create_certificate_if_not_available(&deployment_id_string, &client)
 			.await?;
 	log::trace!("updating cname record");
-	super::add_cname_record(&cname, &value, &config).await?;
+
+	super::add_cname_record(
+		if cname.ends_with('.') {
+			&cname[0..cname.len() - 1]
+		} else {
+			&cname
+		},
+		if value.ends_with('.') {
+			&value[0..value.len() - 1]
+		} else {
+			&value
+		},
+		&config,
+	)
+	.await?;
 	log::trace!("cname record updated");
 	// update container service with patr domain
 	log::trace!("updating container service with patr domain");
@@ -412,7 +425,8 @@ async fn update_container_service_with_patr_domain(
 	client
 		.update_container_service()
 		.service_name(deployment_id)
-		.public_domain_names(&sub_domain, vec![sub_domain.clone()])
+		.is_disabled(false)
+		.public_domain_names("a549026f46034781ac7a42d7f5e09dce-certificate", vec![sub_domain])
 		.send()
 		.await?;
 
@@ -423,8 +437,8 @@ async fn create_certificate_if_not_available(
 	deployment_id: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
-	let cert_name = format!("{}.patr.cloud", deployment_id);
 	let domain_name = format!("{}.patr.cloud", deployment_id);
+	let cert_name = format!("{}-certificate", deployment_id);
 	log::trace!("checking if the certificate exists for the current domain");
 	let certificate_info = get_certificate_info(&cert_name, client).await;
 
@@ -435,7 +449,7 @@ async fn create_certificate_if_not_available(
 	log::trace!("creating new certificate");
 	let certificte_name = client
 		.create_certificate()
-		.certificate_name(cert_name)
+		.certificate_name(&cert_name)
 		.domain_name(domain_name)
 		.send()
 		.await?

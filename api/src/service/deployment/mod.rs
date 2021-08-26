@@ -324,7 +324,12 @@ async fn add_cname_record(
 	target: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let full_domain = format!("{}.patr.cloud", sub_domain);
+	let full_domain = if sub_domain.ends_with(".patr.cloud") {
+		sub_domain.to_string()
+	} else {
+		format!("{}.patr.cloud", sub_domain)
+	};
+	
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -414,7 +419,7 @@ async fn delete_docker_image(
 	docker
 		.images()
 		.get(format!(
-			"registry.digitalocean.com/aracivtest/{}:latest",
+			"registry.digitalocean.com/patr-cloud/{}:latest",
 			deployment_id_string
 		))
 		.delete()
