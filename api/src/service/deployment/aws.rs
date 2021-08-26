@@ -21,14 +21,13 @@ use crate::{
 };
 
 pub(super) async fn deploy_container(
-	image_name: String,
-	tag: String,
+	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let deployment_id_string = hex::encode(&deployment_id);
-
+	let image_id = image_id.replace("registry.patr.cloud", "localhost:5000");
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -37,7 +36,7 @@ pub(super) async fn deploy_container(
 	.await;
 
 	log::trace!("Pulling image from registry");
-	super::pull_image_from_registry(&image_name, &tag, &config).await?;
+	super::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -46,7 +45,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	super::tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
@@ -70,7 +69,7 @@ pub(super) async fn deploy_container(
 		)
 		.await?;
 		log::trace!("pushed the container into aws registry");
-		default_url
+		default_url.replace("https://", "").replace("/", "")
 	} else {
 		// create container service
 		log::trace!("creating new container service");
@@ -96,24 +95,25 @@ pub(super) async fn deploy_container(
 	super::add_cname_record(&deployment_id_string, &default_url, &config)
 		.await?;
 	log::trace!("DNS Updated");
-	time::sleep(Duration::from_secs(5)).await;
-	log::trace!("creating certificate");
+	time::sleep(Duration::from_secs(20)).await;
 	let (cname, value) =
-		create_certificate_for_deployment(&deployment_id_string, &client)
+		create_certificate_if_not_available(&deployment_id_string, &client)
 			.await?;
+	log::trace!("updating cname record");
 	super::add_cname_record(&cname, &value, &config).await?;
+	log::trace!("cname record updated");
 	// update container service with patr domain
+	log::trace!("updating container service with patr domain");
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
+	log::trace!("container service updated with patr domain");
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ =
-		super::delete_docker_image(&deployment_id_string, &image_name, &tag)
-			.await;
+	let _ = super::delete_docker_image(&deployment_id_string, &image_id).await;
 	log::trace!("Docker image deleted");
 	Ok(())
 }
@@ -254,7 +254,7 @@ async fn create_container_service(
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-	Ok(default_url)
+	Ok(default_url.replace("https://", "").replace("/", ""))
 }
 
 async fn app_exists(
@@ -412,14 +412,24 @@ async fn update_container_service_with_patr_domain(
 	Ok(())
 }
 
-async fn create_certificate_for_deployment(
+async fn create_certificate_if_not_available(
 	deployment_id: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
+	let cert_name = format!("{}.patr.cloud", deployment_id);
+	let domain_name = format!("{}.patr.cloud", deployment_id);
+	log::trace!("checking if the certificate exists for the current domain");
+	let certificate_info = get_certificate_info(&cert_name, client).await;
+
+	if certificate_info.is_ok() {
+		log::trace!("certificate exists");
+		return certificate_info;
+	}
+	log::trace!("creating new certificate");
 	let certificte_name = client
 		.create_certificate()
-		.certificate_name(format!("{}.patr.cloud", deployment_id))
-		.domain_name(format!("{}.patr.cloud", deployment_id))
+		.certificate_name(cert_name)
+		.domain_name(domain_name)
 		.send()
 		.await?
 		.certificate
@@ -428,9 +438,21 @@ async fn create_certificate_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	time::sleep(Duration::from_secs(10)).await;
+
+	let (cname, value) = get_certificate_info(&certificte_name, client).await?;
+
+	log::trace!("certificate created");
+	Ok((cname, value))
+}
+
+async fn get_certificate_info(
+	cert_name: &str,
+	client: &lightsail::Client,
+) -> Result<(String, String), Error> {
 	let certificate_domain_validation_record = client
 		.get_certificates()
-		.certificate_name(certificte_name)
+		.certificate_name(cert_name)
 		.include_certificate_details(true)
 		.send()
 		.await?
@@ -457,6 +479,5 @@ async fn create_certificate_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("certificate created");
 	Ok((cname, value))
 }

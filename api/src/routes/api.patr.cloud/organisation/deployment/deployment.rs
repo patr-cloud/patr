@@ -686,6 +686,8 @@ async fn delete_deployment(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
+	// TODO: delete deployment from aws and digitalocean
+	// TODO: this should also delete the repo from aws and digitalocean
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
 	service::stop_deployment(

@@ -167,12 +167,11 @@ pub async fn start_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let image_name = if let Some(deployed_image) = deployment.deployed_image {
+	let image_id = if let Some(deployed_image) = deployment.deployed_image {
 		deployed_image
 	} else {
 		deployment.get_full_image(connection).await?
 	};
-	let image_tag = deployment.image_tag;
 	let config = config.clone();
 	let region = region.to_string();
 	let deployment_id = deployment.id;
@@ -180,7 +179,7 @@ pub async fn start_deployment(
 	db::update_deployment_deployed_image(
 		connection,
 		&deployment_id,
-		Some(&image_name),
+		Some(&image_id),
 	)
 	.await?;
 
@@ -188,8 +187,7 @@ pub async fn start_deployment(
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
 				let result = digitalocean::deploy_container(
-					image_name,
-					image_tag,
+					image_id,
 					region,
 					deployment_id.clone(),
 					config,
@@ -212,8 +210,7 @@ pub async fn start_deployment(
 		Ok(CloudPlatform::Aws) => {
 			task::spawn(async move {
 				let result = aws::deploy_container(
-					image_name,
-					image_tag,
+					image_id,
 					region,
 					deployment_id.clone(),
 					config,
@@ -333,7 +330,6 @@ async fn add_cname_record(
 	} else {
 		return Err(Error::empty());
 	};
-
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
@@ -348,11 +344,9 @@ async fn add_cname_record(
 		.status(500)?
 		.id;
 	let zone_identifier = zone_identifier.as_str();
-
 	let expected_dns_record = DnsContent::CNAME {
 		content: String::from(target),
 	};
-
 	let response = client
 		.request(&ListDnsRecords {
 			zone_identifier,
@@ -369,7 +363,6 @@ async fn add_cname_record(
 			false
 		}
 	});
-
 	if let Some(record) = dns_record {
 		if let DnsContent::CNAME { content } = record.content {
 			if content != target {
@@ -380,7 +373,7 @@ async fn add_cname_record(
 						params: UpdateDnsRecordParams {
 							content: expected_dns_record,
 							name: &full_domain,
-							proxied: Some(true),
+							proxied: Some(false),
 							ttl: Some(1),
 						},
 					})
@@ -397,7 +390,7 @@ async fn add_cname_record(
 					name: sub_domain,
 					ttl: Some(1),
 					priority: None,
-					proxied: Some(true),
+					proxied: Some(false),
 				},
 			})
 			.await?;
@@ -407,15 +400,14 @@ async fn add_cname_record(
 
 async fn delete_docker_image(
 	deployment_id_string: &str,
-	image_name: &str,
-	tag: &str,
+	image_id: &str,
 ) -> Result<(), Error> {
 	let docker = Docker::new();
 
 	docker
 		.images()
 		.get(format!(
-			"registry.digitalocean.com/patr-cloud/{}:latest",
+			"registry.digitalocean.com/aracivtest/{}:latest",
 			deployment_id_string
 		))
 		.delete()
@@ -423,7 +415,7 @@ async fn delete_docker_image(
 
 	docker
 		.images()
-		.get(format!("{}:{}", image_name, tag))
+		.get(image_id)
 		.delete()
 		.await?;
 
@@ -447,15 +439,13 @@ async fn update_deployment_status(
 }
 
 async fn tag_docker_image(
-	image_name: &str,
-	tag: &str,
+	image_id: &str,
 	new_repo_name: &str,
 ) -> Result<(), Error> {
 	let docker = Docker::new();
-
 	docker
 		.images()
-		.get(format!("{}:{}", image_name, tag))
+		.get(image_id)
 		.tag(
 			&TagOptions::builder()
 				.repo(new_repo_name)
@@ -468,8 +458,7 @@ async fn tag_docker_image(
 }
 
 async fn pull_image_from_registry(
-	image_name: &str,
-	tag: &str,
+	image_id: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let app = service::get_app().clone();
@@ -490,7 +479,7 @@ async fn pull_image_from_registry(
 		config,
 		vec![RegistryTokenAccess {
 			r#type: "repository".to_string(),
-			name: image_name.to_string(),
+			name: image_id.to_string(),
 			actions: vec!["pull".to_string()],
 		}],
 	)
@@ -508,7 +497,7 @@ async fn pull_image_from_registry(
 	let docker = Docker::new();
 	let mut stream = docker.images().pull(
 		&PullOptions::builder()
-			.image(format!("{}:{}", &image_name, tag))
+			.image(image_id)
 			.auth(registry_auth)
 			.build(),
 	);

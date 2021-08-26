@@ -29,15 +29,14 @@ use crate::{
 };
 
 pub(super) async fn deploy_container(
-	image_name: String,
-	tag: String,
+	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
-
+	let image_id = image_id.replace("registry.patr.cloud", "localhost:5000");
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -46,18 +45,18 @@ pub(super) async fn deploy_container(
 	.await;
 
 	log::trace!("Pulling image from registry");
-	super::pull_image_from_registry(&image_name, &tag, &config).await?;
+	super::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
 	let new_repo_name = format!(
-		"registry.digitalocean.com/patr-cloud/{}",
+		"registry.digitalocean.com/aracivtest/{}",
 		deployment_id_string
 	);
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	super::tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get login details from digital ocean registry and decode from base 64 to
@@ -99,7 +98,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Login was success");
 
 	let do_image_name = format!(
-		"registry.digitalocean.com/patr-cloud/{}",
+		"registry.digitalocean.com/aracivtest/{}",
 		deployment_id_string
 	);
 	// if the loggin in is successful the push the docker image to registry
@@ -159,7 +158,7 @@ pub(super) async fn deploy_container(
 	)
 	.await;
 	let _ =
-		super::delete_docker_image(&deployment_id_string, &image_name, &tag)
+		super::delete_docker_image(&deployment_id_string, &image_id)
 			.await;
 	log::trace!("Docker image deleted");
 
