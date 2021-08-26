@@ -170,16 +170,20 @@ pub(super) async fn delete_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("retreiving and comparing the deployment ids");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
 		.digital_ocean_app_id;
 	let app_id = if let Some(app_id) = app_id {
+		log::trace!("deployment ids matched");
 		app_id
 	} else {
+		log::error!("deployment ids did not match");
 		return Ok(());
 	};
-
+	
+	log::trace!("deleting the deployment");
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 		.bearer_auth(&config.digital_ocean_api_key)
@@ -188,8 +192,10 @@ pub(super) async fn delete_deployment(
 		.status();
 
 	if response.is_success() {
+		log::trace!("deployment deleted successfully!");
 		Ok(())
 	} else {
+		log::trace!("deployment deletion failed");
 		Err(Error::empty())
 	}
 }

@@ -125,7 +125,10 @@ pub(super) async fn delete_deployment(
 	region: &str,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
+	log::trace!("getting credentials from lightsail");
 	let client = get_lightsail_client(region);
+	log::trace!("deleting deployment");
+
 	client
 		.delete_container_service()
 		.set_service_name(Some(hex::encode(&deployment_id)))
@@ -135,6 +138,7 @@ pub(super) async fn delete_deployment(
 			log::error!("Error during deletion of service, {}", err);
 			err
 		})?;
+	log::trace!("deployment deleted successfully!");
 
 	Ok(())
 }

@@ -245,6 +245,7 @@ pub async fn stop_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("Getting deployment id from db");
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -255,16 +256,18 @@ pub async fn stop_deployment(
 		.split_once('-')
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-
+	log::trace!("removing the deployed image info from db");
 	db::update_deployment_deployed_image(connection, deployment_id, None)
 		.await?;
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
+			log::trace!("deleting the deployment from digitalocean");
 			digitalocean::delete_deployment(connection, deployment_id, config)
 				.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
+			log::trace!("deleting the deployment from aws");
 			aws::delete_deployment(connection, deployment_id, config, region)
 				.await?;
 		}
