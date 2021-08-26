@@ -25,6 +25,7 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use futures::StreamExt;
+use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
@@ -290,6 +291,7 @@ pub async fn get_deployment_container_logs(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	log::trace!("get the deployment id from db");
 
 	let (provider, _) = deployment
 		.region
@@ -299,10 +301,12 @@ pub async fn get_deployment_container_logs(
 
 	let logs = match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
+			log::trace!("getting logs from digitalocean deployment");
 			digitalocean::get_container_logs(connection, deployment_id, config)
 				.await?
 		}
 		Ok(CloudPlatform::Aws) => {
+			log::trace!("getting logs from aws deployment");
 			aws::get_container_logs(connection, deployment_id, config).await?
 		}
 		_ => {
@@ -416,11 +420,7 @@ async fn delete_docker_image(
 		.delete()
 		.await?;
 
-	docker
-		.images()
-		.get(image_id)
-		.delete()
-		.await?;
+	docker.images().get(image_id).delete().await?;
 
 	Ok(())
 }
@@ -506,6 +506,69 @@ async fn pull_image_from_registry(
 	);
 
 	while stream.next().await.is_some() {}
+
+	Ok(())
+}
+
+pub async fn delete_container_from_digital_ocean_registry(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new();
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let (provider, _) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if provider == "aws" {
+		return Ok(());
+	}
+
+	let image_name = deployment
+		.deployed_image
+		.status(404)
+		.body(error!(NOT_FOUND).to_string())?;
+
+	let (image_name, digest) = image_name
+		.split_once("@")
+		.status(404)
+		.body(error!(NOT_FOUND).to_string())?;
+
+	let container_status = client
+		.delete(format!(
+			"https://api.digitalocean.com/v2/registry/patr-cloud/{}/digests/{}",
+			image_name, digest
+		))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if container_status.is_server_error() || container_status.is_client_error() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(WRONG_PARAMETERS).to_string());
+	}
+
+	let garbage_status = client
+		.post("https://api.digitalocean.com/v2/registry/patr-cloud/garbage-collection")
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if garbage_status.is_server_error() || container_status.is_client_error() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(WRONG_PARAMETERS).to_string());
+	}
 
 	Ok(())
 }

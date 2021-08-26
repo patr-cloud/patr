@@ -148,6 +148,7 @@ pub(super) async fn get_container_logs(
 	deployment_id: &[u8],
 	_config: &Settings,
 ) -> Result<String, Error> {
+	log::info!("retreiving deployment info from db");
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)
@@ -170,7 +171,9 @@ pub(super) async fn get_container_logs(
 	}
 
 	// Get credentails for aws lightsail
+	log::trace!("getting credentails from aws lightsail");
 	let client = get_lightsail_client(region);
+	log::info!("getting logs from aws");
 	let logs = client
 		.get_container_log()
 		.set_service_name(Some(hex::encode(&deployment_id)))
@@ -191,7 +194,7 @@ pub(super) async fn get_container_logs(
 		})
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-
+	log::info!("logs retreived successfully!");
 	Ok(logs)
 }
 

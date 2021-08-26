@@ -207,12 +207,14 @@ pub(super) async fn get_container_logs(
 ) -> Result<String, Error> {
 	let client = Client::new();
 
+	log::info!("retreiving deployment info from db");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.map(|deployment| deployment.digital_ocean_app_id)
 		.flatten()
 		.status(500)?;
 
+	log::info!("getting app id from digitalocean api");
 	let deployment_id = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
@@ -229,6 +231,7 @@ pub(super) async fn get_container_logs(
 		.map(|deployment| deployment.id)
 		.status(500)?;
 
+	log::info!("getting RUN logs from digitalocean");
 	let log_url = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments/{}/logs",
@@ -243,7 +246,7 @@ pub(super) async fn get_container_logs(
 		.live_url;
 
 	let logs = client.get(log_url).send().await?.text().await?;
-
+	log::info!("logs retreived successfully!");
 	Ok(logs)
 }
 

@@ -697,6 +697,13 @@ async fn delete_deployment(
 	)
 	.await?;
 
+	service::delete_container_from_digital_ocean_registry(
+		context.get_database_connection(),
+		&deployment_id,
+		&config
+	)
+	.await?;
+
 	db::delete_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
