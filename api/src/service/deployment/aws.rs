@@ -426,7 +426,10 @@ async fn update_container_service_with_patr_domain(
 		.update_container_service()
 		.service_name(deployment_id)
 		.is_disabled(false)
-		.public_domain_names(format!("{}-certificate", deployment_id), vec![sub_domain])
+		.public_domain_names(
+			format!("{}-certificate", deployment_id),
+			vec![sub_domain],
+		)
 		.send()
 		.await?;
 

@@ -269,8 +269,8 @@ pub async fn stop_deployment(
 			log::trace!("deleting the image from registry");
 			digitalocean::delete_container_from_cloud_registry(
 				connection,
-				&deployment_id,
-				&config,
+				deployment_id,
+				config,
 			)
 			.await?;
 		}

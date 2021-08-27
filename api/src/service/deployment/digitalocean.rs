@@ -156,9 +156,7 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ =
-		super::delete_docker_image(&deployment_id_string, &image_id)
-			.await;
+	let _ = super::delete_docker_image(&deployment_id_string, &image_id).await;
 	log::trace!("Docker image deleted");
 
 	Ok(())
@@ -181,7 +179,7 @@ pub(super) async fn delete_deployment(
 		log::error!("deployment ids did not match");
 		return Ok(());
 	};
-	
+
 	log::trace!("deleting the deployment");
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
