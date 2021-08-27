@@ -36,7 +36,6 @@ pub(super) async fn deploy_container(
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
-	let image_id = image_id.replace("registry.patr.cloud", "localhost:5000");
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
