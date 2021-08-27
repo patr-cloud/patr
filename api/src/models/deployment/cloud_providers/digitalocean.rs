@@ -242,7 +242,7 @@ pub struct DatabaseResponse {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DatabaseInfo {
-	pub id: String,
+	pub id: String, //TODO: add the vicara's id and not the db
 	pub name: String,
 	pub engine: String,
 	pub version: String,

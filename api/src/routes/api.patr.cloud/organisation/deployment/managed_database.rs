@@ -239,8 +239,8 @@ async fn create_new_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let cloud_platform = body
-		.get(request_keys::CLOUD_PLATFORM)
+	let database_plan = body
+		.get(request_keys::DATABASE_PLAN)
 		.map(|value| value.as_str())
 		.flatten()
 		.map(|c| c.parse::<CloudPlatform>().ok())
@@ -258,7 +258,7 @@ async fn create_new_database_cluster(
 		num_nodes,
 		region,
 		&organisation_id,
-		cloud_platform,
+		database_plan,
 	)
 	.await?;
 
@@ -301,17 +301,11 @@ async fn get_managed_database_info(
 			request_keys::VERSION: database_info.version,
 			request_keys::NUM_NODES: database_info.num_nodes,
 			request_keys::CREATED_AT: database_info.created_at,
-			request_keys::PUBLIC_CONNECTION: {
+			request_keys::CONNECTION: {
 				request_keys::HOST: database_info.connection.host,
 				request_keys::USERNAME: database_info.connection.user,
 				request_keys::PASSWORD: database_info.connection.password,
 				request_keys::PORT: database_info.connection.port
-			},
-			request_keys::PRIVATE_CONNECTION: {
-				request_keys::HOST: database_info.private_connection.host,
-				request_keys::USERNAME: database_info.private_connection.user,
-				request_keys::PASSWORD: database_info.private_connection.password,
-				request_keys::PORT: database_info.private_connection.port
 			}
 		},
 		request_keys::STATUS: status

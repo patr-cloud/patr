@@ -155,8 +155,7 @@ pub mod request_keys {
 	pub const CREATED_AT: &str = "createdAt";
 	pub const DATABASE_CLUSTERS: &str = "databaseClusters";
 	pub const DATABASE_CLUSTER: &str = "databaseCluster";
-	pub const CLOUD_PLATFORM: &str = "cloudPlatform";
-	pub const PUBLIC_CONNECTION: &str = "publicConnection";
-	pub const PRIVATE_CONNECTION: &str = "privateConnection";
+	pub const DATABASE_PLAN: &str = "databasePlan";
+	pub const CONNECTION: &str = "publicConnection";
 	pub const MANAGED_DATABASE_NAME: &str = "managedDatabaseName";
 }
