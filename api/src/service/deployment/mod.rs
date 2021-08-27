@@ -25,7 +25,6 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use futures::StreamExt;
-use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
@@ -266,6 +265,14 @@ pub async fn stop_deployment(
 			log::trace!("deleting the deployment from digitalocean");
 			digitalocean::delete_deployment(connection, deployment_id, config)
 				.await?;
+
+			log::trace!("deleting the image from registry");
+			digitalocean::delete_container_from_cloud_registry(
+				connection,
+				&deployment_id,
+				&config,
+			)
+			.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!("deleting the deployment from aws");
@@ -329,7 +336,7 @@ async fn add_cname_record(
 	} else {
 		format!("{}.patr.cloud", sub_domain)
 	};
-	
+
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -511,69 +518,6 @@ async fn pull_image_from_registry(
 	);
 
 	while stream.next().await.is_some() {}
-
-	Ok(())
-}
-
-pub async fn delete_container_from_digital_ocean_registry(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	config: &Settings,
-) -> Result<(), Error> {
-	let client = Client::new();
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let (provider, _) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	if provider == "aws" {
-		return Ok(());
-	}
-
-	let image_name = deployment
-		.deployed_image
-		.status(404)
-		.body(error!(NOT_FOUND).to_string())?;
-
-	let (image_name, digest) = image_name
-		.split_once("@")
-		.status(404)
-		.body(error!(NOT_FOUND).to_string())?;
-
-	let container_status = client
-		.delete(format!(
-			"https://api.digitalocean.com/v2/registry/patr-cloud/{}/digests/{}",
-			image_name, digest
-		))
-		.bearer_auth(&config.digital_ocean_api_key)
-		.send()
-		.await?
-		.status();
-
-	if container_status.is_server_error() || container_status.is_client_error() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(WRONG_PARAMETERS).to_string());
-	}
-
-	let garbage_status = client
-		.post("https://api.digitalocean.com/v2/registry/patr-cloud/garbage-collection")
-		.bearer_auth(&config.digital_ocean_api_key)
-		.send()
-		.await?
-		.status();
-
-	if garbage_status.is_server_error() || container_status.is_client_error() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(WRONG_PARAMETERS).to_string());
-	}
 
 	Ok(())
 }
