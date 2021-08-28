@@ -181,11 +181,7 @@ pub(super) async fn delete_deployment(
 	};
 
 	log::trace!("deleting the image from registry");
-		delete_image_from_digitalocean_registry(
-				deployment_id,
-				config,
-			)
-			.await?;
+	delete_image_from_digitalocean_registry(deployment_id, config).await?;
 
 	log::trace!("deleting the deployment");
 	let response = Client::new()
