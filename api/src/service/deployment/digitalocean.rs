@@ -445,7 +445,7 @@ async fn delete_image_from_digitalocean_registry(
 	{
 		return Error::as_result()
 			.status(500)
-			.body(error!(WRONG_PARAMETERS).to_string());
+			.body(error!(SERVER_ERROR).to_string());
 	}
 
 	Ok(())
