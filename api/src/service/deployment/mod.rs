@@ -265,14 +265,6 @@ pub async fn stop_deployment(
 			log::trace!("deleting the deployment from digitalocean");
 			digitalocean::delete_deployment(connection, deployment_id, config)
 				.await?;
-
-			log::trace!("deleting the image from registry");
-			digitalocean::delete_container_from_cloud_registry(
-				connection,
-				deployment_id,
-				config,
-			)
-			.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!("deleting the deployment from aws");
@@ -392,7 +384,7 @@ async fn add_cname_record(
 						params: UpdateDnsRecordParams {
 							content: expected_dns_record,
 							name: &full_domain,
-							proxied: Some(false),
+							proxied: Some(true),
 							ttl: Some(1),
 						},
 					})
@@ -409,7 +401,7 @@ async fn add_cname_record(
 					name: sub_domain,
 					ttl: Some(1),
 					priority: None,
-					proxied: Some(false),
+					proxied: Some(true),
 				},
 			})
 			.await?;

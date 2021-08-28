@@ -2,6 +2,7 @@ use std::{process::Stdio, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::model::{
+	CertificateStatus,
 	Container,
 	ContainerServiceDeploymentRequest,
 	ContainerServiceDeploymentState,
@@ -94,7 +95,6 @@ pub(super) async fn deploy_container(
 	super::add_cname_record(&deployment_id_string, &default_url, &config)
 		.await?;
 	log::trace!("DNS Updated");
-	time::sleep(Duration::from_secs(20)).await;
 	let (cname, value) =
 		create_certificate_if_not_available(&deployment_id_string, &client)
 			.await?;
@@ -116,6 +116,9 @@ pub(super) async fn deploy_container(
 	.await?;
 	log::trace!("cname record updated");
 	// update container service with patr domain
+	log::trace!("waiting for certificate to be validated");
+	wait_for_certificate_to_validated(&deployment_id_string, &client).await?;
+	log::trace!("certificate validated");
 	log::trace!("updating container service with patr domain");
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
@@ -140,6 +143,10 @@ pub(super) async fn delete_deployment(
 	// Get credentails for aws lightsail
 	log::trace!("getting credentials from lightsail");
 	let client = get_lightsail_client(region);
+
+	// certificate needs to be detached inorder to get deleted but there is no
+	// endpoint to detach the certificate
+
 	log::trace!("deleting deployment");
 
 	client
@@ -443,7 +450,8 @@ async fn create_certificate_if_not_available(
 	let domain_name = format!("{}.patr.cloud", deployment_id);
 	let cert_name = format!("{}-certificate", deployment_id);
 	log::trace!("checking if the certificate exists for the current domain");
-	let certificate_info = get_certificate_info(&cert_name, client).await;
+	let certificate_info =
+		get_cname_and_value_from_aws(&cert_name, client).await;
 
 	if certificate_info.is_ok() {
 		log::trace!("certificate exists");
@@ -462,46 +470,96 @@ async fn create_certificate_if_not_available(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	time::sleep(Duration::from_secs(10)).await;
-
-	let (cname, value) = get_certificate_info(&certificte_name, client).await?;
+	let (cname, value) =
+		get_cname_and_value_from_aws(&certificte_name, client).await?;
 
 	log::trace!("certificate created");
 	Ok((cname, value))
 }
 
-async fn get_certificate_info(
+async fn get_cname_and_value_from_aws(
 	cert_name: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
-	let certificate_domain_validation_record = client
-		.get_certificates()
-		.certificate_name(cert_name)
-		.include_certificate_details(true)
-		.send()
-		.await?
-		.certificates
-		.map(|certificate_summary_list| {
-			certificate_summary_list.into_iter().next()
-		})
-		.flatten()
-		.map(|certificate_summary| certificate_summary.certificate_detail)
-		.flatten()
-		.map(|cert| cert.domain_validation_records)
-		.flatten()
-		.map(|domain_validation_record| {
-			domain_validation_record.into_iter().next()
-		})
-		.flatten()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	loop {
+		let certificate_domain_validation_record = client
+			.get_certificates()
+			.certificate_name(cert_name)
+			.include_certificate_details(true)
+			.send()
+			.await?
+			.certificates
+			.map(|certificate_summary_list| {
+				certificate_summary_list.into_iter().next()
+			})
+			.flatten()
+			.map(|certificate_summary| certificate_summary.certificate_detail)
+			.flatten()
+			.map(|cert| cert.domain_validation_records)
+			.flatten()
+			.map(|domain_validation_record| {
+				domain_validation_record.into_iter().next()
+			})
+			.flatten()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
-	let (cname, value) = certificate_domain_validation_record
-		.resource_record
-		.map(|record| record.name.zip(record.value))
-		.flatten()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		if certificate_domain_validation_record.domain_name.is_some() &&
+			certificate_domain_validation_record
+				.resource_record
+				.is_some()
+		{
+			let (cname, value) = certificate_domain_validation_record
+				.resource_record
+				.map(|record| record.name.zip(record.value))
+				.flatten()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
 
-	Ok((cname, value))
+			return Ok((cname, value));
+		} else if certificate_domain_validation_record.domain_name.is_none() {
+			break;
+		}
+		time::sleep(Duration::from_millis(1000)).await;
+	}
+
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+}
+
+async fn wait_for_certificate_to_validated(
+	deployment_id_string: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	loop {
+		let certificate_status = client
+			.get_certificates()
+			.certificate_name(format!("{}-certificate", deployment_id_string))
+			.include_certificate_details(true)
+			.send()
+			.await?
+			.certificates
+			.map(|certificate_summary_list| {
+				certificate_summary_list.into_iter().next()
+			})
+			.flatten()
+			.map(|certificate_summary| certificate_summary.certificate_detail)
+			.flatten()
+			.map(|cert| cert.status)
+			.flatten()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		if certificate_status == CertificateStatus::Issued {
+			return Ok(());
+		} else if certificate_status != CertificateStatus::PendingValidation {
+			break;
+		}
+		time::sleep(Duration::from_millis(1000)).await;
+	}
+
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
 }

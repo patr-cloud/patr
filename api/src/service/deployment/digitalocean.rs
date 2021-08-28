@@ -180,6 +180,13 @@ pub(super) async fn delete_deployment(
 		return Ok(());
 	};
 
+	log::trace!("deleting the image from registry");
+		delete_image_from_digitalocean_registry(
+				deployment_id,
+				config,
+			)
+			.await?;
+
 	log::trace!("deleting the deployment");
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
@@ -422,31 +429,16 @@ async fn get_default_ingress(
 		.default_ingress
 }
 
-pub async fn delete_container_from_cloud_registry(
-	connection: &mut <Database as sqlx::Database>::Connection,
+async fn delete_image_from_digitalocean_registry(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let image_name = deployment
-		.deployed_image
-		.status(404)
-		.body(error!(NOT_FOUND).to_string())?;
-
-	let (image_name, digest) = image_name
-		.split_once("@")
-		.status(404)
-		.body(error!(NOT_FOUND).to_string())?;
 
 	let container_status = client
 		.delete(format!(
-			"https://api.digitalocean.com/v2/registry/patr-cloud/{}/digests/{}",
-			image_name, digest
+			"https://api.digitalocean.com/v2/registry/patr-cloud/repositories/{}/tags/latest",
+			hex::encode(deployment_id)
 		))
 		.bearer_auth(&config.digital_ocean_api_key)
 		.send()
@@ -455,19 +447,6 @@ pub async fn delete_container_from_cloud_registry(
 
 	if container_status.is_server_error() || container_status.is_client_error()
 	{
-		return Error::as_result()
-			.status(500)
-			.body(error!(WRONG_PARAMETERS).to_string());
-	}
-
-	let garbage_status = client
-		.post("https://api.digitalocean.com/v2/registry/patr-cloud/garbage-collection")
-		.bearer_auth(&config.digital_ocean_api_key)
-		.send()
-		.await?
-		.status();
-
-	if garbage_status.is_server_error() || container_status.is_client_error() {
 		return Error::as_result()
 			.status(500)
 			.body(error!(WRONG_PARAMETERS).to_string());
