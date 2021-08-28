@@ -83,7 +83,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(create_new_database_cluster)),
+			EveMiddleware::CustomFunction(pin_fn!(create_database_cluster)),
 		],
 	);
 
@@ -188,7 +188,7 @@ async fn list_all_database_clusters(
 	Ok(context)
 }
 
-async fn create_new_database_cluster(
+async fn create_database_cluster(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -250,7 +250,7 @@ async fn create_new_database_cluster(
 
 	let config = context.get_state().config.clone();
 
-	service::create_new_database_cluster(
+	service::create_database_cluster(
 		config,
 		name,
 		version,

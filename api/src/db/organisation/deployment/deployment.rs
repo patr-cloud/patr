@@ -10,6 +10,26 @@ pub async fn initialize_deployment_pre(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
+		CREATE TYPE DATABASE_PLANS AS ENUM(
+			'do-nano',
+			'do-micro',
+			'do-medium',
+			'do-large',
+			'do-xlarge',
+			'do-xxlarge',
+			'do-mammoth',
+			'aws-micro',
+			'aws-small',
+			'aws-medium',
+			'aws-large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+	
+	query!(
+		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
 			'created', /* Created, but nothing pushed to it yet */
 			'pushed', /* Something is pushed, but the system has not deployed it yet */
