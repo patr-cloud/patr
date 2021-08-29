@@ -117,7 +117,7 @@ pub(super) async fn deploy_container(
 	log::trace!("cname record updated");
 	// update container service with patr domain
 	log::trace!("waiting for certificate to be validated");
-	wait_for_certificate_to_validated(&deployment_id_string, &client).await?;
+	wait_for_certificate_validation(&deployment_id_string, &client).await?;
 	log::trace!("certificate validated");
 	log::trace!("updating container service with patr domain");
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
@@ -528,7 +528,7 @@ async fn get_cname_and_value_from_aws(
 		.body(error!(SERVER_ERROR).to_string())?
 }
 
-async fn wait_for_certificate_to_validated(
+async fn wait_for_certificate_validation(
 	deployment_id_string: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
@@ -553,13 +553,12 @@ async fn wait_for_certificate_to_validated(
 
 		if certificate_status == CertificateStatus::Issued {
 			return Ok(());
-		} else if certificate_status != CertificateStatus::PendingValidation {
-			break;
+		} else if certificate_status == CertificateStatus::PendingValidation {
+			time::sleep(Duration::from_millis(1000)).await;
+		} else {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
-		time::sleep(Duration::from_millis(1000)).await;
 	}
-
-	Error::as_result()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
 }
