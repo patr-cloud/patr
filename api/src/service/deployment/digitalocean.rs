@@ -29,15 +29,13 @@ use crate::{
 };
 
 pub(super) async fn deploy_container(
-	image_name: String,
-	tag: String,
+	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
-
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -46,7 +44,7 @@ pub(super) async fn deploy_container(
 	.await;
 
 	log::trace!("Pulling image from registry");
-	super::pull_image_from_registry(&image_name, &tag, &config).await?;
+	super::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -57,7 +55,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	super::tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get login details from digital ocean registry and decode from base 64 to
@@ -158,9 +156,7 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ =
-		super::delete_docker_image(&deployment_id_string, &image_name, &tag)
-			.await;
+	let _ = super::delete_docker_image(&deployment_id_string, &image_id).await;
 	log::trace!("Docker image deleted");
 
 	Ok(())
@@ -171,16 +167,23 @@ pub(super) async fn delete_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("retreiving and comparing the deployment ids");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
 		.digital_ocean_app_id;
 	let app_id = if let Some(app_id) = app_id {
+		log::trace!("deployment ids matched");
 		app_id
 	} else {
+		log::error!("deployment ids did not match");
 		return Ok(());
 	};
 
+	log::trace!("deleting the image from registry");
+	delete_image_from_digitalocean_registry(deployment_id, config).await?;
+
+	log::trace!("deleting the deployment");
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 		.bearer_auth(&config.digital_ocean_api_key)
@@ -189,8 +192,10 @@ pub(super) async fn delete_deployment(
 		.status();
 
 	if response.is_success() {
+		log::trace!("deployment deleted successfully!");
 		Ok(())
 	} else {
+		log::trace!("deployment deletion failed");
 		Err(Error::empty())
 	}
 }
@@ -202,12 +207,14 @@ pub(super) async fn get_container_logs(
 ) -> Result<String, Error> {
 	let client = Client::new();
 
+	log::info!("retreiving deployment info from db");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.map(|deployment| deployment.digital_ocean_app_id)
 		.flatten()
 		.status(500)?;
 
+	log::info!("getting app id from digitalocean api");
 	let deployment_id = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
@@ -224,6 +231,7 @@ pub(super) async fn get_container_logs(
 		.map(|deployment| deployment.id)
 		.status(500)?;
 
+	log::info!("getting RUN logs from digitalocean");
 	let log_url = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments/{}/logs",
@@ -238,7 +246,7 @@ pub(super) async fn get_container_logs(
 		.live_url;
 
 	let logs = client.get(log_url).send().await?.text().await?;
-
+	log::info!("logs retreived successfully!");
 	Ok(logs)
 }
 
@@ -415,4 +423,30 @@ async fn get_default_ingress(
 		.ok()?
 		.app
 		.default_ingress
+}
+
+async fn delete_image_from_digitalocean_registry(
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new();
+
+	let container_status = client
+		.delete(format!(
+			"https://api.digitalocean.com/v2/registry/patr-cloud/repositories/{}/tags/latest",
+			hex::encode(deployment_id)
+		))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if container_status.is_server_error() || container_status.is_client_error()
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
 }
