@@ -60,7 +60,7 @@ pub async fn migrate_database(
 fn get_migrations() -> Vec<&'static str> {
 	vec![
 		from_v0::get_migrations(),
-		// from_v0_4::get_migrations(),
+		// from_v1::get_migrations(),
 	]
 	.into_iter()
 	.flatten()

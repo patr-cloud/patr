@@ -2,6 +2,7 @@ use std::{process::Stdio, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::model::{
+	CertificateStatus,
 	Container,
 	ContainerServiceDeploymentRequest,
 	ContainerServiceDeploymentState,
@@ -13,32 +14,29 @@ use lightsail::model::{
 use tokio::{process::Command, time};
 
 use crate::{
+	db,
 	error,
-	models::db_mapping::DeploymentStatus,
-	service::{
-		delete_docker_image,
-		pull_image_from_registry,
-		tag_docker_image,
-		update_deployment_status,
-		update_dns,
-	},
+	models::db_mapping::{CloudPlatform, DeploymentStatus},
 	utils::{settings::Settings, Error},
+	Database,
 };
 
-pub async fn deploy_container_on_aws(
-	image_name: String,
-	tag: String,
+pub(super) async fn deploy_container(
+	image_id: String,
+	region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let deployment_id_string = hex::encode(&deployment_id);
-
 	log::trace!("Deploying deployment: {}", deployment_id_string);
-	let _ = update_deployment_status(&deployment_id, &DeploymentStatus::Pushed)
-		.await;
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Pushed,
+	)
+	.await;
 
 	log::trace!("Pulling image from registry");
-	pull_image_from_registry(&image_name, &tag, &config).await?;
+	super::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -47,17 +45,19 @@ pub async fn deploy_container_on_aws(
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	tag_docker_image(&image_name, &tag, &new_repo_name).await?;
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
-	let client = lightsail::Client::from_env();
+	let client = get_lightsail_client(&region);
 
 	let label_name = "latest".to_string();
 
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Deploying)
-			.await;
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await;
 
 	let app_exists = app_exists(&deployment_id_string, &client).await?;
 	let default_url = if let Some(default_url) = app_exists {
@@ -65,10 +65,11 @@ pub async fn deploy_container_on_aws(
 			&deployment_id_string,
 			&new_repo_name,
 			&label_name,
+			&region,
 		)
 		.await?;
 		log::trace!("pushed the container into aws registry");
-		default_url
+		default_url.replace("https://", "").replace("/", "")
 	} else {
 		// create container service
 		log::trace!("creating new container service");
@@ -76,6 +77,7 @@ pub async fn deploy_container_on_aws(
 			&deployment_id_string,
 			&label_name,
 			&new_repo_name,
+			&region,
 			&client,
 		)
 		.await?
@@ -90,30 +92,145 @@ pub async fn deploy_container_on_aws(
 	wait_for_deployment(&deployment_id_string, &client).await?;
 
 	log::trace!("updating DNS");
-	update_dns(&deployment_id_string, &default_url, &config).await?;
+	super::add_cname_record(&deployment_id_string, &default_url, &config)
+		.await?;
 	log::trace!("DNS Updated");
-	time::sleep(Duration::from_secs(5)).await;
-	log::trace!("creating certificate");
 	let (cname, value) =
-		create_certificate_for_deployment(&deployment_id_string, &client)
+		create_certificate_if_not_available(&deployment_id_string, &client)
 			.await?;
-	update_dns(&cname, &value, &config).await?;
+	log::trace!("updating cname record");
+
+	super::add_cname_record(
+		if cname.ends_with('.') {
+			&cname[0..cname.len() - 1]
+		} else {
+			&cname
+		},
+		if value.ends_with('.') {
+			&value[0..value.len() - 1]
+		} else {
+			&value
+		},
+		&config,
+	)
+	.await?;
+	log::trace!("cname record updated");
 	// update container service with patr domain
+	log::trace!("waiting for certificate to be validated");
+	wait_for_certificate_validation(&deployment_id_string, &client).await?;
+	log::trace!("certificate validated");
+	log::trace!("updating container service with patr domain");
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
+	log::trace!("container service updated with patr domain");
 
-	let _ =
-		update_deployment_status(&deployment_id, &DeploymentStatus::Running)
-			.await;
-	let _ = delete_docker_image(&deployment_id_string, &image_name, &tag).await;
+	let _ = super::update_deployment_status(
+		&deployment_id,
+		&DeploymentStatus::Running,
+	)
+	.await;
+	let _ = super::delete_docker_image(&deployment_id_string, &image_id).await;
 	log::trace!("Docker image deleted");
 	Ok(())
+}
+
+pub(super) async fn delete_deployment(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	_config: &Settings,
+	region: &str,
+) -> Result<(), Error> {
+	// Get credentails for aws lightsail
+	log::trace!("getting credentials from lightsail");
+	let client = get_lightsail_client(region);
+
+	// certificate needs to be detached inorder to get deleted but there is no
+	// endpoint to detach the certificate
+
+	log::trace!("deleting deployment");
+
+	client
+		.delete_container_service()
+		.set_service_name(Some(hex::encode(&deployment_id)))
+		.send()
+		.await
+		.map_err(|err| {
+			log::error!("Error during deletion of service, {}", err);
+			err
+		})?;
+	log::trace!("deployment deleted successfully!");
+
+	Ok(())
+}
+
+pub(super) async fn get_container_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	_config: &Settings,
+) -> Result<String, Error> {
+	log::info!("retreiving deployment info from db");
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if provider.parse().ok() != Some(CloudPlatform::Aws) {
+		log::error!(
+			"Provider in deployment region is {}, but AWS logs were requested.",
+			provider
+		);
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+
+	// Get credentails for aws lightsail
+	log::trace!("getting credentails from aws lightsail");
+	let client = get_lightsail_client(region);
+	log::info!("getting logs from aws");
+	let logs = client
+		.get_container_log()
+		.set_service_name(Some(hex::encode(&deployment_id)))
+		.set_container_name(Some(hex::encode(&deployment_id)))
+		.send()
+		.await
+		.map_err(|err| {
+			log::error!("Error during deletion of service, {}", err);
+			err
+		})?
+		.log_events
+		.map(|events| {
+			events
+				.into_iter()
+				.filter_map(|event| event.message)
+				.collect::<Vec<_>>()
+				.join("\n")
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	log::info!("logs retreived successfully!");
+	Ok(logs)
+}
+
+fn get_lightsail_client(region: &str) -> lightsail::Client {
+	let deployment_region = lightsail::Region::new(region.to_string());
+	let client_builder = lightsail::Config::builder()
+		.region(Some(deployment_region))
+		.build();
+	lightsail::Client::from_conf(client_builder)
 }
 
 async fn create_container_service(
 	deployment_id: &str,
 	label_name: &str,
 	new_repo_name: &str,
+	region: &str,
 	client: &lightsail::Client,
 ) -> Result<String, Error> {
 	let created_service = client
@@ -154,7 +271,8 @@ async fn create_container_service(
 	}
 	log::trace!("container service created");
 
-	push_image_to_lightsail(deployment_id, new_repo_name, label_name).await?;
+	push_image_to_lightsail(deployment_id, new_repo_name, label_name, region)
+		.await?;
 	log::trace!("pushed the container into aws registry");
 
 	let default_url = created_service
@@ -163,7 +281,7 @@ async fn create_container_service(
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-	Ok(default_url)
+	Ok(default_url.replace("https://", "").replace("/", ""))
 }
 
 async fn app_exists(
@@ -254,6 +372,7 @@ async fn push_image_to_lightsail(
 	deployment_id: &str,
 	new_repo_name: &str,
 	label_name: &str,
+	region: &str,
 ) -> Result<(), Error> {
 	let output = Command::new("aws")
 		.arg("lightsail")
@@ -263,7 +382,7 @@ async fn push_image_to_lightsail(
 		.arg("--image")
 		.arg(format!("{}:latest", new_repo_name))
 		.arg("--region")
-		.arg("us-east-2")
+		.arg(region)
 		.arg("--label")
 		.arg(&label_name)
 		.stdout(Stdio::piped())
@@ -313,21 +432,36 @@ async fn update_container_service_with_patr_domain(
 	client
 		.update_container_service()
 		.service_name(deployment_id)
-		.public_domain_names(&sub_domain, vec![sub_domain.clone()])
+		.is_disabled(false)
+		.public_domain_names(
+			format!("{}-certificate", deployment_id),
+			vec![sub_domain],
+		)
 		.send()
 		.await?;
 
 	Ok(())
 }
 
-async fn create_certificate_for_deployment(
+async fn create_certificate_if_not_available(
 	deployment_id: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
+	let domain_name = format!("{}.patr.cloud", deployment_id);
+	let cert_name = format!("{}-certificate", deployment_id);
+	log::trace!("checking if the certificate exists for the current domain");
+	let certificate_info =
+		get_cname_and_value_from_aws(&cert_name, client).await;
+
+	if certificate_info.is_ok() {
+		log::trace!("certificate exists");
+		return certificate_info;
+	}
+	log::trace!("creating new certificate");
 	let certificte_name = client
 		.create_certificate()
-		.certificate_name(format!("{}.patr.cloud", deployment_id))
-		.domain_name(format!("{}.patr.cloud", deployment_id))
+		.certificate_name(&cert_name)
+		.domain_name(domain_name)
 		.send()
 		.await?
 		.certificate
@@ -336,35 +470,95 @@ async fn create_certificate_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let certificate_domain_validation_record = client
-		.get_certificates()
-		.certificate_name(certificte_name)
-		.include_certificate_details(true)
-		.send()
-		.await?
-		.certificates
-		.map(|certificate_summary_list| {
-			certificate_summary_list.into_iter().next()
-		})
-		.flatten()
-		.map(|certificate_summary| certificate_summary.certificate_detail)
-		.flatten()
-		.map(|cert| cert.domain_validation_records)
-		.flatten()
-		.map(|domain_validation_record| {
-			domain_validation_record.into_iter().next()
-		})
-		.flatten()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let (cname, value) = certificate_domain_validation_record
-		.resource_record
-		.map(|record| record.name.zip(record.value))
-		.flatten()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let (cname, value) =
+		get_cname_and_value_from_aws(&certificte_name, client).await?;
 
 	log::trace!("certificate created");
 	Ok((cname, value))
+}
+
+async fn get_cname_and_value_from_aws(
+	cert_name: &str,
+	client: &lightsail::Client,
+) -> Result<(String, String), Error> {
+	loop {
+		let certificate_domain_validation_record = client
+			.get_certificates()
+			.certificate_name(cert_name)
+			.include_certificate_details(true)
+			.send()
+			.await?
+			.certificates
+			.map(|certificate_summary_list| {
+				certificate_summary_list.into_iter().next()
+			})
+			.flatten()
+			.map(|certificate_summary| certificate_summary.certificate_detail)
+			.flatten()
+			.map(|cert| cert.domain_validation_records)
+			.flatten()
+			.map(|domain_validation_record| {
+				domain_validation_record.into_iter().next()
+			})
+			.flatten()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		if certificate_domain_validation_record.domain_name.is_some() &&
+			certificate_domain_validation_record
+				.resource_record
+				.is_some()
+		{
+			let (cname, value) = certificate_domain_validation_record
+				.resource_record
+				.map(|record| record.name.zip(record.value))
+				.flatten()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+			return Ok((cname, value));
+		} else if certificate_domain_validation_record.domain_name.is_none() {
+			break;
+		}
+		time::sleep(Duration::from_millis(1000)).await;
+	}
+
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+}
+
+async fn wait_for_certificate_validation(
+	deployment_id_string: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	loop {
+		let certificate_status = client
+			.get_certificates()
+			.certificate_name(format!("{}-certificate", deployment_id_string))
+			.include_certificate_details(true)
+			.send()
+			.await?
+			.certificates
+			.map(|certificate_summary_list| {
+				certificate_summary_list.into_iter().next()
+			})
+			.flatten()
+			.map(|certificate_summary| certificate_summary.certificate_detail)
+			.flatten()
+			.map(|cert| cert.status)
+			.flatten()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		if certificate_status == CertificateStatus::Issued {
+			return Ok(());
+		} else if certificate_status == CertificateStatus::PendingValidation {
+			time::sleep(Duration::from_millis(1000)).await;
+		} else {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
 }

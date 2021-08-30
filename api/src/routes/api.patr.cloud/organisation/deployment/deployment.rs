@@ -135,6 +135,99 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.post(
+		"/:deploymentId/start",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(start_deployment)),
+		],
+	);
+
+	app.post(
+		"/:deploymentId/stop",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(stop_deployment)),
+		],
+	);
+
+	app.get(
+		"/:deploymentId/logs",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_logs)),
+		],
+	);
+
 	// Delete a deployment
 	app.delete(
 		"/:deploymentId/",
@@ -216,6 +309,7 @@ async fn list_deployments(
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			}))
 		} else {
 			Some(json!({
@@ -225,6 +319,7 @@ async fn list_deployments(
 				request_keys::IMAGE_NAME: deployment.image_name?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			}))
 		}
 	})
@@ -320,6 +415,15 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let region = body
+		.get(request_keys::REGION)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
 	let deployment_id = service::create_deployment_in_organisation(
 		context.get_database_connection(),
 		&organisation_id,
@@ -328,6 +432,8 @@ async fn create_deployment(
 		repository_id,
 		image_name,
 		image_tag,
+		region,
+		&config,
 	)
 	.await?;
 
@@ -393,6 +499,7 @@ async fn get_deployment_info(
 				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id.status(500)?),
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			})
 		} else {
 			json!({
@@ -402,62 +509,23 @@ async fn get_deployment_info(
 				request_keys::IMAGE_NAME: deployment.image_name.status(500)?,
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
+				request_keys::REGION: deployment.region,
 			})
 		},
 	);
 	Ok(context)
 }
 
-/*
-Documentation for functions yet to come:
-
-
-fn get_deployment_config:
 /// # Description
-/// This function is used to get the configuration of the deployment
+/// This function is used to start a deployment
 /// required inputs:
-/// deploymentId
+/// deploymentId in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
 ///   database connection, body,
 /// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success:
-///    environmentVariables: []
-///    exposedPorts: []
-///    persistentVolumes: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-
-
-fn update_deployment_config:
-/// # Description
-/// This function is used to store the port, env variables and mount path
-/// required inputs:
-/// ```
-/// {
-///    exposedPorts:[]
-///    environmentVariables:[]
-///    persistentVolumes: []
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
 ///   function
 ///
 /// # Returns
@@ -471,7 +539,121 @@ fn update_deployment_config:
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-*/
+async fn start_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// start the container running the image, if doesn't exist
+	let config = context.get_state().config.clone();
+	service::start_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to stop a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn stop_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// stop the running container, if it exists
+	let config = context.get_state().config.clone();
+	service::stop_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the logs of a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_logs(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	// stop the running container, if it exists
+	let config = context.get_state().config.clone();
+	let logs = service::get_deployment_container_logs(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::LOGS: logs,
+	}));
+	Ok(context)
+}
 
 /// # Description
 /// This function is used to delete deployment
@@ -503,14 +685,10 @@ async fn delete_deployment(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	db::get_deployment_by_id(context.get_database_connection(), &deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::delete_deployment_from_digital_ocean(
+	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,

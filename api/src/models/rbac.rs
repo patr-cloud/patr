@@ -54,7 +54,6 @@ pub mod permissions {
 			pub const CREATE: &str = "organisation::deployment::create";
 			pub const INFO: &str = "organisation::deployment::info";
 			pub const DELETE: &str = "organisation::deployment::delete";
-			#[allow(dead_code)]
 			pub const EDIT: &str = "organisation::deployment::edit";
 
 			#[allow(dead_code)]

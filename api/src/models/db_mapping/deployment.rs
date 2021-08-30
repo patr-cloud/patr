@@ -59,6 +59,7 @@ pub struct Deployment {
 	pub status: DeploymentStatus,
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
+	pub region: String,
 }
 
 impl Deployment {
@@ -150,7 +151,7 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
-#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
+#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
 #[sqlx(type_name = "CLOUD_PLATFORM", rename_all = "lowercase")]
 pub enum CloudPlatform {
 	Aws,
@@ -160,8 +161,8 @@ pub enum CloudPlatform {
 impl Display for CloudPlatform {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			CloudPlatform::Aws => write!(f, "aws"),
-			CloudPlatform::DigitalOcean => write!(f, "digitalocean"),
+			Self::Aws => write!(f, "aws"),
+			Self::DigitalOcean => write!(f, "do"),
 		}
 	}
 }
@@ -171,8 +172,8 @@ impl FromStr for CloudPlatform {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"aws" => Ok(Self::Aws),
-			"digitalocean" => Ok(Self::DigitalOcean),
+			"aws" | "amazon" | "amazon_web_services" => Ok(Self::Aws),
+			"do" | "digitalocean" | "digital_ocean" => Ok(Self::DigitalOcean),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

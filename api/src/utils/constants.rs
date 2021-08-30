@@ -158,4 +158,5 @@ pub mod request_keys {
 	pub const DATABASE_PLAN: &str = "databasePlan";
 	pub const CONNECTION: &str = "publicConnection";
 	pub const MANAGED_DATABASE_NAME: &str = "managedDatabaseName";
+	pub const LOGS: &str = "logs";
 }

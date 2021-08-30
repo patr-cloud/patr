@@ -58,7 +58,6 @@ pub async fn create_database_cluster(
 					name,
 					version,
 					engine,
-					num_nodes,
 					region,
 					organisation_id,
 				)
@@ -431,106 +430,83 @@ async fn create_database_on_aws(
 	log::trace!("parsing region");
 	let region = parse_region(&region)?;
 
-	let client = get_lightsail_client(&region);
+	// let client = get_lightsail_client(&region);
 
-	let db_name = format!("{}-{}", organisation_id, name);
+	// let db_name = format!("{}-{}", organisation_id, name);
 	log::trace!("sending the create db cluster request to aws");
-	let database_cluster = client
-		.post("https://api.digitalocean.com/v2/databases")
-		.bearer_auth(&settings.digital_ocean_api_key)
-		.json(&DatabaseConfig {
-			name: db_name, // should be unique
-			engine,
-			version,
-			num_nodes,
-			size: "db-s-1vcpu-1gb".to_string(),
-			region: region.to_string(),
-		})
-		.send()
-		.await?
-		.json::<DatabaseResponse>()
-		.await?;
 	log::trace!("database created");
 	log::trace!("generating new resource");
-	let resource_id =
-		db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
-			.await?;
-	let resource_id = resource_id.as_bytes();
+	// let resource_id =
+	// 	db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
+	// 		.await?;
+	// let resource_id = resource_id.as_bytes();
 
-	let organisation_id = hex::decode(&organisation_id).unwrap();
+	// let organisation_id = hex::decode(&organisation_id).unwrap();
 
-	db::create_resource(
-		app.database.acquire().await?.deref_mut(),
-		resource_id,
-		&format!("do-database-{}", name),
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::MANAGED_DATABASE)
-			.unwrap(),
-		&organisation_id,
-		get_current_time_millis(),
-	)
-	.await?;
+	// db::create_resource(
+	// 	app.database.acquire().await?.deref_mut(),
+	// 	resource_id,
+	// 	&format!("do-database-{}", name),
+	// 	rbac::RESOURCE_TYPES
+	// 		.get()
+	// 		.unwrap()
+	// 		.get(rbac::resource_types::MANAGED_DATABASE)
+	// 		.unwrap(),
+	// 	&organisation_id,
+	// 	get_current_time_millis(),
+	// )
+	// .await?;
 	log::trace!("resource generation complete");
 
 	log::trace!("creating entry for newly created managed database");
-	db::create_managed_database(
-		app.database.acquire().await?.deref_mut(),
-		resource_id,
-		&database_cluster.database.name,
-		CloudPlatform::DigitalOcean,
-		&organisation_id,
-	)
-	.await?;
+	// db::create_managed_database(
+	// 	app.database.acquire().await?.deref_mut(),
+	// 	resource_id,
+	// 	&database_cluster.database.name,
+	// 	CloudPlatform::DigitalOcean,
+	// 	&organisation_id,
+	// )
+	// .await?;
 
 	log::trace!("updating to the db status to creating");
 	// wait for database to start
-	db::update_managed_database_status(
-		app.database.acquire().await?.deref_mut(),
-		resource_id,
-		&ManagedDatabaseStatus::Creating,
-	)
-	.await?;
+	// db::update_managed_database_status(
+	// 	app.database.acquire().await?.deref_mut(),
+	// 	resource_id,
+	// 	&ManagedDatabaseStatus::Creating,
+	// )
+	// .await?;
 
 	log::trace!("waiting for databse to be online");
-	wait_for_database_cluster_to_be_online(
-		app.database.acquire().await?.deref_mut(),
-		settings,
-		resource_id,
-		&database_cluster.database.id,
-		client,
-	)
-	.await?;
+	// wait_for_database_cluster_to_be_online(
+	// 	app.database.acquire().await?.deref_mut(),
+	// 	settings,
+	// 	resource_id,
+	// 	&database_cluster.database.id,
+	// 	client,
+	// )
+	// .await?;
 	log::trace!("database online");
 
 	log::trace!("updating the entry after the database is online");
-	db::update_managed_database(
-		app.database.acquire().await?.deref_mut(),
-		&database_cluster.database.name,
-		&database_cluster.database.id,
-		&database_cluster.database.engine,
-		&database_cluster.database.version,
-		database_cluster.database.num_nodes as i32,
-		&database_cluster.database.size,
-		&database_cluster.database.region,
-		ManagedDatabaseStatus::Running,
-		&database_cluster.database.connection.host,
-		database_cluster.database.connection.port as i32,
-		&database_cluster.database.connection.user,
-		&database_cluster.database.connection.password,
-		&organisation_id,
-	)
-	.await?;
+	// db::update_managed_database(
+	// 	app.database.acquire().await?.deref_mut(),
+	// 	&database_cluster.database.name,
+	// 	&database_cluster.database.id,
+	// 	&database_cluster.database.engine,
+	// 	&database_cluster.database.version,
+	// 	database_cluster.database.num_nodes as i32,
+	// 	&database_cluster.database.size,
+	// 	&database_cluster.database.region,
+	// 	ManagedDatabaseStatus::Running,
+	// 	&database_cluster.database.connection.host,
+	// 	database_cluster.database.connection.port as i32,
+	// 	&database_cluster.database.connection.user,
+	// 	&database_cluster.database.connection.password,
+	// 	&organisation_id,
+	// )
+	// .await?;
 	log::trace!("database successfully updated");
 
 	Ok(())
-}
-
-fn get_lightsail_client(region: &str) -> lightsail::Client {
-	let deployment_region = lightsail::Region::new(region.to_string());
-	let client_builder = lightsail::Config::builder()
-		.region(Some(deployment_region))
-		.build();
-	lightsail::Client::from_conf(client_builder)
 }
