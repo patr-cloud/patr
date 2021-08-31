@@ -277,6 +277,12 @@ pub async fn stop_deployment(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
 
 	Ok(())
 }
