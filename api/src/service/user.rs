@@ -8,6 +8,20 @@ use crate::{
 	Database,
 };
 
+/// # Description
+/// This functions adds personal email id to the email_address to be verified
+/// table
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `email_address` - a string containing email address of user
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+///
+/// # Returns
+/// This function returns Result<(), Error> containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
@@ -19,7 +33,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
-	if db::get_user_by_email(connection, &email_address)
+	if db::get_user_by_email(connection, email_address)
 		.await?
 		.is_some()
 	{
@@ -29,7 +43,6 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	}
 
 	let otp = service::generate_new_otp();
-	let otp = format!("{}-{}", &otp[..3], &otp[3..]);
 
 	let token_expiry =
 		get_current_time_millis() + service::get_join_token_expiry();
@@ -43,7 +56,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		connection,
 		&email_local,
 		&personal_domain_id,
-		&user_id,
+		user_id,
 		&verification_token,
 		token_expiry,
 	)
@@ -52,6 +65,20 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to verify the email address of the user, by verifying
+/// the otp
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+/// * `email_address` - a string containing email address of user
+/// * `otp` - a string containing One-Time-Password
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn verify_personal_email_address_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -104,6 +131,20 @@ pub async fn verify_personal_email_address_for_user(
 	Ok(())
 }
 
+/// # Description
+/// This function is used to change the password of the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user_id` - an unsigned 8 bit integer array containing id of user
+/// * `old_password` - a string containing previous password of the user
+/// * `new_password` - a string containing new password of the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn change_password_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
@@ -125,7 +166,7 @@ pub async fn change_password_for_user(
 
 	let new_password = service::hash(new_password.as_bytes())?;
 
-	db::update_user_password(connection, &user_id, &new_password).await?;
+	db::update_user_password(connection, user_id, &new_password).await?;
 
 	Ok(())
 }
@@ -135,7 +176,7 @@ pub async fn update_user_backup_email(
 	user_id: &[u8],
 	email_address: &str,
 ) -> Result<(), Error> {
-	if !validator::is_email_valid(&email_address) {
+	if !validator::is_email_valid(email_address) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_EMAIL).to_string())?;
@@ -147,7 +188,7 @@ pub async fn update_user_backup_email(
 	// finally if everything checks out then change the personal email
 	db::update_backup_email_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&email_local,
 		&domain_id,
 	)
@@ -178,9 +219,9 @@ pub async fn update_user_backup_phone_number(
 
 	db::update_backup_phone_number_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&country_code.country_code,
-		&phone_number,
+		phone_number,
 	)
 	.await
 	.status(400)
@@ -197,7 +238,7 @@ pub async fn delete_personal_email_address(
 	let (email_local, domain_id) =
 		service::split_email_with_domain_id(connection, email_address).await?;
 
-	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
+	let user_data = db::get_user_by_user_id(connection, user_id).await?;
 
 	let user_data = if let Some(user_data) = user_data {
 		user_data
@@ -220,7 +261,7 @@ pub async fn delete_personal_email_address(
 
 	db::delete_personal_email_for_user(
 		connection,
-		&user_id,
+		user_id,
 		&email_local,
 		&domain_id,
 	)
@@ -247,7 +288,7 @@ pub async fn delete_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
-	let user_data = db::get_user_by_user_id(connection, &user_id).await?;
+	let user_data = db::get_user_by_user_id(connection, user_id).await?;
 
 	let user_data = if let Some(user_data) = user_data {
 		user_data
@@ -272,9 +313,9 @@ pub async fn delete_phone_number(
 
 	db::delete_phone_number_for_user(
 		connection,
-		&user_id,
-		&country_code,
-		&phone_number,
+		user_id,
+		country_code,
+		phone_number,
 	)
 	.await?;
 
@@ -304,9 +345,9 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 	db::add_phone_number_to_be_verified_for_user(
 		connection,
-		&country_code,
-		&phone_number,
-		&user_id,
+		country_code,
+		phone_number,
+		user_id,
 		&verification_token,
 		token_expiry,
 	)

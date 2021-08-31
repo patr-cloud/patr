@@ -185,7 +185,8 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					if let Some(permissions) =
 						org_permission.resources.get(&resource.id)
 					{
-						permissions.contains(&permission_required.to_string())
+						permissions
+							.contains(&(*permission_required).to_string())
 					} else {
 						false
 					}

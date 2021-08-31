@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub async fn initialize_domain_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing domain tables");
 
@@ -17,13 +17,18 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE domain(
 			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE,
+			name VARCHAR(255) NOT NULL 
+				CONSTRAINT domain_uq_name UNIQUE
+				CONSTRAINT domain_chk_name_is_lower_case 
+					CHECK(
+						name = LOWER(name)
+					),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -39,7 +44,7 @@ pub async fn initialize_domain_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -51,7 +56,7 @@ pub async fn initialize_domain_pre(
 		(is_verified);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -67,14 +72,14 @@ pub async fn initialize_domain_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_domain_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up domain tables initialization");
 	query!(
@@ -84,7 +89,7 @@ pub async fn initialize_domain_post(
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -408,7 +413,6 @@ pub async fn get_notification_email_for_domain(
 	)))
 }
 
-#[allow(dead_code)]
 pub async fn delete_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],

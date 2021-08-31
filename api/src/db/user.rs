@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub async fn initialize_users_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing user tables");
 	query!(
@@ -28,7 +28,10 @@ pub async fn initialize_users_pre(
 			id BYTEA
 				CONSTRAINT user_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL
-				CONSTRAINT user_uk_username UNIQUE,
+				CONSTRAINT user_uk_username UNIQUE
+				CONSTRAINT user_chk_username_is_lower_case CHECK(
+					username = LOWER(username)
+				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
@@ -39,9 +42,15 @@ pub async fn initialize_users_pre(
 			created BIGINT NOT NULL
 				CONSTRAINT user_chk_created_unsigned CHECK(created >= 0),
 			/* Recovery options */
-			backup_email_local VARCHAR(64),
+			backup_email_local VARCHAR(64)
+				CONSTRAINT user_chk_backup_email_is_lower_case CHECK(
+					backup_email_local = LOWER(backup_email_local)
+				),
 			backup_email_domain_id BYTEA,
-			backup_phone_country_code CHAR(2),
+			backup_phone_country_code CHAR(2)
+				CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK(
+					backup_phone_country_code = UPPER(backup_phone_country_code)
+				),
 			backup_phone_number VARCHAR(15),
 
 			CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id
@@ -63,7 +72,7 @@ pub async fn initialize_users_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -75,7 +84,7 @@ pub async fn initialize_users_pre(
 		(created);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -99,7 +108,7 @@ pub async fn initialize_users_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -111,7 +120,7 @@ pub async fn initialize_users_pre(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -123,19 +132,19 @@ pub async fn initialize_users_pre(
 					REFERENCES "user"(id),
 			token TEXT NOT NULL,
 			token_expiry BIGINT NOT NULL
-				CONSTRAINT password_reset_request_token_expiry_ck_unsigned
+				CONSTRAINT password_reset_request_token_expiry_chk_unsigned
 					CHECK(token_expiry >= 0)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_users_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up user tables initialization");
 	query!(
@@ -144,7 +153,10 @@ pub async fn initialize_users_post(
 			user_id BYTEA NOT NULL
 				CONSTRAINT personal_email_fk_user_id REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
-			local VARCHAR(64) NOT NULL,
+			local VARCHAR(64) NOT NULL
+				CONSTRAINT personal_email_chk_local_is_lower_case CHECK(
+					local = LOWER(local)
+				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT personal_email_fk_domain_id
 					REFERENCES personal_domain(id),
@@ -154,7 +166,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -166,7 +178,7 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -174,7 +186,10 @@ pub async fn initialize_users_post(
 		CREATE TABLE organisation_email(
 			user_id BYTEA NOT NULL
 				CONSTRAINT organisation_email_fk_user_id REFERENCES "user"(id),
-			local VARCHAR(64) NOT NULL,
+			local VARCHAR(64) NOT NULL
+				CONSTRAINT organisation_email_chk_local_is_lower_case CHECK(
+					local = LOWER(local)
+				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT organisation_email_fk_domain_id
 					REFERENCES organisation_domain(id),
@@ -182,7 +197,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -194,20 +209,23 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
 		CREATE TABLE phone_number_country_code(
 			country_code CHAR(2)
-				CONSTRAINT phone_number_country_code_pk PRIMARY KEY,
+				CONSTRAINT phone_number_country_code_pk PRIMARY KEY
+				CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK(
+					country_code = UPPER(country_code)
+				),
 			phone_code VARCHAR(5) NOT NULL,
 			country_name VARCHAR(80) NOT NULL
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -219,7 +237,7 @@ pub async fn initialize_users_post(
 		(phone_code);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -230,7 +248,10 @@ pub async fn initialize_users_post(
 					DEFERRABLE INITIALLY IMMEDIATE,
 			country_code CHAR(2) NOT NULL
 				CONSTRAINT user_phone_number_fk_country_code
-					REFERENCES phone_number_country_code(country_code),
+					REFERENCES phone_number_country_code(country_code)
+				CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK(
+					country_code = UPPER(country_code)
+				),
 			number VARCHAR(15) NOT NULL
 				CONSTRAINT user_phone_number_chk_number_valid CHECK(
 					LENGTH(number) >= 7 AND
@@ -243,7 +264,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -255,13 +276,16 @@ pub async fn initialize_users_post(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
 		CREATE TABLE user_unverified_personal_email(
-			local VARCHAR(64) NOT NULL,
+			local VARCHAR(64) NOT NULL
+				CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK(
+					local = LOWER(local)
+				),
 			domain_id BYTEA NOT NULL
 				CONSTRAINT user_unverified_personal_email_fk_domain_id
 					REFERENCES personal_domain(id),
@@ -282,7 +306,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -290,7 +314,10 @@ pub async fn initialize_users_post(
 		CREATE TABLE user_unverified_phone_number(
 			country_code CHAR(2) NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_country_code
-					REFERENCES phone_number_country_code(country_code),
+					REFERENCES phone_number_country_code(country_code)
+				CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK(
+					country_code = UPPER(country_code)
+				),
 			phone_number VARCHAR(15) NOT NULL,
 			user_id BYTEA NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_user_id
@@ -309,13 +336,16 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
 		CREATE TABLE user_to_sign_up(
-			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY,
+			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY
+				CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK(
+					username = LOWER(username)
+				),
 			account_type RESOURCE_OWNER_TYPE NOT NULL,
 
 			password TEXT NOT NULL,
@@ -323,14 +353,20 @@ pub async fn initialize_users_post(
 			last_name VARCHAR(100) NOT NULL,
 			
 			/* Personal email address OR backup email */
-			backup_email_local VARCHAR(64),
+			backup_email_local VARCHAR(64)
+				CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK(
+					backup_email_local = LOWER(backup_email_local)
+				),
 			backup_email_domain_id BYTEA
 				CONSTRAINT user_to_sign_up_fk_backup_email_domain_id
 					REFERENCES personal_domain(id),
 
 			backup_phone_country_code CHAR(2)
 				CONSTRAINT user_to_sign_up_fk_backup_phone_country_code
-					REFERENCES phone_number_country_code(country_code),
+					REFERENCES phone_number_country_code(country_code)
+				CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK(
+					backup_phone_country_code = UPPER(backup_phone_country_code)
+				),
 			backup_phone_number VARCHAR(15)
 				CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK(
 					LENGTH(backup_phone_number) >= 7 AND
@@ -339,10 +375,18 @@ pub async fn initialize_users_post(
 				),
 
 			/* Organisation email address */
-			org_email_local VARCHAR(64),
-			org_domain_name VARCHAR(100),
-			organisation_name VARCHAR(100),
-
+			org_email_local VARCHAR(64)
+				CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK(
+					org_email_local = LOWER(org_email_local)
+				),
+			org_domain_name VARCHAR(100)
+				CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK(
+					org_domain_name = LOWER(org_domain_name)
+				),
+			organisation_name VARCHAR(100)
+				CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK(
+					organisation_name = LOWER(organisation_name)
+				),
 			otp_hash TEXT NOT NULL,
 			otp_expiry BIGINT NOT NULL
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
@@ -383,7 +427,7 @@ pub async fn initialize_users_post(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -395,7 +439,7 @@ pub async fn initialize_users_post(
 		(otp_expiry);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -407,7 +451,7 @@ pub async fn initialize_users_post(
 		(username, otp_expiry);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -427,7 +471,7 @@ pub async fn initialize_users_post(
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// add user id as a foreign key
@@ -448,7 +492,7 @@ pub async fn initialize_users_post(
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -710,7 +754,7 @@ pub async fn initialize_users_post(
 			($$ZW$$, $$263$$, $$Zimbabwe$$);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -1002,7 +1046,6 @@ pub async fn get_god_user_id(
 			"user"
 		ORDER BY
 			created
-		DESC
 		LIMIT 1;
 		"#
 	)
@@ -2255,7 +2298,8 @@ pub async fn get_all_organisations_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<Organisation>, sqlx::Error> {
-	let organisations = query!(
+	let organisations = query_as!(
+		Organisation,
 		r#"
 		SELECT DISTINCT
 			organisation.*
@@ -2272,16 +2316,7 @@ pub async fn get_all_organisations_for_user(
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| Organisation {
-		id: row.id,
-		name: row.name,
-		super_admin_id: row.super_admin_id,
-		active: row.active,
-		created: row.created as u64,
-	})
-	.collect();
+	.await?;
 
 	Ok(organisations)
 }

@@ -14,6 +14,23 @@ mod sms;
 pub use email::*;
 pub use sms::*;
 
+/// # Description
+/// This function is used to notify the user that their sign up has been
+/// successfully completed. This will ideally introduce them to the platform and
+/// give them details on what they can do
+///
+/// # Arguments
+/// * `welcome_email` - an Option<String> containing either String which has
+/// user's personal or organisation email to send a welcome notification to or
+/// `None`
+/// * `backup_email` - an Option<String> containing either String which has
+/// user's backup email to send a verification email to or `None`
+/// * `backup_phone_number` - an Option<String> containing either String which
+/// has user's backup phone number to send a verification sms to or `None`
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
 pub async fn send_sign_up_complete_notification(
 	welcome_email: Option<String>,
 	backup_email: Option<String>,
@@ -22,27 +39,36 @@ pub async fn send_sign_up_complete_notification(
 	if let Some(welcome_email) = welcome_email {
 		email::send_sign_up_completed_email(welcome_email.parse()?).await?;
 	}
-
 	if let Some(backup_email) = backup_email {
 		email::send_backup_registration_mail(backup_email.parse()?).await?;
 	}
-
 	if let Some(phone_number) = backup_phone_number {
 		sms::send_backup_registration_sms(&phone_number).await?;
 	}
 	Ok(())
 }
 
+/// # Description
+/// This function is used to send otp to the user for sign-up
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`UserToSignUp`]
+/// * `otp` - a string containing otp to be sent
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_sign_up_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: UserToSignUp,
 	otp: &str,
 ) -> Result<(), Error> {
 	// chcek if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -50,12 +76,9 @@ pub async fn send_user_sign_up_otp(
 			&backup_email_local,
 		)
 		.await?;
-
-		email::send_user_verification_otp(email.parse()?, otp).await?;
-	} else if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+		email::send_user_verification_otp(email.parse()?, otp).await
+	} else if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		// check if phone number is given as a backup
 		let phone_number = get_user_phone_number(
@@ -64,24 +87,34 @@ pub async fn send_user_sign_up_otp(
 			&phone_number,
 		)
 		.await?;
-
-		sms::send_user_verification_otp(&phone_number, otp).await?;
+		sms::send_user_verification_otp(&phone_number, otp).await
+	} else {
+		Err(Error::empty()
+			.status(400)
+			.body(error!(NO_RECOVERY_OPTIONS).to_string()))
 	}
-
-	Ok(())
 }
 
-// This function will send the given otp to all the backup options available for
-// the given user.
+/// # Description
+/// This function is used to notify the user on all the backup options that
+/// their password has been changed
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_password_changed_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	// chcek if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	// check if email is given as a backup option
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -89,15 +122,11 @@ pub async fn send_password_changed_notification(
 			&backup_email_local,
 		)
 		.await?;
-
 		email::send_password_changed_notification(email.parse()?).await?;
 	}
-
 	// check if phone number is given as a backup
-	if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+	if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -105,21 +134,29 @@ pub async fn send_password_changed_notification(
 			&phone_number,
 		)
 		.await?;
-
 		sms::send_password_changed_notification(&phone_number).await?;
 	}
 	Ok(())
 }
 
-// reset password
+/// # Description
+/// This function is used to notify the user that their password has been reset
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_user_reset_password_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
-		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+	if let Some((phone_country_code, phone_number)) =
+		user.backup_phone_country_code.zip(user.backup_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -127,14 +164,10 @@ pub async fn send_user_reset_password_notification(
 			&phone_number,
 		)
 		.await?;
-
 		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
-
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
-		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+	if let Some((backup_email_domain_id, backup_email_local)) =
+		user.backup_email_domain_id.zip(user.backup_email_local)
 	{
 		let email = get_user_email(
 			connection,
@@ -142,12 +175,26 @@ pub async fn send_user_reset_password_notification(
 			&backup_email_local,
 		)
 		.await?;
-
 		email::send_user_reset_password_notification(email.parse()?).await?;
 	}
 	Ok(())
 }
 
+/// # Description
+/// This function is used to send otp incase the user forgets their password and
+/// requests for a reset of their password
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `user` - an object of type [`User`] containing all details of user
+/// * `recovery_option` - an object of type [`PreferredRecoveryOption`]
+/// * `otp` - a string containing otp to be sent to user
+///  
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
 pub async fn send_forgot_password_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
@@ -163,15 +210,14 @@ pub async fn send_forgot_password_otp(
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				&user
-					.backup_email_local
+				user.backup_email_local
+					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?;
-
 			// send email
-			email::send_forgot_password_otp(email.parse()?, otp).await?;
+			email::send_forgot_password_otp(email.parse()?, otp).await
 		}
 		PreferredRecoveryOption::BackupPhoneNumber => {
 			let phone_number = get_user_phone_number(
@@ -180,20 +226,33 @@ pub async fn send_forgot_password_otp(
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				&user
-					.backup_phone_number
+				user.backup_phone_number
+					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
 			.await?;
 			// send SMS
-			sms::send_forgot_password_otp(&phone_number, otp).await?;
+			sms::send_forgot_password_otp(&phone_number, otp).await
 		}
-	};
-
-	Ok(())
+	}
 }
 
+/// # Description
+/// This function is used to get the user's email address, from a local email
+/// and a domain ID
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `domain_id` - An unsigned 8 bit integer array containing id of
+/// organisation domain
+/// * `email_string` - a string containing user's email_local
+///  
+/// # Returns
+/// This function returns `Result<String, Error>` containing user's email
+/// address or an error
+///
+/// [`Transaction`]: Transaction
 async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
@@ -206,6 +265,20 @@ async fn get_user_email(
 	Ok(email)
 }
 
+/// # Description
+/// This function is used to get the user's complete phone number, with the
+/// country code
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `country_code` - a string containing 2 letter country code
+/// * `phone_number` - a string containing user's phone number
+///  
+/// # Returns
+/// This function returns `Result<String, Error>` containing user's complete
+/// phone number or an error
+///
+/// [`Transaction`]: Transaction
 async fn get_user_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
@@ -216,7 +289,6 @@ async fn get_user_phone_number(
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
-
 	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
 	Ok(phone_number)
 }

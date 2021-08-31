@@ -10,30 +10,6 @@
       "nullable": []
     }
   },
-  "023ad8d99122a09227a1385cc38e464716b40076d1ec79a2f299a7b7d8e2b88a": {
-    "query": "INSERT INTO deployment_persistent_volume VALUES ($1, $2, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "02b90d8644ab15c0351c841bce9820ff50cfe54ab9a88a5a58fea91708c13a5f": {
-    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), phone_number VARCHAR(15) NOT NULL, user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "04f0db6568374c080244726310f725c954c0c830705cda822efc3a223fa2aaee": {
     "query": "CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM( 'personal', 'organisation' );",
     "describe": {
@@ -52,16 +28,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "05d4329b320e74565551e57e2419b8a312b019bd441b7e91b966c1e2937eaf4d": {
-    "query": "CREATE TABLE portus_tunnel( id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_ssh_port_u16 CHECK(ssh_port >= 0 AND ssh_port <= 65534), exposed_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_exposed_port_u16 CHECK(exposed_port >= 0 AND exposed_port <= 65534), name VARCHAR(50) NOT NULL, created BIGINT NOT NULL CONSTRAINT portus_tunnel_chk_created_unsigned CHECK(created >= 0) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -131,19 +97,6 @@
       "nullable": []
     }
   },
-  "0e061bada74003105b8bc4c2da0937c92a7c1f80b2b420a15dc62cc396a4894d": {
-    "query": "INSERT INTO deployment_upgrade_path_machine_type VALUES ($1, $2);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "0e697016c2da3ccb203f0ef61068ee1228e25a7fe59a5228385bf194eb8731ac": {
     "query": "SELECT resource_type.* FROM resource_type INNER JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = $1;",
     "describe": {
@@ -176,77 +129,17 @@
       ]
     }
   },
-  "12b348ffdebe72e3058a63fa33fc3a124189e62c1c61d505cbc03a03fd3736bf": {
-    "query": "SELECT deployment_entry_point.id, deployment_entry_point.sub_domain, deployment_entry_point.domain_id, deployment_entry_point.path, deployment_entry_point.entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_entry_point.deployment_id, deployment_entry_point.deployment_port, deployment_entry_point.url FROM deployment_entry_point INNER JOIN resource ON deployment_entry_point.id = resource.id WHERE resource.owner_id = $1;",
+  "124c4789134d31861ed5682f3769ca275c6ead752b6681258b087ee7c85c8eb3": {
+    "query": "UPDATE deployment SET deployed_image = $1 WHERE id = $2;",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "sub_domain",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "path",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "entry_point_type: DeploymentEntryPointType",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_entry_point_type",
-              "kind": {
-                "Enum": [
-                  "deployment",
-                  "redirect",
-                  "proxy"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 6,
-          "name": "deployment_port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "url",
-          "type_info": "Text"
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Left": [
+          "Text",
           "Bytea"
         ]
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true
-      ]
+      "nullable": []
     }
   },
   "12ec65904ba0d3fc836a99a97125cc5d43442d0cc6d5c24a2d79a824a0d128fc": {
@@ -263,94 +156,29 @@
       "nullable": []
     }
   },
-  "1313e9b7345e378eccff29bad222a6533ccf50a9d69d08e2cd673bd3a8651343": {
-    "query": "SELECT * FROM \"user\" ORDER BY created DESC LIMIT 1;",
+  "140b335ed19341657d84d58a614bafcbed062124f5575c2dc6249adbbd12daea": {
+    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "dob",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "bio",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "location",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "created",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 9,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "backup_email_domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 11,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Left": []
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true
-      ]
+      "nullable": []
+    }
+  },
+  "155302b5a5470a22c1cf4bf9d09afc3a7a0be759dbcebbf80131742737be68a8": {
+    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
     }
   },
   "15754548332233512bc74364ad9ebb4ee076cfa1c8555b5c4740c12d2c85b4b0": {
@@ -376,11 +204,6 @@
           "ordinal": 3,
           "name": "active",
           "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -389,7 +212,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -446,11 +268,6 @@
           "ordinal": 4,
           "name": "name",
           "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -463,13 +280,12 @@
         false,
         false,
         false,
-        false,
         false
       ]
     }
   },
-  "17a939d999365a1af9058019c73d2750ddd19dbf913eaea09a9d036ecd23cdfa": {
-    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY, account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64), org_domain_name VARCHAR(100), organisation_name VARCHAR(100), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+  "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
+    "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -478,8 +294,8 @@
       "nullable": []
     }
   },
-  "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
-    "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);",
+  "1823d5e9a531af6335bd8319531dec5362092c41e21f861335981b5d4c8f806a": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digital_ocean_app_id TEXT CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -512,36 +328,87 @@
       "nullable": []
     }
   },
-  "1a5c06c8b844624a275de36242dccd10d27827c29ec3fa0711ceb2aa711e7d71": {
-    "query": "CREATE TABLE deployment_upgrade_path_machine_type( upgrade_path_id BYTEA NOT NULL CONSTRAINT deployment_upgrade_path_machine_type_fk_upgrade_path_id REFERENCES deployment_upgrade_path(id), machine_type_id BYTEA NOT NULL CONSTRAINT deployment_upgrade_path_machine_type_fk_machine_type_id REFERENCES deployment_machine_type(id), CONSTRAINT deployment_upgrade_path_machine_type_pk PRIMARY KEY (upgrade_path_id, machine_type_id) );",
+  "1b8ad60da7f9929eb9165d3bf71feec2de372fb0fb50c54f90c8ee62cd1c3790": {
+    "query": "SELECT id, name, registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digital_ocean_app_id FROM deployment WHERE id = $1;",
     "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "1c684958ba50d81ed717f450b0c04d59688e2d1d9ec9e1ba7b10e8ab152f1a9e": {
-    "query": "DELETE FROM deployment_upgrade_path WHERE id = $1;",
-    "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digital_ocean_app_id",
+          "type_info": "Text"
+        }
+      ],
       "parameters": {
         "Left": [
           "Bytea"
         ]
       },
-      "nullable": []
-    }
-  },
-  "1c8d4fd66ca5d3500c65672a36b1b6931a2f37ac3bddfb1f75a59c5aa3a8a81d": {
-    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true
+      ]
     }
   },
   "1d910355f58fd3f630a39be384b98423a9abfc38721774e0d0d83080581433d4": {
@@ -601,18 +468,6 @@
         "Left": [
           "Bytea",
           "Bytea",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "1efc33c9afc182e9d3763cf29ef31a3c73a6b0c2dff079a8bf543533ba5311a8": {
-    "query": "DELETE FROM deployment_entry_point WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
           "Bytea"
         ]
       },
@@ -765,6 +620,22 @@
       "nullable": []
     }
   },
+  "239bbb35218f13adc811f8f262b5e8f75233129cc332d2e53b6568706d8e88f8": {
+    "query": "INSERT INTO resource VALUES ($1, $2, $3, $4, $5);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Bytea",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "24651378057df5d6b31be9a55d60d02884c8c9d9f7cb441254a408e7dc4f05b9": {
     "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;",
     "describe": {
@@ -845,11 +716,6 @@
           "ordinal": 4,
           "name": "name",
           "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -858,7 +724,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -899,14 +764,89 @@
       ]
     }
   },
-  "281fecaf8d29a8b8634345ecccd0f1bd162b889d16185643f0d195419beaa098": {
-    "query": "CREATE TABLE deployment_environment_variable( deployment_id BYTEA CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(50) NOT NULL, value VARCHAR(50) NOT NULL, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name) );",
+  "2970c3b15bae9d31fc63a1e65ac913255d333f6f3dc22f415a89b121f4e67eda": {
+    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.deployed_image, deployment.digital_ocean_app_id FROM deployment INNER JOIN resource ON deployment.id = resource.id LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( registry != 'registry.patr.cloud' AND image_name = $1 ) ) AND image_tag = $2 AND resource.owner_id = $3;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digital_ocean_app_id",
+          "type_info": "Text"
+        }
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Text",
+          "Text",
+          "Bytea"
+        ]
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true
+      ]
     }
   },
   "29c6c0c77ee4addddb5f2fe4400fa72bb8b8b8e850d297e12886a94e64f46100": {
@@ -976,36 +916,14 @@
       "nullable": []
     }
   },
-  "305f05e1c135aa640d88b04320ac51dca58eb38d9e09464e4443dd0a4e54345a": {
-    "query": "SELECT * FROM deployment_machine_type WHERE id = $1;",
+  "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
+    "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM( 'created', /* Created, but nothing pushed to it yet */ 'pushed', /* Something is pushed, but the system has not deployed it yet */ 'deploying', /* Something is pushed, and the system is currently deploying it */ 'running', /* Deployment is running successfully */ 'stopped', /* Deployment is stopped by the user */ 'errored', /* Deployment is stopped because of too many errors */ 'deleted' /* Deployment is deleted by the user */ );",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "cpu_count",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 2,
-          "name": "memory_count",
-          "type_info": "Float4"
-        }
-      ],
+      "columns": [],
       "parameters": {
-        "Left": [
-          "Bytea"
-        ]
+        "Left": []
       },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "307345f2a5c65e8f92e5e1efff4d6b9975d1405095cb5e31dc91bc4e58b9f783": {
@@ -1173,6 +1091,16 @@
       "nullable": []
     }
   },
+  "373f49a79215c14fff9b20f486d990ad59e47d670c7c95e11b2a205a3ff891cf": {
+    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
     "describe": {
@@ -1193,6 +1121,106 @@
       "nullable": []
     }
   },
+  "3b6eab880413532e0812fc30a20ddb61b037543c908ea084b94c6da667bfeba9": {
+    "query": "SELECT * FROM \"user\" ORDER BY created LIMIT 1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "3be319c2ba802f3b5c8e3f3b262951a61f49aae4599de3f2a86d0ec4b3f86bf6": {
+    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT organisation_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3cb20f213827519db975ea8e9b37a716ddbabeaba861ec1c9f7cb9485dded728": {
     "query": "UPDATE organisation_domain SET is_verified = TRUE WHERE id = $1;",
     "describe": {
@@ -1205,8 +1233,8 @@
       "nullable": []
     }
   },
-  "3cea416ed3eb6ab48c87ef349e166f2adf2abcd2eb5ce955a50ed1caf9e20c35": {
-    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
+  "3d7d9cb7f8508d11c312a20f5368b7c20bbe1cab40e6997c9db6700d408961f2": {
+    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1215,142 +1243,45 @@
       "nullable": []
     }
   },
-  "3d0c78ef163d5c1a3691b56512d8b2389181475f24461486fe6dd8f49a328658": {
-    "query": "INSERT INTO resource VALUES ($1, $2, $3, $4);",
+  "3ea0f388cd41e76f3349d7261b9f084f31701b64ad3e3229ee4865709100d72c": {
+    "query": "UPDATE deployment SET digital_ocean_app_id = $1 WHERE id = $2;",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
+          "Text",
           "Bytea"
         ]
       },
       "nullable": []
     }
   },
-  "3d8474cb9d64667180ac54f780b8153df48ab64d24c576ed70fd0c7930f376c7": {
-    "query": "SELECT deployment_entry_point.id, deployment_entry_point.sub_domain, deployment_entry_point.domain_id, deployment_entry_point.path, deployment_entry_point.entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_entry_point.deployment_id, deployment_entry_point.deployment_port, deployment_entry_point.url FROM deployment_entry_point WHERE sub_domain = $1 AND domain_id = $2 AND path = $3;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "sub_domain",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "path",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "entry_point_type: DeploymentEntryPointType",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_entry_point_type",
-              "kind": {
-                "Enum": [
-                  "deployment",
-                  "redirect",
-                  "proxy"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 6,
-          "name": "deployment_port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "url",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true
-      ]
-    }
-  },
-  "3e3be10fbf691f768380fb3a2c4bd1de88851459aaaeaa11b0bf9dc9206292c6": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.docker.vicara.co', $3, NULL, $4);",
+  "3f3db5bf71dab7a287aa95fe76ec466e2fd65cb836c3c04dde424d244fc21cd4": {
+    "query": "UPDATE deployment SET status = $1 WHERE id = $2;",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar"
+          {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          },
+          "Bytea"
         ]
       },
       "nullable": []
-    }
-  },
-  "3f3c11dd02044be65faf38b3b64035a779faf01665ff21310638960d55917257": {
-    "query": "SELECT * FROM deployment_machine_type WHERE cpu_count = $1 AND memory_count = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "cpu_count",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 2,
-          "name": "memory_count",
-          "type_info": "Float4"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int2",
-          "Float4"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "3fbd9b47a0e71cafd415cdedcede741d2f2ad4ef76b7feb8ecf226cf69ec8c05": {
@@ -1411,57 +1342,12 @@
       "nullable": []
     }
   },
-  "410b9b4a17be9a86ba3af7a7f69dc4549cc5025a3b306a2412deb213fc160c75": {
-    "query": "SELECT * FROM deployment_persistent_volume WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "path",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "4128fbdbda6f6ae313616236827d29e3c8ee9c64acc78d91047b9bb9831d5d9f": {
     "query": "CREATE TABLE organisation_domain ( id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT organisation_domain_chk_dmn_typ CHECK(domain_type = 'organisation'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT organisation_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "43378ce6df8cbf4fdffc26d48fff553eea9272cd1e49c6ae387e35980a64d0d8": {
-    "query": "UPDATE deployment_upgrade_path SET name = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -1502,87 +1388,14 @@
       "nullable": []
     }
   },
-  "4796189178bdf43e69d0adce5c1c81ba54f2420ec9a2e33884a8cb84acabd21d": {
-    "query": "ALTER TABLE deployment_upgrade_path ADD CONSTRAINT deployment_upgrade_path_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+  "474246ff3b01e3c3b111c9eeb7430c532a8a65b3810e18c2af910eeae4e7a4a6": {
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK( username = LOWER(username) ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Organisation email address */ org_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK( org_email_local = LOWER(org_email_local) ), org_domain_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK( org_domain_name = LOWER(org_domain_name) ), organisation_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK( organisation_name = LOWER(organisation_name) ), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK( ( account_type = 'personal' AND ( org_email_local IS NULL AND org_domain_name IS NULL AND organisation_name IS NULL ) ) OR ( account_type = 'organisation' AND ( org_email_local IS NOT NULL AND org_domain_name IS NOT NULL AND organisation_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "49cfc55e230e51981996807e2cbc646dd5e7955dd82388b10b057d3ebfcc4037": {
-    "query": "SELECT id, sub_domain, domain_id, path, entry_point_type as \"entry_point_type: DeploymentEntryPointType\", deployment_id, deployment_port, url FROM deployment_entry_point WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "sub_domain",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 3,
-          "name": "path",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "entry_point_type: DeploymentEntryPointType",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_entry_point_type",
-              "kind": {
-                "Enum": [
-                  "deployment",
-                  "redirect",
-                  "proxy"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 6,
-          "name": "deployment_port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "url",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true
-      ]
     }
   },
   "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
@@ -1597,50 +1410,6 @@
           "Text",
           "Int8"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "4ac9ac2a382d54c9782aba93d0a8b1b65597fbd7c3399ca81dffe4d17f25ae49": {
-    "query": "CREATE TABLE deployment_upgrade_path( id BYTEA CONSTRAINT deployment_upgrade_path_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, default_machine_type BYTEA NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "4b4487ba8d631faee6e9f6ee42b8b5ff0f560d3b29b5ebfedebf3128feb61f88": {
-    "query": "INSERT INTO deployment_machine_type VALUES ($1, $2, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Int2",
-          "Float4"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "4b540dbce4c784d22133ecc1b800ddf979dcc940fddaee745d374fa35ab824de": {
-    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "4c8250d020711eb9e5b8771e8f1b0ea04a251eedc883afa88e0e4c0374bcd20c": {
-    "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -1806,8 +1575,8 @@
       ]
     }
   },
-  "526d25feb7d1a0da23d3498b6be4c6253314f21b947271e9a6c8dc788a39a0d2": {
-    "query": "ALTER TABLE deployment_entry_point ADD CONSTRAINT deployment_entry_point_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+  "5077384c11f5fe95ca7b87498fdc22cadf66c2462b3bdec3da1b5f60b433e698": {
+    "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id BYTEA NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1970,19 +1739,6 @@
       ]
     }
   },
-  "540bc5f989f99e6daebd6b79a6192ae6117aee46dc02d00440a9e9c5c6974fcf": {
-    "query": "UPDATE deployment_entry_point SET entry_point_type = 'proxy', deployment_id = NULL, deployment_port = NULL, url = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "5803e973fb5aebfccb8ab5bb6815d0e716808a3e76fdc97702662a0f20e8776a": {
     "query": "SELECT application_id, version FROM application_version WHERE application_id = $1;",
     "describe": {
@@ -2011,6 +1767,16 @@
   },
   "58a62ba31db832c8901e6b2eae6676b999ea76084dfcfbb4ce5e57071f03abdf": {
     "query": "CREATE INDEX portus_tunnel_idx_name ON portus_tunnel (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "590ff578a9c44722785786cad76db74663d69b9ed9a2ae1ec072eff2fbe20f5d": {
+    "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2230,6 +1996,11 @@
           "ordinal": 3,
           "name": "owner_id",
           "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "created",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -2238,6 +2009,7 @@
         ]
       },
       "nullable": [
+        false,
         false,
         false,
         false,
@@ -2379,16 +2151,6 @@
       ]
     }
   },
-  "6155ec064d38d7bb9ffb58e400b363cf1092b519f31bb574e1b07b63a6885360": {
-    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_ck_unsigned CHECK(token_expiry >= 0) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "64ee3e30253dd21f030ad8dd3047dca1ac5dcd8e080942cc25bc21a75bad37ed": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, org_email_local, org_domain_name, organisation_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE org_domain_name = $1;",
     "describe": {
@@ -2507,28 +2269,12 @@
       "nullable": []
     }
   },
-  "65d9fa14d8b0b532da443a2afd899da215e5e2634b013e42314afc3892ab2c2f": {
-    "query": "CREATE TABLE deployment_exposed_port( deployment_id BYTEA CONSTRAINT deployment_exposed_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK(port >= 0 AND port <= 65534), CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port) );",
+  "6c358b1315434f217977f83c02a85672f43f7cb251a4594f25cc1616d91cd64b": {
+    "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "6c94bc5aacfc930de629e301219041a5c28fa769bda7fc1e06e1e54c5af154c2": {
-    "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'redirect', NULL, NULL, $5);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Text"
-        ]
       },
       "nullable": []
     }
@@ -2595,30 +2341,14 @@
       "nullable": []
     }
   },
-  "6fded27bef48e5f45a42e64b1e3bd0927f1a4f13e8d823fcc146ade806991c74": {
-    "query": "SELECT * FROM deployment_exposed_port WHERE deployment_id = $1;",
+  "71ff08322f8de97449cd587405c9ee718a6ecd559e60fa30ec584d455f6bfb05": {
+    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "port",
-          "type_info": "Int4"
-        }
-      ],
+      "columns": [],
       "parameters": {
-        "Left": [
-          "Bytea"
-        ]
+        "Left": []
       },
-      "nullable": [
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "7295608182b46ec27e844f5ea11527047aece89adb58dc9bcdb1a3c4eda3418c": {
@@ -2672,6 +2402,21 @@
       "nullable": []
     }
   },
+  "7414a406e3775cac0027e82259514f634af2152883e86cb7d1b199e6c6b3c559": {
+    "query": "INSERT INTO organisation VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "75bc2c480c7392db5ed625f6156487964d30fe4abbc7b81e45773a34073271f2": {
     "query": "ALTER TABLE file ADD CONSTRAINT file_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -2691,23 +2436,6 @@
           "Bytea",
           "Text",
           "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "7b5c68437d1c2c6686003926f6d821aa3bc72e8d29b392393d86173f9c76284a": {
-    "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'deployment', $5, $6, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Int4"
         ]
       },
       "nullable": []
@@ -2741,11 +2469,6 @@
           "ordinal": 4,
           "name": "name",
           "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -2758,19 +2481,8 @@
         false,
         false,
         false,
-        false,
         false
       ]
-    }
-  },
-  "7c8edaf1d6dde092f19241f722cb1f72239c24af5d801596d06ee9e43b7b8864": {
-    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE, type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
@@ -2789,20 +2501,6 @@
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "8038e82b88abf353ef3e60bac7d76d66c8ec63e16a7afa0eac39148ed349c9f5": {
-    "query": "INSERT INTO deployment_environment_variable VALUES ($1, $2, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
           "Varchar"
         ]
       },
@@ -2851,16 +2549,6 @@
       "nullable": []
     }
   },
-  "823df4fa1ff13ac3eb2c7b6d1ae5b2bec1bac057960266fe3d6c0e4f9f0c5394": {
-    "query": "CREATE TABLE deployment_entry_point( id BYTEA CONSTRAINT deployment_entry_point_pk PRIMARY KEY, sub_domain VARCHAR(255) NOT NULL DEFAULT '@', domain_id BYTEA NOT NULL CONSTRAINT deployment_entry_point_fk_domain_id REFERENCES organisation_domain(id), path VARCHAR(255) NOT NULL DEFAULT '/', entry_point_type DEPLOYMENT_ENTRY_POINT_TYPE NOT NULL, deployment_id BYTEA, deployment_port INTEGER CONSTRAINT deployment_entry_point_chk_deployment_port_u16 CHECK(deployment_port >= 0 AND deployment_port <= 65534), url TEXT, CONSTRAINT deployment_entry_point_uq_sub_domain_domain_id_path UNIQUE(sub_domain, domain_id, path), CONSTRAINT deployment_entry_point_fk_deployment_id_deployment_port FOREIGN KEY(deployment_id, deployment_port) REFERENCES deployment_exposed_port(deployment_id, port), CONSTRAINT deployment_entry_point_chk_port_url_valid CHECK( ( entry_point_type = 'deployment' AND ( deployment_id IS NOT NULL AND deployment_port IS NOT NULL AND url IS NULL ) ) OR ( ( entry_point_type = 'redirect' OR entry_point_type = 'proxy' ) AND ( deployment_id IS NULL AND deployment_port IS NULL AND url IS NOT NULL ) ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "840642ff60df5797a9282585bdf849c8737ae4ab983f6af14d3b189a05cab472": {
     "query": "SELECT * FROM portus_tunnel WHERE name = $1;",
     "describe": {
@@ -2889,11 +2577,6 @@
           "ordinal": 4,
           "name": "name",
           "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -2902,7 +2585,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -2992,11 +2674,6 @@
           "ordinal": 3,
           "name": "active",
           "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -3005,7 +2682,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -3089,16 +2765,6 @@
   },
   "8bd7a7d2e3ce79c168936248e93fdc28f92810a4435eac91b59c2fe1d83b765c": {
     "query": "ALTER TABLE organisation_domain ADD CONSTRAINT organisation_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "8c9b91161e23e9d3419987a0fc870e2255f63eb9b0ca93865b90811a5d507086": {
-    "query": "CREATE TABLE deployment_machine_type( id BYTEA CONSTRAINT deployment_machine_type_pk PRIMARY KEY, cpu_count SMALLINT NOT NULL CONSTRAINT deployment_machine_type_chk_cpu_u8 CHECK(cpu_count >= 0 AND cpu_count <= 256), memory_count REAL NOT NULL, CONSTRAINT deployment_machine_type_uq_config UNIQUE(cpu_count, memory_count) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3199,28 +2865,6 @@
       ]
     }
   },
-  "8d3d5dfed9de5e513b0c525439e5652a91ed2061d04198d07aab5d47be0984ff": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.docker.vicara.co', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.docker.vicara.co' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.docker.vicara.co' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e": {
-    "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "8e8442a69038da41e5966a479775fb1d9dbe1408096ccc93695d0c4713eb59b1": {
     "query": "DELETE FROM user_to_sign_up WHERE username = $1;",
     "describe": {
@@ -3229,32 +2873,6 @@
         "Left": [
           "Text"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "8ede0873d4389f26a8aed624c8ab9ed896b01ea0242bef20d18f137a7950b686": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, $3, NULL, $4, $5);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "8f68d37a4267bbd5a176bc66f268837212b48b9322411f826cb66f0037c414ce": {
-    "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY, phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -3292,6 +2910,22 @@
           "Bytea",
           "Varchar",
           "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "927aceafdc77e7658f7637ccbfb5d84ee5f2b63a43816cf69e06bc4e50e72ec4": {
+    "query": "INSERT INTO portus_tunnel VALUES ($1, $2, $3, $4, $5);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Int4",
+          "Int4",
+          "Varchar"
         ]
       },
       "nullable": []
@@ -3435,6 +3069,16 @@
       ]
     }
   },
+  "9be2a69720307f37f933698ee344364f79a4c4ccf00c36bbac4ebd28232853ff": {
+    "query": "CREATE TABLE organisation( id BYTEA CONSTRAINT organisation_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT organisation_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT organisation_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);",
     "describe": {
@@ -3497,38 +3141,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "a590b5c660e50cc4082d307ebf9d44fb334867b533dab88ac7b1546456bcbce2": {
-    "query": "SELECT * FROM deployment_environment_variable WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "deployment_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "value",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
@@ -3665,74 +3277,8 @@
       ]
     }
   },
-  "ac590d7384f8f9f8c6bd09f3e56f4f1d386afb9e91b58c8df11ff35347cc1ee8": {
-    "query": "INSERT INTO organisation VALUES ($1, $2, $3, $4, $5);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Bool",
-          "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "ac8c1dfa6c8d2deb23ee9a99dbad97bee322cc5fe2dd1228b28afc4951b4e3dc": {
-    "query": "SELECT * FROM deployment WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false
-      ]
-    }
-  },
-  "ad4b65bae6bf2b64c6ebb550ae6a3e2a37bb06df051b1a38f200577623d8ebd4": {
-    "query": "CREATE TYPE DEPLOYMENT_ENTRY_POINT_TYPE AS ENUM( 'deployment', 'redirect', 'proxy' );",
+  "ad518f514ee3b113ee29f433b52f6acbf2e50a93050913fdc37b7cefd519efcc": {
+    "query": "CREATE TABLE organisation_email( user_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT organisation_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id BYTEA NOT NULL CONSTRAINT organisation_email_fk_domain_id REFERENCES organisation_domain(id), CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3747,19 +3293,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "b0c35d5decb81fdf66dc7e77b025c2c093760bb9e801bfcf956b4bec09265a00": {
-    "query": "INSERT INTO deployment_exposed_port VALUES ($1, $2);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Int4"
-        ]
       },
       "nullable": []
     }
@@ -3941,23 +3474,6 @@
       "nullable": []
     }
   },
-  "bd28547f1202ec73d00ba925abf4f8e3017ec290aada5170532d409f13ef6ad6": {
-    "query": "INSERT INTO portus_tunnel VALUES ($1, $2, $3, $4, $5, $6);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Int4",
-          "Int4",
-          "Varchar",
-          "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "bd4b428ee994d1f154a88d77761c317d8a7714b61f74b401529b2b1c8ed20b85": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.org_email_local, user_to_sign_up.org_domain_name, user_to_sign_up.organisation_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
     "describe": {
@@ -4066,18 +3582,12 @@
       ]
     }
   },
-  "c0899a72fa033932f79fa55f6459db87a007a92cc5c8913f25888f8350553aa0": {
-    "query": "INSERT INTO deployment_entry_point VALUES ($1, $2, $3, $4, 'proxy', NULL, NULL, $5);",
+  "be45f80365dd7a2afa99973e5c5d058fc4cefd64fa1b8a81c5bf94e5701ca009": {
+    "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE CONSTRAINT domain_chk_name_is_lower_case CHECK( name = LOWER(name) ), type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Text"
-        ]
+        "Left": []
       },
       "nullable": []
     }
@@ -4205,16 +3715,6 @@
       ]
     }
   },
-  "c207bac613766d9ec2c2609f70317196730e4c12a844669174af7fc08bf1c0f7": {
-    "query": "CREATE TABLE resource( id BYTEA CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id BYTEA NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id BYTEA NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES organisation(id) DEFERRABLE INITIALLY IMMEDIATE, CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "c3a925e8c3a743a9f0df880e374fc65d00f881df9da6d04730310f90894e407d": {
     "query": "SELECT domain.name, personal_domain.id, personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;",
     "describe": {
@@ -4255,48 +3755,6 @@
         false,
         false
       ]
-    }
-  },
-  "c40064a892b315ab67fa8b9c87a018bf0f6ba153e91d39b5d73124ea7dad7297": {
-    "query": "SELECT * FROM deployment_upgrade_path WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "default_machine_type",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "c6feb8e474f4f1831dd1aae406a021fb6855581c2705b788eb05bfc9f65d4eb7": {
-    "query": "CREATE TABLE personal_email( user_id BYTEA NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL, domain_id BYTEA NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
@@ -4397,36 +3855,12 @@
       ]
     }
   },
-  "c7565ca977e784eb9a06989b61a2b1df8e7179853700e6cd25b5eb2054b5dc26": {
-    "query": "ALTER TABLE deployment_upgrade_path ADD CONSTRAINT deployment_upgrade_path_fk_id_default_machine_type FOREIGN KEY(id, default_machine_type) REFERENCES deployment_upgrade_path_machine_type( upgrade_path_id, machine_type_id ) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "c842c31eb3324dcb69e56439b24b7909057b220839e81bcc4638d2b4e4f27bdb": {
     "query": "CREATE TABLE organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "c8b931f7637da3acfa0bf1b4250a80890c6592efb6aa629cd0556684aa429b81": {
-    "query": "INSERT INTO deployment_upgrade_path VALUES ($1, $2, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -4453,56 +3887,6 @@
       },
       "nullable": [
         false,
-        false
-      ]
-    }
-  },
-  "cc86b395ae10fa9e982dbcbb400642065fe8e36dd02690a676537ef39e4614ab": {
-    "query": "SELECT deployment.* FROM deployment INNER JOIN resource ON deployment.id = resource.id WHERE resource.id = deployment.id AND resource.owner_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
         false
       ]
     }
@@ -4545,19 +3929,6 @@
       "nullable": []
     }
   },
-  "d1c9259691aeae3073295303e5e4a736c7fd5ba71c47f3dbdcf631e35c9a0fae": {
-    "query": "UPDATE deployment_entry_point SET entry_point_type = 'redirect', deployment_id = NULL, deployment_port = NULL, url = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "d1fe46b2a74918c7f0ee963f4bf1d32bf30e3c2e09907c3ba4799eecb2589f8e": {
     "query": "SELECT * FROM organisation_user WHERE user_id = $1 ORDER BY organisation_id;",
     "describe": {
@@ -4592,16 +3963,6 @@
   },
   "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
     "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "d342f4227b05134b27ad0f8bf9d94ae9bb5c6d708211a1830e84b975cebd7dae": {
-    "query": "CREATE TABLE deployment_persistent_volume( deployment_id BYTEA CONSTRAINT deployment_persistent_volume_fk_deployment_id REFERENCES deployment(id), name VARCHAR(50) NOT NULL, path VARCHAR(255) NOT NULL, CONSTRAINT deployment_persistent_volume_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_persistent_volume_uq_deployment_id_path UNIQUE(deployment_id, path) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4684,20 +4045,6 @@
       "nullable": []
     }
   },
-  "ddaa0c52d062c7ddc9c8c4b1284fced117897a764d37b23a0c51c4c6e1f06468": {
-    "query": "UPDATE deployment_entry_point SET entry_point_type = 'deployment', deployment_id = $1, deployment_port = $2, url = NULL WHERE id = $3;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Int4",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "dea649e4f9bfdbd55c4502fa51d5417cbfbec3b72543cc9c82c7acc7cadd6a37": {
     "query": "INSERT INTO user_unverified_phone_number VALUES ($1, $2, $3, $4, $5) ON CONFLICT(country_code, phone_number) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
     "describe": {
@@ -4709,28 +4056,6 @@
           "Bytea",
           "Text",
           "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "deec3c4f37507d0cdcd3cede7f2ed65c170692b696e4c222f4ad1d3ad672e54d": {
-    "query": "CREATE TABLE organisation( id BYTEA CONSTRAINT organisation_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT organisation_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT organisation_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, created BIGINT NOT NULL CONSTRAINT organisation_created_ck_unsigned CHECK(created >= 0) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "df168dc51dc8a4cdaa40d09b1efb644e0c3637bfb0eb4072a1cf9895b5cbea56": {
-    "query": "DELETE FROM deployment_exposed_port WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
         ]
       },
       "nullable": []
@@ -4842,65 +4167,6 @@
       ]
     }
   },
-  "e00b45df1498c5fe04057157963b92fb503dc2608da887f25156a67170ef2515": {
-    "query": "SELECT deployment_machine_type.cpu_count, deployment_machine_type.memory_count FROM deployment_upgrade_path_machine_type INNER JOIN deployment_machine_type ON deployment_machine_type.id = deployment_upgrade_path_machine_type.machine_type_id WHERE deployment_upgrade_path_machine_type.upgrade_path_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "cpu_count",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 1,
-          "name": "memory_count",
-          "type_info": "Float4"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false
-      ]
-    }
-  },
-  "e09a431e670a9f86f45e3d0f580959952e388e0e6ec34553dd912e8873a7c466": {
-    "query": "SELECT deployment_upgrade_path.* FROM deployment_upgrade_path INNER JOIN resource ON deployment_upgrade_path.id = resource.id WHERE deployment_upgrade_path.name = $1 AND resource.owner_id = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "default_machine_type",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "e1ccdf6aebae3eef774c9073a27f79aa581f9f096dac79fb8f5da81c6dc2307f": {
     "query": "UPDATE \"user\" SET first_name = $1;",
     "describe": {
@@ -4985,38 +4251,6 @@
       "nullable": []
     }
   },
-  "e513ac3f1a4cd162f2c443511df6006f8901284fd86071e397d0e09fb4836c84": {
-    "query": "SELECT deployment_upgrade_path.* FROM deployment_upgrade_path INNER JOIN resource ON resource.id = deployment_upgrade_path.id WHERE resource.owner_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "default_machine_type",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "e55e29119f1536b6d47e809a8042ff6f7c376ace4be149cb87049ecd308278e0": {
     "query": "SELECT * FROM organisation WHERE super_admin_id = $1;",
     "describe": {
@@ -5040,11 +4274,6 @@
           "ordinal": 3,
           "name": "active",
           "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -5053,7 +4282,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -5099,11 +4327,6 @@
           "ordinal": 3,
           "name": "active",
           "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "created",
-          "type_info": "Int8"
         }
       ],
       "parameters": {
@@ -5112,7 +4335,6 @@
         ]
       },
       "nullable": [
-        false,
         false,
         false,
         false,
@@ -5242,8 +4464,8 @@
       "nullable": []
     }
   },
-  "ea6e7ca20a831279d5c40045db5f75ab2b94affe018d1320adaa73db3bc7f0b6": {
-    "query": "SELECT deployment.* FROM deployment INNER JOIN resource ON deployment.id = resource.id WHERE image_name = $1 AND image_tag = $2 AND resource.owner_id = $3;",
+  "f21240c14cccf32c79357c915140f970f1cdabd3fc57c278eb6cad2a1e1af806": {
+    "query": "SELECT deployment.id, deployment.name, deployment.registry, deployment.repository_id, deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.deployed_image, deployment.digital_ocean_app_id FROM deployment INNER JOIN resource ON deployment.id = resource.id WHERE resource.id = deployment.id AND resource.owner_id = $1;",
     "describe": {
       "columns": [
         {
@@ -5275,12 +4497,40 @@
           "ordinal": 5,
           "name": "image_tag",
           "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digital_ocean_app_id",
+          "type_info": "Text"
         }
       ],
       "parameters": {
         "Left": [
-          "Text",
-          "Text",
           "Bytea"
         ]
       },
@@ -5290,20 +4540,11 @@
         false,
         true,
         true,
-        false
+        false,
+        false,
+        true,
+        true
       ]
-    }
-  },
-  "f40ff9a243ec7163aaf4231c178cac648d143ff785d045e31e517eb493d0d986": {
-    "query": "DELETE FROM deployment_persistent_volume WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
     }
   },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
@@ -5384,24 +4625,28 @@
       "nullable": []
     }
   },
+  "fbd313ebc68de05044e28858bb820a61f4f47e62b58b47e0af61c0f6c599d8cc": {
+    "query": "INSERT INTO deployment VALUES ($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "fdbfecfc96b57cbf713d6fe0e9cb5f72e7fffe27b0345d44abeb0d50397905e2": {
     "query": "CREATE INDEX organisation_domain_idx_is_verified ON organisation_domain (is_verified);",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "fdd50341f200dc586ad963c63702c1908b4857c81396a49dd3d3e1f99abbad20": {
-    "query": "DELETE FROM deployment_upgrade_path_machine_type WHERE upgrade_path_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -5461,6 +4706,16 @@
         false,
         false
       ]
+    }
+  },
+  "ff908727dc27ddb488aafa68cb7b32c061cc8ecfe14870095e35762ba4aecb9a": {
+    "query": "CREATE TABLE portus_tunnel( id BYTEA CONSTRAINT portus_tunnel_pk PRIMARY KEY, username VARCHAR(100) NOT NULL, ssh_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_ssh_port_u16 CHECK(ssh_port >= 0 AND ssh_port <= 65534), exposed_port INTEGER NOT NULL CONSTRAINT portus_tunnel_chk_exposed_port_u16 CHECK(exposed_port >= 0 AND exposed_port <= 65534), name VARCHAR(50) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   }
 }

@@ -1,18 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_macros::version;
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
-use semver::{BuildMetadata, Prerelease, Version};
+use semver::Version;
 
 use crate::{error, utils::Error};
 
-pub const DATABASE_VERSION: Version = Version {
-	major: 0,
-	minor: 0,
-	patch: 0,
-	pre: Prerelease::EMPTY,
-	build: BuildMetadata::EMPTY,
-};
+pub const DATABASE_VERSION: Version = version!();
 
 pub const APP_NAME: &str = crate_name!();
 pub const APP_VERSION: &str = crate_version!();
@@ -42,8 +37,9 @@ impl FromStr for ResourceOwnerType {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"personal" => Ok(ResourceOwnerType::Personal),
-			"organisation" => Ok(ResourceOwnerType::Organisation),
+			"personal" => Ok(Self::Personal),
+			// Disabled for the demo
+			//"organisation" => Ok(Self::Organisation),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -51,6 +47,7 @@ impl FromStr for ResourceOwnerType {
 	}
 }
 
+#[allow(dead_code)]
 pub mod request_keys {
 	pub const USER_ID: &str = "userId";
 	pub const USERNAME: &str = "username";
@@ -153,4 +150,5 @@ pub mod request_keys {
 	pub const LAST_LOGIN: &str = "lastLogin";
 	pub const LAST_ACTIVITY: &str = "lastActivity";
 	pub const LOGINS: &str = "logins";
+	pub const STATUS: &str = "status";
 }
