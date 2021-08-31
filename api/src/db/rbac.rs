@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub async fn initialize_rbac_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing rbac tables");
 
@@ -28,7 +28,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -42,11 +42,14 @@ pub async fn initialize_rbac_pre(
 			owner_id BYTEA NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
+			created BIGINT NOT NULL
+				CONSTRAINT organisation_created_chk_unsigned
+						CHECK(created >= 0),
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -58,7 +61,7 @@ pub async fn initialize_rbac_pre(
 		(owner_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles belong to an organisation
@@ -74,7 +77,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -86,7 +89,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Users belong to an organisation through a role
@@ -105,7 +108,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -117,7 +120,7 @@ pub async fn initialize_rbac_pre(
 		(user_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -129,7 +132,7 @@ pub async fn initialize_rbac_pre(
 		(user_id, organisation_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles that have permissions on a resource type
@@ -150,7 +153,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -162,7 +165,7 @@ pub async fn initialize_rbac_pre(
 		(role_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -174,7 +177,7 @@ pub async fn initialize_rbac_pre(
 		(role_id, resource_type_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	// Roles that have permissions on a specific resource
@@ -195,7 +198,7 @@ pub async fn initialize_rbac_pre(
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -207,7 +210,7 @@ pub async fn initialize_rbac_pre(
 		(role_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -219,7 +222,7 @@ pub async fn initialize_rbac_pre(
 		(role_id, resource_id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -279,7 +282,7 @@ pub async fn initialize_rbac_post(
 }
 
 pub async fn get_all_organisation_roles_for_user(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<HashMap<String, OrgPermissions>, sqlx::Error> {
 	let mut orgs: HashMap<String, OrgPermissions> = HashMap::new();
@@ -297,7 +300,7 @@ pub async fn get_all_organisation_roles_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *transaction)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	for org_role in org_roles {
@@ -314,7 +317,7 @@ pub async fn get_all_organisation_roles_for_user(
 			"#,
 			org_role.role_id
 		)
-		.fetch_all(&mut *transaction)
+		.fetch_all(&mut *connection)
 		.await?;
 
 		let resource_types = query!(
@@ -328,7 +331,7 @@ pub async fn get_all_organisation_roles_for_user(
 			"#,
 			org_role.role_id
 		)
-		.fetch_all(&mut *transaction)
+		.fetch_all(&mut *connection)
 		.await?;
 
 		if let Some(permission) = orgs.get_mut(&org_id) {
@@ -414,7 +417,7 @@ pub async fn get_all_organisation_roles_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *transaction)
+	.fetch_all(&mut *connection)
 	.await?;
 
 	for org_details in orgs_details {
@@ -565,18 +568,20 @@ pub async fn create_resource(
 	resource_name: &str,
 	resource_type_id: &[u8],
 	owner_id: &[u8],
+	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			resource
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4, $5);
 		"#,
 		resource_id,
 		resource_name,
 		resource_type_id,
-		owner_id
+		owner_id,
+		created as i64
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -589,8 +594,7 @@ pub async fn generate_new_resource_id(
 ) -> Result<Uuid, sqlx::Error> {
 	let mut uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		Resource,
+	let mut exists = query!(
 		r#"
 		SELECT
 			*
@@ -602,12 +606,21 @@ pub async fn generate_new_resource_id(
 		uuid.as_bytes().as_ref()
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Resource {
+		id: row.id,
+		name: row.name,
+		resource_type_id: row.resource_type_id,
+		owner_id: row.owner_id,
+		created: row.created as u64,
+	})
+	.next()
+	.is_some();
 
-	while !rows.is_empty() {
+	while exists {
 		uuid = Uuid::new_v4();
-		rows = query_as!(
-			Resource,
+		exists = query!(
 			r#"
 			SELECT
 				*
@@ -619,7 +632,17 @@ pub async fn generate_new_resource_id(
 			uuid.as_bytes().as_ref()
 		)
 		.fetch_all(&mut *connection)
-		.await?;
+		.await?
+		.into_iter()
+		.map(|row| Resource {
+			id: row.id,
+			name: row.name,
+			resource_type_id: row.resource_type_id,
+			owner_id: row.owner_id,
+			created: row.created as u64,
+		})
+		.next()
+		.is_some();
 	}
 
 	Ok(uuid)
@@ -629,8 +652,7 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let rows = query_as!(
-		Resource,
+	let mut rows = query!(
 		r#"
 		SELECT
 			*
@@ -642,9 +664,17 @@ pub async fn get_resource_by_id(
 		resource_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Resource {
+		id: row.id,
+		name: row.name,
+		resource_type_id: row.resource_type_id,
+		owner_id: row.owner_id,
+		created: row.created as u64,
+	});
 
-	Ok(rows.into_iter().next())
+	Ok(rows.next())
 }
 
 pub async fn delete_resource(

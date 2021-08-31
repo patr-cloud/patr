@@ -28,11 +28,14 @@ http:
   headers:
     X-Content-Type-Options: [nosniff]
 auth:
-  token:
+  silly:
     realm: http://localhost:3000/auth/docker-registry-token
-    service: Docker registry
-    issuer: localhost:3000
-    rootcertbundle: /certs/ecdsa.pubkey.crt
+    service: Docker Registry
+  # token:
+  #   realm: http://localhost:3000/auth/docker-registry-token
+  #   service: Docker registry
+  #   issuer: localhost:3000
+  #   rootcertbundle: /certs/ecdsa.pubkey.crt
 #
 # TLS will be handled through reverse proxy
 #http:

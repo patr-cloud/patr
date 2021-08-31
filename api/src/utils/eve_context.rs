@@ -39,7 +39,7 @@ impl EveContext {
 		}
 	}
 
-	pub fn get_state(&self) -> &App {
+	pub const fn get_state(&self) -> &App {
 		&self.state
 	}
 
@@ -64,7 +64,7 @@ impl EveContext {
 		self.db_connection = Some(connection);
 	}
 
-	pub fn get_body_object(&self) -> &Value {
+	pub const fn get_body_object(&self) -> &Value {
 		&self.body_object
 	}
 

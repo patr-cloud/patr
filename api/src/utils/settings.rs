@@ -38,7 +38,7 @@ pub fn parse_config() -> Settings {
 	}
 
 	settings
-		.merge(Environment::with_prefix("APP_"))
+		.merge(Environment::with_prefix("APP").separator("_"))
 		.expect("unable to merge with environment variables");
 
 	let mut settings: Settings =
@@ -66,6 +66,7 @@ pub struct Settings {
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
+	pub digital_ocean_api_key: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

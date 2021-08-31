@@ -97,7 +97,7 @@ pub fn get_bash_script_path() -> std::io::Result<PathBuf> {
 ///
 /// # Returns
 /// This function returns an unsigned integer containing the ssh port for server
-pub fn get_ssh_port_for_server() -> u16 {
+pub const fn get_ssh_port_for_server() -> u16 {
 	2222
 }
 
@@ -118,7 +118,7 @@ pub fn get_container_name(username: &str) -> String {
 ///
 /// # Returns
 /// This function returns server ip address
-pub fn get_server_ip_address() -> &'static str {
+pub const fn get_server_ip_address() -> &'static str {
 	"143.110.179.80"
 }
 
@@ -133,7 +133,7 @@ pub fn get_server_ip_address() -> &'static str {
 /// integer containing the port number
 /// [`Transaction`]: Transaction
 pub async fn assign_available_port(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<u16, sqlx::Error> {
 	let low = 1025;
 	let high = 65535;
@@ -148,7 +148,7 @@ pub async fn assign_available_port(
 			continue;
 		}
 		let port_available =
-			db::is_portus_port_available(transaction, port).await?;
+			db::is_portus_port_available(connection, port).await?;
 		if !port_available {
 			continue;
 		}

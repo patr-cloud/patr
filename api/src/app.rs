@@ -115,6 +115,14 @@ fn eve_error_handler(mut response: Response, error: Error) -> Response {
 	}
 	response.set_content_type("application/json");
 	response.set_status(error.get_status().unwrap_or(500));
+
+	response.set_header("Access-Control-Allow-Origin", "*");
+	response.set_header("Access-Control-Allow-Methods", "*");
+	response.set_header(
+		"Access-Control-Allow-Headers",
+		"Content-Type,Authorization",
+	);
+
 	let default_error = error!(SERVER_ERROR).to_string();
 	response.set_body_bytes(
 		error

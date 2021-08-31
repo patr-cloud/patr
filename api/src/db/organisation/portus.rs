@@ -1,7 +1,7 @@
 use crate::{models::db_mapping::PortusTunnel, query, Database};
 
 pub async fn initialize_portus_pre(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing portus tables");
 	query!(
@@ -15,14 +15,11 @@ pub async fn initialize_portus_pre(
 			exposed_port INTEGER NOT NULL
 				CONSTRAINT portus_tunnel_chk_exposed_port_u16
 					CHECK(exposed_port >= 0 AND exposed_port <= 65534),
-			name VARCHAR(50) NOT NULL,
-			created BIGINT NOT NULL
-				CONSTRAINT portus_tunnel_chk_created_unsigned
-					CHECK(created >= 0)
+			name VARCHAR(50) NOT NULL
 		);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	query!(
@@ -34,14 +31,14 @@ pub async fn initialize_portus_pre(
 		(name);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
 }
 
 pub async fn initialize_portus_post(
-	transaction: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up portus tables initialization");
 	query!(
@@ -51,7 +48,7 @@ pub async fn initialize_portus_post(
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
-	.execute(&mut *transaction)
+	.execute(&mut *connection)
 	.await?;
 
 	Ok(())
@@ -65,21 +62,19 @@ pub async fn create_new_portus_tunnel(
 	ssh_port: u16,
 	exposed_port: u16,
 	tunnel_name: &str,
-	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			portus_tunnel
 		VALUES
-			($1, $2, $3, $4, $5, $6);
+			($1, $2, $3, $4, $5);
 		"#,
 		id,
 		username,
 		ssh_port as i32,
 		exposed_port as i32,
-		tunnel_name,
-		created as i64,
+		tunnel_name
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -131,7 +126,6 @@ pub async fn get_portus_tunnel_by_name(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -161,7 +155,6 @@ pub async fn get_portus_tunnel_by_tunnel_id(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next())
@@ -192,7 +185,6 @@ pub async fn is_portus_port_available(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	});
 
 	Ok(rows.next().is_none())
@@ -226,7 +218,6 @@ pub async fn get_portus_tunnels_for_organisation(
 		username: row.username,
 		exposed_port: row.exposed_port as u16,
 		ssh_port: row.ssh_port as u16,
-		created: row.created as u64,
 	})
 	.collect();
 
