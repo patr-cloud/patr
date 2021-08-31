@@ -137,7 +137,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	// TODO list all logins here
 	app.get(
 		"/logins",
 		[
@@ -1227,7 +1226,6 @@ async fn get_all_logins_for_user(
 		let id = login.login_id.encode_hex::<String>();
 		json!({
 			request_keys::LOGIN_ID: id,
-			request_keys::USER_ID: &user_id,
 			request_keys::TOKEN_EXPIRY: login.token_expiry,
 			request_keys::LAST_LOGIN: login.last_login,
 			request_keys::LAST_ACTIVITY: login.last_activity
@@ -1262,7 +1260,6 @@ async fn get_login_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::USER_ID: login.user_id,
 		request_keys::LOGIN_ID: login.login_id,
 		request_keys::TOKEN_EXPIRY: login.token_expiry,
 		request_keys::LAST_LOGIN: login.last_login,
@@ -1284,7 +1281,7 @@ async fn delete_user_login(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let _delete = db::delete_user_login_by_id(
+	db::delete_user_login_by_id(
 		context.get_database_connection(),
 		&login_id,
 		&user_id,
