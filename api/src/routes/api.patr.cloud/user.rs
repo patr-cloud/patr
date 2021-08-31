@@ -1244,13 +1244,13 @@ async fn get_login_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id = context
+	let login_id_string = context
 		.get_param(request_keys::LOGIN_ID)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.clone();
 
-	let login_id = hex::decode(login_id)?;
+	let login_id = hex::decode(&login_id_string)?;
 
 	let login =
 		db::get_user_login(context.get_database_connection(), &login_id)
@@ -1260,7 +1260,7 @@ async fn get_login_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::LOGIN_ID: login.login_id,
+		request_keys::LOGIN_ID: login_id_string,
 		request_keys::TOKEN_EXPIRY: login.token_expiry,
 		request_keys::LAST_LOGIN: login.last_login,
 		request_keys::LAST_ACTIVITY: login.last_activity
