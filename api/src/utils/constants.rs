@@ -146,5 +146,9 @@ pub mod request_keys {
 	pub const PREFERRED_RECOVERY_OPTION: &str = "preferredRecoveryOption";
 	pub const URL: &str = "url";
 	pub const DEFAULT: &str = "default";
+	pub const TOKEN_EXPIRY: &str = "tokenExpiry";
+	pub const LAST_LOGIN: &str = "lastLogin";
+	pub const LAST_ACTIVITY: &str = "lastActivity";
+	pub const LOGINS: &str = "logins";
 	pub const STATUS: &str = "status";
 }
