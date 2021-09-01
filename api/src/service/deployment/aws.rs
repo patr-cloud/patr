@@ -1,4 +1,4 @@
-use std::{process::Stdio, time::Duration};
+use std::{ops::DerefMut, process::Stdio, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::{
@@ -20,6 +20,7 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::{CloudPlatform, DeploymentStatus},
+	service,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -87,7 +88,7 @@ pub(super) async fn deploy_container(
 	};
 
 	log::trace!("Creating container deployment");
-	deploy_application(&deployment_id_string, &client).await?;
+	deploy_application(&deployment_id, &deployment_id_string, &client).await?;
 	log::trace!("App deployed");
 
 	log::trace!("default url is {}", default_url);
@@ -351,28 +352,39 @@ async fn app_exists(
 }
 
 async fn deploy_application(
-	deployment_id: &str,
+	deployment_id: &[u8],
+	deployment_id_string: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
 	let container_image_name =
-		get_latest_image_name(deployment_id, client).await?;
+		get_latest_image_name(deployment_id_string, client).await?;
 	log::trace!("adding image to deployment container");
+
+	let envs = db::get_environment_variables_for_deployment(
+		service::get_app().database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| (key, value))
+	.collect();
 
 	let deployment_container = Container::builder()
 		// image naming convention -> :service_name.label_name.
 		.image(container_image_name)
 		.ports("80", ContainerServiceProtocol::Http)
+		.set_environment(Some(envs))
 		.build();
 
 	// public endpoint request
 	let public_endpoint_request = EndpointRequest::builder()
-		.container_name(deployment_id)
+		.container_name(deployment_id_string)
 		.container_port(80)
 		.build();
 
 	// create deployment request
 	let deployment_request = ContainerServiceDeploymentRequest::builder()
-		.containers(deployment_id, deployment_container)
+		.containers(deployment_id_string, deployment_container)
 		.set_public_endpoint(Some(public_endpoint_request))
 		.build();
 	log::trace!("deployment request created");
@@ -380,7 +392,7 @@ async fn deploy_application(
 	let _ = client
 		.create_container_service_deployment()
 		.set_containers(deployment_request.containers)
-		.set_service_name(Some(deployment_id.to_string()))
+		.set_service_name(Some(deployment_id_string.to_string()))
 		.set_public_endpoint(deployment_request.public_endpoint)
 		.send()
 		.await?;

@@ -12,6 +12,7 @@ use crate::{
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
+			AppDeploymentEnvironmentVariables,
 			AppDeploymentsResponse,
 			AppHolder,
 			AppSpec,
@@ -308,6 +309,19 @@ async fn create_app(
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
+	let envs = db::get_environment_variables_for_deployment(
+		service::get_app().database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| AppDeploymentEnvironmentVariables {
+		key,
+		value,
+		scope: "RUN_AND_BUILD_TIME".to_string(),
+		r#type: "GENERAL".to_string(),
+	})
+	.collect();
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
@@ -340,6 +354,7 @@ async fn create_app(
 					routes: vec![Routes {
 						path: "/".to_string(),
 					}],
+					envs,
 				}],
 			},
 		})
