@@ -147,8 +147,13 @@ pub(super) async fn deploy_container(
 
 	// update DNS
 	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_ingress, &config)
-		.await?;
+	super::add_cname_record(
+		&deployment_id_string,
+		&default_ingress,
+		&config,
+		true,
+	)
+	.await?;
 	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(
