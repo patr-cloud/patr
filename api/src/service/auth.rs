@@ -7,17 +7,27 @@ use uuid::Uuid;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::{
-			JoinUser, PreferredRecoveryOption, User, UserLogin, UserToSignUp,
+			JoinUser,
+			PreferredRecoveryOption,
+			User,
+			UserLogin,
+			UserToSignUp,
 		},
-		rbac, AccessTokenData, ExposedUserData,
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType, get_current_time_millis,
-		settings::Settings, validator, Error,
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
 	},
 	Database,
 };
