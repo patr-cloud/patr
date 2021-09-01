@@ -218,7 +218,7 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
-fn get_lightsail_client(region: &str) -> lightsail::Client {
+pub(super) fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))

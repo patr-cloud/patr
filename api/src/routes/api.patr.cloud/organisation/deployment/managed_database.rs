@@ -7,7 +7,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::CloudPlatform, rbac::permissions},
+	models::{
+		db_mapping::{DatabasePlan},
+		rbac::permissions,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -243,7 +246,7 @@ async fn create_database_cluster(
 		.get(request_keys::DATABASE_PLAN)
 		.map(|value| value.as_str())
 		.flatten()
-		.map(|c| c.parse::<CloudPlatform>().ok())
+		.map(|c| c.parse::<DatabasePlan>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;

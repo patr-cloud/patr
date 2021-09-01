@@ -17,6 +17,8 @@ lazy_static! {
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
+	// Validate the name of database
+	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,64}$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -95,4 +97,8 @@ pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	tld_list.clear();
 	tld_list.append(&mut new_tld_list);
 	drop(tld_list);
+}
+
+pub fn is_database_name_valid(database_name: &str) -> bool {
+	database_name.len() <= 64 && DATABASE_NAME_REGEX.is_match(database_name)
 }

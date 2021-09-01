@@ -1,13 +1,6 @@
 use api_macros::{query, query_as};
 
-use crate::{
-	models::db_mapping::{
-		CloudPlatform,
-		ManagedDatabase,
-		ManagedDatabaseStatus,
-	},
-	Database,
-};
+use crate::{Database, models::db_mapping::{CloudPlatform, Engine, ManagedDatabase, ManagedDatabaseStatus}};
 
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -39,13 +32,44 @@ pub async fn initialize_managed_database_pre(
 
 	query!(
 		r#"
+		CREATE TYPE ENGINE AS ENUM(
+			'postgres',
+			'mysql'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DATABASE_PLAN AS ENUM(
+			'do-nano',
+			'do-micro',
+			'do-medium',
+			'do-large',
+			'do-xlarge',
+			'do-xxlarge',
+			'do-mammoth',
+			'aws-micro',
+			'aws-small',
+			'aws-medium',
+			'aws-large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE managed_database(
 			id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			cloud_database_id TEXT
 				CONSTRAINT managed_database_uq_cloud_database_id UNIQUE,
 			db_provider_name CLOUD_PLATFORM NOT NULL,
-			engine TEXT,
+			engine ENGINE,
 			version TEXT,
 			num_nodes INTEGER,
 			size TEXT,
@@ -167,7 +191,7 @@ pub async fn get_all_database_clusters_for_organisation(
 			name,
 			cloud_database_id,
 			db_provider_name as "db_provider_name: CloudPlatform",
-			engine,
+			engine as "engine: Engine",
 			version,
 			num_nodes,
 			size,
@@ -196,7 +220,7 @@ pub async fn update_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 	cloud_database_id: &str,
-	engine: &str,
+	engine: Engine,
 	version: &str,
 	num_nodes: i32,
 	size: &str,
@@ -229,7 +253,7 @@ pub async fn update_managed_database(
 			name = $13;
 		"#,
 		cloud_database_id,
-		engine,
+		engine as Engine,
 		version,
 		num_nodes,
 		size,
@@ -260,7 +284,7 @@ pub async fn get_managed_database_by_name_and_org_id(
 			name,
 			cloud_database_id,
 			db_provider_name as "db_provider_name: CloudPlatform",
-			engine,
+			engine as "engine: Engine",
 			version,
 			num_nodes,
 			size,

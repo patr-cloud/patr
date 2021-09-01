@@ -1,28 +1,19 @@
-use std::{collections::HashMap, ops::DerefMut, time::Duration};
+use std::{ops::DerefMut, time::Duration};
 
 use eve_rs::AsError;
+use lightsail::model::RelationalDatabase;
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use reqwest::Client;
 use tokio::{
 	task,
 	time::{self, Instant},
 };
 
-use crate::{
-	db,
-	error,
-	models::{
-		db_mapping::{CloudPlatform, ManagedDatabaseStatus},
-		deployment::cloud_providers::digitalocean::{
+use crate::{Database, db, error, models::{db_mapping::{CloudPlatform, DatabasePlan, Engine, ManagedDatabaseStatus}, deployment::cloud_providers::digitalocean::{
 			DatabaseConfig,
 			DatabaseInfo,
 			DatabaseResponse,
-		},
-		rbac,
-	},
-	service::{self},
-	utils::{get_current_time_millis, settings::Settings, Error},
-	Database,
-};
+		}, rbac}, service::{self, deployment::aws}, utils::{Error, get_current_time_millis, settings::Settings, validator}};
 
 pub async fn create_database_cluster(
 	settings: Settings,
@@ -32,16 +23,21 @@ pub async fn create_database_cluster(
 	num_nodes: Option<u64>,
 	region: &str,
 	organisation_id: &[u8],
-	cloud_platform: CloudPlatform,
+	database_plan: DatabasePlan,
 ) -> Result<(), Error> {
 	let name = name.to_string();
 	let version = version.map(|v| v.to_string());
 	let engine = engine.to_string();
-	let region = region.to_string();
 	let organisation_id = organisation_id.to_vec();
+	let (provider, region) = region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let region = region.to_string();
+
 	task::spawn(async move {
-		let result = match cloud_platform {
-			CloudPlatform::DigitalOcean => {
+		let result = match provider.parse() {
+			Ok(CloudPlatform::DigitalOcean) => {
 				create_database_on_digitalocean(
 					settings,
 					name,
@@ -50,18 +46,27 @@ pub async fn create_database_cluster(
 					num_nodes,
 					region,
 					organisation_id,
+					database_plan,
 				)
 				.await
 			}
-			CloudPlatform::Aws => create_database_on_aws(
-				settings,
+			Ok(CloudPlatform::Aws) => {
+				create_database_on_aws(
+					settings,
 					name,
 					version,
 					engine,
 					region,
 					organisation_id,
+					database_plan,
 				)
 				.await
+			}
+			_ => {
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
 		};
 
 		if let Err(error) = result {
@@ -80,28 +85,47 @@ async fn create_database_on_digitalocean(
 	num_nodes: Option<u64>,
 	region: String,
 	organisation_id: Vec<u8>,
+	database_plan: DatabasePlan,
 ) -> Result<(), Error> {
 	log::trace!("creating a digital ocean managed database");
 	let app = service::get_app();
-	let client = Client::new();
+	let engine = engine.parse::<Engine>()?;
 
-	let organisation_id = hex::encode(&organisation_id);
-	log::trace!("parsing region");
-	let region = parse_region(&region)?;
+	if !validator::is_database_name_valid(&name) {
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	}
+
+	let org_id = hex::encode(&organisation_id);
+
+	let version = if engine == Engine::Postgres {
+		version.unwrap_or("12".to_string())
+	} else {
+		version.unwrap_or("8".to_string())
+	};
+	// TODO: add new database and delete old database
+	let client = Client::new();
 
 	let num_nodes = num_nodes.unwrap_or(1);
 
-	let db_name = format!("{}-{}", organisation_id, name);
+	log::trace!("generating new resource");
+	let resource_id =
+		db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
+			.await?;
+	let resource_id = resource_id.as_bytes();
+
+	let db_name = hex::encode(&resource_id);
 	log::trace!("sending the create db cluster request to digital ocean");
 	let database_cluster = client
 		.post("https://api.digitalocean.com/v2/databases")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.json(&DatabaseConfig {
 			name: db_name, // should be unique
-			engine,
-			version,
+			engine: engine.to_string(),
+			version: Some(version.clone()),
 			num_nodes,
-			size: "db-s-1vcpu-1gb".to_string(),
+			size: database_plan.to_string(),
 			region: region.to_string(),
 		})
 		.send()
@@ -109,13 +133,6 @@ async fn create_database_on_digitalocean(
 		.json::<DatabaseResponse>()
 		.await?;
 	log::trace!("database created");
-	log::trace!("generating new resource");
-	let resource_id =
-		db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
-			.await?;
-	let resource_id = resource_id.as_bytes();
-
-	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	db::create_resource(
 		app.database.acquire().await?.deref_mut(),
@@ -152,7 +169,7 @@ async fn create_database_on_digitalocean(
 	.await?;
 
 	log::trace!("waiting for databse to be online");
-	wait_for_database_cluster_to_be_online(
+	wait_for_digitalocean_database_cluster_to_be_online(
 		app.database.acquire().await?.deref_mut(),
 		settings,
 		resource_id,
@@ -167,8 +184,8 @@ async fn create_database_on_digitalocean(
 		app.database.acquire().await?.deref_mut(),
 		&database_cluster.database.name,
 		&database_cluster.database.id,
-		&database_cluster.database.engine,
-		&database_cluster.database.version,
+		engine,
+		&version,
 		database_cluster.database.num_nodes as i32,
 		&database_cluster.database.size,
 		&database_cluster.database.region,
@@ -213,45 +230,7 @@ pub async fn get_all_database_clusters_for_organisation(
 	Ok(cluster_list)
 }
 
-// TODO: refactor this
-fn parse_region(region: &str) -> Result<&str, Error> {
-	let mut data_centers = HashMap::new();
-
-	data_centers.insert("do-nyc", "nyc3");
-	data_centers.insert("do-ams", "ams3");
-	data_centers.insert("do-sfo", "sfo3");
-	data_centers.insert("do-sgp", "sgp1");
-	data_centers.insert("do-lon", "lon1");
-	data_centers.insert("do-fra", "fra1");
-	data_centers.insert("do-tor", "tor1");
-	data_centers.insert("do-blr", "blr1");
-	data_centers.insert("aws-us-east-1", "us-east-1");
-	data_centers.insert("aws-us-east-2", "us-east-2");
-	data_centers.insert("aws-us-west-2", "us-west-2");
-	data_centers.insert("aws-ap-south-1", "ap-south-1");
-	data_centers.insert("aws-ap-northeast-2", "ap-northeast-2");
-	data_centers.insert("aws-ap-southeast-1", "ap-southeast-1");
-	data_centers.insert("aws-ap-southeast-2", "ap-southeast-2");
-	data_centers.insert("aws-ap-northeast-1", "ap-northeast-1");
-	data_centers.insert("aws-ca-central-1", "ca-central-1");
-	data_centers.insert("aws-eu-central-1", "eu-central-1");
-	data_centers.insert("aws-eu-west-1", "eu-west-1");
-	data_centers.insert("aws-eu-west-2", "eu-west-2");
-	data_centers.insert("aws-eu-west-3", "eu-west-3");
-	data_centers.insert("aws-eu-north-1", "eu-north-1");
-
-	let region = data_centers.get(region);
-
-	if let Some(region) = region {
-		Ok(region)
-	} else {
-		Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())
-	}
-}
-
-async fn wait_for_database_cluster_to_be_online(
+async fn wait_for_digitalocean_database_cluster_to_be_online(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	settings: Settings,
 	database_id: &[u8],
@@ -422,91 +401,185 @@ async fn create_database_on_aws(
 	engine: String,
 	region: String,
 	organisation_id: Vec<u8>,
+	database_plan: DatabasePlan,
 ) -> Result<(), Error> {
 	log::trace!("creating a aws managed database");
 	let app = service::get_app();
+	let engine = engine.parse::<Engine>()?;
 
 	let organisation_id = hex::encode(&organisation_id);
-	log::trace!("parsing region");
-	let region = parse_region(&region)?;
 
-	// let client = get_lightsail_client(&region);
+	let version = if engine == Engine::Postgres {
+		version.unwrap_or("12".to_string())
+	} else {
+		version.unwrap_or("8".to_string())
+	};
+	let master_username = format!("user-{}", name);
+	let client = aws::get_lightsail_client(&region);
 
-	// let db_name = format!("{}-{}", organisation_id, name);
-	log::trace!("sending the create db cluster request to aws");
-	log::trace!("database created");
 	log::trace!("generating new resource");
-	// let resource_id =
-	// 	db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
-	// 		.await?;
-	// let resource_id = resource_id.as_bytes();
+	let resource_id =
+		db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
+			.await?;
+	let resource_id = resource_id.as_bytes();
 
-	// let organisation_id = hex::decode(&organisation_id).unwrap();
+	let organisation_id = hex::decode(&organisation_id).unwrap();
 
-	// db::create_resource(
-	// 	app.database.acquire().await?.deref_mut(),
-	// 	resource_id,
-	// 	&format!("do-database-{}", name),
-	// 	rbac::RESOURCE_TYPES
-	// 		.get()
-	// 		.unwrap()
-	// 		.get(rbac::resource_types::MANAGED_DATABASE)
-	// 		.unwrap(),
-	// 	&organisation_id,
-	// 	get_current_time_millis(),
-	// )
-	// .await?;
+	db::create_resource(
+		app.database.acquire().await?.deref_mut(),
+		resource_id,
+		&format!("aws-database-{}", hex::encode(resource_id)),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::MANAGED_DATABASE)
+			.unwrap(),
+		&organisation_id,
+		get_current_time_millis(),
+	)
+	.await?;
 	log::trace!("resource generation complete");
 
+	let password: String = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(8)
+		.map(char::from)
+		.collect();
+
+	log::trace!("sending the create db cluster request to aws");
+	client
+		.create_relational_database()
+		.master_database_name(&name)
+		.master_username(&master_username)
+		.master_user_password(&password)
+		.publicly_accessible(true)
+		.relational_database_blueprint_id(format!("{}_{}", engine, version))
+		.relational_database_bundle_id(database_plan.to_string())
+		.relational_database_name(hex::encode(&resource_id))
+		.send()
+		.await?;
+	log::trace!("database created");
+
 	log::trace!("creating entry for newly created managed database");
-	// db::create_managed_database(
-	// 	app.database.acquire().await?.deref_mut(),
-	// 	resource_id,
-	// 	&database_cluster.database.name,
-	// 	CloudPlatform::DigitalOcean,
-	// 	&organisation_id,
-	// )
-	// .await?;
+	db::create_managed_database(
+		app.database.acquire().await?.deref_mut(),
+		resource_id,
+		&name,
+		CloudPlatform::Aws,
+		&organisation_id,
+	)
+	.await?;
 
 	log::trace!("updating to the db status to creating");
 	// wait for database to start
-	// db::update_managed_database_status(
-	// 	app.database.acquire().await?.deref_mut(),
-	// 	resource_id,
-	// 	&ManagedDatabaseStatus::Creating,
-	// )
-	// .await?;
+	db::update_managed_database_status(
+		app.database.acquire().await?.deref_mut(),
+		resource_id,
+		&ManagedDatabaseStatus::Creating,
+	)
+	.await?;
+
+	// we can get id from aws of the resource but right now it is not used
+	// anywhere let database_id = database
+	// 	.operations
+	// 	.map(|operation| operation.into_iter().next())
+	// 	.flatten()
+	// 	.map(|op| op.id)
+	// 	.flatten()
+	// 	.status(500)
+	// 	.body(error!(SERVER_ERROR).to_string())?;
 
 	log::trace!("waiting for databse to be online");
-	// wait_for_database_cluster_to_be_online(
-	// 	app.database.acquire().await?.deref_mut(),
-	// 	settings,
-	// 	resource_id,
-	// 	&database_cluster.database.id,
-	// 	client,
-	// )
-	// .await?;
+	let database_info = wait_for_aws_database_cluster_to_be_online(
+		app.database.acquire().await?.deref_mut(),
+		resource_id,
+		client,
+	)
+	.await?;
 	log::trace!("database online");
 
 	log::trace!("updating the entry after the database is online");
-	// db::update_managed_database(
-	// 	app.database.acquire().await?.deref_mut(),
-	// 	&database_cluster.database.name,
-	// 	&database_cluster.database.id,
-	// 	&database_cluster.database.engine,
-	// 	&database_cluster.database.version,
-	// 	database_cluster.database.num_nodes as i32,
-	// 	&database_cluster.database.size,
-	// 	&database_cluster.database.region,
-	// 	ManagedDatabaseStatus::Running,
-	// 	&database_cluster.database.connection.host,
-	// 	database_cluster.database.connection.port as i32,
-	// 	&database_cluster.database.connection.user,
-	// 	&database_cluster.database.connection.password,
-	// 	&organisation_id,
-	// )
-	// .await?;
+	db::update_managed_database(
+		app.database.acquire().await?.deref_mut(),
+		&name,
+		&hex::encode(resource_id),
+		engine,
+		&version,
+		1,
+		database_plan.to_string(),
+		&region,
+		ManagedDatabaseStatus::Running,
+		&database_info
+			.master_endpoint
+			.as_ref()
+			.unwrap()
+			.address
+			.as_ref()
+			.unwrap(),
+		database_info
+			.master_endpoint
+			.as_ref()
+			.unwrap()
+			.port
+			.unwrap() as i32,
+		&master_username,
+		&password,
+		&organisation_id,
+	)
+	.await?;
 	log::trace!("database successfully updated");
 
 	Ok(())
+}
+
+async fn wait_for_aws_database_cluster_to_be_online(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	resource_id: &[u8],
+	client: lightsail::Client,
+) -> Result<RelationalDatabase, Error> {
+	loop {
+		let database_info = client
+			.get_relational_database()
+			.relational_database_name(hex::encode(resource_id))
+			.send()
+			.await?;
+
+		let database_state = database_info
+			.clone()
+			.relational_database
+			.map(|rdbms| rdbms.state)
+			.flatten()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		if database_state == "available" {
+			db::update_managed_database_status(
+				connection,
+				resource_id,
+				&ManagedDatabaseStatus::Running,
+			)
+			.await?;
+
+			return Ok(database_info
+				.relational_database
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?);
+		} else if database_state != "creating" ||
+			database_state != "configuring-log-exports" ||
+			database_state != "backing-up"
+		{
+			break;
+		}
+	}
+
+	db::update_managed_database_status(
+		connection,
+		resource_id,
+		&ManagedDatabaseStatus::Errored,
+	)
+	.await?;
+
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
 }
