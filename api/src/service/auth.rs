@@ -7,27 +7,17 @@ use uuid::Uuid;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{
-			JoinUser,
-			PreferredRecoveryOption,
-			User,
-			UserLogin,
-			UserToSignUp,
+			JoinUser, PreferredRecoveryOption, User, UserLogin, UserToSignUp,
 		},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
+		rbac, AccessTokenData, ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 	Database,
 };
@@ -717,6 +707,13 @@ pub async fn reset_password(
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 	}
 	let reset_request = reset_request.unwrap();
+
+	// check password strength
+	if !validator::is_password_valid(new_password) {
+		Error::as_result()
+			.status(200)
+			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+	}
 
 	let success = service::validate_hash(token, &reset_request.token)?;
 
