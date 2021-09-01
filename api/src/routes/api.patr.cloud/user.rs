@@ -136,11 +136,30 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(change_password)),
 		],
 	);
-	// Disabled for the demo
-	/*
-	app.get("/logins", []); // TODO list all logins here
-	app.get("/logins/:loginId/info", []); // TODO list all information about a particular login here
-	app.delete("/logins/:loginId", []); // TODO delete a particular login ID and invalidate it
+
+	app.get(
+		"/logins",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_all_logins_for_user)),
+		],
+	);
+
+	app.get(
+		"/logins/:loginId/info",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_login_info)),
+		],
+	);
+
+	app.delete(
+		"/logins/:loginId",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(delete_user_login)),
+		],
+	);
 	app.get(
 		"/:username/info",
 		[
@@ -148,7 +167,6 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
 		],
 	);
-	*/
 	app
 }
 
@@ -1188,6 +1206,90 @@ async fn change_password(
 
 	context.json(json!({
 		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn get_all_logins_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let logins = db::get_all_logins_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.map(|login| {
+		let id = login.login_id.encode_hex::<String>();
+		json!({
+			request_keys::LOGIN_ID: id,
+			request_keys::TOKEN_EXPIRY: login.token_expiry,
+			request_keys::LAST_LOGIN: login.last_login,
+			request_keys::LAST_ACTIVITY: login.last_activity
+		})
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::LOGINS: logins
+	}));
+	Ok(context)
+}
+
+async fn get_login_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let login_id_string = context
+		.get_param(request_keys::LOGIN_ID)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.clone();
+
+	let login_id = hex::decode(&login_id_string)?;
+
+	let login =
+		db::get_user_login(context.get_database_connection(), &login_id)
+			.await?
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::LOGIN_ID: login_id_string,
+		request_keys::TOKEN_EXPIRY: login.token_expiry,
+		request_keys::LAST_LOGIN: login.last_login,
+		request_keys::LAST_ACTIVITY: login.last_activity
+	}));
+	Ok(context)
+}
+
+async fn delete_user_login(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let login_id = context
+		.get_param(request_keys::LOGIN_ID)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.clone();
+	let login_id = hex::decode(login_id)?;
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	db::delete_user_login_by_id(
+		context.get_database_connection(),
+		&login_id,
+		&user_id,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
 	}));
 	Ok(context)
 }
