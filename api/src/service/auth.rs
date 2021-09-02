@@ -718,6 +718,13 @@ pub async fn reset_password(
 	}
 	let reset_request = reset_request.unwrap();
 
+	// check password strength
+	if !validator::is_password_valid(new_password) {
+		Error::as_result()
+			.status(200)
+			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
+	}
+
 	let success = service::validate_hash(token, &reset_request.token)?;
 
 	if !success {

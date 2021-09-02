@@ -96,7 +96,7 @@ pub(super) async fn deploy_container(
 	wait_for_deployment(&deployment_id_string, &client).await?;
 
 	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_url, &config)
+	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
 		.await?;
 	log::trace!("DNS Updated");
 	let (cname, value) =
@@ -116,6 +116,7 @@ pub(super) async fn deploy_container(
 			&value
 		},
 		&config,
+		false,
 	)
 	.await?;
 	log::trace!("cname record updated");
@@ -237,18 +238,21 @@ async fn create_container_service(
 	region: &str,
 	client: &lightsail::Client,
 ) -> Result<String, Error> {
-	loop {
-		let get_service_result = client
-			.get_container_services()
-			.service_name(deployment_id.to_string())
+	log::trace!("checking if the service exists or is in the process of getting deleted");
+	let created_service = loop {
+		let created_result = client
+			.create_container_service()
+			.set_service_name(Some(deployment_id.to_string()))
+			.scale(1) //setting the default number of containers to 1
+			.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
 			.send()
 			.await;
-		match get_service_result {
+		match created_result {
+			Ok(created_service) => break created_service,
 			Err(SdkError::ServiceError { err, raw }) => {
-				if err.is_not_found_exception() {
-					// If the service doesn't exist, break and try to create a
-					// new one
-					break;
+				if err.message() == Some(&format!("Please try again when service \"{}\" is done DELETING.", deployment_id)) {
+					// If the service is deleting, wait and try again
+					time::sleep(Duration::from_millis(1000)).await;
 				} else {
 					// If there's some other error, return the error
 					return Err(SdkError::ServiceError { err, raw }.into());
@@ -257,37 +261,8 @@ async fn create_container_service(
 			Err(error) => {
 				return Err(error.into());
 			}
-			Ok(service) => {
-				let state = service
-					.container_services
-					.map(|service| service.into_iter().next())
-					.flatten()
-					.map(|service| service.state)
-					.flatten();
-				if let Some(ContainerServiceState::Deleting) = state {
-					// If the container is being deleted, try again in a second
-					time::sleep(Duration::from_millis(1000)).await;
-					continue;
-				} else {
-					// If the container is already running fine, throw an error
-					return Err(Error::empty()
-						.status(500)
-						.body(error!(SERVER_ERROR).to_string()));
-				}
-			}
 		}
-	}
-	let created_service = client
-		.create_container_service()
-		.set_service_name(Some(deployment_id.to_string()))
-		.scale(1) //setting the default number of containers to 1
-		.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
-		.send()
-		.await
-		.map_err(|err| {
-			log::error!("Error during creation of service, {}", err);
-			err
-		})?;
+	};
 
 	loop {
 		let container_state = client
