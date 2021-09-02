@@ -818,7 +818,7 @@ async fn get_environment_variables(
 }
 
 /// # Description
-/// This function is used to get the environment variables for a deployment
+/// This function is used to set the environment variables for a deployment
 /// required inputs:
 /// deploymentId in the url
 ///
