@@ -45,17 +45,17 @@ impl FromStr for DatabasePlan {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"do-nano" => Ok(DatabasePlan::DoNano),
-			"do-micro" => Ok(DatabasePlan::DoMicro),
-			"do-medium" => Ok(DatabasePlan::DoMedium),
-			"do-large" => Ok(DatabasePlan::DoLarge),
-			"do-xlarge" => Ok(DatabasePlan::DoXlarge),
-			"do-xxlarge" => Ok(DatabasePlan::DoXxlarge),
-			"do-mammoth" => Ok(DatabasePlan::DoMammoth),
-			"aws-micro" => Ok(DatabasePlan::AwsMicro),
-			"aws-small" => Ok(DatabasePlan::AwsSmall),
-			"aws-medium" => Ok(DatabasePlan::AwsMedium),
-			"aws-large" => Ok(DatabasePlan::AwsLarge),
+			"do-nano" | "db-s-1vcpu-1gb" => Ok(DatabasePlan::DoNano),
+			"do-micro" | "db-s-1vcpu-2gb" => Ok(DatabasePlan::DoMicro),
+			"do-medium" | "db-s-2vcpu-4gb" => Ok(DatabasePlan::DoMedium),
+			"do-large" | "db-s-4vcpu-8gb" => Ok(DatabasePlan::DoLarge),
+			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(DatabasePlan::DoXlarge),
+			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(DatabasePlan::DoXxlarge),
+			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(DatabasePlan::DoMammoth),
+			"aws-micro" | "micro_1_0" => Ok(DatabasePlan::AwsMicro),
+			"aws-small" | "small_1_0" => Ok(DatabasePlan::AwsSmall),
+			"aws-medium" | "medium_1_0" => Ok(DatabasePlan::AwsMedium),
+			"aws-large" | "large_1_0" => Ok(DatabasePlan::AwsLarge),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -108,9 +108,14 @@ impl FromStr for ManagedDatabaseStatus {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"creating" => Ok(Self::Creating),
-			"running" => Ok(Self::Running),
-			"errored" => Ok(Self::Errored),
+			"creating" |
+			"configuring-log-exports" |
+			"backing-up" |
+			"Started" |
+			"NotStarted" => Ok(Self::Creating),
+			"running" | "online" | "created" | "Completed" | "Succeeded" |
+			"available" => Ok(Self::Running),
+			"errored" | "failed" | "Failed" => Ok(Self::Errored),
 			"deleted" => Ok(Self::Deleted),
 			_ => Error::as_result()
 				.status(500)
@@ -140,8 +145,9 @@ impl FromStr for Engine {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"pg" | "postgres" | "postgresql" => Ok(Self::Postgres),
-			"mysql" => Ok(Self::Mysql),
+			"pg" | "postgres" | "postgresql" | "Postgres" | "Postgresql" |
+			"POSTGRESQL" | "POSTGRES" => Ok(Self::Postgres),
+			"mysql" | "Mysql" | "MYSQL" => Ok(Self::Mysql),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

@@ -250,23 +250,17 @@ pub struct DatabaseInfo {
 	pub size: String,
 	pub region: String,
 	pub status: String,
-	pub created_at: String,
-	pub db_names: Option<Vec<String>>,
+	pub created_at: String, //TODO: change this to u64
 	pub connection: DbConnection,
-	pub private_connection: DbConnection,
 	pub users: Option<Vec<DatabaseUser>>,
-	pub maintenance_window: Option<MaintenanceWindow>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DbConnection {
-	pub uri: String,
-	pub database: String,
 	pub host: String,
 	pub user: String,
 	pub password: String,
 	pub port: u64,
-	pub ssl: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

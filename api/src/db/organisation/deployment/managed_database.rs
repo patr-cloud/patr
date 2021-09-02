@@ -278,10 +278,9 @@ pub async fn update_managed_database(
 	Ok(())
 }
 
-pub async fn get_managed_database_by_name_and_org_id(
+pub async fn get_managed_database_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	name: &str,
-	organisation_id: &[u8],
+	id: &[u8],
 ) -> Result<Option<ManagedDatabase>, sqlx::Error> {
 	let row = query_as!(
 		ManagedDatabase,
@@ -306,11 +305,9 @@ pub async fn get_managed_database_by_name_and_org_id(
 		FROM
 			managed_database
 		WHERE
-			name = $1 AND
-			organisation_id = $2;
+			id = $1;
 		"#,
-		name,
-		organisation_id
+		id
 	)
 	.fetch_all(&mut *connection)
 	.await?

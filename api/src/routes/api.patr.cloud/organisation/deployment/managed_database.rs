@@ -88,7 +88,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/:managedDatabaseName/",
+		"/:resourceId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::managed_database::INFO,
@@ -120,7 +120,7 @@ pub fn create_sub_app(
 	);
 
 	app.delete(
-		"/:managedDatabaseName/",
+		"/:resourceId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::managed_database::DELETE,
@@ -175,7 +175,15 @@ async fn list_all_database_clusters(
 				request_keys::ID: response.database.id,
 				request_keys::NAME: response.database.name,
 				request_keys::ENGINE: response.database.engine,
-				request_keys::VERSION: response.database.version
+				request_keys::VERSION: response.database.version,
+				request_keys::NUM_NODES: response.database.num_nodes,
+				request_keys::CREATED_AT: response.database.created_at,
+				request_keys::CONNECTION: {
+					request_keys::HOST: response.database.connection.host,
+					request_keys::USERNAME: response.database.connection.user,
+					request_keys::PASSWORD: response.database.connection.password,
+					request_keys::PORT: response.database.connection.port
+				}
 			})
 		})
 		.collect::<Vec<_>>();
@@ -273,22 +281,20 @@ async fn get_managed_database_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
+	let _ =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
-	let database_name = context
-		.get_param(request_keys::MANAGED_DATABASE_NAME)
-		.unwrap()
-		.clone();
+	let resource_id =
+		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
+			.unwrap();
 
 	let config = context.get_state().config.clone();
 	let (database_info, status) =
 		service::get_managed_database_info_for_organisation(
 			context.get_database_connection(),
 			&config,
-			&database_name,
-			&organisation_id,
+			&resource_id,
 		)
 		.await?;
 
@@ -318,19 +324,17 @@ async fn delete_managed_database(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
+	let _ =
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
-	let database_name = context
-		.get_param(request_keys::MANAGED_DATABASE_NAME)
-		.unwrap()
-		.clone();
+	let resource_id =
+		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
+			.unwrap();
 
-	let cloud_db = db::get_managed_database_by_name_and_org_id(
+	let cloud_db = db::get_managed_database_by_id(
 		context.get_database_connection(),
-		&database_name,
-		&organisation_id,
+		&resource_id,
 	)
 	.await?
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;

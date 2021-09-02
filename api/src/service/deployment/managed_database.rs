@@ -24,6 +24,7 @@ use crate::{
 			DatabaseConfig,
 			DatabaseInfo,
 			DatabaseResponse,
+			DbConnection,
 		},
 		rbac,
 	},
@@ -292,14 +293,29 @@ pub async fn get_all_database_clusters_for_organisation(
 	let mut cluster_list = Vec::new();
 	let client = Client::new();
 	for cluster in clusters {
-		if let Some(cloud_database_id) = cluster.cloud_database_id {
-			let managed_db_cluster = get_cluster_from_digital_ocean(
-				&client,
-				&settings,
-				&cloud_database_id,
-			)
-			.await?;
-			cluster_list.push(managed_db_cluster);
+		match cluster.db_provider_name {
+			CloudPlatform::Aws => {
+				if let Some(cloud_database_id) = cluster.cloud_database_id {
+					let managed_db_cluster = get_cluster_from_aws(
+						&cloud_database_id,
+						cluster.region,
+						cluster.password,
+					)
+					.await?;
+					cluster_list.push(managed_db_cluster);
+				}
+			}
+			CloudPlatform::DigitalOcean => {
+				if let Some(cloud_database_id) = cluster.cloud_database_id {
+					let managed_db_cluster = get_cluster_from_digital_ocean(
+						&client,
+						&settings,
+						&cloud_database_id,
+					)
+					.await?;
+					cluster_list.push(managed_db_cluster);
+				}
+			}
 		}
 	}
 
@@ -409,20 +425,161 @@ async fn get_cluster_from_digital_ocean(
 	Ok(database_status)
 }
 
+async fn get_cluster_from_aws(
+	cloud_db_id: &str,
+	region: Option<String>,
+	password: Option<String>,
+) -> Result<DatabaseResponse, Error> {
+	let region = region.status(500).body(error!(SERVER_ERROR).to_string())?;
+	let client = aws::get_lightsail_client(&region);
+
+	let database_cluster = client
+		.get_relational_database()
+		.relational_database_name(cloud_db_id)
+		.send()
+		.await?;
+
+	let id = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.name)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let name = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.master_database_name)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let engine = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.relational_database_blueprint_id)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.parse::<Engine>()?
+		.to_string();
+
+	let version = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.engine_version)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let size = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.relational_database_bundle_id)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.parse::<DatabasePlan>()?
+		.to_string();
+
+	let region = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.location)
+		.flatten()
+		.map(|region| region.availability_zone)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let region = &region[0..region.len() - 1];
+
+	let status = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.state)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.parse::<ManagedDatabaseStatus>()?
+		.to_string();
+
+	let created_at = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.created_at)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.epoch_seconds()
+		.to_string();
+
+	let host = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.master_endpoint)
+		.flatten()
+		.map(|m_endpt| m_endpt.address)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let user = database_cluster
+		.relational_database
+		.clone()
+		.map(|rdb| rdb.master_username)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let password = password
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let port = database_cluster
+		.relational_database
+		.map(|rdb| rdb.master_endpoint)
+		.flatten()
+		.map(|m_endpt| m_endpt.port)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let connection = DbConnection {
+		host,
+		user,
+		password,
+		port: port as u64,
+	};
+
+	let database_response = DatabaseResponse {
+		database: DatabaseInfo {
+			id,
+			name,
+			engine,
+			version,
+			num_nodes: 1,
+			size,
+			region: region.to_string(),
+			status,
+			created_at,
+			connection,
+			users: None,
+		},
+	};
+
+	Ok(database_response)
+}
+
 pub async fn get_managed_database_info_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	settings: &Settings,
-	name: &str,
-	organisation_id: &[u8],
+	resource_id: &[u8],
 ) -> Result<(DatabaseInfo, ManagedDatabaseStatus), Error> {
-	let cloud_db = db::get_managed_database_by_name_and_org_id(
-		connection,
-		name,
-		organisation_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let cloud_db = db::get_managed_database_by_id(connection, resource_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let status = cloud_db.status;
 	let cloud_db_id = cloud_db
@@ -431,8 +588,21 @@ pub async fn get_managed_database_info_for_organisation(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let client = Client::new();
-	let database_info =
-		get_cluster_from_digital_ocean(&client, settings, &cloud_db_id).await?;
+
+	let database_info = match cloud_db.db_provider_name {
+		CloudPlatform::Aws => {
+			get_cluster_from_aws(
+				&cloud_db_id,
+				cloud_db.region,
+				cloud_db.password,
+			)
+			.await?
+		}
+		CloudPlatform::DigitalOcean => {
+			get_cluster_from_digital_ocean(&client, settings, &cloud_db_id)
+				.await?
+		}
+	};
 
 	Ok((database_info.database, status))
 }
