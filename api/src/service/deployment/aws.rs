@@ -95,7 +95,7 @@ pub(super) async fn deploy_container(
 	wait_for_deployment(&deployment_id_string, &client).await?;
 
 	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_url, &config)
+	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
 		.await?;
 	log::trace!("DNS Updated");
 	let (cname, value) =
@@ -115,6 +115,7 @@ pub(super) async fn deploy_container(
 			&value
 		},
 		&config,
+		false,
 	)
 	.await?;
 	log::trace!("cname record updated");
@@ -236,6 +237,7 @@ async fn create_container_service(
 	region: &str,
 	client: &lightsail::Client,
 ) -> Result<String, Error> {
+	log::trace!("checking if the service exists or is in the process of getting deleted");
 	let created_service = loop {
 		let created_result = client
 			.create_container_service()

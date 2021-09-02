@@ -328,13 +328,15 @@ async fn add_cname_record(
 	sub_domain: &str,
 	target: &str,
 	config: &Settings,
+	proxied: bool,
 ) -> Result<(), Error> {
 	let full_domain = if sub_domain.ends_with(".patr.cloud") {
 		sub_domain.to_string()
 	} else {
 		format!("{}.patr.cloud", sub_domain)
 	};
-
+	println!("sub_domain: {}", sub_domain);
+	println!("target: {}", target);
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -390,7 +392,7 @@ async fn add_cname_record(
 						params: UpdateDnsRecordParams {
 							content: expected_dns_record,
 							name: &full_domain,
-							proxied: Some(true),
+							proxied: Some(proxied),
 							ttl: Some(1),
 						},
 					})
@@ -407,7 +409,7 @@ async fn add_cname_record(
 					name: sub_domain,
 					ttl: Some(1),
 					priority: None,
-					proxied: Some(true),
+					proxied: Some(proxied),
 				},
 			})
 			.await?;
