@@ -70,6 +70,15 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 				);
 
 				db::migrate_database(&mut transaction, version).await?;
+
+				transaction.commit().await?;
+				log::info!(
+					"Migration completed. Database is now at version {}.{}.{}",
+					constants::DATABASE_VERSION.major,
+					constants::DATABASE_VERSION.minor,
+					constants::DATABASE_VERSION.patch
+				);
+				transaction = app.database.begin().await?;
 			}
 			Ordering::Equal => {
 				log::info!("Database already in the latest version. No migration required.");

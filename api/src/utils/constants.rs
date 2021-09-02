@@ -151,4 +151,6 @@ pub mod request_keys {
 	pub const LAST_ACTIVITY: &str = "lastActivity";
 	pub const LOGINS: &str = "logins";
 	pub const STATUS: &str = "status";
+	pub const REGION: &str = "region";
+	pub const LOGS: &str = "logs";
 }

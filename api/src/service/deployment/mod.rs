@@ -1,16 +1,50 @@
 mod aws;
 mod digitalocean;
 
-pub use aws::*;
-pub use digitalocean::*;
+use std::ops::DerefMut;
+
+use cloudflare::{
+	endpoints::{
+		dns::{
+			CreateDnsRecord,
+			CreateDnsRecordParams,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+			UpdateDnsRecord,
+			UpdateDnsRecordParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
+use futures::StreamExt;
+use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
+use tokio::task;
 use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
-	utils::{get_current_time_millis, Error},
+	models::{
+		db_mapping::{CloudPlatform, DeploymentStatus},
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
+	},
+	service,
+	utils::{
+		get_current_time,
+		get_current_time_millis,
+		settings::Settings,
+		Error,
+	},
 	Database,
 };
 
@@ -34,7 +68,6 @@ use crate::{
 /// deployment or an error
 ///
 /// [`Transaction`]: Transaction
-#[allow(clippy::wildcard_in_or_patterns)]
 pub async fn create_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
@@ -43,12 +76,14 @@ pub async fn create_deployment_in_organisation(
 	repository_id: Option<&str>,
 	image_name: Option<&str>,
 	image_tag: &str,
+	region: &str,
+	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
 	match registry {
 		"registry.patr.cloud" => (),
-		"registry.hub.docker.com" | _ => {
+		_ => {
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -84,6 +119,7 @@ pub async fn create_deployment_in_organisation(
 				name,
 				&repository_id,
 				image_tag,
+				region,
 			)
 			.await?;
 		} else {
@@ -99,6 +135,7 @@ pub async fn create_deployment_in_organisation(
 			registry,
 			image_name,
 			image_tag,
+			region,
 		)
 		.await?;
 	} else {
@@ -107,129 +144,380 @@ pub async fn create_deployment_in_organisation(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	// Deploy the app as soon as it's created, so that any existing images can
+	// be deployed
+	service::start_deployment(connection, deployment_id, config).await?;
+
 	Ok(deployment_uuid)
 }
 
-/*
-Documentation for functions yet to come:
+pub async fn start_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
-fn update_configuration_for_deployment:
-/// # Description
-/// This function updates the deployment configuration
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `deployment_id` -  an unsigned 8 bit integer array containing the id of
-///   deployment
-/// * `exposed_ports` - an unsigned 16 bit integer array containing the exposed
-///   ports of deployment
-/// * `environment_variables` - a string containing the url of docker registry
-/// * `repository_id` - An Option<&str> containing either a repository id of
-///   type string or `None`
-/// * `image_name` - An Option<&str> containing either an image name of type
-///   string or `None`
-/// * `image_tag` - a string containing tags of docker image
-///
-/// # Returns
-/// This function returns Result<Uuid, Error> containing an uuid of the
-/// deployment or an error
-///
-/// [`Transaction`]: Transaction
+	let image_id = if let Some(deployed_image) = deployment.deployed_image {
+		deployed_image
+	} else {
+		deployment.get_full_image(connection).await?
+	};
+	let config = config.clone();
+	let region = region.to_string();
+	let deployment_id = deployment.id;
 
+	db::update_deployment_deployed_image(
+		connection,
+		&deployment_id,
+		Some(&image_id),
+	)
+	.await?;
 
-fn create_deployment_upgrade_path_in_organisation:
-/// # Description
-/// This function creates the deployment according to the upgrade-path
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
-/// * `name` - a string containing the name of deployment
-/// * `machine_types` - an array of type [`MachineType`] containing the details
-///   about machine type
-/// * `default_machine_type` - a default configuration of type ['MachineType`]
-///
-/// # Returns
-/// This function returns Result<Uuid, Error> containing an uuid of the
-/// deployment or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			task::spawn(async move {
+				let result = digitalocean::deploy_container(
+					image_id,
+					region,
+					deployment_id.clone(),
+					config,
+				)
+				.await;
 
+				if let Err(error) = result {
+					let _ = update_deployment_status(
+						&deployment_id,
+						&DeploymentStatus::Errored,
+					)
+					.await;
+					log::info!(
+						"Error with the deployment, {}",
+						error.get_error()
+					);
+				}
+			});
+		}
+		Ok(CloudPlatform::Aws) => {
+			task::spawn(async move {
+				let result = aws::deploy_container(
+					image_id,
+					region,
+					deployment_id.clone(),
+					config,
+				)
+				.await;
 
-fn update_deployment_upgrade_path:
-/// # Description
-/// This function updates the deployment according to the upgrade-path
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `upgrade_path_id` -  an unsigned 8 bit integer array containing the id of
-///   the upgrade path
-/// * `name` - a string containing name of the deployment
-/// * `machine_types` - an array of type [`MachineType`] containing the details
-///   about machine type
-///
-/// # Returns
-/// This function returns `Result<(), Error>` containing an empty response or an
-/// error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
+				if let Err(error) = result {
+					let _ = update_deployment_status(
+						&deployment_id,
+						&DeploymentStatus::Errored,
+					)
+					.await;
+					log::info!(
+						"Error with the deployment, {}",
+						error.get_error()
+					);
+				}
+			});
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
 
+	Ok(())
+}
 
-fn create_deployment_entry_point_in_organisation:
-/// # Description
-/// This function creates the deployment entry point for the deployment
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
-/// * `sub_domain` - a string containing the sub domain for deployment
-/// * `domain_id` - An unsigned 8 bit integer array containing id of
-///   organisation domain
-/// * `path` - a string containing the path for the deployment
-/// * `entry_point_type` - a string containing the type of entry point
-/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
-///   array containing
-/// the id of deployment or `None`
-/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
-///   containing port
-/// of deployment or an `None`
-/// * `url` - an Option<&str> containing a string of the url for the image to be
-///   deployed
-///
-/// # Returns
-/// This function returns `Result<uuid, Error>` containing uuid of the entry
-/// point or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
+pub async fn stop_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	log::trace!("Getting deployment id from db");
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	log::trace!("removing the deployed image info from db");
+	db::update_deployment_deployed_image(connection, deployment_id, None)
+		.await?;
 
-fn update_deployment_entry_point:
-/// # Description
-/// This function updates the deployment entry point for the deployment
-///
-/// # Arguments
-/// * `connection` - database save point, more details here: [`Transaction`]
-/// * `entry_point_id` - an unsigned
-/// * `entry_point_type` - a string containing the type of entry point
-/// * `deployment_id` - an Option<&str> containing an unsigned 8 bit integer
-///   array containing
-/// the id of deployment or `None`
-/// * `deployment_port` - an Option<u16> containing an unsigned 16 bit integer
-///   containing port
-/// of deployment or an `None`
-/// * `url` - an Option<&str> containing a string of the url for the image to be
-///   deployed
-///
-/// # Returns
-/// This function returns `Result<uuid, Error>` containing uuid of the entry
-/// point or an error
-///
-/// [`Transaction`]: Transaction
-/// [`MachineType`]: MachineType
-*/
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			log::trace!("deleting the deployment from digitalocean");
+			digitalocean::delete_deployment(connection, deployment_id, config)
+				.await?;
+		}
+		Ok(CloudPlatform::Aws) => {
+			log::trace!("deleting the deployment from aws");
+			aws::delete_deployment(connection, deployment_id, config, region)
+				.await?;
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn get_deployment_container_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<String, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	log::trace!("get the deployment id from db");
+
+	let (provider, _) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let logs = match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			log::trace!("getting logs from digitalocean deployment");
+			digitalocean::get_container_logs(connection, deployment_id, config)
+				.await?
+		}
+		Ok(CloudPlatform::Aws) => {
+			log::trace!("getting logs from aws deployment");
+			aws::get_container_logs(connection, deployment_id, config).await?
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	};
+
+	Ok(logs)
+}
+
+async fn add_cname_record(
+	sub_domain: &str,
+	target: &str,
+	config: &Settings,
+	proxied: bool,
+) -> Result<(), Error> {
+	let full_domain = if sub_domain.ends_with(".patr.cloud") {
+		sub_domain.to_string()
+	} else {
+		format!("{}.patr.cloud", sub_domain)
+	};
+	println!("sub_domain: {}", sub_domain);
+	println!("target: {}", target);
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+	let expected_dns_record = DnsContent::CNAME {
+		content: String::from(target),
+	};
+	let response = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(full_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?;
+	let dns_record = response.result.into_iter().find(|record| {
+		if let DnsContent::CNAME { .. } = record.content {
+			record.name == full_domain
+		} else {
+			false
+		}
+	});
+	if let Some(record) = dns_record {
+		if let DnsContent::CNAME { content } = record.content {
+			if content != target {
+				client
+					.request(&UpdateDnsRecord {
+						zone_identifier,
+						identifier: record.id.as_str(),
+						params: UpdateDnsRecordParams {
+							content: expected_dns_record,
+							name: &full_domain,
+							proxied: Some(proxied),
+							ttl: Some(1),
+						},
+					})
+					.await?;
+			}
+		}
+	} else {
+		// Create
+		client
+			.request(&CreateDnsRecord {
+				zone_identifier,
+				params: CreateDnsRecordParams {
+					content: expected_dns_record,
+					name: sub_domain,
+					ttl: Some(1),
+					priority: None,
+					proxied: Some(proxied),
+				},
+			})
+			.await?;
+	}
+	Ok(())
+}
+
+async fn delete_docker_image(
+	deployment_id_string: &str,
+	image_id: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+
+	docker
+		.images()
+		.get(format!(
+			"registry.digitalocean.com/patr-cloud/{}:latest",
+			deployment_id_string
+		))
+		.delete()
+		.await?;
+
+	docker.images().get(image_id).delete().await?;
+
+	Ok(())
+}
+
+async fn update_deployment_status(
+	deployment_id: &[u8],
+	status: &DeploymentStatus,
+) -> Result<(), sqlx::Error> {
+	let app = service::get_app();
+
+	db::update_deployment_status(
+		app.database.acquire().await?.deref_mut(),
+		deployment_id,
+		status,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn tag_docker_image(
+	image_id: &str,
+	new_repo_name: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+	docker
+		.images()
+		.get(image_id)
+		.tag(
+			&TagOptions::builder()
+				.repo(new_repo_name)
+				.tag("latest")
+				.build(),
+		)
+		.await?;
+
+	Ok(())
+}
+
+async fn pull_image_from_registry(
+	image_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let app = service::get_app().clone();
+	let god_username = db::get_user_by_user_id(
+		app.database.acquire().await?.deref_mut(),
+		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
+	)
+	.await?
+	.status(500)?
+	.username;
+
+	// generate token as password
+	let iat = get_current_time().as_secs();
+	let token = RegistryToken::new(
+		config.docker_registry.issuer.clone(),
+		iat,
+		god_username.clone(),
+		config,
+		vec![RegistryTokenAccess {
+			r#type: "repository".to_string(),
+			name: image_id.to_string(),
+			actions: vec!["pull".to_string()],
+		}],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	// get token object using the above token string
+	let registry_auth = RegistryAuth::builder()
+		.username(god_username)
+		.password(token)
+		.build();
+
+	let docker = Docker::new();
+	let mut stream = docker.images().pull(
+		&PullOptions::builder()
+			.image(image_id)
+			.auth(registry_auth)
+			.build(),
+	);
+
+	while stream.next().await.is_some() {}
+
+	Ok(())
+}

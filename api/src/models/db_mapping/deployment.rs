@@ -59,6 +59,7 @@ pub struct Deployment {
 	pub status: DeploymentStatus,
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
+	pub region: String,
 }
 
 impl Deployment {
@@ -117,12 +118,6 @@ pub enum DeploymentStatus {
 	Deleted,
 }
 
-#[allow(dead_code)]
-pub enum CloudPlatform {
-	Aws,
-	DigitalOcean,
-}
-
 impl Display for DeploymentStatus {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -149,6 +144,35 @@ impl FromStr for DeploymentStatus {
 			"stopped" => Ok(Self::Stopped),
 			"errored" => Ok(Self::Errored),
 			"deleted" => Ok(Self::Deleted),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CloudPlatform {
+	Aws,
+	DigitalOcean,
+}
+
+impl Display for CloudPlatform {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Aws => write!(f, "aws"),
+			Self::DigitalOcean => write!(f, "do"),
+		}
+	}
+}
+
+impl FromStr for CloudPlatform {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"aws" | "amazon" | "amazon_web_services" => Ok(Self::Aws),
+			"do" | "digitalocean" | "digital_ocean" => Ok(Self::DigitalOcean),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

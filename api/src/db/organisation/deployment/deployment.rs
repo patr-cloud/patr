@@ -38,6 +38,7 @@ pub async fn initialize_deployment_pre(
 			deployed_image TEXT,
 			digital_ocean_app_id TEXT
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
+			region TEXT NOT NULL DEFAULT 'do-blr',
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -155,18 +156,20 @@ pub async fn create_deployment_with_internal_registry(
 	name: &str,
 	repository_id: &[u8],
 	image_tag: &str,
+	region: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL);
+			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5);
 		"#,
 		deployment_id,
 		name,
 		repository_id,
-		image_tag
+		image_tag,
+		region
 	)
 	.execute(&mut *connection)
 	.await
@@ -180,19 +183,21 @@ pub async fn create_deployment_with_external_registry(
 	registry: &str,
 	image_name: &str,
 	image_tag: &str,
+	region: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL);
+			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6);
 		"#,
 		deployment_id,
 		name,
 		registry,
 		image_name,
-		image_tag
+		image_tag,
+		region
 	)
 	.execute(&mut *connection)
 	.await
@@ -217,7 +222,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id
+			deployment.digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		INNER JOIN
@@ -268,7 +274,8 @@ pub async fn get_deployments_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id
+			deployment.digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		INNER JOIN
@@ -303,7 +310,8 @@ pub async fn get_deployment_by_id(
 			image_tag,
 			status as "status: _",
 			deployed_image,
-			digital_ocean_app_id
+			digital_ocean_app_id,
+			deployment.region
 		FROM
 			deployment
 		WHERE
@@ -340,23 +348,40 @@ pub async fn delete_deployment_by_id(
 pub async fn update_deployment_deployed_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	deployed_image: &str,
+	deployed_image: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			deployed_image = $1
-		WHERE
-			id = $2;
-		"#,
-		deployed_image,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(deployed_image) = deployed_image {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deployed_image = $1
+			WHERE
+				id = $2;
+			"#,
+			deployed_image,
+			deployment_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deployed_image = NULL
+			WHERE
+				id = $1;
+			"#,
+			deployment_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn update_digital_ocean_app_id_for_deployment(
