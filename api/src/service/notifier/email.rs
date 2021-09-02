@@ -138,7 +138,7 @@ struct SignUpCompletedEmail {}
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
-	send_email(SignUpCompletedEmail {}, email, None, "Welocme to Patr").await
+	send_email(SignUpCompletedEmail {}, email, None, "Welcome to Patr").await
 }
 
 #[derive(EmailTemplate, Serialize)]
