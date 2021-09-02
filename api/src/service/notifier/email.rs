@@ -33,7 +33,7 @@ pub async fn send_user_verification_otp(
 		},
 		email,
 		None,
-		"PATR Verification OTP",
+		"Patr Verification OTP",
 	)
 	.await
 }
@@ -69,7 +69,7 @@ pub async fn send_forgot_password_otp(
 		},
 		email,
 		None,
-		"PATR password reset request",
+		"Patr password reset request",
 	)
 	.await
 }
@@ -97,7 +97,7 @@ pub async fn send_user_reset_password_notification(
 		PasswordResetEmail {},
 		email,
 		None,
-		"PATR successful password change",
+		"Patr successful password change",
 	)
 	.await
 }
@@ -119,7 +119,7 @@ struct PasswordChangedEmail {}
 pub async fn send_password_changed_notification(
 	email: Mailbox,
 ) -> Result<(), Error> {
-	send_email(PasswordChangedEmail {}, email, None, "PATR Password change")
+	send_email(PasswordChangedEmail {}, email, None, "Patr Password change")
 		.await
 }
 
@@ -138,7 +138,7 @@ struct SignUpCompletedEmail {}
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
-	send_email(SignUpCompletedEmail {}, email, None, "Welocme to PATR").await
+	send_email(SignUpCompletedEmail {}, email, None, "Welocme to Patr").await
 }
 
 #[derive(EmailTemplate, Serialize)]
@@ -159,7 +159,7 @@ struct BackupNotificationEmail {}
 pub async fn send_backup_registration_mail(
 	email: Mailbox,
 ) -> Result<(), Error> {
-	send_email(BackupNotificationEmail {}, email, None, "Welcome to PATR").await
+	send_email(BackupNotificationEmail {}, email, None, "Welcome to Patr").await
 }
 
 /// # Description
