@@ -90,7 +90,6 @@ pub async fn initialize_managed_database_pre(
 			organisation_id BYTEA NOT NULL,
 			digital_ocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digital_ocean_db_id UNIQUE,
-			CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, id),
 			CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_dets_are_valid CHECK(
 				(
 					cloud_database_id IS NOT NULL AND
@@ -229,7 +228,6 @@ pub async fn get_all_database_clusters_for_organisation(
 
 pub async fn update_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	name: &str,
 	cloud_database_id: &str,
 	engine: Engine,
 	version: &str,
@@ -241,7 +239,7 @@ pub async fn update_managed_database(
 	port: i32,
 	user: &str,
 	password: &str,
-	organisation_id: &[u8],
+	resource_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -260,8 +258,7 @@ pub async fn update_managed_database(
 			username = $10,
 			password = $11
 		WHERE
-			organisation_id = $12 AND
-			name = $13;
+			id = $12;
 		"#,
 		cloud_database_id,
 		engine as Engine,
@@ -274,8 +271,7 @@ pub async fn update_managed_database(
 		port,
 		user,
 		password,
-		organisation_id,
-		name
+		resource_id
 	)
 	.execute(&mut *connection)
 	.await?;

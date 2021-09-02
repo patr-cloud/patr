@@ -883,6 +883,16 @@
       "nullable": []
     }
   },
+  "2d0a4d0e3233384defaa66425217e75b86979026cdfa5130772cf98516a00640": {
+    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, cloud_database_id TEXT CONSTRAINT managed_database_uq_cloud_database_id UNIQUE, db_provider_name CLOUD_PLATFORM NOT NULL, engine ENGINE, version TEXT, num_nodes INTEGER, size TEXT, region TEXT, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', host TEXT, port INTEGER, username TEXT, password TEXT, organisation_id BYTEA NOT NULL, digital_ocean_db_id TEXT CONSTRAINT managed_database_uq_digital_ocean_db_id UNIQUE, CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_dets_are_valid CHECK( ( cloud_database_id IS NOT NULL AND engine IS NOT NULL AND version IS NOT NULL AND num_nodes IS NOT NULL AND size IS NOT NULL AND region IS NOT NULL AND host IS NOT NULL AND port IS NOT NULL AND username IS NOT NULL AND password IS NOT NULL ) OR ( cloud_database_id IS NULL AND engine IS NULL AND version IS NULL AND num_nodes IS NULL AND size IS NULL AND region IS NULL AND host IS NULL AND port IS NULL AND username IS NULL AND password IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "2d8f1c1831c073de654cab1bda49d554b9bcc05196b0161ec692cf35e814f1a8": {
     "query": "SELECT * FROM user_unverified_phone_number WHERE country_code = $1 AND phone_number = $2;",
     "describe": {
@@ -2816,6 +2826,52 @@
       ]
     }
   },
+  "8519f7805037cca598595bee1d5869b9235a699ac0cde0f2c05e078731850f25": {
+    "query": "UPDATE managed_database SET cloud_database_id = $1, engine = $2, version = $3, num_nodes = $4, size = $5, region = $6, status = $7, host = $8, port = $9, username = $10, password = $11 WHERE id = $12;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          {
+            "Custom": {
+              "name": "engine",
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Int4",
+          "Text",
+          "Text",
+          {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Int4",
+          "Text",
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
     "query": "CREATE INDEX role_permissions_resource_idx_role_id_resource_id ON role_permissions_resource (role_id, resource_id);",
     "describe": {
@@ -4371,53 +4427,6 @@
       "nullable": []
     }
   },
-  "c96e2f7ae1cb5a136435ec43ada197db3b7900d6a6cea88c8e3a8c258c0dab6e": {
-    "query": "UPDATE managed_database SET cloud_database_id = $1, engine = $2, version = $3, num_nodes = $4, size = $5, region = $6, status = $7, host = $8, port = $9, username = $10, password = $11 WHERE organisation_id = $12 AND name = $13;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          {
-            "Custom": {
-              "name": "engine",
-              "kind": {
-                "Enum": [
-                  "postgres",
-                  "mysql"
-                ]
-              }
-            }
-          },
-          "Text",
-          "Int4",
-          "Text",
-          "Text",
-          {
-            "Custom": {
-              "name": "managed_database_status",
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          },
-          "Text",
-          "Int4",
-          "Text",
-          "Text",
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "caeb5f3b7381d0c70558202479f3bf4d45c58eaceca120e1cbf1bced01385f61": {
     "query": "SELECT * FROM application WHERE id = $1;",
     "describe": {
@@ -4610,16 +4619,6 @@
   },
   "dc3b3ef773e26c8df28ea1d57db35e8cf2adc36f4edf9f5cd5414c4e415370d7": {
     "query": "CREATE TABLE application ( id BYTEA CONSTRAINT application_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT application_uq_name UNIQUE );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "dd692638a17a48ad14519ac1849b1b6c43e494a26acc3cd801091b8a99c7cd34": {
-    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, cloud_database_id TEXT CONSTRAINT managed_database_uq_cloud_database_id UNIQUE, db_provider_name CLOUD_PLATFORM NOT NULL, engine ENGINE, version TEXT, num_nodes INTEGER, size TEXT, region TEXT, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', host TEXT, port INTEGER, username TEXT, password TEXT, organisation_id BYTEA NOT NULL, digital_ocean_db_id TEXT CONSTRAINT managed_database_uq_digital_ocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, id), CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_dets_are_valid CHECK( ( cloud_database_id IS NOT NULL AND engine IS NOT NULL AND version IS NOT NULL AND num_nodes IS NOT NULL AND size IS NOT NULL AND region IS NOT NULL AND host IS NOT NULL AND port IS NOT NULL AND username IS NOT NULL AND password IS NOT NULL ) OR ( cloud_database_id IS NULL AND engine IS NULL AND version IS NULL AND num_nodes IS NULL AND size IS NULL AND region IS NULL AND host IS NULL AND port IS NULL AND username IS NULL AND password IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {

@@ -23,7 +23,6 @@ use crate::{
 		deployment::cloud_providers::digitalocean::{
 			DatabaseConfig,
 			DatabaseInfo,
-			DatabaseNamewrapper,
 			DatabaseResponse,
 		},
 		rbac,
@@ -234,7 +233,7 @@ async fn create_database_on_digitalocean(
 	log::trace!("database online");
 
 	log::trace!("creating a new database inside cluster");
-	let new_database = client
+	let new_db_status = client
 		.post(format!(
 			"https://api.digitalocean.com/v2/databases/{}/dbs",
 			database_cluster.database.id
@@ -243,13 +242,17 @@ async fn create_database_on_digitalocean(
 		.json(&json!({ "name": name }))
 		.send()
 		.await?
-		.json::<DatabaseNamewrapper>()
-		.await?;
+		.status();
+
+	if new_db_status.is_client_error() || new_db_status.is_server_error() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
 	log::trace!("updating the entry after the database is online");
 	db::update_managed_database(
 		app.database.acquire().await?.deref_mut(),
-		&new_database.db.name,
 		&database_cluster.database.id,
 		engine,
 		&version,
@@ -261,7 +264,7 @@ async fn create_database_on_digitalocean(
 		database_cluster.database.connection.port as i32,
 		&database_cluster.database.connection.user,
 		&database_cluster.database.connection.password,
-		&organisation_id,
+		resource_id,
 	)
 	.await?;
 	db::update_digital_ocean_db_id_for_database(
@@ -591,7 +594,6 @@ async fn create_database_on_aws(
 	log::trace!("updating the entry after the database is online");
 	db::update_managed_database(
 		app.database.acquire().await?.deref_mut(),
-		&name,
 		&hex::encode(resource_id),
 		engine,
 		&version,
@@ -603,7 +605,7 @@ async fn create_database_on_aws(
 		port as i32,
 		&master_username,
 		&password,
-		&organisation_id,
+		resource_id,
 	)
 	.await?;
 	log::trace!("database successfully updated");
