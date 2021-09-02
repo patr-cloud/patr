@@ -33,7 +33,7 @@ pub async fn send_user_verification_otp(
 		},
 		email,
 		None,
-		"Patr Verification OTP",
+		"Patr verification OTP",
 	)
 	.await
 }
@@ -119,7 +119,7 @@ struct PasswordChangedEmail {}
 pub async fn send_password_changed_notification(
 	email: Mailbox,
 ) -> Result<(), Error> {
-	send_email(PasswordChangedEmail {}, email, None, "Patr Password change")
+	send_email(PasswordChangedEmail {}, email, None, "Patr password change")
 		.await
 }
 
