@@ -94,42 +94,21 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO this doesn't work as of now. Need to figure out GiST
-	// query!(
-	// 	r#"
-	// 	CREATE INDEX
-	// 		deployment_runner_idx_last_updated
-	// 	ON
-	// 		deployment_runner
-	// 	USING GIST(last_updated);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
-	// query!(
-	// 	r#"
-	// 	CREATE INDEX
-	// 		deployment_runner_deployment_idx_last_updated
-	// 	ON
-	// 		deployment_runner_deployment
-	// 	USING GIST(last_updated);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
-	// query!(
-	// 	r#"
-	// 	CREATE INDEX
-	// 		deployment_running_stats_idx_timestamp
-	// 	ON
-	// 		deployment_running_stats
-	// 	USING GIST(timestamp);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
+	query!(
+		r#"
+		CREATE TABLE deployment_environment_variable(
+			deployment_id BYTEA
+				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+					REFERENCES deployment(id),
+			name VARCHAR(256) NOT NULL,
+			value TEXT NOT NULL,
+			CONSTRAINT deployment_environment_variable_pk
+				PRIMARY KEY(deployment_id, name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
@@ -422,6 +401,69 @@ pub async fn update_deployment_status(
 		"#,
 		status as _,
 		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.name, row.value))
+	.collect();
+	Ok(rows)
+}
+
+pub async fn add_environment_variable_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	key: &str,
+	value: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_environment_variable
+		VALUES
+			($1, $2, $3);
+		"#,
+		deployment_id,
+		key,
+		value
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id,
 	)
 	.execute(&mut *connection)
 	.await

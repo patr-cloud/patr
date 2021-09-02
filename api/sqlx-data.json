@@ -2454,6 +2454,20 @@
       "nullable": []
     }
   },
+  "8038e82b88abf353ef3e60bac7d76d66c8ec63e16a7afa0eac39148ed349c9f5": {
+    "query": "INSERT INTO deployment_environment_variable VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "806d8ffb3f6de78af43ad472fe58308b0f0cb0d822f8dbf40cc9f018bc70f220": {
     "query": "SELECT * FROM password_reset_request WHERE user_id = $1;",
     "describe": {
@@ -2810,6 +2824,18 @@
         true,
         true
       ]
+    }
+  },
+  "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e": {
+    "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "8e8442a69038da41e5966a479775fb1d9dbe1408096ccc93695d0c4713eb59b1": {
@@ -3179,6 +3205,38 @@
       "nullable": []
     }
   },
+  "a590b5c660e50cc4082d307ebf9d44fb334867b533dab88ac7b1546456bcbce2": {
+    "query": "SELECT * FROM deployment_environment_variable WHERE deployment_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "deployment_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "value",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
     "query": "ALTER TABLE application ADD CONSTRAINT application_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -3492,6 +3550,16 @@
   },
   "baf8c3ed596de5ee5a358bd0e1d98f2f92a6e83cf9b53d2f246e89447f30846f": {
     "query": "CREATE TABLE application_version ( application_id BYTEA NOT NULL CONSTRAINT application_version_fk_application_id REFERENCES application(id), version VARCHAR(32) NOT NULL, CONSTRAINT application_version_pk PRIMARY KEY(application_id, version) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bb2040c78ea42c68299e31bb5c106ea414e43974f93da426c1f5b1c4b9ef2f85": {
+    "query": "CREATE TABLE deployment_environment_variable( deployment_id BYTEA CONSTRAINT deploymment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT NOT NULL, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name) );",
     "describe": {
       "columns": [],
       "parameters": {

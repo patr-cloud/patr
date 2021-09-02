@@ -55,5 +55,21 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployment_environment_variable(
+			deployment_id BYTEA
+				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+					REFERENCES deployment(id),
+			name VARCHAR(256) NOT NULL,
+			value TEXT NOT NULL,
+			CONSTRAINT deployment_environment_variable_pk
+				PRIMARY KEY(deployment_id, name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
