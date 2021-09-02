@@ -7,10 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{
-		db_mapping::{DatabasePlan},
-		rbac::permissions,
-	},
+	models::{db_mapping::DatabasePlan, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{

@@ -18,7 +18,7 @@ lazy_static! {
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
 	// Validate the name of database
-	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,64}$").unwrap();
+	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {

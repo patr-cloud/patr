@@ -2,18 +2,42 @@ use std::{ops::DerefMut, time::Duration};
 
 use eve_rs::AsError;
 use lightsail::model::RelationalDatabase;
-use rand::{Rng, distributions::Alphanumeric, thread_rng};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::Client;
+use serde_json::json;
 use tokio::{
 	task,
 	time::{self, Instant},
 };
 
-use crate::{Database, db, error, models::{db_mapping::{CloudPlatform, DatabasePlan, Engine, ManagedDatabaseStatus}, deployment::cloud_providers::digitalocean::{
+use crate::{
+	db,
+	error,
+	models::{
+		db_mapping::{
+			CloudPlatform,
+			DatabasePlan,
+			Engine,
+			ManagedDatabaseStatus,
+		},
+		deployment::cloud_providers::digitalocean::{
 			DatabaseConfig,
 			DatabaseInfo,
+			DatabaseNamewrapper,
 			DatabaseResponse,
-		}, rbac}, service::{self, deployment::aws}, utils::{Error, get_current_time_millis, settings::Settings, validator}};
+		},
+		rbac,
+	},
+	service::{self, deployment::aws},
+	utils::{
+		get_current_time,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
+	},
+	Database,
+};
 
 pub async fn create_database_cluster(
 	settings: Settings,
@@ -35,10 +59,10 @@ pub async fn create_database_cluster(
 		.body(error!(SERVER_ERROR).to_string())?;
 	let region = region.to_string();
 
-	task::spawn(async move {
-		let result = match provider.parse() {
-			Ok(CloudPlatform::DigitalOcean) => {
-				create_database_on_digitalocean(
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			task::spawn(async move {
+				let result = create_database_on_digitalocean(
 					settings,
 					name,
 					version,
@@ -48,11 +72,19 @@ pub async fn create_database_cluster(
 					organisation_id,
 					database_plan,
 				)
-				.await
-			}
-			Ok(CloudPlatform::Aws) => {
-				create_database_on_aws(
-					settings,
+				.await;
+
+				if let Err(error) = result {
+					log::error!(
+						"Error while creating database, {}",
+						error.get_error()
+					);
+				}
+			});
+		}
+		Ok(CloudPlatform::Aws) => {
+			task::spawn(async move {
+				let result = create_database_on_aws(
 					name,
 					version,
 					engine,
@@ -60,19 +92,22 @@ pub async fn create_database_cluster(
 					organisation_id,
 					database_plan,
 				)
-				.await
-			}
-			_ => {
-				return Err(Error::empty()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string()));
-			}
-		};
+				.await;
 
-		if let Err(error) = result {
-			log::error!("Error while creating database, {}", error.get_error());
+				if let Err(error) = result {
+					log::error!(
+						"Error while creating database, {}",
+						error.get_error()
+					);
+				}
+			});
 		}
-	});
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
 
 	Ok(())
 }
@@ -91,20 +126,20 @@ async fn create_database_on_digitalocean(
 	let app = service::get_app();
 	let engine = engine.parse::<Engine>()?;
 
+	log::trace!("checking if the database name is valid or not");
 	if !validator::is_database_name_valid(&name) {
+		log::trace!("database name invalid");
 		Error::as_result()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	}
 
-	let org_id = hex::encode(&organisation_id);
-
 	let version = if engine == Engine::Postgres {
-		version.unwrap_or("12".to_string())
+		version.unwrap_or_else(|| "12".to_string())
 	} else {
-		version.unwrap_or("8".to_string())
+		version.unwrap_or_else(|| "8".to_string())
 	};
-	// TODO: add new database and delete old database
+
 	let client = Client::new();
 
 	let num_nodes = num_nodes.unwrap_or(1);
@@ -115,14 +150,33 @@ async fn create_database_on_digitalocean(
 			.await?;
 	let resource_id = resource_id.as_bytes();
 
-	let db_name = hex::encode(&resource_id);
+	let db_name = format!("database-{}", get_current_time().as_millis());
+
+	let db_engine = if engine == Engine::Postgres {
+		"pg"
+	} else {
+		"mysql"
+	};
+
+	let region = match region.as_str() {
+		"nyc" => "nyc1",
+		"ams" => "ams3",
+		"sfo" => "sfo3",
+		"sgp" => "sgp1",
+		"lon" => "lon1",
+		"fra" => "fra1",
+		"tor" => "tor1",
+		"blr" => "blr1",
+		_ => "blr1",
+	};
+
 	log::trace!("sending the create db cluster request to digital ocean");
 	let database_cluster = client
 		.post("https://api.digitalocean.com/v2/databases")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.json(&DatabaseConfig {
 			name: db_name, // should be unique
-			engine: engine.to_string(),
+			engine: db_engine.to_string(),
 			version: Some(version.clone()),
 			num_nodes,
 			size: database_plan.to_string(),
@@ -137,7 +191,7 @@ async fn create_database_on_digitalocean(
 	db::create_resource(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
-		&format!("do-database-{}", name),
+		&format!("do-database-{}", hex::encode(resource_id)),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -153,7 +207,7 @@ async fn create_database_on_digitalocean(
 	db::create_managed_database(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
-		&database_cluster.database.name,
+		&name,
 		CloudPlatform::DigitalOcean,
 		&organisation_id,
 	)
@@ -168,21 +222,34 @@ async fn create_database_on_digitalocean(
 	)
 	.await?;
 
-	log::trace!("waiting for databse to be online");
+	log::trace!("waiting for database to be online");
 	wait_for_digitalocean_database_cluster_to_be_online(
 		app.database.acquire().await?.deref_mut(),
-		settings,
+		&settings,
 		resource_id,
 		&database_cluster.database.id,
-		client,
+		&client,
 	)
 	.await?;
 	log::trace!("database online");
 
+	log::trace!("creating a new database inside cluster");
+	let new_database = client
+		.post(format!(
+			"https://api.digitalocean.com/v2/databases/{}/dbs",
+			database_cluster.database.id
+		))
+		.bearer_auth(&settings.digital_ocean_api_key)
+		.json(&json!({ "name": name }))
+		.send()
+		.await?
+		.json::<DatabaseNamewrapper>()
+		.await?;
+
 	log::trace!("updating the entry after the database is online");
 	db::update_managed_database(
 		app.database.acquire().await?.deref_mut(),
-		&database_cluster.database.name,
+		&new_database.db.name,
 		&database_cluster.database.id,
 		engine,
 		&version,
@@ -195,6 +262,12 @@ async fn create_database_on_digitalocean(
 		&database_cluster.database.connection.user,
 		&database_cluster.database.connection.password,
 		&organisation_id,
+	)
+	.await?;
+	db::update_digital_ocean_db_id_for_database(
+		app.database.acquire().await?.deref_mut(),
+		&database_cluster.database.name,
+		resource_id,
 	)
 	.await?;
 	log::trace!("database successfully updated");
@@ -232,15 +305,15 @@ pub async fn get_all_database_clusters_for_organisation(
 
 async fn wait_for_digitalocean_database_cluster_to_be_online(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	settings: Settings,
+	settings: &Settings,
 	database_id: &[u8],
 	cloud_db_id: &str,
-	client: Client,
+	client: &Client,
 ) -> Result<(), Error> {
 	let start = Instant::now();
 	loop {
 		let database_status =
-			get_cluster_from_digital_ocean(&client, &settings, cloud_db_id)
+			get_cluster_from_digital_ocean(client, settings, cloud_db_id)
 				.await?;
 
 		if database_status.database.status == *"online" {
@@ -395,7 +468,6 @@ pub async fn delete_managed_database(
 }
 
 async fn create_database_on_aws(
-	settings: Settings,
 	name: String,
 	version: Option<String>,
 	engine: String,
@@ -407,14 +479,20 @@ async fn create_database_on_aws(
 	let app = service::get_app();
 	let engine = engine.parse::<Engine>()?;
 
-	let organisation_id = hex::encode(&organisation_id);
+	log::trace!("checking if the database name is valid or not");
+	if !validator::is_database_name_valid(&name) {
+		log::trace!("database name invalid");
+		Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	}
 
 	let version = if engine == Engine::Postgres {
-		version.unwrap_or("12".to_string())
+		version.unwrap_or_else(|| "12".to_string())
 	} else {
-		version.unwrap_or("8".to_string())
+		version.unwrap_or_else(|| "8".to_string())
 	};
-	let master_username = format!("user-{}", name);
+	let master_username = format!("user_{}", name);
 	let client = aws::get_lightsail_client(&region);
 
 	log::trace!("generating new resource");
@@ -422,8 +500,6 @@ async fn create_database_on_aws(
 		db::generate_new_resource_id(app.database.acquire().await?.deref_mut())
 			.await?;
 	let resource_id = resource_id.as_bytes();
-
-	let organisation_id = hex::decode(&organisation_id).unwrap();
 
 	db::create_resource(
 		app.database.acquire().await?.deref_mut(),
@@ -489,7 +565,7 @@ async fn create_database_on_aws(
 	// 	.status(500)
 	// 	.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("waiting for databse to be online");
+	log::trace!("waiting for database to be online");
 	let database_info = wait_for_aws_database_cluster_to_be_online(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
@@ -498,6 +574,20 @@ async fn create_database_on_aws(
 	.await?;
 	log::trace!("database online");
 
+	let address = database_info
+		.master_endpoint
+		.clone()
+		.map(|address| address.address)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let port = database_info
+		.master_endpoint
+		.map(|port| port.port)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 	log::trace!("updating the entry after the database is online");
 	db::update_managed_database(
 		app.database.acquire().await?.deref_mut(),
@@ -506,22 +596,11 @@ async fn create_database_on_aws(
 		engine,
 		&version,
 		1,
-		database_plan.to_string(),
+		&database_plan.to_string(),
 		&region,
 		ManagedDatabaseStatus::Running,
-		&database_info
-			.master_endpoint
-			.as_ref()
-			.unwrap()
-			.address
-			.as_ref()
-			.unwrap(),
-		database_info
-			.master_endpoint
-			.as_ref()
-			.unwrap()
-			.port
-			.unwrap() as i32,
+		&address,
+		port as i32,
 		&master_username,
 		&password,
 		&organisation_id,
@@ -560,16 +639,19 @@ async fn wait_for_aws_database_cluster_to_be_online(
 			)
 			.await?;
 
-			return Ok(database_info
+			let db_info = database_info
 				.relational_database
 				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?);
-		} else if database_state != "creating" ||
-			database_state != "configuring-log-exports" ||
+				.body(error!(SERVER_ERROR).to_string())?;
+
+			return Ok(db_info);
+		} else if database_state != "creating" &&
+			database_state != "configuring-log-exports" &&
 			database_state != "backing-up"
 		{
 			break;
 		}
+		time::sleep(Duration::from_millis(1000)).await;
 	}
 
 	db::update_managed_database_status(

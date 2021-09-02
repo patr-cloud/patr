@@ -10,25 +10,12 @@
       "nullable": []
     }
   },
-  "03a3c7497515d9b0b05296a5d0affa280a2eb5edd95cafc6d2023751805597f7": {
-    "query": "INSERT INTO managed_database VALUES ($1, $2, NULL, $3, NULL, NULL, NULL, NULL, NULL, 'creating', NULL, NULL, NULL, NULL, $4);",
+  "046c6b19462914789d8ae29cf351948c95aeaa858d959a7b22af0937f54ace8d": {
+    "query": "UPDATE deployment SET deployed_image = NULL WHERE id = $1;",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Bytea",
-          "Varchar",
-          {
-            "Custom": {
-              "name": "cloud_platform",
-              "kind": {
-                "Enum": [
-                  "aws",
-                  "digitalocean"
-                ]
-              }
-            }
-          },
           "Bytea"
         ]
       },
@@ -120,6 +107,150 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "0e0ee44a19b8d3236b6f1a57bbc0ea40102cf88c6d042583b54d00e4dbe043db": {
+    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine as \"engine: Engine\", version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id, digital_ocean_db_id FROM managed_database WHERE name = $1 AND organisation_id = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "cloud_database_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "db_provider_name: CloudPlatform",
+          "type_info": {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "engine: Engine",
+          "type_info": {
+            "Custom": {
+              "name": "engine",
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "num_nodes",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "size",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "host",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 11,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 12,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 15,
+          "name": "digital_ocean_db_id",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ]
     }
   },
   "0e697016c2da3ccb203f0ef61068ee1228e25a7fe59a5228385bf194eb8731ac": {
@@ -717,6 +848,31 @@
       ]
     }
   },
+  "291e92270ec46f3049eb53d044f536b26099b8dba83628445c3b6f2b883b90e9": {
+    "query": "INSERT INTO managed_database VALUES ($1, $2, NULL, $3, NULL, NULL, NULL, NULL, NULL, 'creating', NULL, NULL, NULL, NULL, $4, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "29c6c0c77ee4addddb5f2fe4400fa72bb8b8b8e850d297e12886a94e64f46100": {
     "query": "CREATE TABLE role( id BYTEA CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id BYTEA NOT NULL CONSTRAINT role_fk_owner_id REFERENCES organisation(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
     "describe": {
@@ -1254,6 +1410,19 @@
         false,
         false
       ]
+    }
+  },
+  "445736e82a3677a1dd2629a28de58f62ff165b5c2ca07dde5fceeb81f03b9e6f": {
+    "query": "UPDATE managed_database SET digital_ocean_db_id = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
@@ -3382,6 +3551,149 @@
       "nullable": []
     }
   },
+  "ae99acce066062da7041e66dee189d2d1d518f0be0b3b16cbafe3ca6fb161089": {
+    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine as \"engine: Engine\", version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id, digital_ocean_db_id FROM managed_database WHERE organisation_id = $1 AND cloud_database_id IS NOT NULL;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "cloud_database_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "db_provider_name: CloudPlatform",
+          "type_info": {
+            "Custom": {
+              "name": "cloud_platform",
+              "kind": {
+                "Enum": [
+                  "aws",
+                  "digitalocean"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "engine: Engine",
+          "type_info": {
+            "Custom": {
+              "name": "engine",
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "num_nodes",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "size",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_database_status",
+              "kind": {
+                "Enum": [
+                  "creating",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 10,
+          "name": "host",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 11,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 12,
+          "name": "username",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 14,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 15,
+          "name": "digital_ocean_db_id",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ]
+    }
+  },
   "b00c3a7fbe255cf3b72fa3272bcb337bf8e7caf17e64cc884f0e1a39305a26b3": {
     "query": "CREATE TABLE application_version_platform ( application_id BYTEA NOT NULL, version VARCHAR(32) NOT NULL, platform VARCHAR(60) NOT NULL, CONSTRAINT application_version_platform_pk PRIMARY KEY(application_id, version, platform), CONSTRAINT application_version_platform_fk_application_id_version FOREIGN KEY(application_id, version) REFERENCES application_version(application_id, version) );",
     "describe": {
@@ -3776,134 +4088,6 @@
       "nullable": []
     }
   },
-  "be67ff678ff8d9740b79fc5907c938fa97e63d69af2f1e94b663530d5d0c5e06": {
-    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine, version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id FROM managed_database WHERE name = $1 AND organisation_id = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "cloud_database_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "db_provider_name: CloudPlatform",
-          "type_info": {
-            "Custom": {
-              "name": "cloud_platform",
-              "kind": {
-                "Enum": [
-                  "aws",
-                  "digitalocean"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "engine",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 5,
-          "name": "version",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 6,
-          "name": "num_nodes",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "size",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "managed_database_status",
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "host",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 11,
-          "name": "port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 12,
-          "name": "username",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 14,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false
-      ]
-    }
-  },
   "c15856afd2d20efc5c583ab00efa4bb41de007cffffaf361ee2715a73f5546d1": {
     "query": "SELECT \"user\".* FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;",
     "describe": {
@@ -4069,6 +4253,16 @@
       ]
     }
   },
+  "c4395872c1644b1c57cbd9883d96ee3d9ad6d6ba8f584d6f5159fc1a26ea58c7": {
+    "query": "CREATE TYPE DATABASE_PLANS AS ENUM( 'do-nano', 'do-micro', 'do-medium', 'do-large', 'do-xlarge', 'do-xxlarge', 'do-mammoth', 'aws-micro', 'aws-small', 'aws-medium', 'aws-large' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "c706f88776dd35af922f33115ac478f5e3e546940063cc57c83440649196b860": {
     "query": "SELECT \"user\".*, domain.name FROM organisation_domain INNER JOIN domain ON domain.id = organisation_domain.id INNER JOIN resource ON organisation_domain.id = resource.id INNER JOIN organisation ON resource.owner_id = organisation.id INNER JOIN \"user\" ON organisation.super_admin_id = \"user\".id WHERE organisation_domain.id = $1;",
     "describe": {
@@ -4184,7 +4378,17 @@
       "parameters": {
         "Left": [
           "Text",
-          "Text",
+          {
+            "Custom": {
+              "name": "engine",
+              "kind": {
+                "Enum": [
+                  "postgres",
+                  "mysql"
+                ]
+              }
+            }
+          },
           "Text",
           "Int4",
           "Text",
@@ -4242,6 +4446,16 @@
   },
   "cbf218b296179c78c8ba9de48642fe1cea45bad400132d1539ed94f43e15f14b": {
     "query": "ALTER TABLE managed_database ADD CONSTRAINT managed_database_repository_fk_id_organisation_id FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "cf57ae93eb7842dcd2928875738a6289adff1d9df8460e25e7ff7892ec71dfea": {
+    "query": "CREATE TYPE ENGINE AS ENUM( 'postgres', 'mysql' );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4404,131 +4618,14 @@
       "nullable": []
     }
   },
-  "dd5a0d404fe05f0a01608083a3e59a89e53114b7f81c68f242866d45c176ad2d": {
-    "query": "SELECT id, name, cloud_database_id, db_provider_name as \"db_provider_name: CloudPlatform\", engine, version, num_nodes, size, region, status as \"status: _\", host, port, username, password, organisation_id FROM managed_database WHERE organisation_id = $1 AND cloud_database_id IS NOT NULL;",
+  "dd692638a17a48ad14519ac1849b1b6c43e494a26acc3cd801091b8a99c7cd34": {
+    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, cloud_database_id TEXT CONSTRAINT managed_database_uq_cloud_database_id UNIQUE, db_provider_name CLOUD_PLATFORM NOT NULL, engine ENGINE, version TEXT, num_nodes INTEGER, size TEXT, region TEXT, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', host TEXT, port INTEGER, username TEXT, password TEXT, organisation_id BYTEA NOT NULL, digital_ocean_db_id TEXT CONSTRAINT managed_database_uq_digital_ocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, id), CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_dets_are_valid CHECK( ( cloud_database_id IS NOT NULL AND engine IS NOT NULL AND version IS NOT NULL AND num_nodes IS NOT NULL AND size IS NOT NULL AND region IS NOT NULL AND host IS NOT NULL AND port IS NOT NULL AND username IS NOT NULL AND password IS NOT NULL ) OR ( cloud_database_id IS NULL AND engine IS NULL AND version IS NULL AND num_nodes IS NULL AND size IS NULL AND region IS NULL AND host IS NULL AND port IS NULL AND username IS NULL AND password IS NULL ) ) );",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "cloud_database_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "db_provider_name: CloudPlatform",
-          "type_info": {
-            "Custom": {
-              "name": "cloud_platform",
-              "kind": {
-                "Enum": [
-                  "aws",
-                  "digitalocean"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "engine",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 5,
-          "name": "version",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 6,
-          "name": "num_nodes",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "size",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "managed_database_status",
-              "kind": {
-                "Enum": [
-                  "creating",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 10,
-          "name": "host",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 11,
-          "name": "port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 12,
-          "name": "username",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 14,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        }
-      ],
+      "columns": [],
       "parameters": {
-        "Left": [
-          "Bytea"
-        ]
+        "Left": []
       },
-      "nullable": [
-        false,
-        false,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        false
-      ]
+      "nullable": []
     }
   },
   "dea649e4f9bfdbd55c4502fa51d5417cbfbec3b72543cc9c82c7acc7cadd6a37": {
@@ -4828,6 +4925,16 @@
       ]
     }
   },
+  "e767f2459643ed7d769ab767e6cf0ee0603869f6eb357e421c9334bbdfd07d93": {
+    "query": "CREATE TYPE DATABASE_PLAN AS ENUM( 'do-nano', 'do-micro', 'do-medium', 'do-large', 'do-xlarge', 'do-xxlarge', 'do-mammoth', 'aws-micro', 'aws-small', 'aws-medium', 'aws-large' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "e784c3bf8fc613e812aee986db4120781c68821b15c3d6601b7eaa7dd986d0f1": {
     "query": "UPDATE \"user\" SET bio = $1;",
     "describe": {
@@ -5109,16 +5216,6 @@
         false,
         false
       ]
-    }
-  },
-  "fecbbb845e48449ca393a11f3bad002c1f24417afb12e52cb938556f51a85182": {
-    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, cloud_database_id TEXT CONSTRAINT managed_database_uq_cloud_database_id UNIQUE, db_provider_name CLOUD_PLATFORM NOT NULL, engine TEXT, version TEXT, num_nodes INTEGER, size TEXT, region TEXT, status MANAGED_DATABASE_STATUS NOT NULL Default 'creating', host TEXT, port INTEGER, username TEXT, password TEXT, organisation_id BYTEA NOT NULL, CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, organisation_id), CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_id_is_valid CHECK( ( cloud_database_id IS NOT NULL AND engine IS NOT NULL AND version IS NOT NULL AND num_nodes IS NOT NULL AND size IS NOT NULL AND region IS NOT NULL AND host IS NOT NULL AND port IS NOT NULL AND username IS NOT NULL AND password IS NOT NULL ) OR ( cloud_database_id IS NULL AND engine IS NULL AND version IS NULL AND num_nodes IS NULL AND size IS NULL AND region IS NULL AND host IS NULL AND port IS NULL AND username IS NULL AND password IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "ff908727dc27ddb488aafa68cb7b32c061cc8ecfe14870095e35762ba4aecb9a": {

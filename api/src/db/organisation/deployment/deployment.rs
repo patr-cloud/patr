@@ -27,7 +27,7 @@ pub async fn initialize_deployment_pre(
 	)
 	.execute(&mut *connection)
 	.await?;
-	
+
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(

@@ -1,6 +1,14 @@
 use api_macros::{query, query_as};
 
-use crate::{Database, models::db_mapping::{CloudPlatform, Engine, ManagedDatabase, ManagedDatabaseStatus}};
+use crate::{
+	models::db_mapping::{
+		CloudPlatform,
+		Engine,
+		ManagedDatabase,
+		ManagedDatabaseStatus,
+	},
+	Database,
+};
 
 pub async fn initialize_managed_database_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -80,8 +88,10 @@ pub async fn initialize_managed_database_pre(
 			username TEXT,
 			password TEXT, 
 			organisation_id BYTEA NOT NULL,
-			CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, organisation_id),
-			CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_id_is_valid CHECK(
+			digital_ocean_db_id TEXT
+				CONSTRAINT managed_database_uq_digital_ocean_db_id UNIQUE,
+			CONSTRAINT managed_database_uq_name_organisation_id UNIQUE (name, id),
+			CONSTRAINT managed_database_chk_if_db_provdr_nme_and_db_dets_are_valid CHECK(
 				(
 					cloud_database_id IS NOT NULL AND
 					engine IS NOT NULL AND
@@ -145,7 +155,7 @@ pub async fn create_managed_database(
 		INSERT INTO
 			managed_database
 		VALUES
-			($1, $2, NULL, $3, NULL, NULL, NULL, NULL, NULL, 'creating', NULL, NULL, NULL, NULL, $4);
+			($1, $2, NULL, $3, NULL, NULL, NULL, NULL, NULL, 'creating', NULL, NULL, NULL, NULL, $4, NULL);
 		"#,
 		id,
 		name,
@@ -201,7 +211,8 @@ pub async fn get_all_database_clusters_for_organisation(
 			port,
 			username,
 			password,
-			organisation_id
+			organisation_id,
+			digital_ocean_db_id
 		FROM
 			managed_database
 		WHERE
@@ -294,7 +305,8 @@ pub async fn get_managed_database_by_name_and_org_id(
 			port,
 			username,
 			password,
-			organisation_id
+			organisation_id,
+			digital_ocean_db_id
 		FROM
 			managed_database
 		WHERE
@@ -310,4 +322,26 @@ pub async fn get_managed_database_by_name_and_org_id(
 	.next();
 
 	Ok(row)
+}
+
+pub async fn update_digital_ocean_db_id_for_database(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	managed_db_id: &str,
+	resource_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			digital_ocean_db_id = $1
+		WHERE
+			id = $2;
+		"#,
+		managed_db_id,
+		resource_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

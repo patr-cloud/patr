@@ -306,3 +306,13 @@ pub struct AppAggregateLogsResponse {
 	pub live_url: String,
 	// add more later if required
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseNamewrapper {
+	pub db: Db,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Db {
+	pub name: String,
+}

@@ -19,7 +19,7 @@ pub enum DatabasePlan {
 	AwsMicro,
 	AwsSmall,
 	AwsMedium,
-	AwsLarge
+	AwsLarge,
 }
 
 impl Display for DatabasePlan {
@@ -80,6 +80,7 @@ pub struct ManagedDatabase {
 	pub username: Option<String>,
 	pub password: Option<String>,
 	pub organisation_id: Vec<u8>,
+	pub digital_ocean_db_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
