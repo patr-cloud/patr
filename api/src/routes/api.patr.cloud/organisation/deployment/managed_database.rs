@@ -281,10 +281,6 @@ async fn get_managed_database_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let _ =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-			.unwrap();
-
 	let resource_id =
 		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
 			.unwrap();
@@ -324,34 +320,16 @@ async fn delete_managed_database(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let _ =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-			.unwrap();
-
 	let resource_id =
 		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
 			.unwrap();
-
-	let cloud_db = db::get_managed_database_by_id(
-		context.get_database_connection(),
-		&resource_id,
-	)
-	.await?
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let cloud_db_id = cloud_db
-		.cloud_database_id
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	let database_id = cloud_db.id;
 	let client = Client::new();
-
 	let config = context.get_state().config.clone();
+
 	service::delete_managed_database(
 		context.get_database_connection(),
 		&config,
-		&database_id,
-		&cloud_db_id,
+		&resource_id,
 		&client,
 	)
 	.await?;
