@@ -14,14 +14,17 @@ use lightsail::{
 	},
 	SdkError,
 };
-use tokio::{process::Command, time};
+use tokio::{
+	process::Command,
+	time::{self, Instant},
+};
 
 use crate::{
 	db,
 	error,
 	models::db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
 	service,
-	utils::{settings::Settings, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -29,6 +32,7 @@ pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
+	domain_name: Option<String>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let deployment_id_string = hex::encode(&deployment_id);
@@ -95,43 +99,67 @@ pub(super) async fn deploy_container(
 	log::trace!("checking deployment status");
 	wait_for_deployment(&deployment_id_string, &client).await?;
 
-	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
+	if domain_name.is_none() {
+		log::trace!("custom domain not present using patr domain");
+		log::trace!("updating DNS");
+		super::add_cname_record(
+			&deployment_id_string,
+			&default_url,
+			&config,
+			true,
+		)
 		.await?;
-	log::trace!("DNS Updated");
-	let domain_name = format!("{}.patr.cloud", hex::encode(&deployment_id));
-	let (cname, value) = create_certificate_if_not_available(
-		&deployment_id_string,
-		&domain_name,
-		&client,
-	)
-	.await?;
-	log::trace!("updating cname record");
+		log::trace!("DNS Updated");
+		let domain_name = format!("{}.patr.cloud", deployment_id_string);
+		let (cname, value) = create_certificate_if_not_available(
+			&deployment_id_string,
+			&domain_name,
+			&client,
+		)
+		.await?;
+		log::trace!("updating cname record");
 
-	super::add_cname_record(
-		if cname.ends_with('.') {
-			&cname[0..cname.len() - 1]
-		} else {
-			&cname
-		},
-		if value.ends_with('.') {
-			&value[0..value.len() - 1]
-		} else {
-			&value
-		},
-		&config,
-		false,
-	)
-	.await?;
-	log::trace!("cname record updated");
-	// update container service with patr domain
-	log::trace!("waiting for certificate to be validated");
-	wait_for_certificate_validation(&deployment_id_string, &client).await?;
-	log::trace!("certificate validated");
-	log::trace!("updating container service with patr domain");
-	update_container_service_with_patr_domain(&deployment_id_string, &client)
+		super::add_cname_record(
+			if cname.ends_with('.') {
+				&cname[0..cname.len() - 1]
+			} else {
+				&cname
+			},
+			if value.ends_with('.') {
+				&value[0..value.len() - 1]
+			} else {
+				&value
+			},
+			&config,
+			false,
+		)
 		.await?;
-	log::trace!("container service updated with patr domain");
+		log::trace!("cname record updated");
+		// update container service with patr domain
+		log::trace!("waiting for certificate to be validated");
+		wait_for_certificate_validation(&deployment_id_string, &client).await?;
+		log::trace!("certificate validated");
+		log::trace!("updating container service with patr domain");
+		update_container_service_with_patr_domain(
+			&deployment_id_string,
+			&client,
+		)
+		.await?;
+		log::trace!("container service updated with patr domain");
+	} else {
+		let domain_name = domain_name
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+		if !validator::is_domain_name_valid(&domain_name).await {
+			return Error::as_result()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+		}
+		log::trace!("domain present creating certificate for custom domain");
+		let cert_name = format!("{}-custom", deployment_id_string);
+		create_certificate_if_not_available(&cert_name, &domain_name, &client)
+			.await?;
+	}
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -227,7 +255,7 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
-fn get_lightsail_client(region: &str) -> lightsail::Client {
+pub(super) fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))
@@ -562,10 +590,11 @@ async fn get_cname_and_value_from_aws(
 		.body(error!(SERVER_ERROR).to_string())?
 }
 
-async fn wait_for_certificate_validation(
+pub(super) async fn wait_for_certificate_validation(
 	deployment_id_string: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
+	let start = Instant::now();
 	loop {
 		let certificate_status = client
 			.get_certificates()
@@ -594,10 +623,24 @@ async fn wait_for_certificate_validation(
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string()));
 		}
+
+		if start.elapsed() > Duration::from_secs(900) {
+			db::update_deployment_status(
+				service::get_app().database.acquire().await?.deref_mut(),
+				&hex::decode(deployment_id_string)?,
+				&DeploymentStatus::Errored,
+			)
+			.await?;
+			// maybe delete deployment if the certification is invalid?
+			// delete_deployment(connection, deployment_id, config, region)
+			return Error::as_result()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+		}
 	}
 }
 
-pub(super) async fn add_domain_to_deployment(
+pub(super) async fn get_domain_for_deployment(
 	deployment_id: &[u8],
 	region: &str,
 	domain_name: &str,
@@ -611,17 +654,29 @@ pub(super) async fn add_domain_to_deployment(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let cert_name = format!("{}-custom", hex::encode(deployment_id));
-	log::trace!("creating a new certificate for the deployment");
+	log::trace!("retreive certificate for deployment");
 	let (cname, value) =
-		create_certificate_if_not_available(&cert_name, domain_name, &client)
-			.await?;
+		get_cname_and_value_from_aws(&cert_name, &client).await?;
 
+	let cname = if cname.ends_with('.') {
+		&cname[0..cname.len() - 1]
+	} else {
+		&cname
+	};
+	let value = if value.ends_with('.') {
+		&value[0..value.len() - 1]
+	} else {
+		&value
+	};
 	let cname_records = vec![
 		CnameRecords {
 			cname: domain_name.to_string(),
 			value: deployment_url,
 		},
-		CnameRecords { cname, value },
+		CnameRecords {
+			cname: cname.to_string(),
+			value: value.to_string(),
+		},
 	];
 
 	Ok(cname_records)

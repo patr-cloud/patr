@@ -2,7 +2,6 @@ use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
 use eve_rs::AsError;
 use reqwest::Client;
-use serde_json::json;
 use tokio::{process::Command, time};
 
 use crate::{
@@ -26,7 +25,7 @@ use crate::{
 		},
 	},
 	service,
-	utils::{get_current_time, settings::Settings, Error},
+	utils::{get_current_time, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -34,6 +33,7 @@ pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
+	domain_name: Option<String>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
@@ -147,16 +147,28 @@ pub(super) async fn deploy_container(
 	let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
 	log::trace!("App ingress is at {}", default_ingress);
 
-	// update DNS
-	log::trace!("updating DNS");
-	super::add_cname_record(
-		&deployment_id_string,
-		&default_ingress,
-		&config,
-		true,
-	)
-	.await?;
-	log::trace!("DNS Updated");
+	if domain_name.is_none() {
+		log::trace!("custom domain not present using patr domain");
+		// update DNS
+		log::trace!("updating DNS");
+		super::add_cname_record(
+			&deployment_id_string,
+			&default_ingress,
+			&config,
+			true,
+		)
+		.await?;
+		log::trace!("DNS Updated");
+	} else {
+		let domain_name = domain_name
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+		if !validator::is_domain_name_valid(&domain_name).await {
+			return Error::as_result()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+		}
+	}
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -472,11 +484,10 @@ async fn delete_image_from_digitalocean_registry(
 	Ok(())
 }
 
-pub(super) async fn add_domain_to_deployment(
+pub(super) async fn get_domain_for_deployment(
 	settings: &Settings,
 	domain: &str,
 	app_id: &str,
-	name: &str,
 ) -> Result<Vec<CnameRecords>, Error> {
 	let client = Client::new();
 
@@ -485,31 +496,10 @@ pub(super) async fn add_domain_to_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let response = client
-		.put(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&settings.digital_ocean_api_key)
-		.json(&json!({
-			"spec": {
-				"name": name,
-				"domains": [
-					{
-						"domain": domain,
-						"type": "PRIMARY"
-					}
-				]
-			}
-		}))
-		.send()
-		.await?
-		.status();
+	let cname_record = vec![CnameRecords {
+		cname: domain.to_string(),
+		value: default_ingress,
+	}];
 
-	if response.is_success() {
-		let cname_record = vec![CnameRecords {
-			cname: domain.to_string(),
-			value: default_ingress,
-		}];
-		Ok(cname_record)
-	} else {
-		Err(Error::empty())
-	}
+	Ok(cname_record)
 }

@@ -29,7 +29,25 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{RegistryToken, RegistryTokenAccess, db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus}, rbac}, service, utils::{Error, get_current_time, get_current_time_millis, settings::Settings, validator}};
+use crate::{
+	db,
+	error,
+	models::{
+		db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
+	},
+	service::{self, deployment::aws::get_lightsail_client},
+	utils::{
+		get_current_time,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
+	},
+	Database,
+};
 
 /// # Description
 /// This function creates a deployment under an organisation account
@@ -60,6 +78,7 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -129,7 +148,8 @@ pub async fn create_deployment_in_organisation(
 
 	// Deploy the app as soon as it's created, so that any existing images can
 	// be deployed
-	service::start_deployment(connection, deployment_id, config).await?;
+	service::start_deployment(connection, deployment_id, domain_name, config)
+		.await?;
 
 	Ok(deployment_uuid)
 }
@@ -137,8 +157,10 @@ pub async fn create_deployment_in_organisation(
 pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	domain_name: Option<&str>,
 	config: &Settings,
 ) -> Result<(), Error> {
+	let domain_name = domain_name.map(|d| d.to_string());
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -173,6 +195,7 @@ pub async fn start_deployment(
 					image_id,
 					region,
 					deployment_id.clone(),
+					domain_name,
 					config,
 				)
 				.await;
@@ -196,6 +219,7 @@ pub async fn start_deployment(
 					image_id,
 					region,
 					deployment_id.clone(),
+					domain_name,
 					config,
 				)
 				.await;
@@ -318,8 +342,6 @@ async fn add_cname_record(
 	} else {
 		format!("{}.patr.cloud", sub_domain)
 	};
-	println!("sub_domain: {}", sub_domain);
-	println!("target: {}", target);
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -505,7 +527,7 @@ async fn pull_image_from_registry(
 	Ok(())
 }
 
-pub async fn add_domain_to_deployment(
+pub async fn get_domain_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	domain: &str,
@@ -530,19 +552,64 @@ pub async fn add_domain_to_deployment(
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			let app_id = deployment.digital_ocean_app_id.status(404).body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-			log::trace!("adding domain to digitalocean deployment");
-			let cname_records = digitalocean::add_domain_to_deployment(config, domain, &app_id, &deployment.name)
-				.await?;
-				
+			let app_id = deployment
+				.digital_ocean_app_id
+				.status(404)
+				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			log::trace!("getting domain for digitalocean deployment");
+			let cname_records = digitalocean::get_domain_for_deployment(
+				config, domain, &app_id,
+			)
+			.await?;
+
 			Ok(cname_records)
 		}
 		Ok(CloudPlatform::Aws) => {
-			log::trace!("adding domain to aws deployment");
-			let cname_records = aws::add_domain_to_deployment(deployment_id, region, domain)
-				.await?;
+			log::trace!("getting domain for aws deployment");
+			let cname_records =
+				aws::get_domain_for_deployment(deployment_id, region, domain)
+					.await?;
 
 			Ok(cname_records)
+		}
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
+	}
+}
+
+pub async fn get_domain_validation_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	domain_name: &str,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if !validator::is_domain_name_valid(domain_name).await {
+		return Error::as_result()
+			.status(400)
+			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	}
+
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {}
+		Ok(CloudPlatform::Aws) => {
+			let client = get_lightsail_client(region);
+			log::trace!("checking domain validation for aws deployment");
+			aws::wait_for_certificate_validation(
+				&hex::encode(&deployment_id),
+				&client,
+			)
+			.await?;
 		}
 		_ => {
 			return Err(Error::empty()
@@ -550,4 +617,5 @@ pub async fn add_domain_to_deployment(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
+	Ok(())
 }
