@@ -47,6 +47,7 @@ pub mod id {
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
 		"cannotDeleteBackupPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
+	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
 }
 
 #[allow(dead_code)]
@@ -147,4 +148,6 @@ pub mod message {
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
+	pub const INVALID_DEPLOYMENT_NAME: &str =
+		"Deployment can consist of alphanumeric characters, spaces, . and _";
 }

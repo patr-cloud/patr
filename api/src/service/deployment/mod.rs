@@ -34,6 +34,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{CloudPlatform, DeploymentStatus},
+		error::id::INVALID_DEPLOYMENT_NAME,
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
@@ -43,6 +44,7 @@ use crate::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
+		validator,
 		Error,
 	},
 	Database,
@@ -88,6 +90,13 @@ pub async fn create_deployment_in_organisation(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 		}
+	}
+
+	// validate deployment name
+	if !validator::is_deployment_name_valid(name) {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
 	let deployment_uuid = db::generate_new_resource_id(connection).await?;
