@@ -427,17 +427,20 @@ pub async fn get_all_database_clusters_for_organisation(
 	settings: Settings,
 	organisation_id: &[u8],
 ) -> Result<Vec<DatabaseResponse>, Error> {
-	let clusters = db::get_all_database_clusters_for_organisation(
+	let clusters = db::get_all_running_database_clusters_for_organisation(
 		connection,
 		organisation_id,
 	)
 	.await?;
+
+	log::trace!("get a list of database clusters");
 
 	let mut cluster_list = Vec::new();
 	let client = Client::new();
 	for cluster in clusters {
 		match cluster.db_provider_name {
 			CloudPlatform::Aws => {
+				log::trace!("getting databases from aws");
 				if let Some(cloud_database_id) = cluster.cloud_database_id {
 					let managed_db_cluster = get_cluster_from_aws(
 						&cloud_database_id,
@@ -449,11 +452,13 @@ pub async fn get_all_database_clusters_for_organisation(
 				}
 			}
 			CloudPlatform::DigitalOcean => {
+				log::trace!("getting databases from digitalocean");
 				if let Some(cloud_database_id) = cluster.cloud_database_id {
 					let managed_db_cluster = get_cluster_from_digital_ocean(
 						&client,
 						&settings,
 						&cloud_database_id,
+						&cluster.id,
 					)
 					.await?;
 					cluster_list.push(managed_db_cluster);
@@ -474,9 +479,13 @@ async fn wait_for_digitalocean_database_cluster_to_be_online(
 ) -> Result<(), Error> {
 	let start = Instant::now();
 	loop {
-		let database_status =
-			get_cluster_from_digital_ocean(client, settings, cloud_db_id)
-				.await?;
+		let database_status = get_cluster_from_digital_ocean(
+			client,
+			settings,
+			cloud_db_id,
+			database_id,
+		)
+		.await?;
 
 		if database_status.database.status == *"online" {
 			db::update_managed_database_status(
@@ -586,9 +595,13 @@ async fn wait_and_delete_the_running_database(
 ) -> Result<(), Error> {
 	let app = service::get_app();
 	loop {
-		let database_status =
-			get_cluster_from_digital_ocean(client, settings, cloud_db_id)
-				.await?;
+		let database_status = get_cluster_from_digital_ocean(
+			client,
+			settings,
+			cloud_db_id,
+			database_id,
+		)
+		.await?;
 
 		if database_status.database.status == *"online" {
 			delete_managed_database(
@@ -608,8 +621,10 @@ async fn get_cluster_from_digital_ocean(
 	client: &Client,
 	settings: &Settings,
 	cloud_db_id: &str,
+	resource_id: &[u8],
 ) -> Result<DatabaseResponse, Error> {
-	let database_status = client
+	log::trace!("retreiving database: {} from digitalocean", cloud_db_id);
+	let mut database_status = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/databases/{}",
 			cloud_db_id
@@ -619,6 +634,9 @@ async fn get_cluster_from_digital_ocean(
 		.await?
 		.json::<DatabaseResponse>()
 		.await?;
+
+	database_status.database.id = hex::encode(resource_id);
+	log::trace!("database retreived");
 	Ok(database_status)
 }
 
@@ -630,12 +648,15 @@ async fn get_cluster_from_aws(
 	let region = region.status(500).body(error!(SERVER_ERROR).to_string())?;
 	let client = aws::get_lightsail_client(&region);
 
+	log::trace!("retrieving database: {} from aws", cloud_db_id);
 	let database_cluster = client
 		.get_relational_database()
 		.relational_database_name(cloud_db_id)
 		.send()
 		.await?;
+	log::trace!("database retreived from aws");
 
+	log::trace!("getting id");
 	let id = database_cluster
 		.relational_database
 		.clone()
@@ -644,6 +665,7 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting name");
 	let name = database_cluster
 		.relational_database
 		.clone()
@@ -652,16 +674,18 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting engine");
 	let engine = database_cluster
 		.relational_database
 		.clone()
-		.map(|rdb| rdb.relational_database_blueprint_id)
+		.map(|rdb| rdb.engine)
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?
 		.parse::<Engine>()?
 		.to_string();
 
+	log::trace!("getting version");
 	let version = database_cluster
 		.relational_database
 		.clone()
@@ -670,6 +694,7 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting size of instance");
 	let size = database_cluster
 		.relational_database
 		.clone()
@@ -680,6 +705,7 @@ async fn get_cluster_from_aws(
 		.parse::<DatabasePlan>()?
 		.to_string();
 
+	log::trace!("getting region");
 	let region = database_cluster
 		.relational_database
 		.clone()
@@ -691,6 +717,7 @@ async fn get_cluster_from_aws(
 		.body(error!(SERVER_ERROR).to_string())?;
 	let region = &region[0..region.len() - 1];
 
+	log::trace!("getting status");
 	let status = database_cluster
 		.relational_database
 		.clone()
@@ -701,6 +728,7 @@ async fn get_cluster_from_aws(
 		.parse::<ManagedDatabaseStatus>()?
 		.to_string();
 
+	log::trace!("getting time of creation");
 	let created_at = database_cluster
 		.relational_database
 		.clone()
@@ -711,6 +739,7 @@ async fn get_cluster_from_aws(
 		.epoch_seconds()
 		.to_string();
 
+	log::trace!("getting host url");
 	let host = database_cluster
 		.relational_database
 		.clone()
@@ -721,6 +750,7 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting user id");
 	let user = database_cluster
 		.relational_database
 		.clone()
@@ -729,10 +759,12 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting password");
 	let password = password
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	log::trace!("getting port");
 	let port = database_cluster
 		.relational_database
 		.map(|rdb| rdb.master_endpoint)
@@ -764,7 +796,7 @@ async fn get_cluster_from_aws(
 			users: None,
 		},
 	};
-
+	log::trace!("database retreived");
 	Ok(database_response)
 }
 
@@ -778,7 +810,16 @@ pub async fn get_managed_database_info_for_organisation(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let status = cloud_db.status;
+	if let ManagedDatabaseStatus::Errored = cloud_db.status {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	} else if let ManagedDatabaseStatus::Deleted = cloud_db.status {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	let cloud_db_id = cloud_db
 		.cloud_database_id
 		.status(404)
@@ -788,6 +829,7 @@ pub async fn get_managed_database_info_for_organisation(
 
 	let database_info = match cloud_db.db_provider_name {
 		CloudPlatform::Aws => {
+			log::trace!("getting cluster from aws");
 			get_cluster_from_aws(
 				&cloud_db_id,
 				cloud_db.region,
@@ -796,12 +838,18 @@ pub async fn get_managed_database_info_for_organisation(
 			.await?
 		}
 		CloudPlatform::DigitalOcean => {
-			get_cluster_from_digital_ocean(&client, settings, &cloud_db_id)
-				.await?
+			log::trace!("getting cluster from digital ocean");
+			get_cluster_from_digital_ocean(
+				&client,
+				settings,
+				&cloud_db_id,
+				&cloud_db.id,
+			)
+			.await?
 		}
 	};
 
-	Ok((database_info.database, status))
+	Ok((database_info.database, cloud_db.status))
 }
 
 pub async fn delete_managed_database(
@@ -875,7 +923,7 @@ async fn delete_managed_database_on_aws(
 	cloud_db_id: &str,
 	region: &str,
 ) -> Result<(), Error> {
-	let client = aws::get_lightsail_client(&region);
+	let client = aws::get_lightsail_client(region);
 
 	let database_cluster = client
 		.get_relational_database()

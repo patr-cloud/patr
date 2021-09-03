@@ -188,7 +188,7 @@ pub async fn update_managed_database_status(
 	.map(|_| ())
 }
 
-pub async fn get_all_database_clusters_for_organisation(
+pub async fn get_all_running_database_clusters_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
@@ -216,7 +216,8 @@ pub async fn get_all_database_clusters_for_organisation(
 			managed_database
 		WHERE
 			organisation_id = $1 AND
-			cloud_database_id IS NOT NULL;
+			cloud_database_id IS NOT NULL AND
+			status = 'running';
 		"#,
 		organisation_id
 	)

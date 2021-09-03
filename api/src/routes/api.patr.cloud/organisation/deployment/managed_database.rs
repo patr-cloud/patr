@@ -297,7 +297,7 @@ async fn get_managed_database_info(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASE_CLUSTER: {
-			request_keys::ID: database_info.id,
+			request_keys::ID: hex::encode(resource_id),
 			request_keys::NAME: database_info.name,
 			request_keys::ENGINE: database_info.engine,
 			request_keys::VERSION: database_info.version,
