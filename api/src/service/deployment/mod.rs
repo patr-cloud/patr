@@ -29,24 +29,7 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
-use crate::{
-	db,
-	error,
-	models::{
-		db_mapping::{CloudPlatform, DeploymentStatus},
-		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
-	},
-	service,
-	utils::{
-		get_current_time,
-		get_current_time_millis,
-		settings::Settings,
-		Error,
-	},
-	Database,
-};
+use crate::{Database, db, error, models::{RegistryToken, RegistryTokenAccess, db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus}, rbac}, service, utils::{Error, get_current_time, get_current_time_millis, settings::Settings, validator}};
 
 /// # Description
 /// This function creates a deployment under an organisation account
@@ -520,4 +503,51 @@ async fn pull_image_from_registry(
 	while stream.next().await.is_some() {}
 
 	Ok(())
+}
+
+pub async fn add_domain_to_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	domain: &str,
+	config: &Settings,
+) -> Result<Vec<CnameRecords>, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	if !validator::is_domain_name_valid(domain).await {
+		return Error::as_result()
+			.status(400)
+			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	}
+
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			let app_id = deployment.digital_ocean_app_id.status(404).body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			log::trace!("adding domain to digitalocean deployment");
+			let cname_records = digitalocean::add_domain_to_deployment(config, domain, &app_id, &deployment.name)
+				.await?;
+				
+			Ok(cname_records)
+		}
+		Ok(CloudPlatform::Aws) => {
+			log::trace!("adding domain to aws deployment");
+			let cname_records = aws::add_domain_to_deployment(deployment_id, region, domain)
+				.await?;
+
+			Ok(cname_records)
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	}
 }

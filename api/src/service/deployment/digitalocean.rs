@@ -2,13 +2,14 @@ use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
 use eve_rs::AsError;
 use reqwest::Client;
+use serde_json::json;
 use tokio::{process::Command, time};
 
 use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::DeploymentStatus,
+		db_mapping::{CnameRecords, DeploymentStatus},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -469,4 +470,46 @@ async fn delete_image_from_digitalocean_registry(
 	}
 
 	Ok(())
+}
+
+pub(super) async fn add_domain_to_deployment(
+	settings: &Settings,
+	domain: &str,
+	app_id: &str,
+	name: &str,
+) -> Result<Vec<CnameRecords>, Error> {
+	let client = Client::new();
+
+	let default_ingress = get_default_ingress(app_id, settings, &client)
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let response = client
+		.put(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
+		.bearer_auth(&settings.digital_ocean_api_key)
+		.json(&json!({
+			"spec": {
+				"name": name,
+				"domains": [
+					{
+						"domain": domain,
+						"type": "PRIMARY"
+					}
+				]
+			}
+		}))
+		.send()
+		.await?
+		.status();
+
+	if response.is_success() {
+		let cname_record = vec![CnameRecords {
+			cname: domain.to_string(),
+			value: default_ingress,
+		}];
+		Ok(cname_record)
+	} else {
+		Err(Error::empty())
+	}
 }

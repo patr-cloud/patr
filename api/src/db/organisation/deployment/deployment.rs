@@ -39,6 +39,12 @@ pub async fn initialize_deployment_pre(
 			digital_ocean_app_id TEXT
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			region TEXT NOT NULL DEFAULT 'do-blr',
+			domain_name VARCHAR(255)
+				CONSTRAINT domain_name_uq UNIQUE
+				CONSTRAINT domain_chk_name_is_lower_case 
+					CHECK(
+						name = LOWER(name)
+					),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND

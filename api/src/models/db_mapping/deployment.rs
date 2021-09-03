@@ -179,3 +179,10 @@ impl FromStr for CloudPlatform {
 		}
 	}
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct CnameRecords {
+	pub cname: String,
+	pub value: String,
+}

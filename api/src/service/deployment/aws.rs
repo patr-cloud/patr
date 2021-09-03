@@ -19,7 +19,7 @@ use tokio::{process::Command, time};
 use crate::{
 	db,
 	error,
-	models::db_mapping::{CloudPlatform, DeploymentStatus},
+	models::db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -99,9 +99,13 @@ pub(super) async fn deploy_container(
 	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
 		.await?;
 	log::trace!("DNS Updated");
-	let (cname, value) =
-		create_certificate_if_not_available(&deployment_id_string, &client)
-			.await?;
+	let domain_name = format!("{}.patr.cloud", hex::encode(&deployment_id));
+	let (cname, value) = create_certificate_if_not_available(
+		&deployment_id_string,
+		&domain_name,
+		&client,
+	)
+	.await?;
 	log::trace!("updating cname record");
 
 	super::add_cname_record(
@@ -474,11 +478,11 @@ async fn update_container_service_with_patr_domain(
 }
 
 async fn create_certificate_if_not_available(
-	deployment_id: &str,
+	cert_name: &str,
+	domain_name: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
-	let domain_name = format!("{}.patr.cloud", deployment_id);
-	let cert_name = format!("{}-certificate", deployment_id);
+	let cert_name = format!("{}-certificate", cert_name);
 	log::trace!("checking if the certificate exists for the current domain");
 	let certificate_info =
 		get_cname_and_value_from_aws(&cert_name, client).await;
@@ -591,4 +595,34 @@ async fn wait_for_certificate_validation(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
+}
+
+pub(super) async fn add_domain_to_deployment(
+	deployment_id: &[u8],
+	region: &str,
+	domain_name: &str,
+) -> Result<Vec<CnameRecords>, Error> {
+	let client = get_lightsail_client(region);
+
+	log::trace!("getting deployment url from lightsail");
+	let deployment_url = app_exists(&hex::encode(deployment_id), &client)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let cert_name = format!("{}-custom", hex::encode(deployment_id));
+	log::trace!("creating a new certificate for the deployment");
+	let (cname, value) =
+		create_certificate_if_not_available(&cert_name, domain_name, &client)
+			.await?;
+
+	let cname_records = vec![
+		CnameRecords {
+			cname: domain_name.to_string(),
+			value: deployment_url,
+		},
+		CnameRecords { cname, value },
+	];
+
+	Ok(cname_records)
 }
