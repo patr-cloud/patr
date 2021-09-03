@@ -17,8 +17,8 @@ lazy_static! {
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
-	//8-20 characters long, no _ or . at the beginning, no __ or _. or ._ or .. inside, no _ or . at the end
-	static ref DOMAIN_NAME_REGEX: Regex = Regex::new("^(?=.{1,64}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$").unwrap();
+	//1-20 characters ([a-zA-Z0-9._-]) long, no _ or . at the beginning, no __ or _. or ._ or .. inside, no _ or . at the end
+	static ref DOMAIN_NAME_REGEX: Regex = Regex::new("^(?=.{1,64}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._-]+(?<![_.])$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
