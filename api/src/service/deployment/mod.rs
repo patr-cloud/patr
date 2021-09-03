@@ -34,7 +34,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{CloudPlatform, DeploymentStatus},
-		error::id::INVALID_DEPLOYMENT_NAME,
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
