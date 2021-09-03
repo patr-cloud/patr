@@ -324,6 +324,30 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
+pub async fn set_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	environment_variables: &Vec<(String, String)>,
+) -> Result<(), Error> {
+	db::remove_all_environment_variables_for_deployment(
+		connection,
+		deployment_id,
+	)
+	.await?;
+
+	for (key, value) in environment_variables {
+		db::add_environment_variable_for_deployment(
+			connection,
+			deployment_id,
+			key,
+			value,
+		)
+		.await?;
+	}
+
+	Ok(())
+}
+
 async fn add_cname_record(
 	sub_domain: &str,
 	target: &str,

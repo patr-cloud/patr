@@ -856,11 +856,7 @@ async fn set_environment_variables(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	db::remove_all_environment_variables_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?;
+	let mut environment_variables = vec![];
 
 	for (key, value) in env_var_values {
 		let value = value
@@ -868,14 +864,15 @@ async fn set_environment_variables(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-		db::add_environment_variable_for_deployment(
-			context.get_database_connection(),
-			&deployment_id,
-			key,
-			value,
-		)
-		.await?;
+		environment_variables.push((key.clone(), value.to_string()));
 	}
+
+	service::set_environment_variables_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&environment_variables,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
