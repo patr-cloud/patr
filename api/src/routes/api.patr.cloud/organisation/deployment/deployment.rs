@@ -259,11 +259,11 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.patch(
+	app.put(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::organisation::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -287,6 +287,68 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(set_environment_variables)),
+		],
+	);
+
+	app.put(
+		"/:deploymentId/horizontal-scale",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			// EveMiddleware::CustomFunction(pin_fn!(set_horizontal_scale)),
+		],
+	);
+
+	app.put(
+		"/:deploymentId/machine-type",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			// EveMiddleware::CustomFunction(pin_fn!(set_machine_type)),
 		],
 	);
 

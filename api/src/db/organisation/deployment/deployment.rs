@@ -26,6 +26,19 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
+			'micro',
+			'small',
+			'medium',
+			'large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -39,6 +52,12 @@ pub async fn initialize_deployment_pre(
 			digital_ocean_app_id TEXT
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			region TEXT NOT NULL DEFAULT 'do-blr',
+			horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
+					horizontal_scale >= 0 AND horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND

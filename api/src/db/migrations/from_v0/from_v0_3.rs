@@ -57,6 +57,42 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
+		ALTER TABLE deployment
+		ADD COLUMN horizontal_scale SMALLINT NOT NULL
+		CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
+			horizontal_scale >= 0 AND horizontal_scale <= 256
+		)
+		DEFAULT 1;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
+			'micro',
+			'small',
+			'medium',
+			'large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL
+		DEFAULT 'small';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id BYTEA
 				CONSTRAINT deploymment_environment_variable_fk_deployment_id
