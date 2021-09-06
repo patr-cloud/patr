@@ -33,7 +33,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CloudPlatform, DeploymentStatus},
+		db_mapping::{CloudPlatform, DeploymentMachineType, DeploymentStatus},
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
@@ -77,6 +77,8 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -120,6 +122,8 @@ pub async fn create_deployment_in_organisation(
 				&repository_id,
 				image_tag,
 				region,
+				horizontal_scale,
+				machine_type,
 			)
 			.await?;
 		} else {
@@ -136,6 +140,8 @@ pub async fn create_deployment_in_organisation(
 			image_name,
 			image_tag,
 			region,
+			horizontal_scale,
+			machine_type,
 		)
 		.await?;
 	} else {

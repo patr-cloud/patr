@@ -1,5 +1,5 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentStatus},
+	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
 	query,
 	query_as,
 	Database,
@@ -155,19 +155,23 @@ pub async fn create_deployment_with_internal_registry(
 	repository_id: &[u8],
 	image_tag: &str,
 	region: &str,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5);
+			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7);
 		"#,
 		deployment_id,
 		name,
 		repository_id,
 		image_tag,
-		region
+		region,
+		horizontal_scale as i16,
+		machine_type as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -182,20 +186,24 @@ pub async fn create_deployment_with_external_registry(
 	image_name: &str,
 	image_tag: &str,
 	region: &str,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			deployment
 		VALUES
-			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6);
+			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8);
 		"#,
 		deployment_id,
 		name,
 		registry,
 		image_name,
 		image_tag,
-		region
+		region,
+		horizontal_scale as i16,
+		machine_type as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -221,7 +229,9 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.status as "status: _",
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _"
 		FROM
 			deployment
 		INNER JOIN
@@ -273,7 +283,9 @@ pub async fn get_deployments_for_organisation(
 			deployment.status as "status: _",
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _"
 		FROM
 			deployment
 		INNER JOIN
@@ -309,7 +321,9 @@ pub async fn get_deployment_by_id(
 			status as "status: _",
 			deployed_image,
 			digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _"
 		FROM
 			deployment
 		WHERE
@@ -482,6 +496,50 @@ pub async fn remove_all_environment_variables_for_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_horizontal_scale_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	horizontal_scale: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			horizontal_scale = $1
+		WHERE
+			id = $2;
+		"#,
+		horizontal_scale as i16,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_machine_type_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	machine_type: &DeploymentMachineType,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type = $1
+		WHERE
+			id = $2;
+		"#,
+		machine_type as _,
 		deployment_id,
 	)
 	.execute(&mut *connection)

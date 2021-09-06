@@ -8,7 +8,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::DeploymentStatus,
+		db_mapping::{DeploymentMachineType, DeploymentStatus},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -35,6 +35,14 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
 	log::trace!("Deploying deployment: {}", deployment_id_string);
@@ -136,8 +144,15 @@ pub(super) async fn deploy_container(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id =
-			create_app(&deployment_id, region, &config, &client).await?;
+		let app_id = create_app(
+			&deployment_id,
+			region,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
+			&config,
+			&client,
+		)
+		.await?;
 		log::trace!("App created");
 		app_id
 	};
@@ -311,6 +326,8 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
@@ -327,6 +344,7 @@ async fn create_app(
 		r#type: "GENERAL".to_string(),
 	})
 	.collect();
+
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
@@ -353,8 +371,27 @@ async fn create_app(
 						tag: "latest".to_string(),
 					},
 					// for now instance count is set to 1
-					instance_count: 1,
-					instance_size_slug: "basic-xs".to_string(),
+					instance_count: horizontal_scale as u64,
+					instance_size_slug:
+						match (machine_type, horizontal_scale) {
+							(DeploymentMachineType::Micro, 1) => "basic-xxs",
+							(DeploymentMachineType::Micro, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Small, 1) => "basic-xs",
+							(DeploymentMachineType::Small, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Medium, 1) => "basic-s",
+							(DeploymentMachineType::Medium, _) => {
+								"professional-s"
+							}
+							(DeploymentMachineType::Large, 1) => "basic-m",
+							(DeploymentMachineType::Large, _) => {
+								"professional-m"
+							}
+						}
+						.to_string(),
 					http_port: 80,
 					routes: vec![Routes {
 						path: "/".to_string(),

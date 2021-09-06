@@ -153,4 +153,6 @@ pub mod request_keys {
 	pub const STATUS: &str = "status";
 	pub const REGION: &str = "region";
 	pub const LOGS: &str = "logs";
+	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
+	pub const MACHINE_TYPE: &str = "machineType";
 }
