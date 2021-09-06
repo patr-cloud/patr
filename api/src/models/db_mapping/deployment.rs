@@ -183,7 +183,7 @@ impl FromStr for CloudPlatform {
 }
 
 #[derive(sqlx::Type, Debug)]
-#[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
+#[sqlx(type_name = "DEPLOYMENT_MACHINE_TYPE", rename_all = "lowercase")]
 pub enum DeploymentMachineType {
 	Micro,
 	Small,
