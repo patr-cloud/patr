@@ -24,7 +24,7 @@ use crate::{
 	error,
 	models::db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
 	service,
-	utils::{settings::Settings, validator, Error},
+	utils::{settings::Settings, Error},
 	Database,
 };
 
@@ -32,7 +32,6 @@ pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
-	domain_name: Option<String>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let deployment_id_string = hex::encode(&deployment_id);
@@ -98,68 +97,66 @@ pub(super) async fn deploy_container(
 	log::trace!("default url is {}", default_url);
 	log::trace!("checking deployment status");
 	wait_for_deployment(&deployment_id_string, &client).await?;
+	log::trace!("updating DNS");
+	super::add_cname_record(
+		&deployment_id_string,
+		&default_url,
+		&config,
+		true,
+	)
+	.await?;
+	log::trace!("DNS Updated");
+	let domain_name = format!("{}.patr.cloud", deployment_id_string);
+	let (cname, value) = create_certificate_if_not_available(
+		&deployment_id_string,
+		&domain_name,
+		&client,
+	)
+	.await?;
+	log::trace!("updating cname record");
 
-	if domain_name.is_none() {
-		log::trace!("custom domain not present using patr domain");
-		log::trace!("updating DNS");
-		super::add_cname_record(
-			&deployment_id_string,
-			&default_url,
-			&config,
-			true,
-		)
-		.await?;
-		log::trace!("DNS Updated");
-		let domain_name = format!("{}.patr.cloud", deployment_id_string);
-		let (cname, value) = create_certificate_if_not_available(
-			&deployment_id_string,
-			&domain_name,
-			&client,
-		)
-		.await?;
-		log::trace!("updating cname record");
+	super::add_cname_record(
+		if cname.ends_with('.') {
+			&cname[0..cname.len() - 1]
+		} else {
+			&cname
+		},
+		if value.ends_with('.') {
+			&value[0..value.len() - 1]
+		} else {
+			&value
+		},
+		&config,
+		false,
+	)
+	.await?;
+	log::trace!("cname record updated");
+	// update container service with patr domain
+	log::trace!("waiting for certificate to be validated");
+	wait_for_certificate_validation(&deployment_id_string, &client).await?;
+	log::trace!("certificate validated");
+	log::trace!("updating container service with patr domain");
+	update_container_service_with_patr_domain(
+		&deployment_id_string,
+		&client,
+	)
+	.await?;
+	log::trace!("container service updated with patr domain");
+	let custom_domain = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id
+	)
+	.await?
+	.map(|deployment| deployment.domain_name)
+	.flatten();
 
-		super::add_cname_record(
-			if cname.ends_with('.') {
-				&cname[0..cname.len() - 1]
-			} else {
-				&cname
-			},
-			if value.ends_with('.') {
-				&value[0..value.len() - 1]
-			} else {
-				&value
-			},
-			&config,
-			false,
-		)
-		.await?;
-		log::trace!("cname record updated");
-		// update container service with patr domain
-		log::trace!("waiting for certificate to be validated");
-		wait_for_certificate_validation(&deployment_id_string, &client).await?;
-		log::trace!("certificate validated");
-		log::trace!("updating container service with patr domain");
-		update_container_service_with_patr_domain(
-			&deployment_id_string,
-			&client,
-		)
-		.await?;
-		log::trace!("container service updated with patr domain");
-	} else {
-		let domain_name = domain_name
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-		if !validator::is_domain_name_valid(&domain_name).await {
-			return Error::as_result()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-		}
-		log::trace!("domain present creating certificate for custom domain");
+	if let Some(domain) = custom_domain {
+		log::trace!("custom domain present, updating patr service with custom domain");
 		let cert_name = format!("{}-custom", deployment_id_string);
-		create_certificate_if_not_available(&cert_name, &domain_name, &client)
+		create_certificate_if_not_available(&cert_name, &domain, &client)
 			.await?;
-	}
+		log::trace!("container service updated with custom domain");
+	};
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -505,6 +502,24 @@ async fn update_container_service_with_patr_domain(
 	Ok(())
 }
 
+pub(super) async fn update_container_service_with_custom_domain(
+	deployment_id: &str,
+	domain_name: &str,
+	client: &lightsail::Client,
+) -> Result<(), Error> {
+	client
+		.update_container_service()
+		.service_name(deployment_id)
+		.is_disabled(false)
+		.public_domain_names(
+			format!("{}-custom-certificate", deployment_id),
+			vec![domain_name.to_string()],
+		)
+		.send()
+		.await?;
+	Ok(())
+}
+
 async fn create_certificate_if_not_available(
 	cert_name: &str,
 	domain_name: &str,
@@ -653,7 +668,7 @@ pub(super) async fn get_domain_for_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let cert_name = format!("{}-custom", hex::encode(deployment_id));
+	let cert_name = format!("{}-custom-certificate", hex::encode(deployment_id));
 	log::trace!("retreive certificate for deployment");
 	let (cname, value) =
 		get_cname_and_value_from_aws(&cert_name, &client).await?;

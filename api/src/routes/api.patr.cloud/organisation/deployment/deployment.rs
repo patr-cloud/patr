@@ -471,11 +471,12 @@ async fn list_deployments(
 /// organisation id in parameter
 /// ```
 /// {
-///    name:
-///    registry:
-///    repositoryId:
-///    imageName:
-///    imageTag:
+///    name: ,
+///    registry: ,
+///    repositoryId: ,
+///    imageName: ,
+///    imageTag: ,
+///    domain: 
 /// }
 /// ```
 /// # Arguments
@@ -695,7 +696,6 @@ async fn start_deployment(
 	service::start_deployment(
 		context.get_database_connection(),
 		&deployment_id,
-		None,
 		&config,
 	)
 	.await?;

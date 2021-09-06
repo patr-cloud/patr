@@ -142,23 +142,44 @@ pub async fn create_deployment_with_internal_registry(
 	repository_id: &[u8],
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment
-		VALUES
-			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5);
-		"#,
-		deployment_id,
-		name,
-		repository_id,
-		image_tag,
-		region
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6);
+			"#,
+			deployment_id,
+			name,
+			repository_id,
+			image_tag,
+			region,
+			domain
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL);
+			"#,
+			deployment_id,
+			name,
+			repository_id,
+			image_tag,
+			region
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn create_deployment_with_external_registry(
@@ -169,24 +190,46 @@ pub async fn create_deployment_with_external_registry(
 	image_name: &str,
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment
-		VALUES
-			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6);
-		"#,
-		deployment_id,
-		name,
-		registry,
-		image_name,
-		image_tag,
-		region
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7);
+			"#,
+			deployment_id,
+			name,
+			registry,
+			image_name,
+			image_tag,
+			region,
+			domain
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL);
+			"#,
+			deployment_id,
+			name,
+			registry,
+			image_name,
+			image_tag,
+			region
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
@@ -208,7 +251,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.status as "status: _",
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			deployment.domain_name
 		FROM
 			deployment
 		INNER JOIN
@@ -260,7 +304,8 @@ pub async fn get_deployments_for_organisation(
 			deployment.status as "status: _",
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			deployment.domain_name
 		FROM
 			deployment
 		INNER JOIN
@@ -296,7 +341,8 @@ pub async fn get_deployment_by_id(
 			status as "status: _",
 			deployed_image,
 			digital_ocean_app_id,
-			deployment.region
+			deployment.region,
+			domain_name
 		FROM
 			deployment
 		WHERE

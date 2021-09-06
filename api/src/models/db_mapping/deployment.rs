@@ -60,6 +60,7 @@ pub struct Deployment {
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
 	pub region: String,
+	pub domain_name: Option<String>
 }
 
 impl Deployment {

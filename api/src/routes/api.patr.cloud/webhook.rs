@@ -135,7 +135,6 @@ pub async fn notification_handler(
 			service::start_deployment(
 				context.get_database_connection(),
 				&deployment.id,
-				None,
 				&config,
 			)
 			.await?;

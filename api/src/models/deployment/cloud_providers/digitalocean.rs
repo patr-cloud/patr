@@ -50,6 +50,7 @@ pub struct Services {
 	pub instance_size_slug: String,
 	pub http_port: u64,
 	pub routes: Vec<Routes>,
+	#[serde(default)]
 	pub envs: Vec<AppDeploymentEnvironmentVariables>,
 }
 

@@ -25,7 +25,7 @@ use crate::{
 		},
 	},
 	service,
-	utils::{get_current_time, settings::Settings, validator, Error},
+	utils::{get_current_time, settings::Settings, Error},
 	Database,
 };
 
@@ -33,11 +33,11 @@ pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
-	domain_name: Option<String>,
 	config: Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
+
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -147,28 +147,16 @@ pub(super) async fn deploy_container(
 	let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
 	log::trace!("App ingress is at {}", default_ingress);
 
-	if domain_name.is_none() {
-		log::trace!("custom domain not present using patr domain");
-		// update DNS
-		log::trace!("updating DNS");
-		super::add_cname_record(
-			&deployment_id_string,
-			&default_ingress,
-			&config,
-			true,
-		)
-		.await?;
-		log::trace!("DNS Updated");
-	} else {
-		let domain_name = domain_name
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-		if !validator::is_domain_name_valid(&domain_name).await {
-			return Error::as_result()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-		}
-	}
+	// update DNS
+	log::trace!("updating DNS");
+	super::add_cname_record(
+		&deployment_id_string,
+		&default_ingress,
+		&config,
+		true,
+	)
+	.await?;
+	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -327,6 +315,13 @@ async fn create_app(
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 	let envs = db::get_environment_variables_for_deployment(
 		service::get_app().database.acquire().await?.deref_mut(),
 		deployment_id,
@@ -347,17 +342,37 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: vec![Domains {
-					// [ 4 .. 253 ] characters
-					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-					// }\.?$ The hostname for the domain
-					domain: format!(
-						"{}.patr.cloud",
-						hex::encode(deployment_id)
-					),
-					// for now this has been set to PRIMARY
-					r#type: "PRIMARY".to_string(),
-				}],
+				domains: if let Some(domain) = deployment.domain_name {
+					vec![
+						Domains {
+							// [ 4 .. 253 ] characters
+							// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.
+							// )+[a-zA-Z]{2, }\.?$ The hostname for the domain
+							domain: format!(
+								"{}.patr.cloud",
+								hex::encode(deployment_id)
+							),
+							// for now this has been set to ALIAS
+							r#type: "ALIAS".to_string(),
+						},
+						Domains {
+							domain: domain.to_string(),
+							r#type: "PRIMARY".to_string(),
+						},
+					]
+				} else {
+					vec![Domains {
+						// [ 4 .. 253 ] characters
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+						// }\.?$ The hostname for the domain
+						domain: format!(
+							"{}.patr.cloud",
+							hex::encode(deployment_id)
+						),
+						// for now this has been set to PRIMARY
+						r#type: "PRIMARY".to_string(),
+					}]
+				},
 				services: vec![Services {
 					name: "default-service".to_string(),
 					image: Image {

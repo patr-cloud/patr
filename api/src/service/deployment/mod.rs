@@ -43,7 +43,6 @@ use crate::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
-		validator,
 		Error,
 	},
 	Database,
@@ -122,6 +121,7 @@ pub async fn create_deployment_in_organisation(
 				&repository_id,
 				image_tag,
 				region,
+				domain_name,
 			)
 			.await?;
 		} else {
@@ -138,6 +138,7 @@ pub async fn create_deployment_in_organisation(
 			image_name,
 			image_tag,
 			region,
+			domain_name,
 		)
 		.await?;
 	} else {
@@ -148,8 +149,7 @@ pub async fn create_deployment_in_organisation(
 
 	// Deploy the app as soon as it's created, so that any existing images can
 	// be deployed
-	service::start_deployment(connection, deployment_id, domain_name, config)
-		.await?;
+	service::start_deployment(connection, deployment_id, config).await?;
 
 	Ok(deployment_uuid)
 }
@@ -157,10 +157,8 @@ pub async fn create_deployment_in_organisation(
 pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	domain_name: Option<&str>,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let domain_name = domain_name.map(|d| d.to_string());
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -195,7 +193,6 @@ pub async fn start_deployment(
 					image_id,
 					region,
 					deployment_id.clone(),
-					domain_name,
 					config,
 				)
 				.await;
@@ -219,7 +216,6 @@ pub async fn start_deployment(
 					image_id,
 					region,
 					deployment_id.clone(),
-					domain_name,
 					config,
 				)
 				.await;
@@ -544,12 +540,6 @@ pub async fn get_domain_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	if !validator::is_domain_name_valid(domain).await {
-		return Error::as_result()
-			.status(400)
-			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-	}
-
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			let app_id = deployment
@@ -594,12 +584,6 @@ pub async fn get_domain_validation_info(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	if !validator::is_domain_name_valid(domain_name).await {
-		return Error::as_result()
-			.status(400)
-			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-	}
-
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {}
 		Ok(CloudPlatform::Aws) => {
@@ -607,6 +591,12 @@ pub async fn get_domain_validation_info(
 			log::trace!("checking domain validation for aws deployment");
 			aws::wait_for_certificate_validation(
 				&hex::encode(&deployment_id),
+				&client,
+			)
+			.await?;
+			aws::update_container_service_with_custom_domain(
+				&hex::encode(&deployment_id),
+				domain_name,
 				&client,
 			)
 			.await?;
