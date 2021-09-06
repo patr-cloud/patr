@@ -668,6 +668,7 @@ async fn get_deployment_info(
 	context.json(
 		if deployment.registry == "registry.patr.cloud" {
 			json!({
+				request_keys::SUCCESS: true,
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
 				request_keys::REGISTRY: deployment.registry,
@@ -680,6 +681,7 @@ async fn get_deployment_info(
 			})
 		} else {
 			json!({
+				request_keys::SUCCESS: true,
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
 				request_keys::REGISTRY: deployment.registry,
