@@ -42,6 +42,7 @@ use crate::{
 pub async fn create_database_cluster(
 	settings: Settings,
 	name: &str,
+	db_name: &str,
 	version: Option<&str>,
 	engine: &str,
 	num_nodes: Option<u64>,
@@ -50,6 +51,7 @@ pub async fn create_database_cluster(
 	database_plan: DatabasePlan,
 ) -> Result<(), Error> {
 	let name = name.to_string();
+	let db_name = db_name.to_string();
 	let version = version.map(|v| v.to_string());
 	let engine = engine.to_string();
 	let organisation_id = organisation_id.to_vec();
@@ -65,6 +67,7 @@ pub async fn create_database_cluster(
 				let result = create_database_on_digitalocean(
 					settings,
 					name,
+					db_name,
 					version,
 					engine,
 					num_nodes,
@@ -86,6 +89,7 @@ pub async fn create_database_cluster(
 			task::spawn(async move {
 				let result = create_database_on_aws(
 					name,
+					db_name,
 					version,
 					engine,
 					region,
@@ -115,6 +119,7 @@ pub async fn create_database_cluster(
 async fn create_database_on_digitalocean(
 	settings: Settings,
 	name: String,
+	db_name: &str,
 	version: Option<String>,
 	engine: String,
 	num_nodes: Option<u64>,
@@ -150,7 +155,7 @@ async fn create_database_on_digitalocean(
 			.await?;
 	let resource_id = resource_id.as_bytes();
 
-	let db_name = format!("database-{}", get_current_time().as_millis());
+	let db_resource_name = format!("database-{}", get_current_time().as_millis());
 
 	let db_engine = if engine == Engine::Postgres {
 		"pg"
@@ -175,7 +180,7 @@ async fn create_database_on_digitalocean(
 		.post("https://api.digitalocean.com/v2/databases")
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.json(&DatabaseConfig {
-			name: db_name, // should be unique
+			name: db_resource_name, // should be unique
 			engine: db_engine.to_string(),
 			version: Some(version.clone()),
 			num_nodes,
@@ -208,8 +213,18 @@ async fn create_database_on_digitalocean(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
 		&name,
-		CloudPlatform::DigitalOcean,
+		&db_name,
+		db_engine,
+		&version,
+		num_nodes as i32,
+		database_plan,
+		region,
+		&database_cluster.database.connection.host,
+		database_cluster.database.connection.port as i32,
+		&database_cluster.database.connection.username,
+		&database_cluster.database.connection.password,
 		&organisation_id,
+		&database_cluster.database.id
 	)
 	.await?;
 
@@ -240,7 +255,7 @@ async fn create_database_on_digitalocean(
 			database_cluster.database.id
 		))
 		.bearer_auth(&settings.digital_ocean_api_key)
-		.json(&json!({ "name": name }))
+		.json(&json!({ "name": db_name }))
 		.send()
 		.await?
 		.status();
@@ -251,27 +266,12 @@ async fn create_database_on_digitalocean(
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
 
-	log::trace!("updating the entry after the database is online");
-	db::update_managed_database(
+	log::trace!("updating to the db status to running");
+	// wait for database to start
+	db::update_managed_database_status(
 		app.database.acquire().await?.deref_mut(),
-		&database_cluster.database.id,
-		engine,
-		&version,
-		database_cluster.database.num_nodes as i32,
-		&database_cluster.database.size,
-		&database_cluster.database.region,
-		ManagedDatabaseStatus::Running,
-		&database_cluster.database.connection.host,
-		database_cluster.database.connection.port as i32,
-		&database_cluster.database.connection.user,
-		&database_cluster.database.connection.password,
 		resource_id,
-	)
-	.await?;
-	db::update_digital_ocean_db_id_for_database(
-		app.database.acquire().await?.deref_mut(),
-		&database_cluster.database.name,
-		resource_id,
+		&ManagedDatabaseStatus::Running,
 	)
 	.await?;
 	log::trace!("database successfully updated");
@@ -281,6 +281,7 @@ async fn create_database_on_digitalocean(
 
 async fn create_database_on_aws(
 	name: String,
+	db_name: String,
 	version: Option<String>,
 	engine: String,
 	region: String,
@@ -348,35 +349,6 @@ async fn create_database_on_aws(
 		.await?;
 	log::trace!("database created");
 
-	log::trace!("creating entry for newly created managed database");
-	db::create_managed_database(
-		app.database.acquire().await?.deref_mut(),
-		resource_id,
-		&name,
-		CloudPlatform::Aws,
-		&organisation_id,
-	)
-	.await?;
-
-	log::trace!("updating to the db status to creating");
-	// wait for database to start
-	db::update_managed_database_status(
-		app.database.acquire().await?.deref_mut(),
-		resource_id,
-		&ManagedDatabaseStatus::Creating,
-	)
-	.await?;
-
-	// we can get id from aws of the resource but right now it is not used
-	// anywhere let database_id = database
-	// 	.operations
-	// 	.map(|operation| operation.into_iter().next())
-	// 	.flatten()
-	// 	.map(|op| op.id)
-	// 	.flatten()
-	// 	.status(500)
-	// 	.body(error!(SERVER_ERROR).to_string())?;
-
 	log::trace!("waiting for database to be online");
 	let database_info = wait_for_aws_database_cluster_to_be_online(
 		app.database.acquire().await?.deref_mut(),
@@ -400,21 +372,32 @@ async fn create_database_on_aws(
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-	log::trace!("updating the entry after the database is online");
-	db::update_managed_database(
+	log::trace!("creating entry for newly created managed database");
+	db::create_managed_database(
 		app.database.acquire().await?.deref_mut(),
-		&hex::encode(resource_id),
-		engine,
-		&version,
-		1,
-		&database_plan.to_string(),
-		&region,
-		ManagedDatabaseStatus::Running,
-		&address,
-		port as i32,
-		&master_username,
-		&password,
 		resource_id,
+		&name,
+		&db_name,
+		engine.to_string(),
+		version,
+		1,
+		database_plan,
+		region,
+		address,
+		port,
+		&master_username,
+		password,
+		&organisation_id,
+		None,
+	)
+	.await?;
+
+	log::trace!("updating to the db status to creating");
+	// wait for database to start
+	db::update_managed_database_status(
+		app.database.acquire().await?.deref_mut(),
+		resource_id,
+		&ManagedDatabaseStatus::Creating,
 	)
 	.await?;
 	log::trace!("database successfully updated");
