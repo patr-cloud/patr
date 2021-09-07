@@ -3,7 +3,6 @@ use std::{fmt::Display, str::FromStr};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use super::CloudPlatform;
 use crate::{error, utils::Error};
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
@@ -78,7 +77,7 @@ pub struct ManagedDatabase {
 	pub port: i32,
 	pub username: String,
 	pub password: String,
-	pub organisation_id: u8,
+	pub organisation_id: Vec<u8>,
 	pub digital_ocean_db_id: Option<String>,
 }
 

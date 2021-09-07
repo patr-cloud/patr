@@ -1,6 +1,6 @@
 use semver::Version;
 
-use crate::{query, Database};
+use crate::{db, query, Database};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -54,6 +54,9 @@ async fn migrate_from_v0_3_0(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	db::initialize_managed_database_pre(connection).await?;
+	db::initialize_managed_database_post(connection).await?;
 
 	Ok(())
 }

@@ -1,12 +1,7 @@
 use api_macros::{query, query_as};
 
 use crate::{
-	models::db_mapping::{
-		CloudPlatform,
-		Engine,
-		ManagedDatabase,
-		ManagedDatabaseStatus,
-	},
+	models::db_mapping::{Engine, ManagedDatabase, ManagedDatabaseStatus},
 	Database,
 };
 
@@ -65,7 +60,7 @@ pub async fn initialize_managed_database_pre(
 			engine ENGINE NOT NULL,
 			version TEXT NOT NULL,
 			num_nodes INTEGER NOT NULL,
-			size DATABASE_PLAN NOT NULL,
+			size TEXT NOT NULL,
 			region TEXT NOT NULL,
 			status MANAGED_DATABASE_STATUS NOT NULL DEFAULT 'creating',
 			host TEXT NOT NULL,
@@ -86,7 +81,7 @@ pub async fn initialize_managed_database_pre(
 	Ok(())
 }
 
-pub async fn initialize_deployment_post(
+pub async fn initialize_managed_database_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up managed databases tables initialization");
@@ -108,19 +103,19 @@ pub async fn create_managed_database(
 	id: &[u8],
 	name: &str,
 	db_name: &str,
-	engine: &Engine,
+	engine: Engine,
 	version: &str,
 	num_nodes: i32,
-	size: DatabasePlan,
+	size: &str,
 	region: &str,
 	host: &str,
 	port: i32,
 	username: &str,
 	password: &str,
 	organisation_id: &[u8],
-	digital_ocean_db_id: Option<&str>,
+	digital_ocean_id: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	if Some(digital_ocean_id) = digital_ocean_db_id {
+	if let Some(digital_ocean_db_id) = digital_ocean_id {
 		query!(
 			r#"
 			INSERT INTO
@@ -147,7 +142,7 @@ pub async fn create_managed_database(
 			id,
 			name,
 			db_name,
-			engine,
+			engine as Engine,
 			version,
 			num_nodes,
 			size,
@@ -157,7 +152,7 @@ pub async fn create_managed_database(
 			username,
 			password,
 			organisation_id,
-			digital_ocean_id
+			digital_ocean_db_id
 		)
 		.execute(&mut *connection)
 		.await
@@ -189,7 +184,7 @@ pub async fn create_managed_database(
 			id,
 			name,
 			db_name,
-			engine,
+			engine as Engine,
 			version,
 			num_nodes,
 			size,
@@ -238,6 +233,7 @@ pub async fn get_all_running_database_clusters_for_organisation(
 		SELECT
 			id,
 			name,
+			db_name,
 			engine as "engine: Engine",
 			version,
 			num_nodes,
@@ -254,7 +250,6 @@ pub async fn get_all_running_database_clusters_for_organisation(
 			managed_database
 		WHERE
 			organisation_id = $1 AND
-			cloud_database_id IS NOT NULL AND
 			status = 'running';
 		"#,
 		organisation_id
@@ -263,58 +258,6 @@ pub async fn get_all_running_database_clusters_for_organisation(
 	.await?;
 
 	Ok(rows)
-}
-
-pub async fn update_managed_database(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	cloud_database_id: &str,
-	engine: &Engine,
-	version: &str,
-	num_nodes: i32,
-	size: &str,
-	region: &str,
-	status: ManagedDatabaseStatus,
-	host: &str,
-	port: i32,
-	user: &str,
-	password: &str,
-	resource_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE 
-			managed_database
-		SET
-			cloud_database_id = $1,
-			engine = $2,
-			version = $3,
-			num_nodes = $4,
-			size = $5,
-			region = $6,
-			status = $7,
-			host = $8,
-			port = $9,
-			username = $10,
-			password = $11
-		WHERE
-			id = $12;
-		"#,
-		cloud_database_id,
-		engine as Engine,
-		version,
-		num_nodes,
-		size,
-		region,
-		status as ManagedDatabaseStatus,
-		host,
-		port,
-		user,
-		password,
-		resource_id
-	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
 }
 
 pub async fn get_managed_database_by_id(
@@ -327,8 +270,7 @@ pub async fn get_managed_database_by_id(
 		SELECT
 			id,
 			name,
-			cloud_database_id,
-			db_provider_name as "db_provider_name: CloudPlatform",
+			db_name,
 			engine as "engine: Engine",
 			version,
 			num_nodes,

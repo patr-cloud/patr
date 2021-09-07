@@ -23,7 +23,7 @@ pub async fn initialize_deployment_post(
 	log::info!("Finishing up deployment tables initialization");
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	deployment::initialize_deployment_post(connection).await?;
-	managed_database::initialize_deployment_post(connection).await?;
+	managed_database::initialize_managed_database_post(connection).await?;
 
 	Ok(())
 }

@@ -212,6 +212,13 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let db_name = body
+		.get(request_keys::DATABASE_NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let version = body
 		.get(request_keys::VERSION)
 		.map(|value| {
@@ -261,6 +268,7 @@ async fn create_database_cluster(
 	service::create_database_cluster(
 		config,
 		name,
+		db_name,
 		version,
 		engine,
 		num_nodes,

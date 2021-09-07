@@ -67,7 +67,7 @@ pub async fn create_database_cluster(
 				let result = create_database_on_digitalocean(
 					settings,
 					name,
-					db_name,
+					&db_name,
 					version,
 					engine,
 					num_nodes,
@@ -155,7 +155,8 @@ async fn create_database_on_digitalocean(
 			.await?;
 	let resource_id = resource_id.as_bytes();
 
-	let db_resource_name = format!("database-{}", get_current_time().as_millis());
+	let db_resource_name =
+		format!("database-{}", get_current_time().as_millis());
 
 	let db_engine = if engine == Engine::Postgres {
 		"pg"
@@ -208,23 +209,25 @@ async fn create_database_on_digitalocean(
 	.await?;
 	log::trace!("resource generation complete");
 
+	let region = format!("do-{}", region);
+
 	log::trace!("creating entry for newly created managed database");
 	db::create_managed_database(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
 		&name,
-		&db_name,
-		db_engine,
+		db_name,
+		engine,
 		&version,
 		num_nodes as i32,
-		database_plan,
-		region,
+		&database_plan.to_string(),
+		&region,
 		&database_cluster.database.connection.host,
 		database_cluster.database.connection.port as i32,
-		&database_cluster.database.connection.username,
+		&database_cluster.database.connection.user,
 		&database_cluster.database.connection.password,
 		&organisation_id,
-		&database_cluster.database.id
+		Some(&database_cluster.database.id),
 	)
 	.await?;
 
@@ -361,7 +364,7 @@ async fn create_database_on_aws(
 	let address = database_info
 		.master_endpoint
 		.clone()
-		.map(|address| address.address)
+		.map(|rde| rde.address)
 		.flatten()
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
@@ -373,31 +376,34 @@ async fn create_database_on_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 	log::trace!("creating entry for newly created managed database");
+
+	let region = format!("aws-{}", region);
+
 	db::create_managed_database(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
 		&name,
 		&db_name,
-		engine.to_string(),
-		version,
+		engine,
+		&version,
 		1,
-		database_plan,
-		region,
-		address,
+		&database_plan.to_string(),
+		&region,
+		&address,
 		port,
 		&master_username,
-		password,
+		&password,
 		&organisation_id,
 		None,
 	)
 	.await?;
 
-	log::trace!("updating to the db status to creating");
+	log::trace!("updating to the db status to running");
 	// wait for database to start
 	db::update_managed_database_status(
 		app.database.acquire().await?.deref_mut(),
 		resource_id,
-		&ManagedDatabaseStatus::Creating,
+		&ManagedDatabaseStatus::Running,
 	)
 	.await?;
 	log::trace!("database successfully updated");
@@ -421,26 +427,30 @@ pub async fn get_all_database_clusters_for_organisation(
 	let mut cluster_list = Vec::new();
 	let client = Client::new();
 	for cluster in clusters {
-		match cluster.db_provider_name {
+		let (provider, _) = cluster
+			.region
+			.split_once('-')
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+		let provider = provider.parse::<CloudPlatform>()?;
+		match provider {
 			CloudPlatform::Aws => {
 				log::trace!("getting databases from aws");
-				if let Some(cloud_database_id) = cluster.cloud_database_id {
-					let managed_db_cluster = get_cluster_from_aws(
-						&cloud_database_id,
-						cluster.region,
-						cluster.password,
-					)
-					.await?;
-					cluster_list.push(managed_db_cluster);
-				}
+				let managed_db_cluster = get_cluster_from_aws(
+					&hex::encode(&cluster.id),
+					&cluster.region,
+					&cluster.password,
+				)
+				.await?;
+				cluster_list.push(managed_db_cluster);
 			}
 			CloudPlatform::DigitalOcean => {
 				log::trace!("getting databases from digitalocean");
-				if let Some(cloud_database_id) = cluster.cloud_database_id {
+				if let Some(digital_ocean_db_id) = cluster.digital_ocean_db_id {
 					let managed_db_cluster = get_cluster_from_digital_ocean(
 						&client,
 						&settings,
-						&cloud_database_id,
+						&digital_ocean_db_id,
 						&cluster.id,
 					)
 					.await?;
@@ -457,7 +467,7 @@ async fn wait_for_digitalocean_database_cluster_to_be_online(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	settings: &Settings,
 	database_id: &[u8],
-	cloud_db_id: &str,
+	digital_ocean_db_id: &str,
 	client: &Client,
 ) -> Result<(), Error> {
 	let start = Instant::now();
@@ -465,7 +475,7 @@ async fn wait_for_digitalocean_database_cluster_to_be_online(
 		let database_status = get_cluster_from_digital_ocean(
 			client,
 			settings,
-			cloud_db_id,
+			digital_ocean_db_id,
 			database_id,
 		)
 		.await?;
@@ -489,7 +499,7 @@ async fn wait_for_digitalocean_database_cluster_to_be_online(
 			.await?;
 			let settings = settings.clone();
 			let database_id = database_id.to_vec();
-			let cloud_db_id = cloud_db_id.to_string();
+			let cloud_db_id = digital_ocean_db_id.to_string();
 			let client = client.clone();
 			task::spawn(async move {
 				let result = wait_and_delete_the_running_database(
@@ -577,6 +587,7 @@ async fn wait_and_delete_the_running_database(
 	client: &Client,
 ) -> Result<(), Error> {
 	let app = service::get_app();
+	log::trace!("retreiving database: {} from digitalocean", cloud_db_id);
 	loop {
 		let database_status = get_cluster_from_digital_ocean(
 			client,
@@ -596,21 +607,22 @@ async fn wait_and_delete_the_running_database(
 			.await?;
 			break;
 		}
+		time::sleep(Duration::from_millis(1000)).await;
 	}
+	log::trace!("database retreived");
 	Ok(())
 }
 
 async fn get_cluster_from_digital_ocean(
 	client: &Client,
 	settings: &Settings,
-	cloud_db_id: &str,
+	digital_ocean_db_id: &str,
 	resource_id: &[u8],
 ) -> Result<DatabaseResponse, Error> {
-	log::trace!("retreiving database: {} from digitalocean", cloud_db_id);
 	let mut database_status = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/databases/{}",
-			cloud_db_id
+			digital_ocean_db_id
 		))
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.send()
@@ -619,17 +631,15 @@ async fn get_cluster_from_digital_ocean(
 		.await?;
 
 	database_status.database.id = hex::encode(resource_id);
-	log::trace!("database retreived");
 	Ok(database_status)
 }
 
 async fn get_cluster_from_aws(
 	cloud_db_id: &str,
-	region: Option<String>,
-	password: Option<String>,
+	region: &str,
+	password: &str,
 ) -> Result<DatabaseResponse, Error> {
-	let region = region.status(500).body(error!(SERVER_ERROR).to_string())?;
-	let client = aws::get_lightsail_client(&region);
+	let client = aws::get_lightsail_client(region);
 
 	log::trace!("retrieving database: {} from aws", cloud_db_id);
 	let database_cluster = client
@@ -742,11 +752,6 @@ async fn get_cluster_from_aws(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("getting password");
-	let password = password
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	log::trace!("getting port");
 	let port = database_cluster
 		.relational_database
@@ -760,7 +765,7 @@ async fn get_cluster_from_aws(
 	let connection = DbConnection {
 		host,
 		user,
-		password,
+		password: password.to_string(),
 		port: port as u64,
 	};
 
@@ -788,51 +793,58 @@ pub async fn get_managed_database_info_for_organisation(
 	settings: &Settings,
 	resource_id: &[u8],
 ) -> Result<(DatabaseInfo, ManagedDatabaseStatus), Error> {
-	let cloud_db = db::get_managed_database_by_id(connection, resource_id)
+	let cluster = db::get_managed_database_by_id(connection, resource_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if let ManagedDatabaseStatus::Errored = cloud_db.status {
+	if let ManagedDatabaseStatus::Errored = cluster.status {
 		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	} else if let ManagedDatabaseStatus::Deleted = cloud_db.status {
+	} else if let ManagedDatabaseStatus::Deleted = cluster.status {
 		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	let cloud_db_id = cloud_db
-		.cloud_database_id
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
 	let client = Client::new();
 
-	let database_info = match cloud_db.db_provider_name {
+	let (provider, _) = cluster
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let provider = provider.parse::<CloudPlatform>()?;
+	let database_info = match provider {
 		CloudPlatform::Aws => {
 			log::trace!("getting cluster from aws");
 			get_cluster_from_aws(
-				&cloud_db_id,
-				cloud_db.region,
-				cloud_db.password,
+				&hex::encode(cluster.id),
+				&cluster.region,
+				&cluster.password,
 			)
 			.await?
 		}
 		CloudPlatform::DigitalOcean => {
 			log::trace!("getting cluster from digital ocean");
-			get_cluster_from_digital_ocean(
-				&client,
-				settings,
-				&cloud_db_id,
-				&cloud_db.id,
-			)
-			.await?
+			if let Some(digital_ocean_db_id) = cluster.digital_ocean_db_id {
+				get_cluster_from_digital_ocean(
+					&client,
+					settings,
+					&digital_ocean_db_id,
+					&cluster.id,
+				)
+				.await?
+			} else {
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
 		}
 	};
 
-	Ok((database_info.database, cloud_db.status))
+	Ok((database_info.database, cluster.status))
 }
 
 pub async fn delete_managed_database(
@@ -841,37 +853,37 @@ pub async fn delete_managed_database(
 	resource_id: &[u8],
 	client: &Client,
 ) -> Result<(), Error> {
-	let cloud_db = db::get_managed_database_by_id(connection, resource_id)
+	let cluster = db::get_managed_database_by_id(connection, resource_id)
 		.await?
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let cloud_db_id = cloud_db
-		.cloud_database_id
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let region = cloud_db
+	let (provider, region) = cluster
 		.region
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let provider = provider.parse::<CloudPlatform>()?;
 
-	match cloud_db.db_provider_name {
+	match provider {
 		CloudPlatform::Aws => {
-			delete_managed_database_on_aws(&cloud_db_id, &region).await?;
+			delete_managed_database_on_aws(&hex::encode(&cluster.id), region)
+				.await?;
 		}
 		CloudPlatform::DigitalOcean => {
-			delete_managed_database_on_digitalocean(
-				&cloud_db_id,
-				settings,
-				client,
-			)
-			.await?;
+			if let Some(digital_ocean_db_id) = cluster.digital_ocean_db_id {
+				delete_managed_database_on_digitalocean(
+					&digital_ocean_db_id,
+					settings,
+					client,
+				)
+				.await?;
+			}
 		}
 	}
 
 	db::update_managed_database_status(
 		connection,
-		&cloud_db.id,
+		&cluster.id,
 		&ManagedDatabaseStatus::Deleted,
 	)
 	.await?;
@@ -880,14 +892,14 @@ pub async fn delete_managed_database(
 }
 
 async fn delete_managed_database_on_digitalocean(
-	cloud_db_id: &str,
+	digital_ocean_db_id: &str,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<(), Error> {
 	let database_status = client
 		.delete(format!(
 			"https://api.digitalocean.com/v2/databases/{}",
-			cloud_db_id
+			digital_ocean_db_id
 		))
 		.bearer_auth(&settings.digital_ocean_api_key)
 		.send()
