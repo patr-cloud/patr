@@ -8,7 +8,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CnameRecords, DeploymentStatus},
+		db_mapping::{CNameRecord, DeploymentStatus},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -35,6 +35,14 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
 
@@ -137,8 +145,14 @@ pub(super) async fn deploy_container(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id =
-			create_app(&deployment_id, region, &config, &client).await?;
+		let app_id = create_app(
+			&deployment_id,
+			region,
+			&deployment.domain_name,
+			&config,
+			&client,
+		)
+		.await?;
 		log::trace!("App created");
 		app_id
 	};
@@ -257,6 +271,26 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
+pub(super) async fn get_dns_records_for_deployments(
+	settings: &Settings,
+	domain: &str,
+	app_id: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = Client::new();
+
+	let default_ingress = get_default_ingress(app_id, settings, &client)
+		.await
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let cname_record = vec![CNameRecord {
+		cname: domain.to_string(),
+		value: default_ingress,
+	}];
+
+	Ok(cname_record)
+}
+
 async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
@@ -312,16 +346,10 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
+	domain_name: &Option<String>,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
-	let deployment = db::get_deployment_by_id(
-		service::get_app().database.acquire().await?.deref_mut(),
-		deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
 	let envs = db::get_environment_variables_for_deployment(
 		service::get_app().database.acquire().await?.deref_mut(),
 		deployment_id,
@@ -335,6 +363,7 @@ async fn create_app(
 		r#type: "GENERAL".to_string(),
 	})
 	.collect();
+
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
@@ -342,7 +371,7 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: if let Some(domain) = deployment.domain_name {
+				domains: if let Some(domain) = domain_name {
 					vec![
 						Domains {
 							// [ 4 .. 253 ] characters
@@ -497,24 +526,4 @@ async fn delete_image_from_digitalocean_registry(
 	}
 
 	Ok(())
-}
-
-pub(super) async fn get_domain_for_deployment(
-	settings: &Settings,
-	domain: &str,
-	app_id: &str,
-) -> Result<Vec<CnameRecords>, Error> {
-	let client = Client::new();
-
-	let default_ingress = get_default_ingress(app_id, settings, &client)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let cname_record = vec![CnameRecords {
-		cname: domain.to_string(),
-		value: default_ingress,
-	}];
-
-	Ok(cname_record)
 }

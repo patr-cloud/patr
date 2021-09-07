@@ -40,11 +40,10 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
 			region TEXT NOT NULL DEFAULT 'do-blr',
 			domain_name VARCHAR(255)
-				CONSTRAINT domain_name_uq UNIQUE
-				CONSTRAINT domain_chk_name_is_lower_case 
-					CHECK(
-						name = LOWER(name)
-					),
+				CONSTRAINT deployment_uq_domain_name UNIQUE
+				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+					name = LOWER(name)
+				),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -190,7 +189,7 @@ pub async fn create_deployment_with_external_registry(
 	image_name: &str,
 	image_tag: &str,
 	region: &str,
-	domain_name: Option<&str>
+	domain_name: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -520,4 +519,43 @@ pub async fn remove_all_environment_variables_for_deployment(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn set_domain_name_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	domain_name: Option<&str>,
+) -> Result<(), sqlx::Error> {
+	if let Some(domain_name) = domain_name {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				domain_name = $1
+			WHERE
+				id = $2;
+			"#,
+			domain_name,
+			deployment_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				domain_name = NULL
+			WHERE
+				id = $1;
+			"#,
+			deployment_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }

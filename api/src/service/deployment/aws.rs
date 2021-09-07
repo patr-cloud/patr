@@ -14,15 +14,12 @@ use lightsail::{
 	},
 	SdkError,
 };
-use tokio::{
-	process::Command,
-	time::{self, Instant},
-};
+use tokio::{process::Command, time};
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
+	models::db_mapping::{CNameRecord, CloudPlatform, DeploymentStatus},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -98,13 +95,8 @@ pub(super) async fn deploy_container(
 	log::trace!("checking deployment status");
 	wait_for_deployment(&deployment_id_string, &client).await?;
 	log::trace!("updating DNS");
-	super::add_cname_record(
-		&deployment_id_string,
-		&default_url,
-		&config,
-		true,
-	)
-	.await?;
+	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
+		.await?;
 	log::trace!("DNS Updated");
 	let domain_name = format!("{}.patr.cloud", deployment_id_string);
 	let (cname, value) = create_certificate_if_not_available(
@@ -133,25 +125,25 @@ pub(super) async fn deploy_container(
 	log::trace!("cname record updated");
 	// update container service with patr domain
 	log::trace!("waiting for certificate to be validated");
-	wait_for_certificate_validation(&deployment_id_string, &client).await?;
+	wait_for_patr_certificate_validation(&deployment_id_string, &client)
+		.await?;
 	log::trace!("certificate validated");
 	log::trace!("updating container service with patr domain");
-	update_container_service_with_patr_domain(
-		&deployment_id_string,
-		&client,
-	)
-	.await?;
+	update_container_service_with_patr_domain(&deployment_id_string, &client)
+		.await?;
 	log::trace!("container service updated with patr domain");
 	let custom_domain = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
-		&deployment_id
+		&deployment_id,
 	)
 	.await?
 	.map(|deployment| deployment.domain_name)
 	.flatten();
 
 	if let Some(domain) = custom_domain {
-		log::trace!("custom domain present, updating patr service with custom domain");
+		log::trace!(
+			"custom domain present, updating patr service with custom domain"
+		);
 		let cert_name = format!("{}-custom", deployment_id_string);
 		create_certificate_if_not_available(&cert_name, &domain, &client)
 			.await?;
@@ -177,15 +169,15 @@ pub(super) async fn delete_deployment(
 	// Get credentails for aws lightsail
 	log::trace!("getting credentials from lightsail");
 	let client = get_lightsail_client(region);
+	let deployment_id_string = hex::encode(deployment_id);
 
 	// certificate needs to be detached inorder to get deleted but there is no
 	// endpoint to detach the certificate
-
 	log::trace!("deleting deployment");
 
 	client
 		.delete_container_service()
-		.set_service_name(Some(hex::encode(&deployment_id)))
+		.service_name(&deployment_id_string)
 		.send()
 		.await
 		.map_err(|err| {
@@ -252,7 +244,117 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
-pub(super) fn get_lightsail_client(region: &str) -> lightsail::Client {
+pub(super) async fn is_custom_domain_validated(
+	deployment_id: &[u8],
+	region: &str,
+	domain_name: &str,
+) -> Result<bool, Error> {
+	let client = get_lightsail_client(region);
+	let deployment_id_string = hex::encode(deployment_id);
+
+	let certificate_status = client
+		.get_certificates()
+		.certificate_name(format!(
+			"{}-custom-certificate",
+			deployment_id_string
+		))
+		.include_certificate_details(true)
+		.send()
+		.await?
+		.certificates
+		.map(|certificate_summary_list| {
+			certificate_summary_list.into_iter().next()
+		})
+		.flatten()
+		.map(|certificate_summary| certificate_summary.certificate_detail)
+		.flatten()
+		.map(|cert| cert.status)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	match certificate_status {
+		CertificateStatus::Issued => {
+			let custom_domain_exists = client
+				.get_container_services()
+				.service_name(&deployment_id_string)
+				.send()
+				.await?
+				.container_services
+				.map(|services| services.into_iter().next())
+				.flatten()
+				.map(|service| service.public_domain_names.unwrap_or_default())
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.contains_key(&format!(
+					"{}-custom-certificate",
+					deployment_id_string
+				));
+			if !custom_domain_exists {
+				client
+					.update_container_service()
+					.service_name(&deployment_id_string)
+					.is_disabled(false)
+					.public_domain_names(
+						format!("{}-custom-certificate", deployment_id_string),
+						vec![domain_name.to_string()],
+					)
+					.send()
+					.await?;
+			}
+			Ok(true)
+		}
+		CertificateStatus::PendingValidation => Ok(false),
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
+	}
+}
+
+pub(super) async fn get_dns_records_for_deployments(
+	deployment_id: &[u8],
+	region: &str,
+	domain_name: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = get_lightsail_client(region);
+
+	log::trace!("getting deployment url from lightsail");
+	let deployment_url = app_exists(&hex::encode(deployment_id), &client)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let cert_name =
+		format!("{}-custom-certificate", hex::encode(deployment_id));
+	log::trace!("retreive certificate for deployment");
+	let (cname, value) =
+		get_cname_and_value_from_aws(&cert_name, &client).await?;
+
+	let cname = if cname.ends_with('.') {
+		&cname[0..cname.len() - 1]
+	} else {
+		&cname
+	};
+	let value = if value.ends_with('.') {
+		&value[0..value.len() - 1]
+	} else {
+		&value
+	};
+	let cname_records = vec![
+		CNameRecord {
+			cname: domain_name.to_string(),
+			value: deployment_url,
+		},
+		CNameRecord {
+			cname: cname.to_string(),
+			value: value.to_string(),
+		},
+	];
+
+	Ok(cname_records)
+}
+
+fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))
@@ -292,6 +394,22 @@ async fn create_container_service(
 			}
 		}
 	};
+
+	let custom_certificate = client
+		.get_certificates()
+		.certificate_name(format!("{}-custom-certificate", deployment_id))
+		.send()
+		.await?
+		.certificates
+		.map(|services| services.into_iter().next())
+		.flatten();
+	if let Some(certificate) = custom_certificate {
+		client
+			.delete_certificate()
+			.certificate_name(format!("{}-custom-certificate", deployment_id))
+			.send()
+			.await?;
+	}
 
 	loop {
 		let container_state = client
@@ -502,24 +620,6 @@ async fn update_container_service_with_patr_domain(
 	Ok(())
 }
 
-pub(super) async fn update_container_service_with_custom_domain(
-	deployment_id: &str,
-	domain_name: &str,
-	client: &lightsail::Client,
-) -> Result<(), Error> {
-	client
-		.update_container_service()
-		.service_name(deployment_id)
-		.is_disabled(false)
-		.public_domain_names(
-			format!("{}-custom-certificate", deployment_id),
-			vec![domain_name.to_string()],
-		)
-		.send()
-		.await?;
-	Ok(())
-}
-
 async fn create_certificate_if_not_available(
 	cert_name: &str,
 	domain_name: &str,
@@ -605,11 +705,10 @@ async fn get_cname_and_value_from_aws(
 		.body(error!(SERVER_ERROR).to_string())?
 }
 
-pub(super) async fn wait_for_certificate_validation(
+async fn wait_for_patr_certificate_validation(
 	deployment_id_string: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {
-	let start = Instant::now();
 	loop {
 		let certificate_status = client
 			.get_certificates()
@@ -638,61 +737,5 @@ pub(super) async fn wait_for_certificate_validation(
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string()));
 		}
-
-		if start.elapsed() > Duration::from_secs(900) {
-			db::update_deployment_status(
-				service::get_app().database.acquire().await?.deref_mut(),
-				&hex::decode(deployment_id_string)?,
-				&DeploymentStatus::Errored,
-			)
-			.await?;
-			// maybe delete deployment if the certification is invalid?
-			// delete_deployment(connection, deployment_id, config, region)
-			return Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-		}
 	}
-}
-
-pub(super) async fn get_domain_for_deployment(
-	deployment_id: &[u8],
-	region: &str,
-	domain_name: &str,
-) -> Result<Vec<CnameRecords>, Error> {
-	let client = get_lightsail_client(region);
-
-	log::trace!("getting deployment url from lightsail");
-	let deployment_url = app_exists(&hex::encode(deployment_id), &client)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let cert_name = format!("{}-custom-certificate", hex::encode(deployment_id));
-	log::trace!("retreive certificate for deployment");
-	let (cname, value) =
-		get_cname_and_value_from_aws(&cert_name, &client).await?;
-
-	let cname = if cname.ends_with('.') {
-		&cname[0..cname.len() - 1]
-	} else {
-		&cname
-	};
-	let value = if value.ends_with('.') {
-		&value[0..value.len() - 1]
-	} else {
-		&value
-	};
-	let cname_records = vec![
-		CnameRecords {
-			cname: domain_name.to_string(),
-			value: deployment_url,
-		},
-		CnameRecords {
-			cname: cname.to_string(),
-			value: value.to_string(),
-		},
-	];
-
-	Ok(cname_records)
 }

@@ -33,16 +33,17 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CloudPlatform, CnameRecords, DeploymentStatus},
+		db_mapping::{CNameRecord, CloudPlatform, DeploymentStatus},
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
 	},
-	service::{self, deployment::aws::get_lightsail_client},
+	service,
 	utils::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
+		validator,
 		Error,
 	},
 	Database,
@@ -88,6 +89,14 @@ pub async fn create_deployment_in_organisation(
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
+		}
+	}
+
+	if let Some(domain_name) = domain_name {
+		if !validator::is_deployment_entry_point_valid(domain_name) {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
 
@@ -523,12 +532,11 @@ async fn pull_image_from_registry(
 	Ok(())
 }
 
-pub async fn get_domain_for_deployment(
+pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	domain: &str,
 	config: &Settings,
-) -> Result<Vec<CnameRecords>, Error> {
+) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -540,6 +548,11 @@ pub async fn get_domain_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			let app_id = deployment
@@ -547,8 +560,10 @@ pub async fn get_domain_for_deployment(
 				.status(404)
 				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 			log::trace!("getting domain for digitalocean deployment");
-			let cname_records = digitalocean::get_domain_for_deployment(
-				config, domain, &app_id,
+			let cname_records = digitalocean::get_dns_records_for_deployments(
+				config,
+				&domain_name,
+				&app_id,
 			)
 			.await?;
 
@@ -556,9 +571,12 @@ pub async fn get_domain_for_deployment(
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!("getting domain for aws deployment");
-			let cname_records =
-				aws::get_domain_for_deployment(deployment_id, region, domain)
-					.await?;
+			let cname_records = aws::get_dns_records_for_deployments(
+				deployment_id,
+				region,
+				&domain_name,
+			)
+			.await?;
 
 			Ok(cname_records)
 		}
@@ -568,11 +586,10 @@ pub async fn get_domain_for_deployment(
 	}
 }
 
-pub async fn get_domain_validation_info(
+pub async fn get_domain_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	domain_name: &str,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -584,22 +601,26 @@ pub async fn get_domain_validation_info(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
 	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {}
+		Ok(CloudPlatform::DigitalOcean) => {
+			Ok(reqwest::get(format!("https://{}", domain_name))
+				.await?
+				.status()
+				.is_success())
+		}
 		Ok(CloudPlatform::Aws) => {
-			let client = get_lightsail_client(region);
 			log::trace!("checking domain validation for aws deployment");
-			aws::wait_for_certificate_validation(
-				&hex::encode(&deployment_id),
-				&client,
+			aws::is_custom_domain_validated(
+				&deployment_id,
+				region,
+				&domain_name,
 			)
-			.await?;
-			aws::update_container_service_with_custom_domain(
-				&hex::encode(&deployment_id),
-				domain_name,
-				&client,
-			)
-			.await?;
+			.await
 		}
 		_ => {
 			return Err(Error::empty()
@@ -607,5 +628,4 @@ pub async fn get_domain_validation_info(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
-	Ok(())
 }

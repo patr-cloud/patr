@@ -156,4 +156,6 @@ pub mod request_keys {
 	pub const CNAME: &str = "cname";
 	pub const VALUE: &str = "value";
 	pub const CNAME_RECORDS: &str = "cnameRecords";
+	pub const DOMAIN_NAME: &str = "domainName";
+	pub const VALIDATED: &str = "validated";
 }
