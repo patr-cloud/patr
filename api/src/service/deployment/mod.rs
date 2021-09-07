@@ -648,17 +648,11 @@ pub async fn get_domain_validation_status(
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!("checking domain validation for aws deployment");
-			aws::is_custom_domain_validated(
-				deployment_id,
-				region,
-				&domain_name,
-			)
-			.await
+			aws::is_custom_domain_validated(deployment_id, region, &domain_name)
+				.await
 		}
-		_ => {
-			Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()))
-		}
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
 	}
 }
