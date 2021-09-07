@@ -265,11 +265,11 @@ pub fn create_sub_app(
 	);
 
 	// set environment variables for deployment
-	app.patch(
+	app.put(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::organisation::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -293,6 +293,68 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(set_environment_variables)),
+		],
+	);
+
+	app.put(
+		"/:deploymentId/horizontal-scale",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(set_horizontal_scale)),
+		],
+	);
+
+	app.put(
+		"/:deploymentId/machine-type",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(set_machine_type)),
 		],
 	);
 
@@ -475,6 +537,8 @@ async fn list_deployments(
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
 				request_keys::REGION: deployment.region,
+				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
+				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
 			}))
 		} else {
 			Some(json!({
@@ -485,6 +549,8 @@ async fn list_deployments(
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
 				request_keys::REGION: deployment.region,
+				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
+				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
 			}))
 		}
 	})
@@ -597,6 +663,50 @@ async fn create_deployment(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
+	let horizontal_scale = body
+		.get(request_keys::HORIZONTAL_SCALE)
+		.map(|value| match value {
+			Value::Number(number) => {
+				if number.is_u64() {
+					number.as_u64()
+				} else if number.is_i64() {
+					number
+						.as_i64()
+						.map(|number| {
+							if number > 0 {
+								Some(number as u64)
+							} else {
+								None
+							}
+						})
+						.flatten()
+				} else {
+					None
+				}
+			}
+			Value::String(number) => number.parse::<u64>().ok(),
+			_ => None,
+		})
+		.flatten()
+		.map(|number| {
+			if number > 0 && number < 256 {
+				Some(number)
+			} else {
+				None
+			}
+		})
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let machine_type = body
+		.get(request_keys::MACHINE_TYPE)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|machine_type| machine_type.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
 
@@ -610,6 +720,8 @@ async fn create_deployment(
 		image_tag,
 		region,
 		domain_name,
+		horizontal_scale,
+		&machine_type,
 		&config,
 	)
 	.await?;
@@ -670,6 +782,7 @@ async fn get_deployment_info(
 	context.json(
 		if deployment.registry == "registry.patr.cloud" {
 			json!({
+				request_keys::SUCCESS: true,
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
 				request_keys::REGISTRY: deployment.registry,
@@ -677,9 +790,12 @@ async fn get_deployment_info(
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
 				request_keys::REGION: deployment.region,
+				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
+				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
 			})
 		} else {
 			json!({
+				request_keys::SUCCESS: true,
 				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
 				request_keys::NAME: deployment.name,
 				request_keys::REGISTRY: deployment.registry,
@@ -687,6 +803,8 @@ async fn get_deployment_info(
 				request_keys::IMAGE_TAG: deployment.image_tag,
 				request_keys::STATUS: deployment.status.to_string(),
 				request_keys::REGION: deployment.region,
+				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
+				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
 			})
 		},
 	);
@@ -971,11 +1089,7 @@ async fn set_environment_variables(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	db::remove_all_environment_variables_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?;
+	let mut environment_variables = vec![];
 
 	for (key, value) in env_var_values {
 		let value = value
@@ -983,14 +1097,152 @@ async fn set_environment_variables(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-		db::add_environment_variable_for_deployment(
-			context.get_database_connection(),
-			&deployment_id,
-			key,
-			value,
-		)
-		.await?;
+		environment_variables.push((key.clone(), value.to_string()));
 	}
+
+	service::set_environment_variables_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&environment_variables,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to set the horizontal scale for a deployment.
+/// Deployments need to be restarted before the changes are applied
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn set_horizontal_scale(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	let horizontal_scale = body
+		.get(request_keys::HORIZONTAL_SCALE)
+		.map(|value| match value {
+			Value::Number(number) => {
+				if number.is_u64() {
+					number.as_u64()
+				} else if number.is_i64() {
+					number
+						.as_i64()
+						.map(|number| {
+							if number > 0 {
+								Some(number as u64)
+							} else {
+								None
+							}
+						})
+						.flatten()
+				} else {
+					None
+				}
+			}
+			Value::String(number) => number.parse::<u64>().ok(),
+			_ => None,
+		})
+		.flatten()
+		.map(|number| {
+			if number > 0 && number < 256 {
+				Some(number)
+			} else {
+				None
+			}
+		})
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::set_horizontal_scale_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		horizontal_scale,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to set the machine type for a deployment.
+/// Deployments need to be restarted before the changes are applied
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn set_machine_type(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	let machine_type = body
+		.get(request_keys::MACHINE_TYPE)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|machine_type| machine_type.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::set_machine_type_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&machine_type,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -1040,13 +1292,9 @@ async fn get_domain_dns_records(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
-	let body = context.get_body_object().clone();
-
-	let config = context.get_state().config.clone();
 	let cname_records = service::get_dns_records_for_deployments(
 		context.get_database_connection(),
 		&deployment_id,
-		&config,
 	)
 	.await?
 	.into_iter()
@@ -1174,8 +1422,6 @@ async fn is_domain_validated(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-
-	let body = context.get_body_object().clone();
 
 	let validated = service::get_domain_validation_status(
 		context.get_database_connection(),

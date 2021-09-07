@@ -60,7 +60,9 @@ pub struct Deployment {
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
 	pub region: String,
-	pub domain_name: Option<String>
+	pub domain_name: Option<String>,
+	pub horizontal_scale: i16,
+	pub machine_type: DeploymentMachineType,
 }
 
 impl Deployment {
@@ -186,4 +188,40 @@ impl FromStr for CloudPlatform {
 pub struct CNameRecord {
 	pub cname: String,
 	pub value: String,
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "DEPLOYMENT_MACHINE_TYPE", rename_all = "lowercase")]
+pub enum DeploymentMachineType {
+	Micro,
+	Small,
+	Medium,
+	Large,
+}
+
+impl Display for DeploymentMachineType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Micro => write!(f, "micro"),
+			Self::Small => write!(f, "small"),
+			Self::Medium => write!(f, "medium"),
+			Self::Large => write!(f, "large"),
+		}
+	}
+}
+
+impl FromStr for DeploymentMachineType {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"micro" => Ok(Self::Micro),
+			"small" => Ok(Self::Small),
+			"medium" => Ok(Self::Medium),
+			"large" => Ok(Self::Large),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
 }

@@ -33,7 +33,12 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CNameRecord, CloudPlatform, DeploymentStatus},
+		db_mapping::{
+			CNameRecord,
+			CloudPlatform,
+			DeploymentMachineType,
+			DeploymentStatus,
+		},
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
@@ -79,6 +84,8 @@ pub async fn create_deployment_in_organisation(
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -131,6 +138,8 @@ pub async fn create_deployment_in_organisation(
 				image_tag,
 				region,
 				domain_name,
+				horizontal_scale,
+				machine_type,
 			)
 			.await?;
 		} else {
@@ -148,6 +157,8 @@ pub async fn create_deployment_in_organisation(
 			image_tag,
 			region,
 			domain_name,
+			horizontal_scale,
+			machine_type,
 		)
 		.await?;
 	} else {
@@ -334,6 +345,30 @@ pub async fn get_deployment_container_logs(
 	};
 
 	Ok(logs)
+}
+
+pub async fn set_environment_variables_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	environment_variables: &Vec<(String, String)>,
+) -> Result<(), Error> {
+	db::remove_all_environment_variables_for_deployment(
+		connection,
+		deployment_id,
+	)
+	.await?;
+
+	for (key, value) in environment_variables {
+		db::add_environment_variable_for_deployment(
+			connection,
+			deployment_id,
+			key,
+			value,
+		)
+		.await?;
+	}
+
+	Ok(())
 }
 
 async fn add_cname_record(
@@ -535,7 +570,6 @@ async fn pull_image_from_registry(
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	config: &Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -561,7 +595,6 @@ pub async fn get_dns_records_for_deployments(
 				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 			log::trace!("getting domain for digitalocean deployment");
 			let cname_records = digitalocean::get_dns_records_for_deployments(
-				config,
 				&domain_name,
 				&app_id,
 			)

@@ -19,7 +19,12 @@ use tokio::{process::Command, time};
 use crate::{
 	db,
 	error,
-	models::db_mapping::{CNameRecord, CloudPlatform, DeploymentStatus},
+	models::db_mapping::{
+		CNameRecord,
+		CloudPlatform,
+		DeploymentMachineType,
+		DeploymentStatus,
+	},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -31,6 +36,14 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let deployment_id_string = hex::encode(&deployment_id);
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
@@ -82,6 +95,8 @@ pub(super) async fn deploy_container(
 			&label_name,
 			&new_repo_name,
 			&region,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
 			&client,
 		)
 		.await?
@@ -367,6 +382,8 @@ async fn create_container_service(
 	label_name: &str,
 	new_repo_name: &str,
 	region: &str,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	client: &lightsail::Client,
 ) -> Result<String, Error> {
 	log::trace!("checking if the service exists or is in the process of getting deleted");
@@ -374,8 +391,19 @@ async fn create_container_service(
 		let created_result = client
 			.create_container_service()
 			.set_service_name(Some(deployment_id.to_string()))
-			.scale(1) //setting the default number of containers to 1
-			.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
+			.scale(horizontal_scale.into())
+			.power(match machine_type {
+				DeploymentMachineType::Micro => ContainerServicePowerName::Nano,
+				DeploymentMachineType::Small => {
+					ContainerServicePowerName::Small
+				}
+				DeploymentMachineType::Medium => {
+					ContainerServicePowerName::Medium
+				}
+				DeploymentMachineType::Large => {
+					ContainerServicePowerName::Large
+				}
+			})
 			.send()
 			.await;
 		match created_result {
@@ -403,7 +431,7 @@ async fn create_container_service(
 		.certificates
 		.map(|services| services.into_iter().next())
 		.flatten();
-	if let Some(certificate) = custom_certificate {
+	if custom_certificate.is_some() {
 		client
 			.delete_certificate()
 			.certificate_name(format!("{}-custom-certificate", deployment_id))

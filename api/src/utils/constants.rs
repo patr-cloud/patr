@@ -158,4 +158,6 @@ pub mod request_keys {
 	pub const CNAME_RECORDS: &str = "cnameRecords";
 	pub const DOMAIN_NAME: &str = "domainName";
 	pub const VALIDATED: &str = "validated";
+	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
+	pub const MACHINE_TYPE: &str = "machineType";
 }

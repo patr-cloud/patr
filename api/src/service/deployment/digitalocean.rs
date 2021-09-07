@@ -8,7 +8,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CNameRecord, DeploymentStatus},
+		db_mapping::{CNameRecord, DeploymentMachineType, DeploymentStatus},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -149,6 +149,8 @@ pub(super) async fn deploy_container(
 			&deployment_id,
 			region,
 			&deployment.domain_name,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
 			&config,
 			&client,
 		)
@@ -272,16 +274,16 @@ pub(super) async fn get_container_logs(
 }
 
 pub(super) async fn get_dns_records_for_deployments(
-	settings: &Settings,
 	domain: &str,
 	app_id: &str,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let client = Client::new();
 
-	let default_ingress = get_default_ingress(app_id, settings, &client)
-		.await
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	let default_ingress =
+		get_default_ingress(app_id, service::get_settings(), &client)
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
 	let cname_record = vec![CNameRecord {
 		cname: domain.to_string(),
@@ -347,6 +349,8 @@ async fn create_app(
 	deployment_id: &[u8],
 	region: String,
 	domain_name: &Option<String>,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
@@ -410,8 +414,27 @@ async fn create_app(
 						tag: "latest".to_string(),
 					},
 					// for now instance count is set to 1
-					instance_count: 1,
-					instance_size_slug: "basic-xs".to_string(),
+					instance_count: horizontal_scale as u64,
+					instance_size_slug:
+						match (machine_type, horizontal_scale) {
+							(DeploymentMachineType::Micro, 1) => "basic-xxs",
+							(DeploymentMachineType::Micro, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Small, 1) => "basic-xs",
+							(DeploymentMachineType::Small, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Medium, 1) => "basic-s",
+							(DeploymentMachineType::Medium, _) => {
+								"professional-s"
+							}
+							(DeploymentMachineType::Large, 1) => "basic-m",
+							(DeploymentMachineType::Large, _) => {
+								"professional-m"
+							}
+						}
+						.to_string(),
 					http_port: 80,
 					routes: vec![Routes {
 						path: "/".to_string(),

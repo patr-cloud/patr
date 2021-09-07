@@ -1,5 +1,5 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentStatus},
+	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
 	query,
 	query_as,
 	Database,
@@ -26,6 +26,19 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
+			'micro',
+			'small',
+			'medium',
+			'large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -44,6 +57,12 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
 					name = LOWER(name)
 				),
+			horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
+					horizontal_scale >= 0 AND horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -142,6 +161,8 @@ pub async fn create_deployment_with_internal_registry(
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -149,14 +170,16 @@ pub async fn create_deployment_with_internal_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6);
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8);
 			"#,
 			deployment_id,
 			name,
 			repository_id,
 			image_tag,
 			region,
-			domain
+			domain,
+			horizontal_scale as i16,
+			machine_type as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -167,13 +190,15 @@ pub async fn create_deployment_with_internal_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL);
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7);
 			"#,
 			deployment_id,
 			name,
 			repository_id,
 			image_tag,
-			region
+			region,
+			horizontal_scale as i16,
+			machine_type as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -190,6 +215,8 @@ pub async fn create_deployment_with_external_registry(
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -197,7 +224,7 @@ pub async fn create_deployment_with_external_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7);
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9);
 			"#,
 			deployment_id,
 			name,
@@ -205,7 +232,9 @@ pub async fn create_deployment_with_external_registry(
 			image_name,
 			image_tag,
 			region,
-			domain
+			domain,
+			horizontal_scale as i16,
+			machine_type as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -216,14 +245,16 @@ pub async fn create_deployment_with_external_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL);
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8);
 			"#,
 			deployment_id,
 			name,
 			registry,
 			image_name,
 			image_tag,
-			region
+			region,
+			horizontal_scale as i16,
+			machine_type as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -251,7 +282,9 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
 			deployment.region,
-			deployment.domain_name
+			deployment.domain_name,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _"
 		FROM
 			deployment
 		INNER JOIN
@@ -304,7 +337,9 @@ pub async fn get_deployments_for_organisation(
 			deployment.deployed_image,
 			deployment.digital_ocean_app_id,
 			deployment.region,
-			deployment.domain_name
+			deployment.domain_name,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _"
 		FROM
 			deployment
 		INNER JOIN
@@ -340,8 +375,10 @@ pub async fn get_deployment_by_id(
 			status as "status: _",
 			deployed_image,
 			digital_ocean_app_id,
-			deployment.region,
-			domain_name
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _"
 		FROM
 			deployment
 		WHERE
@@ -558,4 +595,48 @@ pub async fn set_domain_name_for_deployment(
 		.await
 		.map(|_| ())
 	}
+}
+
+pub async fn set_horizontal_scale_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	horizontal_scale: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			horizontal_scale = $1
+		WHERE
+			id = $2;
+		"#,
+		horizontal_scale as i16,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_machine_type_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	machine_type: &DeploymentMachineType,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type = $1
+		WHERE
+			id = $2;
+		"#,
+		machine_type as _,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
