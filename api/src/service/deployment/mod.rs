@@ -350,7 +350,7 @@ pub async fn get_deployment_container_logs(
 pub async fn set_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	environment_variables: &Vec<(String, String)>,
+	environment_variables: &[(String, String)],
 ) -> Result<(), Error> {
 	db::remove_all_environment_variables_for_deployment(
 		connection,
@@ -649,16 +649,16 @@ pub async fn get_domain_validation_status(
 		Ok(CloudPlatform::Aws) => {
 			log::trace!("checking domain validation for aws deployment");
 			aws::is_custom_domain_validated(
-				&deployment_id,
+				deployment_id,
 				region,
 				&domain_name,
 			)
 			.await
 		}
 		_ => {
-			return Err(Error::empty()
+			Err(Error::empty()
 				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
+				.body(error!(SERVER_ERROR).to_string()))
 		}
 	}
 }
