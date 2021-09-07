@@ -58,6 +58,19 @@ async fn migrate_from_v0_3_0(
 	query!(
 		r#"
 		ALTER TABLE deployment
+		ADD COLUMN domain_name VARCHAR(255)
+		CONSTRAINT deployment_uq_domain_name UNIQUE
+		CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+			name = LOWER(name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
 		ADD COLUMN horizontal_scale SMALLINT NOT NULL
 		CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
 			horizontal_scale >= 0 AND horizontal_scale <= 256

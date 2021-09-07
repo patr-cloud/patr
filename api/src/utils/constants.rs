@@ -153,6 +153,11 @@ pub mod request_keys {
 	pub const STATUS: &str = "status";
 	pub const REGION: &str = "region";
 	pub const LOGS: &str = "logs";
+	pub const CNAME: &str = "cname";
+	pub const VALUE: &str = "value";
+	pub const CNAME_RECORDS: &str = "cnameRecords";
+	pub const DOMAIN_NAME: &str = "domainName";
+	pub const VALIDATED: &str = "validated";
 	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
 	pub const MACHINE_TYPE: &str = "machineType";
 }

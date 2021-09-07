@@ -33,7 +33,12 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{CloudPlatform, DeploymentMachineType, DeploymentStatus},
+		db_mapping::{
+			CNameRecord,
+			CloudPlatform,
+			DeploymentMachineType,
+			DeploymentStatus,
+		},
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
@@ -43,6 +48,7 @@ use crate::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
+		validator,
 		Error,
 	},
 	Database,
@@ -77,6 +83,7 @@ pub async fn create_deployment_in_organisation(
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
 	config: &Settings,
@@ -89,6 +96,14 @@ pub async fn create_deployment_in_organisation(
 			Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
+		}
+	}
+
+	if let Some(domain_name) = domain_name {
+		if !validator::is_deployment_entry_point_valid(domain_name) {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
 
@@ -122,6 +137,7 @@ pub async fn create_deployment_in_organisation(
 				&repository_id,
 				image_tag,
 				region,
+				domain_name,
 				horizontal_scale,
 				machine_type,
 			)
@@ -140,6 +156,7 @@ pub async fn create_deployment_in_organisation(
 			image_name,
 			image_tag,
 			region,
+			domain_name,
 			horizontal_scale,
 			machine_type,
 		)
@@ -333,7 +350,7 @@ pub async fn get_deployment_container_logs(
 pub async fn set_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	environment_variables: &Vec<(String, String)>,
+	environment_variables: &[(String, String)],
 ) -> Result<(), Error> {
 	db::remove_all_environment_variables_for_deployment(
 		connection,
@@ -365,8 +382,6 @@ async fn add_cname_record(
 	} else {
 		format!("{}.patr.cloud", sub_domain)
 	};
-	println!("sub_domain: {}", sub_domain);
-	println!("target: {}", target);
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -550,4 +565,94 @@ async fn pull_image_from_registry(
 	while stream.next().await.is_some() {}
 
 	Ok(())
+}
+
+pub async fn get_dns_records_for_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<CNameRecord>, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			let app_id = deployment
+				.digital_ocean_app_id
+				.status(404)
+				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			log::trace!("getting domain for digitalocean deployment");
+			let cname_records = digitalocean::get_dns_records_for_deployments(
+				&domain_name,
+				&app_id,
+			)
+			.await?;
+
+			Ok(cname_records)
+		}
+		Ok(CloudPlatform::Aws) => {
+			log::trace!("getting domain for aws deployment");
+			let cname_records = aws::get_dns_records_for_deployments(
+				deployment_id,
+				region,
+				&domain_name,
+			)
+			.await?;
+
+			Ok(cname_records)
+		}
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
+	}
+}
+
+pub async fn get_domain_validation_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<bool, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	match provider.parse() {
+		Ok(CloudPlatform::DigitalOcean) => {
+			Ok(reqwest::get(format!("https://{}", domain_name))
+				.await?
+				.status()
+				.is_success())
+		}
+		Ok(CloudPlatform::Aws) => {
+			log::trace!("checking domain validation for aws deployment");
+			aws::is_custom_domain_validated(deployment_id, region, &domain_name)
+				.await
+		}
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
+	}
 }

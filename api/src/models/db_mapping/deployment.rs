@@ -60,6 +60,7 @@ pub struct Deployment {
 	pub deployed_image: Option<String>,
 	pub digital_ocean_app_id: Option<String>,
 	pub region: String,
+	pub domain_name: Option<String>,
 	pub horizontal_scale: i16,
 	pub machine_type: DeploymentMachineType,
 }
@@ -180,6 +181,13 @@ impl FromStr for CloudPlatform {
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct CNameRecord {
+	pub cname: String,
+	pub value: String,
 }
 
 #[derive(sqlx::Type, Debug)]

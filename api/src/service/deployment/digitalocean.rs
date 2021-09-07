@@ -8,7 +8,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{DeploymentMachineType, DeploymentStatus},
+		db_mapping::{CNameRecord, DeploymentMachineType, DeploymentStatus},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -45,6 +45,7 @@ pub(super) async fn deploy_container(
 
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
+
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -147,6 +148,7 @@ pub(super) async fn deploy_container(
 		let app_id = create_app(
 			&deployment_id,
 			region,
+			&deployment.domain_name,
 			deployment.horizontal_scale,
 			&deployment.machine_type,
 			&config,
@@ -271,6 +273,26 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
+pub(super) async fn get_dns_records_for_deployments(
+	domain: &str,
+	app_id: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = Client::new();
+
+	let default_ingress =
+		get_default_ingress(app_id, service::get_settings(), &client)
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	let cname_record = vec![CNameRecord {
+		cname: domain.to_string(),
+		value: default_ingress,
+	}];
+
+	Ok(cname_record)
+}
+
 async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
@@ -326,6 +348,7 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
+	domain_name: &Option<String>,
 	horizontal_scale: i16,
 	machine_type: &DeploymentMachineType,
 	settings: &Settings,
@@ -352,17 +375,37 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: vec![Domains {
-					// [ 4 .. 253 ] characters
-					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-					// }\.?$ The hostname for the domain
-					domain: format!(
-						"{}.patr.cloud",
-						hex::encode(deployment_id)
-					),
-					// for now this has been set to PRIMARY
-					r#type: "PRIMARY".to_string(),
-				}],
+				domains: if let Some(domain) = domain_name {
+					vec![
+						Domains {
+							// [ 4 .. 253 ] characters
+							// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.
+							// )+[a-zA-Z]{2, }\.?$ The hostname for the domain
+							domain: format!(
+								"{}.patr.cloud",
+								hex::encode(deployment_id)
+							),
+							// for now this has been set to ALIAS
+							r#type: "ALIAS".to_string(),
+						},
+						Domains {
+							domain: domain.to_string(),
+							r#type: "PRIMARY".to_string(),
+						},
+					]
+				} else {
+					vec![Domains {
+						// [ 4 .. 253 ] characters
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+						// }\.?$ The hostname for the domain
+						domain: format!(
+							"{}.patr.cloud",
+							hex::encode(deployment_id)
+						),
+						// for now this has been set to PRIMARY
+						r#type: "PRIMARY".to_string(),
+					}]
+				},
 				services: vec![Services {
 					name: "default-service".to_string(),
 					image: Image {

@@ -17,6 +17,10 @@ lazy_static! {
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
+
+	// Regex for deployment entry point validation
+	// TODO remove after domains get handled through NS
+	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^([0-9a-zA-Z]+\\.[0-9a-zA-Z]+)*$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -85,6 +89,13 @@ pub async fn is_domain_name_valid(domain: &str) -> bool {
 		return true;
 	}
 	false
+}
+
+/// Returns true or false if a deployment.domain name is valid
+/// A deployment.domain name is a TLD + subdomains, comprising of the entire
+/// domain entry point
+pub fn is_deployment_entry_point_valid(domain: &str) -> bool {
+	DEPLOYMENT_ENTRY_POINT_REGEX.is_match(domain)
 }
 
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
