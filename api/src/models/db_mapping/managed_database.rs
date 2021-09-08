@@ -6,55 +6,79 @@ use serde::{Deserialize, Serialize};
 use crate::{error, utils::Error};
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
-#[sqlx(type_name = "DATABASE_PLAN", rename_all = "lowercase")]
-pub enum DatabasePlan {
-	DoNano,
-	DoMicro,
-	DoMedium,
-	DoLarge,
-	DoXlarge,
-	DoXxlarge,
-	DoMammoth,
-	AwsMicro,
-	AwsSmall,
-	AwsMedium,
-	AwsLarge,
+#[sqlx(type_name = "MANAGED_DATABASE_PLAN", rename_all = "lowercase")]
+pub enum ManagedDatabasePlan {
+	Nano,
+	Micro,
+	Small,
+	Medium,
+	Large,
+	Xlarge,
+	Xxlarge,
+	Mammoth,
 }
 
-impl Display for DatabasePlan {
+impl ManagedDatabasePlan {
+	pub fn as_do_plan(&self) -> Result<String, Error> {
+		match self {
+			Self::Nano => Ok("db-s-1vcpu-1gb"),
+			Self::Micro => Ok("db-s-1vcpu-2gb"),
+			Self::Medium => Ok("db-s-2vcpu-4gb"),
+			Self::Large => Ok("db-s-4vcpu-8gb"),
+			Self::Xlarge => Ok("db-s-6vcpu-16gb"),
+			Self::Xxlarge => Ok("db-s-8vcpu-32gb"),
+			Self::Mammoth => Ok("db-s-16vcpu-64gb"),
+			_ => Err(Error::empty()),
+		}
+		.map(|value| value.to_string())
+	}
+
+	pub fn as_aws_plan(&self) -> Result<String, Error> {
+		match self {
+			Self::Micro => Ok("micro_1_0"),
+			Self::Small => Ok("small_1_0"),
+			Self::Medium => Ok("medium_1_0"),
+			Self::Large => Ok("large_1_0"),
+			_ => Err(Error::empty()),
+		}
+		.map(|value| value.to_string())
+	}
+}
+
+impl Display for ManagedDatabasePlan {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			DatabasePlan::DoNano => write!(f, "db-s-1vcpu-1gb"),
-			DatabasePlan::DoMicro => write!(f, "db-s-1vcpu-2gb"),
-			DatabasePlan::DoMedium => write!(f, "db-s-2vcpu-4gb"),
-			DatabasePlan::DoLarge => write!(f, "db-s-4vcpu-8gb"),
-			DatabasePlan::DoXlarge => write!(f, "db-s-6vcpu-16gb"),
-			DatabasePlan::DoXxlarge => write!(f, "db-s-8vcpu-32gb"),
-			DatabasePlan::DoMammoth => write!(f, "db-s-16vcpu-64gb"),
-			DatabasePlan::AwsMicro => write!(f, "micro_1_0"),
-			DatabasePlan::AwsSmall => write!(f, "small_1_0"),
-			DatabasePlan::AwsMedium => write!(f, "medium_1_0"),
-			DatabasePlan::AwsLarge => write!(f, "large_1_0"),
+			Self::Nano => write!(f, "nano"),
+			Self::Micro => write!(f, "micro"),
+			Self::Small => write!(f, "small"),
+			Self::Medium => write!(f, "medium"),
+			Self::Large => write!(f, "large"),
+			Self::Xlarge => write!(f, "xlarge"),
+			Self::Xxlarge => write!(f, "xxlarge"),
+			Self::Mammoth => write!(f, "mammoth"),
 		}
 	}
 }
 
-impl FromStr for DatabasePlan {
+impl FromStr for ManagedDatabasePlan {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"do-nano" | "db-s-1vcpu-1gb" => Ok(DatabasePlan::DoNano),
-			"do-micro" | "db-s-1vcpu-2gb" => Ok(DatabasePlan::DoMicro),
-			"do-medium" | "db-s-2vcpu-4gb" => Ok(DatabasePlan::DoMedium),
-			"do-large" | "db-s-4vcpu-8gb" => Ok(DatabasePlan::DoLarge),
-			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(DatabasePlan::DoXlarge),
-			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(DatabasePlan::DoXxlarge),
-			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(DatabasePlan::DoMammoth),
-			"aws-micro" | "micro_1_0" => Ok(DatabasePlan::AwsMicro),
-			"aws-small" | "small_1_0" => Ok(DatabasePlan::AwsSmall),
-			"aws-medium" | "medium_1_0" => Ok(DatabasePlan::AwsMedium),
-			"aws-large" | "large_1_0" => Ok(DatabasePlan::AwsLarge),
+			"do-nano" | "db-s-1vcpu-1gb" => Ok(Self::Nano),
+			"do-micro" | "db-s-1vcpu-2gb" | "aws-micro" | "micro_1_0" => {
+				Ok(Self::Micro)
+			}
+			"aws-small" | "small_1_0" => Ok(Self::Small),
+			"do-medium" | "db-s-2vcpu-4gb" | "aws-medium" | "medium_1_0" => {
+				Ok(Self::Medium)
+			}
+			"do-large" | "db-s-4vcpu-8gb" | "aws-large" | "large_1_0" => {
+				Ok(Self::Large)
+			}
+			"do-xlarge" | "db-s-6vcpu-16gb" => Ok(Self::Xlarge),
+			"do-xxlarge" | "db-s-8vcpu-32gb" => Ok(Self::Xxlarge),
+			"do-mammoth" | "db-s-16vcpu-64gb" => Ok(Self::Mammoth),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -67,10 +91,10 @@ pub struct ManagedDatabase {
 	pub id: Vec<u8>,
 	pub name: String,
 	pub db_name: String,
-	pub engine: Engine,
+	pub engine: ManagedDatabaseEngine,
 	pub version: String,
 	pub num_nodes: i32,
-	pub size: String,
+	pub database_plan: ManagedDatabasePlan,
 	pub region: String,
 	pub status: ManagedDatabaseStatus,
 	pub host: String,
@@ -78,7 +102,7 @@ pub struct ManagedDatabase {
 	pub username: String,
 	pub password: String,
 	pub organisation_id: Vec<u8>,
-	pub digital_ocean_db_id: Option<String>,
+	pub digitalocean_db_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug)]
@@ -106,14 +130,14 @@ impl FromStr for ManagedDatabaseStatus {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"creating" |
 			"configuring-log-exports" |
+			"started" |
+			"creating" |
 			"backing-up" |
-			"Started" |
-			"NotStarted" => Ok(Self::Creating),
-			"running" | "online" | "created" | "Completed" | "Succeeded" |
+			"notstarted" => Ok(Self::Creating),
+			"running" | "online" | "created" | "completed" | "succeeded" |
 			"available" => Ok(Self::Running),
-			"errored" | "failed" | "Failed" => Ok(Self::Errored),
+			"errored" | "failed" => Ok(Self::Errored),
 			"deleted" => Ok(Self::Deleted),
 			_ => Error::as_result()
 				.status(500)
@@ -123,13 +147,13 @@ impl FromStr for ManagedDatabaseStatus {
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
-#[sqlx(type_name = "ENGINE", rename_all = "lowercase")]
-pub enum Engine {
+#[sqlx(type_name = "MANAGED_DATABASE_ENGINE", rename_all = "lowercase")]
+pub enum ManagedDatabaseEngine {
 	Postgres,
 	Mysql,
 }
 
-impl Display for Engine {
+impl Display for ManagedDatabaseEngine {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Postgres => write!(f, "postgres"),
@@ -138,14 +162,13 @@ impl Display for Engine {
 	}
 }
 
-impl FromStr for Engine {
+impl FromStr for ManagedDatabaseEngine {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"pg" | "postgres" | "postgresql" | "Postgres" | "Postgresql" |
-			"POSTGRESQL" | "POSTGRES" => Ok(Self::Postgres),
-			"mysql" | "Mysql" | "MYSQL" => Ok(Self::Mysql),
+			"pg" | "postgres" | "postgresql" => Ok(Self::Postgres),
+			"mysql" => Ok(Self::Mysql),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

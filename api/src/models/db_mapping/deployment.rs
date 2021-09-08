@@ -152,7 +152,6 @@ impl FromStr for DeploymentStatus {
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
-#[sqlx(type_name = "CLOUD_PLATFORM", rename_all = "lowercase")]
 pub enum CloudPlatform {
 	Aws,
 	DigitalOcean,

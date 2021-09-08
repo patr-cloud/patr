@@ -153,11 +153,10 @@ pub mod request_keys {
 	pub const URI: &str = "uri";
 	pub const HOST: &str = "host";
 	pub const CREATED_AT: &str = "createdAt";
-	pub const DATABASE_CLUSTERS: &str = "databaseClusters";
-	pub const DATABASE_CLUSTER: &str = "databaseCluster";
+	pub const DATABASES: &str = "databases";
 	pub const DATABASE_PLAN: &str = "databasePlan";
-	pub const CONNECTION: &str = "publicConnection";
-	pub const MANAGED_DATABASE_NAME: &str = "managedDatabaseName";
+	pub const PUBLIC_CONNECTION: &str = "publicConnection";
 	pub const LOGS: &str = "logs";
 	pub const DATABASE_NAME: &str = "databaseName";
+	pub const DATABASE_ID: &str = "databaseId";
 }

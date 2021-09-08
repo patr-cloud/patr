@@ -1,13 +1,12 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use reqwest::Client;
 use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::DatabasePlan, rbac::permissions},
+	models::{db_mapping::ManagedDatabasePlan, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -88,14 +87,13 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/:resourceId/",
+		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::managed_database::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
+					let org_id_string =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
 					let organisation_id = hex::decode(&org_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -120,14 +118,13 @@ pub fn create_sub_app(
 	);
 
 	app.delete(
-		"/:resourceId/",
+		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::organisation::managed_database::DELETE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
+					let org_id_string =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
 					let organisation_id = hex::decode(&org_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -161,36 +158,36 @@ async fn list_all_database_clusters(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 
-	let config = context.get_state().config.clone();
-	let database_clusters =
-		service::get_all_database_clusters_for_organisation(
-			context.get_database_connection(),
-			config,
-			&organisation_id,
-		)
-		.await?
-		.into_iter()
-		.map(|response| {
-			json!({
-				request_keys::ID: response.database.id,
-				request_keys::NAME: response.database.name,
-				request_keys::ENGINE: response.database.engine,
-				request_keys::VERSION: response.database.version,
-				request_keys::NUM_NODES: response.database.num_nodes,
-				request_keys::CREATED_AT: response.database.created_at,
-				request_keys::CONNECTION: {
-					request_keys::HOST: response.database.connection.host,
-					request_keys::USERNAME: response.database.connection.user,
-					request_keys::PASSWORD: response.database.connection.password,
-					request_keys::PORT: response.database.connection.port
-				}
-			})
+	let database_clusters = db::get_all_database_clusters_for_organisation(
+		context.get_database_connection(),
+		&organisation_id,
+	)
+	.await?
+	.into_iter()
+	.map(|database| {
+		json!({
+			request_keys::ID: hex::encode(database.id),
+			request_keys::NAME: database.name,
+			request_keys::DATABASE_NAME: database.db_name,
+			request_keys::ENGINE: database.engine,
+			request_keys::VERSION: database.version,
+			request_keys::NUM_NODES: database.num_nodes,
+			request_keys::DATABASE_PLAN: database.database_plan.to_string(),
+			request_keys::REGION: database.region,
+			request_keys::STATUS: database.status.to_string(),
+			request_keys::PUBLIC_CONNECTION: {
+				request_keys::HOST: database.host,
+				request_keys::PORT: database.port,
+				request_keys::USERNAME: database.username,
+				request_keys::PASSWORD: database.password,
+			}
 		})
-		.collect::<Vec<_>>();
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DATABASE_CLUSTERS: database_clusters
+		request_keys::DATABASES: database_clusters
 	}));
 
 	Ok(context)
@@ -204,6 +201,7 @@ async fn create_database_cluster(
 		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
+	let config = context.get_state().config.clone();
 
 	let name = body
 		.get(request_keys::NAME)
@@ -219,6 +217,15 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let engine = body
+		.get(request_keys::ENGINE)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|engine| engine.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let version = body
 		.get(request_keys::VERSION)
 		.map(|value| {
@@ -228,13 +235,6 @@ async fn create_database_cluster(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
-
-	let engine = body
-		.get(request_keys::ENGINE)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// only compulsory for digital ocean
 	let num_nodes = body
@@ -247,6 +247,15 @@ async fn create_database_cluster(
 		})
 		.transpose()?;
 
+	let database_plan = body
+		.get(request_keys::DATABASE_PLAN)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|c| c.parse::<ManagedDatabasePlan>().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let region = body
 		.get(request_keys::REGION)
 		.map(|value| value.as_str())
@@ -254,33 +263,23 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let database_plan = body
-		.get(request_keys::DATABASE_PLAN)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|c| c.parse::<DatabasePlan>().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
-
-	service::create_database_cluster(
-		config,
+	let database_id = service::create_managed_database_in_organisation(
+		context.get_database_connection(),
 		name,
 		db_name,
+		&engine,
 		version,
-		engine,
 		num_nodes,
+		&database_plan,
 		region,
 		&organisation_id,
-		database_plan,
+		&config,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::STATUS: "creating"
+		request_keys::DATABASE_ID: hex::encode(database_id.as_bytes())
 	}));
 	Ok(context)
 }
@@ -289,36 +288,35 @@ async fn get_managed_database_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let resource_id =
-		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
+	let database_id =
+		hex::decode(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 
-	let config = context.get_state().config.clone();
-	let (database_info, status) =
-		service::get_managed_database_info_for_organisation(
-			context.get_database_connection(),
-			&config,
-			&resource_id,
-		)
-		.await?;
+	let database = db::get_managed_database_by_id(
+		context.get_database_connection(),
+		&database_id,
+	)
+	.await?
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DATABASE_CLUSTER: {
-			request_keys::ID: hex::encode(resource_id),
-			request_keys::NAME: database_info.name,
-			request_keys::ENGINE: database_info.engine,
-			request_keys::VERSION: database_info.version,
-			request_keys::NUM_NODES: database_info.num_nodes,
-			request_keys::CREATED_AT: database_info.created_at,
-			request_keys::CONNECTION: {
-				request_keys::HOST: database_info.connection.host,
-				request_keys::USERNAME: database_info.connection.user,
-				request_keys::PASSWORD: database_info.connection.password,
-				request_keys::PORT: database_info.connection.port
-			}
-		},
-		request_keys::STATUS: status
+		request_keys::DATABASE_ID: hex::encode(database.id),
+		request_keys::NAME: database.name,
+		request_keys::DATABASE_NAME: database.db_name,
+		request_keys::ENGINE: database.engine,
+		request_keys::VERSION: database.version,
+		request_keys::NUM_NODES: database.num_nodes,
+		request_keys::DATABASE_PLAN: database.database_plan.to_string(),
+		request_keys::REGION: database.region,
+		request_keys::STATUS: database.status.to_string(),
+		request_keys::PUBLIC_CONNECTION: {
+			request_keys::HOST: database.host,
+			request_keys::PORT: database.port,
+			request_keys::USERNAME: database.username,
+			request_keys::PASSWORD: database.password,
+		}
 	}));
 
 	Ok(context)
@@ -328,24 +326,20 @@ async fn delete_managed_database(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let resource_id =
-		hex::decode(context.get_param(request_keys::RESOURCE_ID).unwrap())
+	let database_id =
+		hex::decode(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
-	let client = Client::new();
 	let config = context.get_state().config.clone();
 
 	service::delete_managed_database(
 		context.get_database_connection(),
+		&database_id,
 		&config,
-		&resource_id,
-		&client,
 	)
 	.await?;
 
 	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::STATUS: "deleted"
+		request_keys::SUCCESS: true
 	}));
-
 	Ok(context)
 }
