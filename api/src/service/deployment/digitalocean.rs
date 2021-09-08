@@ -404,7 +404,7 @@ pub(super) async fn get_dns_records_for_deployments(
 	let client = Client::new();
 
 	let default_ingress =
-		get_default_ingress(app_id, service::get_settings(), &client)
+		get_app_default_ingress(app_id, service::get_settings(), &client)
 			.await
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;

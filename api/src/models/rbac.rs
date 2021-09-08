@@ -96,8 +96,6 @@ pub mod permissions {
 			pub const LIST: &str = "organisation::managedDatabase::list";
 			pub const DELETE: &str = "organisation::managedDatabase::delete";
 			pub const INFO: &str = "organisation::managedDatabase::info";
-			#[allow(dead_code)]
-			pub const EDIT: &str = "organisation::managedDatabase::edit";
 		}
 
 		pub const VIEW_ROLES: &str = "organisation::viewRoles";
