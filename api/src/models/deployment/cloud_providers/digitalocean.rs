@@ -50,6 +50,8 @@ pub struct Services {
 	pub instance_size_slug: String,
 	pub http_port: u64,
 	pub routes: Vec<Routes>,
+	#[serde(default)]
+	pub envs: Vec<AppDeploymentEnvironmentVariables>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -60,7 +62,7 @@ pub struct Image {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Envs {
+pub struct AppDeploymentEnvironmentVariables {
 	// Required, ^[_A-Za-z][_A-Za-z0-9]*$
 	pub key: String,
 	// Default: "RUN_AND_BUILD_TIME"
@@ -68,9 +70,9 @@ pub struct Envs {
 	// RUN_TIME: Made available only at run-time
 	// BUILD_TIME: Made available only at build-time
 	// RUN_AND_BUILD_TIME: Made available at both build and run-time
-	pub scope: Option<String>,
-	pub r#type: Option<String>,
-	pub value: Option<String>,
+	pub scope: String,
+	pub r#type: String,
+	pub value: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

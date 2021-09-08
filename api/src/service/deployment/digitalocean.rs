@@ -9,6 +9,8 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
+			CNameRecord,
+			DeploymentMachineType,
 			DeploymentStatus,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
@@ -17,6 +19,7 @@ use crate::{
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
+			AppDeploymentEnvironmentVariables,
 			AppDeploymentsResponse,
 			AppHolder,
 			AppSpec,
@@ -42,8 +45,17 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
+
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -143,8 +155,16 @@ pub(super) async fn deploy_container(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id =
-			create_app(&deployment_id, region, &config, &client).await?;
+		let app_id = create_app(
+			&deployment_id,
+			region,
+			&deployment.domain_name,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
+			&config,
+			&client,
+		)
+		.await?;
 		log::trace!("App created");
 		app_id
 	};
@@ -155,8 +175,13 @@ pub(super) async fn deploy_container(
 
 	// update DNS
 	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_ingress, &config)
-		.await?;
+	super::add_cname_record(
+		&deployment_id_string,
+		&default_ingress,
+		&config,
+		true,
+	)
+	.await?;
 	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(
@@ -372,6 +397,26 @@ pub(super) async fn delete_database(
 	Ok(())
 }
 
+pub(super) async fn get_dns_records_for_deployments(
+	domain: &str,
+	app_id: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = Client::new();
+
+	let default_ingress =
+		get_default_ingress(app_id, service::get_settings(), &client)
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	let cname_record = vec![CNameRecord {
+		cname: domain.to_string(),
+		value: default_ingress,
+	}];
+
+	Ok(cname_record)
+}
+
 async fn update_database_cluster_credentials(
 	database_id: Vec<u8>,
 	db_name: String,
@@ -500,9 +545,26 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
+	domain_name: &Option<String>,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
+	let envs = db::get_environment_variables_for_deployment(
+		service::get_app().database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| AppDeploymentEnvironmentVariables {
+		key,
+		value,
+		scope: "RUN_AND_BUILD_TIME".to_string(),
+		r#type: "GENERAL".to_string(),
+	})
+	.collect();
+
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
@@ -510,17 +572,37 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: vec![Domains {
-					// [ 4 .. 253 ] characters
-					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-					// }\.?$ The hostname for the domain
-					domain: format!(
-						"{}.patr.cloud",
-						hex::encode(deployment_id)
-					),
-					// for now this has been set to PRIMARY
-					r#type: "PRIMARY".to_string(),
-				}],
+				domains: if let Some(domain) = domain_name {
+					vec![
+						Domains {
+							// [ 4 .. 253 ] characters
+							// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.
+							// )+[a-zA-Z]{2, }\.?$ The hostname for the domain
+							domain: format!(
+								"{}.patr.cloud",
+								hex::encode(deployment_id)
+							),
+							// for now this has been set to ALIAS
+							r#type: "ALIAS".to_string(),
+						},
+						Domains {
+							domain: domain.to_string(),
+							r#type: "PRIMARY".to_string(),
+						},
+					]
+				} else {
+					vec![Domains {
+						// [ 4 .. 253 ] characters
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+						// }\.?$ The hostname for the domain
+						domain: format!(
+							"{}.patr.cloud",
+							hex::encode(deployment_id)
+						),
+						// for now this has been set to PRIMARY
+						r#type: "PRIMARY".to_string(),
+					}]
+				},
 				services: vec![Services {
 					name: "default-service".to_string(),
 					image: Image {
@@ -529,12 +611,32 @@ async fn create_app(
 						tag: "latest".to_string(),
 					},
 					// for now instance count is set to 1
-					instance_count: 1,
-					instance_size_slug: "basic-xs".to_string(),
+					instance_count: horizontal_scale as u64,
+					instance_size_slug:
+						match (machine_type, horizontal_scale) {
+							(DeploymentMachineType::Micro, 1) => "basic-xxs",
+							(DeploymentMachineType::Micro, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Small, 1) => "basic-xs",
+							(DeploymentMachineType::Small, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Medium, 1) => "basic-s",
+							(DeploymentMachineType::Medium, _) => {
+								"professional-s"
+							}
+							(DeploymentMachineType::Large, 1) => "basic-m",
+							(DeploymentMachineType::Large, _) => {
+								"professional-m"
+							}
+						}
+						.to_string(),
 					http_port: 80,
 					routes: vec![Routes {
 						path: "/".to_string(),
 					}],
+					envs,
 				}],
 			},
 		})
