@@ -138,7 +138,9 @@ async fn migrate_from_v0_3_0(
 		rbac::permissions::organisation::managed_database::LIST,
 		rbac::permissions::organisation::managed_database::DELETE,
 		rbac::permissions::organisation::managed_database::INFO,
-	].iter() {
+	]
+	.iter()
+	{
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
 
