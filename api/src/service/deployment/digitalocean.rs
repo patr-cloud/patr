@@ -341,7 +341,7 @@ pub(super) async fn create_managed_database_cluster(
 
 	db::update_digitalocean_db_id_for_database(
 		connection,
-		&database_id,
+		database_id,
 		&database_cluster.database.id,
 	)
 	.await?;

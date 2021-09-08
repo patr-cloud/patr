@@ -34,13 +34,13 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
+			CNameRecord,
 			CloudPlatform,
+			DeploymentMachineType,
+			DeploymentStatus,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
-			CNameRecord,
-			DeploymentMachineType,
-			DeploymentStatus,
 		},
 		rbac,
 		RegistryToken,
@@ -393,7 +393,7 @@ pub async fn create_managed_database_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
-		&organisation_id,
+		organisation_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -407,13 +407,13 @@ pub async fn create_managed_database_in_organisation(
 		engine,
 		version,
 		num_nodes,
-		&database_plan,
+		database_plan,
 		&format!("{}-{}", provider, region),
 		"",
 		0,
 		"",
 		"",
-		&organisation_id,
+		organisation_id,
 		None,
 	)
 	.await?;
