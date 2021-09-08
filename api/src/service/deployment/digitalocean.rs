@@ -204,7 +204,7 @@ pub(super) async fn delete_deployment(
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
-		.digital_ocean_app_id;
+		.digitalocean_app_id;
 	let app_id = if let Some(app_id) = app_id {
 		log::trace!("deployment ids matched");
 		app_id
@@ -243,7 +243,7 @@ pub(super) async fn get_container_logs(
 	log::info!("retreiving deployment info from db");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
-		.map(|deployment| deployment.digital_ocean_app_id)
+		.map(|deployment| deployment.digitalocean_app_id)
 		.flatten()
 		.status(500)?;
 
@@ -504,7 +504,7 @@ async fn app_exists(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let app_id = if let Some(app_id) = deployment.digital_ocean_app_id {
+	let app_id = if let Some(app_id) = deployment.digitalocean_app_id {
 		app_id
 	} else {
 		return Ok(None);

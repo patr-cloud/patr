@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{db_mapping::DeploymentStatus, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -990,9 +990,10 @@ async fn delete_deployment(
 	)
 	.await?;
 
-	db::delete_deployment_by_id(
+	db::update_deployment_status(
 		context.get_database_connection(),
 		&deployment_id,
+		&DeploymentStatus::Deleted,
 	)
 	.await?;
 

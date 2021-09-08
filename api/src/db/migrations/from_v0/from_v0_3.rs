@@ -51,45 +51,6 @@ pub fn get_migrations() -> Vec<&'static str> {
 async fn migrate_from_v0_3_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	// Add region column to deployments
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD COLUMN region TEXT NOT NULL
-		DEFAULT 'do-blr';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// Add domain name to deployments
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD COLUMN domain_name VARCHAR(255)
-		CONSTRAINT deployment_uq_domain_name UNIQUE
-		CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-			name = LOWER(name)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// Add horizontal scale to deployments
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD COLUMN horizontal_scale SMALLINT NOT NULL
-		CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
-			horizontal_scale >= 0 AND horizontal_scale <= 256
-		)
-		DEFAULT 1;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// Add deployment machine type enum
 	query!(
 		r#"
@@ -104,12 +65,83 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
-	// Add deployment machine type to deployments
+	// Add region, domain name, horizontal scale, machine type and
+	// organisation_id columns to deployment table
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD COLUMN machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL
-		DEFAULT 'small';
+			ADD COLUMN region TEXT NOT NULL
+				DEFAULT 'do-blr',
+			ADD COLUMN domain_name VARCHAR(255)
+				CONSTRAINT deployment_uq_domain_name UNIQUE
+				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+					name = LOWER(name)
+				),
+			ADD COLUMN horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
+					horizontal_scale >= 0 AND horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			ADD COLUMN machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL
+				DEFAULT 'small',
+			ADD COLUMN organisation_id BYTEA;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Change digital_ocean_app_id for deployment to digitalocean_app_id
+	query!(
+		r#"
+		ALTER TABLE deployment
+		RENAME COLUMN digital_ocean_app_id TO digitalocean_app_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Rename the unqiue constraint for digitalocean_app_id
+	query!(
+		r#"
+		ALTER TABLE deployment
+		RENAME CONSTRAINT deployment_uq_digital_ocean_app_id
+		TO deployment_uq_digitalocean_app_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Set the organisation_id based on the resource.owner_id
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			organisation_id = resource.owner_id
+		FROM
+			resource
+		WHERE
+			resource.id = deployment.id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Set organisation_id to not null
+	// Remove the deployment.id -> resource.id foreign key
+	// Add a deployment(id, organisation_id) -> resource(id, owner_id) foreign
+	// key Add a deployment(name, organisation_id) unique constraint
+	query!(
+		r#"
+		ALTER TABLE deployment
+			ALTER COLUMN organisation_id
+				SET NOT NULL,
+			DROP CONSTRAINT deployment_fk_id,
+			ADD CONSTRAINT deployment_fk_id_organisation_id
+				FOREIGN KEY(id, organisation_id)
+					REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT deployment_uq_name_organisation_id
+				UNIQUE(name, organisation_id);
 		"#
 	)
 	.execute(&mut *connection)
