@@ -14,7 +14,8 @@ use lightsail::{
 	},
 	SdkError,
 };
-use tokio::{process::Command, time};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use tokio::{process::Command, task, time};
 
 use crate::{
 	db,
@@ -24,6 +25,9 @@ use crate::{
 		CloudPlatform,
 		DeploymentMachineType,
 		DeploymentStatus,
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
 	},
 	service,
 	utils::{settings::Settings, Error},
@@ -178,8 +182,8 @@ pub(super) async fn deploy_container(
 pub(super) async fn delete_deployment(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	_config: &Settings,
 	region: &str,
+	_config: &Settings,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
 	log::trace!("getting credentials from lightsail");
@@ -257,6 +261,100 @@ pub(super) async fn get_container_logs(
 		.body(error!(SERVER_ERROR).to_string())?;
 	log::info!("logs retreived successfully!");
 	Ok(logs)
+}
+
+pub(super) async fn create_managed_database_cluster(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &[u8],
+	db_name: &str,
+	engine: &ManagedDatabaseEngine,
+	version: &str,
+	_num_nodes: u64,
+	database_plan: &ManagedDatabasePlan,
+	region: &str,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(region);
+
+	let username = "patr_admin".to_string();
+	let password = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(8)
+		.map(char::from)
+		.collect::<String>();
+
+	log::trace!("sending the create db cluster request to aws");
+	client
+		.create_relational_database()
+		.master_database_name(db_name)
+		.master_username(&username)
+		.master_user_password(&password)
+		.publicly_accessible(true)
+		.relational_database_blueprint_id(format!(
+			"{}_{}",
+			engine,
+			match version {
+				"8" => "8_0",
+				value => value,
+			}
+		))
+		.relational_database_bundle_id(database_plan.as_aws_plan()?)
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await?;
+	log::trace!("database created");
+
+	let database_id = database_id.to_vec();
+	let region = region.to_string();
+
+	task::spawn(async move {
+		let result = update_database_cluster_credentials(
+			database_id.clone(),
+			region,
+			username,
+			password,
+		)
+		.await;
+
+		if let Err(error) = result {
+			let _ = super::update_managed_database_status(
+				&database_id,
+				&ManagedDatabaseStatus::Errored,
+			)
+			.await;
+			log::error!(
+				"Error while creating managed database, {}",
+				error.get_error()
+			);
+		}
+	});
+
+	Ok(())
+}
+
+pub(super) async fn delete_database(
+	database_id: &[u8],
+	region: &str,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(region);
+
+	let database_cluster = client
+		.get_relational_database()
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await;
+
+	if database_cluster.is_err() {
+		return Ok(());
+	}
+
+	client
+		.delete_relational_database()
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await?;
+
+	Ok(())
 }
 
 pub(super) async fn is_custom_domain_validated(
@@ -367,6 +465,81 @@ pub(super) async fn get_dns_records_for_deployments(
 	];
 
 	Ok(cname_records)
+}
+
+async fn update_database_cluster_credentials(
+	database_id: Vec<u8>,
+	region: String,
+	username: String,
+	password: String,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(&region);
+
+	let (host, port) = loop {
+		let database = client
+			.get_relational_database()
+			.relational_database_name(hex::encode(&database_id))
+			.send()
+			.await?
+			.relational_database
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		let database_state = database
+			.state
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		match database_state.as_str() {
+			"available" => {
+				// update credentials
+				let (host, port) = database
+					.master_endpoint
+					.map(|endpoint| endpoint.address.zip(endpoint.port))
+					.flatten()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+				break (host, port);
+			}
+			"creating" | "configuring-log-exports" | "backing-up" => {
+				// Database still being created. Wait
+				time::sleep(Duration::from_millis(1000)).await;
+			}
+			_ => {
+				// Database is neither being created nor available. Consider it
+				// to be Errored
+				super::update_managed_database_status(
+					&database_id,
+					&ManagedDatabaseStatus::Errored,
+				)
+				.await?;
+
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+		}
+	};
+
+	super::update_managed_database_credentials_for_database(
+		&database_id,
+		&host,
+		port,
+		&username,
+		&password,
+	)
+	.await?;
+
+	log::trace!("updating to the db status to running");
+	// wait for database to start
+	super::update_managed_database_status(
+		&database_id,
+		&ManagedDatabaseStatus::Running,
+	)
+	.await?;
+	log::trace!("database successfully updated");
+
+	Ok(())
 }
 
 fn get_lightsail_client(region: &str) -> lightsail::Client {

@@ -1,6 +1,13 @@
 use semver::Version;
+use uuid::Uuid;
 
-use crate::{query, Database};
+use crate::{
+	db,
+	models::{db_mapping::Permission, rbac},
+	query,
+	query_as,
+	Database,
+};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -44,7 +51,7 @@ pub fn get_migrations() -> Vec<&'static str> {
 async fn migrate_from_v0_3_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	// Add region column
+	// Add region column to deployments
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -55,6 +62,7 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	// Add domain name to deployments
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -68,6 +76,7 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	// Add horizontal scale to deployments
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -81,6 +90,7 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	// Add deployment machine type enum
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
@@ -94,6 +104,7 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	// Add deployment machine type to deployments
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -104,6 +115,7 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
+	// Add environment variables type for deployments
 	query!(
 		r#"
 		CREATE TABLE deployment_environment_variable(
@@ -119,6 +131,81 @@ async fn migrate_from_v0_3_0(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// Insert new permissions into the database for managed databases
+	for &permission in [
+		rbac::permissions::organisation::managed_database::CREATE,
+		rbac::permissions::organisation::managed_database::LIST,
+		rbac::permissions::organisation::managed_database::DELETE,
+		rbac::permissions::organisation::managed_database::INFO,
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query_as!(
+				Permission,
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_all(&mut *connection)
+			.await?
+			.into_iter()
+			.next()
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		};
+		let uuid = uuid.as_bytes().as_ref();
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, NULL);
+			"#,
+			uuid,
+			permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	// Insert new resource type into the database for managed database
+	let (resource_type, uuid) = (
+		rbac::resource_types::MANAGED_DATABASE.to_string(),
+		db::generate_new_resource_type_id(&mut *connection)
+			.await?
+			.as_bytes()
+			.to_vec(),
+	);
+	query!(
+		r#"
+		INSERT INTO
+			resource_type
+		VALUES
+			($1, $2, NULL);
+		"#,
+		uuid,
+		resource_type,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Create tables for managed databases
+	db::initialize_managed_database_pre(connection).await?;
+	db::initialize_managed_database_post(connection).await?;
 
 	Ok(())
 }

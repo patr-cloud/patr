@@ -233,7 +233,7 @@ pub async fn initialize_rbac_post(
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
-		let uuid = generate_new_resource_id(&mut *connection).await?;
+		let uuid = generate_new_permission_id(&mut *connection).await?;
 		let uuid = uuid.as_bytes().as_ref();
 		query!(
 			r#"
@@ -249,17 +249,13 @@ pub async fn initialize_rbac_post(
 		.await?;
 	}
 
-	let resource_types = rbac::resource_types::consts_iter()
-		.iter()
-		.map(|(_, resource_type)| {
-			(
-				resource_type.to_string(),
-				Uuid::new_v4().as_bytes().to_vec(),
-			)
-		})
-		.collect::<HashMap<_, _>>();
-
-	for (resource_type, uuid) in &resource_types {
+	let mut resource_types = HashMap::new();
+	for (_, resource_type) in rbac::resource_types::consts_iter().iter() {
+		let resource_type = resource_type.to_string();
+		let uuid = generate_new_resource_type_id(&mut *connection)
+			.await?
+			.as_bytes()
+			.to_vec();
 		query!(
 			r#"
 			INSERT INTO
@@ -272,6 +268,7 @@ pub async fn initialize_rbac_post(
 		)
 		.execute(&mut *connection)
 		.await?;
+		resource_types.insert(resource_type, uuid);
 	}
 
 	rbac::RESOURCE_TYPES
@@ -468,6 +465,88 @@ pub async fn generate_new_role_id(
 				*
 			FROM
 				role
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
+}
+
+pub async fn generate_new_permission_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		Permission,
+		r#"
+		SELECT
+			*
+		FROM
+			permission
+		WHERE
+			id = $1;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			Permission,
+			r#"
+			SELECT
+				*
+			FROM
+				permission
+			WHERE
+				id = $1;
+			"#,
+			uuid.as_bytes().as_ref()
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+	}
+
+	Ok(uuid)
+}
+
+pub async fn generate_new_resource_type_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	let mut uuid = Uuid::new_v4();
+
+	let mut rows = query_as!(
+		ResourceType,
+		r#"
+		SELECT
+			*
+		FROM
+			resource_type
+		WHERE
+			id = $1;
+		"#,
+		uuid.as_bytes().as_ref()
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	while !rows.is_empty() {
+		uuid = Uuid::new_v4();
+		rows = query_as!(
+			ResourceType,
+			r#"
+			SELECT
+				*
+			FROM
+				resource_type
 			WHERE
 				id = $1;
 			"#,

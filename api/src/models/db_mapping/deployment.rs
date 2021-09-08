@@ -154,7 +154,7 @@ impl FromStr for DeploymentStatus {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
 pub enum CloudPlatform {
 	Aws,
 	DigitalOcean,

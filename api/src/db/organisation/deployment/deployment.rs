@@ -8,6 +8,8 @@ use crate::{
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Initializing deployments tables");
+
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
@@ -451,7 +453,7 @@ pub async fn update_deployment_deployed_image(
 	}
 }
 
-pub async fn update_digital_ocean_app_id_for_deployment(
+pub async fn update_digitalocean_app_id_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	app_deployment_id: &str,
 	deployment_id: &[u8],
