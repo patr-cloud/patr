@@ -133,12 +133,12 @@ async fn migrate_from_v0_3_0(
 	.await?;
 
 	// Insert new permissions into the database for managed databases
-	for permission in [
+	for &permission in [
 		rbac::permissions::organisation::managed_database::CREATE,
 		rbac::permissions::organisation::managed_database::LIST,
 		rbac::permissions::organisation::managed_database::DELETE,
 		rbac::permissions::organisation::managed_database::INFO,
-	] {
+	].iter() {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
 
