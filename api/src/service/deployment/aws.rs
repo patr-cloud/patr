@@ -276,7 +276,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let client = get_lightsail_client(region);
 
-	let username = format!("user_{}", db_name);
+	let username = "patr_admin".to_string();
 	let password = thread_rng()
 		.sample_iter(&Alphanumeric)
 		.take(8)
@@ -290,7 +290,14 @@ pub(super) async fn create_managed_database_cluster(
 		.master_username(&username)
 		.master_user_password(&password)
 		.publicly_accessible(true)
-		.relational_database_blueprint_id(format!("{}_{}", engine, version))
+		.relational_database_blueprint_id(format!(
+			"{}_{}",
+			engine,
+			match version {
+				"8" => "8_0",
+				value => value,
+			}
+		))
 		.relational_database_bundle_id(database_plan.as_aws_plan()?)
 		.relational_database_name(hex::encode(database_id))
 		.send()
