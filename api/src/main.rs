@@ -21,7 +21,7 @@ mod utils;
 
 use std::{error::Error, sync::Arc};
 
-use api_macros::{query, query_as, migrate_query};
+use api_macros::{migrate_query, query, query_as};
 use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
 use eve_rs::handlebars::Handlebars;

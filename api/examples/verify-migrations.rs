@@ -195,7 +195,7 @@ async fn handle_release(
 
 	println!();
 	println!("Testing migrations against version {}...", release.tag_name);
-	
+
 	// TODO
 	// Clear postgres
 	// Create a fresh database creation
