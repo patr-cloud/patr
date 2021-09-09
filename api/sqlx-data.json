@@ -1055,16 +1055,6 @@
       ]
     }
   },
-  "33651a6b1533f0521531c56be98445292fa7d7a9532ded4b8c6c7d55bdeb9f48": {
-    "query": "ALTER TABLE deployment ADD COLUMN region TEXT NOT NULL DEFAULT 'do-blr', ADD COLUMN domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( name = LOWER(name) ), ADD COLUMN horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, ADD COLUMN machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', ADD COLUMN organisation_id BYTEA;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
     "describe": {
@@ -1753,16 +1743,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "4f6b2a560d2f5300cb8fa070be08d3022ef6a39ac005a74a3233443010191856": {
-    "query": "ALTER TABLE deployment RENAME CONSTRAINT deployment_uq_digital_ocean_app_id TO deployment_uq_digitalocean_app_id;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -3002,16 +2982,6 @@
   },
   "81176c7e3e4b2d05c35514e25f56b3f3a94ebc3c737323d2359e22d82c0f8fe8": {
     "query": "CREATE TABLE file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "837875986ab32f934dde60fe71382491bd2acfd08d9107d987cf68ce8072c558": {
-    "query": "ALTER TABLE deployment RENAME COLUMN digital_ocean_app_id TO digitalocean_app_id;",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4928,6 +4898,57 @@
       ]
     }
   },
+  "d950f347b92fbbc23ef8e95e65af7e2e006cabb17c05c9525f60ec9f62a030cf": {
+    "query": "SELECT * FROM user_login WHERE user_id = $1 AND refresh_token = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "login_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "refresh_token",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "token_expiry",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "user_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_login",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 5,
+          "name": "last_activity",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "d9f1a85d68405c7372854b9141d5218b66253723fc52f51e42290323ed42f111": {
     "query": "SELECT * FROM docker_registry_repository WHERE id = $1;",
     "describe": {
@@ -4970,28 +4991,8 @@
       "nullable": []
     }
   },
-  "dc98c74bdda318edeb46246d920fe65b5d0314d4ef604321572a6bffc4fbe9a7": {
-    "query": "UPDATE deployment SET organisation_id = resource.owner_id FROM resource WHERE resource.id = deployment.id;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "dca7ef80973e51ffe78bd9f717ae1cbcd73aaf19b3530b322a77c9d39edf26fb": {
     "query": "CREATE TYPE MANAGED_DATABASE_PLAN AS ENUM( 'nano', 'micro', 'small', 'medium', 'large', 'xlarge', 'xxlarge', 'mammoth' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "dcb295e9f138dccbd5ceedf11da8fcde7c9feb48caf19d9055324a5a2191d2a0": {
-    "query": "ALTER TABLE deployment ALTER COLUMN organisation_id SET NOT NULL, DROP CONSTRAINT deployment_fk_id, ADD CONSTRAINT deployment_fk_id_organisation_id FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT deployment_uq_name_organisation_id UNIQUE(name, organisation_id);",
     "describe": {
       "columns": [],
       "parameters": {
