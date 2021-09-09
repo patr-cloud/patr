@@ -993,28 +993,10 @@ pub async fn get_user_by_user_id(
 pub async fn generate_new_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut exists = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			"user"
-		WHERE
-			id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.is_some();
-
-	while exists {
-		uuid = Uuid::new_v4();
-		exists = query!(
+		let exists = query!(
 			r#"
 			SELECT
 				*
@@ -1025,14 +1007,14 @@ pub async fn generate_new_user_id(
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
+		.fetch_optional(&mut *connection)
 		.await?
-		.into_iter()
-		.next()
 		.is_some();
-	}
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn get_god_user_id(
@@ -1919,7 +1901,7 @@ pub async fn get_user_login_for_user(
 	login_id: &[u8],
 	user_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let mut rows = query!(
+	let row = query!(
 		r#"
 		SELECT
 			*
@@ -1932,9 +1914,8 @@ pub async fn get_user_login_for_user(
 		login_id,
 		user_id,
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
@@ -1944,34 +1925,16 @@ pub async fn get_user_login_for_user(
 		last_activity: row.last_activity as u64,
 	});
 
-	Ok(rows.next())
+	Ok(row)
 }
 
 pub async fn generate_new_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut exists = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			user_login
-		WHERE
-			login_id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.is_some();
-
-	while exists {
-		uuid = Uuid::new_v4();
-		exists = query!(
+		let exists = query!(
 			r#"
 			SELECT
 				*
@@ -1982,14 +1945,14 @@ pub async fn generate_new_login_id(
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
+		.fetch_optional(&mut *connection)
 		.await?
-		.into_iter()
-		.next()
 		.is_some();
-	}
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn get_all_logins_for_user(
@@ -2021,6 +1984,38 @@ pub async fn get_all_logins_for_user(
 	.collect();
 
 	Ok(rows)
+}
+
+pub async fn get_login_for_user_with_refresh_token(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+	refresh_token: &str,
+) -> Result<Option<UserLogin>, sqlx::Error> {
+	let login = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			user_login
+		WHERE
+			user_id = $1 AND
+			refresh_token = $2;
+		"#,
+		user_id,
+		refresh_token,
+	)
+	.fetch_optional(&mut *connection)
+	.await?
+	.map(|row| UserLogin {
+		login_id: row.login_id,
+		refresh_token: row.refresh_token,
+		token_expiry: row.token_expiry as u64,
+		user_id: row.user_id,
+		last_login: row.last_login as u64,
+		last_activity: row.last_activity as u64,
+	});
+
+	Ok(login)
 }
 
 pub async fn delete_user_login_by_id(

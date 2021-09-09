@@ -439,26 +439,10 @@ pub async fn get_all_organisation_roles_for_user(
 pub async fn generate_new_role_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		Role,
-		r#"
-		SELECT
-			*
-		FROM
-			role
-		WHERE
-			id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	while !rows.is_empty() {
-		uuid = Uuid::new_v4();
-		rows = query_as!(
+		let exists = query_as!(
 			Role,
 			r#"
 			SELECT
@@ -470,36 +454,23 @@ pub async fn generate_new_role_id(
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
-		.await?;
-	}
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn generate_new_permission_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		Permission,
-		r#"
-		SELECT
-			*
-		FROM
-			permission
-		WHERE
-			id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	while !rows.is_empty() {
-		uuid = Uuid::new_v4();
-		rows = query_as!(
+		let exists = query_as!(
 			Permission,
 			r#"
 			SELECT
@@ -511,36 +482,23 @@ pub async fn generate_new_permission_id(
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
-		.await?;
-	}
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn generate_new_resource_type_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut rows = query_as!(
-		ResourceType,
-		r#"
-		SELECT
-			*
-		FROM
-			resource_type
-		WHERE
-			id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	while !rows.is_empty() {
-		uuid = Uuid::new_v4();
-		rows = query_as!(
+		let exists = query_as!(
 			ResourceType,
 			r#"
 			SELECT
@@ -552,11 +510,14 @@ pub async fn generate_new_resource_type_id(
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
-		.await?;
-	}
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn get_all_resource_types(
@@ -671,60 +632,29 @@ pub async fn create_resource(
 pub async fn generate_new_resource_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	let mut exists = query!(
-		r#"
-		SELECT
-			*
-		FROM
-			resource
-		WHERE
-			id = $1;
-		"#,
-		uuid.as_bytes().as_ref()
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| Resource {
-		id: row.id,
-		name: row.name,
-		resource_type_id: row.resource_type_id,
-		owner_id: row.owner_id,
-		created: row.created as u64,
-	})
-	.next()
-	.is_some();
-
-	while exists {
-		uuid = Uuid::new_v4();
-		exists = query!(
+		let exists = query_as!(
+			ResourceType,
 			r#"
 			SELECT
 				*
 			FROM
-				resource
+				resource_type
 			WHERE
 				id = $1;
 			"#,
 			uuid.as_bytes().as_ref()
 		)
-		.fetch_all(&mut *connection)
+		.fetch_optional(&mut *connection)
 		.await?
-		.into_iter()
-		.map(|row| Resource {
-			id: row.id,
-			name: row.name,
-			resource_type_id: row.resource_type_id,
-			owner_id: row.owner_id,
-			created: row.created as u64,
-		})
-		.next()
 		.is_some();
-	}
 
-	Ok(uuid)
+		if !exists {
+			break Ok(uuid);
+		}
+	}
 }
 
 pub async fn get_resource_by_id(

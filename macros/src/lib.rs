@@ -7,6 +7,7 @@ mod closure_as_pinned_box;
 mod config;
 mod email_template;
 mod iterable_module;
+mod migrate_query;
 mod query;
 mod query_as;
 mod render;
@@ -16,6 +17,11 @@ mod version;
 #[proc_macro]
 pub fn query(input: TokenStream) -> TokenStream {
 	query::parse(input)
+}
+
+#[proc_macro]
+pub fn migrate_query(input: TokenStream) -> TokenStream {
+	migrate_query::parse(input)
 }
 
 #[proc_macro]

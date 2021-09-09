@@ -360,7 +360,7 @@ def create_gitea_release(step_name, staging):
         "image": "rust:1",
         "commands": [
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
-            "cargo run {} --example gitea-release".format(release_flag)
+            "cargo run {} --example create-gitea-release".format(release_flag)
         ],
         "environment": {
             "GITEA_TOKEN": {
