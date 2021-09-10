@@ -443,22 +443,28 @@ async fn run_api_with_only_db(
 	database: &str,
 	redis_host: &str,
 ) {
-	let success = Command::new("./target/release/api")
-		.arg("--db-only")
-		.env("APP_DATABASE_HOST", host)
-		.env("APP_DATABASE_PORT", port)
-		.env("APP_DATABASE_USER", username)
-		.env("APP_DATABASE_PASSWORD", password)
-		.env("APP_DATABASE_DATABASE", database)
-		.env("APP_REDIS_HOST", redis_host)
-		.stdin(Stdio::inherit())
-		.stdout(Stdio::inherit())
-		.spawn()
-		.expect("Unable to spawn `api --db-only` command")
-		.wait()
-		.await
-		.expect("Unable to wait for `api --db-only` command to complete")
-		.success();
+	let success = Command::new(
+		if fs::metadata("./target/release/api").await.is_ok() {
+			"./target/release/api"
+		} else {
+			"./target/debug/api"
+		},
+	)
+	.arg("--db-only")
+	.env("APP_DATABASE_HOST", host)
+	.env("APP_DATABASE_PORT", port)
+	.env("APP_DATABASE_USER", username)
+	.env("APP_DATABASE_PASSWORD", password)
+	.env("APP_DATABASE_DATABASE", database)
+	.env("APP_REDIS_HOST", redis_host)
+	.stdin(Stdio::inherit())
+	.stdout(Stdio::inherit())
+	.spawn()
+	.expect("Unable to spawn `api --db-only` command")
+	.wait()
+	.await
+	.expect("Unable to wait for `api --db-only` command to complete")
+	.success();
 	if !success {
 		panic!("`api --db-only` command exited with a non-success exit code");
 	}

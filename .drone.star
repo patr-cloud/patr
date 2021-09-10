@@ -50,6 +50,17 @@ def get_pipeline_steps(ctx):
                 release=False,
                 sqlx_offline=False
             ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=False,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=False,
+                env=get_app_running_environment(),
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
