@@ -84,6 +84,17 @@ def get_pipeline_steps(ctx):
                 release=True,
                 sqlx_offline=False
             ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
+            ),
         ], [
             redis_service(),
             database_service(get_database_password())
@@ -117,6 +128,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
         ], [
             redis_service(),
@@ -181,6 +203,17 @@ def get_pipeline_steps(ctx):
                 sqlx_offline=False
             ),
 
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
+            ),
+
             # Deploy
             prepare_assets("Prepare release assets"),
             create_gitea_release("Create Gitea Release", staging=True),
@@ -213,6 +246,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
 
             # Deploy
@@ -404,4 +448,49 @@ def get_app_running_environment():
         "APP_DATABASE_DATABASE": "api",
 
         "APP_REDIS_HOST": "cache",
+    }
+
+def build_examples(step_name, release, sqlx_offline):
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+    else:
+        release_flag = ""
+    return {
+        "name": step_name,
+        "image": "rust:1",
+        "commands": [
+            "cargo build {}".format(release_flag),
+            "cargo build {} --examples".format(release_flag)
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
+                "from_secret": "gitea_token"
+            },
+            "GITEA_IP": {
+                "from_secret": "gitea_ip"
+            }
+        }
+    }
+
+def test_migrations(step_name, release, env):
+    bin_location = ""
+    if release == True:
+        bin_location = "./target/release/examples/verify-migrations"
+    else:
+        bin_location = "./target/debug/examples/verify-migrations"
+    env["GITEA_IP"] = {
+        "from_secret": "gitea_ip"
+    }
+    env["GITEA_TOKEN"] = {
+        "from_secret": "gitea_token"
+    }
+    return {
+        "name": step_name,
+        "image": "postgres",
+        "commands": [
+            "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
+            bin_location
+        ],
+        "environment": env
     }
