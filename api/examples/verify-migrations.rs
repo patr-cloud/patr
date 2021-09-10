@@ -365,6 +365,7 @@ async fn dump_database(
 		.arg(format!("--port={}", port))
 		.arg(format!("--username={}", username))
 		.arg(format!("--dbname={}", database))
+		.arg("--schema-only")
 		.env("PGPASSWORD", password)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
@@ -382,7 +383,7 @@ async fn dump_database(
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
 		output_file
-			.write_all(line.as_bytes())
+			.write_all(format!("{}\n", line).as_bytes())
 			.await
 			.expect(&format!("Unable to write to file {}", file_name));
 	}
@@ -399,7 +400,7 @@ async fn clear_database(
 		.arg(format!("--host={}", host))
 		.arg(format!("--port={}", port))
 		.arg(format!("--username={}", username))
-		.arg(format!("--command=\"DROP DATABASE {};\"", database))
+		.arg(format!("--command=DROP DATABASE {};", database))
 		.env("PGPASSWORD", password)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
@@ -417,7 +418,7 @@ async fn clear_database(
 		.arg(format!("--host={}", host))
 		.arg(format!("--port={}", port))
 		.arg(format!("--username={}", username))
-		.arg(format!("--command=\"CREATE DATABASE {};\"", database))
+		.arg(format!("--command=CREATE DATABASE {};", database))
 		.env("PGPASSWORD", password)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
@@ -512,15 +513,15 @@ async fn restore_database_dump(
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
 		input
-			.write_all(line.as_bytes())
+			.write_all(format!("{}\n", line).as_bytes())
 			.await
 			.expect("Unable to write to psql");
 	}
 
 	input
-		.write_all("exit".as_bytes())
+		.shutdown()
 		.await
-		.expect("Unable to write to psql");
+		.expect("unable to close stdin of psql");
 
 	let success = psql
 		.wait()
