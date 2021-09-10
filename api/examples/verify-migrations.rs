@@ -177,6 +177,9 @@ async fn main() {
 			.await;
 		}
 	}
+
+	println!();
+	println!("All database migrations successful.");
 }
 
 fn get_env_var(env_name: &str) -> String {
@@ -365,7 +368,6 @@ async fn dump_database(
 		.arg(format!("--port={}", port))
 		.arg(format!("--username={}", username))
 		.arg(format!("--dbname={}", database))
-		.arg("--schema-only")
 		.env("PGPASSWORD", password)
 		.stdin(Stdio::piped())
 		.stdout(Stdio::piped())
@@ -468,6 +470,8 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 		.arg("-y")
 		.arg("-W")
 		.arg("70")
+		.arg("--ignore-matching-lines")
+		.arg("\\\\x[a-f0-9]*")
 		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
