@@ -500,7 +500,6 @@ def test_migrations(step_name, release, env):
         "name": step_name,
         "image": "postgres",
         "commands": [
-            "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
             bin_location
         ],
         "environment": env
