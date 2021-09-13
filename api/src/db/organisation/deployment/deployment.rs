@@ -290,13 +290,10 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.region,
 			deployment.domain_name,
 			deployment.horizontal_scale,
-			deployment.machine_type as "machine_type: _"
+			deployment.machine_type as "machine_type: _",
+			deployment.organisation_id
 		FROM
 			deployment
-		INNER JOIN
-            resource
-		ON
-			deployment.id = resource.id
 		LEFT JOIN
 			docker_registry_repository
 		ON
@@ -304,16 +301,16 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		WHERE
 			(
 				(
-					registry = 'registry.patr.cloud' AND
+					deployment.registry = 'registry.patr.cloud' AND
 					docker_registry_repository.name = $1
 				) OR
 				(
-					registry != 'registry.patr.cloud' AND
-					image_name = $1
+					deployment.registry != 'registry.patr.cloud' AND
+					deployment.image_name = $1
 				)
 			) AND
-			image_tag = $2 AND
-			resource.owner_id = $3;
+			deployment.image_tag = $2 AND
+			deployment.organisation_id = $3;
 		"#,
 		image_name,
 		image_tag,
@@ -345,7 +342,8 @@ pub async fn get_deployments_for_organisation(
 			region,
 			domain_name,
 			horizontal_scale,
-			machine_type as "machine_type: _"
+			machine_type as "machine_type: _",
+			organisation_id
 		FROM
 			deployment
 		WHERE
@@ -380,7 +378,8 @@ pub async fn get_deployment_by_id(
 			region,
 			domain_name,
 			horizontal_scale,
-			machine_type as "machine_type: _"
+			machine_type as "machine_type: _",
+			organisation_id
 		FROM
 			deployment
 		WHERE

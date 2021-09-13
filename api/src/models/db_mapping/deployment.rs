@@ -63,6 +63,7 @@ pub struct Deployment {
 	pub domain_name: Option<String>,
 	pub horizontal_scale: i16,
 	pub machine_type: DeploymentMachineType,
+	pub organisation_id: Vec<u8>,
 }
 
 impl Deployment {
