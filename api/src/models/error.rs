@@ -149,5 +149,5 @@ pub mod message {
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
-		"Deployment can consist of alphanumeric characters, spaces, . and _";
+		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 }
