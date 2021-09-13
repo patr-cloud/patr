@@ -51,8 +51,8 @@ pub async fn initialize_deployment_pre(
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			deployed_image TEXT,
-			digital_ocean_app_id TEXT
-				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
+			digitalocean_app_id TEXT
+				CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE,
 			region TEXT NOT NULL DEFAULT 'do-blr',
 			domain_name VARCHAR(255)
 				CONSTRAINT deployment_uq_domain_name UNIQUE
@@ -65,6 +65,9 @@ pub async fn initialize_deployment_pre(
 				)
 				DEFAULT 1,
 			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
+			organisation_id BYTEA NOT NULL,
+			CONSTRAINT deployment_uq_name_organisation_id
+				UNIQUE(name, organisation_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -145,8 +148,9 @@ pub async fn initialize_deployment_post(
 	log::info!("Finishing up deployment tables initialization");
 	query!(
 		r#"
-		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id
-		FOREIGN KEY(id) REFERENCES resource(id);
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_id_organisation_id
+		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -282,7 +286,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id,
+			deployment.digitalocean_app_id,
 			deployment.region,
 			deployment.domain_name,
 			deployment.horizontal_scale,
@@ -329,28 +333,24 @@ pub async fn get_deployments_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.id,
-			deployment.name,
-			deployment.registry,
-			deployment.repository_id,
-			deployment.image_name,
-			deployment.image_tag,
-			deployment.status as "status: _",
-			deployment.deployed_image,
-			deployment.digital_ocean_app_id,
-			deployment.region,
-			deployment.domain_name,
-			deployment.horizontal_scale,
-			deployment.machine_type as "machine_type: _"
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _"
 		FROM
 			deployment
-		INNER JOIN
-			resource
-		ON
-			deployment.id = resource.id
 		WHERE
-			resource.id = deployment.id AND
-			resource.owner_id = $1;
+			organisation_id = $1 AND
+			status != 'deleted';
 		"#,
 		organisation_id
 	)
@@ -376,7 +376,7 @@ pub async fn get_deployment_by_id(
 			image_tag,
 			status as "status: _",
 			deployed_image,
-			digital_ocean_app_id,
+			digitalocean_app_id,
 			region,
 			domain_name,
 			horizontal_scale,
@@ -384,7 +384,8 @@ pub async fn get_deployment_by_id(
 		FROM
 			deployment
 		WHERE
-			id = $1;
+			id = $1 AND
+			status != 'deleted';
 		"#,
 		deployment_id
 	)
@@ -394,24 +395,6 @@ pub async fn get_deployment_by_id(
 	.next();
 
 	Ok(row)
-}
-
-pub async fn delete_deployment_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			deployment
-		WHERE
-			id = $1;
-		"#,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 pub async fn update_deployment_deployed_image(
@@ -463,7 +446,7 @@ pub async fn update_digitalocean_app_id_for_deployment(
 		UPDATE
 			deployment
 		SET
-			digital_ocean_app_id = $1
+			digitalocean_app_id = $1
 		WHERE
 			id = $2;
 		"#,

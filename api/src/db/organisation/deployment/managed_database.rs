@@ -289,7 +289,8 @@ pub async fn get_managed_database_by_id(
 		FROM
 			managed_database
 		WHERE
-			id = $1;
+			id = $1 AND
+			status != 'deleted';
 		"#,
 		id
 	)

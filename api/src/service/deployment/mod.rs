@@ -782,7 +782,7 @@ pub async fn get_dns_records_for_deployments(
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			let app_id = deployment
-				.digital_ocean_app_id
+				.digitalocean_app_id
 				.status(404)
 				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 			log::trace!("getting domain for digitalocean deployment");

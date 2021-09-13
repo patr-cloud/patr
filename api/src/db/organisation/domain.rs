@@ -98,53 +98,14 @@ pub async fn initialize_domain_post(
 pub async fn generate_new_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
-	let mut uuid = Uuid::new_v4();
+	loop {
+		let uuid = Uuid::new_v4();
 
-	// If it exists in the resource table, it can't be used
-	// because organisation domains are a resource
-	// If it exists in the domain table, it can't be used
-	// since personal domains are a type of domains
-	let mut exists = {
-		query!(
-			r#"
-			SELECT
-				*
-			FROM
-				resource
-			WHERE
-				id = $1;
-			"#,
-			uuid.as_bytes().as_ref()
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.next()
-		.is_some()
-	} || {
-		query!(
-			r#"
-			SELECT
-				id,
-				name,
-				type as "type: ResourceOwnerType"
-			FROM
-				domain
-			WHERE
-				id = $1;
-			"#,
-			uuid.as_bytes().as_ref()
-		)
-		.fetch_all(&mut *connection)
-		.await?
-		.into_iter()
-		.next()
-		.is_some()
-	};
-
-	while exists {
-		uuid = Uuid::new_v4();
-		exists = {
+		// If it exists in the resource table, it can't be used
+		// because organisation domains are a resource
+		// If it exists in the domain table, it can't be used
+		// since personal domains are a type of domains
+		let exists = {
 			query!(
 				r#"
 				SELECT
@@ -156,10 +117,8 @@ pub async fn generate_new_domain_id(
 				"#,
 				uuid.as_bytes().as_ref()
 			)
-			.fetch_all(&mut *connection)
+			.fetch_optional(&mut *connection)
 			.await?
-			.into_iter()
-			.next()
 			.is_some()
 		} || {
 			query!(
@@ -175,15 +134,15 @@ pub async fn generate_new_domain_id(
 				"#,
 				uuid.as_bytes().as_ref()
 			)
-			.fetch_all(&mut *connection)
+			.fetch_optional(&mut *connection)
 			.await?
-			.into_iter()
-			.next()
 			.is_some()
+		};
+
+		if !exists {
+			break Ok(uuid);
 		}
 	}
-
-	Ok(uuid)
 }
 
 pub async fn create_generic_domain(
