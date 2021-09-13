@@ -53,7 +53,8 @@ struct ReleaseAssetResponse {
 // - Dump the new database to migrated.sql
 // - Diff check migrated.sql and fresh.sql
 // - Use the following command to diff check
-// - diff -s -y -W 70 --suppress-common-lines migrated.sql fresh.sql
+// - diff -s -y -W 70 --ignore-matching-lines "\\x[a-f0-9]*"
+//   --suppress-common-lines migrated.sql fresh.sql
 
 #[tokio::main]
 async fn main() {

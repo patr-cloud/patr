@@ -68,6 +68,7 @@ async fn main() {
 		("assets.zip", "./assets.zip"),
 		("api", "./target/release/api"),
 		("config.sample.json", "./config/dev.sample.json"),
+		("database.sql", "./fresh.sql"),
 	]) {
 		println!("Uploading {}...", name);
 		let response = client
