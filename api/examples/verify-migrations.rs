@@ -194,7 +194,7 @@ async fn get_total_number_of_releases(
 	gitea_token: &str,
 	client: &Client,
 ) -> u64 {
-	let text = client
+	client
 		.get(format!(
 			"{}://{}/api/v1/repos/{}/{}",
 			system_proto, system_host, repo_owner, repo_name
@@ -203,11 +203,8 @@ async fn get_total_number_of_releases(
 		.send()
 		.await
 		.expect("unable to send request")
-		.text()
+		.json::<RepositoryResponse>()
 		.await
-		.expect("unable to parse response as text");
-	println!("Got response `{}`", text);
-	serde_json::from_str::<RepositoryResponse>(&text)
 		.expect("unable to parse response as json")
 		.release_counter
 }
