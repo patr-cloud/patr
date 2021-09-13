@@ -1,5 +1,5 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentStatus},
+	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
 	query,
 	query_as,
 	Database,
@@ -8,6 +8,8 @@ use crate::{
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	log::info!("Initializing deployments tables");
+
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
@@ -26,6 +28,19 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
+			'micro',
+			'small',
+			'medium',
+			'large'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -36,9 +51,23 @@ pub async fn initialize_deployment_pre(
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			deployed_image TEXT,
-			digital_ocean_app_id TEXT
-				CONSTRAINT deployment_uq_digital_ocean_app_id UNIQUE,
+			digitalocean_app_id TEXT
+				CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE,
 			region TEXT NOT NULL DEFAULT 'do-blr',
+			domain_name VARCHAR(255)
+				CONSTRAINT deployment_uq_domain_name UNIQUE
+				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+					name = LOWER(name)
+				),
+			horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
+					horizontal_scale >= 0 AND horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
+			organisation_id BYTEA NOT NULL,
+			CONSTRAINT deployment_uq_name_organisation_id
+				UNIQUE(name, organisation_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -119,8 +148,9 @@ pub async fn initialize_deployment_post(
 	log::info!("Finishing up deployment tables initialization");
 	query!(
 		r#"
-		ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id
-		FOREIGN KEY(id) REFERENCES resource(id);
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_id_organisation_id
+		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -136,23 +166,50 @@ pub async fn create_deployment_with_internal_registry(
 	repository_id: &[u8],
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment
-		VALUES
-			($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5);
-		"#,
-		deployment_id,
-		name,
-		repository_id,
-		image_tag,
-		region
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8);
+			"#,
+			deployment_id,
+			name,
+			repository_id,
+			image_tag,
+			region,
+			domain,
+			horizontal_scale as i16,
+			machine_type as _,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7);
+			"#,
+			deployment_id,
+			name,
+			repository_id,
+			image_tag,
+			region,
+			horizontal_scale as i16,
+			machine_type as _,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn create_deployment_with_external_registry(
@@ -163,24 +220,52 @@ pub async fn create_deployment_with_external_registry(
 	image_name: &str,
 	image_tag: &str,
 	region: &str,
+	domain_name: Option<&str>,
+	horizontal_scale: u64,
+	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment
-		VALUES
-			($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6);
-		"#,
-		deployment_id,
-		name,
-		registry,
-		image_name,
-		image_tag,
-		region
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9);
+			"#,
+			deployment_id,
+			name,
+			registry,
+			image_name,
+			image_tag,
+			region,
+			domain,
+			horizontal_scale as i16,
+			machine_type as _,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment
+			VALUES
+				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8);
+			"#,
+			deployment_id,
+			name,
+			registry,
+			image_name,
+			image_tag,
+			region,
+			horizontal_scale as i16,
+			machine_type as _,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_organisation(
@@ -201,14 +286,14 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.image_tag,
 			deployment.status as "status: _",
 			deployment.deployed_image,
-			deployment.digital_ocean_app_id,
-			deployment.region
+			deployment.digitalocean_app_id,
+			deployment.region,
+			deployment.domain_name,
+			deployment.horizontal_scale,
+			deployment.machine_type as "machine_type: _",
+			deployment.organisation_id
 		FROM
 			deployment
-		INNER JOIN
-            resource
-		ON
-			deployment.id = resource.id
 		LEFT JOIN
 			docker_registry_repository
 		ON
@@ -216,16 +301,16 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 		WHERE
 			(
 				(
-					registry = 'registry.patr.cloud' AND
+					deployment.registry = 'registry.patr.cloud' AND
 					docker_registry_repository.name = $1
 				) OR
 				(
-					registry != 'registry.patr.cloud' AND
-					image_name = $1
+					deployment.registry != 'registry.patr.cloud' AND
+					deployment.image_name = $1
 				)
 			) AND
-			image_tag = $2 AND
-			resource.owner_id = $3;
+			deployment.image_tag = $2 AND
+			deployment.organisation_id = $3;
 		"#,
 		image_name,
 		image_tag,
@@ -245,25 +330,25 @@ pub async fn get_deployments_for_organisation(
 		Deployment,
 		r#"
 		SELECT
-			deployment.id,
-			deployment.name,
-			deployment.registry,
-			deployment.repository_id,
-			deployment.image_name,
-			deployment.image_tag,
-			deployment.status as "status: _",
-			deployment.deployed_image,
-			deployment.digital_ocean_app_id,
-			deployment.region
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			organisation_id
 		FROM
 			deployment
-		INNER JOIN
-			resource
-		ON
-			deployment.id = resource.id
 		WHERE
-			resource.id = deployment.id AND
-			resource.owner_id = $1;
+			organisation_id = $1 AND
+			status != 'deleted';
 		"#,
 		organisation_id
 	)
@@ -289,12 +374,17 @@ pub async fn get_deployment_by_id(
 			image_tag,
 			status as "status: _",
 			deployed_image,
-			digital_ocean_app_id,
-			deployment.region
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			organisation_id
 		FROM
 			deployment
 		WHERE
-			id = $1;
+			id = $1 AND
+			status != 'deleted';
 		"#,
 		deployment_id
 	)
@@ -304,24 +394,6 @@ pub async fn get_deployment_by_id(
 	.next();
 
 	Ok(row)
-}
-
-pub async fn delete_deployment_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			deployment
-		WHERE
-			id = $1;
-		"#,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 pub async fn update_deployment_deployed_image(
@@ -363,7 +435,7 @@ pub async fn update_deployment_deployed_image(
 	}
 }
 
-pub async fn update_digital_ocean_app_id_for_deployment(
+pub async fn update_digitalocean_app_id_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	app_deployment_id: &str,
 	deployment_id: &[u8],
@@ -373,7 +445,7 @@ pub async fn update_digital_ocean_app_id_for_deployment(
 		UPDATE
 			deployment
 		SET
-			digital_ocean_app_id = $1
+			digitalocean_app_id = $1
 		WHERE
 			id = $2;
 		"#,
@@ -463,6 +535,89 @@ pub async fn remove_all_environment_variables_for_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_domain_name_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	domain_name: Option<&str>,
+) -> Result<(), sqlx::Error> {
+	if let Some(domain_name) = domain_name {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				domain_name = $1
+			WHERE
+				id = $2;
+			"#,
+			domain_name,
+			deployment_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				domain_name = NULL
+			WHERE
+				id = $1;
+			"#,
+			deployment_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
+}
+
+pub async fn set_horizontal_scale_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	horizontal_scale: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			horizontal_scale = $1
+		WHERE
+			id = $2;
+		"#,
+		horizontal_scale as i16,
+		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_machine_type_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	machine_type: &DeploymentMachineType,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type = $1
+		WHERE
+			id = $2;
+		"#,
+		machine_type as _,
 		deployment_id,
 	)
 	.execute(&mut *connection)

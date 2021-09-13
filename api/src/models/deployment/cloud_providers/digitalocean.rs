@@ -50,6 +50,7 @@ pub struct Services {
 	pub instance_size_slug: String,
 	pub http_port: u64,
 	pub routes: Vec<Routes>,
+	#[serde(default)]
 	pub envs: Vec<AppDeploymentEnvironmentVariables>,
 }
 
@@ -226,6 +227,66 @@ pub struct RedeployAppRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseConfig {
+	pub name: String,
+	pub engine: String,
+	pub version: Option<String>,
+	pub num_nodes: u64,
+	pub size: String,
+	pub region: String,
+	// TODO: add backup and restore details
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseResponse {
+	pub database: DatabaseInfo,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseInfo {
+	pub id: String,
+	pub name: String,
+	pub engine: String,
+	pub version: String,
+	pub num_nodes: u32,
+	pub size: String,
+	pub region: String,
+	pub status: String,
+	pub created_at: String, //TODO: change this to u64
+	pub connection: DbConnection,
+	pub users: Option<Vec<DatabaseUser>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DbConnection {
+	pub host: String,
+	pub user: String,
+	pub password: String,
+	pub port: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseUser {
+	pub name: String,
+	pub role: String, // "primary" "normal"
+	pub password: String,
+	pub mysql_settings: Option<MysqlSettings>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MaintenanceWindow {
+	pub day: String,
+	pub hour: String,
+	pub pending: bool,
+	pub description: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MysqlSettings {
+	pub auth_plugin: String, // "mysql_native_password" "caching_sha2_password"
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct AppDeploymentsResponse {
 	pub deployments: Vec<AppDeploymentResponse>,
 }
@@ -240,4 +301,14 @@ pub struct AppDeploymentResponse {
 pub struct AppAggregateLogsResponse {
 	pub live_url: String,
 	// add more later if required
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseNamewrapper {
+	pub db: Db,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Db {
+	pub name: String,
 }

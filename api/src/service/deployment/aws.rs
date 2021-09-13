@@ -14,12 +14,21 @@ use lightsail::{
 	},
 	SdkError,
 };
-use tokio::{process::Command, time};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use tokio::{process::Command, task, time};
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::{CloudPlatform, DeploymentStatus},
+	models::db_mapping::{
+		CNameRecord,
+		CloudPlatform,
+		DeploymentMachineType,
+		DeploymentStatus,
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -31,6 +40,14 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let deployment_id_string = hex::encode(&deployment_id);
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
@@ -82,6 +99,8 @@ pub(super) async fn deploy_container(
 			&label_name,
 			&new_repo_name,
 			&region,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
 			&client,
 		)
 		.await?
@@ -94,14 +113,17 @@ pub(super) async fn deploy_container(
 	log::trace!("default url is {}", default_url);
 	log::trace!("checking deployment status");
 	wait_for_deployment(&deployment_id_string, &client).await?;
-
 	log::trace!("updating DNS");
 	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
 		.await?;
 	log::trace!("DNS Updated");
-	let (cname, value) =
-		create_certificate_if_not_available(&deployment_id_string, &client)
-			.await?;
+	let domain_name = format!("{}.patr.cloud", deployment_id_string);
+	let (cname, value) = create_certificate_if_not_available(
+		&deployment_id_string,
+		&domain_name,
+		&client,
+	)
+	.await?;
 	log::trace!("updating cname record");
 
 	super::add_cname_record(
@@ -122,12 +144,30 @@ pub(super) async fn deploy_container(
 	log::trace!("cname record updated");
 	// update container service with patr domain
 	log::trace!("waiting for certificate to be validated");
-	wait_for_certificate_validation(&deployment_id_string, &client).await?;
+	wait_for_patr_certificate_validation(&deployment_id_string, &client)
+		.await?;
 	log::trace!("certificate validated");
 	log::trace!("updating container service with patr domain");
 	update_container_service_with_patr_domain(&deployment_id_string, &client)
 		.await?;
 	log::trace!("container service updated with patr domain");
+	let custom_domain = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.map(|deployment| deployment.domain_name)
+	.flatten();
+
+	if let Some(domain) = custom_domain {
+		log::trace!(
+			"custom domain present, updating patr service with custom domain"
+		);
+		let cert_name = format!("{}-custom", deployment_id_string);
+		create_certificate_if_not_available(&cert_name, &domain, &client)
+			.await?;
+		log::trace!("container service updated with custom domain");
+	};
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -142,21 +182,21 @@ pub(super) async fn deploy_container(
 pub(super) async fn delete_deployment(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	_config: &Settings,
 	region: &str,
+	_config: &Settings,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
 	log::trace!("getting credentials from lightsail");
 	let client = get_lightsail_client(region);
+	let deployment_id_string = hex::encode(deployment_id);
 
 	// certificate needs to be detached inorder to get deleted but there is no
 	// endpoint to detach the certificate
-
 	log::trace!("deleting deployment");
 
 	client
 		.delete_container_service()
-		.set_service_name(Some(hex::encode(&deployment_id)))
+		.service_name(&deployment_id_string)
 		.send()
 		.await
 		.map_err(|err| {
@@ -223,6 +263,285 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
+pub(super) async fn create_managed_database_cluster(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &[u8],
+	db_name: &str,
+	engine: &ManagedDatabaseEngine,
+	version: &str,
+	_num_nodes: u64,
+	database_plan: &ManagedDatabasePlan,
+	region: &str,
+	_config: &Settings,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(region);
+
+	let username = "patr_admin".to_string();
+	let password = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(8)
+		.map(char::from)
+		.collect::<String>();
+
+	log::trace!("sending the create db cluster request to aws");
+	client
+		.create_relational_database()
+		.master_database_name(db_name)
+		.master_username(&username)
+		.master_user_password(&password)
+		.publicly_accessible(true)
+		.relational_database_blueprint_id(format!(
+			"{}_{}",
+			engine,
+			match version {
+				"8" => "8_0",
+				value => value,
+			}
+		))
+		.relational_database_bundle_id(database_plan.as_aws_plan()?)
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await?;
+	log::trace!("database created");
+
+	let database_id = database_id.to_vec();
+	let region = region.to_string();
+
+	task::spawn(async move {
+		let result = update_database_cluster_credentials(
+			database_id.clone(),
+			region,
+			username,
+			password,
+		)
+		.await;
+
+		if let Err(error) = result {
+			let _ = super::update_managed_database_status(
+				&database_id,
+				&ManagedDatabaseStatus::Errored,
+			)
+			.await;
+			log::error!(
+				"Error while creating managed database, {}",
+				error.get_error()
+			);
+		}
+	});
+
+	Ok(())
+}
+
+pub(super) async fn delete_database(
+	database_id: &[u8],
+	region: &str,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(region);
+
+	let database_cluster = client
+		.get_relational_database()
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await;
+
+	if database_cluster.is_err() {
+		return Ok(());
+	}
+
+	client
+		.delete_relational_database()
+		.relational_database_name(hex::encode(database_id))
+		.send()
+		.await?;
+
+	Ok(())
+}
+
+pub(super) async fn is_custom_domain_validated(
+	deployment_id: &[u8],
+	region: &str,
+	domain_name: &str,
+) -> Result<bool, Error> {
+	let client = get_lightsail_client(region);
+	let deployment_id_string = hex::encode(deployment_id);
+
+	let certificate_status = client
+		.get_certificates()
+		.certificate_name(format!(
+			"{}-custom-certificate",
+			deployment_id_string
+		))
+		.include_certificate_details(true)
+		.send()
+		.await?
+		.certificates
+		.map(|certificate_summary_list| {
+			certificate_summary_list.into_iter().next()
+		})
+		.flatten()
+		.map(|certificate_summary| certificate_summary.certificate_detail)
+		.flatten()
+		.map(|cert| cert.status)
+		.flatten()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	match certificate_status {
+		CertificateStatus::Issued => {
+			let custom_domain_exists = client
+				.get_container_services()
+				.service_name(&deployment_id_string)
+				.send()
+				.await?
+				.container_services
+				.map(|services| services.into_iter().next())
+				.flatten()
+				.map(|service| service.public_domain_names.unwrap_or_default())
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.contains_key(&format!(
+					"{}-custom-certificate",
+					deployment_id_string
+				));
+			if !custom_domain_exists {
+				client
+					.update_container_service()
+					.service_name(&deployment_id_string)
+					.is_disabled(false)
+					.public_domain_names(
+						format!("{}-custom-certificate", deployment_id_string),
+						vec![domain_name.to_string()],
+					)
+					.send()
+					.await?;
+			}
+			Ok(true)
+		}
+		CertificateStatus::PendingValidation => Ok(false),
+		_ => Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())),
+	}
+}
+
+pub(super) async fn get_dns_records_for_deployments(
+	deployment_id: &[u8],
+	region: &str,
+	domain_name: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = get_lightsail_client(region);
+
+	log::trace!("getting deployment url from lightsail");
+	let deployment_url = app_exists(&hex::encode(deployment_id), &client)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let cert_name =
+		format!("{}-custom-certificate", hex::encode(deployment_id));
+	log::trace!("retreive certificate for deployment");
+	let (cname, value) =
+		get_cname_and_value_from_aws(&cert_name, &client).await?;
+
+	let cname = if cname.ends_with('.') {
+		&cname[0..cname.len() - 1]
+	} else {
+		&cname
+	};
+	let value = if value.ends_with('.') {
+		&value[0..value.len() - 1]
+	} else {
+		&value
+	};
+	let cname_records = vec![
+		CNameRecord {
+			cname: domain_name.to_string(),
+			value: deployment_url,
+		},
+		CNameRecord {
+			cname: cname.to_string(),
+			value: value.to_string(),
+		},
+	];
+
+	Ok(cname_records)
+}
+
+async fn update_database_cluster_credentials(
+	database_id: Vec<u8>,
+	region: String,
+	username: String,
+	password: String,
+) -> Result<(), Error> {
+	let client = get_lightsail_client(&region);
+
+	let (host, port) = loop {
+		let database = client
+			.get_relational_database()
+			.relational_database_name(hex::encode(&database_id))
+			.send()
+			.await?
+			.relational_database
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		let database_state = database
+			.state
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+		match database_state.as_str() {
+			"available" => {
+				// update credentials
+				let (host, port) = database
+					.master_endpoint
+					.map(|endpoint| endpoint.address.zip(endpoint.port))
+					.flatten()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+				break (host, port);
+			}
+			"creating" | "configuring-log-exports" | "backing-up" => {
+				// Database still being created. Wait
+				time::sleep(Duration::from_millis(1000)).await;
+			}
+			_ => {
+				// Database is neither being created nor available. Consider it
+				// to be Errored
+				super::update_managed_database_status(
+					&database_id,
+					&ManagedDatabaseStatus::Errored,
+				)
+				.await?;
+
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+		}
+	};
+
+	super::update_managed_database_credentials_for_database(
+		&database_id,
+		&host,
+		port,
+		&username,
+		&password,
+	)
+	.await?;
+
+	log::trace!("updating to the db status to running");
+	// wait for database to start
+	super::update_managed_database_status(
+		&database_id,
+		&ManagedDatabaseStatus::Running,
+	)
+	.await?;
+	log::trace!("database successfully updated");
+
+	Ok(())
+}
+
 fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
@@ -236,6 +555,8 @@ async fn create_container_service(
 	label_name: &str,
 	new_repo_name: &str,
 	region: &str,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	client: &lightsail::Client,
 ) -> Result<String, Error> {
 	log::trace!("checking if the service exists or is in the process of getting deleted");
@@ -243,8 +564,19 @@ async fn create_container_service(
 		let created_result = client
 			.create_container_service()
 			.set_service_name(Some(deployment_id.to_string()))
-			.scale(1) //setting the default number of containers to 1
-			.power(ContainerServicePowerName::Micro) // for now fixing the power of container -> Micro
+			.scale(horizontal_scale.into())
+			.power(match machine_type {
+				DeploymentMachineType::Micro => ContainerServicePowerName::Nano,
+				DeploymentMachineType::Small => {
+					ContainerServicePowerName::Small
+				}
+				DeploymentMachineType::Medium => {
+					ContainerServicePowerName::Medium
+				}
+				DeploymentMachineType::Large => {
+					ContainerServicePowerName::Large
+				}
+			})
 			.send()
 			.await;
 		match created_result {
@@ -263,6 +595,22 @@ async fn create_container_service(
 			}
 		}
 	};
+
+	let custom_certificate = client
+		.get_certificates()
+		.certificate_name(format!("{}-custom-certificate", deployment_id))
+		.send()
+		.await?
+		.certificates
+		.map(|services| services.into_iter().next())
+		.flatten();
+	if custom_certificate.is_some() {
+		client
+			.delete_certificate()
+			.certificate_name(format!("{}-custom-certificate", deployment_id))
+			.send()
+			.await?;
+	}
 
 	loop {
 		let container_state = client
@@ -474,11 +822,11 @@ async fn update_container_service_with_patr_domain(
 }
 
 async fn create_certificate_if_not_available(
-	deployment_id: &str,
+	cert_name: &str,
+	domain_name: &str,
 	client: &lightsail::Client,
 ) -> Result<(String, String), Error> {
-	let domain_name = format!("{}.patr.cloud", deployment_id);
-	let cert_name = format!("{}-certificate", deployment_id);
+	let cert_name = format!("{}-certificate", cert_name);
 	log::trace!("checking if the certificate exists for the current domain");
 	let certificate_info =
 		get_cname_and_value_from_aws(&cert_name, client).await;
@@ -558,7 +906,7 @@ async fn get_cname_and_value_from_aws(
 		.body(error!(SERVER_ERROR).to_string())?
 }
 
-async fn wait_for_certificate_validation(
+async fn wait_for_patr_certificate_validation(
 	deployment_id_string: &str,
 	client: &lightsail::Client,
 ) -> Result<(), Error> {

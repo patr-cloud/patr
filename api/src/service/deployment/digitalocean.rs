@@ -2,13 +2,20 @@ use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
 use eve_rs::AsError;
 use reqwest::Client;
-use tokio::{process::Command, time};
+use tokio::{process::Command, task, time};
 
 use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::DeploymentStatus,
+		db_mapping::{
+			CNameRecord,
+			DeploymentMachineType,
+			DeploymentStatus,
+			ManagedDatabaseEngine,
+			ManagedDatabasePlan,
+			ManagedDatabaseStatus,
+		},
 		deployment::cloud_providers::digitalocean::{
 			AppAggregateLogsResponse,
 			AppConfig,
@@ -17,6 +24,9 @@ use crate::{
 			AppHolder,
 			AppSpec,
 			Auth,
+			DatabaseConfig,
+			DatabaseResponse,
+			Db,
 			Domains,
 			Image,
 			RedeployAppRequest,
@@ -35,8 +45,17 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
+
 	log::trace!("Deploying deployment: {}", deployment_id_string);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -136,14 +155,22 @@ pub(super) async fn deploy_container(
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
-		let app_id =
-			create_app(&deployment_id, region, &config, &client).await?;
+		let app_id = create_app(
+			&deployment_id,
+			region,
+			&deployment.domain_name,
+			deployment.horizontal_scale,
+			&deployment.machine_type,
+			&config,
+			&client,
+		)
+		.await?;
 		log::trace!("App created");
 		app_id
 	};
 
 	// wait for the app to be completed to be deployed
-	let default_ingress = wait_for_deploy(&app_id, &config, &client).await;
+	let default_ingress = wait_for_app_deploy(&app_id, &config, &client).await;
 	log::trace!("App ingress is at {}", default_ingress);
 
 	// update DNS
@@ -177,7 +204,7 @@ pub(super) async fn delete_deployment(
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
-		.digital_ocean_app_id;
+		.digitalocean_app_id;
 	let app_id = if let Some(app_id) = app_id {
 		log::trace!("deployment ids matched");
 		app_id
@@ -216,7 +243,7 @@ pub(super) async fn get_container_logs(
 	log::info!("retreiving deployment info from db");
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
-		.map(|deployment| deployment.digital_ocean_app_id)
+		.map(|deployment| deployment.digitalocean_app_id)
 		.flatten()
 		.status(500)?;
 
@@ -256,6 +283,213 @@ pub(super) async fn get_container_logs(
 	Ok(logs)
 }
 
+pub(super) async fn create_managed_database_cluster(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &[u8],
+	db_name: &str,
+	engine: &ManagedDatabaseEngine,
+	version: &str,
+	num_nodes: u64,
+	database_plan: &ManagedDatabasePlan,
+	region: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	log::trace!("creating a digital ocean managed database");
+	let client = Client::new();
+
+	let do_db_name = format!("database-{}", get_current_time().as_millis());
+
+	let db_engine = match engine {
+		ManagedDatabaseEngine::Postgres => "pg",
+		ManagedDatabaseEngine::Mysql => "mysql",
+	};
+
+	let region = match region {
+		"nyc" => "nyc1",
+		"ams" => "ams3",
+		"sfo" => "sfo3",
+		"sgp" => "sgp1",
+		"lon" => "lon1",
+		"fra" => "fra1",
+		"tor" => "tor1",
+		"blr" => "blr1",
+		"any" => "blr1",
+		_ => {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()))
+		}
+	};
+
+	log::trace!("sending the create db cluster request to digital ocean");
+	let database_cluster = client
+		.post("https://api.digitalocean.com/v2/databases")
+		.bearer_auth(&config.digital_ocean_api_key)
+		.json(&DatabaseConfig {
+			name: do_db_name, // should be unique
+			engine: db_engine.to_string(),
+			version: Some(version.to_string()),
+			num_nodes,
+			size: database_plan.as_do_plan()?,
+			region: region.to_string(),
+		})
+		.send()
+		.await?
+		.json::<DatabaseResponse>()
+		.await?;
+	log::trace!("database created");
+
+	db::update_digitalocean_db_id_for_database(
+		connection,
+		database_id,
+		&database_cluster.database.id,
+	)
+	.await?;
+
+	let database_id = database_id.to_vec();
+	let db_name = db_name.to_string();
+
+	task::spawn(async move {
+		let result = update_database_cluster_credentials(
+			database_id.clone(),
+			db_name,
+			database_cluster.database.id,
+		)
+		.await;
+
+		if let Err(error) = result {
+			let _ = super::update_managed_database_status(
+				&database_id,
+				&ManagedDatabaseStatus::Errored,
+			)
+			.await;
+			log::error!(
+				"Error while creating managed database, {}",
+				error.get_error()
+			);
+		}
+	});
+
+	Ok(())
+}
+
+pub(super) async fn delete_database(
+	digitalocean_db_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new();
+
+	let database_status = client
+		.delete(format!(
+			"https://api.digitalocean.com/v2/databases/{}",
+			digitalocean_db_id
+		))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if database_status.is_client_error() || database_status.is_server_error() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+	Ok(())
+}
+
+pub(super) async fn get_dns_records_for_deployments(
+	domain: &str,
+	app_id: &str,
+) -> Result<Vec<CNameRecord>, Error> {
+	let client = Client::new();
+
+	let default_ingress =
+		get_app_default_ingress(app_id, service::get_settings(), &client)
+			.await
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	let cname_record = vec![CNameRecord {
+		cname: domain.to_string(),
+		value: default_ingress,
+	}];
+
+	Ok(cname_record)
+}
+
+async fn update_database_cluster_credentials(
+	database_id: Vec<u8>,
+	db_name: String,
+	digitalocean_db_id: String,
+) -> Result<(), Error> {
+	let client = Client::new();
+	let settings = service::get_settings();
+
+	// Wait for the database to be online
+	log::trace!("waiting for database to be online");
+	loop {
+		let database_status = client
+			.get(format!(
+				"https://api.digitalocean.com/v2/databases/{}",
+				digitalocean_db_id
+			))
+			.bearer_auth(&settings.digital_ocean_api_key)
+			.send()
+			.await?
+			.json::<DatabaseResponse>()
+			.await?;
+
+		if database_status.database.status == "online" {
+			super::update_managed_database_credentials_for_database(
+				&database_id,
+				&database_status.database.connection.host,
+				database_status.database.connection.port as i32,
+				&database_status.database.connection.user,
+				&database_status.database.connection.password,
+			)
+			.await?;
+			super::update_managed_database_status(
+				&database_id,
+				&ManagedDatabaseStatus::Running,
+			)
+			.await?;
+			break;
+		}
+
+		time::sleep(Duration::from_millis(1000)).await;
+	}
+	log::trace!("database online");
+
+	log::trace!("creating a new database inside cluster");
+	let new_db_status = client
+		.post(format!(
+			"https://api.digitalocean.com/v2/databases/{}/dbs",
+			digitalocean_db_id
+		))
+		.bearer_auth(&settings.digital_ocean_api_key)
+		.json(&Db { name: db_name })
+		.send()
+		.await?
+		.status();
+
+	if new_db_status.is_client_error() || new_db_status.is_server_error() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+
+	log::trace!("updating to the db status to running");
+	// wait for database to start
+	super::update_managed_database_status(
+		&database_id,
+		&ManagedDatabaseStatus::Running,
+	)
+	.await?;
+	log::trace!("database successfully updated");
+
+	Ok(())
+}
+
 async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
@@ -270,7 +504,7 @@ async fn app_exists(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let app_id = if let Some(app_id) = deployment.digital_ocean_app_id {
+	let app_id = if let Some(app_id) = deployment.digitalocean_app_id {
 		app_id
 	} else {
 		return Ok(None);
@@ -311,6 +545,9 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
+	domain_name: &Option<String>,
+	horizontal_scale: i16,
+	machine_type: &DeploymentMachineType,
 	settings: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
@@ -327,6 +564,7 @@ async fn create_app(
 		r#type: "GENERAL".to_string(),
 	})
 	.collect();
+
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
 		.bearer_auth(&settings.digital_ocean_api_key)
@@ -334,17 +572,37 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: vec![Domains {
-					// [ 4 .. 253 ] characters
-					// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-					// }\.?$ The hostname for the domain
-					domain: format!(
-						"{}.patr.cloud",
-						hex::encode(deployment_id)
-					),
-					// for now this has been set to PRIMARY
-					r#type: "PRIMARY".to_string(),
-				}],
+				domains: if let Some(domain) = domain_name {
+					vec![
+						Domains {
+							// [ 4 .. 253 ] characters
+							// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.
+							// )+[a-zA-Z]{2, }\.?$ The hostname for the domain
+							domain: format!(
+								"{}.patr.cloud",
+								hex::encode(deployment_id)
+							),
+							// for now this has been set to ALIAS
+							r#type: "ALIAS".to_string(),
+						},
+						Domains {
+							domain: domain.to_string(),
+							r#type: "PRIMARY".to_string(),
+						},
+					]
+				} else {
+					vec![Domains {
+						// [ 4 .. 253 ] characters
+						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
+						// }\.?$ The hostname for the domain
+						domain: format!(
+							"{}.patr.cloud",
+							hex::encode(deployment_id)
+						),
+						// for now this has been set to PRIMARY
+						r#type: "PRIMARY".to_string(),
+					}]
+				},
 				services: vec![Services {
 					name: "default-service".to_string(),
 					image: Image {
@@ -353,8 +611,27 @@ async fn create_app(
 						tag: "latest".to_string(),
 					},
 					// for now instance count is set to 1
-					instance_count: 1,
-					instance_size_slug: "basic-xs".to_string(),
+					instance_count: horizontal_scale as u64,
+					instance_size_slug:
+						match (machine_type, horizontal_scale) {
+							(DeploymentMachineType::Micro, 1) => "basic-xxs",
+							(DeploymentMachineType::Micro, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Small, 1) => "basic-xs",
+							(DeploymentMachineType::Small, _) => {
+								"professional-xs"
+							}
+							(DeploymentMachineType::Medium, 1) => "basic-s",
+							(DeploymentMachineType::Medium, _) => {
+								"professional-s"
+							}
+							(DeploymentMachineType::Large, 1) => "basic-m",
+							(DeploymentMachineType::Large, _) => {
+								"professional-m"
+							}
+						}
+						.to_string(),
 					http_port: 80,
 					routes: vec![Routes {
 						path: "/".to_string(),
@@ -376,7 +653,7 @@ async fn create_app(
 
 	let app = service::get_app().clone();
 
-	db::update_digital_ocean_app_id_for_deployment(
+	db::update_digitalocean_app_id_for_deployment(
 		app.database.acquire().await?.deref_mut(),
 		&deploy_app.app.id,
 		deployment_id,
@@ -413,13 +690,14 @@ async fn redeploy_application(
 	Ok(())
 }
 
-async fn wait_for_deploy(
+async fn wait_for_app_deploy(
 	app_id: &str,
 	config: &Settings,
 	client: &Client,
 ) -> String {
 	loop {
-		if let Some(ingress) = get_default_ingress(app_id, config, client).await
+		if let Some(ingress) =
+			get_app_default_ingress(app_id, config, client).await
 		{
 			break ingress.replace("https://", "").replace("/", "");
 		}
@@ -427,7 +705,7 @@ async fn wait_for_deploy(
 	}
 }
 
-async fn get_default_ingress(
+async fn get_app_default_ingress(
 	app_id: &str,
 	config: &Settings,
 	client: &Client,

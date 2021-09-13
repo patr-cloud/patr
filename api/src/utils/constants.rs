@@ -151,6 +151,23 @@ pub mod request_keys {
 	pub const LAST_ACTIVITY: &str = "lastActivity";
 	pub const LOGINS: &str = "logins";
 	pub const STATUS: &str = "status";
+	pub const ENGINE: &str = "engine";
+	pub const NUM_NODES: &str = "numNodes";
 	pub const REGION: &str = "region";
+	pub const URI: &str = "uri";
+	pub const HOST: &str = "host";
+	pub const CREATED_AT: &str = "createdAt";
+	pub const DATABASES: &str = "databases";
+	pub const DATABASE_PLAN: &str = "databasePlan";
+	pub const PUBLIC_CONNECTION: &str = "publicConnection";
 	pub const LOGS: &str = "logs";
+	pub const DATABASE_NAME: &str = "databaseName";
+	pub const DATABASE_ID: &str = "databaseId";
+	pub const CNAME: &str = "cname";
+	pub const VALUE: &str = "value";
+	pub const CNAME_RECORDS: &str = "cnameRecords";
+	pub const DOMAIN_NAME: &str = "domainName";
+	pub const VALIDATED: &str = "validated";
+	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
+	pub const MACHINE_TYPE: &str = "machineType";
 }

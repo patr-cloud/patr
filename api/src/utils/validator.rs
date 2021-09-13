@@ -17,8 +17,14 @@ lazy_static! {
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
 	static ref DOMAIN_TLD_LIST: RwLock<Vec<String>> = RwLock::new(vec![]);
-	//1-20 characters ([a-zA-Z0-9._-]) long, no _ or . at the beginning, no __ or _. or ._ or .. inside, no _ or . at the end
-	static ref DOMAIN_NAME_REGEX: Regex = Regex::new("^(?=.{1,64}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._-]+(?<![_.])$").unwrap();
+	// Validate the name of database
+	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
+	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
+	static ref DEPLOYMENT_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9][a-zA-Z0-9_-\\.\\ ]{0,62}[a-zA-Z0-9_-\\.]$").unwrap();
+
+	// Regex for deployment entry point validation
+	// TODO remove after domains get handled through NS
+	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^([0-9a-zA-Z]+\\.[0-9a-zA-Z]+)*$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -68,7 +74,7 @@ pub fn is_docker_repo_name_valid(repo_name: &str) -> bool {
 }
 
 pub fn is_deployment_name_valid(deployment_name: &str) -> bool {
-	DOMAIN_NAME_REGEX.is_match(deployment_name)
+	DEPLOYMENT_NAME_REGEX.is_match(deployment_name)
 }
 
 pub async fn is_domain_name_valid(domain: &str) -> bool {
@@ -93,6 +99,13 @@ pub async fn is_domain_name_valid(domain: &str) -> bool {
 	false
 }
 
+/// Returns true or false if a deployment.domain name is valid
+/// A deployment.domain name is a TLD + subdomains, comprising of the entire
+/// domain entry point
+pub fn is_deployment_entry_point_valid(domain: &str) -> bool {
+	DEPLOYMENT_ENTRY_POINT_REGEX.is_match(domain)
+}
+
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	new_tld_list
 		.iter_mut()
@@ -101,4 +114,8 @@ pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	tld_list.clear();
 	tld_list.append(&mut new_tld_list);
 	drop(tld_list);
+}
+
+pub fn is_database_name_valid(database_name: &str) -> bool {
+	database_name.len() <= 64 && DATABASE_NAME_REGEX.is_match(database_name)
 }
