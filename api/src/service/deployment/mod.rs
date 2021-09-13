@@ -102,6 +102,12 @@ pub async fn create_deployment_in_organisation(
 		}
 	}
 
+	// validate deployment name
+	if !validator::is_deployment_name_valid(name) {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+	}
 	if let Some(domain_name) = domain_name {
 		if !validator::is_deployment_entry_point_valid(domain_name) {
 			return Err(Error::empty()
