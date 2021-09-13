@@ -50,6 +50,8 @@ pub struct Services {
 	pub instance_size_slug: String,
 	pub http_port: u64,
 	pub routes: Vec<Routes>,
+	#[serde(default)]
+	pub envs: Vec<AppDeploymentEnvironmentVariables>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -60,7 +62,7 @@ pub struct Image {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Envs {
+pub struct AppDeploymentEnvironmentVariables {
 	// Required, ^[_A-Za-z][_A-Za-z0-9]*$
 	pub key: String,
 	// Default: "RUN_AND_BUILD_TIME"
@@ -68,9 +70,9 @@ pub struct Envs {
 	// RUN_TIME: Made available only at run-time
 	// BUILD_TIME: Made available only at build-time
 	// RUN_AND_BUILD_TIME: Made available at both build and run-time
-	pub scope: Option<String>,
-	pub r#type: Option<String>,
-	pub value: Option<String>,
+	pub scope: String,
+	pub r#type: String,
+	pub value: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -222,4 +224,91 @@ pub struct AuthToken {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RedeployAppRequest {
 	pub force_build: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseConfig {
+	pub name: String,
+	pub engine: String,
+	pub version: Option<String>,
+	pub num_nodes: u64,
+	pub size: String,
+	pub region: String,
+	// TODO: add backup and restore details
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseResponse {
+	pub database: DatabaseInfo,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseInfo {
+	pub id: String,
+	pub name: String,
+	pub engine: String,
+	pub version: String,
+	pub num_nodes: u32,
+	pub size: String,
+	pub region: String,
+	pub status: String,
+	pub created_at: String, //TODO: change this to u64
+	pub connection: DbConnection,
+	pub users: Option<Vec<DatabaseUser>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DbConnection {
+	pub host: String,
+	pub user: String,
+	pub password: String,
+	pub port: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseUser {
+	pub name: String,
+	pub role: String, // "primary" "normal"
+	pub password: String,
+	pub mysql_settings: Option<MysqlSettings>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MaintenanceWindow {
+	pub day: String,
+	pub hour: String,
+	pub pending: bool,
+	pub description: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MysqlSettings {
+	pub auth_plugin: String, // "mysql_native_password" "caching_sha2_password"
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppDeploymentsResponse {
+	pub deployments: Vec<AppDeploymentResponse>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppDeploymentResponse {
+	pub id: String,
+	// add more later if required
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AppAggregateLogsResponse {
+	pub live_url: String,
+	// add more later if required
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseNamewrapper {
+	pub db: Db,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Db {
+	pub name: String,
 }

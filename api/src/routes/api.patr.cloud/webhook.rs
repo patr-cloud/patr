@@ -1,11 +1,10 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::{CloudPlatform, EventData},
+	models::db_mapping::EventData,
 	pin_fn,
 	service,
 	utils::{Error, ErrorData, EveContext, EveMiddleware},
@@ -127,48 +126,18 @@ pub async fn notification_handler(
 			db::update_deployment_deployed_image(
 				context.get_database_connection(),
 				&deployment.id,
-				&full_image_name,
+				Some(&full_image_name),
 			)
 			.await?;
 
-			let deployment_image_name = deployment
-				.get_full_image(context.get_database_connection())
-				.await?;
-			let tag = tag.clone();
 			let config = context.get_state().config.clone();
 
-			// TODO: make this as a parameter
-			let cloud_platform = CloudPlatform::Aws;
-
-			task::spawn(async move {
-				let result = match cloud_platform {
-					CloudPlatform::DigitalOcean => {
-						service::deploy_container_on_digitalocean(
-							deployment_image_name,
-							tag,
-							deployment.id,
-							config,
-						)
-						.await
-					}
-					CloudPlatform::Aws => {
-						service::deploy_container_on_aws(
-							deployment_image_name,
-							tag,
-							deployment.id,
-							config,
-						)
-						.await
-					}
-				};
-
-				if let Err(error) = result {
-					log::info!(
-						"Error with the deployment, {}",
-						error.get_error()
-					);
-				}
-			});
+			service::start_deployment(
+				context.get_database_connection(),
+				&deployment.id,
+				&config,
+			)
+			.await?;
 		}
 	}
 

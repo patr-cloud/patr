@@ -100,7 +100,6 @@ pub fn create_sub_app(
 		"/:organisationId/docker-registry",
 		docker_registry::create_sub_app(app),
 	);
-
 	// Disabled for the demo
 	/*
 	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
