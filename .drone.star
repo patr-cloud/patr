@@ -500,6 +500,8 @@ def test_migrations(step_name, release, env):
         "name": step_name,
         "image": "postgres",
         "commands": [
+            "apt update",
+            "apt install ca-certificates",
             bin_location
         ],
         "environment": env
