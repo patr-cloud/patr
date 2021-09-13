@@ -20,7 +20,7 @@ lazy_static! {
 	// Validate the name of database
 	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
-	static ref DEPLOYMENT_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\.\\ ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
+	static ref DEPLOYMENT_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
 
 	// Regex for deployment entry point validation
 	// TODO remove after domains get handled through NS
