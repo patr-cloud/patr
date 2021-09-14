@@ -69,15 +69,15 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 	let mut version = Version::new(0, 0, 0);
 
 	for row in rows {
-		match row.id.as_ref() {
-			"version_major" => {
-				version.major = row.value.parse::<u64>().unwrap()
+		match (row.id.as_str(), row.value.parse()) {
+			("version_major", Ok(value)) => {
+				version.major = value;
 			}
-			"version_minor" => {
-				version.minor = row.value.parse::<u64>().unwrap()
+			("version_minor", Ok(value)) => {
+				version.minor = value;
 			}
-			"version_patch" => {
-				version.patch = row.value.parse::<u64>().unwrap()
+			("version_patch", Ok(value)) => {
+				version.patch = value;
 			}
 			_ => {}
 		}

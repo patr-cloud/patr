@@ -100,10 +100,11 @@ pub async fn notification_handler(
 			org_name,
 		)
 		.await?;
-		if organisation.is_none() {
+		let organisation = if let Some(organisation) = organisation {
+			organisation
+		} else {
 			continue;
-		}
-		let organisation = organisation.unwrap();
+		};
 
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_organisation(

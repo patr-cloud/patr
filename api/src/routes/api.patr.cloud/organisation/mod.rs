@@ -164,7 +164,7 @@ async fn get_organisation_info(
 	let organisation_id = hex::decode(&org_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let access_token_data = context.get_token_data().unwrap();
+	let access_token_data = context.get_token_data().status(500)?;
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
 	if !access_token_data.orgs.contains_key(&org_id_string) &&
@@ -289,7 +289,7 @@ async fn create_new_organisation(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let org_id = service::create_organisation(
 		context.get_database_connection(),

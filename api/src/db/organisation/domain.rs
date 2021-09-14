@@ -329,7 +329,7 @@ pub async fn get_notification_email_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<String>, sqlx::Error> {
-	let rows = query!(
+	let email = query!(
 		r#"
 		SELECT
 			"user".*,
@@ -357,19 +357,17 @@ pub async fn get_notification_email_for_domain(
 		"#,
 		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
+	.fetch_optional(&mut *connection)
+	.await?
+	.map(|row| {
+		format!(
+			"{}@{}",
+			row.backup_email_local.unwrap_or_default(),
+			row.name
+		)
+	});
 
-	if rows.is_empty() {
-		return Ok(None);
-	}
-	let row = rows.into_iter().next().unwrap();
-
-	Ok(Some(format!(
-		"{}@{}",
-		row.backup_email_local.unwrap(),
-		row.name
-	)))
+	Ok(email)
 }
 
 pub async fn delete_personal_domain(

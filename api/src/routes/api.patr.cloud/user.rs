@@ -211,7 +211,7 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 	let user =
 		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
@@ -306,7 +306,7 @@ async fn get_user_info_by_username(
 			.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
 	let mut data = serde_json::to_value(user_data)?;
-	let object = data.as_object_mut().unwrap();
+	let object = data.as_object_mut().status(500)?;
 	object.remove(request_keys::ID);
 	object.insert(request_keys::SUCCESS.to_string(), true.into());
 
@@ -488,7 +488,7 @@ async fn add_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -532,7 +532,7 @@ async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let email_addresses_list = db::get_personal_emails_for_user(
 		context.get_database_connection(),
@@ -580,7 +580,7 @@ async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let phone_numbers_list = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
@@ -638,7 +638,7 @@ async fn update_backup_email_address(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let email_address = body
 		.get(request_keys::BACKUP_EMAIL)
@@ -697,7 +697,7 @@ async fn update_backup_phone_number(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let country_code = body
 		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
@@ -763,7 +763,7 @@ async fn delete_personal_email_address(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let email_address = body
 		.get(request_keys::EMAIL)
@@ -822,7 +822,7 @@ async fn add_phone_number_for_user(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 	// two letter country code instead of the numeric one
 	let country_code = body
 		.get(request_keys::COUNTRY_CODE)
@@ -920,7 +920,7 @@ async fn verify_phone_number(
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
@@ -973,7 +973,7 @@ async fn delete_phone_number(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let country_code = body
 		.get(request_keys::COUNTRY_CODE)
@@ -1055,7 +1055,7 @@ async fn verify_email_address(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
@@ -1110,7 +1110,7 @@ async fn get_organisations_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 	let organisations = db::get_all_organisations_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -1168,7 +1168,7 @@ async fn change_password(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let new_password = body
 		.get(request_keys::NEW_PASSWORD)
@@ -1214,7 +1214,7 @@ async fn get_all_logins_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	let logins = db::get_all_logins_for_user(
 		context.get_database_connection(),
@@ -1279,7 +1279,7 @@ async fn delete_user_login(
 		.clone();
 	let login_id = hex::decode(login_id)?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().status(500)?.user.id.clone();
 
 	db::delete_user_login_by_id(
 		context.get_database_connection(),
