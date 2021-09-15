@@ -837,8 +837,7 @@ pub async fn get_domain_validation_status(
 
 	let text = reqwest::get(format!(
 		"https://{}/.well-known/patr-verification/{}.html",
-		domain_name,
-		check_file
+		domain_name, check_file
 	))
 	.await?
 	.text()
@@ -847,7 +846,7 @@ pub async fn get_domain_validation_status(
 	if text == format!("<h1>{}</h1>", check_file) {
 		return Ok(true);
 	}
-	return Ok(false);
+	Ok(false)
 }
 
 pub async fn update_nginx_with_domain(
@@ -990,9 +989,9 @@ pub async fn update_nginx_with_ssl(
 		return Ok(());
 	}
 
-	return Err(Error::empty()
+	Err(Error::empty()
 		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string()));
+		.body(error!(INVALID_DOMAIN_NAME).to_string()))
 }
 
 async fn create_check_file_if_not_exists() -> Result<String, Error> {
