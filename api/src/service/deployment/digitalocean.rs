@@ -182,6 +182,15 @@ pub(super) async fn deploy_container(
 		true,
 	)
 	.await?;
+
+	log::trace!("adding reverse proxy");
+	if let Some(domain) = deployment.domain_name {
+		service::update_nginx_with_domain(&domain, &default_ingress).await?;
+	} else {
+		let domain_name = format!("{}.patr.cloud", deployment_id_string);
+		service::update_nginx_with_ssl(&domain_name, &default_ingress, true)
+			.await?;
+	}
 	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(

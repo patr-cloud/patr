@@ -1,7 +1,7 @@
 mod aws;
 mod digitalocean;
 
-use std::ops::DerefMut;
+use std::{io::ErrorKind, ops::DerefMut};
 
 use cloudflare::{
 	endpoints::{
@@ -25,8 +25,10 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use futures::StreamExt;
+use openssh::{KnownHosts, Session};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
-use tokio::task;
+use tokio::{io::AsyncWriteExt, task};
 use uuid::Uuid;
 
 use crate::{
@@ -826,31 +828,221 @@ pub async fn get_domain_validation_status(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (provider, region) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
 	let domain_name = deployment
 		.domain_name
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
-			Ok(reqwest::get(format!("https://{}", domain_name))
-				.await?
-				.status()
-				.is_success())
-		}
-		Ok(CloudPlatform::Aws) => {
-			log::trace!("checking domain validation for aws deployment");
-			aws::is_custom_domain_validated(deployment_id, region, &domain_name)
-				.await
-		}
-		_ => Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())),
+	let check_file = create_check_file_if_not_exists().await?;
+
+	let text = reqwest::get(format!(
+		"https://{}/.well-known/patr-verification/{}.html",
+		domain_name,
+		check_file
+	))
+	.await?
+	.text()
+	.await?;
+	println!("text: {}", text);
+	if text == format!("<h1>{}</h1>", check_file) {
+		return Ok(true);
 	}
+	return Ok(false);
+}
+
+pub async fn update_nginx_with_domain(
+	domain: &str,
+	default_ingress: &str,
+) -> Result<(), Error> {
+	let session =
+		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+	let mut sftp = session.sftp();
+
+	let result = sftp
+		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
+		.await;
+	if let Err(openssh::Error::Remote(error)) = result {
+		if error.kind() == ErrorKind::NotFound {
+			// File doesn't exist
+			// Generate certs
+			let mut writer = sftp
+				.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+				.await?;
+			writer
+				.write_all(
+					format!(
+						r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+	location / {{
+        proxy_pass {default_ingress}; 
+    }}
+	include snippets/letsencrypt.conf;
+}}
+"#,
+						domain = domain,
+						default_ingress = default_ingress,
+					)
+					.as_bytes(),
+				)
+				.await?;
+			let reload_result = session
+				.command("nginx")
+				.arg("-s")
+				.arg("reload")
+				.spawn()?
+				.wait()
+				.await?;
+			if !reload_result.success() {
+				return Err(Error::empty());
+			}
+			let certificate_result = session
+				.command("certbot")
+				.arg("certonly")
+				.arg("--agree-tos")
+				.arg("-m")
+				.arg("postmaster@vicara.co")
+				.arg("--no-eff-email")
+				.arg("-d")
+				.arg(&domain)
+				.arg("--webroot")
+				.arg("-w")
+				.arg("/var/www/letsencrypt")
+				.spawn()?
+				.wait()
+				.await?;
+			if !certificate_result.success() {
+				return Err(Error::empty());
+			}
+		}
+		return Err(error.into());
+	}
+
+	Ok(())
+}
+
+pub async fn update_nginx_with_ssl(
+	domain: &str,
+	default_ingress: &str,
+	is_domain_validated: bool,
+) -> Result<(), Error> {
+	let session =
+		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+	let mut sftp = session.sftp();
+	let result = sftp
+		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
+		.await;
+	if let Err(openssh::Error::Remote(error)) = result {
+		if error.kind() == ErrorKind::NotFound && domain.contains(".patr.cloud")
+		{
+			update_nginx_with_domain(domain, default_ingress).await?;
+		}
+		return Err(error.into());
+	}
+	// Certs exist. Continue
+	if is_domain_validated {
+		let mut writer = sftp
+			.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+			.await?;
+		writer
+			.write_all(
+				format!(
+					r#"
+	server {{
+		listen 80;
+		listen [::]:80;
+		server_name {domain};
+		return 301 https://{domain}$request_uri$is_args$args;
+	}}
+	server {{
+		listen 443 ssl http2;
+		listen [::]:443 ssl http2;
+		server_name {domain};
+		ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+		ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+		location / {{
+			proxy_pass {default_ingress};
+		}}
+		include snippets/letsencrypt.conf;
+	}}
+	"#,
+					domain = domain,
+					default_ingress = default_ingress,
+				)
+				.as_bytes(),
+			)
+			.await?;
+		writer.close().await?;
+		drop(sftp);
+		let reload_result = session
+			.command("nginx")
+			.arg("-s")
+			.arg("reload")
+			.spawn()?
+			.wait()
+			.await?;
+		if !reload_result.success() {
+			return Err(Error::empty());
+		}
+
+		return Ok(());
+	}
+
+	return Err(Error::empty()
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string()));
+}
+
+async fn create_check_file_if_not_exists() -> Result<String, Error> {
+	let letter: char = thread_rng().gen_range(b'a'..=b'z') as char;
+	let filename = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(10)
+		.map(char::from)
+		.collect::<String>();
+	let filename = format!("{}{}", letter, filename);
+
+	let session =
+		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+	let mut sftp = session.sftp();
+
+	let mut writer = sftp
+		.write_to(format!("/var/www/patr/{}.html", filename))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+				<html>
+					<head>
+						<title> validation success </title>
+					</head>
+					<body>
+						<h1> {} </h1>
+					</body>
+				</htmml>
+				"#,
+				filename
+			)
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+	drop(sftp);
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	session.close().await?;
+	Ok(filename)
 }
