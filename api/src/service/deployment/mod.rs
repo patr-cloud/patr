@@ -27,6 +27,7 @@ use eve_rs::AsError;
 use futures::StreamExt;
 use openssh::{KnownHosts, Session};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{io::AsyncWriteExt, task};
 use uuid::Uuid;
@@ -822,6 +823,7 @@ pub async fn get_dns_records_for_deployments(
 pub async fn get_domain_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	config: Settings,
 ) -> Result<bool, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -832,6 +834,34 @@ pub async fn get_domain_validation_status(
 		.domain_name
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let default_url = match provider.parse() {
+		Ok(CloudPlatform::Aws) => {
+			let client = aws::get_lightsail_client(region);
+			aws::app_exists(&hex::encode(deployment_id), &client)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
+		Ok(CloudPlatform::DigitalOcean) => {
+			let client = Client::new();
+			digitalocean::app_exists(deployment_id, &config, &client)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()));
+		}
+	};
 
 	let check_file = create_check_file_if_not_exists().await?;
 
@@ -844,6 +874,8 @@ pub async fn get_domain_validation_status(
 	.await?;
 	println!("text: {}", text);
 	if text == format!("<h1>{}</h1>", check_file) {
+		create_ssl_certificate(&domain_name).await?;
+		update_nginx_with_ssl(&domain_name, &default_url).await?;
 		return Ok(true);
 	}
 	Ok(false)
@@ -897,35 +929,41 @@ server {{
 			if !reload_result.success() {
 				return Err(Error::empty());
 			}
-			let certificate_result = session
-				.command("certbot")
-				.arg("certonly")
-				.arg("--agree-tos")
-				.arg("-m")
-				.arg("postmaster@vicara.co")
-				.arg("--no-eff-email")
-				.arg("-d")
-				.arg(&domain)
-				.arg("--webroot")
-				.arg("-w")
-				.arg("/var/www/letsencrypt")
-				.spawn()?
-				.wait()
-				.await?;
-			if !certificate_result.success() {
-				return Err(Error::empty());
-			}
 		}
 		return Err(error.into());
 	}
+	drop(sftp);
+	Ok(())
+}
 
+pub async fn create_ssl_certificate(domain: &str) -> Result<(), Error> {
+	let session =
+		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+	let certificate_result = session
+		.command("certbot")
+		.arg("certonly")
+		.arg("--agree-tos")
+		.arg("-m")
+		.arg("postmaster@vicara.co")
+		.arg("--no-eff-email")
+		.arg("-d")
+		.arg(&domain)
+		.arg("--webroot")
+		.arg("-w")
+		.arg("/var/www/letsencrypt")
+		.spawn()?
+		.wait()
+		.await?;
+	if !certificate_result.success() {
+		return Err(Error::empty());
+	}
+	session.close().await?;
 	Ok(())
 }
 
 pub async fn update_nginx_with_ssl(
 	domain: &str,
 	default_ingress: &str,
-	is_domain_validated: bool,
 ) -> Result<(), Error> {
 	let session =
 		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
@@ -941,57 +979,50 @@ pub async fn update_nginx_with_ssl(
 		return Err(error.into());
 	}
 	// Certs exist. Continue
-	if is_domain_validated {
-		let mut writer = sftp
-			.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
-			.await?;
-		writer
-			.write_all(
-				format!(
-					r#"
-	server {{
-		listen 80;
-		listen [::]:80;
-		server_name {domain};
-		return 301 https://{domain}$request_uri$is_args$args;
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+	return 301 https://{domain}$request_uri$is_args$args;
+}}
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+	location / {{
+		proxy_pass {default_ingress};
 	}}
-	server {{
-		listen 443 ssl http2;
-		listen [::]:443 ssl http2;
-		server_name {domain};
-		ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-		ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-		location / {{
-			proxy_pass {default_ingress};
-		}}
-		include snippets/letsencrypt.conf;
-	}}
-	"#,
-					domain = domain,
-					default_ingress = default_ingress,
-				)
-				.as_bytes(),
+	include snippets/letsencrypt.conf;
+}}
+"#,
+				domain = domain,
+				default_ingress = default_ingress,
 			)
-			.await?;
-		writer.close().await?;
-		drop(sftp);
-		let reload_result = session
-			.command("nginx")
-			.arg("-s")
-			.arg("reload")
-			.spawn()?
-			.wait()
-			.await?;
-		if !reload_result.success() {
-			return Err(Error::empty());
-		}
-
-		return Ok(());
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+	drop(sftp);
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+	if !reload_result.success() {
+		return Err(Error::empty());
 	}
-
-	Err(Error::empty()
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string()))
+	Ok(())
 }
 
 async fn create_check_file_if_not_exists() -> Result<String, Error> {

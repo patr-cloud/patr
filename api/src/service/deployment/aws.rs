@@ -118,7 +118,9 @@ pub(super) async fn deploy_container(
 	log::trace!("DNS Updated");
 	let domain_name = format!("{}.patr.cloud", deployment_id_string);
 	log::trace!("adding reverse proxy");
-	service::update_nginx_with_ssl(&domain_name, &default_url, true).await?;
+	service::update_nginx_with_domain(&domain_name, &default_url).await?;
+	service::create_ssl_certificate(&domain_name).await?;
+	service::update_nginx_with_ssl(&domain_name, &default_url).await?;
 	let custom_domain = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&deployment_id,
@@ -131,10 +133,6 @@ pub(super) async fn deploy_container(
 		log::trace!(
 			"custom domain present, updating patr service with custom domain"
 		);
-		// let cert_name = format!("{}-custom", deployment_id_string);
-		// create_certificate_if_not_available(&cert_name, &domain, &client)
-		// 	.await?;
-		// TODO: add reverse proxy
 		service::update_nginx_with_domain(&domain, &default_url).await?;
 		log::trace!("container service updated with custom domain");
 	};
@@ -423,7 +421,7 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-fn get_lightsail_client(region: &str) -> lightsail::Client {
+pub(super) fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))
@@ -532,7 +530,7 @@ async fn create_container_service(
 	Ok(default_url.replace("https://", "").replace("/", ""))
 }
 
-async fn app_exists(
+pub(super) async fn app_exists(
 	deployment_id: &str,
 	client: &lightsail::Client,
 ) -> Result<Option<String>, Error> {

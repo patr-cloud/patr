@@ -188,8 +188,10 @@ pub(super) async fn deploy_container(
 		service::update_nginx_with_domain(&domain, &default_ingress).await?;
 	} else {
 		let domain_name = format!("{}.patr.cloud", deployment_id_string);
-		service::update_nginx_with_ssl(&domain_name, &default_ingress, true)
+		service::update_nginx_with_domain(&domain_name, &default_ingress)
 			.await?;
+		service::create_ssl_certificate(&domain_name).await?;
+		service::update_nginx_with_ssl(&domain_name, &default_ingress).await?;
 	}
 	log::trace!("DNS Updated");
 
@@ -499,7 +501,7 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-async fn app_exists(
+pub(super) async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
 	client: &Client,
