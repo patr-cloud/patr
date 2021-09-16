@@ -539,6 +539,7 @@ async fn list_deployments(
 				request_keys::REGION: deployment.region,
 				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
 				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
+				request_keys::DOMAIN_NAME: deployment.domain_name,
 			}))
 		} else {
 			Some(json!({
@@ -551,6 +552,7 @@ async fn list_deployments(
 				request_keys::REGION: deployment.region,
 				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
 				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
+				request_keys::DOMAIN_NAME: deployment.domain_name,
 			}))
 		}
 	})
@@ -792,6 +794,7 @@ async fn get_deployment_info(
 				request_keys::REGION: deployment.region,
 				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
 				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
+				request_keys::DOMAIN_NAME: deployment.domain_name,
 			})
 		} else {
 			json!({
@@ -805,6 +808,7 @@ async fn get_deployment_info(
 				request_keys::REGION: deployment.region,
 				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
 				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
+				request_keys::DOMAIN_NAME: deployment.domain_name,
 			})
 		},
 	);
