@@ -862,7 +862,8 @@ pub async fn get_domain_validation_status(
 		}
 	};
 
-	let check_file = create_check_file_if_not_exists(&config.ip_address).await?;
+	let check_file =
+		create_check_file_if_not_exists(&config.ip_address).await?;
 
 	let text = reqwest::get(format!(
 		"http://{}/.well-known/patr-verification/{}.txt",
@@ -873,7 +874,8 @@ pub async fn get_domain_validation_status(
 	.await?;
 	if text == check_file {
 		create_ssl_certificate(&domain_name, &config.ip_address).await?;
-		update_nginx_with_ssl(&domain_name, &default_url, &config.ip_address).await?;
+		update_nginx_with_ssl(&domain_name, &default_url, &config.ip_address)
+			.await?;
 		return Ok(true);
 	}
 	Ok(false)
@@ -980,7 +982,8 @@ pub async fn update_nginx_with_ssl(
 	if let Err(openssh::Error::Remote(error)) = result {
 		if error.kind() == ErrorKind::NotFound && domain.contains(".patr.cloud")
 		{
-			update_nginx_with_domain(domain, default_ingress, ip_address).await?;
+			update_nginx_with_domain(domain, default_ingress, ip_address)
+				.await?;
 		}
 		return Err(error.into());
 	}
@@ -1031,7 +1034,9 @@ server {{
 	Ok(())
 }
 
-async fn create_check_file_if_not_exists(ip_address: &str) -> Result<String, Error> {
+async fn create_check_file_if_not_exists(
+	ip_address: &str,
+) -> Result<String, Error> {
 	let letter: char = thread_rng().gen_range(b'a'..=b'z') as char;
 	let filename = thread_rng()
 		.sample_iter(&Alphanumeric)
@@ -1041,7 +1046,8 @@ async fn create_check_file_if_not_exists(ip_address: &str) -> Result<String, Err
 	let filename = format!("{}{}", letter, filename);
 
 	let session =
-		Session::connect(format!("ssh://root@{}",ip_address), KnownHosts::Add).await?;
+		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
+			.await?;
 	let mut sftp = session.sftp();
 
 	let mut writer = sftp
