@@ -59,5 +59,6 @@
 		"privateKey": "",
 		"publicKey": ""
 	},
-	"digitalOceanApiKey": "key"
+	"digitalOceanApiKey": "key",
+	"serverIp": "127.0.0.1"
 }

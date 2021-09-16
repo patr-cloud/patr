@@ -139,7 +139,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Pushed to DO");
 
 	// if the app exists then only create a deployment
-	let app_exists = app_exists(&deployment_id, &config, &client).await?;
+	let app_exists = get_app_default_url(&deployment_id, &config, &client).await?;
 	log::trace!("App exists as {:?}", app_exists);
 
 	let _ = super::update_deployment_status(
@@ -185,14 +185,16 @@ pub(super) async fn deploy_container(
 
 	log::trace!("adding reverse proxy");
 	if let Some(domain) = deployment.domain_name {
-		service::update_nginx_with_domain(&domain, &default_ingress).await?;
-	} else {
-		let domain_name = format!("{}.patr.cloud", deployment_id_string);
-		service::update_nginx_with_domain(&domain_name, &default_ingress)
-			.await?;
-		service::create_ssl_certificate(&domain_name).await?;
-		service::update_nginx_with_ssl(&domain_name, &default_ingress).await?;
+		log::trace!("custom domain present, updating patr service with custom domain");
+		service::update_nginx_with_domain(&domain, &default_ingress, &config.ip_address).await?;
 	}
+	
+	let domain_name = format!("{}.patr.cloud", deployment_id_string);
+	service::update_nginx_with_domain(&domain_name, &default_ingress, &config.ip_address)
+		.await?;
+	service::create_ssl_certificate(&domain_name, &config.ip_address).await?;
+	service::update_nginx_with_ssl(&domain_name, &default_ingress, &config.ip_address).await?;
+	
 	log::trace!("DNS Updated");
 
 	let _ = super::update_deployment_status(
@@ -501,7 +503,7 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-pub(super) async fn app_exists(
+pub(super) async fn get_app_default_url(
 	deployment_id: &[u8],
 	config: &Settings,
 	client: &Client,

@@ -843,39 +843,37 @@ pub async fn get_domain_validation_status(
 
 	let default_url = match provider.parse() {
 		Ok(CloudPlatform::Aws) => {
-			let client = aws::get_lightsail_client(region);
-			aws::app_exists(&hex::encode(deployment_id), &client)
+			aws::get_app_default_url(&hex::encode(deployment_id), region)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
 		}
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
-			digitalocean::app_exists(deployment_id, &config, &client)
+			digitalocean::get_app_default_url(deployment_id, &config, &client)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
 		}
 		_ => {
 			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
 	};
 
-	let check_file = create_check_file_if_not_exists().await?;
+	let check_file = create_check_file_if_not_exists(&config.ip_address).await?;
 
 	let text = reqwest::get(format!(
-		"https://{}/.well-known/patr-verification/{}.html",
+		"http://{}/.well-known/patr-verification/{}.txt",
 		domain_name, check_file
 	))
 	.await?
 	.text()
 	.await?;
-	println!("text: {}", text);
-	if text == format!("<h1>{}</h1>", check_file) {
-		create_ssl_certificate(&domain_name).await?;
-		update_nginx_with_ssl(&domain_name, &default_url).await?;
+	if text == check_file {
+		create_ssl_certificate(&domain_name, &config.ip_address).await?;
+		update_nginx_with_ssl(&domain_name, &default_url, &config.ip_address).await?;
 		return Ok(true);
 	}
 	Ok(false)
@@ -884,9 +882,11 @@ pub async fn get_domain_validation_status(
 pub async fn update_nginx_with_domain(
 	domain: &str,
 	default_ingress: &str,
+	ip_address: &str,
 ) -> Result<(), Error> {
 	let session =
-		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
+			.await?;
 	let mut sftp = session.sftp();
 
 	let result = sftp
@@ -936,9 +936,13 @@ server {{
 	Ok(())
 }
 
-pub async fn create_ssl_certificate(domain: &str) -> Result<(), Error> {
+pub async fn create_ssl_certificate(
+	domain: &str,
+	ip_address: &str,
+) -> Result<(), Error> {
 	let session =
-		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
+			.await?;
 	let certificate_result = session
 		.command("certbot")
 		.arg("certonly")
@@ -964,9 +968,11 @@ pub async fn create_ssl_certificate(domain: &str) -> Result<(), Error> {
 pub async fn update_nginx_with_ssl(
 	domain: &str,
 	default_ingress: &str,
+	ip_address: &str,
 ) -> Result<(), Error> {
 	let session =
-		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
+			.await?;
 	let mut sftp = session.sftp();
 	let result = sftp
 		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
@@ -974,7 +980,7 @@ pub async fn update_nginx_with_ssl(
 	if let Err(openssh::Error::Remote(error)) = result {
 		if error.kind() == ErrorKind::NotFound && domain.contains(".patr.cloud")
 		{
-			update_nginx_with_domain(domain, default_ingress).await?;
+			update_nginx_with_domain(domain, default_ingress, ip_address).await?;
 		}
 		return Err(error.into());
 	}
@@ -1025,7 +1031,7 @@ server {{
 	Ok(())
 }
 
-async fn create_check_file_if_not_exists() -> Result<String, Error> {
+async fn create_check_file_if_not_exists(ip_address: &str) -> Result<String, Error> {
 	let letter: char = thread_rng().gen_range(b'a'..=b'z') as char;
 	let filename = thread_rng()
 		.sample_iter(&Alphanumeric)
@@ -1035,24 +1041,17 @@ async fn create_check_file_if_not_exists() -> Result<String, Error> {
 	let filename = format!("{}{}", letter, filename);
 
 	let session =
-		Session::connect("ssh://root@68.183.32.36", KnownHosts::Add).await?;
+		Session::connect(format!("ssh://root@{}",ip_address), KnownHosts::Add).await?;
 	let mut sftp = session.sftp();
 
 	let mut writer = sftp
-		.write_to(format!("/var/www/patr/{}.html", filename))
+		.write_to(format!("/var/www/patr/{}.txt", filename))
 		.await?;
 	writer
 		.write_all(
 			format!(
 				r#"
-				<html>
-					<head>
-						<title> validation success </title>
-					</head>
-					<body>
-						<h1> {} </h1>
-					</body>
-				</htmml>
+				{}
 				"#,
 				filename
 			)

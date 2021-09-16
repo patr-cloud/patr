@@ -67,6 +67,7 @@ pub struct Settings {
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
 	pub digital_ocean_api_key: String,
+	pub ip_address: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

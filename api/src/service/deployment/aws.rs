@@ -79,7 +79,7 @@ pub(super) async fn deploy_container(
 	)
 	.await;
 
-	let app_exists = app_exists(&deployment_id_string, &client).await?;
+	let app_exists = get_app_default_url(&deployment_id_string, &region).await?;
 	let default_url = if let Some(default_url) = app_exists {
 		push_image_to_lightsail(
 			&deployment_id_string,
@@ -118,9 +118,9 @@ pub(super) async fn deploy_container(
 	log::trace!("DNS Updated");
 	let domain_name = format!("{}.patr.cloud", deployment_id_string);
 	log::trace!("adding reverse proxy");
-	service::update_nginx_with_domain(&domain_name, &default_url).await?;
-	service::create_ssl_certificate(&domain_name).await?;
-	service::update_nginx_with_ssl(&domain_name, &default_url).await?;
+	service::update_nginx_with_domain(&domain_name, &default_url, &config.ip_address).await?;
+	service::create_ssl_certificate(&domain_name, &config.ip_address).await?;
+	service::update_nginx_with_ssl(&domain_name, &default_url, &config.ip_address).await?;
 	let custom_domain = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&deployment_id,
@@ -133,7 +133,7 @@ pub(super) async fn deploy_container(
 		log::trace!(
 			"custom domain present, updating patr service with custom domain"
 		);
-		service::update_nginx_with_domain(&domain, &default_url).await?;
+		service::update_nginx_with_domain(&domain, &default_url, &config.ip_address).await?;
 		log::trace!("container service updated with custom domain");
 	};
 
@@ -330,10 +330,8 @@ pub(super) async fn get_dns_records_for_deployments(
 	region: &str,
 	domain_name: &str,
 ) -> Result<Vec<CNameRecord>, Error> {
-	let client = get_lightsail_client(region);
-
 	log::trace!("getting deployment url from lightsail");
-	let deployment_url = app_exists(&hex::encode(deployment_id), &client)
+	let deployment_url = get_app_default_url(&hex::encode(deployment_id), &region)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -421,7 +419,7 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-pub(super) fn get_lightsail_client(region: &str) -> lightsail::Client {
+fn get_lightsail_client(region: &str) -> lightsail::Client {
 	let deployment_region = lightsail::Region::new(region.to_string());
 	let client_builder = lightsail::Config::builder()
 		.region(Some(deployment_region))
@@ -530,10 +528,11 @@ async fn create_container_service(
 	Ok(default_url.replace("https://", "").replace("/", ""))
 }
 
-pub(super) async fn app_exists(
+pub(super) async fn get_app_default_url(
 	deployment_id: &str,
-	client: &lightsail::Client,
+	region: &str,
 ) -> Result<Option<String>, Error> {
+	let client = get_lightsail_client(region);
 	let default_url = client
 		.get_container_services()
 		.service_name(deployment_id)
