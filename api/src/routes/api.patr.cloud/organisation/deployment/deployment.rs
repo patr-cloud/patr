@@ -529,57 +529,57 @@ async fn list_deployments(
 	.into_iter()
 	.filter_map(|deployment| {
 		let mut map = Map::new();
+
+		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
 		if deployment.registry == "registry.patr.cloud" {
 			map.insert(
 				request_keys::REPOSITORY_ID.to_string(),
 				Value::String(hex::encode(deployment.repository_id?)),
 			);
+		} else {
+			map.insert(
+				request_keys::IMAGE_NAME.to_string(),
+				Value::String(deployment.image_name?),
+			);
 		}
-		map.insert(
-			request_keys::DEPLOYMENT_ID.to_string(),
-			serde_json::Value::String(hex::encode(deployment.id)),
-		);
-		map.insert(
-			request_keys::NAME.to_string(),
-			serde_json::Value::String(deployment.name),
-		);
-		map.insert(
-			request_keys::REGISTRY.to_string(),
-			serde_json::Value::String(deployment.registry),
-		);
-		map.insert(
-			request_keys::IMAGE_TAG.to_string(),
-			serde_json::Value::String(deployment.image_tag),
-		);
-		map.insert(
-			request_keys::STATUS.to_string(),
-			serde_json::Value::String(deployment.status.to_string()),
-		);
-		map.insert(
-			request_keys::REGION.to_string(),
-			serde_json::Value::String(deployment.region),
-		);
-		map.insert(
-			request_keys::HORIZONTAL_SCALE.to_string(),
-			serde_json::Value::String(deployment.horizontal_scale.to_string()),
-		);
-		map.insert(
-			request_keys::MACHINE_TYPE.to_string(),
-			serde_json::Value::String(deployment.machine_type.to_string()),
-		);
-
 		if let Some(domain_name) = deployment.domain_name {
 			map.insert(
 				request_keys::DOMAIN_NAME.to_string(),
 				Value::String(domain_name),
 			);
 		}
-		if let Some(image_name) = deployment.image_name {
-			map.insert(
-				request_keys::IMAGE_NAME.to_string(),
-				Value::String(image_name),
-			);
-		};
+		map.insert(
+			request_keys::DEPLOYMENT_ID.to_string(),
+			Value::String(hex::encode(deployment.id)),
+		);
+		map.insert(
+			request_keys::NAME.to_string(),
+			Value::String(deployment.name),
+		);
+		map.insert(
+			request_keys::REGISTRY.to_string(),
+			Value::String(deployment.registry),
+		);
+		map.insert(
+			request_keys::IMAGE_TAG.to_string(),
+			Value::String(deployment.image_tag),
+		);
+		map.insert(
+			request_keys::STATUS.to_string(),
+			Value::String(deployment.status.to_string()),
+		);
+		map.insert(
+			request_keys::REGION.to_string(),
+			Value::String(deployment.region),
+		);
+		map.insert(
+			request_keys::HORIZONTAL_SCALE.to_string(),
+			Value::Number(deployment.horizontal_scale.into()),
+		);
+		map.insert(
+			request_keys::MACHINE_TYPE.to_string(),
+			Value::String(deployment.machine_type.to_string()),
+		);
 		Some(Value::Object(map))
 	})
 	.collect::<Vec<_>>();
@@ -809,60 +809,57 @@ async fn get_deployment_info(
 
 	let mut response = Map::new();
 
-	response.insert(
-		request_keys::SUCCESS.to_string(),
-		serde_json::Value::Bool(true),
-	);
+	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
 	if deployment.registry == "registry.patr.cloud" {
 		response.insert(
 			request_keys::REPOSITORY_ID.to_string(),
 			Value::String(hex::encode(deployment.repository_id.status(500)?)),
 		);
+	} else {
+		response.insert(
+			request_keys::IMAGE_NAME.to_string(),
+			Value::String(deployment.image_name.status(500)?),
+		);
 	}
-	response.insert(
-		request_keys::DEPLOYMENT_ID.to_string(),
-		serde_json::Value::String(hex::encode(deployment.id)),
-	);
-	response.insert(
-		request_keys::NAME.to_string(),
-		serde_json::Value::String(deployment.name),
-	);
-	response.insert(
-		request_keys::REGISTRY.to_string(),
-		serde_json::Value::String(deployment.registry),
-	);
-	response.insert(
-		request_keys::IMAGE_TAG.to_string(),
-		serde_json::Value::String(deployment.image_tag),
-	);
-	response.insert(
-		request_keys::STATUS.to_string(),
-		serde_json::Value::String(deployment.status.to_string()),
-	);
-	response.insert(
-		request_keys::REGION.to_string(),
-		serde_json::Value::String(deployment.region),
-	);
-	response.insert(
-		request_keys::HORIZONTAL_SCALE.to_string(),
-		serde_json::Value::String(deployment.horizontal_scale.to_string()),
-	);
-	response.insert(
-		request_keys::MACHINE_TYPE.to_string(),
-		serde_json::Value::String(deployment.machine_type.to_string()),
-	);
 	if let Some(domain_name) = deployment.domain_name {
 		response.insert(
 			request_keys::DOMAIN_NAME.to_string(),
 			Value::String(domain_name),
 		);
 	}
-	if let Some(image_name) = deployment.image_name {
-		response.insert(
-			request_keys::IMAGE_NAME.to_string(),
-			Value::String(image_name),
-		);
-	}
+	response.insert(
+		request_keys::DEPLOYMENT_ID.to_string(),
+		Value::String(hex::encode(deployment.id)),
+	);
+	response.insert(
+		request_keys::NAME.to_string(),
+		Value::String(deployment.name),
+	);
+	response.insert(
+		request_keys::REGISTRY.to_string(),
+		Value::String(deployment.registry),
+	);
+	response.insert(
+		request_keys::IMAGE_TAG.to_string(),
+		Value::String(deployment.image_tag),
+	);
+	response.insert(
+		request_keys::STATUS.to_string(),
+		Value::String(deployment.status.to_string()),
+	);
+	response.insert(
+		request_keys::REGION.to_string(),
+		Value::String(deployment.region),
+	);
+	response.insert(
+		request_keys::HORIZONTAL_SCALE.to_string(),
+		Value::Number(deployment.horizontal_scale.into()),
+	);
+	response.insert(
+		request_keys::MACHINE_TYPE.to_string(),
+		Value::String(deployment.machine_type.to_string()),
+	);
+
 	context.json(Value::Object(response));
 	Ok(context)
 }
