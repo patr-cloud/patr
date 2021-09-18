@@ -832,7 +832,7 @@ server {{
 	listen [::]:80;
 	server_name {domain};
 
-	return 301 https://{domain}/$request_uri;
+	return 301 https://{domain}$request_uri;
 }}
 
 server {{
