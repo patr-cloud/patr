@@ -152,6 +152,7 @@ pub async fn create_deployment_in_organisation(
 				domain_name,
 				horizontal_scale,
 				machine_type,
+				organisation_id,
 			)
 			.await?;
 		} else {
@@ -171,6 +172,7 @@ pub async fn create_deployment_in_organisation(
 			domain_name,
 			horizontal_scale,
 			machine_type,
+			organisation_id,
 		)
 		.await?;
 	} else {

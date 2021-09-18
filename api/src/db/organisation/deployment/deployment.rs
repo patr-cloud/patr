@@ -169,6 +169,7 @@ pub async fn create_deployment_with_internal_registry(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
+	organisation_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -176,7 +177,22 @@ pub async fn create_deployment_with_internal_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8);
+				(
+					$1,
+					$2,
+					'registry.patr.cloud',
+					$3,
+					NULL,
+					$4,
+					'created',
+					NULL,
+					NULL,
+					$5,
+					$6,
+					$7,
+					$8,
+					$9
+				);
 			"#,
 			deployment_id,
 			name,
@@ -186,6 +202,7 @@ pub async fn create_deployment_with_internal_registry(
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
+			organisation_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -196,7 +213,22 @@ pub async fn create_deployment_with_internal_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7);
+				(
+					$1,
+					$2,
+					'registry.patr.cloud',
+					$3,
+					NULL,
+					$4,
+					'created',
+					NULL,
+					NULL,
+					$5,
+					NULL,
+					$6,
+					$7,
+					$8
+				);
 			"#,
 			deployment_id,
 			name,
@@ -205,6 +237,7 @@ pub async fn create_deployment_with_internal_registry(
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
+			organisation_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -223,6 +256,7 @@ pub async fn create_deployment_with_external_registry(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
+	organisation_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -230,7 +264,22 @@ pub async fn create_deployment_with_external_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9);
+				(
+					$1,
+					$2,
+					$3,
+					NULL,
+					$4,
+					$5,
+					'created',
+					NULL,
+					NULL,
+					$6,
+					$7,
+					$8,
+					$9,
+					$10
+				);
 			"#,
 			deployment_id,
 			name,
@@ -241,6 +290,7 @@ pub async fn create_deployment_with_external_registry(
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
+			organisation_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -251,7 +301,22 @@ pub async fn create_deployment_with_external_registry(
 			INSERT INTO
 				deployment
 			VALUES
-				($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8);
+				(
+					$1,
+					$2,
+					$3,
+					NULL,
+					$4,
+					$5,
+					'created',
+					NULL,
+					NULL,
+					$6,
+					NULL,
+					$7,
+					$8,
+					$9
+				);
 			"#,
 			deployment_id,
 			name,
@@ -261,6 +326,7 @@ pub async fn create_deployment_with_external_registry(
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
+			organisation_id,
 		)
 		.execute(&mut *connection)
 		.await

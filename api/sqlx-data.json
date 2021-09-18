@@ -911,6 +911,39 @@
       ]
     }
   },
+  "24e16edd8088313c2a05603a117142c7b44712a2d17eec9df49175d005b424c1": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9, $10 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Int2",
+          {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "267cda1e5050dca6e8a3352b3ba5058efb79ec634733852a559df21880908120": {
     "query": "CREATE TABLE personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
@@ -1568,8 +1601,8 @@
       "nullable": []
     }
   },
-  "467803c0546e3ebfebebc4472ae6227d62ddb0dbeb97c9e4dc832cfe4a13e585": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7);",
+  "46f648355b67521fcaf33dbed17366e270057a1989ceb86dc2448bc71260f8bc": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7, $8 );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1592,7 +1625,8 @@
                 ]
               }
             }
-          }
+          },
+          "Bytea"
         ]
       },
       "nullable": []
@@ -1619,6 +1653,38 @@
           "Bytea",
           "Text",
           "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4ab12a1f7aa25a5a9587ec546ef78b6d618792ab7304cd4800fe8d4b775311b9": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8, $9 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea",
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Int2",
+          {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          },
+          "Bytea"
         ]
       },
       "nullable": []
@@ -2985,6 +3051,38 @@
       "nullable": []
     }
   },
+  "78ee352900e2f83d97240e8cdacc8e68c4a678b2f8a7d5adf20252b15356632e": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8, $9 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Int2",
+          {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
     "describe": {
@@ -3251,37 +3349,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "861f3b1b33c5fc561acd79a57352537bdd1753b53e5c97ea151d4e8eee2b1ff8": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        ]
       },
       "nullable": []
     }
@@ -3852,37 +3919,6 @@
         false,
         false
       ]
-    }
-  },
-  "a65a4572e5191083d5dc1e5f521401680c9a9b41f39cda7011c812e1e37d3089": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Text",
-          "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "nullable": []
     }
   },
   "a75826977d9c2e910a6d6e5639dab576257381dd1aa718aa67e9bd7b8dd69fe4": {
@@ -5503,38 +5539,6 @@
           "Varchar",
           "Text",
           "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "f088415e1d0ad9efd323a688e9af01e64b9ffe5f28d3c1926330b79ab0dc66ef": {
-    "query": "INSERT INTO deployment VALUES ($1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
         ]
       },
       "nullable": []
