@@ -116,8 +116,13 @@ pub(super) async fn deploy_container(
 
 	// update DNS
 	log::trace!("updating DNS");
-	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
-		.await?;
+	super::add_cname_record(
+		&deployment_id_string,
+		"nginx.patr.cloud",
+		&config,
+		true,
+	)
+	.await?;
 	log::trace!("DNS Updated");
 
 	log::trace!("adding reverse proxy");

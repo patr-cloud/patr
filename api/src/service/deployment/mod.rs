@@ -664,8 +664,6 @@ pub async fn get_domain_validation_status(
 		if let Some(text) = content {
 			return Ok(text == file_content);
 		}
-	} else {
-		return Ok(false);
 	}
 
 	let text = reqwest::get(format!(
@@ -680,7 +678,7 @@ pub async fn get_domain_validation_status(
 		update_nginx_config_for_domain_https(
 			&domain_name,
 			&default_url,
-			&config,
+			config,
 		)
 		.await?;
 		return Ok(true);
@@ -688,7 +686,10 @@ pub async fn get_domain_validation_status(
 
 	session
 		.command("rm")
-		.arg(format!("/var/www/patr-verification/{}", filename))
+		.arg(format!(
+			"/var/www/patr-verification/.well-known/patr-verification/{}",
+			filename
+		))
 		.spawn()?
 		.wait()
 		.await?;
@@ -703,6 +704,7 @@ async fn update_nginx_config_for_domain_http_only(
 	default_ingress: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("logging into the ssh server for updating server with http");
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -712,6 +714,7 @@ async fn update_nginx_config_for_domain_http_only(
 		.await?;
 	let mut sftp = session.sftp();
 
+	log::trace!("successfully logged into the server");
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -738,7 +741,8 @@ server {{
 			.as_bytes(),
 		)
 		.await?;
-	session
+	log::trace!("updated sites-enabled");
+	let reload_result = session
 		.command("nginx")
 		.arg("-s")
 		.arg("reload")
@@ -746,9 +750,15 @@ server {{
 		.wait()
 		.await?;
 
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	log::trace!("reloaded nginx");
 	drop(sftp);
 	drop(writer);
 	session.close().await?;
+	log::trace!("session closed");
 	Ok(())
 }
 
@@ -756,6 +766,7 @@ async fn create_https_certificates_for_domain(
 	domain: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("logging into the ssh server for adding ssl certificate");
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -763,6 +774,9 @@ async fn create_https_certificates_for_domain(
 		.known_hosts_check(KnownHosts::Add)
 		.connect(&config.ssh.host)
 		.await?;
+	log::trace!("successfully logged into the server");
+
+	log::trace!("creating certificate using certbot");
 	let certificate_result = session
 		.command("certbot")
 		.arg("certonly")
@@ -778,10 +792,13 @@ async fn create_https_certificates_for_domain(
 		.spawn()?
 		.wait()
 		.await?;
+
 	if !certificate_result.success() {
 		return Err(Error::empty());
 	}
+	log::trace!("created certificate");
 	session.close().await?;
+	log::trace!("session closed");
 	Ok(())
 }
 
@@ -790,6 +807,7 @@ async fn update_nginx_config_for_domain_https(
 	default_ingress: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("logging into the ssh server for updating nginx with https");
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -797,8 +815,11 @@ async fn update_nginx_config_for_domain_https(
 		.known_hosts_check(KnownHosts::Add)
 		.connect(&config.ssh.host)
 		.await?;
+	log::trace!("successfully logged into the server");
+
 	let mut sftp = session.sftp();
 
+	log::trace!("updating sites-enabled for https");
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -837,7 +858,7 @@ server {{
 		)
 		.await?;
 	writer.close().await?;
-
+	log::trace!("updated sites enabled for https");
 	drop(sftp);
 
 	let reload_result = session
@@ -851,6 +872,7 @@ server {{
 		return Err(Error::empty());
 	}
 
+	log::trace!("nginx reloaded");
 	session.close().await?;
 	Ok(())
 }
@@ -1105,7 +1127,10 @@ async fn create_random_content_for_verification(
 	let mut sftp = session.sftp();
 
 	let mut writer = sftp
-		.write_to(format!("/var/www/patr-verification/{}", filename))
+		.write_to(format!(
+			"/var/www/patr-verification/.well-known/patr-verification/{}",
+			filename
+		))
 		.await?;
 	writer.write_all(file_content.as_bytes()).await?;
 	writer.close().await?;

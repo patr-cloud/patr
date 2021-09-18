@@ -21,7 +21,7 @@ base64 = "0.13.0"
 bytes = "1.0.1"
 chrono = "0.4.19"
 clap = "2.33.3"
-cloudflare = "0.8.0"
+cloudflare = "0.8.7"
 colored = "2.0.0"
 config_rs = { version = "0.11.0", package = "config" }
 cron = "0.9.0"

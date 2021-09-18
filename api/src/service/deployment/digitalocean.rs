@@ -137,8 +137,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Pushed to DO");
 
 	// if the app exists then only create a deployment
-	let app_exists =
-		get_app_default_url(&deployment_id, &config, &client).await?;
+	let app_exists = app_exists(&deployment_id, &config, &client).await?;
 	log::trace!("App exists as {:?}", app_exists);
 
 	let _ = super::update_deployment_status(
@@ -175,7 +174,7 @@ pub(super) async fn deploy_container(
 	log::trace!("updating DNS");
 	super::add_cname_record(
 		&deployment_id_string,
-		&default_ingress,
+		"nginx.patr.cloud",
 		&config,
 		true,
 	)
@@ -424,6 +423,23 @@ pub(super) async fn delete_database(
 }
 
 pub(super) async fn get_app_default_url(
+	deployment_id: &[u8],
+	config: &Settings,
+	client: &Client,
+) -> Result<Option<String>, Error> {
+	let app_id = if let Some(app_id) =
+		app_exists(deployment_id, config, client).await?
+	{
+		app_id
+	} else {
+		return Ok(None);
+	};
+	Ok(get_app_default_ingress(&app_id, config, client)
+		.await
+		.map(|ingress| ingress.replace("https://", "").replace("/", "")))
+}
+
+async fn app_exists(
 	deployment_id: &[u8],
 	config: &Settings,
 	client: &Client,
