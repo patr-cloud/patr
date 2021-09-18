@@ -110,6 +110,20 @@ impl Deployment {
 	}
 }
 
+// TODO: retireve logs
+#[allow(dead_code)]
+pub struct DeploymentRequestLogs {
+	id: Vec<u8>,
+	deplyoment_id: Vec<u8>,
+	ip_address: String,
+	ip_address_location: (f64, f64),
+	method: Method,
+	domain_name: String,
+	protocol: Protocol,
+	path: String,
+	response_time: f64,
+}
+
 #[derive(sqlx::Type, Debug)]
 #[sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")]
 pub enum DeploymentStatus {
@@ -220,6 +234,75 @@ impl FromStr for DeploymentMachineType {
 			"small" => Ok(Self::Small),
 			"medium" => Ok(Self::Medium),
 			"large" => Ok(Self::Large),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "PROTOCOL", rename_all = "lowercase")]
+pub enum Protocol {
+	Http,
+	Https
+}
+
+impl Display for Protocol {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Http => write!(f, "http"),
+			Self::Https => write!(f, "https")
+		}
+	}
+}
+
+impl FromStr for Protocol {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"http" => Ok(Self::Http),
+			"https" => Ok(Self::Https),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "METHOD", rename_all = "lowercase")]
+pub enum Method {
+	Post,
+	Get,
+	Put,
+	Patch,
+	Delete
+}
+
+impl Display for Method {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Post => write!(f, "post"),
+			Self::Get => write!(f, "get"),
+			Self::Put => write!(f, "put"),
+			Self::Patch => write!(f, "patch"),
+			Self::Delete => write!(f, "delete")
+		}
+	}
+}
+
+impl FromStr for Method {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"post" => Ok(Self::Post),
+			"get" => Ok(Self::Get),
+			"put" => Ok(Self::Put),
+			"patch" => Ok(Self::Patch),
+			"delete" => Ok(Self::Delete),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

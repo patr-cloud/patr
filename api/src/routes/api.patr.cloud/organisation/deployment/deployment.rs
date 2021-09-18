@@ -296,6 +296,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set horizontal scale for the deployment
 	app.put(
 		"/:deploymentId/horizontal-scale",
 		[
@@ -327,6 +328,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set machine type of the deployment
 	app.put(
 		"/:deploymentId/machine-type",
 		[
@@ -485,6 +487,15 @@ pub fn create_sub_app(
 			),
 			EveMiddleware::CustomFunction(pin_fn!(is_domain_validated)),
 		],
+	);
+
+	// add logs for requests made to deployment
+	// TODO: add custom header for this endpoint
+	app.post(
+		"/:deploymentId/deployment-request-log",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			add_deployment_request_log
+		))],
 	);
 
 	app
@@ -1434,5 +1445,114 @@ async fn is_domain_validated(
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
 	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to log the requests made for the deployment
+/// If a user makes a request to a deployment this function will log it and
+/// store it in the database
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+/// [`Deployment`]: Deployment
+async fn add_deployment_request_log(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+	let ip_address = body
+		.get(request_keys::IP_ADDRESS)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let ip_address_latitude = body
+		.get(request_keys::IP_ADDRESS_LATITUDE)
+		.map(|value| value.as_f64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let ip_address_longitude = body
+		.get(request_keys::IP_ADDRESS_LONGITUDE)
+		.map(|value| value.as_f64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let method = body
+		.get(request_keys::METHOD)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|method| method.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let domain = body
+		.get(request_keys::DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// TODO: maybe create an enum for this?
+	let protocol = body
+		.get(request_keys::PROTOCOL)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|protocol| protocol.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let path = body
+		.get(request_keys::PATH)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// TODO: make reponse time in miliseconds
+	let response_time = body
+		.get(request_keys::RESPONSE_TIME)
+		.map(|value| value.as_f64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::create_log_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		ip_address,
+		ip_address_latitude,
+		ip_address_longitude,
+		method,
+		domain,
+		protocol,
+		path,
+		response_time,
+		&organisation_id,
+	)
+	.await?;
+
 	Ok(context)
 }

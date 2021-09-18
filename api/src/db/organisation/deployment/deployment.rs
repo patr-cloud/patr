@@ -1,5 +1,11 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
+	models::db_mapping::{
+		Deployment,
+		DeploymentMachineType,
+		DeploymentStatus,
+		Method,
+		Protocol,
+	},
 	query,
 	query_as,
 	Database,
@@ -41,6 +47,31 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TYPE PROTOCOL AS ENUM(
+			'http',
+			'https'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE METHOD AS ENUM(
+			'post',
+			'get',
+			'put',
+			'patch',
+			'delete'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -57,7 +88,7 @@ pub async fn initialize_deployment_pre(
 			domain_name VARCHAR(255)
 				CONSTRAINT deployment_uq_domain_name UNIQUE
 				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					name = LOWER(name)
+					domain_name = LOWER(domain_name)
 				),
 			horizontal_scale SMALLINT NOT NULL
 				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
@@ -139,6 +170,30 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployment_request_logs(
+			id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY,
+			deployment_id BYTEA NOT NULL
+				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+					REFERENCES deployment(id),
+			ip_address VARCHAR(255) NOT NULL,
+			ip_address_location POINT NOT NULL,
+			method METHOD NOT NULL,
+			domain_name VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_request_logs_uq_domain_name UNIQUE
+				CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK(
+					domain_name = LOWER(domain_name)
+				),
+			protocol PROTOCOL NOT NULL,
+			path TEXT NOT NULL,
+			response_time REAL NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -151,6 +206,16 @@ pub async fn initialize_deployment_post(
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_request_logs
+		ADD CONSTRAINT deployment_request_logs_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -685,6 +750,44 @@ pub async fn set_machine_type_for_deployment(
 		"#,
 		machine_type as _,
 		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn create_log_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
+	deployment_id: &[u8],
+	ip_address: &str,
+	ip_address_latitude: f64,
+	ip_address_longitude: f64,
+	method: Method,
+	domain: &str,
+	protocol: Protocol,
+	path: &str,
+	response_time: f64,
+) -> Result<(), sqlx::Error> {
+	// let coordinates: geo::Geometry<f64> =
+	// 	geo::Point::new(ip_address_latitude, ip_address_longitude).into();
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_request_logs
+		VALUES
+			($1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
+		"#,
+		id,
+		deployment_id,
+		ip_address,
+		ip_address_latitude,
+		ip_address_longitude,
+		method as Method,
+		domain,
+		protocol as Protocol,
+		path,
+		response_time as f32
 	)
 	.execute(&mut *connection)
 	.await

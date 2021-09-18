@@ -300,6 +300,50 @@
       "nullable": []
     }
   },
+  "0554c6a4b27682613981e464829a084c6ffab336c5a8ad519e193a18ec5a2c57": {
+    "query": "INSERT INTO deployment_request_logs VALUES ($1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea",
+          "Varchar",
+          "Float8",
+          "Float8",
+          {
+            "Custom": {
+              "name": "method",
+              "kind": {
+                "Enum": [
+                  "post",
+                  "get",
+                  "put",
+                  "patch",
+                  "delete"
+                ]
+              }
+            }
+          },
+          "Varchar",
+          {
+            "Custom": {
+              "name": "protocol",
+              "kind": {
+                "Enum": [
+                  "http",
+                  "https"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Float4"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "05b6d33feb18545eda08444aaceb0df59d41f3487a9af37b982975ffbc31c637": {
     "query": "UPDATE organisation_domain SET is_verified = FALSE WHERE id = $1;",
     "describe": {
@@ -438,16 +482,6 @@
   },
   "140b335ed19341657d84d58a614bafcbed062124f5575c2dc6249adbbd12daea": {
     "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "14360f7123518bb6f76ddfe76c33628a730e1329938de8856f6cac8c762a7523": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( name = LOWER(name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', organisation_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_organisation_id UNIQUE(name, organisation_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3219,6 +3253,16 @@
       "nullable": []
     }
   },
+  "83996a7a9128549bc0330c63139261742bc363747e4e3ba382cf0664520a0f75": {
+    "query": "CREATE TABLE deployment_request_logs( id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY, deployment_id BYTEA NOT NULL CONSTRAINT deploymment_environment_variable_fk_deployment_id REFERENCES deployment(id), ip_address VARCHAR(255) NOT NULL, ip_address_location POINT NOT NULL, method METHOD NOT NULL, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployment_request_logs_uq_domain_name UNIQUE CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), protocol PROTOCOL NOT NULL, path TEXT NOT NULL, response_time REAL NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "840642ff60df5797a9282585bdf849c8737ae4ab983f6af14d3b189a05cab472": {
     "query": "SELECT * FROM portus_tunnel WHERE name = $1;",
     "describe": {
@@ -3679,6 +3723,16 @@
           "Bpchar",
           "Text"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "96cd080c8e49b60f7f0266357b1a6ea3d4df5ccd74f1cc768b92bbd8ba613b17": {
+    "query": "CREATE TYPE PROTOCOL AS ENUM( 'http', 'https' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -4345,6 +4399,16 @@
       ]
     }
   },
+  "b75cfe5060031039f798aa33de48be33ab980764ad0e1697c5e61f0ae5a3c5dd": {
+    "query": "ALTER TABLE deployment_request_logs ADD CONSTRAINT deployment_request_logs_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
     "query": "SET CONSTRAINTS ALL DEFERRED;",
     "describe": {
@@ -4535,6 +4599,16 @@
   },
   "be45f80365dd7a2afa99973e5c5d058fc4cefd64fa1b8a81c5bf94e5701ca009": {
     "query": "CREATE TABLE domain( id BYTEA CONSTRAINT domain_pk PRIMARY KEY, name VARCHAR(255) NOT NULL CONSTRAINT domain_uq_name UNIQUE CONSTRAINT domain_chk_name_is_lower_case CHECK( name = LOWER(name) ), type RESOURCE_OWNER_TYPE NOT NULL, CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "c01c61844f9a81ec21e4f18bbf7841043c5847c5781cc51668752915e7a360d7": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', organisation_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_organisation_id UNIQUE(name, organisation_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4808,6 +4882,16 @@
   },
   "c842c31eb3324dcb69e56439b24b7909057b220839e81bcc4638d2b4e4f27bdb": {
     "query": "CREATE TABLE organisation_user( user_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_user_id REFERENCES \"user\"(id), organisation_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_organisation_id REFERENCES organisation(id), role_id BYTEA NOT NULL CONSTRAINT organisation_user_fk_role_id REFERENCES role(id), CONSTRAINT organisation_user_pk PRIMARY KEY(user_id, organisation_id, role_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "c994ec3cd56a80a92fb62dc480c82b2aa67054590b7162f5172b0f1b8f7533fd": {
+    "query": "CREATE TYPE METHOD AS ENUM( 'post', 'get', 'put', 'patch', 'delete' );",
     "describe": {
       "columns": [],
       "parameters": {

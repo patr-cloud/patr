@@ -29,33 +29,13 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
-use crate::{
-	db,
-	error,
-	models::{
-		db_mapping::{
-			CNameRecord,
-			CloudPlatform,
-			DeploymentMachineType,
-			DeploymentStatus,
-			ManagedDatabaseEngine,
-			ManagedDatabasePlan,
-			ManagedDatabaseStatus,
-		},
-		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
-	},
-	service,
-	utils::{
+use crate::{Database, db, error, models::{RegistryToken, RegistryTokenAccess, db_mapping::{CNameRecord, CloudPlatform, DeploymentMachineType, DeploymentStatus, ManagedDatabaseEngine, ManagedDatabasePlan, ManagedDatabaseStatus, Method, Protocol}, rbac}, service, utils::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
 		Error,
-	},
-	Database,
-};
+	}};
 
 /// # Description
 /// This function creates a deployment under an organisation account
@@ -855,4 +835,51 @@ pub async fn get_domain_validation_status(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())),
 	}
+}
+
+pub async fn create_log_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	ip_address: &str,
+	ip_address_latitude: f64,
+	ip_address_longitude: f64,
+	method: Method,
+	domain: &str,
+	protocol: Protocol,
+	path: &str,
+	response_time: f64,
+	organisation_id: &[u8],
+) -> Result<(), Error> {
+	let request_uuid = db::generate_new_resource_id(connection).await?;
+	let request_id = request_uuid.as_bytes();
+
+	db::create_resource(
+		connection,
+		request_id,
+		&format!("Request: {}", hex::encode(request_id)),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DEPLOYMENT)
+			.unwrap(),
+		organisation_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
+	db::create_log_for_deployment(
+		connection,
+		request_id,
+		deployment_id,
+		ip_address,
+		ip_address_latitude,
+		ip_address_longitude,
+		method,
+		domain,
+		protocol,
+		path,
+		response_time,
+	)
+	.await?;
+	Ok(())
 }
