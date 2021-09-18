@@ -329,6 +329,14 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
+		CREATE EXTENSION IF NOT EXISTS postgis;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TYPE PROTOCOL AS ENUM(
 			'http',
 			'https'

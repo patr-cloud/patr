@@ -18,6 +18,14 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE EXTENSION IF NOT EXISTS postgis;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
 			'created', /* Created, but nothing pushed to it yet */
 			'pushed', /* Something is pushed, but the system has not deployed it yet */
