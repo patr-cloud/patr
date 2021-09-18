@@ -29,13 +29,35 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{RegistryToken, RegistryTokenAccess, db_mapping::{CNameRecord, CloudPlatform, DeploymentMachineType, DeploymentStatus, ManagedDatabaseEngine, ManagedDatabasePlan, ManagedDatabaseStatus, Method, Protocol}, rbac}, service, utils::{
+use crate::{
+	db,
+	error,
+	models::{
+		db_mapping::{
+			CNameRecord,
+			CloudPlatform,
+			DeploymentMachineType,
+			DeploymentStatus,
+			ManagedDatabaseEngine,
+			ManagedDatabasePlan,
+			ManagedDatabaseStatus,
+			Method,
+			Protocol,
+		},
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
+	},
+	service,
+	utils::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
 		Error,
-	}};
+	},
+	Database,
+};
 
 /// # Description
 /// This function creates a deployment under an organisation account

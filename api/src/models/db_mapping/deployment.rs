@@ -245,14 +245,14 @@ impl FromStr for DeploymentMachineType {
 #[sqlx(type_name = "PROTOCOL", rename_all = "lowercase")]
 pub enum Protocol {
 	Http,
-	Https
+	Https,
 }
 
 impl Display for Protocol {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Http => write!(f, "http"),
-			Self::Https => write!(f, "https")
+			Self::Https => write!(f, "https"),
 		}
 	}
 }
@@ -278,7 +278,7 @@ pub enum Method {
 	Get,
 	Put,
 	Patch,
-	Delete
+	Delete,
 }
 
 impl Display for Method {
@@ -288,7 +288,7 @@ impl Display for Method {
 			Self::Get => write!(f, "get"),
 			Self::Put => write!(f, "put"),
 			Self::Patch => write!(f, "patch"),
-			Self::Delete => write!(f, "delete")
+			Self::Delete => write!(f, "delete"),
 		}
 	}
 }
