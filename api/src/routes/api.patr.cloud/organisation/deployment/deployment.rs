@@ -1423,12 +1423,12 @@ async fn is_domain_validated(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-
 	let config = context.get_state().config.clone();
+
 	let validated = service::get_domain_validation_status(
 		context.get_database_connection(),
 		&deployment_id,
-		config,
+		&config,
 	)
 	.await?;
 

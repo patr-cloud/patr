@@ -67,7 +67,7 @@ pub struct Settings {
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
 	pub digital_ocean_api_key: String,
-	pub ip_address: String,
+	pub ssh: SshSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -175,4 +175,13 @@ impl Display for RunningEnvironment {
 			}
 		)
 	}
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SshSettings {
+	pub host: String,
+	pub port: u16,
+	pub username: String,
+	pub key_file: String,
 }

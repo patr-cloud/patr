@@ -20,7 +20,6 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::{
-		CNameRecord,
 		CloudPlatform,
 		DeploymentMachineType,
 		DeploymentStatus,
@@ -110,48 +109,44 @@ pub(super) async fn deploy_container(
 	deploy_application(&deployment_id, &deployment_id_string, &client).await?;
 	log::trace!("App deployed");
 
+	// wait for the app to be completed to be deployed
 	log::trace!("default url is {}", default_url);
 	log::trace!("checking deployment status");
 	wait_for_deployment(&deployment_id_string, &client).await?;
+
+	// update DNS
 	log::trace!("updating DNS");
 	super::add_cname_record(&deployment_id_string, &default_url, &config, true)
 		.await?;
 	log::trace!("DNS Updated");
-	let domain_name = format!("{}.patr.cloud", deployment_id_string);
-	log::trace!("adding reverse proxy");
-	service::update_nginx_with_domain(
-		&domain_name,
-		&default_url,
-		&config.ip_address,
-	)
-	.await?;
-	service::create_ssl_certificate(&domain_name, &config.ip_address).await?;
-	service::update_nginx_with_ssl(
-		&domain_name,
-		&default_url,
-		&config.ip_address,
-	)
-	.await?;
-	let custom_domain = db::get_deployment_by_id(
-		service::get_app().database.acquire().await?.deref_mut(),
-		&deployment_id,
-	)
-	.await?
-	.map(|deployment| deployment.domain_name)
-	.flatten();
 
-	if let Some(domain) = custom_domain {
+	log::trace!("adding reverse proxy");
+	if let Some(domain) = deployment.domain_name {
 		log::trace!(
 			"custom domain present, updating patr service with custom domain"
 		);
-		service::update_nginx_with_domain(
+		super::update_nginx_config_for_domain_http_only(
 			&domain,
 			&default_url,
-			&config.ip_address,
+			&config,
 		)
 		.await?;
-		log::trace!("container service updated with custom domain");
-	};
+	}
+
+	let domain_name = format!("{}.patr.cloud", deployment_id_string);
+	super::update_nginx_config_for_domain_http_only(
+		&domain_name,
+		&default_url,
+		&config,
+	)
+	.await?;
+	super::create_https_certificates_for_domain(&domain_name, &config).await?;
+	super::update_nginx_config_for_domain_https(
+		&domain_name,
+		&default_url,
+		&config,
+	)
+	.await?;
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -341,24 +336,28 @@ pub(super) async fn delete_database(
 	Ok(())
 }
 
-pub(super) async fn get_dns_records_for_deployments(
-	deployment_id: &[u8],
+pub(super) async fn get_app_default_url(
+	deployment_id: &str,
 	region: &str,
-	domain_name: &str,
-) -> Result<Vec<CNameRecord>, Error> {
-	log::trace!("getting deployment url from lightsail");
-	let deployment_url =
-		get_app_default_url(&hex::encode(deployment_id), region)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+) -> Result<Option<String>, Error> {
+	let client = get_lightsail_client(region);
+	let default_url = client
+		.get_container_services()
+		.service_name(deployment_id)
+		.send()
+		.await
+		.ok()
+		.map(|services| {
+			services
+				.container_services
+				.map(|services| services.into_iter().next())
+				.flatten()
+		})
+		.flatten()
+		.map(|service| service.url)
+		.flatten();
 
-	let cname_records = vec![CNameRecord {
-		cname: domain_name.to_string(),
-		value: deployment_url,
-	}];
-
-	Ok(cname_records)
+	Ok(default_url)
 }
 
 async fn update_database_cluster_credentials(
@@ -490,22 +489,6 @@ async fn create_container_service(
 		}
 	};
 
-	let custom_certificate = client
-		.get_certificates()
-		.certificate_name(format!("{}-custom-certificate", deployment_id))
-		.send()
-		.await?
-		.certificates
-		.map(|services| services.into_iter().next())
-		.flatten();
-	if custom_certificate.is_some() {
-		client
-			.delete_certificate()
-			.certificate_name(format!("{}-custom-certificate", deployment_id))
-			.send()
-			.await?;
-	}
-
 	loop {
 		let container_state = client
 			.get_container_services()
@@ -543,30 +526,6 @@ async fn create_container_service(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 	Ok(default_url.replace("https://", "").replace("/", ""))
-}
-
-pub(super) async fn get_app_default_url(
-	deployment_id: &str,
-	region: &str,
-) -> Result<Option<String>, Error> {
-	let client = get_lightsail_client(region);
-	let default_url = client
-		.get_container_services()
-		.service_name(deployment_id)
-		.send()
-		.await
-		.ok()
-		.map(|services| {
-			services
-				.container_services
-				.map(|services| services.into_iter().next())
-				.flatten()
-		})
-		.flatten()
-		.map(|service| service.url)
-		.flatten();
-
-	Ok(default_url)
 }
 
 async fn deploy_application(

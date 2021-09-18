@@ -1,7 +1,7 @@
 mod aws;
 mod digitalocean;
 
-use std::{io::ErrorKind, ops::DerefMut};
+use std::ops::DerefMut;
 
 use cloudflare::{
 	endpoints::{
@@ -25,7 +25,7 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use futures::StreamExt;
-use openssh::{KnownHosts, Session};
+use openssh::{KnownHosts, Session, SessionBuilder};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
@@ -312,6 +312,48 @@ pub async fn stop_deployment(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
+
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	let default_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
+	session
+		.command("certbot")
+		.arg("delete")
+		.arg("--cert-name")
+		.arg(&default_domain)
+		.spawn()?
+		.wait()
+		.await?;
+	session
+		.command("rm")
+		.arg(format!("/etc/nginx/sites-enabled/{}", default_domain))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(custom_domain) = deployment.domain_name {
+		session
+			.command("certbot")
+			.arg("delete")
+			.arg("--cert-name")
+			.arg(&custom_domain)
+			.spawn()?
+			.wait()
+			.await?;
+		session
+			.command("rm")
+			.arg(format!("/etc/nginx/sites-enabled/{}", custom_domain))
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
 	db::update_deployment_status(
 		connection,
 		deployment_id,
@@ -532,6 +574,282 @@ pub async fn set_environment_variables_for_deployment(
 		.await?;
 	}
 
+	Ok(())
+}
+
+pub async fn get_dns_records_for_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Vec<CNameRecord>, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	Ok(vec![CNameRecord {
+		cname: domain_name,
+		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+	}])
+}
+
+pub async fn get_domain_validation_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<bool, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	let (provider, region) = deployment
+		.region
+		.split_once('-')
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let default_url = match provider.parse() {
+		Ok(CloudPlatform::Aws) => {
+			aws::get_app_default_url(&hex::encode(deployment_id), region)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
+		Ok(CloudPlatform::DigitalOcean) => {
+			let client = Client::new();
+			digitalocean::get_app_default_url(deployment_id, &config, &client)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
+		_ => {
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
+		}
+	};
+
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	let (filename, file_content) =
+		create_random_content_for_verification(&session).await?;
+
+	let https_text = reqwest::get(format!(
+		"https://{}/.well-known/patr-verification/{}",
+		domain_name, filename
+	))
+	.await
+	.ok();
+	if let Some(response) = https_text {
+		let content = response.text().await.ok();
+
+		if let Some(text) = content {
+			return Ok(text == file_content);
+		}
+	} else {
+		return Ok(false);
+	}
+
+	let text = reqwest::get(format!(
+		"http://{}/.well-known/patr-verification/{}",
+		domain_name, filename
+	))
+	.await?
+	.text()
+	.await?;
+	if text == file_content {
+		create_https_certificates_for_domain(&domain_name, &config).await?;
+		update_nginx_config_for_domain_https(
+			&domain_name,
+			&default_url,
+			&config,
+		)
+		.await?;
+		return Ok(true);
+	}
+
+	session
+		.command("rm")
+		.arg(format!("/var/www/patr-verification/{}", filename))
+		.spawn()?
+		.wait()
+		.await?;
+
+	session.close().await?;
+
+	Ok(false)
+}
+
+async fn update_nginx_config_for_domain_http_only(
+	domain: &str,
+	default_ingress: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	let mut sftp = session.sftp();
+
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	location / {{
+		proxy_pass https://{default_ingress};
+	}}
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+				domain = domain,
+				default_ingress = default_ingress,
+			)
+			.as_bytes(),
+		)
+		.await?;
+	session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+
+	drop(sftp);
+	drop(writer);
+	session.close().await?;
+	Ok(())
+}
+
+async fn create_https_certificates_for_domain(
+	domain: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	let certificate_result = session
+		.command("certbot")
+		.arg("certonly")
+		.arg("--agree-tos")
+		.arg("-m")
+		.arg("postmaster@vicara.co")
+		.arg("--no-eff-email")
+		.arg("-d")
+		.arg(&domain)
+		.arg("--webroot")
+		.arg("-w")
+		.arg("/var/www/letsencrypt")
+		.spawn()?
+		.wait()
+		.await?;
+	if !certificate_result.success() {
+		return Err(Error::empty());
+	}
+	session.close().await?;
+	Ok(())
+}
+
+async fn update_nginx_config_for_domain_https(
+	domain: &str,
+	default_ingress: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	let mut sftp = session.sftp();
+
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	return 301 https://{domain}/$request_uri;
+}}
+
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+	
+	location / {{
+		proxy_pass https://{default_ingress};
+	}}
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+				domain = domain,
+				default_ingress = default_ingress,
+			)
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+
+	drop(sftp);
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	session.close().await?;
 	Ok(())
 }
 
@@ -768,316 +1086,29 @@ async fn update_managed_database_credentials_for_database(
 
 	Ok(())
 }
-pub async fn get_dns_records_for_deployments(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<Vec<CNameRecord>, Error> {
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (provider, region) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let domain_name = deployment
-		.domain_name
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
-			let app_id = deployment
-				.digitalocean_app_id
-				.status(404)
-				.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-			log::trace!("getting domain for digitalocean deployment");
-			let cname_records = digitalocean::get_dns_records_for_deployments(
-				&domain_name,
-				&app_id,
-			)
-			.await?;
-
-			Ok(cname_records)
-		}
-		Ok(CloudPlatform::Aws) => {
-			log::trace!("getting domain for aws deployment");
-			let cname_records = aws::get_dns_records_for_deployments(
-				deployment_id,
-				region,
-				&domain_name,
-			)
-			.await?;
-
-			Ok(cname_records)
-		}
-		_ => Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())),
-	}
-}
-
-pub async fn get_domain_validation_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	config: Settings,
-) -> Result<bool, Error> {
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let domain_name = deployment
-		.domain_name
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	let (provider, region) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let default_url = match provider.parse() {
-		Ok(CloudPlatform::Aws) => {
-			aws::get_app_default_url(&hex::encode(deployment_id), region)
-				.await?
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
-		}
-		Ok(CloudPlatform::DigitalOcean) => {
-			let client = Client::new();
-			digitalocean::get_app_default_url(deployment_id, &config, &client)
-				.await?
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-	};
-
-	let check_file =
-		create_check_file_if_not_exists(&config.ip_address).await?;
-
-	let text = reqwest::get(format!(
-		"http://{}/.well-known/patr-verification/{}.txt",
-		domain_name, check_file
-	))
-	.await?
-	.text()
-	.await?;
-	if text == check_file {
-		create_ssl_certificate(&domain_name, &config.ip_address).await?;
-		update_nginx_with_ssl(&domain_name, &default_url, &config.ip_address)
-			.await?;
-		return Ok(true);
-	}
-	Ok(false)
-}
-
-pub async fn update_nginx_with_domain(
-	domain: &str,
-	default_ingress: &str,
-	ip_address: &str,
-) -> Result<(), Error> {
-	let session =
-		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
-			.await?;
-	let mut sftp = session.sftp();
-
-	let result = sftp
-		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
-		.await;
-	if let Err(openssh::Error::Remote(error)) = result {
-		if error.kind() == ErrorKind::NotFound {
-			// File doesn't exist
-			// Generate certs
-			let mut writer = sftp
-				.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
-				.await?;
-			writer
-				.write_all(
-					format!(
-						r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-	location / {{
-        proxy_pass {default_ingress}; 
-    }}
-	include snippets/letsencrypt.conf;
-}}
-"#,
-						domain = domain,
-						default_ingress = default_ingress,
-					)
-					.as_bytes(),
-				)
-				.await?;
-			let reload_result = session
-				.command("nginx")
-				.arg("-s")
-				.arg("reload")
-				.spawn()?
-				.wait()
-				.await?;
-			if !reload_result.success() {
-				return Err(Error::empty());
-			}
-		}
-		return Err(error.into());
-	}
-	drop(sftp);
-	Ok(())
-}
-
-pub async fn create_ssl_certificate(
-	domain: &str,
-	ip_address: &str,
-) -> Result<(), Error> {
-	let session =
-		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
-			.await?;
-	let certificate_result = session
-		.command("certbot")
-		.arg("certonly")
-		.arg("--agree-tos")
-		.arg("-m")
-		.arg("postmaster@vicara.co")
-		.arg("--no-eff-email")
-		.arg("-d")
-		.arg(&domain)
-		.arg("--webroot")
-		.arg("-w")
-		.arg("/var/www/letsencrypt")
-		.spawn()?
-		.wait()
-		.await?;
-	if !certificate_result.success() {
-		return Err(Error::empty());
-	}
-	session.close().await?;
-	Ok(())
-}
-
-pub async fn update_nginx_with_ssl(
-	domain: &str,
-	default_ingress: &str,
-	ip_address: &str,
-) -> Result<(), Error> {
-	let session =
-		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
-			.await?;
-	let mut sftp = session.sftp();
-	let result = sftp
-		.read_from(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
-		.await;
-	if let Err(openssh::Error::Remote(error)) = result {
-		if error.kind() == ErrorKind::NotFound && domain.contains(".patr.cloud")
-		{
-			update_nginx_with_domain(domain, default_ingress, ip_address)
-				.await?;
-		}
-		return Err(error.into());
-	}
-	// Certs exist. Continue
-	let mut writer = sftp
-		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
-		.await?;
-	writer
-		.write_all(
-			format!(
-				r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-	return 301 https://{domain}$request_uri$is_args$args;
-}}
-server {{
-	listen 443 ssl http2;
-	listen [::]:443 ssl http2;
-	server_name {domain};
-	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-	location / {{
-		proxy_pass {default_ingress};
-	}}
-	include snippets/letsencrypt.conf;
-}}
-"#,
-				domain = domain,
-				default_ingress = default_ingress,
-			)
-			.as_bytes(),
-		)
-		.await?;
-	writer.close().await?;
-	drop(sftp);
-	let reload_result = session
-		.command("nginx")
-		.arg("-s")
-		.arg("reload")
-		.spawn()?
-		.wait()
-		.await?;
-	if !reload_result.success() {
-		return Err(Error::empty());
-	}
-	Ok(())
-}
-
-async fn create_check_file_if_not_exists(
-	ip_address: &str,
-) -> Result<String, Error> {
-	let letter: char = thread_rng().gen_range(b'a'..=b'z') as char;
+async fn create_random_content_for_verification(
+	session: &Session,
+) -> Result<(String, String), Error> {
 	let filename = thread_rng()
 		.sample_iter(&Alphanumeric)
 		.take(10)
 		.map(char::from)
 		.collect::<String>();
-	let filename = format!("{}{}", letter, filename);
-
-	let session =
-		Session::connect(format!("ssh://root@{}", ip_address), KnownHosts::Add)
-			.await?;
+	let file_content = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(32)
+		.map(char::from)
+		.collect::<String>();
 	let mut sftp = session.sftp();
 
 	let mut writer = sftp
-		.write_to(format!("/var/www/patr/{}.txt", filename))
+		.write_to(format!("/var/www/patr-verification/{}", filename))
 		.await?;
-	writer
-		.write_all(
-			format!(
-				r#"
-				{}
-				"#,
-				filename
-			)
-			.as_bytes(),
-		)
-		.await?;
+	writer.write_all(file_content.as_bytes()).await?;
 	writer.close().await?;
+
 	drop(sftp);
 
-	let reload_result = session
-		.command("nginx")
-		.arg("-s")
-		.arg("reload")
-		.spawn()?
-		.wait()
-		.await?;
-	if !reload_result.success() {
-		return Err(Error::empty());
-	}
-
-	session.close().await?;
-	Ok(filename)
+	Ok((filename, file_content))
 }
