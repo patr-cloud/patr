@@ -120,34 +120,15 @@ pub(super) async fn deploy_container(
 		&deployment_id_string,
 		"nginx.patr.cloud",
 		&config,
-		true,
+		false,
 	)
 	.await?;
 	log::trace!("DNS Updated");
 
 	log::trace!("adding reverse proxy");
-	if let Some(domain) = deployment.domain_name {
-		log::trace!(
-			"custom domain present, updating patr service with custom domain"
-		);
-		super::update_nginx_config_for_domain_http_only(
-			&domain,
-			&default_url,
-			&config,
-		)
-		.await?;
-	}
-
-	let domain_name = format!("{}.patr.cloud", deployment_id_string);
-	super::update_nginx_config_for_domain_http_only(
-		&domain_name,
-		&default_url,
-		&config,
-	)
-	.await?;
-	super::create_https_certificates_for_domain(&domain_name, &config).await?;
-	super::update_nginx_config_for_domain_https(
-		&domain_name,
+	super::update_nginx(
+		deployment.domain_name,
+		&deployment_id,
 		&default_url,
 		&config,
 	)
