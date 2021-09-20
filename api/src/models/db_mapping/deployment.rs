@@ -309,3 +309,12 @@ impl FromStr for Method {
 		}
 	}
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct IpResponse {
+	pub status: String,
+	#[serde(default)]
+	pub message: String,
+	pub lat: f64,
+	pub lon: f64,
+}

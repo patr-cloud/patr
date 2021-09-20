@@ -1635,6 +1635,16 @@
       ]
     }
   },
+  "452ff1a8c5b015cd31bad77094362da82c11f8de23cae4177d813220f5359aa5": {
+    "query": "CREATE TABLE deployment_request_logs( id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY, deployment_id BYTEA NOT NULL CONSTRAINT deploymment_environment_variable_fk_deployment_id REFERENCES deployment(id), ip_address VARCHAR(255) NOT NULL, ip_address_location POINT NOT NULL, method METHOD NOT NULL, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), protocol PROTOCOL NOT NULL, path TEXT NOT NULL, response_time REAL NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -3255,16 +3265,6 @@
   },
   "81176c7e3e4b2d05c35514e25f56b3f3a94ebc3c737323d2359e22d82c0f8fe8": {
     "query": "CREATE TABLE file ( id BYTEA CONSTRAINT file_pk PRIMARY KEY, name VARCHAR(250) NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "83996a7a9128549bc0330c63139261742bc363747e4e3ba382cf0664520a0f75": {
-    "query": "CREATE TABLE deployment_request_logs( id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY, deployment_id BYTEA NOT NULL CONSTRAINT deploymment_environment_variable_fk_deployment_id REFERENCES deployment(id), ip_address VARCHAR(255) NOT NULL, ip_address_location POINT NOT NULL, method METHOD NOT NULL, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployment_request_logs_uq_domain_name UNIQUE CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), protocol PROTOCOL NOT NULL, path TEXT NOT NULL, response_time REAL NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {

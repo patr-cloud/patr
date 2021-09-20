@@ -25,6 +25,7 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use futures::StreamExt;
+use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::task;
 use uuid::Uuid;
@@ -38,6 +39,7 @@ use crate::{
 			CloudPlatform,
 			DeploymentMachineType,
 			DeploymentStatus,
+			IpResponse,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
@@ -863,8 +865,6 @@ pub async fn create_log_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	ip_address: &str,
-	ip_address_latitude: f64,
-	ip_address_longitude: f64,
 	method: Method,
 	domain: &str,
 	protocol: Protocol,
@@ -889,6 +889,9 @@ pub async fn create_log_for_deployment(
 	)
 	.await?;
 
+	let (ip_address_latitude, ip_address_longitude) =
+		get_location_from_ip_address(ip_address).await?;
+
 	db::create_log_for_deployment(
 		connection,
 		request_id,
@@ -904,4 +907,27 @@ pub async fn create_log_for_deployment(
 	)
 	.await?;
 	Ok(())
+}
+
+async fn get_location_from_ip_address(
+	ip_address: &str,
+) -> Result<(f64, f64), Error> {
+	// TODO: change to https when in production
+	let response = Client::new()
+		.get(format!(
+			"http://ip-api.com/json/{}?fields=status,message,lat,lon",
+			ip_address
+		))
+		.send()
+		.await?
+		.json::<IpResponse>()
+		.await?;
+
+	if response.status != "success" {
+		log::error!("{}", response.message);
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+	Ok((response.lat, response.lon))
 }

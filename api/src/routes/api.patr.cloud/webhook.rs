@@ -4,10 +4,16 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::EventData,
+	models::{db_mapping::EventData, rbac::permissions},
 	pin_fn,
 	service,
-	utils::{Error, ErrorData, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
+	},
 };
 
 /// # Description
@@ -24,6 +30,7 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
+// TODO: add custom header for this endpoint
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -33,6 +40,40 @@ pub fn create_sub_app(
 		"/docker-registry/notification",
 		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
 	);
+
+	// add logs for requests made to deployment
+	sub_app.post(
+		"organisation/:organisationId/:deploymentId/deployment-request-log",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::CREATE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_deployment_request_log)),
+		],
+	);
+
 	sub_app
 }
 
@@ -140,6 +181,100 @@ pub async fn notification_handler(
 			.await?;
 		}
 	}
+
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to log the requests made for the deployment
+/// If a user makes a request to a deployment this function will log it and
+/// store it in the database
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+/// [`Deployment`]: Deployment
+async fn add_deployment_request_log(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	let ip_address = body
+		.get(request_keys::IP_ADDRESS)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let method = body
+		.get(request_keys::METHOD)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|method| method.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let domain = body
+		.get(request_keys::DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let protocol = body
+		.get(request_keys::PROTOCOL)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|protocol| protocol.parse().ok())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let path = body
+		.get(request_keys::PATH)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let response_time = body
+		.get(request_keys::RESPONSE_TIME)
+		.map(|value| value.as_f64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	service::create_log_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		ip_address,
+		method,
+		domain,
+		protocol,
+		path,
+		response_time,
+		&organisation_id,
+	)
+	.await?;
 
 	Ok(context)
 }

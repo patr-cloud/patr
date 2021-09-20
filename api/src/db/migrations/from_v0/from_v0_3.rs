@@ -371,7 +371,6 @@ async fn migrate_from_v0_3_0(
 			ip_address_location POINT NOT NULL,
 			method METHOD NOT NULL,
 			domain_name VARCHAR(255) NOT NULL
-				CONSTRAINT deployment_request_logs_uq_domain_name UNIQUE
 				CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK(
 					domain_name = LOWER(domain_name)
 				),

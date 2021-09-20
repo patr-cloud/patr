@@ -45,6 +45,7 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let image_id = image_id.replace("registry.patr.cloud", "localhost:5000");
 	let deployment = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&deployment_id,
@@ -69,7 +70,7 @@ pub(super) async fn deploy_container(
 
 	// new name for the docker image
 	let new_repo_name = format!(
-		"registry.digitalocean.com/patr-cloud/{}",
+		"registry.digitalocean.com/aracivtest/{}",
 		deployment_id_string
 	);
 	log::trace!("Pushing to {}", new_repo_name);
@@ -117,7 +118,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Login was success");
 
 	let do_image_name = format!(
-		"registry.digitalocean.com/patr-cloud/{}",
+		"registry.digitalocean.com/aracivtest/{}",
 		deployment_id_string
 	);
 	// if the loggin in is successful the push the docker image to registry
@@ -731,7 +732,7 @@ async fn delete_image_from_digitalocean_registry(
 
 	let container_status = client
 		.delete(format!(
-			"https://api.digitalocean.com/v2/registry/patr-cloud/repositories/{}/tags/latest",
+			"https://api.digitalocean.com/v2/registry/aracivtest/repositories/{}/tags/latest",
 			hex::encode(deployment_id)
 		))
 		.bearer_auth(&config.digital_ocean_api_key)
