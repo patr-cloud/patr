@@ -1,4 +1,5 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -275,6 +276,11 @@ async fn add_deployment_request_log(
 		&organisation_id,
 	)
 	.await?;
+
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 
 	Ok(context)
 }
