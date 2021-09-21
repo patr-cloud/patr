@@ -167,8 +167,8 @@ pub(super) async fn deploy_container(
 	};
 
 	// wait for the app to be completed to be deployed
-	let default_ingress = wait_for_app_deploy(&app_id, &config, &client).await;
-	log::trace!("App ingress is at {}", default_ingress);
+	let default_url = wait_for_app_deploy(&app_id, &config, &client).await;
+	log::trace!("App ingress is at {}", default_url);
 
 	// update DNS
 	log::trace!("updating DNS");
@@ -182,10 +182,10 @@ pub(super) async fn deploy_container(
 	log::trace!("DNS Updated");
 
 	log::trace!("adding reverse proxy");
-	super::update_nginx(
-		deployment.domain_name,
-		&deployment.id,
-		&default_ingress,
+	super::update_nginx_with_all_domains_for_deployment(
+		&deployment_id_string,
+		&default_url,
+		deployment.domain_name.as_deref(),
 		&config,
 	)
 	.await?;

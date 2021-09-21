@@ -126,10 +126,10 @@ pub(super) async fn deploy_container(
 	log::trace!("DNS Updated");
 
 	log::trace!("adding reverse proxy");
-	super::update_nginx(
-		deployment.domain_name,
-		&deployment_id,
+	super::update_nginx_with_all_domains_for_deployment(
+		&deployment_id_string,
 		&default_url,
+		deployment.domain_name.as_deref(),
 		&config,
 	)
 	.await?;
