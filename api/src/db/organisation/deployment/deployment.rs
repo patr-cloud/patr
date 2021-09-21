@@ -57,7 +57,7 @@ pub async fn initialize_deployment_pre(
 			domain_name VARCHAR(255)
 				CONSTRAINT deployment_uq_domain_name UNIQUE
 				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					name = LOWER(name)
+					domain_name = LOWER(domain_name)
 				),
 			horizontal_scale SMALLINT NOT NULL
 				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
