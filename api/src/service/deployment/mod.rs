@@ -794,7 +794,6 @@ pub async fn get_domain_validation_status(
 	.await?
 	.text()
 	.await?;
-	println!("test file:{}, domain:{}", filename, domain_name);
 
 	if text == file_content {
 		log::trace!("http exists creating certificate for the custom domain");
