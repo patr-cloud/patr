@@ -955,8 +955,8 @@ pub async fn set_domain_for_deployment(
 				.wait()
 				.await?;
 		}
-		(Some(old_domain), Some(new_domain)) => {
-			if old_domain != new_domain {
+		(Some(new_domain), Some(old_domain)) => {
+			if new_domain != old_domain {
 				session
 					.command("certbot")
 					.arg("delete")
