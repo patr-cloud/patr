@@ -868,7 +868,9 @@ pub async fn get_recommended_data_center(
 		WHERE
 			deployment_id = $1
 		GROUP BY
-			data_center_locations.region;
+			data_center_locations.region
+		ORDER BY
+			"avg_distance!: f64";
 		"#,
 		deployment_id
 	)
