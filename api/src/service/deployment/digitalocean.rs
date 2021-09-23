@@ -9,7 +9,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
-			CNameRecord,
 			DeploymentMachineType,
 			DeploymentStatus,
 			ManagedDatabaseEngine,
@@ -27,7 +26,6 @@ use crate::{
 			DatabaseConfig,
 			DatabaseResponse,
 			Db,
-			Domains,
 			Image,
 			RedeployAppRequest,
 			Routes,
@@ -159,7 +157,6 @@ pub(super) async fn deploy_container(
 		let app_id = create_app(
 			&deployment_id,
 			region,
-			&deployment.domain_name,
 			deployment.horizontal_scale,
 			&deployment.machine_type,
 			&config,
@@ -171,19 +168,28 @@ pub(super) async fn deploy_container(
 	};
 
 	// wait for the app to be completed to be deployed
-	let default_ingress = wait_for_app_deploy(&app_id, &config, &client).await;
-	log::trace!("App ingress is at {}", default_ingress);
+	let default_url = wait_for_app_deploy(&app_id, &config, &client).await;
+	log::trace!("App ingress is at {}", default_url);
 
 	// update DNS
 	log::trace!("updating DNS");
 	super::add_cname_record(
 		&deployment_id_string,
-		&default_ingress,
+		"nginx.patr.cloud",
 		&config,
-		true,
+		false,
 	)
 	.await?;
 	log::trace!("DNS Updated");
+
+	log::trace!("adding reverse proxy");
+	super::update_nginx_with_all_domains_for_deployment(
+		&deployment_id_string,
+		&default_url,
+		deployment.domain_name.as_deref(),
+		&config,
+	)
+	.await?;
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -398,24 +404,57 @@ pub(super) async fn delete_database(
 	Ok(())
 }
 
-pub(super) async fn get_dns_records_for_deployments(
-	domain: &str,
-	app_id: &str,
-) -> Result<Vec<CNameRecord>, Error> {
-	let client = Client::new();
+pub(super) async fn get_app_default_url(
+	deployment_id: &[u8],
+	config: &Settings,
+	client: &Client,
+) -> Result<Option<String>, Error> {
+	let app_id = if let Some(app_id) =
+		app_exists(deployment_id, config, client).await?
+	{
+		app_id
+	} else {
+		return Ok(None);
+	};
+	Ok(get_app_default_ingress(&app_id, config, client)
+		.await
+		.map(|ingress| ingress.replace("https://", "").replace("/", "")))
+}
 
-	let default_ingress =
-		get_app_default_ingress(app_id, service::get_settings(), &client)
-			.await
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+async fn app_exists(
+	deployment_id: &[u8],
+	config: &Settings,
+	client: &Client,
+) -> Result<Option<String>, Error> {
+	let app = service::get_app().clone();
+	let deployment = db::get_deployment_by_id(
+		app.database.acquire().await?.deref_mut(),
+		deployment_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
-	let cname_record = vec![CNameRecord {
-		cname: domain.to_string(),
-		value: default_ingress,
-	}];
+	let app_id = if let Some(app_id) = deployment.digitalocean_app_id {
+		app_id
+	} else {
+		return Ok(None);
+	};
 
-	Ok(cname_record)
+	let deployment_status = client
+		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
+		.bearer_auth(&config.digital_ocean_api_key)
+		.send()
+		.await?
+		.status();
+
+	if deployment_status.as_u16() == 404 {
+		Ok(None)
+	} else if deployment_status.is_success() {
+		Ok(Some(app_id))
+	} else {
+		Err(Error::empty())
+	}
 }
 
 async fn update_database_cluster_credentials(
@@ -491,42 +530,6 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-async fn app_exists(
-	deployment_id: &[u8],
-	config: &Settings,
-	client: &Client,
-) -> Result<Option<String>, Error> {
-	let app = service::get_app().clone();
-	let deployment = db::get_deployment_by_id(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	let app_id = if let Some(app_id) = deployment.digitalocean_app_id {
-		app_id
-	} else {
-		return Ok(None);
-	};
-
-	let deployment_status = client
-		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digital_ocean_api_key)
-		.send()
-		.await?
-		.status();
-
-	if deployment_status.as_u16() == 404 {
-		Ok(None)
-	} else if deployment_status.is_success() {
-		Ok(Some(app_id))
-	} else {
-		Err(Error::empty())
-	}
-}
-
 async fn get_registry_auth_token(
 	config: &Settings,
 	client: &Client,
@@ -546,7 +549,6 @@ async fn get_registry_auth_token(
 async fn create_app(
 	deployment_id: &[u8],
 	region: String,
-	domain_name: &Option<String>,
 	horizontal_scale: i16,
 	machine_type: &DeploymentMachineType,
 	settings: &Settings,
@@ -573,37 +575,7 @@ async fn create_app(
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
 				region,
-				domains: if let Some(domain) = domain_name {
-					vec![
-						Domains {
-							// [ 4 .. 253 ] characters
-							// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.
-							// )+[a-zA-Z]{2, }\.?$ The hostname for the domain
-							domain: format!(
-								"{}.patr.cloud",
-								hex::encode(deployment_id)
-							),
-							// for now this has been set to ALIAS
-							r#type: "ALIAS".to_string(),
-						},
-						Domains {
-							domain: domain.to_string(),
-							r#type: "PRIMARY".to_string(),
-						},
-					]
-				} else {
-					vec![Domains {
-						// [ 4 .. 253 ] characters
-						// ^((xn--)?[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,
-						// }\.?$ The hostname for the domain
-						domain: format!(
-							"{}.patr.cloud",
-							hex::encode(deployment_id)
-						),
-						// for now this has been set to PRIMARY
-						r#type: "PRIMARY".to_string(),
-					}]
-				},
+				domains: vec![],
 				services: vec![Services {
 					name: "default-service".to_string(),
 					image: Image {

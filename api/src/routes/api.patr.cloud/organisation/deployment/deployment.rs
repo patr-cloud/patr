@@ -563,31 +563,59 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
+		let mut map = Map::new();
+
+		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
 		if deployment.registry == "registry.patr.cloud" {
-			Some(json!({
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			}))
+			map.insert(
+				request_keys::REPOSITORY_ID.to_string(),
+				Value::String(hex::encode(deployment.repository_id?)),
+			);
 		} else {
-			Some(json!({
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::IMAGE_NAME: deployment.image_name?,
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			}))
+			map.insert(
+				request_keys::IMAGE_NAME.to_string(),
+				Value::String(deployment.image_name?),
+			);
 		}
+		if let Some(domain_name) = deployment.domain_name {
+			map.insert(
+				request_keys::DOMAIN_NAME.to_string(),
+				Value::String(domain_name),
+			);
+		}
+		map.insert(
+			request_keys::DEPLOYMENT_ID.to_string(),
+			Value::String(hex::encode(deployment.id)),
+		);
+		map.insert(
+			request_keys::NAME.to_string(),
+			Value::String(deployment.name),
+		);
+		map.insert(
+			request_keys::REGISTRY.to_string(),
+			Value::String(deployment.registry),
+		);
+		map.insert(
+			request_keys::IMAGE_TAG.to_string(),
+			Value::String(deployment.image_tag),
+		);
+		map.insert(
+			request_keys::STATUS.to_string(),
+			Value::String(deployment.status.to_string()),
+		);
+		map.insert(
+			request_keys::REGION.to_string(),
+			Value::String(deployment.region),
+		);
+		map.insert(
+			request_keys::HORIZONTAL_SCALE.to_string(),
+			Value::Number(deployment.horizontal_scale.into()),
+		);
+		map.insert(
+			request_keys::MACHINE_TYPE.to_string(),
+			Value::String(deployment.machine_type.to_string()),
+		);
+		Some(Value::Object(map))
 	})
 	.collect::<Vec<_>>();
 
@@ -814,35 +842,60 @@ async fn get_deployment_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	context.json(
-		if deployment.registry == "registry.patr.cloud" {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id.status(500)?),
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			})
-		} else {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::IMAGE_NAME: deployment.image_name.status(500)?,
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			})
-		},
+	let mut response = Map::new();
+
+	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+	if deployment.registry == "registry.patr.cloud" {
+		response.insert(
+			request_keys::REPOSITORY_ID.to_string(),
+			Value::String(hex::encode(deployment.repository_id.status(500)?)),
+		);
+	} else {
+		response.insert(
+			request_keys::IMAGE_NAME.to_string(),
+			Value::String(deployment.image_name.status(500)?),
+		);
+	}
+	if let Some(domain_name) = deployment.domain_name {
+		response.insert(
+			request_keys::DOMAIN_NAME.to_string(),
+			Value::String(domain_name),
+		);
+	}
+	response.insert(
+		request_keys::DEPLOYMENT_ID.to_string(),
+		Value::String(hex::encode(deployment.id)),
 	);
+	response.insert(
+		request_keys::NAME.to_string(),
+		Value::String(deployment.name),
+	);
+	response.insert(
+		request_keys::REGISTRY.to_string(),
+		Value::String(deployment.registry),
+	);
+	response.insert(
+		request_keys::IMAGE_TAG.to_string(),
+		Value::String(deployment.image_tag),
+	);
+	response.insert(
+		request_keys::STATUS.to_string(),
+		Value::String(deployment.status.to_string()),
+	);
+	response.insert(
+		request_keys::REGION.to_string(),
+		Value::String(deployment.region),
+	);
+	response.insert(
+		request_keys::HORIZONTAL_SCALE.to_string(),
+		Value::Number(deployment.horizontal_scale.into()),
+	);
+	response.insert(
+		request_keys::MACHINE_TYPE.to_string(),
+		Value::String(deployment.machine_type.to_string()),
+	);
+
+	context.json(Value::Object(response));
 	Ok(context)
 }
 
@@ -1409,9 +1462,11 @@ async fn set_domain_name(
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
+	let config = context.get_state().config.clone();
 
-	db::set_domain_name_for_deployment(
+	service::set_domain_for_deployment(
 		context.get_database_connection(),
+		&config,
 		&deployment_id,
 		domain_name,
 	)
@@ -1458,10 +1513,12 @@ async fn is_domain_validated(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
+	let config = context.get_state().config.clone();
 
 	let validated = service::get_domain_validation_status(
 		context.get_database_connection(),
 		&deployment_id,
+		&config,
 	)
 	.await?;
 
