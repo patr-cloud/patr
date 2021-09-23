@@ -318,3 +318,9 @@ pub struct IpResponse {
 	pub lat: f64,
 	pub lon: f64,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AvgDistance {
+	pub region: String,
+	pub avg_distance: f64,
+}

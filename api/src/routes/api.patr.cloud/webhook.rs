@@ -277,7 +277,6 @@ async fn add_deployment_request_log(
 	)
 	.await?;
 
-
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));

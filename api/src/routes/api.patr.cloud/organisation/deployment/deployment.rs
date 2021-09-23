@@ -1507,11 +1507,19 @@ async fn get_recommended_data_center(
 		context.get_database_connection(),
 		&deployment_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|dc| {
+		json!({
+			request_keys::REGION: dc.region,
+			request_keys::DISTANCE: dc.avg_distance,
+		})
+	})
+	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::VALIDATED: data_centers,
+		request_keys::RECOMMENDED_DATA_CENTERS: data_centers,
 	}));
 
 	Ok(context)

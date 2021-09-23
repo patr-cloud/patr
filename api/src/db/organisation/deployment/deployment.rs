@@ -1,5 +1,6 @@
 use crate::{
 	models::db_mapping::{
+		AvgDistance,
 		Deployment,
 		DeploymentMachineType,
 		DeploymentStatus,
@@ -243,36 +244,28 @@ pub async fn initialize_deployment_post(
 		r#"
 		INSERT INTO data_center_locations
 		VALUES
-		('aws-us-east-1', ST_POINT(38.9940541, -77.4524237)::point),
-		('aws-us-east-2', ST_POINT(40.0946354, -82.7541337)::point),
-		('aws-us-west-1', ST_POINT(37.443680, -122.153664)::point),
-		('aws-us-west-2', ST_POINT(45.9174667, -119.2684488)::point),
-		('aws-eu-west-1', ST_POINT(53.4056545, -6.224503)::point),
-		('aws-eu-west-2', ST_POINT(51.5085036, -0.0609266)::point),
-		('aws-eu-west-3', ST_POINT(48.6009709, 2.2976644)::point),
-		('aws-eu-central-1', ST_POINT(50.0992094, 8.6303932)::point),
-		('aws-sa-east-1', ST_POINT(-23.4925798, 46.8105593)::point),
-		('aws-ap-southeast-1', ST_POINT(1.3218269, 103.6930643)::point),
-		('aws-ap-southeast-2', ST_POINT(-33.9117717, 151.1907535)::point),
-		('aws-ap-northeast-1', ST_POINT(35.617436, 139.7459176)::point),
-		('aws-ap-northeast-2', ST_POINT(37.5616592, 126.8736237)::point),
-		('aws-ap-south-1', ST_POINT(19.2425503, 72.9667878)::point),
-		('aws-ca-central-1', ST_POINT(45.5, -73.6)::point),
-		('aws-af-south-1', ST_POINT(-33.914651, 18.3758801)::point),
-		('aws-eu-north-1', ST_POINT(59.326242, 17.8419717)::point),
-		('aws-eu-south-1', ST_POINT(45.4628328, 9.1076927)::point),
-		('aws-me-south-1', ST_POINT(25.941298, 50.3073907)::point),
-		('aws-ap-east-1', ST_POINT(22.2908475, 114.2723379)::point),
-		('aws-cn-north-1', ST_POINT(39.8094478, 116.5783234)::point),
-		('aws-cn-northwest-1', ST_POINT(37.5024418, 105.1627193)::point),
-		('do-tor', ST_POINT(43.6547, -79.3623)::point),
-		('do-sfo', ST_POINT(37.3417, -121.9753)::point),
-		('do-nyc', ST_POINT(40.7597, -73.981)::point),
-		('do-lon', ST_POINT(51.5225, -0.6289)::point),
-		('do-ams', ST_POINT(52.3006, 4.9479)::point),
-		('do-sgp', ST_POINT(1.32123, 103.695)::point),
-		('do-fra', ST_POINT(50.1188, 8.6843)::point),
-		('do-blr', ST_POINT(12.9634, 77.5855)::point);
+		('aws-us-east-1', ST_POINT(-77.4524237, 38.9940541)::point),
+		('aws-us-east-2', ST_POINT(-82.7541337, 40.0946354)::point),
+		('aws-us-west-2', ST_POINT(-119.2684488, 45.9174667)::point),
+		('aws-eu-west-1', ST_POINT(-6.224503, 53.4056545)::point),
+		('aws-eu-west-2', ST_POINT(-0.0609266, 51.5085036)::point),
+		('aws-eu-west-3', ST_POINT(2.2976644, 48.6009709)::point),
+		('aws-eu-central-1', ST_POINT(8.6303932, 50.0992094)::point),
+		('aws-ap-southeast-1', ST_POINT(103.6930643, 1.3218269)::point),
+		('aws-ap-southeast-2', ST_POINT(151.1907535, -33.9117717)::point),
+		('aws-ap-northeast-1', ST_POINT(139.7459176, 35.617436)::point),
+		('aws-ap-northeast-2', ST_POINT(126.8736237, 37.5616592)::point),
+		('aws-ap-south-1', ST_POINT(72.9667878, 19.2425503)::point),
+		('aws-ca-central-1', ST_POINT(-73.6, 45.5)::point),
+		('aws-eu-north-1', ST_POINT(17.8419717, 59.326242)::point),
+		('do-tor', ST_POINT(-79.3623, 43.6547)::point),
+		('do-sfo', ST_POINT(-121.9753, 37.3417)::point),
+		('do-nyc', ST_POINT(-73.981, 40.7597)::point),
+		('do-lon', ST_POINT(-0.6289, 51.5225)::point),
+		('do-ams', ST_POINT(4.9479, 52.3006)::point),
+		('do-sgp', ST_POINT(103.695, 1.32123)::point),
+		('do-fra', ST_POINT(8.6843, 50.1188)::point),
+		('do-blr', ST_POINT(77.5855, 12.9634)::point);
 		"#
 	)
 	.execute(&mut *connection)
@@ -853,8 +846,33 @@ pub async fn create_log_for_deployment(
 
 pub async fn get_recommended_data_center(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8] 
-) -> Result<(), sqlx::Error> {
-	
-	Ok(())
+	deployment_id: &[u8],
+) -> Result<Vec<AvgDistance>, sqlx::Error> {
+	let rows = query_as!(
+		AvgDistance,
+		r#"
+		SELECT
+  			data_center_locations.region,
+			AVG(st_distancespheroid(
+				ST_GeomFromText('POINT(' || deployment_request_logs.ip_address_location[0]::text || ' ' || deployment_request_logs.ip_address_location[1]::text || ')', 4326),
+				ST_GeomFromText('POINT(' || data_center_locations.location[0]::text || ' ' || data_center_locations.location[1] || ')', 4326),
+    		'SPHEROID["WGS84",6378137,298.257223563]'
+			))::NUMERIC(10,2) as "avg_distance!: f64"
+		FROM
+  			data_center_locations,
+  			deployment_request_logs
+		INNER JOIN deployment
+		ON
+			deployment.id = deployment_request_logs.deployment_id
+		WHERE
+			deployment_id = $1
+		GROUP BY
+			data_center_locations.region;
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows)
 }

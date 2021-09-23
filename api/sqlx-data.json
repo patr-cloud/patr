@@ -1305,6 +1305,16 @@
       ]
     }
   },
+  "3580a45f1c7c33f30fbe9289e4e8bcf9b97352d844dc6e2f983fe2a6961e3c48": {
+    "query": "INSERT INTO data_center_locations VALUES ('aws-us-east-1', ST_POINT(-77.4524237, 38.9940541)::point), ('aws-us-east-2', ST_POINT(-82.7541337, 40.0946354)::point), ('aws-us-west-2', ST_POINT(-119.2684488, 45.9174667)::point), ('aws-eu-west-1', ST_POINT(-6.224503, 53.4056545)::point), ('aws-eu-west-2', ST_POINT(-0.0609266, 51.5085036)::point), ('aws-eu-west-3', ST_POINT(2.2976644, 48.6009709)::point), ('aws-eu-central-1', ST_POINT(8.6303932, 50.0992094)::point), ('aws-ap-southeast-1', ST_POINT(103.6930643, 1.3218269)::point), ('aws-ap-southeast-2', ST_POINT(151.1907535, -33.9117717)::point), ('aws-ap-northeast-1', ST_POINT(139.7459176, 35.617436)::point), ('aws-ap-northeast-2', ST_POINT(126.8736237, 37.5616592)::point), ('aws-ap-south-1', ST_POINT(72.9667878, 19.2425503)::point), ('aws-ca-central-1', ST_POINT(-73.6, 45.5)::point), ('aws-eu-north-1', ST_POINT(17.8419717, 59.326242)::point), ('do-tor', ST_POINT(-79.3623, 43.6547)::point), ('do-sfo', ST_POINT(-121.9753, 37.3417)::point), ('do-nyc', ST_POINT(-73.981, 40.7597)::point), ('do-lon', ST_POINT(-0.6289, 51.5225)::point), ('do-ams', ST_POINT(4.9479, 52.3006)::point), ('do-sgp', ST_POINT(103.695, 1.32123)::point), ('do-fra', ST_POINT(8.6843, 50.1188)::point), ('do-blr', ST_POINT(77.5855, 12.9634)::point);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "35b8c34de1dcb2df4b41fa2f5699ad4740e04ee12a82258daf07c8b375ce56ed": {
     "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
     "describe": {
@@ -3151,6 +3161,16 @@
       "nullable": []
     }
   },
+  "7ad0edffc47fb85b788189bc5df8aeee4d220442a0e141a82c05667ec2a467ad": {
+    "query": "CREATE TABLE data_center_locations( region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY, location POINT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "7b8d453d01b73cb8f7ca2909c91528bb28fca9b17cbb5dcf0ec247563df1dcc7": {
     "query": "SELECT * FROM portus_tunnel WHERE id = $1;",
     "describe": {
@@ -3950,6 +3970,32 @@
         false,
         false,
         true
+      ]
+    }
+  },
+  "a555df2dc9d12e998156f362655c630b36e1b906a047d720816c369527f13701": {
+    "query": "SELECT data_center_locations.region, AVG(st_distancespheroid( ST_GeomFromText('POINT(' || deployment_request_logs.ip_address_location[0]::text || ' ' || deployment_request_logs.ip_address_location[1]::text || ')', 4326), ST_GeomFromText('POINT(' || data_center_locations.location[0]::text || ' ' || data_center_locations.location[1] || ')', 4326), 'SPHEROID[\"WGS84\",6378137,298.257223563]' ))::NUMERIC(10,2) as \"avg_distance!: f64\" FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "avg_distance!: f64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        null
       ]
     }
   },
