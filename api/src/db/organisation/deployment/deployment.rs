@@ -2,9 +2,9 @@ use crate::{
 	models::db_mapping::{
 		Deployment,
 		DeploymentMachineType,
-		DeploymentStatus,
 		DeploymentRequestMethod,
 		DeploymentRequestProtocol,
+		DeploymentStatus,
 	},
 	query,
 	query_as,
@@ -763,11 +763,9 @@ pub async fn create_log_for_deployment(
 	path: &str,
 	response_time: f64,
 ) -> Result<(), sqlx::Error> {
-	// let coordinates: geo::Geometry<f64> =
-	// 	geo::Point::new(ip_address_latitude, ip_address_longitude).into();
 	query!(
 		r#"
-		INSERT INTO 
+		INSERT INTO
 			deployment_request_logs
 		VALUES
 			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
@@ -786,4 +784,37 @@ pub async fn create_log_for_deployment(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_deployment_by_domain_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_name: &str,
+) -> Result<Option<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			organisation_id
+		FROM
+			deployment
+		WHERE
+			domain_name = $1;
+		"#,
+		domain_name,
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }

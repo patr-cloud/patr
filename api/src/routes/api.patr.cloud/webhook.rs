@@ -5,7 +5,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::EventData, rbac::permissions},
+	models::db_mapping::EventData,
 	pin_fn,
 	service,
 	utils::{
@@ -235,13 +235,33 @@ async fn add_deployment_request_log(
 
 	let deployment_id = if host.ends_with(".patr.cloud") {
 		let deployment_id_string = host.replace(".patr.cloud", "");
-		if let Some(id) = hex::decode(deployment_id_string).ok() {
+		let deployment_id = if let Ok(id) = hex::decode(deployment_id_string) {
 			id
 		} else {
 			return Ok(context);
+		};
+		if db::get_deployment_by_id(
+			context.get_database_connection(),
+			&deployment_id,
+		)
+		.await?
+		.is_none()
+		{
+			return Ok(context);
 		}
+		deployment_id
 	} else {
-		// TODO get deployment by domain_name
+		// get deployment by domain_name
+		if let Some(deployment) = db::get_deployment_by_domain_name(
+			context.get_database_connection(),
+			host,
+		)
+		.await?
+		{
+			deployment.id
+		} else {
+			return Ok(context);
+		}
 	};
 
 	service::create_request_log_for_deployment(
