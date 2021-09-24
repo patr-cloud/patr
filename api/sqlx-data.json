@@ -2966,6 +2966,32 @@
       ]
     }
   },
+  "6f8287760ccdfea714075403633eb75bc96d496eccfad4addd72659f96501524": {
+    "query": "SELECT data_center_locations.region, AVG(st_distancespheroid( ST_GeomFromText('POINT(' || deployment_request_logs.ip_address_location[0]::text || ' ' || deployment_request_logs.ip_address_location[1]::text || ')', 4326), ST_GeomFromText('POINT(' || data_center_locations.location[0]::text || ' ' || data_center_locations.location[1] || ')', 4326), 'SPHEROID[\"WGS84\",6378137,298.257223563]' ))::NUMERIC(10,2) as \"avg_distance!: f64\" FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY \"avg_distance!: f64\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "avg_distance!: f64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        null
+      ]
+    }
+  },
   "6fd4fa1501e306f9affc53e7cd5ac69dd0030d431edb5148d0ba49524d3e57e4": {
     "query": "INSERT INTO organisation_domain VALUES ($1, 'organisation', FALSE);",
     "describe": {
@@ -3970,32 +3996,6 @@
         false,
         false,
         true
-      ]
-    }
-  },
-  "a555df2dc9d12e998156f362655c630b36e1b906a047d720816c369527f13701": {
-    "query": "SELECT data_center_locations.region, AVG(st_distancespheroid( ST_GeomFromText('POINT(' || deployment_request_logs.ip_address_location[0]::text || ' ' || deployment_request_logs.ip_address_location[1]::text || ')', 4326), ST_GeomFromText('POINT(' || data_center_locations.location[0]::text || ' ' || data_center_locations.location[1] || ')', 4326), 'SPHEROID[\"WGS84\",6378137,298.257223563]' ))::NUMERIC(10,2) as \"avg_distance!: f64\" FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "avg_distance!: f64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        null
       ]
     }
   },
