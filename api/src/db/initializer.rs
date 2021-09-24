@@ -20,7 +20,8 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		WHERE
 			table_catalog = $1 AND
 			table_schema = 'public' AND
-			table_type = 'BASE TABLE';
+			table_type = 'BASE TABLE' AND
+			table_name != 'spatial_ref_sys';
 		"#,
 		app.config.database.database
 	)
