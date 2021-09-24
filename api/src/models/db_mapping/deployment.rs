@@ -110,16 +110,16 @@ impl Deployment {
 	}
 }
 
-// TODO: retireve logs
 #[allow(dead_code)]
 pub struct DeploymentRequestLogs {
-	id: Vec<u8>,
+	id: i64,
 	deplyoment_id: Vec<u8>,
+	timestamp: u64,
 	ip_address: String,
 	ip_address_location: (f64, f64),
-	method: Method,
-	domain_name: String,
-	protocol: Protocol,
+	method: DeploymentRequestMethod,
+	host: String,
+	protocol: DeploymentRequestProtocol,
 	path: String,
 	response_time: f64,
 }
@@ -242,13 +242,13 @@ impl FromStr for DeploymentMachineType {
 }
 
 #[derive(sqlx::Type, Debug)]
-#[sqlx(type_name = "PROTOCOL", rename_all = "lowercase")]
-pub enum Protocol {
+#[sqlx(type_name = "DEPLOYMENT_REQUEST_PROTOCOL", rename_all = "lowercase")]
+pub enum DeploymentRequestProtocol {
 	Http,
 	Https,
 }
 
-impl Display for Protocol {
+impl Display for DeploymentRequestProtocol {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Http => write!(f, "http"),
@@ -257,7 +257,7 @@ impl Display for Protocol {
 	}
 }
 
-impl FromStr for Protocol {
+impl FromStr for DeploymentRequestProtocol {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -272,37 +272,46 @@ impl FromStr for Protocol {
 }
 
 #[derive(sqlx::Type, Debug)]
-#[sqlx(type_name = "METHOD", rename_all = "lowercase")]
-pub enum Method {
-	Post,
+#[sqlx(type_name = "DEPLOYMENT_REQUEST_METHOD", rename_all = "lowercase")]
+pub enum DeploymentRequestMethod {
 	Get,
+	Post,
 	Put,
-	Patch,
 	Delete,
+	Head,
+	Options,
+	Connect,
+	Patch,
 }
 
-impl Display for Method {
+impl Display for DeploymentRequestMethod {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Post => write!(f, "post"),
 			Self::Get => write!(f, "get"),
+			Self::Post => write!(f, "post"),
 			Self::Put => write!(f, "put"),
-			Self::Patch => write!(f, "patch"),
 			Self::Delete => write!(f, "delete"),
+			Self::Head => write!(f, "head"),
+			Self::Options => write!(f, "options"),
+			Self::Connect => write!(f, "connect"),
+			Self::Patch => write!(f, "patch"),
 		}
 	}
 }
 
-impl FromStr for Method {
+impl FromStr for DeploymentRequestMethod {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"post" => Ok(Self::Post),
 			"get" => Ok(Self::Get),
+			"post" => Ok(Self::Post),
 			"put" => Ok(Self::Put),
-			"patch" => Ok(Self::Patch),
 			"delete" => Ok(Self::Delete),
+			"head" => Ok(Self::Head),
+			"options" => Ok(Self::Options),
+			"connect" => Ok(Self::Connect),
+			"patch" => Ok(Self::Patch),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),

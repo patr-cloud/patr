@@ -146,7 +146,7 @@ async fn migrate_from_v0_3_0(
 		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id BYTEA
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
 			value TEXT NOT NULL,

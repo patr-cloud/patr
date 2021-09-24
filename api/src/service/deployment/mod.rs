@@ -38,13 +38,13 @@ use crate::{
 			CNameRecord,
 			CloudPlatform,
 			DeploymentMachineType,
+			DeploymentRequestMethod,
+			DeploymentRequestProtocol,
 			DeploymentStatus,
 			IpResponse,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
-			Method,
-			Protocol,
 		},
 		rbac,
 		RegistryToken,
@@ -861,46 +861,29 @@ pub async fn get_domain_validation_status(
 	}
 }
 
-pub async fn create_log_for_deployment(
+pub async fn create_request_log_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	timestamp: u64,
 	ip_address: &str,
-	method: Method,
-	domain: &str,
-	protocol: Protocol,
+	method: &DeploymentRequestMethod,
+	host: &str,
+	protocol: &DeploymentRequestProtocol,
 	path: &str,
 	response_time: f64,
-	organisation_id: &[u8],
 ) -> Result<(), Error> {
-	let request_uuid = db::generate_new_resource_id(connection).await?;
-	let request_id = request_uuid.as_bytes();
-
-	db::create_resource(
-		connection,
-		request_id,
-		&format!("Request: {}", hex::encode(request_id)),
-		rbac::RESOURCE_TYPES
-			.get()
-			.unwrap()
-			.get(rbac::resource_types::DEPLOYMENT)
-			.unwrap(),
-		organisation_id,
-		get_current_time_millis(),
-	)
-	.await?;
-
-	let (ip_address_latitude, ip_address_longitude) =
+	let (latitude, longitude) =
 		get_location_from_ip_address(ip_address).await?;
 
 	db::create_log_for_deployment(
 		connection,
-		request_id,
 		deployment_id,
+		timestamp,
 		ip_address,
-		ip_address_latitude,
-		ip_address_longitude,
+		latitude,
+		longitude,
 		method,
-		domain,
+		host,
 		protocol,
 		path,
 		response_time,

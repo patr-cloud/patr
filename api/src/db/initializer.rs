@@ -28,6 +28,14 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	.await?;
 	let mut transaction = app.database.begin().await?;
 
+	query!(
+		r#"
+		CREATE EXTENSION IF NOT EXISTS postgis;
+		"#
+	)
+	.execute(&app.database)
+	.await?;
+
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");

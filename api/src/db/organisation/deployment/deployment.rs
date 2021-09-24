@@ -3,8 +3,8 @@ use crate::{
 		Deployment,
 		DeploymentMachineType,
 		DeploymentStatus,
-		Method,
-		Protocol,
+		DeploymentRequestMethod,
+		DeploymentRequestProtocol,
 	},
 	query,
 	query_as,
@@ -15,14 +15,6 @@ pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing deployments tables");
-
-	query!(
-		r#"
-		CREATE EXTENSION IF NOT EXISTS postgis;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	query!(
 		r#"
@@ -55,7 +47,7 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE PROTOCOL AS ENUM(
+		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
 			'http',
 			'https'
 		);
@@ -66,12 +58,15 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE METHOD AS ENUM(
-			'post',
+		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
 			'get',
+			'post',
 			'put',
-			'patch',
-			'delete'
+			'delete',
+			'head',
+			'options',
+			'connect',
+			'patch'
 		);
 		"#
 	)
@@ -166,7 +161,7 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id BYTEA
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
 			value TEXT NOT NULL,
@@ -181,18 +176,20 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_request_logs(
-			id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY,
+			id BIGSERIAL PRIMARY KEY,
 			deployment_id BYTEA NOT NULL
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_request_logs_fk_deployment_id
 					REFERENCES deployment(id),
+			timestamp BIGINT NOT NULL
+				CONSTRAINT deployment_request_logs_chk_unsigned
+						CHECK(timestamp >= 0),
 			ip_address VARCHAR(255) NOT NULL,
 			ip_address_location POINT NOT NULL,
-			method METHOD NOT NULL,
-			domain_name VARCHAR(255) NOT NULL
-				CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
-				),
-			protocol PROTOCOL NOT NULL,
+			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
+			host VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
+					CHECK(host = LOWER(host)),
+			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
 			path TEXT NOT NULL,
 			response_time REAL NOT NULL
 		);
@@ -213,16 +210,6 @@ pub async fn initialize_deployment_post(
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_request_logs
-		ADD CONSTRAINT deployment_request_logs_fk_id
-		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -765,14 +752,14 @@ pub async fn set_machine_type_for_deployment(
 
 pub async fn create_log_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	id: &[u8],
 	deployment_id: &[u8],
+	timestamp: u64,
 	ip_address: &str,
 	ip_address_latitude: f64,
 	ip_address_longitude: f64,
-	method: Method,
-	domain: &str,
-	protocol: Protocol,
+	method: &DeploymentRequestMethod,
+	host: &str,
+	protocol: &DeploymentRequestProtocol,
 	path: &str,
 	response_time: f64,
 ) -> Result<(), sqlx::Error> {
@@ -783,16 +770,16 @@ pub async fn create_log_for_deployment(
 		INSERT INTO 
 			deployment_request_logs
 		VALUES
-			($1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
+			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
 		"#,
-		id,
 		deployment_id,
+		timestamp as i64,
 		ip_address,
 		ip_address_latitude,
 		ip_address_longitude,
-		method as Method,
-		domain,
-		protocol as Protocol,
+		method as _,
+		host,
+		protocol as _,
 		path,
 		response_time as f32
 	)

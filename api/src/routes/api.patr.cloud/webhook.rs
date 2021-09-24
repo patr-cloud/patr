@@ -10,6 +10,7 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -44,35 +45,10 @@ pub fn create_sub_app(
 
 	// add logs for requests made to deployment
 	sub_app.post(
-		"organisation/:organisationId/:deploymentId/deployment-request-log",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::CREATE,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&organisation_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(add_deployment_request_log)),
-		],
+		"/deployment-request-log",
+		[EveMiddleware::CustomFunction(pin_fn!(
+			add_deployment_request_log
+		))],
 	);
 
 	sub_app
@@ -209,13 +185,6 @@ async fn add_deployment_request_log(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
-
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
-			.unwrap();
 	let body = context.get_body_object().clone();
 
 	let ip_address = body
@@ -234,7 +203,7 @@ async fn add_deployment_request_log(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let domain = body
+	let host = body
 		.get(request_keys::DOMAIN)
 		.map(|value| value.as_str())
 		.flatten()
@@ -264,23 +233,32 @@ async fn add_deployment_request_log(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	service::create_log_for_deployment(
+	let deployment_id = if host.ends_with(".patr.cloud") {
+		let deployment_id_string = host.replace(".patr.cloud", "");
+		if let Some(id) = hex::decode(deployment_id_string).ok() {
+			id
+		} else {
+			return Ok(context);
+		}
+	} else {
+		// TODO get deployment by domain_name
+	};
+
+	service::create_request_log_for_deployment(
 		context.get_database_connection(),
 		&deployment_id,
+		get_current_time_millis(),
 		ip_address,
-		method,
-		domain,
-		protocol,
+		&method,
+		host,
+		&protocol,
 		path,
 		response_time,
-		&organisation_id,
 	)
 	.await?;
-
 
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
-
 	Ok(context)
 }
