@@ -1429,9 +1429,11 @@ async fn set_domain_name(
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
+	let config = context.get_state().config.clone();
 
-	db::set_domain_name_for_deployment(
+	service::set_domain_for_deployment(
 		context.get_database_connection(),
+		&config,
 		&deployment_id,
 		domain_name,
 	)
@@ -1478,10 +1480,12 @@ async fn is_domain_validated(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
+	let config = context.get_state().config.clone();
 
 	let validated = service::get_domain_validation_status(
 		context.get_database_connection(),
 		&deployment_id,
+		&config,
 	)
 	.await?;
 

@@ -435,7 +435,8 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 				)
 			) AND
 			deployment.image_tag = $2 AND
-			deployment.organisation_id = $3;
+			deployment.organisation_id = $3 AND
+			deployment.status != 'deleted';
 		"#,
 		image_name,
 		image_tag,
