@@ -812,7 +812,7 @@ pub async fn get_static_site_deployment_by_id(
 pub async fn update_static_site_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
-	status: &DeploymentStatus
+	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

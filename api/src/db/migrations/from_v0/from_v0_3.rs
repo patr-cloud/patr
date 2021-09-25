@@ -327,20 +327,20 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
-		// Insert new permissions into the database for static sites
-		for &permission in [
-			rbac::permissions::organisation::static_site::CREATE,
-			rbac::permissions::organisation::static_site::LIST,
-			rbac::permissions::organisation::static_site::DELETE,
-			rbac::permissions::organisation::static_site::INFO,
-		]
-		.iter()
-		{
-			let uuid = loop {
-				let uuid = Uuid::new_v4();
-	
-				let exists = query!(
-					r#"
+	// Insert new permissions into the database for static sites
+	for &permission in [
+		rbac::permissions::organisation::static_site::CREATE,
+		rbac::permissions::organisation::static_site::LIST,
+		rbac::permissions::organisation::static_site::DELETE,
+		rbac::permissions::organisation::static_site::INFO,
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
 					SELECT
 						*
 					FROM
@@ -348,40 +348,40 @@ async fn migrate_from_v0_3_0(
 					WHERE
 						id = $1;
 					"#,
-					uuid.as_bytes().as_ref()
-				)
-				.fetch_optional(&mut *connection)
-				.await?
-				.is_some();
-	
-				if !exists {
-					// That particular resource ID doesn't exist. Use it
-					break uuid;
-				}
-			};
-			let uuid = uuid.as_bytes().as_ref();
-			query!(
-				r#"
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		};
+		let uuid = uuid.as_bytes().as_ref();
+		query!(
+			r#"
 				INSERT INTO
 					permission
 				VALUES
 					($1, $2, NULL);
 				"#,
-				uuid,
-				permission
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	
-		// Insert new resource type into the database for managed database
-		let (resource_type, uuid) = (
-			rbac::resource_types::STATIC_SITE.to_string(),
-			loop {
-				let uuid = Uuid::new_v4();
-	
-				let exists = query!(
-					r#"
+			uuid,
+			permission
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	// Insert new resource type into the database for managed database
+	let (resource_type, uuid) = (
+		rbac::resource_types::STATIC_SITE.to_string(),
+		loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
 					SELECT
 						*
 					FROM
@@ -389,32 +389,32 @@ async fn migrate_from_v0_3_0(
 					WHERE
 						id = $1;
 					"#,
-					uuid.as_bytes().as_ref()
-				)
-				.fetch_optional(&mut *connection)
-				.await?
-				.is_some();
-	
-				if !exists {
-					// That particular resource ID doesn't exist. Use it
-					break uuid;
-				}
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
 			}
-			.as_bytes()
-			.to_vec(),
-		);
-		query!(
-			r#"
+		}
+		.as_bytes()
+		.to_vec(),
+	);
+	query!(
+		r#"
 			INSERT INTO
 				resource_type
 			VALUES
 				($1, $2, NULL);
 			"#,
-			uuid,
-			resource_type,
-		)
-		.execute(&mut *connection)
-		.await?;
+		uuid,
+		resource_type,
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	query!(
 		r#"

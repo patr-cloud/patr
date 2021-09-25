@@ -1059,21 +1059,11 @@ pub async fn start_static_site_deployment(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if let Some(domain_name) = static_site.domain_name {
-		upload_static_site_files_to_nginx(
-			file,
-			&domain_name,
-			config,
-		)
-		.await?;
+		upload_static_site_files_to_nginx(file, &domain_name, config).await?;
 		update_nginx_for_static_site_with_http(&domain_name, config).await?;
 	} else {
 		let patr_domain = format!("{},patr.cloud", hex::encode(static_site_id));
-		upload_static_site_files_to_nginx(
-			file,
-			&patr_domain,
-			config,
-		)
-		.await?;
+		upload_static_site_files_to_nginx(file, &patr_domain, config).await?;
 		update_nginx_for_static_site_with_http(&patr_domain, config).await?;
 		create_https_certificates_for_domain(&patr_domain, config).await?;
 		update_nginx_for_static_site_with_https(&patr_domain, config).await?;

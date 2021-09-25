@@ -641,7 +641,7 @@ async fn list_deployments(
 ///    region: ,
 ///    domainName: ,
 ///    horizontalScale: ,
-///    machineType: 
+///    machineType:
 /// }
 /// ```
 /// # Arguments
@@ -1587,7 +1587,7 @@ async fn create_static_site_deployment(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
-	
+
 	let file = body
 		.get(request_keys::STATIC_SITE_FILE)
 		.map(|value| value.as_str())
@@ -1597,15 +1597,16 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let static_site_id = service::create_static_site_deployment_in_organisation(
-		context.get_database_connection(),
-		&organisation_id,
-		name,
-		domain_name,
-		file,
-		&config,
-	)
-	.await?;
+	let static_site_id =
+		service::create_static_site_deployment_in_organisation(
+			context.get_database_connection(),
+			&organisation_id,
+			name,
+			domain_name,
+			file,
+			&config,
+		)
+		.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
