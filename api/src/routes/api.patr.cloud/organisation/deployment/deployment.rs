@@ -487,6 +487,41 @@ pub fn create_sub_app(
 		],
 	);
 
+	// create static sites
+	app.post(
+		"/static-site",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				create_static_site_deployment
+			)),
+		],
+	);
+
 	app
 }
 
@@ -603,7 +638,10 @@ async fn list_deployments(
 ///    repositoryId: ,
 ///    imageName: ,
 ///    imageTag: ,
-///    domain:
+///    region: ,
+///    domainName: ,
+///    horizontalScale: ,
+///    machineType: 
 /// }
 /// ```
 /// # Arguments
@@ -1491,5 +1529,88 @@ async fn is_domain_validated(
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
 	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to create a new deployment
+/// required inputs
+/// auth token in the header
+/// organisation id in parameter
+/// ```
+/// {
+///    name: ,
+///    domainName:
+/// }
+/// ```
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    deploymentId:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn create_static_site_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+	let body = context.get_body_object().clone();
+
+	let name = body
+		.get(request_keys::NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let domain_name = body
+		.get(request_keys::DOMAIN_NAME)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+	
+	let file = body
+		.get(request_keys::STATIC_SITE_FILE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	let static_site_id = service::create_static_site_deployment_in_organisation(
+		context.get_database_connection(),
+		&organisation_id,
+		name,
+		domain_name,
+		file,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
+	}));
+
 	Ok(context)
 }

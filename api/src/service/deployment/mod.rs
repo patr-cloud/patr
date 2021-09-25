@@ -1004,6 +1004,293 @@ pub async fn set_domain_for_deployment(
 	Ok(())
 }
 
+pub async fn create_static_site_deployment_in_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+	name: &str,
+	domain_name: Option<&str>,
+	file: &str,
+	config: &Settings,
+) -> Result<Uuid, Error> {
+	let static_uuid = db::generate_new_resource_id(connection).await?;
+	let static_site_id = static_uuid.as_bytes();
+
+	db::create_resource(
+		connection,
+		static_site_id,
+		&format!("Static_site: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::STATIC_SITE)
+			.unwrap(),
+		organisation_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
+	db::create_static_site(
+		connection,
+		static_site_id,
+		name,
+		domain_name,
+		organisation_id,
+	)
+	.await?;
+
+	// Deploy the app as soon as it's created, so that any existing images can
+	// be deployed
+	start_static_site_deployment(connection, static_site_id, file, config)
+		.await?;
+
+	Ok(static_uuid)
+}
+
+pub async fn start_static_site_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	file: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let static_site =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if let Some(domain_name) = static_site.domain_name {
+		upload_static_site_files_to_nginx(
+			file,
+			&domain_name,
+			config,
+		)
+		.await?;
+		update_nginx_for_static_site_with_http(&domain_name, config).await?;
+	} else {
+		let patr_domain = format!("{},patr.cloud", hex::encode(static_site_id));
+		upload_static_site_files_to_nginx(
+			file,
+			&patr_domain,
+			config,
+		)
+		.await?;
+		update_nginx_for_static_site_with_http(&patr_domain, config).await?;
+		create_https_certificates_for_domain(&patr_domain, config).await?;
+		update_nginx_for_static_site_with_https(&patr_domain, config).await?;
+	}
+	db::update_static_site_status(
+		connection,
+		static_site_id,
+		&DeploymentStatus::Running,
+	)
+	.await?;
+	Ok(())
+}
+
+async fn upload_static_site_files_to_nginx(
+	file: &str,
+	domain_name: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let file_data = base64::decode(file)?;
+	log::trace!("logging into the ssh server for uploading static site files");
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	log::trace!("successfully logged into the server");
+
+	let mut sftp = session.sftp();
+	let mut zip_file =
+		sftp.write_to(format!("/home/{}.zip", domain_name)).await?;
+
+	zip_file.write_all(&file_data).await?;
+	zip_file.close().await?;
+	drop(sftp);
+	let create_directory_result = session
+		.command("mkdir")
+		.arg(format!("/home/{}", domain_name))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !create_directory_result.success() {
+		return Err(Error::empty());
+	}
+	let unzip_result = session
+		.command("unzip")
+		.arg(format!("/home/{}.zip", domain_name))
+		.arg("-d")
+		.arg(format!("/var/www/{}/", domain_name))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !unzip_result.success() {
+		return Err(Error::empty());
+	}
+
+	let delete_directory_result = session
+		.command("rm")
+		.arg("-r")
+		.arg(format!("/home/{}", domain_name))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !delete_directory_result.success() {
+		return Err(Error::empty());
+	}
+	session.close().await?;
+	Ok(())
+}
+
+async fn update_nginx_for_static_site_with_http(
+	domain: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	log::trace!("logging into the ssh server for updating server with http");
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	let mut sftp = session.sftp();
+
+	log::trace!("successfully logged into the server");
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	root /var/www/{domain};
+
+	index index.html
+
+	location / {{
+		try_files $uri $uri/ =404;
+	}}
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+				domain = domain,
+			)
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+	drop(sftp);
+	time::sleep(Duration::from_millis(1000)).await;
+	log::trace!("updated sites-enabled");
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	log::trace!("reloaded nginx");
+	session.close().await?;
+	log::trace!("session closed");
+	Ok(())
+}
+
+async fn update_nginx_for_static_site_with_https(
+	domain: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	log::trace!("logging into the ssh server for updating nginx with https");
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	log::trace!("successfully logged into the server");
+
+	let mut sftp = session.sftp();
+
+	log::trace!("updating sites-enabled for https");
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
+		.await?;
+	writer
+		.write_all(
+			format!(
+				r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	return 301 https://{domain}$request_uri;
+}}
+
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+
+	root /var/www/{domain};
+
+	index index.html
+
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+	
+	location / {{
+		try_files $uri $uri/ =404;
+	}}
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+				domain = domain,
+			)
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+	log::trace!("updated sites enabled for https");
+	drop(sftp);
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait()
+		.await?;
+	if !reload_result.success() {
+		return Err(Error::empty());
+	}
+
+	log::trace!("reloaded nginx");
+	session.close().await?;
+	Ok(())
+}
+
 async fn update_nginx_with_all_domains_for_deployment(
 	deployment_id_string: &str,
 	default_url: &str,

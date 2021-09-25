@@ -170,4 +170,6 @@ pub mod request_keys {
 	pub const VALIDATED: &str = "validated";
 	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
 	pub const MACHINE_TYPE: &str = "machineType";
+	pub const STATIC_SITE_ID: &str = "staticSiteId";
+	pub const STATIC_SITE_FILE: &str = "staticSiteFile";
 }

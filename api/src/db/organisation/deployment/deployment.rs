@@ -1,5 +1,10 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
+	models::db_mapping::{
+		Deployment,
+		DeploymentMachineType,
+		DeploymentStatus,
+		StaticSite,
+	},
 	query,
 	query_as,
 	Database,
@@ -139,6 +144,26 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployment_static_sites(
+			id BYTEA CONSTRAINT deployment_Static_sites_pk PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
+			domain_name VARCHAR(255)
+				CONSTRAINT deployment_Static_sites_pk_uq_domain_name UNIQUE
+				CONSTRAINT deployment_Static_sites_pk_chk_domain_name_is_lower_case CHECK(
+					domain_name = LOWER(domain_name)
+				),
+			organisation_id BYTEA NOT NULL,
+			CONSTRAINT deployment_Static_sites_uq_name_organisation_id
+				UNIQUE(name, organisation_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -150,6 +175,16 @@ pub async fn initialize_deployment_post(
 		r#"
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_id_organisation_id
+		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		ADD CONSTRAINT deployment_static_sites_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
 	)
@@ -686,6 +721,110 @@ pub async fn set_machine_type_for_deployment(
 		"#,
 		machine_type as _,
 		deployment_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn create_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	name: &str,
+	domain_name: Option<&str>,
+	organisation_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployment_static_sites
+			VALUES
+			(
+				$1,
+				$2,
+				'created',
+				$3,
+				$4
+			);
+			"#,
+			static_site_id,
+			name,
+			domain,
+			organisation_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			INSERT INTO
+				deployment_static_sites
+			VALUES
+			(
+				$1,
+				$2,
+				'created',
+				NULL,
+				$3
+			);
+			"#,
+			static_site_id,
+			name,
+			organisation_id
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
+}
+
+pub async fn get_static_site_deployment_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+) -> Result<Option<StaticSite>, sqlx::Error> {
+	let row = query_as!(
+		StaticSite,
+		r#"
+		SELECT
+			id,
+			name,
+			status as "status: _",
+			domain_name,
+			organisation_id
+		FROM
+			deployment_static_sites
+		WHERE
+			id = $1 AND
+			status != 'deleted';
+		"#,
+		static_site_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.next();
+
+	Ok(row)
+}
+
+pub async fn update_static_site_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	status: &DeploymentStatus
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			status = $1
+		WHERE
+			id = $2;
+		"#,
+		status as _,
+		static_site_id
 	)
 	.execute(&mut *connection)
 	.await
