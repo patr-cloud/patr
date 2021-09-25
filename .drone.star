@@ -36,6 +36,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=False,
@@ -81,6 +82,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -126,6 +128,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -169,6 +172,7 @@ def get_pipeline_steps(ctx):
                 "Copy sample config"
             ),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=False,
@@ -199,6 +203,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -244,6 +249,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -341,6 +347,20 @@ def copy_config(step_name):
             "cp config/dev.sample.json config/dev.json",
             "cp config/dev.sample.json config/prod.json"
         ]
+    }
+
+
+def clear_database(step_name):
+    env = get_app_running_environment()
+    env["PGPASSWORD"] = env["APP_DATABASE_PASSWORD"]
+    return {
+        "name": step_name,
+        "image": "postgres",
+        "commands": [
+            "psql --host=database --port=5432 --username=postgres --command=\"DROP DATABASE $APP_DATABASE_DATABASE;\"",
+            "psql --host=database --port=5432 --username=postgres --command=\"CREATE DATABASE $APP_DATABASE_DATABASE;\""
+        ],
+        "environment": env
     }
 
 
@@ -461,6 +481,7 @@ def get_app_running_environment():
         "APP_REDIS_HOST": "cache",
     }
 
+
 def build_examples(step_name, release, sqlx_offline):
     release_flag = ""
     if release == True:
@@ -483,6 +504,7 @@ def build_examples(step_name, release, sqlx_offline):
             }
         }
     }
+
 
 def test_migrations(step_name, release, env):
     bin_location = ""
