@@ -329,15 +329,7 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
-		CREATE EXTENSION IF NOT EXISTS postgis;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE PROTOCOL AS ENUM(
+		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
 			'http',
 			'https'
 		);
@@ -348,12 +340,15 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
-		CREATE TYPE METHOD AS ENUM(
-			'post',
+		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
 			'get',
+			'post',
 			'put',
-			'patch',
-			'delete'
+			'delete',
+			'head',
+			'options',
+			'connect',
+			'patch'
 		);
 		"#
 	)
@@ -363,31 +358,23 @@ async fn migrate_from_v0_3_0(
 	query!(
 		r#"
 		CREATE TABLE deployment_request_logs(
-			id BYTEA CONSTRAINT deployment_request_logs_pk PRIMARY KEY,
+			id BIGSERIAL PRIMARY KEY,
 			deployment_id BYTEA NOT NULL
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_request_logs_fk_deployment_id
 					REFERENCES deployment(id),
+			timestamp BIGINT NOT NULL
+				CONSTRAINT deployment_request_logs_chk_unsigned
+						CHECK(timestamp >= 0),
 			ip_address VARCHAR(255) NOT NULL,
 			ip_address_location POINT NOT NULL,
-			method METHOD NOT NULL,
-			domain_name VARCHAR(255) NOT NULL
-				CONSTRAINT deployment_request_logs_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
-				),
-			protocol PROTOCOL NOT NULL,
+			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
+			host VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
+					CHECK(host = LOWER(host)),
+			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
 			path TEXT NOT NULL,
 			response_time REAL NOT NULL
 		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_request_logs
-		ADD CONSTRAINT deployment_request_logs_fk_id
-		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)

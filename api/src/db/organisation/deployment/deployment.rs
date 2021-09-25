@@ -47,34 +47,6 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
-			'http',
-			'https'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
-			'get',
-			'post',
-			'put',
-			'delete',
-			'head',
-			'options',
-			'connect',
-			'patch'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -167,6 +139,34 @@ pub async fn initialize_deployment_pre(
 			value TEXT NOT NULL,
 			CONSTRAINT deployment_environment_variable_pk
 				PRIMARY KEY(deployment_id, name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
+			'http',
+			'https'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
+			'get',
+			'post',
+			'put',
+			'delete',
+			'head',
+			'options',
+			'connect',
+			'patch'
 		);
 		"#
 	)
