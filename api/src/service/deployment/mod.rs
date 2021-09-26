@@ -1014,7 +1014,7 @@ pub async fn create_static_site_deployment_in_organisation(
 ) -> Result<Uuid, Error> {
 	let static_uuid = db::generate_new_resource_id(connection).await?;
 	let static_site_id = static_uuid.as_bytes();
-
+	log::trace!("creating resource");
 	db::create_resource(
 		connection,
 		static_site_id,
@@ -1028,7 +1028,7 @@ pub async fn create_static_site_deployment_in_organisation(
 		get_current_time_millis(),
 	)
 	.await?;
-
+	log::trace!("adding entry to database");
 	db::create_static_site(
 		connection,
 		static_site_id,
@@ -1068,7 +1068,9 @@ pub async fn start_static_site_deployment(
 	file: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("starting the static site");
 	let app = service::get_app();
+	log::trace!("getting static site data from db");
 	let static_site = db::get_static_site_deployment_by_id(
 		app.database.acquire().await?.deref_mut(),
 		static_site_id,
@@ -1077,14 +1079,18 @@ pub async fn start_static_site_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	log::trace!("uploading file to nginx server");
+	upload_static_site_files_to_nginx(
+		file,
+		&hex::encode(static_site_id),
+		config,
+	)
+	.await?;
+
 	if let Some(domain_name) = static_site.domain_name {
-		upload_static_site_files_to_nginx(
-			file,
-			&domain_name,
-			&hex::encode(static_site_id),
-			config,
-		)
-		.await?;
+		log::trace!(
+			"custom domain present, updating the nginx server with http"
+		);
 		update_nginx_for_static_site_with_http(
 			&domain_name,
 			&hex::encode(static_site_id),
@@ -1092,14 +1098,8 @@ pub async fn start_static_site_deployment(
 		)
 		.await?;
 	} else {
+		log::trace!("updating nginx server with patr domain with http");
 		let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
-		upload_static_site_files_to_nginx(
-			file,
-			&patr_domain,
-			&hex::encode(static_site_id),
-			config,
-		)
-		.await?;
 		update_nginx_for_static_site_with_http(
 			&patr_domain,
 			&hex::encode(static_site_id),
@@ -1561,7 +1561,6 @@ pub async fn get_static_site_validation_status(
 
 async fn upload_static_site_files_to_nginx(
 	file: &str,
-	domain_name: &str,
 	static_site_id_string: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -1577,15 +1576,17 @@ async fn upload_static_site_files_to_nginx(
 	log::trace!("successfully logged into the server");
 
 	let mut sftp = session.sftp();
-	let mut zip_file =
-		sftp.write_to(format!("/home/{}.zip", domain_name)).await?;
+	let mut zip_file = sftp
+		.write_to(format!("/home/{}.zip", static_site_id_string))
+		.await?;
 
 	zip_file.write_all(&file_data).await?;
 	zip_file.close().await?;
 	drop(sftp);
+	log::trace!("creating directory for static sites");
 	let create_directory_result = session
 		.command("mkdir")
-		.arg(format!("/home/{}", domain_name))
+		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
 		.spawn()?
 		.wait()
 		.await?;
@@ -1593,9 +1594,10 @@ async fn upload_static_site_files_to_nginx(
 	if !create_directory_result.success() {
 		return Err(Error::empty());
 	}
+	log::trace!("unzipping the file");
 	let unzip_result = session
 		.command("unzip")
-		.arg(format!("/home/{}.zip", domain_name))
+		.arg(format!("/home/{}.zip", static_site_id_string))
 		.arg("-d")
 		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
 		.spawn()?
@@ -1606,18 +1608,20 @@ async fn upload_static_site_files_to_nginx(
 		return Err(Error::empty());
 	}
 
-	let delete_directory_result = session
+	log::trace!("deleting the zip file");
+	let delete_zip_file_result = session
 		.command("rm")
 		.arg("-r")
-		.arg(format!("/home/{}", domain_name))
+		.arg(format!("/home/{}.zip", static_site_id_string))
 		.spawn()?
 		.wait()
 		.await?;
 
-	if !delete_directory_result.success() {
+	if !delete_zip_file_result.success() {
 		return Err(Error::empty());
 	}
 	session.close().await?;
+	log::trace!("session closed successfully");
 	Ok(())
 }
 

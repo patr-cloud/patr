@@ -346,45 +346,39 @@ async fn get_static_site_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
-	let static_sites = db::get_static_site_for_organisation(
+	let static_site = db::get_static_site_deployment_by_id(
 		context.get_database_connection(),
-		&organisation_id,
+		&static_site_id,
 	)
 	.await?
-	.into_iter()
-	.map(|static_site| {
-		let mut map = Map::new();
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
-		if let Some(domain_name) = static_site.domain_name {
-			map.insert(
-				request_keys::DOMAIN_NAME.to_string(),
-				Value::String(domain_name),
-			);
-		}
-		map.insert(
-			request_keys::STATIC_SITE_ID.to_string(),
-			Value::String(hex::encode(static_site.id)),
-		);
-		map.insert(
-			request_keys::NAME.to_string(),
-			Value::String(static_site.name),
-		);
-		map.insert(
-			request_keys::STATUS.to_string(),
-			Value::String(static_site.status.to_string()),
-		);
-		Some(Value::Object(map))
-	})
-	.collect::<Vec<_>>();
+	let mut response = Map::new();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::STATIC_SITES: static_sites
-	}));
+	if let Some(domain_name) = static_site.domain_name {
+		response.insert(
+			request_keys::DOMAIN_NAME.to_string(),
+			Value::String(domain_name),
+		);
+	}
+	response.insert(
+		request_keys::STATIC_SITE_ID.to_string(),
+		Value::String(hex::encode(static_site.id)),
+	);
+	response.insert(
+		request_keys::NAME.to_string(),
+		Value::String(static_site.name),
+	);
+	response.insert(
+		request_keys::STATUS.to_string(),
+		Value::String(static_site.status.to_string()),
+	);
+
+	context.json(Value::Object(response));
 	Ok(context)
 }
 

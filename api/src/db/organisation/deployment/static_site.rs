@@ -155,33 +155,6 @@ pub async fn update_static_site_status(
 	.map(|_| ())
 }
 
-pub async fn get_static_site_for_organisation(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
-) -> Result<Vec<DeploymentStaticSite>, sqlx::Error> {
-	let rows = query_as!(
-		DeploymentStaticSite,
-		r#"
-		SELECT
-			id,
-			name,
-			status as "status: _",
-			domain_name,
-			organisation_id
-		FROM
-			deployment_static_sites
-		WHERE
-			organisation_id = $1 AND
-			status != 'deleted';
-		"#,
-		organisation_id
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
-}
-
 pub async fn get_static_sites_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],

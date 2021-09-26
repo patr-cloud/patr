@@ -1,4 +1,5 @@
 use super::DeploymentStatus;
+
 pub struct DeploymentStaticSite {
 	pub id: Vec<u8>,
 	pub name: String,
