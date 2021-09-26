@@ -487,6 +487,103 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get info about a static sites
+	app.get(
+		"/static-site/:staticSiteId/",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_static_site_info)),
+		],
+	);
+
+	// List all static sites
+	app.get(
+		"/list-static-site",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(list_static_sites)),
+		],
+	);
+
+	// stop and delete the static sites
+	app.post(
+		"/:staticSiteId/stop",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
+		],
+	);
+
 	// create static sites
 	app.post(
 		"/static-site",
@@ -518,6 +615,141 @@ pub fn create_sub_app(
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
 				create_static_site_deployment
+			)),
+		],
+	);
+
+	// Delete a deployment
+	app.delete(
+		"/:staticSiteId/",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::DELETE,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
+		],
+	);
+
+	// get domain cname and value of deployment
+	app.get(
+		"/:staticSiteId/domain-dns-records",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_domain_dns_records_for_static_site
+			)),
+		],
+	);
+
+	// update domain in the deployment
+	app.put(
+		"/:staticSiteId/domain",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				set_domain_name_for_static_site
+			)),
+		],
+	);
+
+	// get deployment validation status
+	app.get(
+		"/:staticSiteId/domain-validated",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				is_domain_validated_for_static_site
 			)),
 		],
 	);
@@ -821,10 +1053,14 @@ async fn create_deployment(
 ///     success: true or false,
 ///     deployment:
 ///     {
+///         id: ,
 ///         name: ,
 ///         registry: ,
 ///         imageName: ,
 ///         imageTag: ,
+///         domainName: ,
+///         horizontalScale: ,
+///         machineType:
 ///     }
 /// }
 /// ```
@@ -1482,8 +1718,8 @@ async fn set_domain_name(
 }
 
 /// # Description
-/// This function is used to get the status of domain set for deployment (only
-/// for aws) required inputs:
+/// This function is used to get the status of domain set for deployment
+/// required inputs:
 /// deploymentId in the url
 /// ```
 /// {
@@ -1533,7 +1769,153 @@ async fn is_domain_validated(
 }
 
 /// # Description
-/// This function is used to create a new deployment
+/// This function is used to get the information about a specific deployment
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+/// DeploymentId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///     success: true or false,
+///     staticSites:
+///     {
+///         id: ,
+///         name: ,
+///         domainName: ,
+///     }
+/// }
+/// ```
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_static_site_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+	let static_sites = db::get_static_site_for_organisation(
+		context.get_database_connection(),
+		&organisation_id,
+	)
+	.await?
+	.into_iter()
+	.map(|static_site| {
+		let mut map = Map::new();
+
+		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+		if let Some(domain_name) = static_site.domain_name {
+			map.insert(
+				request_keys::DOMAIN_NAME.to_string(),
+				Value::String(domain_name),
+			);
+		}
+		map.insert(
+			request_keys::STATIC_SITE_ID.to_string(),
+			Value::String(hex::encode(static_site.id)),
+		);
+		map.insert(
+			request_keys::NAME.to_string(),
+			Value::String(static_site.name),
+		);
+		map.insert(
+			request_keys::STATUS.to_string(),
+			Value::String(static_site.status.to_string()),
+		);
+		Some(Value::Object(map))
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::STATIC_SITES: static_sites
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to list of all the static sites present with the user
+/// required inputs:
+/// OrganisationId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    staticSites: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn list_static_sites(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let organisation_id =
+		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+			.unwrap();
+	let static_sites = db::get_static_sites_for_organisation(
+		context.get_database_connection(),
+		&organisation_id,
+	)
+	.await?
+	.into_iter()
+	.map(|static_site| {
+		let mut map = Map::new();
+
+		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+		map.insert(
+			request_keys::NAME.to_string(),
+			Value::String(static_site.name),
+		);
+		if let Some(domain_name) = static_site.domain_name {
+			map.insert(
+				request_keys::DOMAIN_NAME.to_string(),
+				Value::String(domain_name),
+			);
+		}
+		map.insert(
+			request_keys::STATIC_SITE_ID.to_string(),
+			Value::String(hex::encode(static_site.id)),
+		);
+		map.insert(
+			request_keys::STATUS.to_string(),
+			Value::String(static_site.status.to_string()),
+		);
+		Some(Value::Object(map))
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::STATIC_SITES: static_sites
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to create a new static site
 /// required inputs
 /// auth token in the header
 /// organisation id in parameter
@@ -1613,5 +1995,294 @@ async fn create_static_site_deployment(
 		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
 	}));
 
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to stop a static site
+/// required inputs:
+/// staticSiteId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn stop_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+
+	// stop the running site, if it exists
+	let config = context.get_state().config.clone();
+	service::stop_static_site(
+		context.get_database_connection(),
+		&static_site_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to stop a static site
+/// required inputs:
+/// staticSiteId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn delete_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+
+	// stop and delete the container running the image, if it exists
+	let config = context.get_state().config.clone();
+	service::stop_static_site(
+		context.get_database_connection(),
+		&static_site_id,
+		&config,
+	)
+	.await?;
+
+	db::update_static_site_status(
+		context.get_database_connection(),
+		&static_site_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the DNS records for the static site
+/// required inputs:
+/// staticSiteId in the url
+/// ```
+/// {
+///     domainName:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    cnameRecords: [
+///         {
+///           cname: "domain_name",
+///           value: "provider's url"
+///         }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_domain_dns_records_for_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+
+	let cname_records = service::get_dns_records_for_static_site(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.into_iter()
+	.map(|record| {
+		json!({
+			request_keys::CNAME: record.cname,
+			request_keys::VALUE: record.value
+		})
+	})
+	.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::CNAME_RECORDS: cname_records
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to set the domain name of the static site
+/// required inputs:
+/// staticSiteId in the url
+/// ```
+/// {
+///     domainName:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    cnameRecords: [
+///         {
+///           cname: "domain_name",
+///           value: "provider's url"
+///         }
+///    ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn set_domain_name_for_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+
+	let body = context.get_body_object().clone();
+	let domain_name = body
+		.get(request_keys::DOMAIN_NAME)
+		.map(|value| {
+			value
+				.as_str()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())
+		})
+		.transpose()?;
+
+	if let Some(domain_name) = domain_name {
+		if !validator::is_deployment_entry_point_valid(domain_name) {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
+		}
+	}
+	let config = context.get_state().config.clone();
+
+	service::set_domain_for_static_site_deployment(
+		context.get_database_connection(),
+		&config,
+		&static_site_id,
+		domain_name,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the status of domain set for staitc site
+/// required inputs:
+/// staticSiteId in the url
+/// ```
+/// {
+///     domainName:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn is_domain_validated_for_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let staitc_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+	let config = context.get_state().config.clone();
+
+	let validated = service::get_static_site_validation_status(
+		context.get_database_connection(),
+		&staitc_site_id,
+		&config,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::VALIDATED: validated,
+	}));
 	Ok(context)
 }

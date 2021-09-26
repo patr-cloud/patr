@@ -830,3 +830,96 @@ pub async fn update_static_site_status(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_static_site_for_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+) -> Result<Vec<StaticSite>, sqlx::Error> {
+	let rows = query_as!(
+		StaticSite,
+		r#"
+		SELECT
+			id,
+			name,
+			status as "status: _",
+			domain_name,
+			organisation_id
+		FROM
+			deployment_static_sites
+		WHERE
+			organisation_id = $1 AND
+			status != 'deleted';
+		"#,
+		organisation_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows)
+}
+
+pub async fn get_static_sites_for_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	organisation_id: &[u8],
+) -> Result<Vec<StaticSite>, sqlx::Error> {
+	let rows = query_as!(
+		StaticSite,
+		r#"
+		SELECT
+			id,
+			name,
+			status as "status: _",
+			domain_name,
+			organisation_id
+		FROM
+			deployment_static_sites
+		WHERE
+			organisation_id = $1 AND
+			status != 'deleted';
+		"#,
+		organisation_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	Ok(rows)
+}
+
+pub async fn set_domain_name_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	domain_name: Option<&str>,
+) -> Result<(), sqlx::Error> {
+	if let Some(domain_name) = domain_name {
+		query!(
+			r#"
+			UPDATE
+				deployment_static_sites
+			SET
+				domain_name = $1
+			WHERE
+				id = $2;
+			"#,
+			domain_name,
+			static_site_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	} else {
+		query!(
+			r#"
+			UPDATE
+				deployment_static_sites
+			SET
+				domain_name = NULL
+			WHERE
+				id = $1;
+			"#,
+			static_site_id,
+		)
+		.execute(&mut *connection)
+		.await
+		.map(|_| ())
+	}
+}

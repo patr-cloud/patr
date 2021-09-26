@@ -312,6 +312,18 @@
       "nullable": []
     }
   },
+  "06789272443fac56afa6ba6b9593f6a708b86f8a69743d1c6485c68c8177bc91": {
+    "query": "UPDATE deployment_static_sites SET domain_name = NULL WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "0a2cc71507a5b323a1030851aecd6df7b5de12a1af0dd73016d27e8e83865025": {
     "query": "CREATE TABLE docker_registry_repository( id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY, organisation_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_fk_id REFERENCES organisation(id), name VARCHAR(255) NOT NULL, CONSTRAINT docker_registry_repository_uq_organisation_id_name UNIQUE(organisation_id, name) );",
     "describe": {
@@ -2906,6 +2918,65 @@
       ]
     }
   },
+  "6f8c57740dcbc022323bca29182394eb09dd6beceab8b987330556896f29e2c4": {
+    "query": "SELECT id, name, status as \"status: _\", domain_name, organisation_id FROM deployment_static_sites WHERE organisation_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
   "6fd4fa1501e306f9affc53e7cd5ac69dd0030d431edb5148d0ba49524d3e57e4": {
     "query": "INSERT INTO organisation_domain VALUES ($1, 'organisation', FALSE);",
     "describe": {
@@ -4890,6 +4961,19 @@
       "nullable": [
         null
       ]
+    }
+  },
+  "d831d6a4dd187a0661e87130aaff2191a7b9279b7a56b2b107071557032c0eeb": {
+    "query": "UPDATE deployment_static_sites SET domain_name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "d950f347b92fbbc23ef8e95e65af7e2e006cabb17c05c9525f60ec9f62a030cf": {

@@ -1040,23 +1040,42 @@ pub async fn create_static_site_deployment_in_organisation(
 
 	// Deploy the app as soon as it's created, so that any existing images can
 	// be deployed
-	start_static_site_deployment(connection, static_site_id, file, config)
-		.await?;
+	let static_site_id = static_site_id.to_vec();
+	let file = file.to_string();
+	let config = config.clone();
+	task::spawn(async move {
+		let result =
+			start_static_site_deployment(&static_site_id, &file, &config).await;
+
+		if let Err(error) = result {
+			let _ = update_static_site_status(
+				&static_site_id,
+				&DeploymentStatus::Errored,
+			)
+			.await;
+			log::info!(
+				"Error with the static site deployment, {}",
+				error.get_error()
+			);
+		}
+	});
 
 	Ok(static_uuid)
 }
 
 pub async fn start_static_site_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 	file: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let app = service::get_app();
+	let static_site = db::get_static_site_deployment_by_id(
+		app.database.acquire().await?.deref_mut(),
+		static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if let Some(domain_name) = static_site.domain_name {
 		upload_static_site_files_to_nginx(file, &domain_name, config).await?;
@@ -1069,12 +1088,423 @@ pub async fn start_static_site_deployment(
 		update_nginx_for_static_site_with_https(&patr_domain, config).await?;
 	}
 	db::update_static_site_status(
-		connection,
+		app.database.acquire().await?.deref_mut(),
 		static_site_id,
 		&DeploymentStatus::Running,
 	)
 	.await?;
 	Ok(())
+}
+
+pub async fn stop_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	log::trace!("Getting deployment id from db");
+	let static_site =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+	let mut sftp = session.sftp();
+
+	let default_domain_ssl = session
+		.command("test")
+		.arg("-f")
+		.arg(format!(
+			"/etc/letsencrypt/live/{}/fullchain.pem",
+			patr_domain
+		))
+		.spawn()?
+		.wait()
+		.await?;
+
+	let mut writer = sftp
+		.write_to(format!("/etc/nginx/sites-enabled/{}", patr_domain))
+		.await?;
+	writer
+		.write_all(
+			if default_domain_ssl.success() {
+				format!(
+					r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	return 301 https://{domain}$request_uri;
+}}
+
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+	
+	root /var/www/stopped;
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+					domain = patr_domain
+				)
+			} else {
+				format!(
+					r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	root /var/www/stopped;
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+					domain = patr_domain,
+				)
+			}
+			.as_bytes(),
+		)
+		.await?;
+	writer.close().await?;
+
+	if let Some(custom_domain) = static_site.domain_name {
+		let custom_domain_ssl = session
+			.command("test")
+			.arg("-f")
+			.arg(format!(
+				"/etc/letsencrypt/live/{}/fullchain.pem",
+				custom_domain
+			))
+			.spawn()?
+			.wait()
+			.await?;
+
+		let mut writer = sftp
+			.write_to(format!("/etc/nginx/sites-enabled/{}", custom_domain))
+			.await?;
+		writer
+			.write_all(
+				if custom_domain_ssl.success() {
+					format!(
+						r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	return 301 https://{domain}$request_uri;
+}}
+
+server {{
+	listen 443 ssl http2;
+	listen [::]:443 ssl http2;
+	server_name {domain};
+
+	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+	
+	root /var/www/stopped;
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+						domain = custom_domain
+					)
+				} else {
+					format!(
+						r#"
+server {{
+	listen 80;
+	listen [::]:80;
+	server_name {domain};
+
+	root /var/www/stopped;
+
+	include snippets/letsencrypt.conf;
+	include snippets/patr-verification.conf;
+}}
+"#,
+						domain = custom_domain,
+					)
+				}
+				.as_bytes(),
+			)
+			.await?;
+		writer.close().await?;
+	}
+
+	drop(sftp);
+	time::sleep(Duration::from_millis(1000)).await;
+
+	session.close().await?;
+
+	db::update_static_site_status(
+		connection,
+		static_site_id,
+		&DeploymentStatus::Stopped,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn set_domain_for_static_site_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	static_site_id: &[u8],
+	new_domain_name: Option<&str>,
+) -> Result<(), Error> {
+	let static_site =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	let old_domain = static_site.domain_name;
+
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	db::set_domain_name_for_static_site(
+		connection,
+		static_site_id,
+		new_domain_name,
+	)
+	.await?;
+
+	match (new_domain_name, old_domain.as_deref()) {
+		(None, None) => (), // Do nothing
+		(Some(new_domain), None) => {
+			// Setup new domain name
+			let check_file = session
+				.command("test")
+				.arg("-f")
+				.arg(format!(
+					"/etc/letsencrypt/live/{}/fullchain.pem",
+					new_domain
+				))
+				.spawn()?
+				.wait()
+				.await?;
+			if check_file.success() {
+				update_nginx_for_static_site_with_http(new_domain, config)
+					.await?;
+			} else {
+				update_nginx_for_static_site_with_https(new_domain, config)
+					.await?;
+			}
+		}
+		(None, Some(domain_name)) => {
+			session
+				.command("certbot")
+				.arg("delete")
+				.arg("--cert-name")
+				.arg(&domain_name)
+				.spawn()?
+				.wait()
+				.await?;
+			session
+				.command("rm")
+				.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
+				.spawn()?
+				.wait()
+				.await?;
+			session
+				.command("nginx")
+				.arg("-s")
+				.arg("reload")
+				.spawn()?
+				.wait()
+				.await?;
+		}
+		(Some(new_domain), Some(old_domain)) => {
+			if new_domain != old_domain {
+				session
+					.command("certbot")
+					.arg("delete")
+					.arg("--cert-name")
+					.arg(&old_domain)
+					.spawn()?
+					.wait()
+					.await?;
+				session
+					.command("rm")
+					.arg(format!("/etc/nginx/sites-enabled/{}", old_domain))
+					.spawn()?
+					.wait()
+					.await?;
+
+				let check_file = session
+					.command("test")
+					.arg("-f")
+					.arg(format!(
+						"/etc/letsencrypt/live/{}/fullchain.pem",
+						new_domain
+					))
+					.spawn()?
+					.wait()
+					.await?;
+				if check_file.success() {
+					update_nginx_for_static_site_with_https(new_domain, config)
+						.await?;
+				} else {
+					update_nginx_for_static_site_with_http(new_domain, config)
+						.await?;
+				}
+			}
+		}
+	}
+	session.close().await?;
+
+	Ok(())
+}
+
+pub async fn get_dns_records_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+) -> Result<Vec<CNameRecord>, Error> {
+	let deployment =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	Ok(vec![CNameRecord {
+		cname: domain_name,
+		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+	}])
+}
+
+pub async fn get_static_site_validation_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	config: &Settings,
+) -> Result<bool, Error> {
+	log::trace!("validating the custom domain");
+	let deployment =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain_name = deployment
+		.domain_name
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+
+	log::trace!("logging into the ssh server");
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	log::trace!("creating random file with random content for verification");
+	let (filename, file_content) =
+		create_random_content_for_verification(&session).await?;
+
+	log::trace!("checking existence of https for the custom domain");
+	let https_text = reqwest::get(format!(
+		"https://{}/.well-known/patr-verification/{}",
+		domain_name, filename
+	))
+	.await
+	.ok();
+	if let Some(response) = https_text {
+		let content = response.text().await.ok();
+
+		if let Some(text) = content {
+			session
+				.command("rm")
+				.arg(format!(
+					"/var/www/patr-verification/.well-known/patr-verification/{}",
+					filename
+				))
+				.spawn()?
+				.wait()
+				.await?;
+			return Ok(text == file_content);
+		}
+	}
+
+	log::trace!("https does not exist, checking for http");
+	let text = reqwest::get(format!(
+		"http://{}/.well-known/patr-verification/{}",
+		domain_name, filename
+	))
+	.await?
+	.text()
+	.await?;
+
+	if text == file_content {
+		log::trace!("http exists creating certificate for the custom domain");
+
+		log::trace!("checking if the certificate already exists");
+		let check_file = session
+			.command("test")
+			.arg("-f")
+			.arg(format!(
+				"/etc/letsencrypt/live/{}/fullchain.pem",
+				domain_name
+			))
+			.spawn()?
+			.wait()
+			.await?;
+
+		if check_file.success() {
+			log::trace!("certificate exists updating nginx config for https");
+			update_nginx_for_static_site_with_https(&domain_name, config)
+				.await?;
+			return Ok(true);
+		}
+		log::trace!("certificate does not exist creating a new one");
+		create_https_certificates_for_domain(&domain_name, config).await?;
+		log::trace!("updating nginx with https");
+		update_nginx_for_static_site_with_https(&domain_name, config).await?;
+		log::trace!("domain validated");
+		return Ok(true);
+	}
+
+	session
+		.command("rm")
+		.arg(format!(
+			"/var/www/patr-verification/.well-known/patr-verification/{}",
+			filename
+		))
+		.spawn()?
+		.wait()
+		.await?;
+	session.close().await?;
+
+	Ok(false)
 }
 
 async fn upload_static_site_files_to_nginx(
@@ -1749,6 +2179,22 @@ async fn update_managed_database_status(
 	db::update_managed_database_status(
 		app.database.acquire().await?.deref_mut(),
 		database_id,
+		status,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_static_site_status(
+	static_site_id: &[u8],
+	status: &DeploymentStatus,
+) -> Result<(), sqlx::Error> {
+	let app = service::get_app();
+
+	db::update_static_site_status(
+		app.database.acquire().await?.deref_mut(),
+		static_site_id,
 		status,
 	)
 	.await?;
