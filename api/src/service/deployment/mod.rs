@@ -1078,14 +1078,41 @@ pub async fn start_static_site_deployment(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	if let Some(domain_name) = static_site.domain_name {
-		upload_static_site_files_to_nginx(file, &domain_name, config).await?;
-		update_nginx_for_static_site_with_http(&domain_name, config).await?;
+		upload_static_site_files_to_nginx(
+			file,
+			&domain_name,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
+		update_nginx_for_static_site_with_http(
+			&domain_name,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
 	} else {
-		let patr_domain = format!("{},patr.cloud", hex::encode(static_site_id));
-		upload_static_site_files_to_nginx(file, &patr_domain, config).await?;
-		update_nginx_for_static_site_with_http(&patr_domain, config).await?;
+		let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+		upload_static_site_files_to_nginx(
+			file,
+			&patr_domain,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
+		update_nginx_for_static_site_with_http(
+			&patr_domain,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
 		create_https_certificates_for_domain(&patr_domain, config).await?;
-		update_nginx_for_static_site_with_https(&patr_domain, config).await?;
+		update_nginx_for_static_site_with_https(
+			&patr_domain,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
 	}
 	db::update_static_site_status(
 		app.database.acquire().await?.deref_mut(),
@@ -1308,11 +1335,19 @@ pub async fn set_domain_for_static_site_deployment(
 				.wait()
 				.await?;
 			if check_file.success() {
-				update_nginx_for_static_site_with_http(new_domain, config)
-					.await?;
+				update_nginx_for_static_site_with_http(
+					new_domain,
+					&hex::encode(static_site_id),
+					config,
+				)
+				.await?;
 			} else {
-				update_nginx_for_static_site_with_https(new_domain, config)
-					.await?;
+				update_nginx_for_static_site_with_https(
+					new_domain,
+					&hex::encode(static_site_id),
+					config,
+				)
+				.await?;
 			}
 		}
 		(None, Some(domain_name)) => {
@@ -1366,11 +1401,19 @@ pub async fn set_domain_for_static_site_deployment(
 					.wait()
 					.await?;
 				if check_file.success() {
-					update_nginx_for_static_site_with_https(new_domain, config)
-						.await?;
+					update_nginx_for_static_site_with_https(
+						new_domain,
+						&hex::encode(static_site_id),
+						config,
+					)
+					.await?;
 				} else {
-					update_nginx_for_static_site_with_http(new_domain, config)
-						.await?;
+					update_nginx_for_static_site_with_http(
+						new_domain,
+						&hex::encode(static_site_id),
+						config,
+					)
+					.await?;
 				}
 			}
 		}
@@ -1481,14 +1524,23 @@ pub async fn get_static_site_validation_status(
 
 		if check_file.success() {
 			log::trace!("certificate exists updating nginx config for https");
-			update_nginx_for_static_site_with_https(&domain_name, config)
-				.await?;
+			update_nginx_for_static_site_with_https(
+				&domain_name,
+				&hex::encode(static_site_id),
+				config,
+			)
+			.await?;
 			return Ok(true);
 		}
 		log::trace!("certificate does not exist creating a new one");
 		create_https_certificates_for_domain(&domain_name, config).await?;
 		log::trace!("updating nginx with https");
-		update_nginx_for_static_site_with_https(&domain_name, config).await?;
+		update_nginx_for_static_site_with_https(
+			&domain_name,
+			&hex::encode(static_site_id),
+			config,
+		)
+		.await?;
 		log::trace!("domain validated");
 		return Ok(true);
 	}
@@ -1510,6 +1562,7 @@ pub async fn get_static_site_validation_status(
 async fn upload_static_site_files_to_nginx(
 	file: &str,
 	domain_name: &str,
+	static_site_id_string: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let file_data = base64::decode(file)?;
@@ -1544,7 +1597,7 @@ async fn upload_static_site_files_to_nginx(
 		.command("unzip")
 		.arg(format!("/home/{}.zip", domain_name))
 		.arg("-d")
-		.arg(format!("/var/www/{}/", domain_name))
+		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
 		.spawn()?
 		.wait()
 		.await?;
@@ -1570,6 +1623,7 @@ async fn upload_static_site_files_to_nginx(
 
 async fn update_nginx_for_static_site_with_http(
 	domain: &str,
+	static_site_id_string: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
 	log::trace!("logging into the ssh server for updating server with http");
@@ -1595,7 +1649,7 @@ server {{
 	listen [::]:80;
 	server_name {domain};
 
-	root /var/www/{domain};
+	root /home/web/static-sites/{static_site_id_string};
 
 	index index.html
 
@@ -1608,6 +1662,7 @@ server {{
 }}
 "#,
 				domain = domain,
+				static_site_id_string = static_site_id_string
 			)
 			.as_bytes(),
 		)
@@ -1636,6 +1691,7 @@ server {{
 
 async fn update_nginx_for_static_site_with_https(
 	domain: &str,
+	static_site_id_string: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
 	log::trace!("logging into the ssh server for updating nginx with https");
@@ -1671,7 +1727,7 @@ server {{
 	listen [::]:443 ssl http2;
 	server_name {domain};
 
-	root /var/www/{domain};
+	root /home/web/static-sites/{static_site_id_string};
 
 	index index.html
 
@@ -1687,6 +1743,7 @@ server {{
 }}
 "#,
 				domain = domain,
+				static_site_id_string = static_site_id_string
 			)
 			.as_bytes(),
 		)
