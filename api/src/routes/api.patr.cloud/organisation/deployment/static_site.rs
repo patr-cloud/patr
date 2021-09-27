@@ -103,6 +103,39 @@ pub fn create_sub_app(
 		],
 	);
 
+	// start a deployment
+	app.post(
+		"/:staticSiteId/start",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::static_site::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let static_site_id_string = context
+						.get_param(request_keys::STATIC_SITE_ID)
+						.unwrap();
+					let static_site_id = hex::decode(&static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&static_site_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
+		],
+	);
+
 	// stop and delete the static sites
 	app.post(
 		"/:staticSiteId/stop",
@@ -244,7 +277,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::INFO,
+				permissions::organisation::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -347,7 +380,7 @@ async fn get_static_site_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let static_site_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
 			.unwrap();
 	let static_site = db::get_static_site_deployment_by_id(
 		context.get_database_connection(),
@@ -533,6 +566,47 @@ async fn create_static_site_deployment(
 		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
 	}));
 
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to start a static site
+/// required inputs:
+/// staticSiteId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the next
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn start_static_site(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id =
+		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
+			.unwrap();
+
+	// start the container running the image, if doesn't exist
+	let config = context.get_state().config.clone();
+	service::start_static_site_deployment(&static_site_id, &config).await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
