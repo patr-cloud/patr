@@ -229,40 +229,31 @@ pub async fn initialize_deployment_post(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_request_logs
-		ADD CONSTRAINT deployment_request_logs_fk_id
-		FOREIGN KEY(id) REFERENCES resource(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		INSERT INTO data_center_locations
+		INSERT INTO
+			data_center_locations
 		VALUES
-		('aws-us-east-1', ST_POINT(-77.4524237, 38.9940541)::point),
-		('aws-us-east-2', ST_POINT(-82.7541337, 40.0946354)::point),
-		('aws-us-west-2', ST_POINT(-119.2684488, 45.9174667)::point),
-		('aws-eu-west-1', ST_POINT(-6.224503, 53.4056545)::point),
-		('aws-eu-west-2', ST_POINT(-0.0609266, 51.5085036)::point),
-		('aws-eu-west-3', ST_POINT(2.2976644, 48.6009709)::point),
-		('aws-eu-central-1', ST_POINT(8.6303932, 50.0992094)::point),
-		('aws-ap-southeast-1', ST_POINT(103.6930643, 1.3218269)::point),
-		('aws-ap-southeast-2', ST_POINT(151.1907535, -33.9117717)::point),
-		('aws-ap-northeast-1', ST_POINT(139.7459176, 35.617436)::point),
-		('aws-ap-northeast-2', ST_POINT(126.8736237, 37.5616592)::point),
-		('aws-ap-south-1', ST_POINT(72.9667878, 19.2425503)::point),
-		('aws-ca-central-1', ST_POINT(-73.6, 45.5)::point),
-		('aws-eu-north-1', ST_POINT(17.8419717, 59.326242)::point),
-		('do-tor', ST_POINT(-79.3623, 43.6547)::point),
-		('do-sfo', ST_POINT(-121.9753, 37.3417)::point),
-		('do-nyc', ST_POINT(-73.981, 40.7597)::point),
-		('do-lon', ST_POINT(-0.6289, 51.5225)::point),
-		('do-ams', ST_POINT(4.9479, 52.3006)::point),
-		('do-sgp', ST_POINT(103.695, 1.32123)::point),
-		('do-fra', ST_POINT(8.6843, 50.1188)::point),
-		('do-blr', ST_POINT(77.5855, 12.9634)::point);
+			('aws-us-east-1', ST_POINT(-77.4524237, 38.9940541)::POINT),
+			('aws-us-east-2', ST_POINT(-82.7541337, 40.0946354)::POINT),
+			('aws-us-west-2', ST_POINT(-119.2684488, 45.9174667)::POINT),
+			('aws-eu-west-1', ST_POINT(-6.224503, 53.4056545)::POINT),
+			('aws-eu-west-2', ST_POINT(-0.0609266, 51.5085036)::POINT),
+			('aws-eu-west-3', ST_POINT(2.2976644, 48.6009709)::POINT),
+			('aws-eu-central-1', ST_POINT(8.6303932, 50.0992094)::POINT),
+			('aws-ap-southeast-1', ST_POINT(103.6930643, 1.3218269)::POINT),
+			('aws-ap-southeast-2', ST_POINT(151.1907535, -33.9117717)::POINT),
+			('aws-ap-northeast-1', ST_POINT(139.7459176, 35.617436)::POINT),
+			('aws-ap-northeast-2', ST_POINT(126.8736237, 37.5616592)::POINT),
+			('aws-ap-south-1', ST_POINT(72.9667878, 19.2425503)::POINT),
+			('aws-ca-central-1', ST_POINT(-73.6, 45.5)::POINT),
+			('aws-eu-north-1', ST_POINT(17.8419717, 59.326242)::POINT),
+			('do-tor', ST_POINT(-79.3623, 43.6547)::POINT),
+			('do-sfo', ST_POINT(-121.9753, 37.3417)::POINT),
+			('do-nyc', ST_POINT(-73.981, 40.7597)::POINT),
+			('do-lon', ST_POINT(-0.6289, 51.5225)::POINT),
+			('do-ams', ST_POINT(4.9479, 52.3006)::POINT),
+			('do-sgp', ST_POINT(103.695, 1.32123)::POINT),
+			('do-fra', ST_POINT(8.6843, 50.1188)::POINT),
+			('do-blr', ST_POINT(77.5855, 12.9634)::POINT);
 		"#
 	)
 	.execute(&mut *connection)
@@ -822,7 +813,7 @@ pub async fn create_log_for_deployment(
 		INSERT INTO
 			deployment_request_logs
 		VALUES
-			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
+			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::POINT, $6, $7, $8, $9, $10);
 		"#,
 		deployment_id,
 		timestamp as i64,
@@ -840,7 +831,6 @@ pub async fn create_log_for_deployment(
 	.map(|_| ())
 }
 
-<<<<<<< HEAD
 pub async fn get_recommended_data_center(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -874,7 +864,8 @@ pub async fn get_recommended_data_center(
 	.await?;
 
 	Ok(rows)
-=======
+}
+
 pub async fn get_deployment_by_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
@@ -906,5 +897,4 @@ pub async fn get_deployment_by_domain_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
->>>>>>> develop
 }

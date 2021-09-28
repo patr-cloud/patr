@@ -432,5 +432,5 @@ async fn migrate_from_v0_3_0(
 	.execute(&mut *connection)
 	.await?;
 
-=======
+	Ok(())
 }
