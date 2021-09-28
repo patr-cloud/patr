@@ -1,5 +1,11 @@
 use crate::{
-	models::db_mapping::{Deployment, DeploymentMachineType, DeploymentStatus},
+	models::db_mapping::{
+		Deployment,
+		DeploymentMachineType,
+		DeploymentRequestMethod,
+		DeploymentRequestProtocol,
+		DeploymentStatus,
+	},
 	query,
 	query_as,
 	Database,
@@ -127,12 +133,65 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id BYTEA
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
 			value TEXT NOT NULL,
 			CONSTRAINT deployment_environment_variable_pk
 				PRIMARY KEY(deployment_id, name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
+			'http',
+			'https'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
+			'get',
+			'post',
+			'put',
+			'delete',
+			'head',
+			'options',
+			'connect',
+			'patch'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_request_logs(
+			id BIGSERIAL PRIMARY KEY,
+			deployment_id BYTEA NOT NULL
+				CONSTRAINT deployment_request_logs_fk_deployment_id
+					REFERENCES deployment(id),
+			timestamp BIGINT NOT NULL
+				CONSTRAINT deployment_request_logs_chk_unsigned
+						CHECK(timestamp >= 0),
+			ip_address VARCHAR(255) NOT NULL,
+			ip_address_location POINT NOT NULL,
+			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
+			host VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
+					CHECK(host = LOWER(host)),
+			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
+			path TEXT NOT NULL,
+			response_time REAL NOT NULL
 		);
 		"#
 	)
@@ -690,4 +749,73 @@ pub async fn set_machine_type_for_deployment(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn create_log_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	timestamp: u64,
+	ip_address: &str,
+	ip_address_latitude: f64,
+	ip_address_longitude: f64,
+	method: &DeploymentRequestMethod,
+	host: &str,
+	protocol: &DeploymentRequestProtocol,
+	path: &str,
+	response_time: f64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_request_logs
+		VALUES
+			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
+		"#,
+		deployment_id,
+		timestamp as i64,
+		ip_address,
+		ip_address_longitude,
+		ip_address_latitude,
+		method as _,
+		host,
+		protocol as _,
+		path,
+		response_time as f32
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_deployment_by_domain_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_name: &str,
+) -> Result<Option<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			organisation_id
+		FROM
+			deployment
+		WHERE
+			domain_name = $1;
+		"#,
+		domain_name,
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }

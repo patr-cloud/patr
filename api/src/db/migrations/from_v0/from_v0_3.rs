@@ -146,7 +146,7 @@ async fn migrate_from_v0_3_0(
 		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id BYTEA
-				CONSTRAINT deploymment_environment_variable_fk_deployment_id
+				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
 			value TEXT NOT NULL,
@@ -322,6 +322,59 @@ async fn migrate_from_v0_3_0(
 		ALTER TABLE managed_database 
 		ADD CONSTRAINT managed_database_repository_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
+			'http',
+			'https'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
+			'get',
+			'post',
+			'put',
+			'delete',
+			'head',
+			'options',
+			'connect',
+			'patch'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_request_logs(
+			id BIGSERIAL PRIMARY KEY,
+			deployment_id BYTEA NOT NULL
+				CONSTRAINT deployment_request_logs_fk_deployment_id
+					REFERENCES deployment(id),
+			timestamp BIGINT NOT NULL
+				CONSTRAINT deployment_request_logs_chk_unsigned
+						CHECK(timestamp >= 0),
+			ip_address VARCHAR(255) NOT NULL,
+			ip_address_location POINT NOT NULL,
+			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
+			host VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
+					CHECK(host = LOWER(host)),
+			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
+			path TEXT NOT NULL,
+			response_time REAL NOT NULL
+		);
 		"#
 	)
 	.execute(&mut *connection)

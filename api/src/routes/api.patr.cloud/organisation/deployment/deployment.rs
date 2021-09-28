@@ -296,6 +296,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set horizontal scale for the deployment
 	app.put(
 		"/:deploymentId/horizontal-scale",
 		[
@@ -327,6 +328,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set machine type of the deployment
 	app.put(
 		"/:deploymentId/machine-type",
 		[

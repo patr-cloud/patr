@@ -170,4 +170,10 @@ pub mod request_keys {
 	pub const VALIDATED: &str = "validated";
 	pub const HORIZONTAL_SCALE: &str = "horizontalScale";
 	pub const MACHINE_TYPE: &str = "machineType";
+	pub const IP_ADDRESS: &str = "ipAddress";
+	pub const IP_ADDRESS_LATITUDE: &str = "ipAddressLatitude";
+	pub const IP_ADDRESS_LONGITUDE: &str = "ipAddressLongitude";
+	pub const METHOD: &str = "method";
+	pub const PROTOCOL: &str = "protocol";
+	pub const RESPONSE_TIME: &str = "responseTime";
 }

@@ -40,7 +40,10 @@ use crate::{
 			CNameRecord,
 			CloudPlatform,
 			DeploymentMachineType,
+			DeploymentRequestMethod,
+			DeploymentRequestProtocol,
 			DeploymentStatus,
+			IpResponse,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
@@ -1528,4 +1531,58 @@ async fn create_random_content_for_verification(
 	drop(sftp);
 
 	Ok((filename, file_content))
+}
+
+pub async fn create_request_log_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	timestamp: u64,
+	ip_address: &str,
+	method: &DeploymentRequestMethod,
+	host: &str,
+	protocol: &DeploymentRequestProtocol,
+	path: &str,
+	response_time: f64,
+) -> Result<(), Error> {
+	let (latitude, longitude) =
+		get_location_from_ip_address(ip_address).await?;
+
+	db::create_log_for_deployment(
+		connection,
+		deployment_id,
+		timestamp,
+		ip_address,
+		latitude,
+		longitude,
+		method,
+		host,
+		protocol,
+		path,
+		response_time,
+	)
+	.await?;
+	Ok(())
+}
+
+async fn get_location_from_ip_address(
+	ip_address: &str,
+) -> Result<(f64, f64), Error> {
+	// TODO: change to https when in production
+	let response = Client::new()
+		.get(format!(
+			"http://ip-api.com/json/{}?fields=status,message,lat,lon",
+			ip_address
+		))
+		.send()
+		.await?
+		.json::<IpResponse>()
+		.await?;
+
+	if response.status != "success" {
+		log::error!("{}", response.message);
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+	Ok((response.lat, response.lon))
 }

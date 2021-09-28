@@ -150,7 +150,11 @@ async fn main() {
 	println!();
 
 	for i in (1..releases).step_by(10) {
-		println!("Getting details of release {} to {}", i, i + 10);
+		println!(
+			"Getting details of release {} to {}",
+			i,
+			releases.max(i + 10)
+		);
 		let releases = get_release_details_of_releases(
 			i,
 			10,
