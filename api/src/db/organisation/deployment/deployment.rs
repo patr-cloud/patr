@@ -1,5 +1,6 @@
 use crate::{
 	models::db_mapping::{
+		AvgDistance,
 		Deployment,
 		DeploymentMachineType,
 		DeploymentRequestMethod,
@@ -184,7 +185,7 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_request_logs_chk_unsigned
 						CHECK(timestamp >= 0),
 			ip_address VARCHAR(255) NOT NULL,
-			ip_address_location POINT NOT NULL,
+			ip_address_location GEOMETRY NOT NULL,
 			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
 			host VARCHAR(255) NOT NULL
 				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
@@ -192,6 +193,17 @@ pub async fn initialize_deployment_pre(
 			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
 			path TEXT NOT NULL,
 			response_time REAL NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE data_center_locations(
+			region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY,
+			location GEOMETRY NOT NULL
 		);
 		"#
 	)
@@ -211,6 +223,38 @@ pub async fn initialize_deployment_post(
 		ADD CONSTRAINT deployment_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			data_center_locations
+		VALUES
+			('aws-us-east-1', ST_SetSRID(POINT(-77.4524237, 38.9940541)::GEOMETRY, 4326)),
+			('aws-us-east-2', ST_SetSRID(POINT(-82.7541337, 40.0946354)::GEOMETRY, 4326)),
+			('aws-us-west-2', ST_SetSRID(POINT(-119.2684488, 45.9174667)::GEOMETRY, 4326)),
+			('aws-eu-west-1', ST_SetSRID(POINT(-6.224503, 53.4056545)::GEOMETRY, 4326)),
+			('aws-eu-west-2', ST_SetSRID(POINT(-0.0609266, 51.5085036)::GEOMETRY, 4326)),
+			('aws-eu-west-3', ST_SetSRID(POINT(2.2976644, 48.6009709)::GEOMETRY, 4326)),
+			('aws-eu-central-1', ST_SetSRID(POINT(8.6303932, 50.0992094)::GEOMETRY, 4326)),
+			('aws-ap-southeast-1', ST_SetSRID(POINT(103.6930643, 1.3218269)::GEOMETRY, 4326)),
+			('aws-ap-southeast-2', ST_SetSRID(POINT(151.1907535, -33.9117717)::GEOMETRY, 4326)),
+			('aws-ap-northeast-1', ST_SetSRID(POINT(139.7459176, 35.617436)::GEOMETRY, 4326)),
+			('aws-ap-northeast-2', ST_SetSRID(POINT(126.8736237, 37.5616592)::GEOMETRY, 4326)),
+			('aws-ap-south-1', ST_SetSRID(POINT(72.9667878, 19.2425503)::GEOMETRY, 4326)),
+			('aws-ca-central-1', ST_SetSRID(POINT(-73.6, 45.5)::GEOMETRY, 4326)),
+			('aws-eu-north-1', ST_SetSRID(POINT(17.8419717, 59.326242)::GEOMETRY, 4326)),
+			('do-tor', ST_SetSRID(POINT(-79.3623, 43.6547)::GEOMETRY, 4326)),
+			('do-sfo', ST_SetSRID(POINT(-121.9753, 37.3417)::GEOMETRY, 4326)),
+			('do-nyc', ST_SetSRID(POINT(-73.981, 40.7597)::GEOMETRY, 4326)),
+			('do-lon', ST_SetSRID(POINT(-0.6289, 51.5225)::GEOMETRY, 4326)),
+			('do-ams', ST_SetSRID(POINT(4.9479, 52.3006)::GEOMETRY, 4326)),
+			('do-sgp', ST_SetSRID(POINT(103.695, 1.32123)::GEOMETRY, 4326)),
+			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
+			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
+			"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -769,7 +813,7 @@ pub async fn create_log_for_deployment(
 		INSERT INTO
 			deployment_request_logs
 		VALUES
-			(DEFAULT, $1, $2, $3, ST_POINT($4, $5), $6, $7, $8, $9, $10);
+			(DEFAULT, $1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6, $7, $8, $9, $10);
 		"#,
 		deployment_id,
 		timestamp as i64,
@@ -785,6 +829,46 @@ pub async fn create_log_for_deployment(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_recommended_data_center(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Option<AvgDistance>, sqlx::Error> {
+	let row = query_as!(
+		AvgDistance,
+		r#"
+		SELECT
+			data_center_locations.region,
+			AVG(
+				st_distancespheroid(
+					deployment_request_logs.ip_address_location,
+					data_center_locations.location,
+					'SPHEROID["WGS84",6378137,298.257223563]'
+				)
+			)::NUMERIC(10, 2) as "avg_distance!: f64"
+		FROM
+			data_center_locations,
+			deployment_request_logs
+		INNER JOIN 
+			deployment 
+		ON 
+			deployment.id = deployment_request_logs.deployment_id
+		WHERE
+			deployment_id = $1
+		GROUP BY
+			data_center_locations.region
+		ORDER BY
+			"avg_distance!: f64";
+		"#,
+		deployment_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.next();
+
+	Ok(row)
 }
 
 pub async fn get_deployment_by_domain_name(

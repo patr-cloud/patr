@@ -489,6 +489,39 @@ pub fn create_sub_app(
 		],
 	);
 
+	// get data center recommendation on the basis of distance
+	app.get(
+		"/:deploymentId/recommended-data-center",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_recommended_data_center)),
+		],
+	);
+
 	app
 }
 
@@ -1492,6 +1525,54 @@ async fn is_domain_validated(
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the nearest data center for the majority of the
+/// users deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    datacenters: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_recommended_data_center(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	let data_center = db::get_recommended_data_center(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::RECOMMENDED_DATA_CENTERS: {
+			request_keys::REGION: data_center.region,
+			request_keys::DISTANCE: data_center.avg_distance,
+		}
 	}));
 	Ok(context)
 }
