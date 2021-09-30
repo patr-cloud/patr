@@ -366,7 +366,7 @@ async fn migrate_from_v0_3_0(
 				CONSTRAINT deployment_request_logs_chk_unsigned
 						CHECK(timestamp >= 0),
 			ip_address VARCHAR(255) NOT NULL,
-			ip_address_location POINT NOT NULL,
+			ip_address_location GEOMETRY NOT NULL,
 			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
 			host VARCHAR(255) NOT NULL
 				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
@@ -384,7 +384,7 @@ async fn migrate_from_v0_3_0(
 		r#"
 		CREATE TABLE data_center_locations(
 			region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY,
-			location POINT NOT NULL
+			location GEOMETRY NOT NULL
 		);
 		"#
 	)
@@ -396,28 +396,28 @@ async fn migrate_from_v0_3_0(
 		INSERT INTO
 			data_center_locations
 		VALUES
-			('aws-us-east-1', ST_POINT(-77.4524237, 38.9940541)::POINT),
-			('aws-us-east-2', ST_POINT(-82.7541337, 40.0946354)::POINT),
-			('aws-us-west-2', ST_POINT(-119.2684488, 45.9174667)::POINT),
-			('aws-eu-west-1', ST_POINT(-6.224503, 53.4056545)::POINT),
-			('aws-eu-west-2', ST_POINT(-0.0609266, 51.5085036)::POINT),
-			('aws-eu-west-3', ST_POINT(2.2976644, 48.6009709)::POINT),
-			('aws-eu-central-1', ST_POINT(8.6303932, 50.0992094)::POINT),
-			('aws-ap-southeast-1', ST_POINT(103.6930643, 1.3218269)::POINT),
-			('aws-ap-southeast-2', ST_POINT(151.1907535, -33.9117717)::POINT),
-			('aws-ap-northeast-1', ST_POINT(139.7459176, 35.617436)::POINT),
-			('aws-ap-northeast-2', ST_POINT(126.8736237, 37.5616592)::POINT),
-			('aws-ap-south-1', ST_POINT(72.9667878, 19.2425503)::POINT),
-			('aws-ca-central-1', ST_POINT(-73.6, 45.5)::POINT),
-			('aws-eu-north-1', ST_POINT(17.8419717, 59.326242)::POINT),
-			('do-tor', ST_POINT(-79.3623, 43.6547)::POINT),
-			('do-sfo', ST_POINT(-121.9753, 37.3417)::POINT),
-			('do-nyc', ST_POINT(-73.981, 40.7597)::POINT),
-			('do-lon', ST_POINT(-0.6289, 51.5225)::POINT),
-			('do-ams', ST_POINT(4.9479, 52.3006)::POINT),
-			('do-sgp', ST_POINT(103.695, 1.32123)::POINT),
-			('do-fra', ST_POINT(8.6843, 50.1188)::POINT),
-			('do-blr', ST_POINT(77.5855, 12.9634)::POINT);
+			('aws-us-east-1', ST_SetSRID(POINT(-77.4524237, 38.9940541)::GEOMETRY, 4326)),
+			('aws-us-east-2', ST_SetSRID(POINT(-82.7541337, 40.0946354)::GEOMETRY, 4326)),
+			('aws-us-west-2', ST_SetSRID(POINT(-119.2684488, 45.9174667)::GEOMETRY, 4326)),
+			('aws-eu-west-1', ST_SetSRID(POINT(-6.224503, 53.4056545)::GEOMETRY, 4326)),
+			('aws-eu-west-2', ST_SetSRID(POINT(-0.0609266, 51.5085036)::GEOMETRY, 4326)),
+			('aws-eu-west-3', ST_SetSRID(POINT(2.2976644, 48.6009709)::GEOMETRY, 4326)),
+			('aws-eu-central-1', ST_SetSRID(POINT(8.6303932, 50.0992094)::GEOMETRY, 4326)),
+			('aws-ap-southeast-1', ST_SetSRID(POINT(103.6930643, 1.3218269)::GEOMETRY, 4326)),
+			('aws-ap-southeast-2', ST_SetSRID(POINT(151.1907535, -33.9117717)::GEOMETRY, 4326)),
+			('aws-ap-northeast-1', ST_SetSRID(POINT(139.7459176, 35.617436)::GEOMETRY, 4326)),
+			('aws-ap-northeast-2', ST_SetSRID(POINT(126.8736237, 37.5616592)::GEOMETRY, 4326)),
+			('aws-ap-south-1', ST_SetSRID(POINT(72.9667878, 19.2425503)::GEOMETRY, 4326)),
+			('aws-ca-central-1', ST_SetSRID(POINT(-73.6, 45.5)::GEOMETRY, 4326)),
+			('aws-eu-north-1', ST_SetSRID(POINT(17.8419717, 59.326242)::GEOMETRY, 4326)),
+			('do-tor', ST_SetSRID(POINT(-79.3623, 43.6547)::GEOMETRY, 4326)),
+			('do-sfo', ST_SetSRID(POINT(-121.9753, 37.3417)::GEOMETRY, 4326)),
+			('do-nyc', ST_SetSRID(POINT(-73.981, 40.7597)::GEOMETRY, 4326)),
+			('do-lon', ST_SetSRID(POINT(-0.6289, 51.5225)::GEOMETRY, 4326)),
+			('do-ams', ST_SetSRID(POINT(4.9479, 52.3006)::GEOMETRY, 4326)),
+			('do-sgp', ST_SetSRID(POINT(103.695, 1.32123)::GEOMETRY, 4326)),
+			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
+			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
 		"#
 	)
 	.execute(&mut *connection)
