@@ -5,10 +5,17 @@ use openssh::{KnownHosts, SessionBuilder};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{
+use crate::{
+	db,
+	error,
+	models::{
 		db_mapping::{CNameRecord, DeploymentStatus},
 		rbac,
-	}, service::{self, deployment}, utils::{get_current_time_millis, settings::Settings, Error}};
+	},
+	service::{self, deployment},
+	utils::{get_current_time_millis, settings::Settings, Error},
+	Database,
+};
 
 pub async fn create_static_site_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -578,7 +585,8 @@ pub async fn get_static_site_validation_status(
 			return Ok(true);
 		}
 		log::trace!("certificate does not exist creating a new one");
-		deployment::create_https_certificates_for_domain(&domain_name, config).await?;
+		deployment::create_https_certificates_for_domain(&domain_name, config)
+			.await?;
 		log::trace!("updating nginx with https");
 		update_nginx_for_static_site_with_https(
 			&domain_name,
@@ -860,7 +868,8 @@ async fn update_nginx_with_all_domains_for_static_site(
 			config,
 		)
 		.await?;
-		deployment::create_https_certificates_for_domain(&patr_domain, config).await?;
+		deployment::create_https_certificates_for_domain(&patr_domain, config)
+			.await?;
 		update_nginx_for_static_site_with_https(
 			&patr_domain,
 			static_id_string,

@@ -59,12 +59,12 @@ sqlx = { version = "0.5", features = [
   "runtime-tokio-rustls",
   "offline",
   "ipnetwork",
+  "bigdecimal",
 ] }
 strum = { version = "0.21.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.20"
 uuid = "0.8.1"
-zip = "0.5.13"
 
 [dependencies.log4rs]
 default-features = false

@@ -1,4 +1,5 @@
 mod aws;
+#[allow(clippy::module_inception)]
 mod deployment;
 mod digitalocean;
 mod managed_database;
@@ -24,22 +25,24 @@ use cloudflare::{
 		HttpApiClientConfig,
 	},
 };
-pub use deployment::*;
 use eve_rs::AsError;
-pub use managed_database::*;
 use openssh::{KnownHosts, Session, SessionBuilder};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-pub use static_site::*;
+use reqwest::Client;
 use tokio::io::AsyncWriteExt;
 
+pub use self::{deployment::*, managed_database::*, static_site::*};
 use crate::{
-	models::{
-		db_mapping::CNameRecord
+	db,
+	error,
+	models::db_mapping::{
+		CNameRecord,
+		DeploymentRequestMethod,
+		DeploymentRequestProtocol,
+		IpResponse,
 	},
-	utils::{
-		settings::Settings,
-		Error,
-	},
+	utils::{settings::Settings, Error},
+	Database,
 };
 
 async fn create_https_certificates_for_domain(
@@ -200,4 +203,58 @@ async fn create_random_content_for_verification(
 	drop(sftp);
 
 	Ok((filename, file_content))
+}
+
+pub async fn create_request_log_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	timestamp: u64,
+	ip_address: &str,
+	method: &DeploymentRequestMethod,
+	host: &str,
+	protocol: &DeploymentRequestProtocol,
+	path: &str,
+	response_time: f64,
+) -> Result<(), Error> {
+	let (latitude, longitude) =
+		get_location_from_ip_address(ip_address).await?;
+
+	db::create_log_for_deployment(
+		connection,
+		deployment_id,
+		timestamp,
+		ip_address,
+		latitude,
+		longitude,
+		method,
+		host,
+		protocol,
+		path,
+		response_time,
+	)
+	.await?;
+	Ok(())
+}
+
+async fn get_location_from_ip_address(
+	ip_address: &str,
+) -> Result<(f64, f64), Error> {
+	// TODO: change to https when in production
+	let response = Client::new()
+		.get(format!(
+			"http://ip-api.com/json/{}?fields=status,message,lat,lon",
+			ip_address
+		))
+		.send()
+		.await?
+		.json::<IpResponse>()
+		.await?;
+
+	if response.status != "success" {
+		log::error!("{}", response.message);
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+	Ok((response.lat, response.lon))
 }

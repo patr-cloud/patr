@@ -16,14 +16,24 @@ use lightsail::{
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use tokio::{process::Command, task, time};
 
-use crate::{Database, db, error, models::db_mapping::{
+use crate::{
+	db,
+	error,
+	models::db_mapping::{
 		CloudPlatform,
 		DeploymentMachineType,
 		DeploymentStatus,
 		ManagedDatabaseEngine,
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
-	}, service::{self, deployment::{deployment, managed_database}}, utils::{settings::Settings, Error}};
+	},
+	service::{
+		self,
+		deployment::{deployment, managed_database},
+	},
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn deploy_container(
 	image_id: String,
@@ -132,7 +142,8 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ = deployment::delete_docker_image(&deployment_id_string, &image_id).await;
+	let _ =
+		deployment::delete_docker_image(&deployment_id_string, &image_id).await;
 	log::trace!("Docker image deleted");
 	Ok(())
 }

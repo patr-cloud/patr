@@ -13,16 +13,16 @@ pub async fn initialize_static_sites_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_static_sites(
-			id BYTEA CONSTRAINT deployment_Static_sites_pk PRIMARY KEY,
+			id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			domain_name VARCHAR(255)
-				CONSTRAINT deployment_Static_sites_pk_uq_domain_name UNIQUE
-				CONSTRAINT deployment_Static_sites_pk_chk_domain_name_is_lower_case CHECK(
+				CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE
+				CONSTRAINT deployment_static_sites_pk_chk_domain_name_is_lower_case CHECK(
 					domain_name = LOWER(domain_name)
 				),
 			organisation_id BYTEA NOT NULL,
-			CONSTRAINT deployment_Static_sites_uq_name_organisation_id
+			CONSTRAINT deployment_static_sites_uq_name_organisation_id
 				UNIQUE(name, organisation_id)
 		);
 		"#

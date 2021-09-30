@@ -3,7 +3,10 @@ use std::ops::DerefMut;
 use eve_rs::AsError;
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{
+use crate::{
+	db,
+	error,
+	models::{
 		db_mapping::{
 			CloudPlatform,
 			ManagedDatabaseEngine,
@@ -11,10 +14,14 @@ use crate::{Database, db, error, models::{
 			ManagedDatabaseStatus,
 		},
 		rbac,
-	}, service::{
+	},
+	service::{
 		self,
 		deployment::{aws, digitalocean},
-	}, utils::{Error, get_current_time_millis, settings::Settings, validator}};
+	},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	Database,
+};
 
 pub async fn create_managed_database_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,

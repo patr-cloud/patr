@@ -8,22 +8,28 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{
-		db_mapping::{
-			CloudPlatform,
-			DeploymentMachineType,
-			DeploymentStatus,
-		},
+use crate::{
+	db,
+	error,
+	models::{
+		db_mapping::{CloudPlatform, DeploymentMachineType, DeploymentStatus},
 		rbac,
 		RegistryToken,
 		RegistryTokenAccess,
-	}, service::{self, deployment::{self, CNameRecord, aws, digitalocean}}, utils::{
+	},
+	service::{
+		self,
+		deployment::{self, aws, digitalocean, CNameRecord},
+	},
+	utils::{
 		get_current_time,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
 		Error,
-	}};
+	},
+	Database,
+};
 
 /// # Description
 /// This function creates a deployment under an organisation account
@@ -648,7 +654,8 @@ pub async fn get_domain_validation_status(
 			return Ok(true);
 		}
 		log::trace!("certificate does not exist creating a new one");
-		deployment::create_https_certificates_for_domain(&domain_name, config).await?;
+		deployment::create_https_certificates_for_domain(&domain_name, config)
+			.await?;
 		log::trace!("updating nginx with https");
 		update_nginx_config_for_domain_with_https(
 			&domain_name,
@@ -1000,7 +1007,8 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 			config,
 		)
 		.await?;
-		deployment::create_https_certificates_for_domain(&patr_domain, config).await?;
+		deployment::create_https_certificates_for_domain(&patr_domain, config)
+			.await?;
 		update_nginx_config_for_domain_with_https(
 			&patr_domain,
 			default_url,
