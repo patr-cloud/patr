@@ -834,19 +834,19 @@ pub async fn create_log_for_deployment(
 pub async fn get_recommended_data_center(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-) -> Result<Vec<AvgDistance>, sqlx::Error> {
-	let rows = query_as!(
+) -> Result<Option<AvgDistance>, sqlx::Error> {
+	let row = query_as!(
 		AvgDistance,
 		r#"
 		SELECT
 			data_center_locations.region,
-		AVG(
-			st_distancespheroid(
-				deployment_request_logs.ip_address_location,
-				data_center_locations.location,
-			'SPHEROID["WGS84",6378137,298.257223563]'
-			)
-		) :: NUMERIC(10, 2) as "avg_distance!: f64"
+			AVG(
+				st_distancespheroid(
+					deployment_request_logs.ip_address_location,
+					data_center_locations.location,
+					'SPHEROID["WGS84",6378137,298.257223563]'
+				)
+			)::NUMERIC(10, 2) as "avg_distance!: f64"
 		FROM
 			data_center_locations,
 			deployment_request_logs
@@ -864,9 +864,11 @@ pub async fn get_recommended_data_center(
 		deployment_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.next();
 
-	Ok(rows)
+	Ok(row)
 }
 
 pub async fn get_deployment_by_domain_name(

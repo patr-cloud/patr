@@ -1560,24 +1560,19 @@ async fn get_recommended_data_center(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
-	let data_centers = db::get_recommended_data_center(
+	let data_center = db::get_recommended_data_center(
 		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?
-	.into_iter()
-	.map(|dc| {
-		json!({
-			request_keys::REGION: dc.region,
-			request_keys::DISTANCE: dc.avg_distance,
-		})
-	})
-	.collect::<Vec<_>>();
+	.status(500)?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::RECOMMENDED_DATA_CENTERS: data_centers,
+		request_keys::RECOMMENDED_DATA_CENTERS: {
+			request_keys::REGION: data_center.region,
+			request_keys::DISTANCE: data_center.avg_distance,
+		}
 	}));
-
 	Ok(context)
 }
