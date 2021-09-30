@@ -769,7 +769,7 @@ pub async fn create_log_for_deployment(
 		INSERT INTO
 			deployment_request_logs
 		VALUES
-			(DEFAULT, $1, $2, $3, ST_POINT($4, $5)::point, $6, $7, $8, $9, $10);
+			(DEFAULT, $1, $2, $3, ST_POINT($4, $5), $6, $7, $8, $9, $10);
 		"#,
 		deployment_id,
 		timestamp as i64,

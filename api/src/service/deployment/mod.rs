@@ -1361,10 +1361,7 @@ async fn add_cname_record(
 	Ok(())
 }
 
-async fn delete_docker_image(
-	deployment_id_string: &str,
-	image_name: &str,
-) -> Result<(), Error> {
+async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
 	let docker = Docker::new();
 
 	docker.images().get(image_name).delete().await?;
