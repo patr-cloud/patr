@@ -139,7 +139,7 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ = super::delete_docker_image(&deployment_id_string, &new_repo_name).await;
+	let _ = super::delete_docker_image(&deployment_id_string, &new_repo_name).await?;
 	log::trace!("Docker image deleted");
 	Ok(())
 }
