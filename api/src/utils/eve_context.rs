@@ -63,8 +63,7 @@ impl EveContext {
 		if let Some(transaction) = self.db_connection.take() {
 			transaction.commit().await?;
 		}
-		self.db_connection
-			.insert(self.state.database.begin().await?);
+		self.db_connection = Some(self.state.database.begin().await?);
 
 		Ok(())
 	}
