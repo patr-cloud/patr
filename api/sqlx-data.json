@@ -1078,20 +1078,6 @@
       ]
     }
   },
-  "2845e0a79ba293cd1bcc4320a6badb23b9ed8cc7f7ee3c54c573d9bd888e9027": {
-    "query": "INSERT INTO deployment_static_sites VALUES ( $1, $2, 'created', NULL, $3 );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "2863c3de7f335fc67ebe731d7b25a0a38224f12146059dc432b52bf9c0da3ca7": {
     "query": "UPDATE deployment SET domain_name = NULL WHERE id = $1;",
     "describe": {
@@ -1758,6 +1744,16 @@
           },
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "4c78ebda196e39bfb5804b66efc95adc846c17c80927596961220ea3224089d8": {
+    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_pk_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), organisation_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_organisation_id UNIQUE(name, organisation_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -3407,6 +3403,20 @@
       ]
     }
   },
+  "7c5a4a0c3e45414231965992272912e05a6dfc88247f92f17cc9a389b08af83d": {
+    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', NULL, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);",
     "describe": {
@@ -4535,6 +4545,21 @@
       "nullable": []
     }
   },
+  "adc5e3b1194b1b1d9856eaeb8d82e93afc38873152243b36e153220dce5cdca2": {
+    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "afca68f12ec6c952445155c410f17886b7582c32a7a12f743c3975dfc89ba30e": {
     "query": "UPDATE deployment SET digitalocean_app_id = $1 WHERE id = $2;",
     "describe": {
@@ -4721,31 +4746,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "bb2040c78ea42c68299e31bb5c106ea414e43974f93da426c1f5b1c4b9ef2f85": {
-    "query": "CREATE TABLE deployment_environment_variable( deployment_id BYTEA CONSTRAINT deploymment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT NOT NULL, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "bba9e5adb09ef55c767795155751f068983f7d18f129172ba1679ef846984318": {
-    "query": "INSERT INTO deployment_static_sites VALUES ( $1, $2, 'created', $3, $4 );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar",
-          "Varchar",
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -5793,16 +5793,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "e7ef04a7976bb4012fa42ece46c1fc43f646feb1dda9a3f54f1077b646a84bfa": {
-    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_Static_sites_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_Static_sites_pk_uq_domain_name UNIQUE CONSTRAINT deployment_Static_sites_pk_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), organisation_id BYTEA NOT NULL, CONSTRAINT deployment_Static_sites_uq_name_organisation_id UNIQUE(name, organisation_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
