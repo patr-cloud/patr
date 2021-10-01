@@ -99,14 +99,10 @@ pub mod permissions {
 		}
 
 		pub mod static_site {
-			#[allow(dead_code)]
 			pub const LIST: &str = "organisation::staticSite::list";
 			pub const CREATE: &str = "organisation::staticSite::create";
-			#[allow(dead_code)]
 			pub const INFO: &str = "organisation::staticSite::info";
-			#[allow(dead_code)]
 			pub const DELETE: &str = "organisation::staticSite::delete";
-			#[allow(dead_code)]
 			pub const EDIT: &str = "organisation::staticSite::edit";
 		}
 

@@ -57,6 +57,18 @@ impl EveContext {
 		self.db_connection.take().unwrap()
 	}
 
+	pub async fn commit_database_transaction(
+		&mut self,
+	) -> Result<(), sqlx::Error> {
+		if let Some(transaction) = self.db_connection.take() {
+			transaction.commit().await?;
+		}
+		self.db_connection
+			.insert(self.state.database.begin().await?);
+
+		Ok(())
+	}
+
 	pub fn set_database_connection(
 		&mut self,
 		connection: Transaction<'static, Database>,

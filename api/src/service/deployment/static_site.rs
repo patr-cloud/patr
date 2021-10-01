@@ -22,7 +22,7 @@ pub async fn create_static_site_deployment_in_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
-	file: &str,
+	file: Option<&str>,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	let static_uuid = db::generate_new_resource_id(connection).await?;
@@ -51,88 +51,52 @@ pub async fn create_static_site_deployment_in_organisation(
 	)
 	.await?;
 
-	// Deploy the app as soon as it's created, so that any existing images can
-	// be deployed
-	let static_site_id = static_site_id.to_vec();
-	let file = file.to_string();
-	let config = config.clone();
-	task::spawn(async move {
-		time::sleep(Duration::from_millis(1000)).await;
-
+	if let Some(file) = file {
 		log::trace!("uploading files to nginx server");
-		let upload_result = upload_static_site_files_to_nginx(
+		upload_static_site_files_to_nginx(
 			&file,
 			&hex::encode(&static_site_id),
-			&config,
+			config,
 		)
-		.await;
-		if let Err(error) = upload_result {
-			let _ = update_static_site_status(
-				&static_site_id,
-				&DeploymentStatus::Errored,
-			)
-			.await;
-			log::info!("Error during file upload, {}", error.get_error());
-		}
-
-		let result =
-			start_static_site_deployment(&static_site_id, &config).await;
-
-		if let Err(error) = result {
-			let _ = update_static_site_status(
-				&static_site_id,
-				&DeploymentStatus::Errored,
-			)
-			.await;
-			log::info!(
-				"Error with the static site deployment, {}",
-				error.get_error()
-			);
-		}
-	});
+		.await?;
+	}
 
 	Ok(static_uuid)
 }
 
 pub async fn start_static_site_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
 	log::trace!("starting the static site");
-	let app = service::get_app();
 	log::trace!("getting static site data from db");
-	let static_site = db::get_static_site_deployment_by_id(
-		app.database.acquire().await?.deref_mut(),
-		static_site_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site =
+		db::get_static_site_deployment_by_id(connection, static_site_id)
+			.await?
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	// update DNS
-	log::trace!("updating DNS");
-	deployment::add_cname_record(
-		&hex::encode(static_site_id),
-		"nginx.patr.cloud",
-		config,
-		false,
-	)
-	.await?;
-	log::trace!("DNS Updated");
+	let config = config.clone();
+	let static_site_id = static_site_id.to_vec();
 
-	update_nginx_with_all_domains_for_static_site(
-		&hex::encode(static_site_id),
-		static_site.domain_name.as_deref(),
-		config,
-	)
-	.await?;
+	task::spawn(async move {
+		let deploy_result = deploy_static_site(
+			&static_site_id,
+			static_site.domain_name.as_deref(),
+			&config,
+		)
+		.await;
 
-	db::update_static_site_status(
-		app.database.acquire().await?.deref_mut(),
-		static_site_id,
-		&DeploymentStatus::Running,
-	)
-	.await?;
+		if let Err(error) = deploy_result {
+			let _ = update_static_site_status(
+				&static_site_id,
+				&DeploymentStatus::Errored,
+			)
+			.await;
+			log::info!("Error with the deployment, {}", error.get_error());
+		}
+	});
 	Ok(())
 }
 
@@ -479,13 +443,13 @@ pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 ) -> Result<Vec<CNameRecord>, Error> {
-	let deployment =
+	let static_site =
 		db::get_static_site_deployment_by_id(connection, static_site_id)
 			.await?
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let domain_name = deployment
+	let domain_name = static_site
 		.domain_name
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
@@ -496,19 +460,40 @@ pub async fn get_dns_records_for_static_site(
 	}])
 }
 
+pub async fn upload_files_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	file: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	db::get_static_site_deployment_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	upload_static_site_files_to_nginx(
+		&file,
+		&hex::encode(&static_site_id),
+		config,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_static_site_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 	config: &Settings,
 ) -> Result<bool, Error> {
 	log::trace!("validating the custom domain");
-	let deployment =
+	let static_site =
 		db::get_static_site_deployment_by_id(connection, static_site_id)
 			.await?
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let domain_name = deployment
+	let domain_name = static_site
 		.domain_name
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
@@ -630,7 +615,10 @@ async fn upload_static_site_files_to_nginx(
 
 	let mut sftp = session.sftp();
 	let mut zip_file = sftp
-		.write_to(format!("/home/{}.zip", static_site_id_string))
+		.write_to(format!(
+			"/home/web/static-sites/{}.zip",
+			static_site_id_string
+		))
 		.await?;
 
 	zip_file.write_all(&file_data).await?;
@@ -639,6 +627,7 @@ async fn upload_static_site_files_to_nginx(
 	log::trace!("creating directory for static sites");
 	let create_directory_result = session
 		.command("mkdir")
+		.arg("-p")
 		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
 		.spawn()?
 		.wait()
@@ -650,7 +639,10 @@ async fn upload_static_site_files_to_nginx(
 	log::trace!("unzipping the file");
 	let unzip_result = session
 		.command("unzip")
-		.arg(format!("/home/{}.zip", static_site_id_string))
+		.arg(format!(
+			"/home/web/static-sites/{}.zip",
+			static_site_id_string
+		))
 		.arg("-d")
 		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
 		.status()
@@ -664,7 +656,10 @@ async fn upload_static_site_files_to_nginx(
 	let delete_zip_file_result = session
 		.command("rm")
 		.arg("-r")
-		.arg(format!("/home/{}.zip", static_site_id_string))
+		.arg(format!(
+			"/home/web/static-sites/{}.zip",
+			static_site_id_string
+		))
 		.spawn()?
 		.wait()
 		.await?;
@@ -742,6 +737,39 @@ server {{
 	log::trace!("reloaded nginx");
 	session.close().await?;
 	log::trace!("session closed");
+	Ok(())
+}
+
+async fn deploy_static_site(
+	static_site_id: &[u8],
+	custom_domain: Option<&str>,
+	config: &Settings,
+) -> Result<(), Error> {
+	// update DNS
+	log::trace!("updating DNS");
+	super::add_cname_record(
+		&hex::encode(static_site_id),
+		"nginx.patr.cloud",
+		config,
+		false,
+	)
+	.await?;
+	log::trace!("DNS Updated");
+
+	update_nginx_with_all_domains_for_static_site(
+		&hex::encode(static_site_id),
+		custom_domain,
+		config,
+	)
+	.await?;
+
+	db::update_static_site_status(
+		service::get_app().database.begin().await?.deref_mut(),
+		static_site_id,
+		&DeploymentStatus::Running,
+	)
+	.await?;
+
 	Ok(())
 }
 

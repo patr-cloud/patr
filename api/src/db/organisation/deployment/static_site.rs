@@ -18,9 +18,9 @@ pub async fn initialize_static_sites_pre(
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			domain_name VARCHAR(255)
 				CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE
-				CONSTRAINT deployment_static_sites_pk_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
-				),
+				CONSTRAINT
+					deployment_static_sites_pk_chk_domain_name_is_lower_case
+						CHECK(domain_name = LOWER(domain_name)),
 			organisation_id BYTEA NOT NULL,
 			CONSTRAINT deployment_static_sites_uq_name_organisation_id
 				UNIQUE(name, organisation_id)
@@ -64,13 +64,7 @@ pub async fn create_static_site(
 			INSERT INTO
 				deployment_static_sites
 			VALUES
-			(
-				$1,
-				$2,
-				'created',
-				$3,
-				$4
-			);
+				($1, $2, 'created', $3, $4);
 			"#,
 			static_site_id,
 			name,
@@ -86,13 +80,7 @@ pub async fn create_static_site(
 			INSERT INTO
 				deployment_static_sites
 			VALUES
-			(
-				$1,
-				$2,
-				'created',
-				NULL,
-				$3
-			);
+				($1, $2, 'created', NULL, $3);
 			"#,
 			static_site_id,
 			name,
@@ -108,7 +96,7 @@ pub async fn get_static_site_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 ) -> Result<Option<DeploymentStaticSite>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		DeploymentStaticSite,
 		r#"
 		SELECT
@@ -125,12 +113,8 @@ pub async fn get_static_site_deployment_by_id(
 		"#,
 		static_site_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn update_static_site_status(
@@ -159,7 +143,7 @@ pub async fn get_static_sites_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],
 ) -> Result<Vec<DeploymentStaticSite>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		DeploymentStaticSite,
 		r#"
 		SELECT
@@ -177,9 +161,7 @@ pub async fn get_static_sites_for_organisation(
 		organisation_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn set_domain_name_for_static_site(
