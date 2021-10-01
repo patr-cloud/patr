@@ -68,6 +68,7 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digital_ocean_api_key: String,
 	pub ssh: SshSettings,
+	pub custom_auth: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

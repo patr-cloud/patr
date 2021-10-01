@@ -28,14 +28,14 @@ http:
   headers:
     X-Content-Type-Options: [nosniff]
 auth:
-  silly:
-    realm: http://localhost:3000/auth/docker-registry-token
-    service: Docker Registry
-  # token:
+  # silly:
   #   realm: http://localhost:3000/auth/docker-registry-token
-  #   service: Docker registry
-  #   issuer: localhost:3000
-  #   rootcertbundle: /certs/ecdsa.pubkey.crt
+  #   service: Docker Registry
+  token:
+    realm: http://localhost:3000/auth/docker-registry-token
+    service: Docker registry
+    issuer: localhost:3000
+    rootcertbundle: /certs/ecdsa.pubkey.crt
 #
 # TLS will be handled through reverse proxy
 #http:
@@ -51,6 +51,8 @@ notifications:
   endpoints:
     - name: vicara
       url: http://localhost:3000/webhook/docker-registry/notification
+      headers:
+        Authorization: [MqpqDtC719U0CbbyESQbtquzpkiEiz9xQJ21s6bdG27d6eYJbsIamnA2DU55D8T1]
       timeout: 30m
       threshold: 5
       backoff: 1m
