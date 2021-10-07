@@ -27,4 +27,4 @@ async function handle(req) {
     req.return(response.status, await response.arrayBuffer());
 }
 
-export default handle;
+export default {handle};
