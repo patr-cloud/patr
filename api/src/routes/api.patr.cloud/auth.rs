@@ -413,10 +413,10 @@ async fn sign_out(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let login_id =
-		hex::decode(context.get_token_data().status(500)?.login_id.clone())
+		hex::decode(context.get_token_data().unwrap().login_id.clone())
 			.status(400)
 			.body(error!(UNAUTHORIZED).to_string())?;
-	let user_id = context.get_token_data().status(500)?.user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	db::get_user_login_for_user(
 		context.get_database_connection(),
@@ -1191,13 +1191,13 @@ async fn docker_registry_authenticate(
 				.to_string(),
 			)?;
 
-	let god_user_id = rbac::GOD_USER_ID.get().status(500)?;
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 	let god_user = db::get_user_by_user_id(
 		context.get_database_connection(),
 		god_user_id.as_bytes(),
 	)
 	.await?
-	.status(500)?;
+	.unwrap();
 	// check if user is GOD_USER then return the token
 	if username == god_user.username {
 		// return token.
@@ -1303,8 +1303,8 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_name = split_array.get(0).status(500)?; // get first index from the vector
-	let repo_name = split_array.get(1).status(500)?;
+	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
 	let is_repo_name_valid = validator::is_docker_repo_name_valid(repo_name);
@@ -1391,7 +1391,7 @@ async fn docker_registry_authenticate(
 	}
 
 	let org_id = org.id.encode_hex::<String>();
-	let god_user_id = GOD_USER_ID.get().status(500)?.as_bytes();
+	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
 	// get all org roles for the user using the id
 	let user_id = &user.id;
@@ -1519,7 +1519,7 @@ async fn list_recovery_options(
 		let phone_number = service::mask_phone_number(&phone_number);
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
-			&user.backup_phone_country_code.status(500)?,
+			&user.backup_phone_country_code.unwrap(),
 		)
 		.await?
 		.status(500)

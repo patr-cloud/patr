@@ -360,12 +360,13 @@ pub async fn get_notification_email_for_domain(
 	.fetch_optional(&mut *connection)
 	.await?
 	.map(|row| {
-		format!(
-			"{}@{}",
-			row.backup_email_local.unwrap_or_default(),
-			row.name
-		)
-	});
+		if let Some(email_local) = row.backup_email_local {
+			Ok(format!("{}@{}", email_local, row.name))
+		} else {
+			Err(sqlx::Error::RowNotFound)
+		}
+	})
+	.transpose()?;
 
 	Ok(email)
 }
