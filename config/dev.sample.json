@@ -59,5 +59,11 @@
 		"privateKey": "",
 		"publicKey": ""
 	},
+	"ssh": {
+		"host": "127.0.0.1",
+		"port": 22,
+		"username": "root",
+		"keyFile": "~/.ssh/id_rsa"
+	},
 	"digitalOceanApiKey": "key"
 }

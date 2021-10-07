@@ -30,6 +30,7 @@ pub struct AppSpec {
 	// The slug form of the geographical origin of the app.
 	// Default: nearest available
 	pub region: String,
+	#[serde(default)]
 	pub domains: Vec<Domains>,
 	pub services: Vec<Services>,
 }

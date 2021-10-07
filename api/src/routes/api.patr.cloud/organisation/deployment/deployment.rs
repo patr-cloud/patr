@@ -296,6 +296,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set horizontal scale for the deployment
 	app.put(
 		"/:deploymentId/horizontal-scale",
 		[
@@ -327,6 +328,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// set machine type of the deployment
 	app.put(
 		"/:deploymentId/machine-type",
 		[
@@ -487,6 +489,39 @@ pub fn create_sub_app(
 		],
 	);
 
+	// get data center recommendation on the basis of distance
+	app.get(
+		"/:deploymentId/recommended-data-center",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::organisation::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let org_id_string = context
+						.get_param(request_keys::ORGANISATION_ID)
+						.unwrap();
+					let organisation_id = hex::decode(&org_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&organisation_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_recommended_data_center)),
+		],
+	);
+
 	app
 }
 
@@ -528,31 +563,59 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
+		let mut map = Map::new();
+
+		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
 		if deployment.registry == "registry.patr.cloud" {
-			Some(json!({
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id?),
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			}))
+			map.insert(
+				request_keys::REPOSITORY_ID.to_string(),
+				Value::String(hex::encode(deployment.repository_id?)),
+			);
 		} else {
-			Some(json!({
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::IMAGE_NAME: deployment.image_name?,
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			}))
+			map.insert(
+				request_keys::IMAGE_NAME.to_string(),
+				Value::String(deployment.image_name?),
+			);
 		}
+		if let Some(domain_name) = deployment.domain_name {
+			map.insert(
+				request_keys::DOMAIN_NAME.to_string(),
+				Value::String(domain_name),
+			);
+		}
+		map.insert(
+			request_keys::DEPLOYMENT_ID.to_string(),
+			Value::String(hex::encode(deployment.id)),
+		);
+		map.insert(
+			request_keys::NAME.to_string(),
+			Value::String(deployment.name),
+		);
+		map.insert(
+			request_keys::REGISTRY.to_string(),
+			Value::String(deployment.registry),
+		);
+		map.insert(
+			request_keys::IMAGE_TAG.to_string(),
+			Value::String(deployment.image_tag),
+		);
+		map.insert(
+			request_keys::STATUS.to_string(),
+			Value::String(deployment.status.to_string()),
+		);
+		map.insert(
+			request_keys::REGION.to_string(),
+			Value::String(deployment.region),
+		);
+		map.insert(
+			request_keys::HORIZONTAL_SCALE.to_string(),
+			Value::Number(deployment.horizontal_scale.into()),
+		);
+		map.insert(
+			request_keys::MACHINE_TYPE.to_string(),
+			Value::String(deployment.machine_type.to_string()),
+		);
+		Some(Value::Object(map))
 	})
 	.collect::<Vec<_>>();
 
@@ -779,35 +842,60 @@ async fn get_deployment_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	context.json(
-		if deployment.registry == "registry.patr.cloud" {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::REPOSITORY_ID: hex::encode(deployment.repository_id.status(500)?),
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			})
-		} else {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DEPLOYMENT_ID: hex::encode(deployment.id),
-				request_keys::NAME: deployment.name,
-				request_keys::REGISTRY: deployment.registry,
-				request_keys::IMAGE_NAME: deployment.image_name.status(500)?,
-				request_keys::IMAGE_TAG: deployment.image_tag,
-				request_keys::STATUS: deployment.status.to_string(),
-				request_keys::REGION: deployment.region,
-				request_keys::HORIZONTAL_SCALE: deployment.horizontal_scale,
-				request_keys::MACHINE_TYPE: deployment.machine_type.to_string(),
-			})
-		},
+	let mut response = Map::new();
+
+	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+	if deployment.registry == "registry.patr.cloud" {
+		response.insert(
+			request_keys::REPOSITORY_ID.to_string(),
+			Value::String(hex::encode(deployment.repository_id.status(500)?)),
+		);
+	} else {
+		response.insert(
+			request_keys::IMAGE_NAME.to_string(),
+			Value::String(deployment.image_name.status(500)?),
+		);
+	}
+	if let Some(domain_name) = deployment.domain_name {
+		response.insert(
+			request_keys::DOMAIN_NAME.to_string(),
+			Value::String(domain_name),
+		);
+	}
+	response.insert(
+		request_keys::DEPLOYMENT_ID.to_string(),
+		Value::String(hex::encode(deployment.id)),
 	);
+	response.insert(
+		request_keys::NAME.to_string(),
+		Value::String(deployment.name),
+	);
+	response.insert(
+		request_keys::REGISTRY.to_string(),
+		Value::String(deployment.registry),
+	);
+	response.insert(
+		request_keys::IMAGE_TAG.to_string(),
+		Value::String(deployment.image_tag),
+	);
+	response.insert(
+		request_keys::STATUS.to_string(),
+		Value::String(deployment.status.to_string()),
+	);
+	response.insert(
+		request_keys::REGION.to_string(),
+		Value::String(deployment.region),
+	);
+	response.insert(
+		request_keys::HORIZONTAL_SCALE.to_string(),
+		Value::Number(deployment.horizontal_scale.into()),
+	);
+	response.insert(
+		request_keys::MACHINE_TYPE.to_string(),
+		Value::String(deployment.machine_type.to_string()),
+	);
+
+	context.json(Value::Object(response));
 	Ok(context)
 }
 
@@ -1374,9 +1462,11 @@ async fn set_domain_name(
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
+	let config = context.get_state().config.clone();
 
-	db::set_domain_name_for_deployment(
+	service::set_domain_for_deployment(
 		context.get_database_connection(),
+		&config,
 		&deployment_id,
 		domain_name,
 	)
@@ -1423,16 +1513,66 @@ async fn is_domain_validated(
 	let deployment_id =
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
+	let config = context.get_state().config.clone();
 
 	let validated = service::get_domain_validation_status(
 		context.get_database_connection(),
 		&deployment_id,
+		&config,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the nearest data center for the majority of the
+/// users deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    datacenters: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_recommended_data_center(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id =
+		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
+			.unwrap();
+
+	let data_center = db::get_recommended_data_center(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(500)?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::RECOMMENDED_DATA_CENTERS: {
+			request_keys::REGION: data_center.region,
+			request_keys::DISTANCE: data_center.avg_distance,
+		}
 	}));
 	Ok(context)
 }
