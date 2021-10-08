@@ -140,10 +140,11 @@ pub(super) async fn deploy_container(
 	)
 	.await;
 	log::trace!("deleting image tagged with patr-cloud");
-	let _ = super::delete_docker_image(&new_repo_name).await?;
+	let _ = super::delete_docker_image(&new_repo_name).await;
 	log::trace!("deleting the pulled image");
-	let _ = super::delete_docker_image(&image_id).await?;
+	let _ = super::delete_docker_image(&image_id).await;
 	log::trace!("Docker image deleted");
+
 	Ok(())
 }
 
