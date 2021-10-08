@@ -11,8 +11,8 @@ lazy_static! {
 	static ref PHONE_NUMBER_REGEX: Regex = Regex::new("^[0-9]{7,15}$").unwrap();
 	// Needs to have at least 1 a-z, 1 A-Z, 1 0-9 and a special character
 	//static ref PASSWORD_REGEX: Regex = Regex::new("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-+=()])(?=\\S+$).{8,}$").unwrap();
-	// Needs to begin with personal-organisation- and follow up with a 128 bit hex
-	static ref PERSONAL_ORGANISATION_NAME_REGEX: Regex = Regex::new("^personal-organisation-[a-z0-9]{32}$").unwrap();
+	// Needs to begin with personal-workspace- and follow up with a 128 bit hex
+	static ref PERSONAL_WORKSPACE_NAME_REGEX: Regex = Regex::new("^personal-workspace-[a-z0-9]{32}$").unwrap();
 	// Can only contain lowercase letters, numbers, hyphens and underscores
 	static ref DOCKER_REPO_NAME_REGEX: Regex = Regex::new("^[a-z0-9_-]{2,255}$").unwrap();
 	// List of all TLDs supported by ICANN. Updated every week.
@@ -65,8 +65,8 @@ pub fn is_phone_number_valid(phone_number: &str) -> bool {
 	PHONE_NUMBER_REGEX.is_match(phone_number)
 }
 
-pub fn is_organisation_name_valid(organisation_name: &str) -> bool {
-	!PERSONAL_ORGANISATION_NAME_REGEX.is_match(organisation_name)
+pub fn is_workspace_name_valid(workspace_name: &str) -> bool {
+	!PERSONAL_WORKSPACE_NAME_REGEX.is_match(workspace_name)
 }
 
 pub fn is_docker_repo_name_valid(repo_name: &str) -> bool {

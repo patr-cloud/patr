@@ -60,7 +60,7 @@ pub async fn initialize_managed_database_pre(
 		r#"
 		CREATE TABLE managed_database(
 			id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
+			name CITEXT NOT NULL,
 			db_name VARCHAR(255) NOT NULL,
 			engine MANAGED_DATABASE_ENGINE NOT NULL,
 			version TEXT NOT NULL,
@@ -72,11 +72,11 @@ pub async fn initialize_managed_database_pre(
 			port INTEGER NOT NULL,
 			username TEXT NOT NULL,
 			password TEXT NOT NULL,
-			organisation_id BYTEA NOT NULL,
+			workspace_id BYTEA NOT NULL,
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
-			CONSTRAINT managed_database_uq_name_organisation_id
-				UNIQUE(name, organisation_id)
+			CONSTRAINT managed_database_uq_name_workspace_id
+				UNIQUE(name, workspace_id)
 		);
 		"#
 	)
@@ -93,8 +93,8 @@ pub async fn initialize_managed_database_post(
 	query!(
 		r#"
 		ALTER TABLE managed_database 
-		ADD CONSTRAINT managed_database_repository_fk_id_organisation_id
-		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT managed_database_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -117,7 +117,7 @@ pub async fn create_managed_database(
 	port: i32,
 	username: &str,
 	password: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	digital_ocean_id: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(digitalocean_db_id) = digital_ocean_id {
@@ -145,7 +145,7 @@ pub async fn create_managed_database(
 				);
 			"#,
 			id,
-			name,
+			name as _,
 			db_name,
 			engine as _,
 			version,
@@ -156,7 +156,7 @@ pub async fn create_managed_database(
 			port,
 			username,
 			password,
-			organisation_id,
+			workspace_id,
 			digitalocean_db_id
 		)
 		.execute(&mut *connection)
@@ -187,7 +187,7 @@ pub async fn create_managed_database(
 				);
 			"#,
 			id,
-			name,
+			name as _,
 			db_name,
 			engine as _,
 			version,
@@ -198,7 +198,7 @@ pub async fn create_managed_database(
 			port,
 			username,
 			password,
-			organisation_id,
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -228,16 +228,16 @@ pub async fn update_managed_database_status(
 	.map(|_| ())
 }
 
-pub async fn get_all_database_clusters_for_organisation(
+pub async fn get_all_database_clusters_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
 	query_as!(
 		ManagedDatabase,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			db_name,
 			engine as "engine: _",
 			version,
@@ -249,15 +249,15 @@ pub async fn get_all_database_clusters_for_organisation(
 			port,
 			username,
 			password,
-			organisation_id,
+			workspace_id,
 			digitalocean_db_id
 		FROM
 			managed_database
 		WHERE
-			organisation_id = $1 AND
+			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -272,7 +272,7 @@ pub async fn get_managed_database_by_id(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			db_name,
 			engine as "engine: _",
 			version,
@@ -284,7 +284,7 @@ pub async fn get_managed_database_by_id(
 			port,
 			username,
 			password,
-			organisation_id,
+			workspace_id,
 			digitalocean_db_id
 		FROM
 			managed_database

@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::{Domain, OrganisationDomain, PersonalDomain},
+	models::db_mapping::{Domain, PersonalDomain, WorkspaceDomain},
 	query,
 	query_as,
 	utils::constants::ResourceOwnerType,
@@ -33,13 +33,13 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE organisation_domain (
-			id BYTEA CONSTRAINT organisation_domain_pk PRIMARY KEY,
+		CREATE TABLE workspace_domain (
+			id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
-				CONSTRAINT organisation_domain_chk_dmn_typ
-					CHECK(domain_type = 'organisation'),
+				CONSTRAINT workspace_domain_chk_dmn_typ
+					CHECK(domain_type = 'business'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			CONSTRAINT organisation_domain_fk_id_domain_type
+			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
 		"#
@@ -50,9 +50,9 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_domain_idx_is_verified
+			workspace_domain_idx_is_verified
 		ON
-			organisation_domain
+			workspace_domain
 		(is_verified);
 		"#
 	)
@@ -84,8 +84,8 @@ pub async fn initialize_domain_post(
 	log::info!("Finishing up domain tables initialization");
 	query!(
 		r#"
-		ALTER TABLE organisation_domain
-		ADD CONSTRAINT organisation_domain_fk_id
+		ALTER TABLE workspace_domain
+		ADD CONSTRAINT workspace_domain_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
@@ -102,7 +102,7 @@ pub async fn generate_new_domain_id(
 		let uuid = Uuid::new_v4();
 
 		// If it exists in the resource table, it can't be used
-		// because organisation domains are a resource
+		// because workspace domains are a resource
 		// If it exists in the domain table, it can't be used
 		// since personal domains are a type of domains
 		let exists = {
@@ -167,16 +167,16 @@ pub async fn create_generic_domain(
 	.map(|_| ())
 }
 
-pub async fn add_to_organisation_domain(
+pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			organisation_domain
+			workspace_domain
 		VALUES
-			($1, 'organisation', FALSE);
+			($1, 'business', FALSE);
 		"#,
 		domain_id
 	)
@@ -203,24 +203,24 @@ pub async fn add_to_personal_domain(
 	.map(|_| ())
 }
 
-pub async fn get_domains_for_organisation(
+pub async fn get_domains_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
-) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
+	workspace_id: &[u8],
+) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
 	query_as!(
-		OrganisationDomain,
+		WorkspaceDomain,
 		r#"
 		SELECT
 			domain.name,
-			organisation_domain.id,
-			organisation_domain.domain_type as "domain_type: _",
-			organisation_domain.is_verified
+			workspace_domain.id,
+			workspace_domain.domain_type as "domain_type: _",
+			workspace_domain.is_verified
 		FROM
 			domain
 		INNER JOIN
-			organisation_domain
+			workspace_domain
 		ON
-			organisation_domain.id = domain.id
+			workspace_domain.id = domain.id
 		INNER JOIN
 			resource
 		ON
@@ -228,7 +228,7 @@ pub async fn get_domains_for_organisation(
 		WHERE
 			resource.owner_id = $1;
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -236,21 +236,21 @@ pub async fn get_domains_for_organisation(
 
 pub async fn get_all_unverified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
+) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
 	query_as!(
-		OrganisationDomain,
+		WorkspaceDomain,
 		r#"
 		SELECT
 			domain.name as "name!",
-			organisation_domain.id as "id!",
-			organisation_domain.domain_type as "domain_type!: _",
-			organisation_domain.is_verified as "is_verified!"
+			workspace_domain.id as "id!",
+			workspace_domain.domain_type as "domain_type!: _",
+			workspace_domain.is_verified as "is_verified!"
 		FROM
-			organisation_domain
+			workspace_domain
 		INNER JOIN
 			domain
 		ON
-			domain.id = organisation_domain.id
+			domain.id = workspace_domain.id
 		WHERE
 			is_verified = FALSE;
 		"#
@@ -266,7 +266,7 @@ pub async fn set_domain_as_verified(
 	query!(
 		r#"
 		UPDATE
-			organisation_domain
+			workspace_domain
 		SET
 			is_verified = TRUE
 		WHERE
@@ -281,21 +281,21 @@ pub async fn set_domain_as_verified(
 
 pub async fn get_all_verified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<OrganisationDomain>, sqlx::Error> {
+) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
 	query_as!(
-		OrganisationDomain,
+		WorkspaceDomain,
 		r#"
 		SELECT
 			domain.name as "name!",
-			organisation_domain.id as "id!",
-			organisation_domain.domain_type as "domain_type!: _",
-			organisation_domain.is_verified as "is_verified!"
+			workspace_domain.id as "id!",
+			workspace_domain.domain_type as "domain_type!: _",
+			workspace_domain.is_verified as "is_verified!"
 		FROM
-			organisation_domain
+			workspace_domain
 		INNER JOIN
 			domain
 		ON
-			domain.id = organisation_domain.id
+			domain.id = workspace_domain.id
 		WHERE
 			is_verified = TRUE;
 		"#
@@ -311,7 +311,7 @@ pub async fn set_domain_as_unverified(
 	query!(
 		r#"
 		UPDATE
-			organisation_domain
+			workspace_domain
 		SET
 			is_verified = FALSE
 		WHERE
@@ -335,25 +335,25 @@ pub async fn get_notification_email_for_domain(
 			"user".*,
 			domain.name
 		FROM
-			organisation_domain
+			workspace_domain
 		INNER JOIN
 			domain
 		ON
-			domain.id = organisation_domain.id
+			domain.id = workspace_domain.id
 		INNER JOIN
 			resource
 		ON
-			organisation_domain.id = resource.id
+			workspace_domain.id = resource.id
 		INNER JOIN
-			organisation
+			workspace
 		ON
-			resource.owner_id = organisation.id
+			resource.owner_id = workspace.id
 		INNER JOIN
 			"user"
 		ON
-			organisation.super_admin_id = "user".id
+			workspace.super_admin_id = "user".id
 		WHERE
-			organisation_domain.id = $1;
+			workspace_domain.id = $1;
 		"#,
 		domain_id
 	)
@@ -390,14 +390,14 @@ pub async fn delete_personal_domain(
 	Ok(())
 }
 
-pub async fn delete_domain_from_organisation(
+pub async fn delete_domain_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		DELETE FROM
-			organisation_domain
+			workspace_domain
 		WHERE
 			id = $1;
 		"#,
@@ -428,24 +428,24 @@ pub async fn delete_generic_domain(
 	Ok(())
 }
 
-pub async fn get_organisation_domain_by_id(
+pub async fn get_workspace_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-) -> Result<Option<OrganisationDomain>, sqlx::Error> {
+) -> Result<Option<WorkspaceDomain>, sqlx::Error> {
 	let rows = query_as!(
-		OrganisationDomain,
+		WorkspaceDomain,
 		r#"
 		SELECT
 			domain.name,
-			organisation_domain.id,
-			organisation_domain.domain_type as "domain_type: _",
-			organisation_domain.is_verified
+			workspace_domain.id,
+			workspace_domain.domain_type as "domain_type: _",
+			workspace_domain.is_verified
 		FROM
-			organisation_domain
+			workspace_domain
 		INNER JOIN
 			domain
 		ON
-			domain.id = organisation_domain.id
+			domain.id = workspace_domain.id
 		WHERE
 			domain.id = $1;
 		"#,

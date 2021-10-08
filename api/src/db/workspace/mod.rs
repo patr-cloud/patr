@@ -1,30 +1,24 @@
-use crate::{models::db_mapping::Organisation, query, query_as, Database};
+use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
-mod application;
 mod deployment;
 mod domain;
-mod drive;
-mod portus;
 
-pub use application::*;
 pub use deployment::*;
 pub use domain::*;
-pub use drive::*;
-pub use portus::*;
 
-pub async fn initialize_organisations_pre(
+pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing organisation tables");
+	log::info!("Initializing workspace tables");
 	query!(
 		r#"
-		CREATE TABLE organisation(
+		CREATE TABLE workspace(
 			id BYTEA
-				CONSTRAINT organisation_pk PRIMARY KEY,
-			name VARCHAR(100) NOT NULL
-				CONSTRAINT organisation_uq_name UNIQUE,
+				CONSTRAINT workspace_pk PRIMARY KEY,
+			name CITEXT NOT NULL
+				CONSTRAINT workspace_uq_name UNIQUE,
 			super_admin_id BYTEA NOT NULL
-				CONSTRAINT organisation_super_admin_id_fk_user_id
+				CONSTRAINT workspace_super_admin_id_fk_user_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE
 		);
@@ -36,9 +30,9 @@ pub async fn initialize_organisations_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_idx_super_admin_id
+			workspace_idx_super_admin_id
 		ON
-			organisation
+			workspace
 		(super_admin_id);
 		"#
 	)
@@ -48,9 +42,9 @@ pub async fn initialize_organisations_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_idx_active
+			workspace_idx_active
 		ON
-			organisation
+			workspace
 		(active);
 		"#
 	)
@@ -62,30 +56,27 @@ pub async fn initialize_organisations_pre(
 		r#"
 		CREATE TYPE RESOURCE_OWNER_TYPE AS ENUM(
 			'personal',
-			'organisation'
+			'business'
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	application::initialize_application_pre(connection).await?;
 	domain::initialize_domain_pre(connection).await?;
-	drive::initialize_drive_pre(connection).await?;
-	portus::initialize_portus_pre(connection).await?;
 	deployment::initialize_deployment_pre(connection).await?;
 
 	Ok(())
 }
 
-pub async fn initialize_organisations_post(
+pub async fn initialize_workspaces_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up organisation tables initialization");
+	log::info!("Finishing up workspace tables initialization");
 	query!(
 		r#"
-		ALTER TABLE organisation
-		ADD CONSTRAINT organisation_fk_id
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id)
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
@@ -93,30 +84,27 @@ pub async fn initialize_organisations_post(
 	.execute(&mut *connection)
 	.await?;
 
-	application::initialize_application_post(connection).await?;
 	domain::initialize_domain_post(connection).await?;
-	drive::initialize_drive_post(connection).await?;
-	portus::initialize_portus_post(connection).await?;
 	deployment::initialize_deployment_post(connection).await?;
 
 	Ok(())
 }
 
-pub async fn create_organisation(
+pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 	super_admin_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
-			organisation
+			workspace
 		VALUES
 			($1, $2, $3, $4);
 		"#,
-		organisation_id,
-		name,
+		workspace_id,
+		name as _,
 		super_admin_id,
 		true,
 	)
@@ -126,21 +114,24 @@ pub async fn create_organisation(
 	Ok(())
 }
 
-pub async fn get_organisation_info(
+pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
-) -> Result<Option<Organisation>, sqlx::Error> {
+	workspace_id: &[u8],
+) -> Result<Option<Workspace>, sqlx::Error> {
 	let row = query_as!(
-		Organisation,
+		Workspace,
 		r#"
 		SELECT
-			*
+			id,
+			name as "name: _",
+			super_admin_id,
+			active
 		FROM
-			organisation
+			workspace
 		WHERE
 			id = $1;
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -150,21 +141,24 @@ pub async fn get_organisation_info(
 	Ok(row)
 }
 
-pub async fn get_organisation_by_name(
+pub async fn get_workspace_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-) -> Result<Option<Organisation>, sqlx::Error> {
+) -> Result<Option<Workspace>, sqlx::Error> {
 	let row = query_as!(
-		Organisation,
+		Workspace,
 		r#"
 		SELECT
-			*
+			id,
+			name as "name: _",
+			super_admin_id,
+			active
 		FROM
-			organisation
+			workspace
 		WHERE
 			name = $1;
 		"#,
-		name
+		name as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -174,22 +168,22 @@ pub async fn get_organisation_by_name(
 	Ok(row)
 }
 
-pub async fn update_organisation_name(
+pub async fn update_workspace_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
-			organisation
+			workspace
 		SET
 			name = $1
 		WHERE
 			id = $2;
 		"#,
-		name,
-		organisation_id,
+		name as _,
+		workspace_id,
 	)
 	.execute(&mut *connection)
 	.await?;

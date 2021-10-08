@@ -113,23 +113,23 @@ pub async fn notification_handler(
 		};
 		let tag = target.tag;
 
-		let organisation = db::get_organisation_by_name(
+		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
 			org_name,
 		)
 		.await?;
-		let organisation = if let Some(organisation) = organisation {
-			organisation
+		let workspace = if let Some(workspace) = workspace {
+			workspace
 		} else {
 			continue;
 		};
 
 		let deployments =
-			db::get_deployments_by_image_name_and_tag_for_organisation(
+			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),
 				image_name,
 				&tag,
-				&organisation.id,
+				&workspace.id,
 			)
 			.await?;
 

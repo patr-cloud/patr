@@ -1,9 +1,9 @@
 mod initializer;
 mod meta_data;
 mod migrations;
-mod organisation;
 mod rbac;
 mod user;
+mod workspace;
 
 use redis::{aio::MultiplexedConnection, Client, RedisError};
 use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
@@ -13,9 +13,9 @@ pub use self::{
 	initializer::*,
 	meta_data::*,
 	migrations::*,
-	organisation::*,
 	rbac::*,
 	user::*,
+	workspace::*,
 };
 use crate::{query, utils::settings::Settings, Database};
 

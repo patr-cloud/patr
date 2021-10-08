@@ -24,7 +24,7 @@ use crate::{
 /// # Description
 /// This function checks if the personal domain exists, if it does not contain
 /// domain this function will add the domain in the database and if the domain
-/// is already present in organisation's table it will return an error
+/// is already present in workspace's table it will return an error
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
@@ -48,10 +48,10 @@ pub async fn ensure_personal_domain_exists(
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
-		if let ResourceOwnerType::Organisation = domain.r#type {
+		if let ResourceOwnerType::Business = domain.r#type {
 			Error::as_result()
 				.status(500)
-				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())
+				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())
 		} else {
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
@@ -61,7 +61,7 @@ pub async fn ensure_personal_domain_exists(
 		if !is_domain_used_for_sign_up(connection, domain_name).await? {
 			Error::as_result()
 				.status(400)
-				.body(error!(DOMAIN_BELONGS_TO_ORGANISATION).to_string())?;
+				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
 		}
 
 		let domain_uuid = db::generate_new_domain_id(connection).await?;
@@ -81,24 +81,24 @@ pub async fn ensure_personal_domain_exists(
 }
 
 /// # Description
-/// This function adds the organisation domain into the database
+/// This function adds the workspace domain into the database
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `domain_name` - a string which contains domain name of user's personal
 ///   email id
-/// * `organisation_id` - an unsigned 8 bit integer array which contains id of
-///   the organisation
+/// * `workspace_id` - an unsigned 8 bit integer array which contains id of the
+///   workspace
 ///
 /// # Returns
 /// This function returns Result<Uuid, Error> containing uuid of domain uuid or
 /// an error
 ///
 ///[`Transaction`]: Transaction
-pub async fn add_domain_to_organisation(
+pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -134,7 +134,7 @@ pub async fn add_domain_to_organisation(
 			.unwrap()
 			.get(rbac::resource_types::DOMAIN)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -142,10 +142,10 @@ pub async fn add_domain_to_organisation(
 		connection,
 		domain_id,
 		domain_name,
-		&ResourceOwnerType::Organisation,
+		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_organisation_domain(connection, domain_id).await?;
+	db::add_to_workspace_domain(connection, domain_id).await?;
 
 	Ok(domain_uuid)
 }
@@ -156,7 +156,7 @@ pub async fn add_domain_to_organisation(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `domain_id` - an unsigned 8 bit integer array containing id of
-/// organisation domain
+/// workspace domain
 ///
 /// # Returns
 /// Returns a Result<bool, Error> containing a bool whether the domain is
@@ -169,7 +169,7 @@ pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<bool, Error> {
-	let domain = db::get_organisation_domain_by_id(connection, domain_id)
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(200)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -203,12 +203,12 @@ pub async fn is_domain_verified(
 }
 
 /// # Description
-/// This function is used to check if the organisation domain was used during
+/// This function is used to check if the workspace domain was used during
 /// the sign up or not
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `domain_name` - a string containing name of the organisation domain
+/// * `domain_name` - a string containing name of the workspace domain
 ///
 /// # Returns
 /// Returns a Result<bool, Error> containing a bool whether the domain is
@@ -219,9 +219,11 @@ async fn is_domain_used_for_sign_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<bool, Error> {
-	let org_domain_status =
-		db::get_user_to_sign_up_by_org_domain_name(connection, domain_name)
-			.await?;
+	let org_domain_status = db::get_user_to_sign_up_by_business_domain_name(
+		connection,
+		domain_name,
+	)
+	.await?;
 	if let Some(org_domain_status) = org_domain_status {
 		if org_domain_status.otp_expiry > get_current_time_millis() {
 			return Ok(false);

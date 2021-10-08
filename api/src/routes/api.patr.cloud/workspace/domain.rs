@@ -42,18 +42,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::LIST,
+				permissions::workspace::domain::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -66,9 +65,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				get_domains_for_organisation
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(get_domains_for_workspace)),
 		],
 	);
 
@@ -77,18 +74,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::ADD,
+				permissions::workspace::domain::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 					if resource.is_none() {
@@ -100,7 +96,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_organisation)),
+			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
 		],
 	);
 
@@ -109,7 +105,7 @@ pub fn create_sub_app(
 		"/:domainId/verify",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::VERIFY,
+				permissions::workspace::domain::VERIFY,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -132,9 +128,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				verify_domain_in_organisation
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(verify_domain_in_workspace)),
 		],
 	);
 
@@ -143,7 +137,7 @@ pub fn create_sub_app(
 		"/:domainId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::VIEW_DETAILS,
+				permissions::workspace::domain::VIEW_DETAILS,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -166,7 +160,7 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				get_domain_info_in_organisation
+				get_domain_info_in_workspace
 			)),
 		],
 	);
@@ -176,7 +170,7 @@ pub fn create_sub_app(
 		"/:domainId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::domain::DELETE,
+				permissions::workspace::domain::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -198,9 +192,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				delete_domain_in_organisation
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(delete_domain_in_workspace)),
 		],
 	);
 
@@ -211,11 +203,11 @@ pub fn create_sub_app(
 
 /// # Description
 /// This function is used to get the list of domains present under the
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// organisation id in url
+/// workspace id in url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -243,17 +235,17 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_domains_for_organisation(
+async fn get_domains_for_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let domains = db::get_domains_for_organisation(
+	let domains = db::get_domains_for_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -275,11 +267,11 @@ async fn get_domains_for_organisation(
 }
 
 /// # Description
-/// This function is used to add a domain to an organisation
+/// This function is used to add a domain to an workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// organisation id in url
+/// workspace id in url
 /// ```
 /// {
 ///     domain:
@@ -305,12 +297,12 @@ async fn get_domains_for_organisation(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn add_domain_to_organisation(
+async fn add_domain_to_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(&context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
 	let body = context.get_body_object().clone();
@@ -323,10 +315,10 @@ async fn add_domain_to_organisation(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let domain_id = service::add_domain_to_organisation(
+	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
 		&domain_name,
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?;
 	let domain_id = domain_id.as_bytes().encode_hex::<String>();
@@ -340,11 +332,11 @@ async fn add_domain_to_organisation(
 
 /// # Description
 /// This function is used to verify a domain which is to be registered under an
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///     domainId:
@@ -369,7 +361,7 @@ async fn add_domain_to_organisation(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn verify_domain_in_organisation(
+async fn verify_domain_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -382,7 +374,7 @@ async fn verify_domain_in_organisation(
 	// This won't be executed unless hex::decode(domain_id) returns Ok
 	let domain_id = hex::decode(&domain_id_string).unwrap();
 
-	let domain = db::get_organisation_domain_by_id(
+	let domain = db::get_workspace_domain_by_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -415,11 +407,11 @@ async fn verify_domain_in_organisation(
 
 /// # Description
 /// This function is used to get details about a domain registered under the
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///     domainId:
@@ -455,7 +447,7 @@ async fn verify_domain_in_organisation(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_domain_info_in_organisation(
+async fn get_domain_info_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -467,7 +459,7 @@ async fn get_domain_info_in_organisation(
 	// This won't be executed unless hex::decode(domain_id) returns Ok
 	let domain_id = hex::decode(domain_id).unwrap();
 
-	let domain = db::get_organisation_domain_by_id(
+	let domain = db::get_workspace_domain_by_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -508,11 +500,11 @@ async fn get_domain_info_in_organisation(
 }
 
 /// # Description
-/// This function is used to delete the domain registered under the organisation
+/// This function is used to delete the domain registered under the workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///    domainId:
@@ -537,7 +529,7 @@ async fn get_domain_info_in_organisation(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn delete_domain_in_organisation(
+async fn delete_domain_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -551,7 +543,7 @@ async fn delete_domain_in_organisation(
 
 	// TODO make sure all associated resources to this domain are removed first
 
-	db::delete_domain_from_organisation(
+	db::delete_domain_from_workspace(
 		context.get_database_connection(),
 		&domain_id,
 	)
