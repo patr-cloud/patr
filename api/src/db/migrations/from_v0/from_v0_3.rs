@@ -160,10 +160,10 @@ async fn migrate_from_v0_3_0(
 
 	// Insert new permissions into the database for managed databases
 	for &permission in [
-		rbac::permissions::workspace::managed_database::CREATE,
-		rbac::permissions::workspace::managed_database::LIST,
-		rbac::permissions::workspace::managed_database::DELETE,
-		rbac::permissions::workspace::managed_database::INFO,
+		"organisation::managedDatabase::create",
+		"organisation::managedDatabase::list",
+		"organisation::managedDatabase::delete",
+		"organisation::managedDatabase::info",
 	]
 	.iter()
 	{
