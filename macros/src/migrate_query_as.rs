@@ -1,6 +1,13 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Expr, Ident, LitStr, Token, parse::{Parse, ParseStream}, parse_macro_input};
+use syn::{
+	parse::{Parse, ParseStream},
+	parse_macro_input,
+	Expr,
+	Ident,
+	LitStr,
+	Token,
+};
 
 struct MigrateQueryAsParser {
 	ty_name: Ident,

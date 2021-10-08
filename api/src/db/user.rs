@@ -1,6 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
+	constants::ResourceOwnerType,
 	models::db_mapping::{
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
@@ -15,7 +16,6 @@ use crate::{
 	query,
 	query_as,
 	Database,
-	constants::ResourceOwnerType,
 };
 
 pub async fn initialize_users_pre(

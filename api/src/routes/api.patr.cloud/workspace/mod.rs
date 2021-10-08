@@ -91,8 +91,7 @@ pub fn create_sub_app(
 		docker_registry::create_sub_app(app),
 	);
 	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
-	sub_app
-		.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 
 	sub_app.get(
 		"/is-name-available",
@@ -153,7 +152,9 @@ async fn get_workspace_info(
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
-	if !access_token_data.workspaces.contains_key(&workspace_id_string) &&
+	if !access_token_data
+		.workspaces
+		.contains_key(&workspace_id_string) &&
 		access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
@@ -327,8 +328,7 @@ async fn update_workspace_info(
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let workspace_id =
-		context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = hex::decode(&workspace_id).unwrap();
 
 	let name = body
