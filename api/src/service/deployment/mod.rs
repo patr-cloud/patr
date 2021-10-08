@@ -1361,22 +1361,10 @@ async fn add_cname_record(
 	Ok(())
 }
 
-async fn delete_docker_image(
-	deployment_id_string: &str,
-	image_id: &str,
-) -> Result<(), Error> {
+async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
 	let docker = Docker::new();
 
-	docker
-		.images()
-		.get(format!(
-			"registry.digitalocean.com/patr-cloud/{}:latest",
-			deployment_id_string
-		))
-		.delete()
-		.await?;
-
-	docker.images().get(image_id).delete().await?;
+	docker.images().get(image_name).delete().await?;
 
 	Ok(())
 }
