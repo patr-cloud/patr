@@ -657,7 +657,9 @@ async fn remove_application_permissions(
 		"organisation::application::viewDetails",
 		"organisation::application::delete",
 		"organisation::application::listVersions",
-	] {
+	]
+	.iter()
+	{
 		let permission_row = query!(
 			r#"
 			SELECT
@@ -813,7 +815,9 @@ async fn remove_portus_permissions(
 		"organisation::portus::view",
 		"organisation::portus::list",
 		"organisation::portus::delete",
-	] {
+	]
+	.iter()
+	{
 		let permission_row = query!(
 			r#"
 			SELECT
