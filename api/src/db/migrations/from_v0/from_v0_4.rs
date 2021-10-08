@@ -129,6 +129,16 @@ async fn rename_organisation_email_to_business_email(
 
 	query!(
 		r#"
+		ALTER TABLE business_email
+		RENAME CONSTRAINT organisation_email_pk
+		TO business_email_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER INDEX organisation_email_idx_user_id
 		RENAME TO business_email_idx_user_id;
 		"#
