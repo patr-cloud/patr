@@ -701,7 +701,7 @@ server {{
 	server_name {domain};
 
 	root /home/web/static-sites/{static_site_id_string};
-
+	autoindex on;
 	index index.html index.htm;
 
 	location / {{
@@ -762,14 +762,9 @@ async fn deploy_static_site(
 		config,
 	)
 	.await?;
-
-	db::update_static_site_status(
-		service::get_app().database.begin().await?.deref_mut(),
-		static_site_id,
-		&DeploymentStatus::Running,
-	)
-	.await?;
-
+	log::trace!("updating database status");
+	super::update_static_site_status(static_site_id, &DeploymentStatus::Running).await?;
+	log::trace!("updated database status");
 	Ok(())
 }
 
@@ -810,7 +805,7 @@ server {{
 	listen 443 ssl http2;
 	listen [::]:443 ssl http2;
 	server_name {domain};
-
+	autoindex on;
 	root /home/web/static-sites/{static_site_id_string};
 
 	index index.html index.htm;
@@ -931,8 +926,8 @@ async fn update_nginx_with_all_domains_for_static_site(
 			.await?;
 		}
 	}
-
 	session.close().await?;
+	log::trace!("session closed successfully!");
 	Ok(())
 }
 
