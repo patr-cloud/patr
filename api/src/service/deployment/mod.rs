@@ -5,6 +5,8 @@ mod digitalocean;
 mod managed_database;
 mod static_site;
 
+use std::ops::DerefMut;
+
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -26,22 +28,32 @@ use cloudflare::{
 	},
 };
 use eve_rs::AsError;
+use futures::StreamExt;
 use openssh::{KnownHosts, Session, SessionBuilder};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::Client;
+use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::io::AsyncWriteExt;
 
 pub use self::{deployment::*, managed_database::*, static_site::*};
 use crate::{
 	db,
 	error,
-	models::db_mapping::{
-		CNameRecord,
-		DeploymentRequestMethod,
-		DeploymentRequestProtocol,
-		IpResponse,
+	models::{
+		db_mapping::{
+			CNameRecord,
+			DeploymentRequestMethod,
+			DeploymentRequestProtocol,
+			DeploymentStatus,
+			IpResponse,
+			ManagedDatabaseStatus,
+		},
+		rbac,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	utils::{settings::Settings, Error},
+	service,
+	utils::{get_current_time, settings::Settings, Error},
 	Database,
 };
 
@@ -173,6 +185,137 @@ async fn add_cname_record(
 			})
 			.await?;
 	}
+	Ok(())
+}
+
+async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
+	let docker = Docker::new();
+
+	docker.images().get(image_name).delete().await?;
+
+	Ok(())
+}
+
+async fn update_deployment_status(
+	deployment_id: &[u8],
+	status: &DeploymentStatus,
+) -> Result<(), sqlx::Error> {
+	let app = service::get_app();
+
+	db::update_deployment_status(
+		app.database.acquire().await?.deref_mut(),
+		deployment_id,
+		status,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn tag_docker_image(
+	image_id: &str,
+	new_repo_name: &str,
+) -> Result<(), Error> {
+	let docker = Docker::new();
+	docker
+		.images()
+		.get(image_id)
+		.tag(
+			&TagOptions::builder()
+				.repo(new_repo_name)
+				.tag("latest")
+				.build(),
+		)
+		.await?;
+
+	Ok(())
+}
+
+async fn pull_image_from_registry(
+	image_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let app = service::get_app().clone();
+	let god_username = db::get_user_by_user_id(
+		app.database.acquire().await?.deref_mut(),
+		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
+	)
+	.await?
+	.status(500)?
+	.username;
+
+	// generate token as password
+	let iat = get_current_time().as_secs();
+	let token = RegistryToken::new(
+		config.docker_registry.issuer.clone(),
+		iat,
+		god_username.clone(),
+		config,
+		vec![RegistryTokenAccess {
+			r#type: "repository".to_string(),
+			name: image_id.to_string(),
+			actions: vec!["pull".to_string()],
+		}],
+	)
+	.to_string(
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der(),
+	)?;
+
+	// get token object using the above token string
+	let registry_auth = RegistryAuth::builder()
+		.username(god_username)
+		.password(token)
+		.build();
+
+	let docker = Docker::new();
+	let mut stream = docker.images().pull(
+		&PullOptions::builder()
+			.image(image_id)
+			.auth(registry_auth)
+			.build(),
+	);
+
+	while stream.next().await.is_some() {}
+
+	Ok(())
+}
+
+async fn update_managed_database_status(
+	database_id: &[u8],
+	status: &ManagedDatabaseStatus,
+) -> Result<(), sqlx::Error> {
+	let app = service::get_app();
+
+	db::update_managed_database_status(
+		app.database.acquire().await?.deref_mut(),
+		database_id,
+		status,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_managed_database_credentials_for_database(
+	database_id: &[u8],
+	host: &str,
+	port: i32,
+	username: &str,
+	password: &str,
+) -> Result<(), sqlx::Error> {
+	let app = service::get_app();
+
+	db::update_managed_database_credentials_for_database(
+		app.database.acquire().await?.deref_mut(),
+		database_id,
+		host,
+		port,
+		username,
+		password,
+	)
+	.await?;
+
 	Ok(())
 }
 

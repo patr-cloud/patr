@@ -54,7 +54,7 @@ pub async fn create_static_site_deployment_in_organisation(
 	if let Some(file) = file {
 		log::trace!("uploading files to nginx server");
 		upload_static_site_files_to_nginx(
-			&file,
+			file,
 			&hex::encode(&static_site_id),
 			config,
 		)
@@ -472,7 +472,7 @@ pub async fn upload_files_for_static_site(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	upload_static_site_files_to_nginx(
-		&file,
+		file,
 		&hex::encode(&static_site_id),
 		config,
 	)

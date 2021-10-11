@@ -857,26 +857,6 @@ pub async fn set_domain_for_deployment(
 	Ok(())
 }
 
-pub(super) async fn delete_docker_image(
-	deployment_id_string: &str,
-	image_id: &str,
-) -> Result<(), Error> {
-	let docker = Docker::new();
-
-	docker
-		.images()
-		.get(format!(
-			"registry.digitalocean.com/patr-cloud/{}:latest",
-			deployment_id_string
-		))
-		.delete()
-		.await?;
-
-	docker.images().get(image_id).delete().await?;
-
-	Ok(())
-}
-
 pub(super) async fn update_deployment_status(
 	deployment_id: &[u8],
 	status: &DeploymentStatus,
