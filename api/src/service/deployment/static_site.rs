@@ -763,7 +763,11 @@ async fn deploy_static_site(
 	)
 	.await?;
 	log::trace!("updating database status");
-	super::update_static_site_status(static_site_id, &DeploymentStatus::Running).await?;
+	super::update_static_site_status(
+		static_site_id,
+		&DeploymentStatus::Running,
+	)
+	.await?;
 	log::trace!("updated database status");
 	Ok(())
 }
