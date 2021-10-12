@@ -315,6 +315,7 @@ pub async fn stop_deployment(
 			if default_domain_ssl.success() {
 				format!(
 					r#"
+js_set $origin {domain}
 server {{
 	listen 80;
 	listen [::]:80;
@@ -335,6 +336,7 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
+	include snippers/nginx-request-logger.js
 }}
 "#,
 					domain = patr_domain
@@ -351,6 +353,7 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
+	include snippers/nginx-request-logger.js
 }}
 "#,
 					domain = patr_domain,
@@ -381,6 +384,7 @@ server {{
 				if custom_domain_ssl.success() {
 					format!(
 						r#"
+js_set $origin {domain}
 server {{
 	listen 80;
 	listen [::]:80;
@@ -401,6 +405,7 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
+	include snippers/nginx-request-logger.js
 }}
 "#,
 						domain = custom_domain
@@ -417,6 +422,7 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
+	include snippers/nginx-request-logger.js
 }}
 "#,
 						domain = custom_domain,

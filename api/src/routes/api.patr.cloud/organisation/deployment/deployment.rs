@@ -1571,15 +1571,26 @@ async fn get_recommended_data_center(
 		context.get_database_connection(),
 		&deployment_id,
 	)
-	.await?
-	.status(500)?;
+	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::RECOMMENDED_DATA_CENTERS: {
-			request_keys::REGION: data_center.region,
-			request_keys::DISTANCE: data_center.avg_distance,
-		}
-	}));
+	if let Some(dc) = data_center {
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::RECOMMENDED_DATA_CENTERS: {
+				request_keys::REGION: dc.region,
+				request_keys::DISTANCE: dc.avg_distance,
+			}
+		}));
+	} else {
+		let deployment = db::get_deployment_by_id(context.get_database_connection(), &deployment_id).await?.status(400)?;
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::RECOMMENDED_DATA_CENTERS: {
+				request_keys::REGION: deployment.region,
+				request_keys::DISTANCE: [0],
+			}
+		}));
+	}
+
 	Ok(context)
 }
