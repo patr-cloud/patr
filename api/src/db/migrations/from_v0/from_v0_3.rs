@@ -48,7 +48,7 @@ async fn migrate_from_v0_3_0(
 	// Rename the unqiue constraint from uk to uq
 	query!(
 		r#"
-		ALTER TABLE user
+		ALTER TABLE "user"
 		RENAME CONSTRAINT user_uk_username
 		TO user_uq_username;
 		"#,
@@ -58,7 +58,7 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
-		ALTER TABLE user
+		ALTER TABLE "user"
 		RENAME CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id
 		TO user_uq_backup_email_local_backup_email_domain_id;
 		"#,
@@ -68,7 +68,7 @@ async fn migrate_from_v0_3_0(
 
 	query!(
 		r#"
-		ALTER TABLE user
+		ALTER TABLE "user"
 		RENAME CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr
 		TO user_uq_backup_phone_country_code_backup_phone_number;
 		"#,
