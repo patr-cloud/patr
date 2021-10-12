@@ -316,7 +316,7 @@ pub async fn stop_deployment(
 				format!(
 					r#"
 server {{
-	include snippets/nginx-request-logger.js
+	js_import snippets/nginx-request-logger.js
 	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
@@ -384,7 +384,7 @@ server {{
 					format!(
 						r#"
 server {{
-	include snippets/nginx-request-logger.js
+	js_import snippets/nginx-request-logger.js
 	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
@@ -1055,7 +1055,7 @@ async fn update_nginx_config_for_domain_with_http_only(
 			format!(
 				r#"
 server {{
-	include snippets/nginx-request-logger.js
+	js_import snippets/nginx-request-logger.js
 	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
@@ -1124,7 +1124,7 @@ async fn update_nginx_config_for_domain_with_https(
 			format!(
 				r#"
 server {{
-	include snippets/nginx-request-logger.js
+	js_import snippets/nginx-request-logger.js
 	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
