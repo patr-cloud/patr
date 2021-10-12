@@ -315,8 +315,9 @@ pub async fn stop_deployment(
 			if default_domain_ssl.success() {
 				format!(
 					r#"
-js_set $origin {domain}
 server {{
+	include snippets/nginx-request-logger.js
+	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -336,7 +337,6 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
-	include snippers/nginx-request-logger.js
 }}
 "#,
 					domain = patr_domain
@@ -353,7 +353,6 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
-	include snippers/nginx-request-logger.js
 }}
 "#,
 					domain = patr_domain,
@@ -384,8 +383,9 @@ server {{
 				if custom_domain_ssl.success() {
 					format!(
 						r#"
-js_set $origin {domain}
 server {{
+	include snippets/nginx-request-logger.js
+	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -405,7 +405,6 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
-	include snippers/nginx-request-logger.js
 }}
 "#,
 						domain = custom_domain
@@ -422,7 +421,6 @@ server {{
 
 	include snippets/letsencrypt.conf;
 	include snippets/patr-verification.conf;
-	include snippers/nginx-request-logger.js
 }}
 "#,
 						domain = custom_domain,
@@ -1057,12 +1055,15 @@ async fn update_nginx_config_for_domain_with_http_only(
 			format!(
 				r#"
 server {{
+	include snippets/nginx-request-logger.js
+	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
 
 	location / {{
 		proxy_pass https://{default_url};
+		js_content nginx-request-logger.handle
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -1123,6 +1124,8 @@ async fn update_nginx_config_for_domain_with_https(
 			format!(
 				r#"
 server {{
+	include snippets/nginx-request-logger.js
+	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -1140,6 +1143,7 @@ server {{
 	
 	location / {{
 		proxy_pass https://{default_url};
+		js_content nginx-request-logger.handle
 	}}
 
 	include snippets/letsencrypt.conf;
