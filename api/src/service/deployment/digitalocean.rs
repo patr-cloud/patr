@@ -67,7 +67,7 @@ pub(super) async fn deploy_container(
 
 	// new name for the docker image
 	let new_repo_name = format!(
-		"registry.digitalocean.com/aracivtest/{}",
+		"registry.digitalocean.com/patr-cloud/{}",
 		deployment_id_string
 	);
 	log::trace!("Pushing to {}", new_repo_name);
@@ -702,7 +702,7 @@ async fn delete_image_from_digitalocean_registry(
 
 	let container_status = client
 		.delete(format!(
-			"https://api.digitalocean.com/v2/registry/aracivtest/repositories/{}/tags/latest",
+			"https://api.digitalocean.com/v2/registry/patr-cloud/repositories/{}/tags/latest",
 			hex::encode(deployment_id)
 		))
 		.bearer_auth(&config.digital_ocean_api_key)
