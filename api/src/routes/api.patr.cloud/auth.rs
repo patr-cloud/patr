@@ -368,7 +368,7 @@ async fn sign_up(
 		organisation_name.as_deref(),
 	)
 	.await?;
-
+	println!("otp: {}", otp);
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
