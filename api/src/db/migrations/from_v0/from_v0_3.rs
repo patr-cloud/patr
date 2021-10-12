@@ -418,10 +418,11 @@ async fn migrate_from_v0_3_0(
 
 	// Insert new permissions into the database for static sites
 	for &permission in [
-		rbac::permissions::organisation::static_site::CREATE,
-		rbac::permissions::organisation::static_site::LIST,
-		rbac::permissions::organisation::static_site::DELETE,
-		rbac::permissions::organisation::static_site::INFO,
+		"organisation::staticSite::list",
+		"organisation::staticSite::create",
+		"organisation::staticSite::info",
+		"organisation::staticSite::delete",
+		"organisation::staticSite::edit",
 	]
 	.iter()
 	{
