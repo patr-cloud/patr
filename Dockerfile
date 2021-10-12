@@ -8,7 +8,7 @@ COPY . .
 
 RUN cargo build --release --target=x86_64-unknown-linux-gnu
 
-FROM ubuntu:lts
+FROM ubuntu:latest
 
 WORKDIR /app
 

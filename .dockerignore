@@ -6,3 +6,5 @@
 
 /config/*
 .env
+Dockerfile
+.dockerignore
