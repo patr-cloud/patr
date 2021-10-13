@@ -5,17 +5,10 @@ use openssh::{KnownHosts, SessionBuilder};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
-use crate::{
-	db,
-	error,
-	models::{
+use crate::{Database, db, error, models::{
 		db_mapping::{CNameRecord, DeploymentStatus},
 		rbac,
-	},
-	service::{self, deployment},
-	utils::{get_current_time_millis, settings::Settings, Error},
-	Database,
-};
+	}, service::{self, deployment}, utils::{Error, get_current_time_millis, settings::Settings, validator}};
 
 pub async fn create_static_site_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -25,6 +18,19 @@ pub async fn create_static_site_deployment_in_organisation(
 	file: Option<&str>,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
+	// validate static site name
+	if !validator::is_deployment_name_valid(name) {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+	}
+
+	if let Some(_) = db::get_static_site_deployment_by_name(connection, name).await? {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+	}
+	
 	let static_uuid = db::generate_new_resource_id(connection).await?;
 	let static_site_id = static_uuid.as_bytes();
 	log::trace!("creating resource");

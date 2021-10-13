@@ -117,6 +117,31 @@ pub async fn get_static_site_deployment_by_id(
 	.await
 }
 
+pub async fn get_static_site_deployment_by_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+) -> Result<Option<DeploymentStaticSite>, sqlx::Error> {
+	query_as!(
+		DeploymentStaticSite,
+		r#"
+		SELECT
+			id,
+			name,
+			status as "status: _",
+			domain_name,
+			organisation_id
+		FROM
+			deployment_static_sites
+		WHERE
+			name = $1 AND
+			status != 'deleted';
+		"#,
+		name
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 pub async fn update_static_site_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
