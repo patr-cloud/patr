@@ -65,6 +65,7 @@ async fn migrate_from_v0_4_0(
 	rename_all_permissions(&mut *connection).await?;
 	rename_organisation_resource_type_to_workspace(&mut *connection).await?;
 	rename_organisation_resource_names_to_workspace(&mut *connection).await?;
+	rename_personal_workspace_names(&mut *connection).await?;
 
 	Ok(())
 }
@@ -984,6 +985,32 @@ async fn rename_organisation_resource_names_to_workspace(
 			resource
 		SET
 			name = REPLACE(name, 'Organisation: ', 'Workspace: ');
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn rename_personal_workspace_names(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			name = (
+				SELECT
+					CONCAT('personal-workspace-', ENCODE("user".id, 'hex'))
+				FROM
+					"user"
+				WHERE
+					username = REPLACE('personal-organisation-', '')
+			)
+		WHERE
+			name LIKE 'personal-organisation-%';
 		"#,
 	)
 	.execute(&mut *connection)
