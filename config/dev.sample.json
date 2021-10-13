@@ -32,7 +32,8 @@
 		"user": null,
 		"password": null,
 		"database": "api",
-		"connectionLimit": 10
+		"connectionLimit": 10,
+		"secure": false
 	},
 	"email": {
 		"host": "smtp.example.com",

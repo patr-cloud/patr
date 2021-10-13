@@ -111,6 +111,7 @@ pub struct RedisSettings {
 	pub password: Option<String>,
 	pub database: Option<String>,
 	pub connection_limit: u32,
+	pub secure: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]

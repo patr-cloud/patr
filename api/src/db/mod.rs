@@ -41,7 +41,12 @@ pub async fn create_redis_connection(
 ) -> Result<MultiplexedConnection, RedisError> {
 	log::trace!("Creating redis connection pool...");
 	let (redis, redis_poller) = Client::open(format!(
-		"redis://{}{}{}:{}/0",
+		"{}://{}{}{}:{}/0",
+		if config.redis.secure {
+			"rediss"
+		} else {
+			"redis"
+		},
 		if let Some(user) = &config.redis.user {
 			user
 		} else {
