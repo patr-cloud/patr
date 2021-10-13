@@ -316,8 +316,6 @@ pub async fn stop_deployment(
 				format!(
 					r#"
 server {{
-	js_import snippets/nginx-request-logger.js
-	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -384,8 +382,6 @@ server {{
 					format!(
 						r#"
 server {{
-	js_import snippets/nginx-request-logger.js
-	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -1055,15 +1051,12 @@ async fn update_nginx_config_for_domain_with_http_only(
 			format!(
 				r#"
 server {{
-	js_import snippets/nginx-request-logger.js
-	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
 
 	location / {{
 		proxy_pass https://{default_url};
-		js_content nginx-request-logger.handle
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -1124,8 +1117,6 @@ async fn update_nginx_config_for_domain_with_https(
 			format!(
 				r#"
 server {{
-	js_import snippets/nginx-request-logger.js
-	js_set $origin {domain}
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
@@ -1143,7 +1134,6 @@ server {{
 	
 	location / {{
 		proxy_pass https://{default_url};
-		js_content nginx-request-logger.handle
 	}}
 
 	include snippets/letsencrypt.conf;
