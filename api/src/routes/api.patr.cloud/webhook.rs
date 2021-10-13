@@ -162,10 +162,11 @@ pub async fn notification_handler(
 			.await?;
 
 		for deployment in deployments {
+			let config = context.get_state().config.clone();
 			let full_image_name = format!(
 				"{}@{}",
 				deployment
-					.get_full_image(context.get_database_connection())
+					.get_full_image(context.get_database_connection(), &config)
 					.await?,
 				target.digest
 			);
@@ -176,8 +177,6 @@ pub async fn notification_handler(
 				Some(&full_image_name),
 			)
 			.await?;
-
-			let config = context.get_state().config.clone();
 
 			service::start_deployment(
 				context.get_database_connection(),
