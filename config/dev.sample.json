@@ -66,5 +66,7 @@
 		"keyFile": "~/.ssh/id_rsa"
 	},
 	"digitalOceanApiKey": "key",
-	"customAuth": "auth key"
+	"customAuth": "auth key",
+	"registry": "registry.patr.cloud",
+	"docr": "test"
 }
