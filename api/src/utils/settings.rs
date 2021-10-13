@@ -109,7 +109,7 @@ pub struct RedisSettings {
 	pub port: u16,
 	pub user: Option<String>,
 	pub password: Option<String>,
-	pub database: Option<String>,
+	pub database: Option<u8>,
 	pub connection_limit: u32,
 	pub secure: bool,
 }

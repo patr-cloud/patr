@@ -31,7 +31,7 @@
 		"port": 6379,
 		"user": null,
 		"password": null,
-		"database": "api",
+		"database": 0,
 		"connectionLimit": 10,
 		"secure": false
 	},

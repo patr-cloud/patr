@@ -41,7 +41,7 @@ pub async fn create_redis_connection(
 ) -> Result<MultiplexedConnection, RedisError> {
 	log::trace!("Creating redis connection pool...");
 	let (redis, redis_poller) = Client::open(format!(
-		"{}://{}{}{}:{}/0",
+		"{}://{}{}{}:{}/{}",
 		if config.redis.secure {
 			"rediss"
 		} else {
@@ -58,7 +58,12 @@ pub async fn create_redis_connection(
 			"".to_string()
 		},
 		config.redis.host,
-		config.redis.port
+		config.redis.port,
+		if let Some(database) = config.redis.database {
+			database
+		} else {
+			0
+		}
 	))?
 	.create_multiplexed_tokio_connection()
 	.await?;
