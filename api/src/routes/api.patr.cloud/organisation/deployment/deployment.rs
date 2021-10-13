@@ -1572,7 +1572,7 @@ async fn get_recommended_data_center(
 		&deployment_id,
 	)
 	.await?
-	.status(500)?;;
+	.status(500)?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
