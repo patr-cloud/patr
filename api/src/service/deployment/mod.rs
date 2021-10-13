@@ -1114,13 +1114,15 @@ async fn update_nginx_config_for_domain_with_http_only(
 		.write_all(
 			format!(
 				r#"
+js_import snippets/nginx_request_logger.js;
+js_var $origin https://{default_url};
 server {{
 	listen 80;
 	listen [::]:80;
 	server_name {domain};
 
 	location / {{
-		proxy_pass https://{default_url};
+		js_content nginx_request_logger.handle;
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -1220,6 +1222,8 @@ async fn update_nginx_config_for_domain_with_https(
 		.write_all(
 			format!(
 				r#"
+js_import snippets/nginx_request_logger.js;
+js_var $origin https://{default_url};
 server {{
 	listen 80;
 	listen [::]:80;
@@ -1237,7 +1241,7 @@ server {{
 	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
 	
 	location / {{
-		proxy_pass https://{default_url};
+		js_content nginx_request_logger.handle;
 	}}
 
 	include snippets/letsencrypt.conf;
