@@ -1007,7 +1007,7 @@ async fn rename_personal_workspace_names(
 				FROM
 					"user"
 				WHERE
-					username = REPLACE('personal-organisation-', '')
+					username = REPLACE(name, 'personal-organisation-', '')
 			)
 		WHERE
 			name LIKE 'personal-organisation-%';
