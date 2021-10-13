@@ -28,7 +28,7 @@ pub async fn initialize_users_pre(
 			id BYTEA
 				CONSTRAINT user_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL
-				CONSTRAINT user_uk_username UNIQUE
+				CONSTRAINT user_uq_username UNIQUE
 				CONSTRAINT user_chk_username_is_lower_case CHECK(
 					username = LOWER(username)
 				),
@@ -53,10 +53,10 @@ pub async fn initialize_users_pre(
 				),
 			backup_phone_number VARCHAR(15),
 
-			CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id
+			CONSTRAINT user_uq_backup_email_local_backup_email_domain_id
 				UNIQUE(backup_email_local, backup_email_domain_id),
 
-			CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr
+			CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number
 				UNIQUE(backup_phone_country_code, backup_phone_number),
 
 			CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK(
