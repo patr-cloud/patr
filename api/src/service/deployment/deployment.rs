@@ -63,7 +63,6 @@ pub async fn create_deployment_in_organisation(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -164,10 +163,6 @@ pub async fn create_deployment_in_organisation(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
-
-	// Deploy the app as soon as it's created, so that any existing images can
-	// be deployed
-	start_deployment(connection, deployment_id, config).await?;
 
 	Ok(deployment_uuid)
 }

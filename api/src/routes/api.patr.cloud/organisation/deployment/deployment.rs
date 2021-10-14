@@ -788,6 +788,16 @@ async fn create_deployment(
 		domain_name,
 		horizontal_scale,
 		&machine_type,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	// Deploy the app as soon as it's created, so that any existing images can
+	// be deployed
+	service::start_deployment(
+		context.get_database_connection(),
+		deployment_id.as_bytes(),
 		&config,
 	)
 	.await?;
