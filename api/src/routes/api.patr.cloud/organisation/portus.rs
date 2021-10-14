@@ -521,10 +521,8 @@ async fn create(
 
 	let container_id = container_info.id;
 
-	let container_start_result =
-		service::start_container(&docker, &container_id).await;
 	// create resource in db
-	let create_resource_result = db::create_resource(
+	db::create_resource(
 		context.get_database_connection(),
 		resource_id,
 		&format!("portus-tunnel-{}", tunnel_name),
@@ -536,9 +534,9 @@ async fn create(
 		&organisation_id,
 		get_current_time_millis(),
 	)
-	.await;
+	.await?;
 
-	let create_tunnel_result = db::create_new_portus_tunnel(
+	db::create_new_portus_tunnel(
 		context.get_database_connection(),
 		resource_id,
 		&username,
@@ -546,20 +544,13 @@ async fn create(
 		exposed_port,
 		tunnel_name,
 	)
-	.await;
+	.await?;
+
+	let container_start_result =
+		service::start_container(&docker, &container_id).await;
 
 	//  add container information in portus table
-	let tunnel_register_result = container_start_result
-		.map_err::<StdErrorType, _>(|err| Box::new(err))
-		.and(
-			create_resource_result
-				.map_err::<StdErrorType, _>(|err| Box::new(err)),
-		)
-		.and(
-			create_tunnel_result
-				.map_err::<StdErrorType, _>(|err| Box::new(err)),
-		);
-	if let Err(err) = tunnel_register_result {
+	if let Err(err) = container_start_result {
 		log::error!("Error while adding data to portus table. {:#?}", err);
 
 		// if there is an error in database query, stop the container which just
