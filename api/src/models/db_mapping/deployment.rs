@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::{Database, db, error, service, utils::{Error}};
+use crate::{db, error, service, utils::Error, Database};
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
