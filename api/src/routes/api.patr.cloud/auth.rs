@@ -368,7 +368,6 @@ async fn sign_up(
 		business_name.as_deref(),
 	)
 	.await?;
-
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
@@ -1303,7 +1302,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let workspace_name = split_array.get(0).unwrap(); // get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1320,8 +1319,8 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let org =
-		db::get_workspace_by_name(context.get_database_connection(), org_name)
+	let workspace =
+		db::get_workspace_by_name(context.get_database_connection(), workspace_name)
 			.await?
 			.status(400)
 			.body(
@@ -1338,7 +1337,7 @@ async fn docker_registry_authenticate(
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
-		&org.id,
+		&workspace.id,
 	)
 	.await?
 	// reject request if repository does not exist
@@ -1372,9 +1371,9 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	if resource.owner_id != org.id {
+	if resource.owner_id != workspace.id {
 		log::error!(
-			"Resource owner_id is not the same as org id. This is illegal"
+			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
 		Error::as_result().status(500).body(
 			json!({
@@ -1388,10 +1387,10 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let workspace_id = org.id.encode_hex::<String>();
+	let workspace_id = workspace.id.encode_hex::<String>();
 	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
-	// get all org roles for the user using the id
+	// get all workspace roles for the user using the id
 	let user_id = &user.id;
 	let user_roles = db::get_all_workspace_roles_for_user(
 		context.get_database_connection(),

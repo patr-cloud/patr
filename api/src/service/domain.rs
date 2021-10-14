@@ -56,7 +56,7 @@ pub async fn ensure_personal_domain_exists(
 			Ok(Uuid::from_slice(domain.id.as_ref())?)
 		}
 	} else {
-		// check if personal domain given by the user is registerd as a Org
+		// check if personal domain given by the user is registerd as a workspace
 		// domain
 		if !is_domain_used_for_sign_up(connection, domain_name).await? {
 			Error::as_result()
@@ -113,7 +113,7 @@ pub async fn add_domain_to_workspace(
 				.status(500)
 				.body(error!(DOMAIN_IS_PERSONAL).to_string())?;
 		} else {
-			// check if personal domain given by the user is registerd as a Org
+			// check if personal domain given by the user is registerd as a workspace
 			// domain
 			if !is_domain_used_for_sign_up(connection, domain_name).await? {
 				Error::as_result()
@@ -219,13 +219,13 @@ async fn is_domain_used_for_sign_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<bool, Error> {
-	let org_domain_status = db::get_user_to_sign_up_by_business_domain_name(
+	let workspace_domain_status = db::get_user_to_sign_up_by_business_domain_name(
 		connection,
 		domain_name,
 	)
 	.await?;
-	if let Some(org_domain_status) = org_domain_status {
-		if org_domain_status.otp_expiry > get_current_time_millis() {
+	if let Some(workspace_domain_status) = workspace_domain_status {
+		if workspace_domain_status.otp_expiry > get_current_time_millis() {
 			return Ok(false);
 		}
 	}

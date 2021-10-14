@@ -294,7 +294,7 @@ pub fn create_sub_app(
 /// workspace
 /// required inputs:
 /// auth token in the authorization headers
-/// orgnisation id in the url
+/// workspace id in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,

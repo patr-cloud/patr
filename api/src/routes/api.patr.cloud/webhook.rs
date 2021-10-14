@@ -101,7 +101,7 @@ pub async fn notification_handler(
 
 		let repository = target.repository;
 		let mut splitter = repository.split('/');
-		let org_name = if let Some(val) = splitter.next() {
+		let workspace_name = if let Some(val) = splitter.next() {
 			val
 		} else {
 			continue;
@@ -115,7 +115,7 @@ pub async fn notification_handler(
 
 		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
-			org_name,
+			workspace_name,
 		)
 		.await?;
 		let workspace = if let Some(workspace) = workspace {

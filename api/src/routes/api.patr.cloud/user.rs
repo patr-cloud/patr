@@ -846,7 +846,6 @@ async fn add_phone_number_for_user(
 		phone_number,
 	)
 	.await?;
-
 	service::send_phone_number_verification_otp(
 		context.get_database_connection(),
 		&country_code,
@@ -1117,11 +1116,11 @@ async fn get_workspaces_for_user(
 	)
 	.await?
 	.into_iter()
-	.map(|org| {
+	.map(|workspace| {
 		json!({
-			request_keys::ID: org.id.encode_hex::<String>(),
-			request_keys::NAME: org.name,
-			request_keys::ACTIVE: org.active
+			request_keys::ID: workspace.id.encode_hex::<String>(),
+			request_keys::NAME: workspace.name,
+			request_keys::ACTIVE: workspace.active
 		})
 	})
 	.collect::<Vec<_>>();

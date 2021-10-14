@@ -594,7 +594,7 @@ pub async fn generate_access_token(
 	// use that info to populate the data in the token_data
 	let iat = get_current_time_millis();
 	let exp = iat + service::get_access_token_expiry(); // 3 days
-	let orgs =
+	let workspaces =
 		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
 			.await?;
 
@@ -621,7 +621,7 @@ pub async fn generate_access_token(
 	let token_data = AccessTokenData::new(
 		iat,
 		exp,
-		orgs,
+		workspaces,
 		hex::encode(&user_login.login_id),
 		user,
 	);
@@ -980,7 +980,7 @@ pub async fn join_user(
 	}
 
 	// add personal workspace
-	let personal_workspace_name = service::get_personal_org_name(username);
+	let personal_workspace_name = service::get_personal_workspace_name(username);
 	service::create_workspace(connection, &personal_workspace_name, user_id)
 		.await?;
 

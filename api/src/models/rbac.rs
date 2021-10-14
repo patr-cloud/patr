@@ -80,6 +80,14 @@ pub mod permissions {
 			pub const INFO: &str = "workspace::managedDatabase::info";
 		}
 
+		pub mod static_site {
+			pub const LIST: &str = "workspace::staticSite::list";
+			pub const CREATE: &str = "workspace::staticSite::create";
+			pub const INFO: &str = "workspace::staticSite::info";
+			pub const DELETE: &str = "workspace::staticSite::delete";
+			pub const EDIT: &str = "workspace::staticSite::edit";
+		}
+
 		pub const VIEW_ROLES: &str = "workspace::viewRoles";
 		pub const CREATE_ROLE: &str = "workspace::createRole";
 		pub const EDIT_ROLE: &str = "workspace::editRole";
@@ -97,6 +105,7 @@ pub mod resource_types {
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";
+	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";
 }

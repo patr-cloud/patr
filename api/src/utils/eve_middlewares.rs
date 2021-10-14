@@ -163,16 +163,16 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				let resource = resource.unwrap();
 
 				let workspace_id = resource.owner_id.encode_hex::<String>();
-				let org_permission = access_data.workspaces.get(&workspace_id);
-				if org_permission.is_none() {
+				let workspace_permission = access_data.workspaces.get(&workspace_id);
+				if workspace_permission.is_none() {
 					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);
 				}
-				let org_permission = org_permission.unwrap();
+				let workspace_permission = workspace_permission.unwrap();
 
 				let allowed = {
 					// Check if the resource type is allowed
-					if let Some(permissions) = org_permission
+					if let Some(permissions) = workspace_permission
 						.resource_types
 						.get(&resource.resource_type_id)
 					{
@@ -183,7 +183,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				} || {
 					// Check if that specific resource is allowed
 					if let Some(permissions) =
-						org_permission.resources.get(&resource.id)
+						workspace_permission.resources.get(&resource.id)
 					{
 						permissions
 							.contains(&(*permission_required).to_string())
@@ -192,7 +192,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					}
 				} || {
 					// Check if super admin or god is permitted
-					org_permission.is_super_admin || {
+					workspace_permission.is_super_admin || {
 						let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 						access_data.user.id == god_user_id
 					}

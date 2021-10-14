@@ -53,6 +53,7 @@ async fn migrate_from_v0_4_0(
 	rename_docker_registry_repository_columns(&mut *connection).await?;
 	rename_deployment_columns(&mut *connection).await?;
 	rename_managed_database_columns(&mut *connection).await?;
+	rename_static_sites_columns(&mut *connection).await?;
 	rename_resource_columns(&mut *connection).await?;
 	rename_organisation_user_to_workspace_user(&mut *connection).await?;
 	remove_application_tables(&mut *connection).await?;
@@ -522,6 +523,52 @@ async fn rename_managed_database_columns(
 		ALTER TABLE managed_database
 		RENAME CONSTRAINT managed_database_repository_fk_id_organisation_id
 		TO managed_database_fk_id_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn rename_static_sites_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		RENAME COLUMN organisation_id
+		TO workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		RENAME CONSTRAINT deployment_static_sites_uq_name_organisation_id
+		TO deployment_static_sites_uq_name_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		ALTER COLUMN name
+		SET DATA TYPE CITEXT;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		RENAME CONSTRAINT deployment_static_sites_repository_fk_id_organisation_id
+		TO deployment_static_sites_fk_id_workspace_id;
 		"#
 	)
 	.execute(&mut *connection)

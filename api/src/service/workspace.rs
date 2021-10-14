@@ -33,16 +33,16 @@ pub async fn is_workspace_name_allowed(
 			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 	}
 
-	let org = db::get_workspace_by_name(connection, workspace_name).await?;
-	if org.is_some() {
+	let workspace = db::get_workspace_by_name(connection, workspace_name).await?;
+	if workspace.is_some() {
 		return Ok(false);
 	}
 
-	let org_sign_up_status =
+	let workspace_sign_up_status =
 		db::get_user_to_sign_up_by_business_name(connection, workspace_name)
 			.await?;
 
-	if let Some(status) = org_sign_up_status {
+	if let Some(status) = workspace_sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
 			return Ok(false);
 		}
@@ -114,6 +114,6 @@ pub async fn create_workspace(
 /// # Returns
 /// This function returns a string containing the name of the personal
 /// workspace
-pub fn get_personal_org_name(username: &str) -> String {
+pub fn get_personal_workspace_name(username: &str) -> String {
 	format!("personal-workspace-{}", username)
 }
