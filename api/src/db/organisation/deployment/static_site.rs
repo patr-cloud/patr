@@ -92,7 +92,7 @@ pub async fn create_static_site(
 	}
 }
 
-pub async fn get_static_site_deployment_by_id(
+pub async fn get_static_site_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 ) -> Result<Option<DeploymentStaticSite>, sqlx::Error> {
@@ -117,9 +117,10 @@ pub async fn get_static_site_deployment_by_id(
 	.await
 }
 
-pub async fn get_static_site_deployment_by_name(
+pub async fn get_static_site_by_name_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
+	organisation_id: &[u8],
 ) -> Result<Option<DeploymentStaticSite>, sqlx::Error> {
 	query_as!(
 		DeploymentStaticSite,
@@ -134,9 +135,11 @@ pub async fn get_static_site_deployment_by_name(
 			deployment_static_sites
 		WHERE
 			name = $1 AND
+			organisation_id = $2 AND
 			status != 'deleted';
 		"#,
-		name
+		name,
+		organisation_id,
 	)
 	.fetch_optional(&mut *connection)
 	.await

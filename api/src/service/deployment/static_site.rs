@@ -5,10 +5,17 @@ use openssh::{KnownHosts, SessionBuilder};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
-use crate::{Database, db, error, models::{
+use crate::{
+	db,
+	error,
+	models::{
 		db_mapping::{CNameRecord, DeploymentStatus},
 		rbac,
-	}, service::{self, deployment}, utils::{Error, get_current_time_millis, settings::Settings, validator}};
+	},
+	service::{self, deployment},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
+	Database,
+};
 
 pub async fn create_static_site_deployment_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -25,12 +32,18 @@ pub async fn create_static_site_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	if let Some(_) = db::get_static_site_deployment_by_name(connection, name).await? {
+	let existing_static_site = db::get_static_site_by_name_in_organisation(
+		connection,
+		name,
+		organisation_id,
+	)
+	.await?;
+	if existing_static_site.is_some() {
 		Error::as_result()
 			.status(200)
-			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
-	
+
 	let static_uuid = db::generate_new_resource_id(connection).await?;
 	let static_site_id = static_uuid.as_bytes();
 	log::trace!("creating resource");
@@ -77,11 +90,10 @@ pub async fn start_static_site_deployment(
 ) -> Result<(), Error> {
 	log::trace!("starting the static site");
 	log::trace!("getting static site data from db");
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = config.clone();
 	let static_site_id = static_site_id.to_vec();
@@ -112,11 +124,10 @@ pub async fn stop_static_site(
 	config: &Settings,
 ) -> Result<(), Error> {
 	log::trace!("Getting deployment id from db");
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
 	log::trace!("logging into the ssh server for stopping the static site");
@@ -303,11 +314,10 @@ pub async fn set_domain_for_static_site_deployment(
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
 	log::trace!("getting static site info from database");
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 	let old_domain = static_site.domain_name;
 
 	log::trace!("logging into the ssh server for adding a new domain name for static site");
@@ -449,11 +459,10 @@ pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 ) -> Result<Vec<CNameRecord>, Error> {
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let domain_name = static_site
 		.domain_name
@@ -472,7 +481,7 @@ pub async fn upload_files_for_static_site(
 	file: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
-	db::get_static_site_deployment_by_id(connection, static_site_id)
+	db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -493,11 +502,10 @@ pub async fn get_static_site_validation_status(
 	config: &Settings,
 ) -> Result<bool, Error> {
 	log::trace!("validating the custom domain");
-	let static_site =
-		db::get_static_site_deployment_by_id(connection, static_site_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let domain_name = static_site
 		.domain_name

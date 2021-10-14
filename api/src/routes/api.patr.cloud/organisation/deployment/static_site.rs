@@ -418,7 +418,7 @@ async fn get_static_site_info(
 	let static_site_id =
 		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
 			.unwrap();
-	let static_site = db::get_static_site_deployment_by_id(
+	let static_site = db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
 	)

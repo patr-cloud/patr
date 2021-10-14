@@ -83,10 +83,16 @@ pub async fn create_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	if let Some(_) = db::get_deployment_by_name(connection, name).await? {
+	let existing_deployment = db::get_deployment_by_name_in_organisation(
+		connection,
+		name,
+		organisation_id,
+	)
+	.await?;
+	if existing_deployment.is_some() {
 		Error::as_result()
 			.status(200)
-			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
 	if let Some(domain_name) = domain_name {

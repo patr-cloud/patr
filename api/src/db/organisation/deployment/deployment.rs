@@ -566,11 +566,12 @@ pub async fn get_deployment_by_id(
 	Ok(row)
 }
 
-pub async fn get_deployment_by_name(
+pub async fn get_deployment_by_name_in_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
+	organisation_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -592,16 +593,14 @@ pub async fn get_deployment_by_name(
 			deployment
 		WHERE
 			name = $1 AND
+			organisation_id = $2 AND
 			status != 'deleted';
 		"#,
-		name
+		name,
+		organisation_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn update_deployment_deployed_image(
