@@ -566,6 +566,43 @@ pub async fn get_deployment_by_id(
 	Ok(row)
 }
 
+pub async fn get_deployment_by_name_in_organisation(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+	organisation_id: &[u8],
+) -> Result<Option<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id,
+			name,
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			organisation_id
+		FROM
+			deployment
+		WHERE
+			name = $1 AND
+			organisation_id = $2 AND
+			status != 'deleted';
+		"#,
+		name,
+		organisation_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 pub async fn update_deployment_deployed_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],

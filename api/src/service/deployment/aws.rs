@@ -27,7 +27,10 @@ use crate::{
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 	},
-	service,
+	service::{
+		self,
+		deployment::{deployment, managed_database},
+	},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -55,7 +58,7 @@ pub(super) async fn deploy_container(
 	.await;
 
 	log::trace!("Pulling image from registry");
-	super::pull_image_from_registry(&image_id, &config).await?;
+	deployment::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("Image pulled");
 
 	// new name for the docker image
@@ -64,7 +67,7 @@ pub(super) async fn deploy_container(
 	log::trace!("Pushing to {}", new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
-	super::tag_docker_image(&image_id, &new_repo_name).await?;
+	deployment::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("Image tagged");
 
 	// Get credentails for aws lightsail
@@ -126,7 +129,7 @@ pub(super) async fn deploy_container(
 	log::trace!("DNS Updated");
 
 	log::trace!("adding reverse proxy");
-	super::update_nginx_with_all_domains_for_deployment(
+	deployment::update_nginx_with_all_domains_for_deployment(
 		&deployment_id_string,
 		&default_url,
 		deployment.domain_name.as_deref(),
@@ -286,7 +289,7 @@ pub(super) async fn create_managed_database_cluster(
 		.await;
 
 		if let Err(error) = result {
-			let _ = super::update_managed_database_status(
+			let _ = managed_database::update_managed_database_status(
 				&database_id,
 				&ManagedDatabaseStatus::Errored,
 			)
@@ -404,7 +407,7 @@ async fn update_database_cluster_credentials(
 		}
 	};
 
-	super::update_managed_database_credentials_for_database(
+	managed_database::update_managed_database_credentials_for_database(
 		&database_id,
 		&host,
 		port,
@@ -423,14 +426,6 @@ async fn update_database_cluster_credentials(
 	log::trace!("database successfully updated");
 
 	Ok(())
-}
-
-fn get_lightsail_client(region: &str) -> lightsail::Client {
-	let deployment_region = lightsail::Region::new(region.to_string());
-	let client_builder = lightsail::Config::builder()
-		.region(Some(deployment_region))
-		.build();
-	lightsail::Client::from_conf(client_builder)
 }
 
 async fn create_container_service(
@@ -644,4 +639,12 @@ async fn wait_for_deployment(
 		}
 		time::sleep(Duration::from_millis(1000)).await;
 	}
+}
+
+fn get_lightsail_client(region: &str) -> lightsail::Client {
+	let deployment_region = lightsail::Region::new(region.to_string());
+	let client_builder = lightsail::Config::builder()
+		.region(Some(deployment_region))
+		.build();
+	lightsail::Client::from_conf(client_builder)
 }

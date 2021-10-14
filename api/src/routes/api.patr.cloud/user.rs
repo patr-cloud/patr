@@ -846,7 +846,6 @@ async fn add_phone_number_for_user(
 		phone_number,
 	)
 	.await?;
-
 	service::send_phone_number_verification_otp(
 		context.get_database_connection(),
 		&country_code,
