@@ -17,11 +17,11 @@ pub fn parse_config() -> Settings {
 
 	match env.as_ref() {
 		"prod" | "production" => Config::builder()
-			.add_source(File::with_name("config/prod"))
+			.add_source(File::with_name("config/prod").required(false))
 			.set_default("environment", "production")
 			.expect("unable to set environment to develop"),
 		"dev" | "development" => Config::builder()
-			.add_source(File::with_name("config/dev"))
+			.add_source(File::with_name("config/dev").required(false))
 			.set_default("environment", "development")
 			.expect("unable to set environment to develop"),
 		_ => {

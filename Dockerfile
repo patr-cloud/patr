@@ -6,12 +6,15 @@ WORKDIR /app
 
 COPY . .
 
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --target=x86_64-unknown-linux-gnu
 
 FROM ubuntu:latest
 
 WORKDIR /app
 
+RUN apt update && apt install -y libssl-dev ca-certificates dumb-init
 COPY --from=build /app/target/x86_64-unknown-linux-gnu/release/api .
+COPY --from=build /app/assets assets/
 
-CMD ["init", "--", "/app/api"]
+CMD ["dumb-init", "/app/api"]
