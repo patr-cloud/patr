@@ -67,8 +67,8 @@
 		"username": "root",
 		"keyFile": "~/.ssh/id_rsa"
 	},
-	"digitalOcean": {
-		"digitalOceanApiKey": "key",
-		"docr": "test"
+	"digitalocean": {
+		"apiKey": "key",
+		"registry": "test"
 	}
 }
