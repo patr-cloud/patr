@@ -99,7 +99,9 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				config.docker_registry.registry_url, organisation.name, docker_repository.name
+				config.docker_registry.registry_url,
+				organisation.name,
+				docker_repository.name
 			))
 		} else {
 			Ok(format!(

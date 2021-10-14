@@ -156,7 +156,7 @@ pub struct DockerRegistrySettings {
 	pub private_key: String,
 	pub public_key: String,
 	pub public_key_der: Option<Vec<u8>>,
-	pub authorization_header: String
+	pub authorization_header: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
