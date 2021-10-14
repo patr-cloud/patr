@@ -788,7 +788,6 @@ async fn create_deployment(
 		domain_name,
 		horizontal_scale,
 		&machine_type,
-		&config,
 	)
 	.await?;
 

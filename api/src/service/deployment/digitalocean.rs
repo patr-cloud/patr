@@ -68,7 +68,8 @@ pub(super) async fn deploy_container(
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		deployment_id_string, config.digitalocean.registry,
+		config.digitalocean.registry,
+		deployment_id_string,
 	);
 	log::trace!("Pushing to {}", new_repo_name);
 
@@ -667,6 +668,7 @@ async fn wait_for_app_deploy(
 	client: &Client,
 ) -> String {
 	loop {
+		// TODO: add logic for exiting incase the deployment fails
 		if let Some(ingress) =
 			get_app_default_ingress(app_id, config, client).await
 		{

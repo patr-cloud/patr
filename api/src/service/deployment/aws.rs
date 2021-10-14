@@ -591,6 +591,7 @@ async fn push_image_to_lightsail(
 	label_name: &str,
 	region: &str,
 ) -> Result<(), Error> {
+	log::trace!("pushing image to lightsail");
 	let output = Command::new("aws")
 		.arg("lightsail")
 		.arg("push-container-image")
@@ -636,6 +637,12 @@ async fn wait_for_deployment(
 		if let Some(ContainerServiceDeploymentState::Active) = deployment_state
 		{
 			return Ok(());
+		} else if let Some(ContainerServiceDeploymentState::Failed) =
+			deployment_state
+		{
+			return Err(Error::empty()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string()));
 		}
 		time::sleep(Duration::from_millis(1000)).await;
 	}
