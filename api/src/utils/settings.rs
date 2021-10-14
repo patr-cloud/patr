@@ -66,7 +66,7 @@ pub struct Settings {
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
-	pub digital_ocean_api_key: String,
+	pub digitalocean: Digitalocean,
 	pub ssh: SshSettings,
 }
 
@@ -157,6 +157,14 @@ pub struct DockerRegistrySettings {
 	pub private_key: String,
 	pub public_key: String,
 	pub public_key_der: Option<Vec<u8>>,
+	pub authorization_header: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Digitalocean {
+	pub api_key: String,
+	pub registry: String,
 }
 
 impl DockerRegistrySettings {

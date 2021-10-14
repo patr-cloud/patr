@@ -19,7 +19,7 @@ use crate::{
 	},
 	service::{
 		self,
-		deployment::{self, aws, digitalocean, CNameRecord},
+		deployment::{aws, digitalocean, CNameRecord},
 	},
 	utils::{
 		get_current_time,
@@ -63,11 +63,12 @@ pub async fn create_deployment_in_workspace(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
+	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
 	match registry {
-		"registry.patr.cloud" => (),
+		registry if registry == config.docker_registry.registry_url => (),
 		_ => {
 			Error::as_result()
 				.status(400)
@@ -119,7 +120,7 @@ pub async fn create_deployment_in_workspace(
 	)
 	.await?;
 
-	if registry == "registry.patr.cloud" {
+	if registry == config.docker_registry.registry_url {
 		if let Some(repository_id) = repository_id {
 			let repository_id = hex::decode(repository_id)
 				.status(400)
@@ -601,7 +602,7 @@ pub async fn get_domain_validation_status(
 
 	log::trace!("creating random file with random content for verification");
 	let (filename, file_content) =
-		deployment::create_random_content_for_verification(&session).await?;
+		super::create_random_content_for_verification(&session).await?;
 
 	log::trace!("checking existence of https for the custom domain");
 	let https_text = reqwest::get(format!(
@@ -662,7 +663,7 @@ pub async fn get_domain_validation_status(
 			return Ok(true);
 		}
 		log::trace!("certificate does not exist creating a new one");
-		deployment::create_https_certificates_for_domain(&domain_name, config)
+		super::create_https_certificates_for_domain(&domain_name, config)
 			.await?;
 		log::trace!("updating nginx with https");
 		update_nginx_config_for_domain_with_https(
@@ -995,7 +996,7 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 			config,
 		)
 		.await?;
-		deployment::create_https_certificates_for_domain(&patr_domain, config)
+		super::create_https_certificates_for_domain(&patr_domain, config)
 			.await?;
 		update_nginx_config_for_domain_with_https(
 			&patr_domain,
