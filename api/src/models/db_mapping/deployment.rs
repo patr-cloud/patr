@@ -77,7 +77,7 @@ impl Deployment {
 		connection: &mut <Database as sqlx::Database>::Connection,
 		config: &Settings,
 	) -> Result<String, Error> {
-		if self.registry == config.registry {
+		if self.registry == "registry.patr.cloud" {
 			let docker_repository = db::get_docker_repository_by_id(
 				&mut *connection,
 				self.repository_id
@@ -99,7 +99,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				config.registry, organisation.name, docker_repository.name
+				config.docker_registry.registry_url, organisation.name, docker_repository.name
 			))
 		} else {
 			Ok(format!(

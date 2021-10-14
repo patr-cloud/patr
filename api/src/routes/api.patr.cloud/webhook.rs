@@ -101,7 +101,7 @@ pub async fn notification_handler(
 	)?;
 
 	let config = context.get_state().config.clone();
-	if custom_header != config.custom_auth {
+	if custom_header != config.docker_registry.authorization_header {
 		Error::as_result().status(400).body(
 			json!({
 				request_keys::ERRORS: [{
@@ -162,7 +162,6 @@ pub async fn notification_handler(
 			.await?;
 
 		for deployment in deployments {
-			let config = context.get_state().config.clone();
 			let full_image_name = format!(
 				"{}@{}",
 				deployment
@@ -225,7 +224,7 @@ async fn add_deployment_request_log(
 	)?;
 
 	let config = context.get_state().config.clone();
-	if custom_header != config.custom_auth {
+	if custom_header != config.docker_registry.registry_url {
 		Error::as_result().status(400).body(
 			json!({
 				request_keys::ERRORS: [{

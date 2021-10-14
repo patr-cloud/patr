@@ -57,7 +57,8 @@
 		"issuer": "localhost:3000",
 		"registryUrl": "localhost:5000",
 		"privateKey": "",
-		"publicKey": ""
+		"publicKey": "",
+		"authorizationHeader": "auth key"
 	},
 	"ssh": {
 		"host": "127.0.0.1",
@@ -65,8 +66,8 @@
 		"username": "root",
 		"keyFile": "~/.ssh/id_rsa"
 	},
-	"digitalOceanApiKey": "key",
-	"customAuth": "auth key",
-	"registry": "registry.patr.cloud",
-	"docr": "test"
+	"digitalOcean": {
+		"digitalOceanApiKey": "key",
+		"docr": "test"
+	}
 }

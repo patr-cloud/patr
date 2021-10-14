@@ -100,7 +100,7 @@ pub async fn create_deployment_in_organisation(
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
 	match registry {
-		registry if registry == config.registry => (),
+		registry if registry == config.docker_registry.registry_url => (),
 		_ => {
 			Error::as_result()
 				.status(400)
@@ -139,7 +139,7 @@ pub async fn create_deployment_in_organisation(
 	)
 	.await?;
 
-	if registry == config.registry {
+	if registry == config.docker_registry.registry_url {
 		if let Some(repository_id) = repository_id {
 			let repository_id = hex::decode(repository_id)
 				.status(400)

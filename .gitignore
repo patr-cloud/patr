@@ -93,3 +93,5 @@ dump.rdb
 vicara-api.iml
 
 .optic
+
+assets/deployer/registry.yml

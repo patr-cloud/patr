@@ -68,7 +68,7 @@ pub(super) async fn deploy_container(
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		deployment_id_string, config.docr,
+		deployment_id_string, config.digital_ocean.docr,
 	);
 	log::trace!("Pushing to {}", new_repo_name);
 
@@ -116,7 +116,7 @@ pub(super) async fn deploy_container(
 
 	let do_image_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		deployment_id_string, config.docr
+		deployment_id_string, config.digital_ocean.docr
 	);
 	// if the loggin in is successful the push the docker image to registry
 	let push_status = Command::new("docker")
@@ -225,7 +225,7 @@ pub(super) async fn delete_deployment(
 	log::trace!("deleting the deployment");
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.status();
@@ -259,7 +259,7 @@ pub(super) async fn get_container_logs(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
 			app_id
 		))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.json::<AppDeploymentsResponse>()
@@ -277,7 +277,7 @@ pub(super) async fn get_container_logs(
 			app_id, deployment_id
 		))
 		.query(&[("type", "RUN")])
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.json::<AppAggregateLogsResponse>()
@@ -330,7 +330,7 @@ pub(super) async fn create_managed_database_cluster(
 	log::trace!("sending the create db cluster request to digital ocean");
 	let database_cluster = client
 		.post("https://api.digitalocean.com/v2/databases")
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.json(&DatabaseConfig {
 			name: do_db_name, // should be unique
 			engine: db_engine.to_string(),
@@ -390,7 +390,7 @@ pub(super) async fn delete_database(
 			"https://api.digitalocean.com/v2/databases/{}",
 			digitalocean_db_id
 		))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.status();
@@ -442,7 +442,7 @@ async fn app_exists(
 
 	let deployment_status = client
 		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.status();
@@ -472,7 +472,7 @@ async fn update_database_cluster_credentials(
 				"https://api.digitalocean.com/v2/databases/{}",
 				digitalocean_db_id
 			))
-			.bearer_auth(&settings.digital_ocean_api_key)
+			.bearer_auth(&settings.digital_ocean.digital_ocean_api_key)
 			.send()
 			.await?
 			.json::<DatabaseResponse>()
@@ -505,7 +505,7 @@ async fn update_database_cluster_credentials(
 			"https://api.digitalocean.com/v2/databases/{}/dbs",
 			digitalocean_db_id
 		))
-		.bearer_auth(&settings.digital_ocean_api_key)
+		.bearer_auth(&settings.digital_ocean.digital_ocean_api_key)
 		.json(&Db { name: db_name })
 		.send()
 		.await?
@@ -535,7 +535,7 @@ async fn get_registry_auth_token(
 ) -> Result<String, Error> {
 	let registry = client
 		.get("https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true?expiry_seconds=86400")
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.json::<Auth>()
@@ -569,7 +569,7 @@ async fn create_app(
 
 	let deploy_app = client
 		.post("https://api.digitalocean.com/v2/apps")
-		.bearer_auth(&settings.digital_ocean_api_key)
+		.bearer_auth(&settings.digital_ocean.digital_ocean_api_key)
 		.json(&AppConfig {
 			spec: AppSpec {
 				name: format!("deployment-{}", get_current_time().as_millis()),
@@ -647,7 +647,7 @@ async fn redeploy_application(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
 			app_id
 		))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.json(&RedeployAppRequest { force_build: true })
 		.send()
 		.await?
@@ -684,7 +684,7 @@ async fn get_app_default_ingress(
 ) -> Option<String> {
 	client
 		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await
 		.ok()?
@@ -704,10 +704,10 @@ async fn delete_image_from_digitalocean_registry(
 	let container_status = client
 		.delete(format!(
 			"https://api.digitalocean.com/v2/registry/{}/repositories/{}/tags/latest",
-			config.docr,
+			config.digital_ocean.docr,
 			hex::encode(deployment_id),
 		))
-		.bearer_auth(&config.digital_ocean_api_key)
+		.bearer_auth(&config.digital_ocean.digital_ocean_api_key)
 		.send()
 		.await?
 		.status();
