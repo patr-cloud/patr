@@ -94,4 +94,5 @@ vicara-api.iml
 
 .optic
 
-assets/deployer/registry.yml
+assets/deployer/dev.registry.yml
+assets/deployer/prod.registry.yml
