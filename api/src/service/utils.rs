@@ -1,7 +1,10 @@
 use argon2::{
-	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
+	password_hash::{PasswordVerifier, SaltString},
+	Algorithm,
 	Argon2,
+	Params,
 	PasswordHash,
+	PasswordHasher,
 	Version,
 };
 use eve_rs::AsError;
@@ -12,12 +15,10 @@ use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
-		None,
-		4,
-		8192,
-		4,
-		Version::V0x13
-	).unwrap();
+		Algorithm::Argon2id,
+		Version::V0x13,
+		Params::new(8192, 4, 4, None).unwrap(),
+	);
 }
 
 /// # Description
@@ -57,7 +58,7 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON
-		.hash_password_simple(pwd, &salt)
+		.hash_password(pwd, &salt)
 		.map(|hash| hash.to_string())
 		.map_err(|_| Error::empty())
 }
