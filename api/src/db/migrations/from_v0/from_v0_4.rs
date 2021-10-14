@@ -567,7 +567,7 @@ async fn rename_static_sites_columns(
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
-		RENAME CONSTRAINT deployment_static_sites_repository_fk_id_organisation_id
+		RENAME CONSTRAINT deployment_static_sites_fk_id_organisation_id
 		TO deployment_static_sites_fk_id_workspace_id;
 		"#
 	)

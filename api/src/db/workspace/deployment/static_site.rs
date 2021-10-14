@@ -67,7 +67,7 @@ pub async fn create_static_site(
 				($1, $2, 'created', $3, $4);
 			"#,
 			static_site_id,
-			name,
+			name as _,
 			domain,
 			workspace_id
 		)
@@ -83,7 +83,7 @@ pub async fn create_static_site(
 				($1, $2, 'created', NULL, $3);
 			"#,
 			static_site_id,
-			name,
+			name as _,
 			workspace_id
 		)
 		.execute(&mut *connection)
@@ -101,7 +101,7 @@ pub async fn get_static_site_by_id(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
 			workspace_id
@@ -127,7 +127,7 @@ pub async fn get_static_site_by_name_in_workspace(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
 			workspace_id
@@ -138,7 +138,7 @@ pub async fn get_static_site_by_name_in_workspace(
 			workspace_id = $2 AND
 			status != 'deleted';
 		"#,
-		name,
+		name as _,
 		workspace_id,
 	)
 	.fetch_optional(&mut *connection)
@@ -176,7 +176,7 @@ pub async fn get_static_sites_for_workspace(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
 			workspace_id

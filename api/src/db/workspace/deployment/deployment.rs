@@ -576,7 +576,7 @@ pub async fn get_deployment_by_name_in_workspace(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,
@@ -596,7 +596,7 @@ pub async fn get_deployment_by_name_in_workspace(
 			workspace_id = $2 AND
 			status != 'deleted';
 		"#,
-		name,
+		name as _,
 		workspace_id
 	)
 	.fetch_optional(&mut *connection)

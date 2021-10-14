@@ -182,6 +182,18 @@
       ]
     }
   },
+  "06789272443fac56afa6ba6b9593f6a708b86f8a69743d1c6485c68c8177bc91": {
+    "query": "UPDATE deployment_static_sites SET domain_name = NULL WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "0ba65499ecae8902b5e35d4c272af2c09970683633d0cb1822835ebaade7d41b": {
     "query": "CREATE TABLE role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
     "describe": {
@@ -317,16 +329,6 @@
           "Bytea",
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "140b335ed19341657d84d58a614bafcbed062124f5575c2dc6249adbbd12daea": {
-    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uk_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -656,6 +658,16 @@
   },
   "1fbbf7824b6eec88e9a07501d790b7ec4a3d154754defc787de7e4c8ba323981": {
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "21fa37911614a4e908cfbb135f6f3fb123e022dee9606bdabafcc3ac7421464e": {
+    "query": "ALTER TABLE deployment_static_sites ADD CONSTRAINT deployment_static_sites_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1057,6 +1069,16 @@
   },
   "2a3306e1296bee4aecb5ebd09308aa350474e0d2853ed76ce3eddc2eb3d80485": {
     "query": "CREATE TABLE workspace_domain ( id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_dmn_typ CHECK(domain_type = 'business'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2af902872bfbda747ebd3d9dc7f7b2d72c716f90024c1b06c758bd1d6cee7752": {
+    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_pk_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), workspace_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2529,6 +2551,142 @@
       "nullable": []
     }
   },
+  "6347966f096b558d4530dbd9a3e56ffceb6ced4f4fc945cf00d04a011401d5f4": {
+    "query": "SELECT id, name as \"name: _\", registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digitalocean_app_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 12,
+          "name": "machine_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 13,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "647f5db16c8c918c9d1427223d80f176f791666d7aaff74d50ebd2ff7948e125": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, user_to_sign_up.business_domain_name, user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
     "describe": {
@@ -3056,6 +3214,25 @@
         "Left": [
           "Bytea",
           "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "7c5a4a0c3e45414231965992272912e05a6dfc88247f92f17cc9a389b08af83d": {
+    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', NULL, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
           "Bytea"
         ]
       },
@@ -3892,6 +4069,140 @@
       ]
     }
   },
+  "a1b3454c062b4bc23036ea140e70ced3c9877391f89c4ff72bf234245fbdca9b": {
+    "query": "SELECT id, name as \"name: _\", status as \"status: _\", domain_name, workspace_id FROM deployment_static_sites WHERE id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
+  "a1c57ac318caa2d1e5b12bd5a3d49224c7e33a2cdec7e93f30a7dc1745c2b433": {
+    "query": "SELECT id, name as \"name: _\", status as \"status: _\", domain_name, workspace_id FROM deployment_static_sites WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
   "a3abf15ceb610eac63cbccf25ff04116545f97f57c3c36a7fe9e75a139e74bd8": {
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number FOREIGN KEY ( id, backup_phone_country_code, backup_phone_number ) REFERENCES user_phone_number ( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -4128,6 +4439,34 @@
       ]
     }
   },
+  "ab528cc1a939dddb90368a694786b2f0475657995a6abb3a5fb7b00b451e3825": {
+    "query": "UPDATE deployment_static_sites SET status = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "abfe8ca19a172c6f4f5f2525f94ca20434872d25c327f511a4fa3d5dfaa5b3e0": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -4169,6 +4508,26 @@
       "parameters": {
         "Left": [
           "Int2",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "adc5e3b1194b1b1d9856eaeb8d82e93afc38873152243b36e153220dce5cdca2": {
+    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Varchar",
           "Bytea"
         ]
       },
@@ -4636,6 +4995,70 @@
       ]
     }
   },
+  "c1f2736ff0102ffee67dde98887c963016ff1c79e4f317e247539aaabe21ffd7": {
+    "query": "SELECT id, name as \"name: _\", status as \"status: _\", domain_name, workspace_id FROM deployment_static_sites WHERE workspace_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
   "c3a925e8c3a743a9f0df880e374fc65d00f881df9da6d04730310f90894e407d": {
     "query": "SELECT domain.name, personal_domain.id, personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;",
     "describe": {
@@ -4737,6 +5160,16 @@
   },
   "ca60cc0ae9e218485ef43ac8e8dd496780f22f180cc579029c623628421fd26e": {
     "query": "CREATE INDEX workspace_user_idx_user_id ON workspace_user (user_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "cd1023f20ccb1cc60dad8a05f407396dae5ec78e7adf4623df4084b287fa607d": {
+    "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uq_backup_email_local_backup_email_domain_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4905,6 +5338,19 @@
         false,
         false
       ]
+    }
+  },
+  "d831d6a4dd187a0661e87130aaff2191a7b9279b7a56b2b107071557032c0eeb": {
+    "query": "UPDATE deployment_static_sites SET domain_name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "d855be524f5d626e1d40358b55e487b367473da4728a18242664950c5c44b244": {
