@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::{db, error, utils::Error, Database};
+use crate::{db, error, service, utils::Error, Database};
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
@@ -93,7 +93,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				"registry.patr.cloud",
+				service::get_settings().docker_registry.registry_url,
 				organisation.name,
 				docker_repository.name
 			))

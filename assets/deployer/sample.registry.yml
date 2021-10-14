@@ -51,6 +51,8 @@ notifications:
   endpoints:
     - name: vicara
       url: http://localhost:3000/webhook/docker-registry/notification
+      headers:
+        Authorization: [MqpqDtC719U0CbbyESQbtquzpkiEiz9xQJ21s6bdG27d6eYJbsIamnA2DU55D8T1]
       timeout: 30m
       threshold: 5
       backoff: 1m

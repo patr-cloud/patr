@@ -5,7 +5,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::db_mapping::EventData,
+	models::{
+		db_mapping::EventData,
+		error::{id as ErrorId, message as ErrorMessage},
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -85,6 +88,32 @@ pub async fn notification_handler(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	}
+
+	let custom_header = context.get_header("Authorization").status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	let config = context.get_state().config.clone();
+	if custom_header != config.docker_registry.authorization_header {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
 	let body = context.get_body()?;
 	let events: EventData = serde_json::from_str(&body)?;
 
@@ -148,8 +177,6 @@ pub async fn notification_handler(
 			)
 			.await?;
 
-			let config = context.get_state().config.clone();
-
 			service::start_deployment(
 				context.get_database_connection(),
 				&deployment.id,
@@ -185,6 +212,30 @@ async fn add_deployment_request_log(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let custom_header = context.get_header("Authorization").status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	let config = context.get_state().config.clone();
+	if custom_header != config.docker_registry.registry_url {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
 	let body = context.get_body_object().clone();
 
 	let ip_address = body
