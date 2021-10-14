@@ -8,6 +8,7 @@ use crate::{
 #[allow(clippy::module_inception)]
 mod deployment;
 mod managed_database;
+mod static_site;
 
 pub fn create_sub_app(
 	app: &App,
@@ -19,6 +20,7 @@ pub fn create_sub_app(
 		"/managed-database",
 		managed_database::create_sub_app(app),
 	);
+	sub_app.use_sub_app("/static-site", static_site::create_sub_app(app));
 
 	sub_app
 }

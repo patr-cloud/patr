@@ -638,7 +638,10 @@ async fn list_deployments(
 ///    repositoryId: ,
 ///    imageName: ,
 ///    imageTag: ,
-///    domain:
+///    region: ,
+///    domainName: ,
+///    horizontalScale: ,
+///    machineType:
 /// }
 /// ```
 /// # Arguments
@@ -789,6 +792,17 @@ async fn create_deployment(
 	)
 	.await?;
 
+	context.commit_database_transaction().await?;
+
+	// Deploy the app as soon as it's created, so that any existing images can
+	// be deployed
+	service::start_deployment(
+		context.get_database_connection(),
+		deployment_id.as_bytes(),
+		&config,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id.as_bytes())
@@ -818,10 +832,14 @@ async fn create_deployment(
 ///     success: true or false,
 ///     deployment:
 ///     {
+///         id: ,
 ///         name: ,
 ///         registry: ,
 ///         imageName: ,
 ///         imageTag: ,
+///         domainName: ,
+///         horizontalScale: ,
+///         machineType:
 ///     }
 /// }
 /// ```
@@ -1479,8 +1497,8 @@ async fn set_domain_name(
 }
 
 /// # Description
-/// This function is used to get the status of domain set for deployment (only
-/// for aws) required inputs:
+/// This function is used to get the status of domain set for deployment
+/// required inputs:
 /// deploymentId in the url
 /// ```
 /// {

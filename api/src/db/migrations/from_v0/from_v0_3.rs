@@ -45,6 +45,37 @@ pub fn get_migrations() -> Vec<&'static str> {
 async fn migrate_from_v0_3_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	// Rename the unqiue constraint from uk to uq
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_uk_username
+		TO user_uq_username;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_uk_bckp_eml_lcl_bckp_eml_dmn_id
+		TO user_uq_backup_email_local_backup_email_domain_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_uk_bckp_phn_cntry_cd_bckp_phn_nmbr
+		TO user_uq_backup_phone_country_code_backup_phone_number;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Add deployment machine type enum
 	query!(
 		r#"
@@ -160,10 +191,10 @@ async fn migrate_from_v0_3_0(
 
 	// Insert new permissions into the database for managed databases
 	for &permission in [
-		rbac::permissions::organisation::managed_database::CREATE,
-		rbac::permissions::organisation::managed_database::LIST,
-		rbac::permissions::organisation::managed_database::DELETE,
-		rbac::permissions::organisation::managed_database::INFO,
+		"organisation::managedDatabase::create",
+		"organisation::managedDatabase::list",
+		"organisation::managedDatabase::delete",
+		"organisation::managedDatabase::info",
 	]
 	.iter()
 	{
@@ -310,18 +341,11 @@ async fn migrate_from_v0_3_0(
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
 			CONSTRAINT managed_database_uq_name_organisation_id
-				UNIQUE(name, organisation_id)
+				UNIQUE(name, organisation_id),
+			CONSTRAINT managed_database_repository_fk_id_organisation_id
+				FOREIGN KEY(id, organisation_id) REFERENCES
+					resource(id, owner_id)
 		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE managed_database 
-		ADD CONSTRAINT managed_database_repository_fk_id_organisation_id
-		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -418,6 +442,120 @@ async fn migrate_from_v0_3_0(
 			('do-sgp', ST_SetSRID(POINT(103.695, 1.32123)::GEOMETRY, 4326)),
 			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
 			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Insert new permissions into the database for static sites
+	for &permission in [
+		"organisation::staticSite::list",
+		"organisation::staticSite::create",
+		"organisation::staticSite::info",
+		"organisation::staticSite::delete",
+		"organisation::staticSite::edit",
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+					SELECT
+						*
+					FROM
+						permission
+					WHERE
+						id = $1;
+					"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		};
+		let uuid = uuid.as_bytes().as_ref();
+		query!(
+			r#"
+				INSERT INTO
+					permission
+				VALUES
+					($1, $2, NULL);
+				"#,
+			uuid,
+			permission
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	// Insert new resource type into the database for managed database
+	let (resource_type, uuid) = (
+		rbac::resource_types::STATIC_SITE.to_string(),
+		loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+					SELECT
+						*
+					FROM
+						resource_type
+					WHERE
+						id = $1;
+					"#,
+				uuid.as_bytes().as_ref()
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		}
+		.as_bytes()
+		.to_vec(),
+	);
+
+	query!(
+		r#"
+			INSERT INTO
+				resource_type
+			VALUES
+				($1, $2, NULL);
+			"#,
+		uuid,
+		resource_type,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_static_sites(
+			id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
+			domain_name VARCHAR(255)
+				CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE
+				CONSTRAINT
+					deployment_static_sites_pk_chk_domain_name_is_lower_case
+						CHECK(domain_name = LOWER(domain_name)),
+			organisation_id BYTEA NOT NULL,
+			CONSTRAINT deployment_static_sites_uq_name_organisation_id
+				UNIQUE(name, organisation_id),
+			CONSTRAINT deployment_static_sites_fk_id_organisation_id
+				FOREIGN KEY(id, organisation_id) REFERENCES
+					resource(id, owner_id)
+		);
 		"#
 	)
 	.execute(&mut *connection)

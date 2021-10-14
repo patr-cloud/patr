@@ -114,20 +114,16 @@ pub(super) async fn deploy_container(
 	}
 	log::trace!("Login was success");
 
-	let do_image_name = format!(
-		"registry.digitalocean.com/{}/{}",
-		deployment_id_string, config.digital_ocean.docr
-	);
 	// if the loggin in is successful the push the docker image to registry
 	let push_status = Command::new("docker")
 		.arg("push")
-		.arg(&do_image_name)
+		.arg(&new_repo_name)
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
 		.spawn()?
 		.wait()
 		.await?;
-	log::trace!("Pushing to DO to {}", do_image_name);
+	log::trace!("Pushing to DO to {}", new_repo_name);
 
 	if !push_status.success() {
 		return Err(Error::empty()
@@ -195,7 +191,10 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	let _ = super::delete_docker_image(&deployment_id_string, &image_id).await;
+	log::trace!("deleting image tagged with digitalocean registry");
+	let _ = super::delete_docker_image(&new_repo_name).await;
+	log::trace!("deleting the pulled image");
+	let _ = super::delete_docker_image(&image_id).await;
 	log::trace!("Docker image deleted");
 
 	Ok(())

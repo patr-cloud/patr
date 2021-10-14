@@ -31,8 +31,9 @@
 		"port": 6379,
 		"user": null,
 		"password": null,
-		"database": "api",
-		"connectionLimit": 10
+		"database": 0,
+		"connectionLimit": 10,
+		"secure": false
 	},
 	"email": {
 		"host": "smtp.example.com",
