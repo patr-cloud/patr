@@ -3,12 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-	db,
-	error,
-	utils::{settings::Settings, Error},
-	Database,
-};
+use crate::{Database, db, error, service, utils::{Error}};
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
@@ -75,7 +70,6 @@ impl Deployment {
 	pub async fn get_full_image(
 		&self,
 		connection: &mut <Database as sqlx::Database>::Connection,
-		config: &Settings,
 	) -> Result<String, Error> {
 		if self.registry == "registry.patr.cloud" {
 			let docker_repository = db::get_docker_repository_by_id(
@@ -99,7 +93,7 @@ impl Deployment {
 
 			Ok(format!(
 				"{}/{}/{}",
-				config.docker_registry.registry_url,
+				service::get_settings().docker_registry.registry_url,
 				organisation.name,
 				docker_repository.name
 			))

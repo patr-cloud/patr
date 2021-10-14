@@ -210,7 +210,7 @@ pub async fn start_deployment(
 	let image_id = if let Some(deployed_image) = deployment.deployed_image {
 		deployed_image
 	} else {
-		deployment.get_full_image(connection, config).await?
+		deployment.get_full_image(connection).await?
 	};
 	let config = config.clone();
 	let region = region.to_string();

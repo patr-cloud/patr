@@ -165,7 +165,7 @@ pub async fn notification_handler(
 			let full_image_name = format!(
 				"{}@{}",
 				deployment
-					.get_full_image(context.get_database_connection(), &config)
+					.get_full_image(context.get_database_connection())
 					.await?,
 				target.digest
 			);
