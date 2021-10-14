@@ -83,12 +83,9 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	let existing_deployment = db::get_deployment_by_name_in_workspace(
-		connection,
-		name,
-		workspace_id,
-	)
-	.await?;
+	let existing_deployment =
+		db::get_deployment_by_name_in_workspace(connection, name, workspace_id)
+			.await?;
 	if existing_deployment.is_some() {
 		Error::as_result()
 			.status(200)

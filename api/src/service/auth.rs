@@ -980,7 +980,8 @@ pub async fn join_user(
 	}
 
 	// add personal workspace
-	let personal_workspace_name = service::get_personal_workspace_name(username);
+	let personal_workspace_name =
+		service::get_personal_workspace_name(username);
 	service::create_workspace(connection, &personal_workspace_name, user_id)
 		.await?;
 

@@ -163,7 +163,8 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				let resource = resource.unwrap();
 
 				let workspace_id = resource.owner_id.encode_hex::<String>();
-				let workspace_permission = access_data.workspaces.get(&workspace_id);
+				let workspace_permission =
+					access_data.workspaces.get(&workspace_id);
 				if workspace_permission.is_none() {
 					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);

@@ -1319,20 +1319,22 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let workspace =
-		db::get_workspace_by_name(context.get_database_connection(), workspace_name)
-			.await?
-			.status(400)
-			.body(
-				json!({
-					request_keys::ERRORS: [{
-						request_keys::CODE: ErrorId::INVALID_REQUEST,
-						request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
-						request_keys::DETAIL: []
-					}]
-				})
-				.to_string(),
-			)?;
+	let workspace = db::get_workspace_by_name(
+		context.get_database_connection(),
+		workspace_name,
+	)
+	.await?
+	.status(400)
+	.body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::INVALID_REQUEST,
+				request_keys::MESSAGE: ErrorMessage::RESOURCE_DOES_NOT_EXIST,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
 
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),

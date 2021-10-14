@@ -45,9 +45,8 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::static_site::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string = context
-						.get_param(request_keys::WORKSPACE_ID)
-						.unwrap();
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -212,9 +211,8 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::static_site::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string = context
-						.get_param(request_keys::WORKSPACE_ID)
-						.unwrap();
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -350,9 +348,8 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string = context
-						.get_param(request_keys::WORKSPACE_ID)
-						.unwrap();
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -589,16 +586,15 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let static_site_id =
-		service::create_static_site_deployment_in_workspace(
-			context.get_database_connection(),
-			&workspace_id,
-			name,
-			domain_name,
-			file,
-			&config,
-		)
-		.await?;
+	let static_site_id = service::create_static_site_deployment_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		name,
+		domain_name,
+		file,
+		&config,
+	)
+	.await?;
 
 	context.commit_database_transaction().await?;
 

@@ -33,7 +33,8 @@ pub async fn is_workspace_name_allowed(
 			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 	}
 
-	let workspace = db::get_workspace_by_name(connection, workspace_name).await?;
+	let workspace =
+		db::get_workspace_by_name(connection, workspace_name).await?;
 	if workspace.is_some() {
 		return Ok(false);
 	}
