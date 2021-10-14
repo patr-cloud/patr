@@ -68,8 +68,7 @@ pub(super) async fn deploy_container(
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry,
-		deployment_id_string,
+		config.digitalocean.registry, deployment_id_string,
 	);
 	log::trace!("Pushing to {}", new_repo_name);
 
