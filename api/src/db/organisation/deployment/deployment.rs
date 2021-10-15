@@ -1,6 +1,5 @@
 use crate::{
 	models::db_mapping::{
-		AvgDistance,
 		Deployment,
 		DeploymentMachineType,
 		DeploymentRequestMethod,
@@ -871,19 +870,11 @@ pub async fn create_log_for_deployment(
 pub async fn get_recommended_data_center(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-) -> Result<Option<AvgDistance>, sqlx::Error> {
-	let row = query_as!(
-		AvgDistance,
+) -> Result<Option<String>, sqlx::Error> {
+	let row = query!(
 		r#"
 		SELECT
-			data_center_locations.region,
-			AVG(
-				st_distancespheroid(
-					deployment_request_logs.ip_address_location,
-					data_center_locations.location,
-					'SPHEROID["WGS84",6378137,298.257223563]'
-				)
-			)::NUMERIC(10, 2) as "avg_distance!: f64"
+			data_center_locations.region
 		FROM
 			data_center_locations,
 			deployment_request_logs
@@ -896,14 +887,19 @@ pub async fn get_recommended_data_center(
 		GROUP BY
 			data_center_locations.region
 		ORDER BY
-			"avg_distance!: f64";
+			AVG(
+				st_distancespheroid(
+					deployment_request_logs.ip_address_location,
+					data_center_locations.location,
+					'SPHEROID["WGS84",6378137,298.257223563]'
+				)
+			);
 		"#,
 		deployment_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
-	.next();
+	.map(|row| row.region);
 
 	Ok(row)
 }
