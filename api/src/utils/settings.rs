@@ -54,6 +54,7 @@ pub fn parse_config() -> Settings {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	pub port: u16,
+	pub bind_address: std::net::Ipv4Addr,
 	pub base_path: String,
 	pub password_pepper: String,
 	pub jwt_secret: String,
