@@ -31,8 +31,9 @@
 		"port": 6379,
 		"user": null,
 		"password": null,
-		"database": "api",
-		"connectionLimit": 10
+		"database": 0,
+		"connectionLimit": 10,
+		"secure": false
 	},
 	"email": {
 		"host": "smtp.example.com",
@@ -57,7 +58,17 @@
 		"issuer": "localhost:3000",
 		"registryUrl": "localhost:5000",
 		"privateKey": "",
-		"publicKey": ""
+		"publicKey": "",
+		"authorizationHeader": "auth key"
 	},
-	"digitalOceanApiKey": "key"
+	"ssh": {
+		"host": "127.0.0.1",
+		"port": 22,
+		"username": "root",
+		"keyFile": "~/.ssh/id_rsa"
+	},
+	"digitalocean": {
+		"apiKey": "key",
+		"registry": "test"
+	}
 }

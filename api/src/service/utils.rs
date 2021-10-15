@@ -1,7 +1,10 @@
 use argon2::{
-	password_hash::{PasswordHasher, PasswordVerifier, SaltString},
+	password_hash::{PasswordVerifier, SaltString},
+	Algorithm,
 	Argon2,
+	Params,
 	PasswordHash,
+	PasswordHasher,
 	Version,
 };
 use eve_rs::AsError;
@@ -12,12 +15,10 @@ use crate::{db, error, service, utils::Error, Database};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
-		None,
-		4,
-		8192,
-		4,
-		Version::V0x13
-	).unwrap();
+		Algorithm::Argon2id,
+		Version::V0x13,
+		Params::new(8192, 4, 4, None).unwrap(),
+	);
 }
 
 /// # Description
@@ -57,7 +58,7 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 		SaltString::generate(&mut rand::thread_rng()).as_str()
 	);
 	ARGON
-		.hash_password_simple(pwd, &salt)
+		.hash_password(pwd, &salt)
 		.map(|hash| hash.to_string())
 		.map_err(|_| Error::empty())
 }
@@ -109,19 +110,19 @@ pub async fn generate_new_refresh_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<(String, String), Error> {
-	let mut refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
-	let mut hashed = hash(refresh_token.as_bytes())?;
-	let mut logins = db::get_all_logins_for_user(connection, user_id).await?;
-	let mut login = logins.iter().find(|login| login.refresh_token == hashed);
+	loop {
+		let refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
+		let hashed = hash(refresh_token.as_bytes())?;
+		let login = db::get_login_for_user_with_refresh_token(
+			connection, user_id, &hashed,
+		)
+		.await?;
 
-	while login.is_some() {
-		refresh_token = Uuid::new_v4().as_bytes().encode_hex();
-		hashed = hash(refresh_token.as_bytes())?;
-		logins = db::get_all_logins_for_user(connection, user_id).await?;
-		login = logins.iter().find(|login| login.refresh_token == hashed);
+		if login.is_none() {
+			// No login exists with that refresh token. Break
+			break Ok((refresh_token, hashed));
+		}
 	}
-
-	Ok((refresh_token, hashed))
 }
 
 #[cfg(all(feature = "sample-data", release))]

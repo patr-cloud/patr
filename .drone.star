@@ -36,6 +36,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=False,
@@ -49,6 +50,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=False,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=False,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=False,
+                env=get_app_running_environment(),
             ),
         ], [
             redis_service(),
@@ -70,6 +82,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -83,6 +96,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
         ], [
             redis_service(),
@@ -104,6 +128,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -117,6 +142,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
         ], [
             redis_service(),
@@ -136,6 +172,7 @@ def get_pipeline_steps(ctx):
                 "Copy sample config"
             ),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=False,
@@ -166,6 +203,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -179,6 +217,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
 
             # Deploy
@@ -200,6 +249,7 @@ def get_pipeline_steps(ctx):
             # Create sample config
             copy_config("Copy sample config"),
             # Run --db-only
+            clear_database("Clear database"),
             init_database(
                 "Initialize database",
                 release=True,
@@ -213,6 +263,17 @@ def get_pipeline_steps(ctx):
                 "Recheck code with live database",
                 release=True,
                 sqlx_offline=False
+            ),
+
+            build_examples(
+                "Build examples to generate migrations",
+                release=True,
+                sqlx_offline=False,
+            ),
+            test_migrations(
+                "Test migrations against older versions",
+                release=True,
+                env=get_app_running_environment(),
             ),
 
             # Deploy
@@ -289,6 +350,20 @@ def copy_config(step_name):
     }
 
 
+def clear_database(step_name):
+    env = get_app_running_environment()
+    env["PGPASSWORD"] = env["APP_DATABASE_PASSWORD"]
+    return {
+        "name": step_name,
+        "image": "postgres",
+        "commands": [
+            "psql --host=database --port=5432 --username=postgres --command=\"DROP DATABASE $APP_DATABASE_DATABASE;\"",
+            "psql --host=database --port=5432 --username=postgres --command=\"CREATE DATABASE $APP_DATABASE_DATABASE;\""
+        ],
+        "environment": env
+    }
+
+
 def init_database(step_name, release, env):
     bin_location = ""
     if release == True:
@@ -360,7 +435,7 @@ def create_gitea_release(step_name, staging):
         "image": "rust:1",
         "commands": [
             "echo \"$GITEA_IP develop.vicara.co\" >> /etc/hosts",
-            "cargo run {} --example gitea-release".format(release_flag)
+            "cargo run {} --example create-gitea-release".format(release_flag)
         ],
         "environment": {
             "GITEA_TOKEN": {
@@ -376,7 +451,7 @@ def create_gitea_release(step_name, staging):
 def database_service(pwd):
     return {
         "name": "database",
-        "image": "postgres",
+        "image": "postgis/postgis",
         "environment": {
             "POSTGRES_PASSWORD": pwd,
             "POSTGRES_DB": "api"
@@ -404,4 +479,52 @@ def get_app_running_environment():
         "APP_DATABASE_DATABASE": "api",
 
         "APP_REDIS_HOST": "cache",
+    }
+
+
+def build_examples(step_name, release, sqlx_offline):
+    release_flag = ""
+    if release == True:
+        release_flag = "--release"
+    else:
+        release_flag = ""
+    return {
+        "name": step_name,
+        "image": "rust:1",
+        "commands": [
+            "cargo build {}".format(release_flag),
+            "cargo build {} --examples".format(release_flag)
+        ],
+        "environment": {
+            "GITEA_TOKEN": {
+                "from_secret": "gitea_token"
+            },
+            "GITEA_IP": {
+                "from_secret": "gitea_ip"
+            }
+        }
+    }
+
+
+def test_migrations(step_name, release, env):
+    bin_location = ""
+    if release == True:
+        bin_location = "./target/release/examples/verify-migrations"
+    else:
+        bin_location = "./target/debug/examples/verify-migrations"
+    env["GITEA_IP"] = {
+        "from_secret": "gitea_ip"
+    }
+    env["GITEA_TOKEN"] = {
+        "from_secret": "gitea_token"
+    }
+    return {
+        "name": step_name,
+        "image": "postgres",
+        "commands": [
+            "apt update",
+            "apt install ca-certificates",
+            bin_location
+        ],
+        "environment": env
     }

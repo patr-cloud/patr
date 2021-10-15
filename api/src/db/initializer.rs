@@ -20,13 +20,22 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		WHERE
 			table_catalog = $1 AND
 			table_schema = 'public' AND
-			table_type = 'BASE TABLE';
+			table_type = 'BASE TABLE' AND
+			table_name != 'spatial_ref_sys';
 		"#,
 		app.config.database.database
 	)
 	.fetch_all(&app.database)
 	.await?;
 	let mut transaction = app.database.begin().await?;
+
+	query!(
+		r#"
+		CREATE EXTENSION IF NOT EXISTS postgis;
+		"#
+	)
+	.execute(&app.database)
+	.await?;
 
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
@@ -70,6 +79,15 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 				);
 
 				db::migrate_database(&mut transaction, version).await?;
+
+				transaction.commit().await?;
+				log::info!(
+					"Migration completed. Database is now at version {}.{}.{}",
+					constants::DATABASE_VERSION.major,
+					constants::DATABASE_VERSION.minor,
+					constants::DATABASE_VERSION.patch
+				);
+				transaction = app.database.begin().await?;
 			}
 			Ordering::Equal => {
 				log::info!("Database already in the latest version. No migration required.");

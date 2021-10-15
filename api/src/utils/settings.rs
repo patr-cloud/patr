@@ -66,7 +66,8 @@ pub struct Settings {
 	pub twilio: TwilioSettings,
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
-	pub digital_ocean_api_key: String,
+	pub digitalocean: Digitalocean,
+	pub ssh: SshSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -108,8 +109,9 @@ pub struct RedisSettings {
 	pub port: u16,
 	pub user: Option<String>,
 	pub password: Option<String>,
-	pub database: Option<String>,
+	pub database: Option<u8>,
 	pub connection_limit: u32,
+	pub secure: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -155,6 +157,14 @@ pub struct DockerRegistrySettings {
 	pub private_key: String,
 	pub public_key: String,
 	pub public_key_der: Option<Vec<u8>>,
+	pub authorization_header: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Digitalocean {
+	pub api_key: String,
+	pub registry: String,
 }
 
 impl DockerRegistrySettings {
@@ -174,4 +184,13 @@ impl Display for RunningEnvironment {
 			}
 		)
 	}
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SshSettings {
+	pub host: String,
+	pub port: u16,
+	pub username: String,
+	pub key_file: String,
 }
