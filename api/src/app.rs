@@ -51,9 +51,18 @@ pub async fn start_server(app: App) {
 	eve_app.use_middleware("/", get_basic_middlewares());
 	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
 
-	log::info!("Listening for connections on 127.0.0.1:{}", port);
+	log::info!(
+		"Listening for connections on {}:{}",
+		app.config.bind_address,
+		port
+	);
 	let shutdown_signal = Some(get_shutdown_signal());
-	listen(eve_app, ([127, 0, 0, 1], port), shutdown_signal).await;
+	listen(
+		eve_app,
+		(app.config.bind_address.octets(), port), // TODO make this generic
+		shutdown_signal,
+	)
+	.await;
 }
 
 pub fn create_eve_app(
