@@ -364,18 +364,6 @@
       "nullable": []
     }
   },
-  "0cb05860f1a10055ea38b4951347e6860d3d226b43759fd52a31dac18e0cf708": {
-    "query": "UPDATE \"user\" SET last_name = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "0d262a2cdb70f0c2af1b7b788df13c6d6da8ce31fd6172023a0490f6cbda6d94": {
     "query": "CREATE INDEX user_to_sign_up_idx_otp_expiry ON user_to_sign_up (otp_expiry);",
     "describe": {
@@ -1579,18 +1567,6 @@
         true,
         true
       ]
-    }
-  },
-  "3fd358a1ce65800e2194b888923a2346da3e63ce7ce91b99f8b8830a97e10346": {
-    "query": "UPDATE \"user\" SET dob = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Int8"
-        ]
-      },
-      "nullable": []
     }
   },
   "40b666a060e7b5f8d931025a326aa1468c93620b6184f795570911834a9b7604": {
@@ -3025,6 +3001,19 @@
       "nullable": []
     }
   },
+  "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
+    "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "6c358b1315434f217977f83c02a85672f43f7cb251a4594f25cc1616d91cd64b": {
     "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );",
     "describe": {
@@ -3413,18 +3402,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "7d5f9aa70e270166b2b87cc4b473d5fcbfa4e9a57260e09560a63128dcb3a6d5": {
-    "query": "UPDATE \"user\" SET location = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
       },
       "nullable": []
     }
@@ -4090,6 +4067,19 @@
           "Bytea",
           "Bpchar",
           "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "985017bf290c3b482b9ecf7c939085b9f344b97e9ef6f57696fe91e7affb5e91": {
+    "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
         ]
       },
       "nullable": []
@@ -5383,6 +5373,19 @@
       "nullable": []
     }
   },
+  "cc5052043d15b31259977b31b0cc857411b204b64180714e0db89cffcb68fe46": {
+    "query": "UPDATE \"user\" SET dob = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "cd1023f20ccb1cc60dad8a05f407396dae5ec78e7adf4623df4084b287fa607d": {
     "query": "CREATE TABLE \"user\"( id BYTEA CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id BYTEA, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uq_backup_email_local_backup_email_domain_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
     "describe": {
@@ -5764,18 +5767,6 @@
       "nullable": []
     }
   },
-  "e1ccdf6aebae3eef774c9073a27f79aa581f9f096dac79fb8f5da81c6dc2307f": {
-    "query": "UPDATE \"user\" SET first_name = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {
     "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3;",
     "describe": {
@@ -5959,13 +5950,27 @@
       ]
     }
   },
-  "e784c3bf8fc613e812aee986db4120781c68821b15c3d6601b7eaa7dd986d0f1": {
-    "query": "UPDATE \"user\" SET bio = $1;",
+  "e612e850c570bbc931e8a3fcbd7b87c54257d739d9a4a3dfbd367961edea354b": {
+    "query": "UPDATE \"user\" SET first_name = $1 WHERE id = $2;",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar"
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e67c1e6f96aec49750ea347b36199d17f7e58efbff15d77a740c47a6deae9db5": {
+    "query": "UPDATE \"user\" SET bio = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
         ]
       },
       "nullable": []
