@@ -609,32 +609,6 @@
       "nullable": []
     }
   },
-  "1cbdd455af85998e9ea0d8da69efbc060f62b850e930da733c12059dbd6df6f4": {
-    "query": "SELECT data_center_locations.region, AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) )::NUMERIC(10, 2) as \"avg_distance!: f64\" FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY \"avg_distance!: f64\";",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "avg_distance!: f64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        null
-      ]
-    }
-  },
   "1d910355f58fd3f630a39be384b98423a9abfc38721774e0d0d83080581433d4": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = $1;",
     "describe": {
@@ -1086,6 +1060,26 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "2babea13ca72e7fcb354b2acb11e2b630677a5d4b29176390f839bc93a4a5f60": {
+    "query": "SELECT data_center_locations.region FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "region",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false
+      ]
     }
   },
   "2d8f1c1831c073de654cab1bda49d554b9bcc05196b0161ec692cf35e814f1a8": {
