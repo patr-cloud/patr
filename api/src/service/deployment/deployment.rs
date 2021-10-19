@@ -470,7 +470,7 @@ pub async fn delete_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
-	let deployment = db::get_deployment_by_id(connection, &deployment_id)
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
