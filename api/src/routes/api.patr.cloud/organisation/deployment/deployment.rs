@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::DeploymentStatus, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -1088,17 +1088,10 @@ async fn delete_deployment(
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::stop_deployment(
+	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
-	)
-	.await?;
-
-	db::update_deployment_status(
-		context.get_database_connection(),
-		&deployment_id,
-		&DeploymentStatus::Deleted,
 	)
 	.await?;
 
@@ -1577,19 +1570,32 @@ async fn get_recommended_data_center(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
-	let data_center = db::get_recommended_data_center(
+	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?
-	.status(500)?;
+	.status(400)
+	.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::RECOMMENDED_DATA_CENTERS: {
-			request_keys::REGION: data_center.region,
-			request_keys::DISTANCE: data_center.avg_distance,
-		}
-	}));
+	let data_center = db::get_recommended_data_center(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?;
+
+	context.json(
+		if let Some(data_center) = data_center {
+			json!({
+				request_keys::SUCCESS: true,
+				request_keys::RECOMMENDED_DATA_CENTER: data_center
+			})
+		} else {
+			json!({
+				request_keys::SUCCESS: true,
+				request_keys::RECOMMENDED_DATA_CENTER: deployment.region
+			})
+		},
+	);
 	Ok(context)
 }

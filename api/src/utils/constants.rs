@@ -180,5 +180,5 @@ pub mod request_keys {
 	pub const PROTOCOL: &str = "protocol";
 	pub const RESPONSE_TIME: &str = "responseTime";
 	pub const DISTANCE: &str = "distance";
-	pub const RECOMMENDED_DATA_CENTERS: &str = "recommendedDataCenters";
+	pub const RECOMMENDED_DATA_CENTER: &str = "recommendedDataCenter";
 }

@@ -167,6 +167,28 @@ pub async fn update_static_site_status(
 	.map(|_| ())
 }
 
+pub async fn update_static_site_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			name = $1
+		WHERE
+			id = $2;
+		"#,
+		name,
+		static_site_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn get_static_sites_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],

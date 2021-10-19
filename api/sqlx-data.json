@@ -609,32 +609,6 @@
       "nullable": []
     }
   },
-  "1cbdd455af85998e9ea0d8da69efbc060f62b850e930da733c12059dbd6df6f4": {
-    "query": "SELECT data_center_locations.region, AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) )::NUMERIC(10, 2) as \"avg_distance!: f64\" FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY \"avg_distance!: f64\";",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "avg_distance!: f64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        null
-      ]
-    }
-  },
   "1d910355f58fd3f630a39be384b98423a9abfc38721774e0d0d83080581433d4": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = $1;",
     "describe": {
@@ -1024,6 +998,19 @@
       ]
     }
   },
+  "27c549c54b3d00c771f2f3aba6aca180ae35d5f6b89c25471bdf798369673a4e": {
+    "query": "UPDATE deployment_static_sites SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "2812382d5ca4d1161895439f22493c75e9e99c344fbb46ed89d3bb2441543a39": {
     "query": "SELECT * FROM role_permissions_resource WHERE role_id = $1;",
     "describe": {
@@ -1086,6 +1073,26 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "2babea13ca72e7fcb354b2acb11e2b630677a5d4b29176390f839bc93a4a5f60": {
+    "query": "SELECT data_center_locations.region FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "region",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false
+      ]
     }
   },
   "2d8f1c1831c073de654cab1bda49d554b9bcc05196b0161ec692cf35e814f1a8": {
@@ -5054,6 +5061,19 @@
       "nullable": []
     }
   },
+  "be816fa44f70a6aed2285bf950575d5939a16b3d61d3009772afee9ad7a22cb3": {
+    "query": "UPDATE managed_database SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "c01c61844f9a81ec21e4f18bbf7841043c5847c5781cc51668752915e7a360d7": {
     "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', organisation_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_organisation_id UNIQUE(name, organisation_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
@@ -5657,6 +5677,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "dca6992cc85f4d617680b1e89577f622f75a94f85adbe7e5142eb8b056e115b2": {
+    "query": "UPDATE deployment SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
       },
       "nullable": []
     }
