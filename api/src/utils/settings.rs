@@ -1,7 +1,7 @@
 use std::{
 	env,
 	fmt::{Display, Formatter},
-	net::Ipv4Addr,
+	net::IpAddr,
 };
 
 use config_rs::{Config, Environment, File};
@@ -55,7 +55,7 @@ pub fn parse_config() -> Settings {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	pub port: u16,
-	pub bind_address: Ipv4Addr,
+	pub bind_address: IpAddr,
 	pub base_path: String,
 	pub password_pepper: String,
 	pub jwt_secret: String,
