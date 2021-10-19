@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::DeploymentStatus, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -798,17 +798,10 @@ async fn delete_static_site(
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::stop_static_site(
+	service::delete_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 		&config,
-	)
-	.await?;
-
-	db::update_static_site_status(
-		context.get_database_connection(),
-		&static_site_id,
-		&DeploymentStatus::Deleted,
 	)
 	.await?;
 
