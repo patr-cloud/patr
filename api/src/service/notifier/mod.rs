@@ -64,6 +64,35 @@ pub async fn send_email_verification_otp(
 }
 
 /// # Description
+/// This function is used to send otp to verify user's phone number
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `country_code` - a string containing 2 letter country code
+/// * `phone_number` - a string containing phone number of user
+/// * `otp` - a string containing otp to be sent for verification
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_phone_number_verification_otp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
+	phone_number: &str,
+	otp: &str,
+) -> Result<(), Error> {
+	sms::send_phone_number_verification_otp(
+		connection,
+		country_code,
+		phone_number,
+		otp,
+	)
+	.await
+}
+
+/// # Description
 /// This function is used to send otp to the user for sign-up
 ///
 /// # Arguments
