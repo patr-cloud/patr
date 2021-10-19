@@ -9,6 +9,12 @@ struct UserSignUpVerificationEmail {
 	otp: String,
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/add-new-email-notification/template.json"]
+struct NewEmailVerificationEmail {
+	otp: String,
+}
+
 /// # Description
 /// This function is used to email the otp to user for account verification
 ///
@@ -160,6 +166,35 @@ pub async fn send_backup_registration_mail(
 	email: Mailbox,
 ) -> Result<(), Error> {
 	send_email(BackupNotificationEmail {}, email, None, "Welcome to Patr").await
+}
+
+/// # Description
+/// This function is used to email the otp to user for adding a new email
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+/// More info here: [`Mailbox`]
+/// * `otp` - a string containing One Time Password to be sent to the user
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Mailbox`]: Mailbox
+pub async fn send_email_verification_otp(
+	email: Mailbox,
+	otp: &str,
+) -> Result<(), Error> {
+	send_email(
+		NewEmailVerificationEmail {
+			otp: otp.to_string(),
+		},
+		email,
+		None,
+		"Patr email verification OTP",
+	)
+	.await
 }
 
 /// # Description

@@ -49,6 +49,30 @@ pub async fn send_sign_up_complete_notification(
 }
 
 /// # Description
+/// This function is used to send email to the user to verify
+///
+/// # Arguments
+/// * `new_email` - an Option<String> containing either String which has
+/// new email added by the user to which the otp will be sent or `None`
+/// * `otp` - a string containing otp to be sent
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+pub async fn send_email_verification_otp(
+	new_email: Option<String>,
+	otp: &str,
+) -> Result<(), Error> {
+	if let Some(new_email) = new_email {
+		email::send_email_verification_otp(new_email.parse()?, otp).await
+	} else {
+		Err(Error::empty()
+			.status(400)
+			.body(error!(EMAIL_NOT_PROVIDED).to_string()))
+	}
+}
+
+/// # Description
 /// This function is used to send otp to the user for sign-up
 ///
 /// # Arguments

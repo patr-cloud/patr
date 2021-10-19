@@ -48,6 +48,9 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		get_current_time_millis() + service::get_join_token_expiry();
 	let verification_token = service::hash(otp.as_bytes())?;
 
+	service::send_email_verification_otp(Some(email_address.into()), &otp)
+		.await?;
+
 	// split email into 2 parts and get domain_id
 	let (email_local, personal_domain_id) =
 		service::split_email_with_domain_id(connection, email_address).await?;
