@@ -9,12 +9,6 @@ struct UserSignUpVerificationEmail {
 	otp: String,
 }
 
-#[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/add-new-email-notification/template.json"]
-struct NewEmailVerificationEmail {
-	otp: String,
-}
-
 /// # Description
 /// This function is used to email the otp to user for account verification
 ///
@@ -168,6 +162,12 @@ pub async fn send_backup_registration_mail(
 	send_email(BackupNotificationEmail {}, email, None, "Welcome to Patr").await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/add-new-email-notification/template.json"]
+struct AddEmailVerificationEmail {
+	otp: String,
+}
+
 /// # Description
 /// This function is used to email the otp to user for adding a new email
 ///
@@ -187,7 +187,7 @@ pub async fn send_email_verification_otp(
 	otp: &str,
 ) -> Result<(), Error> {
 	send_email(
-		NewEmailVerificationEmail {
+		AddEmailVerificationEmail {
 			otp: otp.to_string(),
 		},
 		email,
