@@ -1084,8 +1084,8 @@ async fn docker_registry_login(
 		vec![],
 	)
 	.to_string(
-		config.docker_registry.private_key.as_bytes(),
-		config.docker_registry.public_key.as_bytes(),
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
@@ -1468,8 +1468,8 @@ async fn docker_registry_authenticate(
 		}],
 	)
 	.to_string(
-		config.docker_registry.private_key.as_bytes(),
-		config.docker_registry.public_key.as_bytes(),
+		config.docker_registry.private_key.as_ref(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
