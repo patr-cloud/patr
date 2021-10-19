@@ -5,7 +5,7 @@ use std::{
 };
 
 use config_rs::{Config, Environment, File};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
@@ -152,6 +152,8 @@ pub struct DockerRegistrySettings {
 	pub registry_url: String,
 	pub private_key: String,
 	pub public_key: String,
+	#[serde(deserialize_with = "base64_to_byte_array")]
+	pub public_key_der: Vec<u8>,
 	pub authorization_header: String,
 }
 
@@ -182,4 +184,13 @@ pub struct SshSettings {
 	pub port: u16,
 	pub username: String,
 	pub key_file: String,
+}
+
+fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let string = String::deserialize(value)?;
+	Ok(base64::decode(&string)
+		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
 }
