@@ -653,6 +653,7 @@ async fn upload_static_site_files_to_nginx(
 	log::trace!("unzipping the file");
 	let unzip_result = session
 		.command("unzip")
+		.arg("-o")
 		.arg(format!(
 			"/home/web/static-sites/{}.zip",
 			static_site_id_string
