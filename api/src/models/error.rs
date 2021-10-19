@@ -48,7 +48,6 @@ pub mod id {
 		"cannotDeleteBackupPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
-	pub const EMAIL_NOT_PROVIDED: &str = "emailNotProvided";
 }
 
 #[allow(dead_code)]
@@ -151,6 +150,4 @@ pub mod message {
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
-	pub const EMAIL_NOT_PROVIDED: &str =
-		"No email address provided by the client";
 }
