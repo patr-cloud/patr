@@ -1084,8 +1084,8 @@ async fn docker_registry_login(
 		vec![],
 	)
 	.to_string(
-		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.private_key.as_bytes(),
+		config.docker_registry.public_key.as_bytes(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
@@ -1202,7 +1202,12 @@ async fn docker_registry_authenticate(
 		// return token.
 		if RegistryToken::parse(
 			password,
-			context.get_state().config.docker_registry.public_key_der(),
+			context
+				.get_state()
+				.config
+				.docker_registry
+				.public_key
+				.as_bytes(),
 		)
 		.is_ok()
 		{
@@ -1463,8 +1468,8 @@ async fn docker_registry_authenticate(
 		}],
 	)
 	.to_string(
-		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.private_key.as_bytes(),
+		config.docker_registry.public_key.as_bytes(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
