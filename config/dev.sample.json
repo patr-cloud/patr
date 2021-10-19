@@ -1,5 +1,6 @@
 {
 	"port": 3000,
+	"bindAddress": "127.0.0.1",
 	"basePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",

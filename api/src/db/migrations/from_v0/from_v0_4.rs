@@ -23,6 +23,8 @@ pub async fn migrate(
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
 		(0, 4, 0) => migrate_from_v0_4_0(&mut *connection).await?,
+		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection).await?,
+		(0, 4, 2) => migrate_from_v0_4_2(&mut *connection).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -39,10 +41,22 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.4.0"]
+	vec!["0.4.0", "0.4.1", "0.4.2"]
 }
 
 async fn migrate_from_v0_4_0(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_4_1(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_4_2(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	rename_organisation_account_type_to_business(&mut *connection).await?;

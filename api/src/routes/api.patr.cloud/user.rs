@@ -429,8 +429,11 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	db::update_user_data(
 		context.get_database_connection(),
+		&user_id,
 		first_name,
 		last_name,
 		dob,

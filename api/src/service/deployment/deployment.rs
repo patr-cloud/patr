@@ -63,12 +63,11 @@ pub async fn create_deployment_in_workspace(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
 	match registry {
-		registry if registry == config.docker_registry.registry_url => (),
+		registry if registry == "registry.patr.cloud" => (),
 		_ => {
 			Error::as_result()
 				.status(400)
@@ -117,7 +116,7 @@ pub async fn create_deployment_in_workspace(
 	)
 	.await?;
 
-	if registry == config.docker_registry.registry_url {
+	if registry == "registry.patr.cloud" {
 		if let Some(repository_id) = repository_id {
 			let repository_id = hex::decode(repository_id)
 				.status(400)

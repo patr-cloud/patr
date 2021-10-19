@@ -2070,6 +2070,7 @@ pub async fn set_login_expiry(
 
 pub async fn update_user_data(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
 	first_name: Option<&str>,
 	last_name: Option<&str>,
 	dob: Option<u64>,
@@ -2082,9 +2083,12 @@ pub async fn update_user_data(
 			UPDATE
 				"user"
 			SET
-				first_name = $1;
+				first_name = $1
+			WHERE
+				id = $2;
 			"#,
-			first_name
+			first_name,
+			user_id,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2095,9 +2099,12 @@ pub async fn update_user_data(
 			UPDATE
 				"user"
 			SET
-				last_name = $1;
+				last_name = $1
+			WHERE
+				id = $2;
 			"#,
-			last_name
+			last_name,
+			user_id,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2108,9 +2115,12 @@ pub async fn update_user_data(
 			UPDATE
 				"user"
 			SET
-				dob = $1;
+				dob = $1
+			WHERE
+				id = $2;
 			"#,
-			dob as i64
+			dob as i64,
+			user_id,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2121,9 +2131,12 @@ pub async fn update_user_data(
 			UPDATE
 				"user"
 			SET
-				bio = $1;
+				bio = $1
+			WHERE
+				id = $2;
 			"#,
-			bio
+			bio,
+			user_id,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2134,9 +2147,12 @@ pub async fn update_user_data(
 			UPDATE
 				"user"
 			SET
-				location = $1;
+				location = $1
+			WHERE
+				id = $2;
 			"#,
-			location
+			location,
+			user_id,
 		)
 		.execute(&mut *connection)
 		.await?;
