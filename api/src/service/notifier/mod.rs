@@ -11,9 +11,6 @@ use crate::{
 mod email;
 mod sms;
 
-pub use email::*;
-pub use sms::*;
-
 /// # Description
 /// This function is used to notify the user that their sign up has been
 /// successfully completed. This will ideally introduce them to the platform and
@@ -46,6 +43,53 @@ pub async fn send_sign_up_complete_notification(
 		sms::send_backup_registration_sms(&phone_number).await?;
 	}
 	Ok(())
+}
+
+/// # Description
+/// This function is used to send email to the user to verify
+///
+/// # Arguments
+/// * `new_email` - an Option<String> containing either String which has
+/// new email added by the user to which the otp will be sent or `None`
+/// * `otp` - a string containing otp to be sent
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+pub async fn send_email_verification_otp(
+	new_email: String,
+	otp: &str,
+) -> Result<(), Error> {
+	email::send_email_verification_otp(new_email.parse()?, otp).await
+}
+
+/// # Description
+/// This function is used to send otp to verify user's phone number
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `country_code` - a string containing 2 letter country code
+/// * `phone_number` - a string containing phone number of user
+/// * `otp` - a string containing otp to be sent for verification
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_phone_number_verification_otp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	country_code: &str,
+	phone_number: &str,
+	otp: &str,
+) -> Result<(), Error> {
+	sms::send_phone_number_verification_otp(
+		connection,
+		country_code,
+		phone_number,
+		otp,
+	)
+	.await
 }
 
 /// # Description
