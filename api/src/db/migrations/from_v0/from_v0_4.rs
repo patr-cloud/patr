@@ -2,9 +2,6 @@ use semver::Version;
 
 use crate::Database;
 
-mod from_v0_3;
-mod from_v0_4;
-
 /// # Description
 /// The function is used to migrate the database from one version to another
 ///
@@ -24,8 +21,8 @@ pub async fn migrate(
 	version: Version,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 3, _) => from_v0_3::migrate(&mut *connection, version).await?,
-		(0, 4, _) => from_v0_4::migrate(&mut *connection, version).await?,
+		(0, 4, 0) => migrate_from_v0_4_0(&mut *connection).await?,
+		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -35,15 +32,24 @@ pub async fn migrate(
 }
 
 /// # Description
-/// The function is used to get a list of all 0.x.x migrations to migrate the
+/// The function is used to get a list of all 0.3.x migrations to migrate the
 /// database from
 ///
 /// # Return
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec![from_v0_3::get_migrations(), from_v0_4::get_migrations()]
-		.into_iter()
-		.flatten()
-		.collect()
+	vec!["0.4.0", "0.4.1"]
+}
+
+async fn migrate_from_v0_4_0(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_4_1(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	Ok(())
 }
