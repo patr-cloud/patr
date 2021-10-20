@@ -2437,6 +2437,34 @@ pub async fn get_phone_numbers_for_user(
 	Ok(phone_numbers)
 }
 
+pub async fn get_backup_email_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Vec<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			CONCAT("user".backup_email_local, '@', domain.name) as "email!: String"
+		FROM
+			"user"
+		INNER JOIN
+			domain
+		ON
+			"user".backup_email_domain_id = domain.id
+		WHERE
+			"user".id = $1;
+		"#,
+		user_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.email)
+	.collect();
+
+	Ok(rows)
+}
+
 pub async fn delete_personal_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],

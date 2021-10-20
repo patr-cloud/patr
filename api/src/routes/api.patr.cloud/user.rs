@@ -71,6 +71,20 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
+	app.get(
+		"/get-backup-email",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_backup_email)),
+		],
+	);
+	app.get(
+		"/get-backup-phone",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_backup_phone)),
+		],
+	);
 	app.post(
 		"/update-backup-email",
 		[
@@ -600,6 +614,112 @@ async fn list_phone_numbers(
 		request_keys::SUCCESS: true,
 		request_keys::PHONE_NUMBERS: phone_numbers_list
 	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the recovery/backup email id of the user
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    backupEmail:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_backup_email(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let backup_email = db::get_backup_email_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.next()
+	.status(400)
+	.body(error!(EMAIL_NOT_FOUND).to_string())?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::BACKUP_EMAIL: backup_email
+	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the recovery/backup phone number of the user
+/// required inputs:
+/// auth token in the authorization headers
+/// example: Authorization: <insert authToken>
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    backupPhoneNumber:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_backup_phone(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let user_data = db::get_user_by_user_id(context.get_database_connection(), &user_id).await?;
+	let user_data = if let Some(user_data) = user_data {
+		user_data
+	} else {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	};
+
+	if let Some((backup_country_code, backup_phone_number)) = user_data
+		.backup_phone_country_code
+		.zip(user_data.backup_phone_number)
+	{
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::BACKUP_PHONE_COUNTRY_CODE: backup_country_code,
+			request_keys::BACKUP_PHONE_NUMBER: backup_phone_number
+		}));
+	} else {
+		Error::as_result()
+				.status(400)
+				.body(error!(PHONE_NUMBER_NOT_FOUND).to_string())?
+	}
+
 	Ok(context)
 }
 
