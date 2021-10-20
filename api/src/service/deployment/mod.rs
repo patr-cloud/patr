@@ -253,7 +253,12 @@ async fn pull_image_from_registry(
 		config,
 		vec![RegistryTokenAccess {
 			r#type: "repository".to_string(),
-			name: image_id.to_string(),
+			name: if let Some(index) = image_id.rfind("@sha") {
+				&image_id[..index]
+			} else {
+				image_id
+			}
+			.to_string(),
 			actions: vec!["pull".to_string()],
 		}],
 	)
