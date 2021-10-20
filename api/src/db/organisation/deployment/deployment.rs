@@ -685,6 +685,28 @@ pub async fn update_deployment_status(
 	.map(|_| ())
 }
 
+pub async fn update_deployment_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			name = $1
+		WHERE
+			id = $2;
+		"#,
+		name,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],

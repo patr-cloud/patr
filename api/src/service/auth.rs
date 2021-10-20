@@ -1004,3 +1004,45 @@ pub async fn join_user(
 	};
 	Ok(response)
 }
+
+pub async fn resend_user_sign_up_otp(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	username: &str,
+	password: &str,
+) -> Result<(UserToSignUp, String), Error> {
+	let user_to_sign_up =
+		db::get_user_to_sign_up_by_username(connection, username)
+			.await?
+			.status(400)
+			.body(error!(USER_NOT_FOUND).to_string())?;
+
+	let success = service::validate_hash(password, &user_to_sign_up.password)?;
+
+	if !success {
+		Error::as_result()
+			.status(400)
+			.body(error!(INVALID_PASSWORD).to_string())?;
+	}
+
+	let otp = service::generate_new_otp();
+	let token_expiry =
+		get_current_time_millis() + service::get_join_token_expiry();
+
+	let token_hash = service::hash(otp.as_bytes())?;
+
+	db::update_user_to_sign_up_with_otp(
+		connection,
+		username,
+		&token_hash,
+		token_expiry,
+	)
+	.await?;
+
+	Ok((
+		db::get_user_to_sign_up_by_username(connection, username)
+			.await?
+			.status(400)
+			.body(error!(USER_NOT_FOUND).to_string())?,
+		otp,
+	))
+}

@@ -60,6 +60,7 @@
 		"registryUrl": "localhost:5000",
 		"privateKey": "",
 		"publicKey": "",
+		"publicKeyDer": "",
 		"authorizationHeader": "auth key"
 	},
 	"ssh": {

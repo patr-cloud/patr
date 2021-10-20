@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::DeploymentStatus, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -1088,17 +1088,10 @@ async fn delete_deployment(
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::stop_deployment(
+	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
-	)
-	.await?;
-
-	db::update_deployment_status(
-		context.get_database_connection(),
-		&deployment_id,
-		&DeploymentStatus::Deleted,
 	)
 	.await?;
 
