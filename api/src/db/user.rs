@@ -1480,7 +1480,7 @@ pub async fn update_user_to_sign_up_with_otp(
 			otp_hash = $1,
 			otp_expiry = $2
 		WHERE
-			username = $3
+			username = $3;
 		"#,
 		verification_token,
 		token_expiry as i64,

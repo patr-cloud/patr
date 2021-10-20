@@ -3021,6 +3021,20 @@
       "nullable": []
     }
   },
+  "6c06e110efb137ecfc7322d47557b6492b827c0f9d5690ada1f826a98865b9c0": {
+    "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "6c358b1315434f217977f83c02a85672f43f7cb251a4594f25cc1616d91cd64b": {
     "query": "CREATE TABLE password_reset_request( user_id BYTEA CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );",
     "describe": {
@@ -4501,20 +4515,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "a9f611a5009869f94ba9f450f4844993b5a7fcd17d723f41d29f4ec93841f4b5": {
-    "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Int8",
-          "Text"
-        ]
       },
       "nullable": []
     }
