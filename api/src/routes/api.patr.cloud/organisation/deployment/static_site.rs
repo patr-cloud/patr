@@ -718,6 +718,9 @@ async fn upload_files_for_static_site(
 	)
 	.await?;
 
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
