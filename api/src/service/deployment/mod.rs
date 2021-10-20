@@ -259,7 +259,7 @@ async fn pull_image_from_registry(
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	// get token object using the above token string

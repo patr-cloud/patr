@@ -5,7 +5,7 @@ use std::{
 };
 
 use config_rs::{Config, Environment, File};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
@@ -42,13 +42,7 @@ pub fn parse_config() -> Settings {
 		.merge(Environment::with_prefix("APP").separator("_"))
 		.expect("unable to merge with environment variables");
 
-	let mut settings: Settings =
-		settings.try_into().expect("unable to parse settings");
-
-	settings.docker_registry.public_key_der =
-		Some(base64::decode(&settings.docker_registry.public_key).unwrap());
-
-	settings
+	settings.try_into().expect("unable to parse settings")
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -158,7 +152,8 @@ pub struct DockerRegistrySettings {
 	pub registry_url: String,
 	pub private_key: String,
 	pub public_key: String,
-	pub public_key_der: Option<Vec<u8>>,
+	#[serde(deserialize_with = "base64_to_byte_array")]
+	pub public_key_der: Vec<u8>,
 	pub authorization_header: String,
 }
 
@@ -167,12 +162,6 @@ pub struct DockerRegistrySettings {
 pub struct Digitalocean {
 	pub api_key: String,
 	pub registry: String,
-}
-
-impl DockerRegistrySettings {
-	pub fn public_key_der(&self) -> &[u8] {
-		self.public_key_der.as_ref().unwrap().as_ref()
-	}
 }
 
 impl Display for RunningEnvironment {
@@ -195,4 +184,13 @@ pub struct SshSettings {
 	pub port: u16,
 	pub username: String,
 	pub key_file: String,
+}
+
+fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let string = String::deserialize(value)?;
+	Ok(base64::decode(&string)
+		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
 }

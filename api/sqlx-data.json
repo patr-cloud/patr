@@ -858,6 +858,19 @@
       ]
     }
   },
+  "27c549c54b3d00c771f2f3aba6aca180ae35d5f6b89c25471bdf798369673a4e": {
+    "query": "UPDATE deployment_static_sites SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "270a9741b4b636eaac230d41a5d74fc16d29d9d560bd8a9d5c636c8f5c77cd2f": {
     "query": "SELECT id, name as \"name: _\", registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id FROM deployment WHERE workspace_id = $1 AND status != 'deleted';",
     "describe": {
@@ -2835,6 +2848,20 @@
         false,
         false
       ]
+    }
+  },
+  "6c06e110efb137ecfc7322d47557b6492b827c0f9d5690ada1f826a98865b9c0": {
+    "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "6c358b1315434f217977f83c02a85672f43f7cb251a4594f25cc1616d91cd64b": {
@@ -4868,6 +4895,19 @@
       "nullable": []
     }
   },
+  "be816fa44f70a6aed2285bf950575d5939a16b3d61d3009772afee9ad7a22cb3": {
+    "query": "UPDATE managed_database SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "c15856afd2d20efc5c583ab00efa4bb41de007cffffaf361ee2715a73f5546d1": {
     "query": "SELECT \"user\".* FROM \"user\" INNER JOIN user_phone_number ON \"user\".id = user_phone_number.user_id WHERE user_phone_number.country_code = $1 AND user_phone_number.number = $2;",
     "describe": {
@@ -5443,6 +5483,19 @@
         false,
         false
       ]
+    }
+  },
+  "dca6992cc85f4d617680b1e89577f622f75a94f85adbe7e5142eb8b056e115b2": {
+    "query": "UPDATE deployment SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "dca7ef80973e51ffe78bd9f717ae1cbcd73aaf19b3530b322a77c9d39edf26fb": {

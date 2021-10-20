@@ -81,6 +81,10 @@ pub fn create_sub_app(
 		[EveMiddleware::CustomFunction(pin_fn!(reset_password))],
 	);
 	app.post(
+		"/resend-otp",
+		[EveMiddleware::CustomFunction(pin_fn!(resend_otp))],
+	);
+	app.post(
 		"/docker-registry-token",
 		[EveMiddleware::CustomFunction(pin_fn!(
 			docker_registry_token_endpoint
@@ -371,7 +375,7 @@ async fn sign_up(
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
-		user_to_sign_up,
+		&user_to_sign_up,
 		&otp,
 	)
 	.await?;
@@ -848,6 +852,77 @@ async fn reset_password(
 }
 
 /// # Description
+/// This function is used to generate a new otp and send it to user
+/// required inputs:
+/// ```
+/// {
+///    username:
+///    password:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false,
+///    otp:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn resend_otp(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let body = context.get_body_object().clone();
+
+	let username = body
+		.get(request_keys::USERNAME)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
+	let password = body
+		.get(request_keys::PASSWORD)
+		.map(|param| param.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// update database with newly generated otp
+	let (user_to_sign_up, otp) = service::resend_user_sign_up_otp(
+		context.get_database_connection(),
+		&username,
+		password,
+	)
+	.await?;
+	// send otp
+	service::send_user_sign_up_otp(
+		context.get_database_connection(),
+		&user_to_sign_up,
+		&otp,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+/// # Description
 /// This function is used to authenticate and login into the docker registry
 /// required inputs:
 /// auth token in the authorization headers
@@ -1085,7 +1160,7 @@ async fn docker_registry_login(
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));
@@ -1202,7 +1277,12 @@ async fn docker_registry_authenticate(
 		// return token.
 		if RegistryToken::parse(
 			password,
-			context.get_state().config.docker_registry.public_key_der(),
+			context
+				.get_state()
+				.config
+				.docker_registry
+				.public_key
+				.as_bytes(),
 		)
 		.is_ok()
 		{
@@ -1464,7 +1544,7 @@ async fn docker_registry_authenticate(
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	context.json(json!({ request_keys::TOKEN: token }));

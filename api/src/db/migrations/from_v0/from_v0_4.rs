@@ -51,8 +51,50 @@ async fn migrate_from_v0_4_0(
 }
 
 async fn migrate_from_v0_4_1(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			name = CONCAT('patr-deleted: ', name, '-', ENCODE(id, 'hex'))
+		WHERE
+			name NOT LIKE 'patr-deleted: %' AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			name = CONCAT('patr-deleted: ', name, '-', ENCODE(id, 'hex'))
+		WHERE
+			name NOT LIKE 'patr-deleted: %' AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			name = CONCAT('patr-deleted: ', name, '-', ENCODE(id, 'hex'))
+		WHERE
+			name NOT LIKE 'patr-deleted: %' AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
