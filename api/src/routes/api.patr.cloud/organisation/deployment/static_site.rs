@@ -428,6 +428,8 @@ async fn get_static_site_info(
 
 	let mut response = Map::new();
 
+	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+
 	response.insert(
 		request_keys::STATIC_SITE_ID.to_string(),
 		Value::String(hex::encode(static_site.id)),
