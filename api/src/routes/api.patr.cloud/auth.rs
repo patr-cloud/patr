@@ -375,7 +375,7 @@ async fn sign_up(
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
-		user_to_sign_up,
+		&user_to_sign_up,
 		&otp,
 	)
 	.await?;
@@ -911,7 +911,7 @@ async fn resend_otp(
 	// send otp
 	service::send_user_sign_up_otp(
 		context.get_database_connection(),
-		user_to_sign_up,
+		&user_to_sign_up,
 		&otp,
 	)
 	.await?;
