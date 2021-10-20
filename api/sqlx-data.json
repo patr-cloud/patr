@@ -4505,6 +4505,20 @@
       "nullable": []
     }
   },
+  "a9f611a5009869f94ba9f450f4844993b5a7fcd17d723f41d29f4ec93841f4b5": {
+    "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "aa9d55194a813e0c31f60f7e925c718b8485c6d7cfa5826c4486e5044fc38565": {
     "query": "SELECT id, name, status as \"status: _\", domain_name, organisation_id FROM deployment_static_sites WHERE name = $1 AND organisation_id = $2 AND status != 'deleted';",
     "describe": {
