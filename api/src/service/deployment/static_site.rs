@@ -330,12 +330,63 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
+	if let Some(domain_name) = &static_site.domain_name {
+		db::set_domain_name_for_static_site(
+			connection,
+			static_site_id,
+			Some(format!("deleted.patr.cloud.{}", domain_name)).as_deref(),
+		)
+		.await?;
+	}
+
 	db::update_static_site_status(
 		connection,
 		static_site_id,
 		&DeploymentStatus::Deleted,
 	)
 	.await?;
+
+	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	session
+		.command("rm")
+		.arg(format!("/etc/nginx/sites-enabled/{}", patr_domain))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(domain_name) = &static_site.domain_name {
+		session
+			.command("rm")
+			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait_with_output()
+		.await?;
+
+	if !reload_result.status.success() {
+		log::error!(
+			"Unable to reload nginx config: Stdout: {:?}. Stderr: {:?}",
+			String::from_utf8(reload_result.stdout),
+			String::from_utf8(reload_result.stderr)
+		);
+		return Err(Error::empty());
+	}
 
 	Ok(())
 }
