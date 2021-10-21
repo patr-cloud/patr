@@ -244,7 +244,9 @@ async fn pull_image_from_registry(
 	.status(500)?
 	.username;
 
-	let image_id = &image_id.replace(&config.docker_registry.registry_url, "").replace("/", "");
+	let image_id = &image_id
+		.replace(&config.docker_registry.registry_url, "")
+		.replace("/", "");
 
 	// generate token as password
 	let iat = get_current_time().as_secs();
