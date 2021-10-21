@@ -228,6 +228,28 @@ pub async fn update_managed_database_status(
 	.map(|_| ())
 }
 
+pub async fn update_managed_database_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	database_id: &[u8],
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			name = $1
+		WHERE
+			id = $2;
+		"#,
+		name,
+		database_id,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn get_all_database_clusters_for_organisation(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	organisation_id: &[u8],

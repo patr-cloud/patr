@@ -334,6 +334,39 @@ server {{
 	Ok(())
 }
 
+pub async fn delete_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::stop_static_site(connection, static_site_id, config).await?;
+
+	db::update_static_site_name(
+		connection,
+		static_site_id,
+		&format!(
+			"patr-deleted: {}-{}",
+			static_site.name,
+			hex::encode(static_site_id)
+		),
+	)
+	.await?;
+
+	db::update_static_site_status(
+		connection,
+		static_site_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn set_domain_for_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
@@ -734,6 +767,7 @@ async fn upload_static_site_files_to_nginx(
 	log::trace!("request_id {} - unzipping the file", request_id);
 	let unzip_result = session
 		.command("unzip")
+		.arg("-o")
 		.arg(format!(
 			"/home/web/static-sites/{}.zip",
 			static_site_id_string

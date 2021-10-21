@@ -471,6 +471,39 @@ server {{
 	Ok(())
 }
 
+pub async fn delete_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::stop_deployment(connection, deployment_id, config).await?;
+
+	db::update_deployment_name(
+		connection,
+		deployment_id,
+		&format!(
+			"patr-deleted: {}-{}",
+			deployment.name,
+			hex::encode(deployment.id)
+		),
+	)
+	.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	Ok(())
+}
+
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
@@ -959,7 +992,7 @@ pub(super) async fn pull_image_from_registry(
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	// get token object using the above token string

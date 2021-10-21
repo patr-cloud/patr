@@ -255,13 +255,18 @@ async fn pull_image_from_registry(
 		config,
 		vec![RegistryTokenAccess {
 			r#type: "repository".to_string(),
-			name: image_id.to_string(),
+			name: if let Some(index) = image_id.rfind("@sha") {
+				&image_id[..index]
+			} else {
+				image_id
+			}
+			.to_string(),
 			actions: vec!["pull".to_string()],
 		}],
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
+		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
 	// get token object using the above token string

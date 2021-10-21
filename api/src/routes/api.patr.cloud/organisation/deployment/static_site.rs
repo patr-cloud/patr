@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{db_mapping::DeploymentStatus, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -429,6 +429,8 @@ async fn get_static_site_info(
 
 	let mut response = Map::new();
 
+	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
+
 	response.insert(
 		request_keys::STATIC_SITE_ID.to_string(),
 		Value::String(hex::encode(static_site.id)),
@@ -724,6 +726,9 @@ async fn upload_files_for_static_site(
 	)
 	.await?;
 
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
 
@@ -806,17 +811,10 @@ async fn delete_static_site(
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::stop_static_site(
+	service::delete_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 		&config,
-	)
-	.await?;
-
-	db::update_static_site_status(
-		context.get_database_connection(),
-		&static_site_id,
-		&DeploymentStatus::Deleted,
 	)
 	.await?;
 
