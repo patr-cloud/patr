@@ -75,7 +75,7 @@ pub async fn start_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 	config: &Settings,
-	file: Option<&str>, 
+	file: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -108,7 +108,6 @@ pub async fn start_static_site_deployment(
 	let config = config.clone();
 	let static_site_id = static_site_id.to_vec();
 
-	let request_id = request_id.clone();
 	task::spawn(async move {
 		let deploy_result = deploy_static_site(
 			&static_site_id,
@@ -690,8 +689,12 @@ pub async fn get_static_site_validation_status(
 			"request_id:{} - certificate does not exist creating a new one",
 			request_id
 		);
-		deployment::create_https_certificates_for_domain(&domain_name, config, request_id)
-			.await?;
+		deployment::create_https_certificates_for_domain(
+			&domain_name,
+			config,
+			request_id,
+		)
+		.await?;
 		log::trace!("request_id:{} - updating nginx with https", request_id);
 		update_nginx_for_static_site_with_https(
 			&domain_name,
@@ -722,7 +725,7 @@ async fn upload_static_site_files_to_nginx(
 	file: &str,
 	static_site_id_string: &str,
 	config: &Settings,
-	request_id: Uuid
+	request_id: Uuid,
 ) -> Result<(), Error> {
 	let file_data = base64::decode(file)?;
 	log::trace!( "request_id:{} - logging into the ssh server for uploading static site files", request_id);
@@ -1049,8 +1052,12 @@ async fn update_nginx_with_all_domains_for_static_site(
 			request_id,
 		)
 		.await?;
-		deployment::create_https_certificates_for_domain(&patr_domain, config, request_id)
-			.await?;
+		deployment::create_https_certificates_for_domain(
+			&patr_domain,
+			config,
+			request_id,
+		)
+		.await?;
 		update_nginx_for_static_site_with_https(
 			&patr_domain,
 			static_id_string,

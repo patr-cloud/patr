@@ -46,8 +46,8 @@ pub(super) async fn deploy_container(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&deployment_id), 
-		image_id, 
+		hex::encode(&deployment_id),
+		image_id,
 		request_id
 	);
 	let deployment = db::get_deployment_by_id(
@@ -207,7 +207,7 @@ pub(super) async fn deploy_container(
 		&default_url,
 		deployment.domain_name.as_deref(),
 		&config,
-		request_id
+		request_id,
 	)
 	.await?;
 
@@ -284,14 +284,20 @@ pub(super) async fn get_container_logs(
 ) -> Result<String, Error> {
 	let client = Client::new();
 
-	log::trace!("request_id:{} - retreiving deployment info from db", request_id);
+	log::trace!(
+		"request_id:{} - retreiving deployment info from db",
+		request_id
+	);
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.map(|deployment| deployment.digitalocean_app_id)
 		.flatten()
 		.status(500)?;
 
-	log::trace!("request_id:{} - getting app id from digitalocean api", request_id);
+	log::trace!(
+		"request_id:{} - getting app id from digitalocean api",
+		request_id
+	);
 	let deployment_id = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
@@ -308,7 +314,10 @@ pub(super) async fn get_container_logs(
 		.map(|deployment| deployment.id)
 		.status(500)?;
 
-	log::trace!("request_id:{} - getting RUN logs from digitalocean", request_id);
+	log::trace!(
+		"request_id:{} - getting RUN logs from digitalocean",
+		request_id
+	);
 	let log_url = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments/{}/logs",
@@ -340,8 +349,8 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on digitalocean with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&database_id), 
-		db_name, 
+		hex::encode(&database_id),
+		db_name,
 		request_id
 	);
 	let client = Client::new();
