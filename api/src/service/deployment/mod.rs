@@ -63,7 +63,7 @@ async fn create_https_certificates_for_domain(
 	config: &Settings,
 	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!( "request_id:{} - logging into the ssh server for adding ssl certificate", request_id);
+	log::trace!( "request_id: {} - logging into the ssh server for adding ssl certificate", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -72,12 +72,12 @@ async fn create_https_certificates_for_domain(
 		.connect(&config.ssh.host)
 		.await?;
 	log::trace!(
-		"request_id:{} - successfully logged into the server",
+		"request_id: {} - successfully logged into the server",
 		request_id
 	);
 
 	log::trace!(
-		"request_id:{} - creating certificate using certbot",
+		"request_id: {} - creating certificate using certbot",
 		request_id
 	);
 	let certificate_result = session
@@ -99,9 +99,9 @@ async fn create_https_certificates_for_domain(
 	if !certificate_result.success() {
 		return Err(Error::empty());
 	}
-	log::trace!("request_id:{} - created certificate", request_id);
+	log::trace!("request_id: {} - created certificate", request_id);
 	session.close().await?;
-	log::trace!("request_id:{} - session closed", request_id);
+	log::trace!("request_id: {} - session closed", request_id);
 	Ok(())
 }
 
