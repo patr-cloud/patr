@@ -244,6 +244,14 @@ async fn pull_image_from_registry(
 	.status(500)?
 	.username;
 
+	let repo_name = image_id
+		.replace(&format!("{}/", config.docker_registry.registry_url), "");
+	let repo_name = if let Some(index) = repo_name.rfind("@sha") {
+		repo_name[..index].to_string()
+	} else {
+		repo_name
+	};
+
 	// generate token as password
 	let iat = get_current_time().as_secs();
 	let token = RegistryToken::new(
@@ -253,12 +261,7 @@ async fn pull_image_from_registry(
 		config,
 		vec![RegistryTokenAccess {
 			r#type: "repository".to_string(),
-			name: if let Some(index) = image_id.rfind("@sha") {
-				&image_id[..index]
-			} else {
-				image_id
-			}
-			.to_string(),
+			name: repo_name,
 			actions: vec!["pull".to_string()],
 		}],
 	)

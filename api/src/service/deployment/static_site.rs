@@ -749,7 +749,6 @@ server {{
 	server_name {domain};
 
 	root /home/web/static-sites/{static_site_id_string};
-	autoindex on;
 	index index.html index.htm;
 
 	location / {{
@@ -857,7 +856,6 @@ server {{
 	listen 443 ssl http2;
 	listen [::]:443 ssl http2;
 	server_name {domain};
-	autoindex on;
 	root /home/web/static-sites/{static_site_id_string};
 
 	index index.html index.htm;
