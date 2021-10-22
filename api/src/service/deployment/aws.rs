@@ -291,7 +291,7 @@ pub(super) async fn create_managed_database_cluster(
 	_config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
-	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
+	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} with request_id: {}",
 		hex::encode(&database_id),
 		db_name,
 		request_id

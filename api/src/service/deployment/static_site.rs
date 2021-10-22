@@ -147,7 +147,7 @@ pub async fn stop_static_site(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
-	log::trace!( "request_id: {} - logging into the ssh server for stopping the static site", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for stopping the static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -172,7 +172,7 @@ pub async fn stop_static_site(
 		.wait()
 		.await?;
 
-	log::trace!( "request_id: {} - updating nginx config. Changing root location to be stopped", request_id);
+	log::trace!("request_id: {} - updating nginx config. Changing root location to be stopped", request_id);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", patr_domain))
 		.await?;
@@ -388,7 +388,7 @@ pub async fn set_domain_for_static_site_deployment(
 		.body(error!(SERVER_ERROR).to_string())?;
 	let old_domain = static_site.domain_name;
 
-	log::trace!( "request_id: {} - logging into the ssh server for adding a new domain name for static site", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -440,7 +440,7 @@ pub async fn set_domain_for_static_site_deployment(
 				)
 				.await?;
 			} else {
-				log::trace!( "request_id: {} - certificate not present updating nginx with http", request_id);
+				log::trace!("request_id: {} - certificate not present updating nginx with http", request_id);
 				update_nginx_for_static_site_with_http(
 					new_domain,
 					&hex::encode(static_site_id),
@@ -509,7 +509,7 @@ pub async fn set_domain_for_static_site_deployment(
 					.wait()
 					.await?;
 				if check_file.success() {
-					log::trace!( "request_id: {} - certificate creation successfull updating nginx with https", request_id);
+					log::trace!("request_id: {} - certificate creation successfull updating nginx with https", request_id);
 					update_nginx_for_static_site_with_https(
 						new_domain,
 						&hex::encode(static_site_id),
@@ -613,7 +613,7 @@ pub async fn get_static_site_validation_status(
 		.connect(&config.ssh.host)
 		.await?;
 
-	log::trace!( "request_id: {} - creating random file with random content for verification", request_id);
+	log::trace!("request_id: {} - creating random file with random content for verification", request_id);
 	let (filename, file_content) =
 		deployment::create_random_content_for_verification(&session).await?;
 
@@ -657,7 +657,7 @@ pub async fn get_static_site_validation_status(
 	.await?;
 
 	if text == file_content {
-		log::trace!( "request_id: {} - http exists creating certificate for the custom domain", request_id);
+		log::trace!("request_id: {} - http exists creating certificate for the custom domain", request_id);
 
 		log::trace!(
 			"request_id: {} - checking if the certificate already exists",
@@ -675,7 +675,7 @@ pub async fn get_static_site_validation_status(
 			.await?;
 
 		if check_file.success() {
-			log::trace!( "request_id: {} - certificate exists updating nginx config for https", request_id);
+			log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 			update_nginx_for_static_site_with_https(
 				&domain_name,
 				&hex::encode(static_site_id),
@@ -728,7 +728,7 @@ async fn upload_static_site_files_to_nginx(
 	request_id: Uuid,
 ) -> Result<(), Error> {
 	let file_data = base64::decode(file)?;
-	log::trace!( "request_id: {} - logging into the ssh server for uploading static site files", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for uploading static site files", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -810,7 +810,7 @@ async fn update_nginx_for_static_site_with_http(
 	config: &Settings,
 	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!( "request_id: {} - logging into the ssh server for updating server with http", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for updating server with http", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -916,7 +916,7 @@ async fn update_nginx_for_static_site_with_https(
 	config: &Settings,
 	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!( "request_id: {} - logging into the ssh server for updating nginx with https", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for updating nginx with https", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -1035,7 +1035,7 @@ async fn update_nginx_with_all_domains_for_static_site(
 		.await?;
 
 	if check_file.success() {
-		log::trace!( "request_id: {} - certificate exists updating nginx config for https", request_id);
+		log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 		update_nginx_for_static_site_with_https(
 			&patr_domain,
 			static_id_string,
@@ -1068,7 +1068,7 @@ async fn update_nginx_with_all_domains_for_static_site(
 	}
 
 	if let Some(domain) = custom_domain {
-		log::trace!( "request_id: {} - custom domain present, updating nginx with custom domain", request_id);
+		log::trace!("request_id: {} - custom domain present, updating nginx with custom domain", request_id);
 		let check_file = session
 			.command("test")
 			.arg("-f")

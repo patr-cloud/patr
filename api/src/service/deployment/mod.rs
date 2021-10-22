@@ -63,7 +63,7 @@ async fn create_https_certificates_for_domain(
 	config: &Settings,
 	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!( "request_id: {} - logging into the ssh server for adding ssl certificate", request_id);
+	log::trace!("request_id: {} - logging into the ssh server for adding ssl certificate", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
