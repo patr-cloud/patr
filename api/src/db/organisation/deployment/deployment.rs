@@ -74,6 +74,8 @@ pub async fn initialize_deployment_pre(
 			organisation_id BYTEA NOT NULL,
 			CONSTRAINT deployment_uq_name_organisation_id
 				UNIQUE(name, organisation_id),
+			CONSTRAINT deployment_uq_id_domain_name
+				UNIQUE(id, domain_name),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -209,6 +211,36 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE deployed_domain(
+			deployment_id BYTEA 
+				CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
+			static_site_id BYTEA 
+				CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
+			domain_name VARCHAR(255) NOT NULL
+				CONSTRAINT deployed_domain_uq_domain_name UNIQUE
+				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+					domain_name = LOWER(domain_name)
+				),
+			CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name),
+			CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name),
+			CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
+				(
+					deployment_id IS NULL AND
+					static_site_id IS NOT NULL
+				) OR
+				(
+					deployment_id IS NOT NULL AND
+					static_site_id IS NULL
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -254,6 +286,39 @@ pub async fn initialize_deployment_post(
 			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
 			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
 			"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_id_domain_name
+		FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(deployment_id, domain_name)
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployed_domain
+		ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name
+		FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name)
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployed_domain
+		ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name
+		FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name)
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -778,6 +843,21 @@ pub async fn set_domain_name_for_deployment(
 	if let Some(domain_name) = domain_name {
 		query!(
 			r#"
+			INSERT INTO
+				deployed_domain
+			VALUES
+				($1, NULL, $2)
+			ON CONFLICT(deployment_id) DO UPDATE SET
+				domain_name = EXCLUDED.domain_name;
+			"#,
+			deployment_id,
+			domain_name,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
 			UPDATE
 				deployment
 			SET
@@ -792,6 +872,18 @@ pub async fn set_domain_name_for_deployment(
 		.await
 		.map(|_| ())
 	} else {
+		query!(
+			r#"
+			DELETE FROM
+				deployed_domain
+			WHERE
+				deployment_id = $1;
+			"#,
+			deployment_id,
+		)
+		.execute(&mut *connection)
+		.await?;
+
 		query!(
 			r#"
 			UPDATE
