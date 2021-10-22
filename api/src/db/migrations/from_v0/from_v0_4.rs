@@ -112,7 +112,7 @@ async fn migrate_from_v0_4_3(
 		UPDATE
 			deployment
 		SET
-			domain_name = CONCAT('deleted.patr.cloud.', domain_name)
+			domain_name = CONCAT('deleted.patr.cloud.', ENCODE(id, 'hex'), domain_name)
 		WHERE
 			domain_name IS NOT NULL AND
 			status = 'deleted';
@@ -126,7 +126,7 @@ async fn migrate_from_v0_4_3(
 		UPDATE
 			deployment_static_sites
 		SET
-			domain_name = CONCAT('deleted.patr.cloud.', domain_name)
+			domain_name = CONCAT('deleted.patr.cloud.', ENCODE(id, 'hex'), domain_name)
 		WHERE
 			domain_name IS NOT NULL AND
 			status = 'deleted';
