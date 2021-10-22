@@ -1,5 +1,22 @@
 use std::{ops::DerefMut, time::Duration};
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			DeleteDnsRecord,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use tokio::{io::AsyncWriteExt, task, time};
@@ -22,8 +39,6 @@ pub async fn create_static_site_deployment_in_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
-	file: Option<&str>,
-	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// validate static site name
 	if !validator::is_deployment_name_valid(name) {
@@ -60,7 +75,7 @@ pub async fn create_static_site_deployment_in_organisation(
 		get_current_time_millis(),
 	)
 	.await?;
-	log::trace!("adding entry to database");
+	log::trace!("Adding entry to database");
 	db::create_static_site(
 		connection,
 		static_site_id,
@@ -70,16 +85,6 @@ pub async fn create_static_site_deployment_in_organisation(
 	)
 	.await?;
 
-	if let Some(file) = file {
-		log::trace!("uploading files to nginx server");
-		upload_static_site_files_to_nginx(
-			file,
-			&hex::encode(&static_site_id),
-			config,
-		)
-		.await?;
-	}
-
 	Ok(static_uuid)
 }
 
@@ -87,9 +92,31 @@ pub async fn start_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
 	config: &Settings,
+	file: Option<&str>,
 ) -> Result<(), Error> {
-	log::trace!("starting the static site");
-	log::trace!("getting static site data from db");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Deploying the static site with id: {} and request_id: {}",
+		hex::encode(&static_site_id),
+		request_id
+	);
+
+	if let Some(file) = file {
+		log::trace!("Uploading files to nginx server");
+		upload_static_site_files_to_nginx(
+			file,
+			&hex::encode(&static_site_id),
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	log::trace!("request_id: {} - starting the static site", request_id);
+	log::trace!(
+		"request_id: {} - getting static site data from db",
+		request_id
+	);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
@@ -103,6 +130,7 @@ pub async fn start_static_site_deployment(
 			&static_site_id,
 			static_site.domain_name.as_deref(),
 			&config,
+			request_id,
 		)
 		.await;
 
@@ -123,14 +151,20 @@ pub async fn stop_static_site(
 	static_site_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
-	log::trace!("Getting deployment id from db");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Stopping the static site with id: {} and request_id: {}",
+		hex::encode(&static_site_id),
+		request_id
+	);
+	log::trace!("request_id: {} - Getting deployment id from db", request_id);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
-	log::trace!("logging into the ssh server for stopping the static site");
+	log::trace!("request_id: {} - logging into the ssh server for stopping the static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -140,7 +174,10 @@ pub async fn stop_static_site(
 		.await?;
 	let mut sftp = session.sftp();
 
-	log::trace!("checking for patr domain's certificate");
+	log::trace!(
+		"request_id: {} - checking for patr domain's certificate",
+		request_id
+	);
 	let default_domain_ssl = session
 		.command("test")
 		.arg("-f")
@@ -152,7 +189,7 @@ pub async fn stop_static_site(
 		.wait()
 		.await?;
 
-	log::trace!("updating nginx config. Changing root location to be stopped");
+	log::trace!("request_id: {} - updating nginx config. Changing root location to be stopped", request_id);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", patr_domain))
 		.await?;
@@ -208,7 +245,10 @@ server {{
 	writer.close().await?;
 
 	if let Some(custom_domain) = static_site.domain_name {
-		log::trace!("checking if certificate exists for custom domain");
+		log::trace!(
+			"request_id: {} - checking if certificate exists for custom domain",
+			request_id
+		);
 		let custom_domain_ssl = session
 			.command("test")
 			.arg("-f")
@@ -291,12 +331,15 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 
 	session.close().await?;
-	log::trace!("static site stopped successfully");
-	log::trace!("session closed");
-	log::trace!("updating db status to stopped");
+	log::trace!(
+		"request_id: {} - static site stopped successfully",
+		request_id
+	);
+	log::trace!("request_id: {} - session closed", request_id);
+	log::trace!("request_id: {} - updating db status to stopped", request_id);
 	db::update_static_site_status(
 		connection,
 		static_site_id,
@@ -337,6 +380,138 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
+	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	session
+		.command("rm")
+		.arg(format!("/etc/nginx/sites-enabled/{}", patr_domain))
+		.spawn()?
+		.wait()
+		.await?;
+
+	session
+		.command("certbot")
+		.arg("delete")
+		.arg("--cert-name")
+		.arg(&patr_domain)
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(domain_name) = static_site.domain_name {
+		db::begin_deferred_constraints(connection).await?;
+
+		db::set_domain_name_for_static_site(
+			connection,
+			static_site_id,
+			Some(format!(
+				"deleted.patr.cloud.{}.{}",
+				hex::encode(static_site_id),
+				domain_name
+			))
+			.as_deref(),
+		)
+		.await?;
+
+		db::end_deferred_constraints(connection).await?;
+
+		session
+			.command("rm")
+			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
+			.spawn()?
+			.wait()
+			.await?;
+
+		session
+			.command("certbot")
+			.arg("delete")
+			.arg("--cert-name")
+			.arg(&domain_name)
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
+	// Delete DNS Record
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+
+	let dns_record = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(patr_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.find(|record| {
+			if let DnsContent::CNAME { .. } = record.content {
+				record.name == patr_domain
+			} else {
+				false
+			}
+		});
+
+	if let Some(dns_record) = dns_record {
+		client
+			.request(&DeleteDnsRecord {
+				zone_identifier,
+				identifier: &dns_record.id,
+			})
+			.await?;
+	}
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait_with_output()
+		.await?;
+
+	if !reload_result.status.success() {
+		log::error!(
+			"Unable to reload nginx config: Stdout: {:?}. Stderr: {:?}",
+			String::from_utf8(reload_result.stdout),
+			String::from_utf8(reload_result.stderr)
+		);
+		return Err(Error::empty());
+	}
+
 	Ok(())
 }
 
@@ -346,14 +521,23 @@ pub async fn set_domain_for_static_site_deployment(
 	static_site_id: &[u8],
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
-	log::trace!("getting static site info from database");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Set domain for static site with id: {} and request_id: {}",
+		hex::encode(&static_site_id),
+		request_id
+	);
+	log::trace!(
+		"request_id: {} - getting static site info from database",
+		request_id
+	);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 	let old_domain = static_site.domain_name;
 
-	log::trace!("logging into the ssh server for adding a new domain name for static site");
+	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -362,7 +546,12 @@ pub async fn set_domain_for_static_site_deployment(
 		.connect(&config.ssh.host)
 		.await?;
 
-	log::trace!("updating database with new domain");
+	log::trace!(
+		"request_id: {} - updating database with new domain",
+		request_id
+	);
+	db::begin_deferred_constraints(connection).await?;
+
 	db::set_domain_name_for_static_site(
 		connection,
 		static_site_id,
@@ -370,12 +559,17 @@ pub async fn set_domain_for_static_site_deployment(
 	)
 	.await?;
 
+	db::end_deferred_constraints(connection).await?;
+
 	match (new_domain_name, old_domain.as_deref()) {
 		(None, None) => {
-			log::trace!("both domains are null");
+			log::trace!("request_id: {} - both domains are null", request_id);
 		} // Do nothing
 		(Some(new_domain), None) => {
-			log::trace!("old domain null, adding new domain");
+			log::trace!(
+				"request_id: {} - old domain null, adding new domain",
+				request_id
+			);
 			// Setup new domain name
 			let check_file = session
 				.command("test")
@@ -395,20 +589,25 @@ pub async fn set_domain_for_static_site_deployment(
 					new_domain,
 					&hex::encode(static_site_id),
 					config,
+					request_id,
 				)
 				.await?;
 			} else {
-				log::trace!("certificate not present updating nginx with http");
+				log::trace!("request_id: {} - certificate not present updating nginx with http", request_id);
 				update_nginx_for_static_site_with_http(
 					new_domain,
 					&hex::encode(static_site_id),
 					config,
+					request_id,
 				)
 				.await?;
 			}
 		}
 		(None, Some(domain_name)) => {
-			log::trace!("new domain null, deleting old domain");
+			log::trace!(
+				"request_id: {} - new domain null, deleting old domain",
+				request_id
+			);
 			session
 				.command("certbot")
 				.arg("delete")
@@ -432,7 +631,10 @@ pub async fn set_domain_for_static_site_deployment(
 				.await?;
 		}
 		(Some(new_domain), Some(old_domain)) => {
-			log::trace!("replacing old domain with new domain");
+			log::trace!(
+				"request_id: {} - replacing old domain with new domain",
+				request_id
+			);
 			if new_domain != old_domain {
 				session
 					.command("certbot")
@@ -460,11 +662,12 @@ pub async fn set_domain_for_static_site_deployment(
 					.wait()
 					.await?;
 				if check_file.success() {
-					log::trace!("certificate creation successfull updating nginx with https");
+					log::trace!("request_id: {} - certificate creation successfull updating nginx with https", request_id);
 					update_nginx_for_static_site_with_https(
 						new_domain,
 						&hex::encode(static_site_id),
 						config,
+						request_id,
 					)
 					.await?;
 				} else {
@@ -475,6 +678,7 @@ pub async fn set_domain_for_static_site_deployment(
 						new_domain,
 						&hex::encode(static_site_id),
 						config,
+						request_id,
 					)
 					.await?;
 				}
@@ -482,8 +686,8 @@ pub async fn set_domain_for_static_site_deployment(
 		}
 	}
 	session.close().await?;
-	log::trace!("session closed");
-	log::trace!("domains updated successfully");
+	log::trace!("request_id: {} - session closed", request_id);
+	log::trace!("request_id: {} - domains updated successfully", request_id);
 
 	Ok(())
 }
@@ -513,6 +717,7 @@ pub async fn upload_files_for_static_site(
 	static_site_id: &[u8],
 	file: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
 	db::get_static_site_by_id(connection, static_site_id)
 		.await?
@@ -523,6 +728,7 @@ pub async fn upload_files_for_static_site(
 		file,
 		&hex::encode(&static_site_id),
 		config,
+		request_id,
 	)
 	.await?;
 
@@ -534,7 +740,13 @@ pub async fn get_static_site_validation_status(
 	static_site_id: &[u8],
 	config: &Settings,
 ) -> Result<bool, Error> {
-	log::trace!("validating the custom domain");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Getting validation status for static site with id: {} and request_id: {}",
+		hex::encode(&static_site_id),
+		request_id
+	);
+	log::trace!("request_id: {} - validating the custom domain", request_id);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
@@ -545,7 +757,7 @@ pub async fn get_static_site_validation_status(
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	log::trace!("logging into the ssh server");
+	log::trace!("request_id: {} - logging into the ssh server", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -554,11 +766,14 @@ pub async fn get_static_site_validation_status(
 		.connect(&config.ssh.host)
 		.await?;
 
-	log::trace!("creating random file with random content for verification");
+	log::trace!("request_id: {} - creating random file with random content for verification", request_id);
 	let (filename, file_content) =
 		deployment::create_random_content_for_verification(&session).await?;
 
-	log::trace!("checking existence of https for the custom domain");
+	log::trace!(
+		"request_id: {} - checking existence of https for the custom domain",
+		request_id
+	);
 	let https_text = reqwest::get(format!(
 		"https://{}/.well-known/patr-verification/{}",
 		domain_name, filename
@@ -582,7 +797,10 @@ pub async fn get_static_site_validation_status(
 		}
 	}
 
-	log::trace!("https does not exist, checking for http");
+	log::trace!(
+		"request_id: {} - https does not exist, checking for http",
+		request_id
+	);
 	let text = reqwest::get(format!(
 		"http://{}/.well-known/patr-verification/{}",
 		domain_name, filename
@@ -592,9 +810,12 @@ pub async fn get_static_site_validation_status(
 	.await?;
 
 	if text == file_content {
-		log::trace!("http exists creating certificate for the custom domain");
+		log::trace!("request_id: {} - http exists creating certificate for the custom domain", request_id);
 
-		log::trace!("checking if the certificate already exists");
+		log::trace!(
+			"request_id: {} - checking if the certificate already exists",
+			request_id
+		);
 		let check_file = session
 			.command("test")
 			.arg("-f")
@@ -607,26 +828,35 @@ pub async fn get_static_site_validation_status(
 			.await?;
 
 		if check_file.success() {
-			log::trace!("certificate exists updating nginx config for https");
+			log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 			update_nginx_for_static_site_with_https(
 				&domain_name,
 				&hex::encode(static_site_id),
 				config,
+				request_id,
 			)
 			.await?;
 			return Ok(true);
 		}
-		log::trace!("certificate does not exist creating a new one");
-		deployment::create_https_certificates_for_domain(&domain_name, config)
-			.await?;
-		log::trace!("updating nginx with https");
+		log::trace!(
+			"request_id: {} - certificate does not exist creating a new one",
+			request_id
+		);
+		deployment::create_https_certificates_for_domain(
+			&domain_name,
+			config,
+			request_id,
+		)
+		.await?;
+		log::trace!("request_id: {} - updating nginx with https", request_id);
 		update_nginx_for_static_site_with_https(
 			&domain_name,
 			&hex::encode(static_site_id),
 			config,
+			request_id,
 		)
 		.await?;
-		log::trace!("domain validated");
+		log::trace!("request_id: {} - domain validated", request_id);
 		return Ok(true);
 	}
 
@@ -648,9 +878,10 @@ async fn upload_static_site_files_to_nginx(
 	file: &str,
 	static_site_id_string: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
 	let file_data = base64::decode(file)?;
-	log::trace!("logging into the ssh server for uploading static site files");
+	log::trace!("request_id: {} - logging into the ssh server for uploading static site files", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -658,7 +889,10 @@ async fn upload_static_site_files_to_nginx(
 		.known_hosts_check(KnownHosts::Add)
 		.connect(&config.ssh.host)
 		.await?;
-	log::trace!("successfully logged into the server");
+	log::trace!(
+		"request_id: {} - successfully logged into the server",
+		request_id
+	);
 
 	let mut sftp = session.sftp();
 	let mut zip_file = sftp
@@ -671,7 +905,10 @@ async fn upload_static_site_files_to_nginx(
 	zip_file.write_all(&file_data).await?;
 	zip_file.close().await?;
 	drop(sftp);
-	log::trace!("creating directory for static sites");
+	log::trace!(
+		"request_id: {} - creating directory for static sites",
+		request_id
+	);
 	let create_directory_result = session
 		.command("mkdir")
 		.arg("-p")
@@ -683,7 +920,7 @@ async fn upload_static_site_files_to_nginx(
 	if !create_directory_result.success() {
 		return Err(Error::empty());
 	}
-	log::trace!("unzipping the file");
+	log::trace!("request_id: {} - unzipping the file", request_id);
 	let unzip_result = session
 		.command("unzip")
 		.arg("-o")
@@ -699,8 +936,8 @@ async fn upload_static_site_files_to_nginx(
 	if !unzip_result.success() {
 		return Err(Error::empty());
 	}
-	log::trace!("unzipping successful");
-	log::trace!("deleting the zip file");
+	log::trace!("request_id: {} - unzipping successful", request_id);
+	log::trace!("request_id: {} - deleting the zip file", request_id);
 	let delete_zip_file_result = session
 		.command("rm")
 		.arg("-r")
@@ -716,7 +953,7 @@ async fn upload_static_site_files_to_nginx(
 		return Err(Error::empty());
 	}
 	session.close().await?;
-	log::trace!("session closed successfully");
+	log::trace!("request_id: {} - session closed successfully", request_id);
 	Ok(())
 }
 
@@ -724,8 +961,9 @@ async fn update_nginx_for_static_site_with_http(
 	domain: &str,
 	static_site_id_string: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for updating server with http");
+	log::trace!("request_id: {} - logging into the ssh server for updating server with http", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -735,7 +973,10 @@ async fn update_nginx_for_static_site_with_http(
 		.await?;
 	let mut sftp = session.sftp();
 
-	log::trace!("successfully logged into the server");
+	log::trace!(
+		"request_id: {} - successfully logged into the server",
+		request_id
+	);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -749,11 +990,10 @@ server {{
 	server_name {domain};
 
 	root /home/web/static-sites/{static_site_id_string};
-	autoindex on;
 	index index.html index.htm;
 
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -769,7 +1009,7 @@ server {{
 	writer.close().await?;
 	drop(sftp);
 	time::sleep(Duration::from_millis(1000)).await;
-	log::trace!("updated sites-enabled");
+	log::trace!("request_id: {} - updated sites-enabled", request_id);
 	let reload_result = session
 		.command("nginx")
 		.arg("-s")
@@ -782,9 +1022,9 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 	session.close().await?;
-	log::trace!("session closed");
+	log::trace!("request_id: {} - session closed", request_id);
 	Ok(())
 }
 
@@ -792,9 +1032,10 @@ async fn deploy_static_site(
 	static_site_id: &[u8],
 	custom_domain: Option<&str>,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
 	// update DNS
-	log::trace!("updating DNS");
+	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&hex::encode(static_site_id),
 		"nginx.patr.cloud",
@@ -802,21 +1043,22 @@ async fn deploy_static_site(
 		false,
 	)
 	.await?;
-	log::trace!("DNS Updated");
+	log::trace!("request_id: {} - DNS Updated", request_id);
 
 	update_nginx_with_all_domains_for_static_site(
 		&hex::encode(static_site_id),
 		custom_domain,
 		config,
+		request_id,
 	)
 	.await?;
-	log::trace!("updating database status");
+	log::trace!("request_id: {} - updating database status", request_id);
 	super::update_static_site_status(
 		static_site_id,
 		&DeploymentStatus::Running,
 	)
 	.await?;
-	log::trace!("updated database status");
+	log::trace!("request_id: {} - updated database status", request_id);
 	Ok(())
 }
 
@@ -824,8 +1066,9 @@ async fn update_nginx_for_static_site_with_https(
 	domain: &str,
 	static_site_id_string: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for updating nginx with https");
+	log::trace!("request_id: {} - logging into the ssh server for updating nginx with https", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -833,11 +1076,17 @@ async fn update_nginx_for_static_site_with_https(
 		.known_hosts_check(KnownHosts::Add)
 		.connect(&config.ssh.host)
 		.await?;
-	log::trace!("successfully logged into the server");
+	log::trace!(
+		"request_id: {} - successfully logged into the server",
+		request_id
+	);
 
 	let mut sftp = session.sftp();
 
-	log::trace!("updating sites-enabled for https");
+	log::trace!(
+		"request_id: {} - updating sites-enabled for https",
+		request_id
+	);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -857,7 +1106,6 @@ server {{
 	listen 443 ssl http2;
 	listen [::]:443 ssl http2;
 	server_name {domain};
-	autoindex on;
 	root /home/web/static-sites/{static_site_id_string};
 
 	index index.html index.htm;
@@ -866,7 +1114,7 @@ server {{
 	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
 	
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -880,7 +1128,10 @@ server {{
 		)
 		.await?;
 	writer.close().await?;
-	log::trace!("updated sites-enabled for https");
+	log::trace!(
+		"request_id: {} - updated sites-enabled for https",
+		request_id
+	);
 	drop(sftp);
 
 	let reload_result = session
@@ -894,7 +1145,7 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 	session.close().await?;
 	Ok(())
 }
@@ -903,8 +1154,12 @@ async fn update_nginx_with_all_domains_for_static_site(
 	static_id_string: &str,
 	custom_domain: Option<&str>,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for checking certificate");
+	log::trace!(
+		"request_id: {} - logging into the ssh server for checking certificate",
+		request_id
+	);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -915,7 +1170,10 @@ async fn update_nginx_with_all_domains_for_static_site(
 
 	let patr_domain = format!("{}.patr.cloud", static_id_string);
 
-	log::trace!("checking if the certificates exist or not");
+	log::trace!(
+		"request_id: {} - checking if the certificates exist or not",
+		request_id
+	);
 	let check_file = session
 		.command("test")
 		.arg("-f")
@@ -928,33 +1186,40 @@ async fn update_nginx_with_all_domains_for_static_site(
 		.await?;
 
 	if check_file.success() {
-		log::trace!("certificate exists updating nginx config for https");
+		log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 		update_nginx_for_static_site_with_https(
 			&patr_domain,
 			static_id_string,
 			config,
+			request_id,
 		)
 		.await?;
 	} else {
-		log::trace!("certificate does not exists");
+		log::trace!("request_id: {} - certificate does not exists", request_id);
 		update_nginx_for_static_site_with_http(
 			&patr_domain,
 			static_id_string,
 			config,
+			request_id,
 		)
 		.await?;
-		deployment::create_https_certificates_for_domain(&patr_domain, config)
-			.await?;
+		deployment::create_https_certificates_for_domain(
+			&patr_domain,
+			config,
+			request_id,
+		)
+		.await?;
 		update_nginx_for_static_site_with_https(
 			&patr_domain,
 			static_id_string,
 			config,
+			request_id,
 		)
 		.await?;
 	}
 
 	if let Some(domain) = custom_domain {
-		log::trace!("custom domain present, updating nginx with custom domain");
+		log::trace!("request_id: {} - custom domain present, updating nginx with custom domain", request_id);
 		let check_file = session
 			.command("test")
 			.arg("-f")
@@ -967,6 +1232,7 @@ async fn update_nginx_with_all_domains_for_static_site(
 				domain,
 				static_id_string,
 				config,
+				request_id,
 			)
 			.await?;
 		} else {
@@ -974,12 +1240,13 @@ async fn update_nginx_with_all_domains_for_static_site(
 				domain,
 				static_id_string,
 				config,
+				request_id,
 			)
 			.await?;
 		}
 	}
 	session.close().await?;
-	log::trace!("session closed successfully!");
+	log::trace!("request_id: {} - session closed successfully!", request_id);
 	Ok(())
 }
 

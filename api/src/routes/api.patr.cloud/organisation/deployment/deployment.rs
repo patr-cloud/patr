@@ -774,8 +774,6 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let config = context.get_state().config.clone();
-
 	let deployment_id = service::create_deployment_in_organisation(
 		context.get_database_connection(),
 		&organisation_id,
@@ -795,12 +793,7 @@ async fn create_deployment(
 
 	// Deploy the app as soon as it's created, so that any existing images can
 	// be deployed
-	service::start_deployment(
-		context.get_database_connection(),
-		deployment_id.as_bytes(),
-		&config,
-	)
-	.await?;
+	// TODO: add start deployment function here
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
