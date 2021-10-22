@@ -985,7 +985,7 @@ server {{
 	index index.html index.htm;
 
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -1106,7 +1106,7 @@ server {{
 	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
 	
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;
