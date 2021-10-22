@@ -63,8 +63,8 @@ pub(super) async fn deploy_container(
 
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
+		request_id,
 		deployment_id_string,
-		request_id
 	);
 	let _ = super::update_deployment_status(
 		&deployment_id,

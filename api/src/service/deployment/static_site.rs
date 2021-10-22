@@ -406,6 +406,8 @@ pub async fn delete_static_site(
 		.await?;
 
 	if let Some(domain_name) = static_site.domain_name {
+		db::begin_deferred_constraints(connection).await?;
+
 		db::set_domain_name_for_static_site(
 			connection,
 			static_site_id,
@@ -417,6 +419,8 @@ pub async fn delete_static_site(
 			.as_deref(),
 		)
 		.await?;
+
+		db::end_deferred_constraints(connection).await?;
 
 		session
 			.command("rm")
@@ -546,12 +550,16 @@ pub async fn set_domain_for_static_site_deployment(
 		"request_id: {} - updating database with new domain",
 		request_id
 	);
+	db::begin_deferred_constraints(connection).await?;
+
 	db::set_domain_name_for_static_site(
 		connection,
 		static_site_id,
 		new_domain_name,
 	)
 	.await?;
+
+	db::end_deferred_constraints(connection).await?;
 
 	match (new_domain_name, old_domain.as_deref()) {
 		(None, None) => {
@@ -985,7 +993,7 @@ server {{
 	index index.html index.htm;
 
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;
@@ -1106,7 +1114,7 @@ server {{
 	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
 	
 	location / {{
-		try_files $uri.html $uri $uri/ =404;
+		try_files $uri.html $uri $uri/ /index.html /index.htm =404;
 	}}
 
 	include snippets/letsencrypt.conf;

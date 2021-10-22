@@ -554,6 +554,8 @@ pub async fn delete_deployment(
 		.await?;
 
 	if let Some(domain_name) = deployment.domain_name {
+		db::begin_deferred_constraints(connection).await?;
+
 		db::set_domain_name_for_deployment(
 			connection,
 			deployment_id,
@@ -565,6 +567,8 @@ pub async fn delete_deployment(
 			.as_deref(),
 		)
 		.await?;
+
+		db::end_deferred_constraints(connection).await?;
 
 		session
 			.command("rm")
@@ -1000,12 +1004,16 @@ pub async fn set_domain_for_deployment(
 		"request_id: {} - updating database with new domain",
 		request_id
 	);
+	db::begin_deferred_constraints(connection).await?;
+
 	db::set_domain_name_for_deployment(
 		connection,
 		deployment_id,
 		new_domain_name,
 	)
 	.await?;
+
+	db::end_deferred_constraints(connection).await?;
 
 	match (new_domain_name, old_domain.as_deref()) {
 		(None, None) => {
