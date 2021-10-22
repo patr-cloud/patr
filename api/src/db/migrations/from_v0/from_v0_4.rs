@@ -249,5 +249,41 @@ async fn migrate_from_v0_4_3(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		INSERT INTO
+			deployed_domain
+		VALUES
+			(
+				SELECT
+					deployment_id, NULL, domain_name
+				FROM
+					deployment				
+				WHERE 
+					domain_name IS NOT NULL
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			deployed_domain
+		VALUES
+			(
+				SELECT
+					NULL, static_site_id, domain_name
+				FROM
+					deployment_static_sites				
+				WHERE 
+					domain_name IS NOT NULL
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
