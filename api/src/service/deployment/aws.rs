@@ -201,7 +201,10 @@ pub(super) async fn delete_deployment(
 
 	// certificate needs to be detached inorder to get deleted but there is no
 	// endpoint to detach the certificate
-	log::trace!("request_id: {} - checking if the deployment exists or not", request_id);
+	log::trace!(
+		"request_id: {} - checking if the deployment exists or not",
+		request_id
+	);
 	let check_service_result = client
 		.get_container_services()
 		.service_name(hex::encode(deployment_id))
@@ -209,11 +212,11 @@ pub(super) async fn delete_deployment(
 		.await;
 
 	match check_service_result {
-		Ok(_) => {},
+		Ok(_) => {}
 		Err(SdkError::ServiceError { err, raw }) => {
 			if err.is_not_found_exception() {
 				// If the service is not found then it is already deleted
-				return Ok(())
+				return Ok(());
 			} else {
 				// If there's some other error, return the error
 				return Err(SdkError::ServiceError { err, raw }.into());
@@ -223,7 +226,7 @@ pub(super) async fn delete_deployment(
 			return Err(error.into());
 		}
 	}
- 
+
 	log::trace!("request_id: {} - deleting deployment", request_id);
 
 	client
