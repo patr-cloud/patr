@@ -69,7 +69,7 @@ pub(super) async fn deploy_container(
 	.await;
 
 	log::trace!("request_id: {} - Pulling image from registry", request_id);
-	deployment::pull_image_from_registry(&image_id, &config).await?;
+	super::pull_image_from_registry(&image_id, &config).await?;
 	log::trace!("request_id: {} - Image pulled", request_id);
 
 	// new name for the docker image
@@ -78,7 +78,7 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
 
 	// rename the docker image with the digital ocean registry url
-	deployment::tag_docker_image(&image_id, &new_repo_name).await?;
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
 	log::trace!("request_id: {} - Image tagged", request_id);
 
 	// Get credentails for aws lightsail

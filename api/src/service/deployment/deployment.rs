@@ -1,10 +1,8 @@
-use std::{ops::DerefMut, time::Duration};
+use std::time::Duration;
 
 use eve_rs::AsError;
-use futures::StreamExt;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
-use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
@@ -14,20 +12,12 @@ use crate::{
 	models::{
 		db_mapping::{CloudPlatform, DeploymentMachineType, DeploymentStatus},
 		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
 	},
 	service::{
 		self,
 		deployment::{aws, digitalocean, CNameRecord},
 	},
-	utils::{
-		get_current_time,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -211,7 +201,7 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
-					let _ = update_deployment_status(
+					let _ = super::update_deployment_status(
 						&deployment_id,
 						&DeploymentStatus::Errored,
 					)
@@ -234,7 +224,7 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
-					let _ = update_deployment_status(
+					let _ = super::update_deployment_status(
 						&deployment_id,
 						&DeploymentStatus::Errored,
 					)
@@ -999,91 +989,6 @@ pub async fn set_domain_for_deployment(
 	session.close().await?;
 	log::trace!("request_id: {} - session closed)", request_id);
 	log::trace!("request_id: {} - domains updated successfully", request_id);
-
-	Ok(())
-}
-
-pub(super) async fn update_deployment_status(
-	deployment_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_deployment_status(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub(super) async fn tag_docker_image(
-	image_id: &str,
-	new_repo_name: &str,
-) -> Result<(), Error> {
-	let docker = Docker::new();
-	docker
-		.images()
-		.get(image_id)
-		.tag(
-			&TagOptions::builder()
-				.repo(new_repo_name)
-				.tag("latest")
-				.build(),
-		)
-		.await?;
-
-	Ok(())
-}
-
-pub(super) async fn pull_image_from_registry(
-	image_id: &str,
-	config: &Settings,
-) -> Result<(), Error> {
-	let app = service::get_app().clone();
-	let god_username = db::get_user_by_user_id(
-		app.database.acquire().await?.deref_mut(),
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
-	)
-	.await?
-	.status(500)?
-	.username;
-
-	// generate token as password
-	let iat = get_current_time().as_secs();
-	let token = RegistryToken::new(
-		config.docker_registry.issuer.clone(),
-		iat,
-		god_username.clone(),
-		config,
-		vec![RegistryTokenAccess {
-			r#type: "repository".to_string(),
-			name: image_id.to_string(),
-			actions: vec!["pull".to_string()],
-		}],
-	)
-	.to_string(
-		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der.as_ref(),
-	)?;
-
-	// get token object using the above token string
-	let registry_auth = RegistryAuth::builder()
-		.username(god_username)
-		.password(token)
-		.build();
-
-	let docker = Docker::new();
-	let mut stream = docker.images().pull(
-		&PullOptions::builder()
-			.image(image_id)
-			.auth(registry_auth)
-			.build(),
-	);
-
-	while stream.next().await.is_some() {}
 
 	Ok(())
 }

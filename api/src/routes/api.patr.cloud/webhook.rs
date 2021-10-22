@@ -35,7 +35,6 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-// TODO: add custom header for this endpoint
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
