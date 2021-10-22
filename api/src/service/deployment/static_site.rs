@@ -1,5 +1,22 @@
 use std::{ops::DerefMut, time::Duration};
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			DeleteDnsRecord,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use tokio::{io::AsyncWriteExt, task, time};
@@ -330,15 +347,6 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	if let Some(domain_name) = &static_site.domain_name {
-		db::set_domain_name_for_static_site(
-			connection,
-			static_site_id,
-			Some(format!("deleted.patr.cloud.{}", domain_name)).as_deref(),
-		)
-		.await?;
-	}
-
 	db::update_static_site_status(
 		connection,
 		static_site_id,
@@ -362,12 +370,98 @@ pub async fn delete_static_site(
 		.wait()
 		.await?;
 
-	if let Some(domain_name) = &static_site.domain_name {
+	session
+		.command("certbot")
+		.arg("delete")
+		.arg("--cert-name")
+		.arg(&patr_domain)
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(domain_name) = static_site.domain_name {
+		db::set_domain_name_for_static_site(
+			connection,
+			static_site_id,
+			Some(format!(
+				"deleted.patr.cloud.{}.{}",
+				hex::encode(static_site_id),
+				domain_name
+			))
+			.as_deref(),
+		)
+		.await?;
+
 		session
 			.command("rm")
 			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
 			.spawn()?
 			.wait()
+			.await?;
+
+		session
+			.command("certbot")
+			.arg("delete")
+			.arg("--cert-name")
+			.arg(&domain_name)
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
+	// Delete DNS Record
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+
+	let dns_record = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(patr_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.find(|record| {
+			if let DnsContent::CNAME { .. } = record.content {
+				record.name == patr_domain
+			} else {
+				false
+			}
+		});
+
+	if let Some(dns_record) = dns_record {
+		client
+			.request(&DeleteDnsRecord {
+				zone_identifier,
+				identifier: &dns_record.id,
+			})
 			.await?;
 	}
 
