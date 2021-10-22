@@ -409,6 +409,7 @@ async fn get_location_from_ip_address(
 	}
 	Ok((response.lat, response.lon))
 }
+
 async fn update_static_site_status(
 	static_site_id: &[u8],
 	status: &DeploymentStatus,

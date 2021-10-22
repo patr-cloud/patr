@@ -105,7 +105,35 @@ async fn migrate_from_v0_4_2(
 }
 
 async fn migrate_from_v0_4_3(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			domain_name = CONCAT('deleted.patr.cloud.', ENCODE(id, 'hex'), domain_name)
+		WHERE
+			domain_name IS NOT NULL AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			domain_name = CONCAT('deleted.patr.cloud.', ENCODE(id, 'hex'), domain_name)
+		WHERE
+			domain_name IS NOT NULL AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

@@ -1,5 +1,22 @@
 use std::time::Duration;
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			DeleteDnsRecord,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
@@ -473,7 +490,7 @@ pub async fn delete_deployment(
 		&format!(
 			"patr-deleted: {}-{}",
 			deployment.name,
-			hex::encode(deployment.id)
+			hex::encode(deployment_id)
 		),
 	)
 	.await?;
@@ -484,6 +501,134 @@ pub async fn delete_deployment(
 		&DeploymentStatus::Deleted,
 	)
 	.await?;
+
+	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	session
+		.command("rm")
+		.arg(format!("/etc/nginx/sites-enabled/{}", patr_domain))
+		.spawn()?
+		.wait()
+		.await?;
+
+	session
+		.command("certbot")
+		.arg("delete")
+		.arg("--cert-name")
+		.arg(&patr_domain)
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(domain_name) = deployment.domain_name {
+		db::set_domain_name_for_deployment(
+			connection,
+			deployment_id,
+			Some(format!(
+				"deleted.patr.cloud.{}.{}",
+				hex::encode(deployment_id),
+				domain_name
+			))
+			.as_deref(),
+		)
+		.await?;
+
+		session
+			.command("rm")
+			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
+			.spawn()?
+			.wait()
+			.await?;
+
+		session
+			.command("certbot")
+			.arg("delete")
+			.arg("--cert-name")
+			.arg(&domain_name)
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
+	// Delete DNS Record
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+
+	let dns_record = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(patr_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.find(|record| {
+			if let DnsContent::CNAME { .. } = record.content {
+				record.name == patr_domain
+			} else {
+				false
+			}
+		});
+
+	if let Some(dns_record) = dns_record {
+		client
+			.request(&DeleteDnsRecord {
+				zone_identifier,
+				identifier: &dns_record.id,
+			})
+			.await?;
+	}
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait_with_output()
+		.await?;
+
+	if !reload_result.status.success() {
+		log::error!(
+			"Unable to reload nginx config: Stdout: {:?}. Stderr: {:?}",
+			String::from_utf8(reload_result.stdout),
+			String::from_utf8(reload_result.stderr)
+		);
+		return Err(Error::empty());
+	}
 
 	Ok(())
 }
