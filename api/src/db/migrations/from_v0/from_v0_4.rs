@@ -167,6 +167,38 @@ async fn migrate_from_v0_4_3(
 
 	query!(
 		r#"
+		INSERT INTO
+			deployed_domain (deployment_id, domain_name)
+			SELECT
+				deployment.id,
+				deployment.domain_name
+			FROM
+				deployment
+			WHERE 
+				domain_name IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			deployed_domain (static_site_id, domain_name)
+			SELECT
+				deployment_static_sites.id,
+				deployment_static_sites.domain_name
+			FROM
+				deployment_static_sites				
+			WHERE 
+				domain_name IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_uq_id_domain_name
 		UNIQUE(id, domain_name);
