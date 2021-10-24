@@ -1,0 +1,3 @@
+[submodule "macros"]
+	path = macros
+	url = https://develop.vicara.co/vicara/patr-macros
