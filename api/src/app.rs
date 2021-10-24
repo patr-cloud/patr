@@ -197,6 +197,7 @@ fn log_request(
 	length: &usize,
 ) {
 	log::info!(
+		target: "api::requests",
 		"{} {} {} {} - {}",
 		method,
 		path,

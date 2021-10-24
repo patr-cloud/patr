@@ -17,13 +17,15 @@ pub async fn initialize_static_sites_pre(
 			name VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			domain_name VARCHAR(255)
-				CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE
+				CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE
 				CONSTRAINT
-					deployment_static_sites_pk_chk_domain_name_is_lower_case
+					deployment_static_sites_chk_domain_name_is_lower_case
 						CHECK(domain_name = LOWER(domain_name)),
 			organisation_id BYTEA NOT NULL,
 			CONSTRAINT deployment_static_sites_uq_name_organisation_id
-				UNIQUE(name, organisation_id)
+				UNIQUE(name, organisation_id),
+			CONSTRAINT deployment_static_sites_uq_id_domain_name
+				UNIQUE(id, domain_name)
 		);
 		"#
 	)
@@ -43,6 +45,17 @@ pub async fn initialize_static_sites_post(
 		ALTER TABLE deployment_static_sites
 		ADD CONSTRAINT deployment_static_sites_fk_id_organisation_id
 		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		ADD CONSTRAINT deployment_static_sites_fk_id_domain_name
+		FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(static_site_id, domain_name)
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
@@ -222,6 +235,21 @@ pub async fn set_domain_name_for_static_site(
 	if let Some(domain_name) = domain_name {
 		query!(
 			r#"
+			INSERT INTO
+				deployed_domain
+			VALUES
+				(NULL, $1, $2)
+			ON CONFLICT(static_site_id) DO UPDATE SET
+				domain_name = EXCLUDED.domain_name;
+			"#,
+			static_site_id,
+			domain_name,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
 			UPDATE
 				deployment_static_sites
 			SET
@@ -236,6 +264,18 @@ pub async fn set_domain_name_for_static_site(
 		.await
 		.map(|_| ())
 	} else {
+		query!(
+			r#"
+			DELETE FROM
+				deployed_domain
+			WHERE
+				static_site_id = $1;
+			"#,
+			static_site_id,
+		)
+		.execute(&mut *connection)
+		.await?;
+
 		query!(
 			r#"
 			UPDATE
