@@ -90,10 +90,10 @@ dependencies = [
  "lettre",
  "log",
  "log4rs",
- "macros",
  "num_cpus",
  "once_cell",
  "openssh",
+ "patr-macros",
  "rand",
  "redis",
  "regex",
@@ -1664,23 +1664,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "macros"
-version = "0.1.0"
-dependencies = [
- "askama",
- "handlebars 4.1.3",
- "heck",
- "lettre",
- "proc-macro2",
- "quote",
- "semver",
- "serde 1.0.130",
- "serde_json",
- "syn",
- "toml",
-]
-
-[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2050,6 +2033,23 @@ dependencies = [
  "base64ct",
  "rand_core",
  "subtle",
+]
+
+[[package]]
+name = "patr-macros"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "handlebars 4.1.3",
+ "heck",
+ "lettre",
+ "proc-macro2",
+ "quote",
+ "semver",
+ "serde 1.0.130",
+ "serde_json",
+ "syn",
+ "toml",
 ]
 
 [[package]]
