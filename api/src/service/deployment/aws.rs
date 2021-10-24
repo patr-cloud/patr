@@ -150,7 +150,7 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&deployment_id_string,
-		"nginx.patr.cloud",
+		&config.ssh.host_name,
 		&config,
 		false,
 	)

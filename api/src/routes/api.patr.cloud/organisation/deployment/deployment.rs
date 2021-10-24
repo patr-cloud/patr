@@ -1384,9 +1384,12 @@ async fn get_domain_dns_records(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_deployments(
 		context.get_database_connection(),
 		&deployment_id,
+		config,
 	)
 	.await?
 	.into_iter()
@@ -1459,7 +1462,9 @@ async fn set_domain_name(
 		.transpose()?;
 
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) &&
+			!domain_name.is_empty()
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
@@ -1467,13 +1472,23 @@ async fn set_domain_name(
 	}
 	let config = context.get_state().config.clone();
 
-	service::set_domain_for_deployment(
-		context.get_database_connection(),
-		&config,
-		&deployment_id,
-		domain_name,
-	)
-	.await?;
+	if domain_name == Some("") {
+		service::set_domain_for_deployment(
+			context.get_database_connection(),
+			&config,
+			&deployment_id,
+			None,
+		)
+		.await?;
+	} else {
+		service::set_domain_for_deployment(
+			context.get_database_connection(),
+			&config,
+			&deployment_id,
+			domain_name,
+		)
+		.await?;
+	}
 
 	context.json(json!({
 		request_keys::SUCCESS: true

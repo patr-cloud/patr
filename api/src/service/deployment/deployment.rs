@@ -751,6 +751,7 @@ pub async fn set_environment_variables_for_deployment(
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -764,7 +765,7 @@ pub async fn get_dns_records_for_deployments(
 
 	Ok(vec![CNameRecord {
 		cname: domain_name,
-		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+		value: config.ssh.host_name,
 	}])
 }
 
@@ -806,6 +807,8 @@ pub async fn get_domain_validation_status(
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
+				.replace("https://", "")
+				.replace("/", "")
 		}
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
@@ -985,6 +988,8 @@ pub async fn set_domain_for_deployment(
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
+				.replace("https://", "")
+				.replace("/", "")
 		}
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
