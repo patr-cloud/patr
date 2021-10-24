@@ -695,6 +695,7 @@ pub async fn set_domain_for_static_site_deployment(
 pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
+	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
@@ -708,7 +709,7 @@ pub async fn get_dns_records_for_static_site(
 
 	Ok(vec![CNameRecord {
 		cname: domain_name,
-		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+		value: config.ssh.host_name,
 	}])
 }
 
@@ -1038,7 +1039,7 @@ async fn deploy_static_site(
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&hex::encode(static_site_id),
-		"nginx.patr.cloud",
+		&config.ssh.host_name,
 		config,
 		false,
 	)
