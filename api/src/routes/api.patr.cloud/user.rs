@@ -71,20 +71,6 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(list_phone_numbers)),
 		],
 	);
-	app.get(
-		"/get-backup-email",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_backup_email)),
-		],
-	);
-	app.get(
-		"/get-backup-phone",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_backup_phone)),
-		],
-	);
 	app.post(
 		"/update-backup-email",
 		[
@@ -260,8 +246,8 @@ async fn get_user_info(
 		request_keys::BIO: user.bio,
 		request_keys::LOCATION: user.location,
 		request_keys::CREATED: user.created,
-		request_keys::EMAILS: personal_emails,
-		request_keys::PHONE_NUMBERS: phone_numbers
+		request_keys::SECONDARY_EMAILS: personal_emails,
+		request_keys::SECONDARY_PHONE_NUMBERS: phone_numbers
 	}));
 	Ok(context)
 }
@@ -551,15 +537,28 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let email_addresses_list = db::get_personal_emails_for_user(
+	let mut email_addresses_list = db::get_personal_emails_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?;
 
+	let backup_email = db::get_backup_email_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.next()
+	.status(404)
+	.body(error!(EMAIL_NOT_FOUND).to_string())?;
+
+	email_addresses_list.retain(|emails| emails != &backup_email);
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::EMAILS: email_addresses_list
+		request_keys::BACKUP_EMAIL: backup_email,
+		request_keys::SECONDARY_EMAILS: email_addresses_list
 	}));
 	Ok(context)
 }
@@ -599,12 +598,36 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
+	let user_data =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let backup_country_code = user_data
+		.backup_phone_country_code
+		.status(404)
+		.body(error!(NOT_FOUND).to_string())?;
+	let recovery_phone_number = user_data
+		.backup_phone_number
+		.status(404)
+		.body(error!(NOT_FOUND).to_string())?;
+
+	let backup_phone_number = json!({
+		request_keys::COUNTRY_CODE: backup_country_code,
+		request_keys::PHONE_NUMBER: recovery_phone_number
+	});
+
 	let phone_numbers_list = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
 	.into_iter()
+	.filter(|phone_number| {
+		phone_number.country_code != backup_country_code &&
+			phone_number.number != recovery_phone_number
+	})
 	.map(|phone_number| {
 		json!({
 			request_keys::COUNTRY_CODE: phone_number.country_code,
@@ -615,114 +638,9 @@ async fn list_phone_numbers(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::PHONE_NUMBERS: phone_numbers_list
+		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
+		request_keys::SECONDARY_PHONE_NUMBERS: phone_numbers_list
 	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to get the recovery/backup email id of the user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    backupEmail:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_backup_email(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let backup_email = db::get_backup_email_for_user(
-		context.get_database_connection(),
-		&user_id,
-	)
-	.await?
-	.into_iter()
-	.next()
-	.status(404)
-	.body(error!(EMAIL_NOT_FOUND).to_string())?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::BACKUP_EMAIL: backup_email
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to get the recovery/backup phone number of the user
-/// required inputs:
-/// auth token in the authorization headers
-/// example: Authorization: <insert authToken>
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    backupPhoneNumber:
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_backup_phone(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let user_data = db::get_user_by_user_id(context.get_database_connection(), &user_id).await?;
-	let user_data = if let Some(user_data) = user_data {
-		user_data
-	} else {
-		return Err(Error::empty()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string()));
-	};
-
-	if let Some((backup_country_code, backup_phone_number)) = user_data
-		.backup_phone_country_code
-		.zip(user_data.backup_phone_number)
-	{
-		context.json(json!({
-			request_keys::SUCCESS: true,
-			request_keys::BACKUP_PHONE_COUNTRY_CODE: backup_country_code,
-			request_keys::BACKUP_PHONE_NUMBER: backup_phone_number
-		}));
-	} else {
-		Error::as_result()
-				.status(404)
-				.body(error!(PHONE_NUMBER_NOT_FOUND).to_string())?
-	}
-
 	Ok(context)
 }
 
