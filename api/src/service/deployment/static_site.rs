@@ -533,8 +533,8 @@ pub async fn set_domain_for_static_site_deployment(
 	);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let old_domain = static_site.domain_name;
 
 	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for static site", request_id);

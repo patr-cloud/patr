@@ -1,25 +1,14 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
-use crate::{
-	app::{create_eve_app, App},
-	db,
-	error,
-	models::{
-		db_mapping::EventData,
-		error::{id as ErrorId, message as ErrorMessage},
-	},
-	pin_fn,
-	service,
-	utils::{
+use crate::{app::{create_eve_app, App}, db, error, models::{db_mapping::{DeploymentStatus, EventData}, error::{id as ErrorId, message as ErrorMessage}}, pin_fn, service, utils::{
 		constants::request_keys,
 		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
 		EveMiddleware,
-	},
-};
+	}};
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
@@ -161,6 +150,9 @@ pub async fn notification_handler(
 			.await?;
 
 		for deployment in deployments {
+			if let DeploymentStatus::Stopped = deployment.status {
+				continue;
+			}
 			let full_image_name = format!(
 				"{}@{}",
 				deployment
