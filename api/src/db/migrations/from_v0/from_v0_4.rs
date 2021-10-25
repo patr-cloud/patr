@@ -25,6 +25,7 @@ pub async fn migrate(
 		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection).await?,
 		(0, 4, 2) => migrate_from_v0_4_2(&mut *connection).await?,
 		(0, 4, 3) => migrate_from_v0_4_3(&mut *connection).await?,
+		(0, 4, 4) => migrate_from_v0_4_4(&mut *connection).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -281,6 +282,12 @@ async fn migrate_from_v0_4_3(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn migrate_from_v0_4_4(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		UPDATE
