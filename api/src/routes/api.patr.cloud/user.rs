@@ -246,8 +246,8 @@ async fn get_user_info(
 		request_keys::BIO: user.bio,
 		request_keys::LOCATION: user.location,
 		request_keys::CREATED: user.created,
-		request_keys::SECONDARY_EMAILS: personal_emails,
-		request_keys::SECONDARY_PHONE_NUMBERS: phone_numbers
+		request_keys::EMAILS: personal_emails,
+		request_keys::PHONE_NUMBERS: phone_numbers
 	}));
 	Ok(context)
 }
