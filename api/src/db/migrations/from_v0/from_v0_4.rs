@@ -362,12 +362,6 @@ async fn migrate_from_v0_4_4(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-async fn migrate_from_v0_4_4(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		SET CONSTRAINTS ALL DEFERRED;
