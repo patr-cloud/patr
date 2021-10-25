@@ -1,10 +1,25 @@
-use std::{ops::DerefMut, time::Duration};
+use std::time::Duration;
 
+use cloudflare::{
+	endpoints::{
+		dns::{
+			DeleteDnsRecord,
+			DnsContent,
+			ListDnsRecords,
+			ListDnsRecordsParams,
+		},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
-use futures::StreamExt;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
-use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::{io::AsyncWriteExt, task, time};
 use uuid::Uuid;
 
@@ -14,20 +29,12 @@ use crate::{
 	models::{
 		db_mapping::{CloudPlatform, DeploymentMachineType, DeploymentStatus},
 		rbac,
-		RegistryToken,
-		RegistryTokenAccess,
 	},
 	service::{
 		self,
 		deployment::{aws, digitalocean, CNameRecord},
 	},
-	utils::{
-		get_current_time,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -211,7 +218,7 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
-					let _ = update_deployment_status(
+					let _ = super::update_deployment_status(
 						&deployment_id,
 						&DeploymentStatus::Errored,
 					)
@@ -234,7 +241,7 @@ pub async fn start_deployment(
 				.await;
 
 				if let Err(error) = result {
-					let _ = update_deployment_status(
+					let _ = super::update_deployment_status(
 						&deployment_id,
 						&DeploymentStatus::Errored,
 					)
@@ -261,7 +268,13 @@ pub async fn stop_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {
-	log::trace!("Getting deployment id from db");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Stopping the deployment with id: {} and request_id: {}",
+		hex::encode(deployment_id),
+		request_id
+	);
+	log::trace!("request_id: {} - Getting deployment id from db", request_id);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -272,20 +285,40 @@ pub async fn stop_deployment(
 		.split_once('-')
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-	log::trace!("removing the deployed image info from db");
+	log::trace!(
+		"request_id: {} - removing the deployed image info from db",
+		request_id
+	);
 	db::update_deployment_deployed_image(connection, deployment_id, None)
 		.await?;
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			log::trace!("deleting the deployment from digitalocean");
-			digitalocean::delete_deployment(connection, deployment_id, config)
-				.await?;
+			log::trace!(
+				"request_id: {} - deleting the deployment from digitalocean",
+				request_id
+			);
+			digitalocean::delete_deployment(
+				connection,
+				deployment_id,
+				config,
+				request_id,
+			)
+			.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
-			log::trace!("deleting the deployment from aws");
-			aws::delete_deployment(connection, deployment_id, region, config)
-				.await?;
+			log::trace!(
+				"request_id: {} - deleting the deployment from aws",
+				request_id
+			);
+			aws::delete_deployment(
+				connection,
+				deployment_id,
+				region,
+				config,
+				request_id,
+			)
+			.await?;
 		}
 		_ => {
 			return Err(Error::empty()
@@ -451,7 +484,7 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 
 	session.close().await?;
 
@@ -465,16 +498,188 @@ server {{
 	Ok(())
 }
 
+pub async fn delete_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	service::stop_deployment(connection, deployment_id, config).await?;
+
+	db::update_deployment_name(
+		connection,
+		deployment_id,
+		&format!(
+			"patr-deleted: {}-{}",
+			deployment.name,
+			hex::encode(deployment_id)
+		),
+	)
+	.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deleted,
+	)
+	.await?;
+
+	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
+	let session = SessionBuilder::default()
+		.user(config.ssh.username.clone())
+		.port(config.ssh.port)
+		.keyfile(&config.ssh.key_file)
+		.known_hosts_check(KnownHosts::Add)
+		.connect(&config.ssh.host)
+		.await?;
+
+	session
+		.command("rm")
+		.arg(format!("/etc/nginx/sites-enabled/{}", patr_domain))
+		.spawn()?
+		.wait()
+		.await?;
+
+	session
+		.command("certbot")
+		.arg("delete")
+		.arg("--cert-name")
+		.arg(&patr_domain)
+		.spawn()?
+		.wait()
+		.await?;
+
+	if let Some(domain_name) = deployment.domain_name {
+		db::begin_deferred_constraints(connection).await?;
+
+		db::set_domain_name_for_deployment(
+			connection,
+			deployment_id,
+			Some(format!(
+				"deleted.patr.cloud.{}.{}",
+				hex::encode(deployment_id),
+				domain_name
+			))
+			.as_deref(),
+		)
+		.await?;
+
+		db::end_deferred_constraints(connection).await?;
+
+		session
+			.command("rm")
+			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
+			.spawn()?
+			.wait()
+			.await?;
+
+		session
+			.command("certbot")
+			.arg("delete")
+			.arg("--cert-name")
+			.arg(&domain_name)
+			.spawn()?
+			.wait()
+			.await?;
+	}
+
+	// Delete DNS Record
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+
+	let dns_record = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(patr_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.find(|record| {
+			if let DnsContent::CNAME { .. } = record.content {
+				record.name == patr_domain
+			} else {
+				false
+			}
+		});
+
+	if let Some(dns_record) = dns_record {
+		client
+			.request(&DeleteDnsRecord {
+				zone_identifier,
+				identifier: &dns_record.id,
+			})
+			.await?;
+	}
+
+	let reload_result = session
+		.command("nginx")
+		.arg("-s")
+		.arg("reload")
+		.spawn()?
+		.wait_with_output()
+		.await?;
+
+	if !reload_result.status.success() {
+		log::error!(
+			"Unable to reload nginx config: Stdout: {:?}. Stderr: {:?}",
+			String::from_utf8(reload_result.stdout),
+			String::from_utf8(reload_result.stderr)
+		);
+		return Err(Error::empty());
+	}
+
+	Ok(())
+}
+
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<String, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Getting deployment logs for deployment_id: {} with request_id: {}",
+		hex::encode(&deployment_id),
+		request_id
+	);
+
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	log::trace!("get the deployment id from db");
+	log::trace!("request_id: {} - get the deployment id from db", request_id);
 
 	let (provider, _) = deployment
 		.region
@@ -484,13 +689,30 @@ pub async fn get_deployment_container_logs(
 
 	let logs = match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			log::trace!("getting logs from digitalocean deployment");
-			digitalocean::get_container_logs(connection, deployment_id, config)
-				.await?
+			log::trace!(
+				"request_id: {} - getting logs from digitalocean deployment",
+				request_id
+			);
+			digitalocean::get_container_logs(
+				connection,
+				deployment_id,
+				config,
+				request_id,
+			)
+			.await?
 		}
 		Ok(CloudPlatform::Aws) => {
-			log::trace!("getting logs from aws deployment");
-			aws::get_container_logs(connection, deployment_id, config).await?
+			log::trace!(
+				"request_id: {} - getting logs from aws deployment",
+				request_id
+			);
+			aws::get_container_logs(
+				connection,
+				deployment_id,
+				config,
+				request_id,
+			)
+			.await?
 		}
 		_ => {
 			return Err(Error::empty()
@@ -551,7 +773,13 @@ pub async fn get_domain_validation_status(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<bool, Error> {
-	log::trace!("validating the custom domain");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Validating the deployment_id: {} with request_id: {}",
+		hex::encode(&deployment_id),
+		request_id
+	);
+	log::trace!("request_id: {} - validating the custom domain", request_id);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
@@ -568,7 +796,10 @@ pub async fn get_domain_validation_status(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("getting the default url from db");
+	log::trace!(
+		"request_id: {} - getting the default url from db",
+		request_id
+	);
 	let default_url = match provider.parse() {
 		Ok(CloudPlatform::Aws) => {
 			aws::get_app_default_url(&hex::encode(deployment_id), region)
@@ -590,7 +821,7 @@ pub async fn get_domain_validation_status(
 		}
 	};
 
-	log::trace!("logging into the ssh server");
+	log::trace!("request_id: {} - logging into the ssh server", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -599,11 +830,14 @@ pub async fn get_domain_validation_status(
 		.connect(&config.ssh.host)
 		.await?;
 
-	log::trace!("creating random file with random content for verification");
+	log::trace!("request_id: {} - creating random file with random content for verification", request_id);
 	let (filename, file_content) =
 		super::create_random_content_for_verification(&session).await?;
 
-	log::trace!("checking existence of https for the custom domain");
+	log::trace!(
+		"request_id: {} - checking existence of https for the custom domain",
+		request_id
+	);
 	let https_text = reqwest::get(format!(
 		"https://{}/.well-known/patr-verification/{}",
 		domain_name, filename
@@ -627,7 +861,10 @@ pub async fn get_domain_validation_status(
 		}
 	}
 
-	log::trace!("https does not exist, checking for http");
+	log::trace!(
+		"request_id: {} - https does not exist, checking for http",
+		request_id
+	);
 	let text = reqwest::get(format!(
 		"http://{}/.well-known/patr-verification/{}",
 		domain_name, filename
@@ -637,9 +874,12 @@ pub async fn get_domain_validation_status(
 	.await?;
 
 	if text == file_content {
-		log::trace!("http exists creating certificate for the custom domain");
+		log::trace!("request_id: {} - http exists creating certificate for the custom domain", request_id);
 
-		log::trace!("checking if the certificate already exists");
+		log::trace!(
+			"request_id: {} - checking if the certificate already exists",
+			request_id
+		);
 		let check_file = session
 			.command("test")
 			.arg("-f")
@@ -652,26 +892,35 @@ pub async fn get_domain_validation_status(
 			.await?;
 
 		if check_file.success() {
-			log::trace!("certificate exists updating nginx config for https");
+			log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 			update_nginx_config_for_domain_with_https(
 				&domain_name,
 				&default_url,
 				config,
+				request_id,
 			)
 			.await?;
 			return Ok(true);
 		}
-		log::trace!("certificate does not exist creating a new one");
-		super::create_https_certificates_for_domain(&domain_name, config)
-			.await?;
-		log::trace!("updating nginx with https");
+		log::trace!(
+			"request_id: {} - certificate does not exist creating a new one",
+			request_id
+		);
+		super::create_https_certificates_for_domain(
+			&domain_name,
+			config,
+			request_id,
+		)
+		.await?;
+		log::trace!("request_id: {} - updating nginx with https", request_id);
 		update_nginx_config_for_domain_with_https(
 			&domain_name,
 			&default_url,
 			config,
+			request_id,
 		)
 		.await?;
-		log::trace!("domain validated");
+		log::trace!("request_id: {} - domain validated", request_id);
 		return Ok(true);
 	}
 
@@ -695,14 +944,23 @@ pub async fn set_domain_for_deployment(
 	deployment_id: &[u8],
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
-	log::trace!("getting deployment info from database");
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Deploying the static site with id: {} and request_id: {}",
+		hex::encode(deployment_id),
+		request_id
+	);
+	log::trace!(
+		"request_id: {} - getting deployment info from database",
+		request_id
+	);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 	let old_domain = deployment.domain_name;
 
-	log::trace!("logging into the ssh server for adding a new domain name for deployment");
+	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for deployment", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -717,7 +975,10 @@ pub async fn set_domain_for_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	log::trace!("getting default url from providers");
+	log::trace!(
+		"request_id: {} - getting default url from providers",
+		request_id
+	);
 	let deployment_default_url = match provider.parse() {
 		Ok(CloudPlatform::Aws) => {
 			aws::get_app_default_url(&hex::encode(deployment_id), region)
@@ -739,7 +1000,12 @@ pub async fn set_domain_for_deployment(
 		}
 	};
 
-	log::trace!("updating database with new domain");
+	log::trace!(
+		"request_id: {} - updating database with new domain",
+		request_id
+	);
+	db::begin_deferred_constraints(connection).await?;
+
 	db::set_domain_name_for_deployment(
 		connection,
 		deployment_id,
@@ -747,12 +1013,17 @@ pub async fn set_domain_for_deployment(
 	)
 	.await?;
 
+	db::end_deferred_constraints(connection).await?;
+
 	match (new_domain_name, old_domain.as_deref()) {
 		(None, None) => {
-			log::trace!("both domains are null");
+			log::trace!("request_id: {} - both domains are null", request_id);
 		} // Do nothing
 		(Some(new_domain), None) => {
-			log::trace!("old domain null, adding new domain");
+			log::trace!(
+				"request_id: {} - old domain null, adding new domain",
+				request_id
+			);
 			// Setup new domain name
 			let check_file = session
 				.command("test")
@@ -772,20 +1043,25 @@ pub async fn set_domain_for_deployment(
 					new_domain,
 					&deployment_default_url,
 					config,
+					request_id,
 				)
 				.await?;
 			} else {
-				log::trace!("certificate not present updating nginx with http");
+				log::trace!("request_id: {} - certificate not present updating nginx with http", request_id);
 				update_nginx_config_for_domain_with_http_only(
 					new_domain,
 					&deployment_default_url,
 					config,
+					request_id,
 				)
 				.await?;
 			}
 		}
 		(None, Some(domain_name)) => {
-			log::trace!("new domain null, deleting old domain");
+			log::trace!(
+				"request_id: {} - new domain null, deleting old domain",
+				request_id
+			);
 			session
 				.command("certbot")
 				.arg("delete")
@@ -809,7 +1085,10 @@ pub async fn set_domain_for_deployment(
 				.await?;
 		}
 		(Some(new_domain), Some(old_domain)) => {
-			log::trace!("replacing old domain with new domain");
+			log::trace!(
+				"request_id: {} - replacing old domain with new domain",
+				request_id
+			);
 			if new_domain != old_domain {
 				session
 					.command("certbot")
@@ -837,11 +1116,12 @@ pub async fn set_domain_for_deployment(
 					.wait()
 					.await?;
 				if check_file.success() {
-					log::trace!("certificate creation successfull updating nginx with https");
+					log::trace!("request_id: {} - certificate creation successfull updating nginx with https", request_id);
 					update_nginx_config_for_domain_with_https(
 						new_domain,
 						&deployment_default_url,
 						config,
+						request_id,
 					)
 					.await?;
 				} else {
@@ -852,6 +1132,7 @@ pub async fn set_domain_for_deployment(
 						new_domain,
 						&deployment_default_url,
 						config,
+						request_id,
 					)
 					.await?;
 				}
@@ -859,93 +1140,8 @@ pub async fn set_domain_for_deployment(
 		}
 	}
 	session.close().await?;
-	log::trace!("session closed)");
-	log::trace!("domains updated successfully");
-
-	Ok(())
-}
-
-pub(super) async fn update_deployment_status(
-	deployment_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_deployment_status(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub(super) async fn tag_docker_image(
-	image_id: &str,
-	new_repo_name: &str,
-) -> Result<(), Error> {
-	let docker = Docker::new();
-	docker
-		.images()
-		.get(image_id)
-		.tag(
-			&TagOptions::builder()
-				.repo(new_repo_name)
-				.tag("latest")
-				.build(),
-		)
-		.await?;
-
-	Ok(())
-}
-
-pub(super) async fn pull_image_from_registry(
-	image_id: &str,
-	config: &Settings,
-) -> Result<(), Error> {
-	let app = service::get_app().clone();
-	let god_username = db::get_user_by_user_id(
-		app.database.acquire().await?.deref_mut(),
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
-	)
-	.await?
-	.status(500)?
-	.username;
-
-	// generate token as password
-	let iat = get_current_time().as_secs();
-	let token = RegistryToken::new(
-		config.docker_registry.issuer.clone(),
-		iat,
-		god_username.clone(),
-		config,
-		vec![RegistryTokenAccess {
-			r#type: "repository".to_string(),
-			name: image_id.to_string(),
-			actions: vec!["pull".to_string()],
-		}],
-	)
-	.to_string(
-		config.docker_registry.private_key.as_ref(),
-		config.docker_registry.public_key_der(),
-	)?;
-
-	// get token object using the above token string
-	let registry_auth = RegistryAuth::builder()
-		.username(god_username)
-		.password(token)
-		.build();
-
-	let docker = Docker::new();
-	let mut stream = docker.images().pull(
-		&PullOptions::builder()
-			.image(image_id)
-			.auth(registry_auth)
-			.build(),
-	);
-
-	while stream.next().await.is_some() {}
+	log::trace!("request_id: {} - session closed)", request_id);
+	log::trace!("request_id: {} - domains updated successfully", request_id);
 
 	Ok(())
 }
@@ -955,8 +1151,12 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 	default_url: &str,
 	custom_domain: Option<&str>,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for checking certificate");
+	log::trace!(
+		"request_id: {} - logging into the ssh server for checking certificate",
+		request_id
+	);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -967,7 +1167,10 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 
 	let patr_domain = format!("{}.patr.cloud", deployment_id_string);
 
-	log::trace!("checking if the certificates exist or not");
+	log::trace!(
+		"request_id: {} - checking if the certificates exist or not",
+		request_id
+	);
 	let check_file = session
 		.command("test")
 		.arg("-f")
@@ -980,33 +1183,40 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 		.await?;
 
 	if check_file.success() {
-		log::trace!("certificate exists updating nginx config for https");
+		log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 		update_nginx_config_for_domain_with_https(
 			&patr_domain,
 			default_url,
 			config,
+			request_id,
 		)
 		.await?;
 	} else {
-		log::trace!("certificate does not exists");
+		log::trace!("request_id: {} - certificate does not exists", request_id);
 		update_nginx_config_for_domain_with_http_only(
 			&patr_domain,
 			default_url,
 			config,
+			request_id,
 		)
 		.await?;
-		super::create_https_certificates_for_domain(&patr_domain, config)
-			.await?;
+		super::create_https_certificates_for_domain(
+			&patr_domain,
+			config,
+			request_id,
+		)
+		.await?;
 		update_nginx_config_for_domain_with_https(
 			&patr_domain,
 			default_url,
 			config,
+			request_id,
 		)
 		.await?;
 	}
 
 	if let Some(domain) = custom_domain {
-		log::trace!("custom domain present, updating nginx with custom domain");
+		log::trace!("request_id: {} - custom domain present, updating nginx with custom domain", request_id);
 		let check_file = session
 			.command("test")
 			.arg("-f")
@@ -1019,6 +1229,7 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 				domain,
 				default_url,
 				config,
+				request_id,
 			)
 			.await?;
 		} else {
@@ -1026,6 +1237,7 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 				domain,
 				default_url,
 				config,
+				request_id,
 			)
 			.await?;
 		}
@@ -1039,8 +1251,9 @@ async fn update_nginx_config_for_domain_with_http_only(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for updating server with http");
+	log::trace!("request_id: {} - logging into the ssh server for updating server with http", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -1050,7 +1263,10 @@ async fn update_nginx_config_for_domain_with_http_only(
 		.await?;
 	let mut sftp = session.sftp();
 
-	log::trace!("successfully logged into the server");
+	log::trace!(
+		"request_id: {} - successfully logged into the server",
+		request_id
+	);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -1080,7 +1296,7 @@ server {{
 	writer.close().await?;
 	drop(sftp);
 	time::sleep(Duration::from_millis(1000)).await;
-	log::trace!("updated sites-enabled");
+	log::trace!("request_id: {} - updated sites-enabled", request_id);
 	let reload_result = session
 		.command("nginx")
 		.arg("-s")
@@ -1093,9 +1309,9 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 	session.close().await?;
-	log::trace!("session closed");
+	log::trace!("request_id: {} - session closed", request_id);
 	Ok(())
 }
 
@@ -1103,8 +1319,9 @@ async fn update_nginx_config_for_domain_with_https(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("logging into the ssh server for updating nginx with https");
+	log::trace!("request_id: {} - logging into the ssh server for updating nginx with https", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -1112,11 +1329,17 @@ async fn update_nginx_config_for_domain_with_https(
 		.known_hosts_check(KnownHosts::Add)
 		.connect(&config.ssh.host)
 		.await?;
-	log::trace!("successfully logged into the server");
+	log::trace!(
+		"request_id: {} - successfully logged into the server",
+		request_id
+	);
 
 	let mut sftp = session.sftp();
 
-	log::trace!("updating sites-enabled for https");
+	log::trace!(
+		"request_id: {} - updating sites-enabled for https",
+		request_id
+	);
 	let mut writer = sftp
 		.write_to(format!("/etc/nginx/sites-enabled/{}", domain))
 		.await?;
@@ -1155,7 +1378,10 @@ server {{
 		)
 		.await?;
 	writer.close().await?;
-	log::trace!("updated sites-enabled for https");
+	log::trace!(
+		"request_id: {} - updated sites-enabled for https",
+		request_id
+	);
 	drop(sftp);
 
 	let reload_result = session
@@ -1169,7 +1395,7 @@ server {{
 		return Err(Error::empty());
 	}
 
-	log::trace!("reloaded nginx");
+	log::trace!("request_id: {} - reloaded nginx", request_id);
 	session.close().await?;
 	Ok(())
 }

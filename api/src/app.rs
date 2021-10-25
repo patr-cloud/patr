@@ -57,12 +57,7 @@ pub async fn start_server(app: App) {
 		port
 	);
 	let shutdown_signal = Some(get_shutdown_signal());
-	listen(
-		eve_app,
-		(app.config.bind_address.octets(), port), // TODO make this generic
-		shutdown_signal,
-	)
-	.await;
+	listen(eve_app, (app.config.bind_address, port), shutdown_signal).await;
 }
 
 pub fn create_eve_app(
@@ -202,6 +197,7 @@ fn log_request(
 	length: &usize,
 ) {
 	log::info!(
+		target: "api::requests",
 		"{} {} {} {} - {}",
 		method,
 		path,

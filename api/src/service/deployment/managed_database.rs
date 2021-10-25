@@ -149,7 +149,7 @@ pub async fn delete_managed_database(
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			log::trace!("deleting the database from digitalocean");
+			log::trace!("Deleting the database from digitalocean");
 			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
 				digitalocean::delete_database(&digitalocean_db_id, config)
 					.await?;
@@ -165,6 +165,17 @@ pub async fn delete_managed_database(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 	}
+
+	db::update_managed_database_name(
+		connection,
+		database_id,
+		&format!(
+			"patr-deleted: {}-{}",
+			database.name,
+			hex::encode(database.id)
+		),
+	)
+	.await?;
 
 	db::update_managed_database_status(
 		connection,
