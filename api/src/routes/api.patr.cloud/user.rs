@@ -215,8 +215,8 @@ async fn get_user_info(
 	let user =
 		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 	let personal_emails = db::get_personal_emails_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -1189,8 +1189,8 @@ async fn change_password(
 	let user =
 		db::get_user_by_user_id(context.get_database_connection(), &user_id)
 			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
 
 	service::change_password_for_user(
 		context.get_database_connection(),
