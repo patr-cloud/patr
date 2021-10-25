@@ -2482,8 +2482,8 @@ pub async fn get_phone_numbers_for_user(
 pub async fn get_backup_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<String>, sqlx::Error> {
-	let rows = query!(
+) -> Result<Option<String>, sqlx::Error> {
+	query!(
 		r#"
 		SELECT
 			CONCAT("user".backup_email_local, '@', domain.name) as "email!: String"
@@ -2498,13 +2498,9 @@ pub async fn get_backup_email_for_user(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.email)
-	.collect();
-
-	Ok(rows)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| row.map(|row| row.email))
 }
 
 pub async fn delete_personal_email_for_user(
