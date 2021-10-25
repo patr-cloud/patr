@@ -24,7 +24,7 @@ lazy_static! {
 
 	// Regex for deployment entry point validation
 	// TODO remove after domains get handled through NS
-	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^([0-9a-zA-Z]+\\.[0-9a-zA-Z]+)*$").unwrap();
+	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -106,6 +106,27 @@ pub fn is_deployment_entry_point_valid(domain: &str) -> bool {
 	DEPLOYMENT_ENTRY_POINT_REGEX.is_match(domain)
 }
 
+/// Checks if the domain name is one of the special domain names
+pub fn is_domain_special(domain: &str) -> bool {
+	let special_domains = [
+		"araciv.com",
+		"getkai.co",
+		"patr.cloud",
+		"vicara.co",
+		"vicara.in",
+		"vicara.tech",
+		"vicaratech.com",
+		"vcr.to",
+		"vicandara.com",
+	];
+
+	for d in special_domains {
+		if domain.ends_with(d) {
+			return true;
+		}
+	}
+	false
+}
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	new_tld_list
 		.iter_mut()

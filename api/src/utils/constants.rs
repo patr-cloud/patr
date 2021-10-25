@@ -181,4 +181,6 @@ pub mod request_keys {
 	pub const RESPONSE_TIME: &str = "responseTime";
 	pub const DISTANCE: &str = "distance";
 	pub const RECOMMENDED_DATA_CENTER: &str = "recommendedDataCenter";
+	pub const SECONDARY_EMAILS: &str = "secondaryEmails";
+	pub const SECONDARY_PHONE_NUMBERS: &str = "secondaryPhoneNumbers";
 }
