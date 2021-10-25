@@ -677,7 +677,8 @@ async fn create_deployment(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let registry = body
 		.get(request_keys::REGISTRY)

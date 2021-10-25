@@ -208,14 +208,16 @@ async fn create_database_cluster(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let db_name = body
 		.get(request_keys::DATABASE_NAME)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let engine = body
 		.get(request_keys::ENGINE)
