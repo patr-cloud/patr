@@ -180,6 +180,7 @@ impl Display for RunningEnvironment {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SshSettings {
+	pub host_name: String,
 	pub host: String,
 	pub port: u16,
 	pub username: String,

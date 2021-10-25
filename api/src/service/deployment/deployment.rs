@@ -103,8 +103,12 @@ pub async fn create_deployment_in_organisation(
 	}
 
 	if let Some(domain_name) = domain_name {
+		let is_god_user =
+			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+		// If the entry point is not valid, OR if (the domain is special and the
+		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			validator::is_special_domain(domain_name, user_id).await?
+			(validator::is_domain_special(domain_name) && !is_god_user)
 		{
 			return Err(Error::empty()
 				.status(400)
@@ -754,6 +758,7 @@ pub async fn set_environment_variables_for_deployment(
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -767,7 +772,7 @@ pub async fn get_dns_records_for_deployments(
 
 	Ok(vec![CNameRecord {
 		cname: domain_name,
-		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+		value: config.ssh.host_name,
 	}])
 }
 
@@ -959,8 +964,8 @@ pub async fn set_domain_for_deployment(
 	);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let old_domain = deployment.domain_name;
 
 	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for deployment", request_id);

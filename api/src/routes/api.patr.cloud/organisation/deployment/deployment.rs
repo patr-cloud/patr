@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -728,7 +728,9 @@ async fn create_deployment(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
+
 	let horizontal_scale = body
 		.get(request_keys::HORIZONTAL_SCALE)
 		.map(|value| match value {
@@ -1387,9 +1389,12 @@ async fn get_domain_dns_records(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_deployments(
 		context.get_database_connection(),
 		&deployment_id,
+		config,
 	)
 	.await?
 	.into_iter()
@@ -1459,13 +1464,17 @@ async fn set_domain_name(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = &context.get_token_data().unwrap().user.id;
+	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
 	if let Some(domain_name) = domain_name {
+		// If the entry point is not valid, OR if (the domain is special and the
+		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			validator::is_special_domain(domain_name, &user_id).await?
+			(validator::is_domain_special(domain_name) && !is_god_user)
 		{
 			return Err(Error::empty()
 				.status(400)

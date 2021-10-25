@@ -2,9 +2,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use tokio::sync::RwLock;
 
-use super::Error;
-use crate::models::rbac::GOD_USER_ID;
-
 lazy_static! {
 	// Can only contain a-z, A-Z, 0-9, . and _. Cannot begin with a . (github rules, basically)
 	static ref USERNAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_]+[a-zA-Z0-9_\\.-]*$").unwrap();
@@ -27,7 +24,7 @@ lazy_static! {
 
 	// Regex for deployment entry point validation
 	// TODO remove after domains get handled through NS
-	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^([0-9a-zA-Z]+\\.[0-9a-zA-Z]+)*$").unwrap();
+	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -110,15 +107,8 @@ pub fn is_deployment_entry_point_valid(domain: &str) -> bool {
 }
 
 /// Checks if the domain name is one of the special domain names
-pub async fn is_special_domain(
-	domain: &str,
-	user_id: &[u8],
-) -> Result<bool, Error> {
-	if user_id == GOD_USER_ID.get().unwrap().as_bytes() {
-		return Ok(false);
-	}
-
-	let special_domains = vec![
+pub fn is_domain_special(domain: &str) -> bool {
+	let special_domains = [
 		"araciv.com",
 		"getkai.co",
 		"patr.cloud",
@@ -131,11 +121,11 @@ pub async fn is_special_domain(
 	];
 
 	for d in special_domains {
-		if domain.contains(d) {
-			return Ok(true);
+		if domain.ends_with(d) {
+			return true;
 		}
 	}
-	Ok(false)
+	false
 }
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	new_tld_list
