@@ -362,5 +362,67 @@ async fn migrate_from_v0_4_4(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		SET CONSTRAINTS ALL DEFERRED;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			domain_name = CONCAT(
+				'deleted.patr.cloud.',
+				ENCODE(id, 'hex'),
+				'.',
+				REPLACE(
+					domain_name,
+					CONCAT(
+						'deleted.patr.cloud.',
+						ENCODE(id, 'hex')
+					),
+					''
+				)
+			)
+		WHERE
+			domain_name NOT LIKE CONCAT(
+				'deleted.patr.cloud.',
+				ENCODE(id, 'hex'),
+				'.%'
+			) AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployed_domain
+		SET
+			domain_name = deployment.domain_name
+		FROM
+			deployment
+		WHERE
+			deployed_domain.deployment_id = deployment.id AND
+			deployment.status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		SET CONSTRAINTS ALL IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
