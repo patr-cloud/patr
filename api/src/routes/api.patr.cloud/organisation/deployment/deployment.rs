@@ -1461,8 +1461,12 @@ async fn set_domain_name(
 		})
 		.transpose()?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			validator::is_special_domain(domain_name, &user_id).await?
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
