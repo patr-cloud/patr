@@ -658,7 +658,7 @@ async fn get_backup_email(
 	.await?
 	.into_iter()
 	.next()
-	.status(400)
+	.status(404)
 	.body(error!(EMAIL_NOT_FOUND).to_string())?;
 
 	context.json(json!({
@@ -719,7 +719,7 @@ async fn get_backup_phone(
 		}));
 	} else {
 		Error::as_result()
-				.status(400)
+				.status(404)
 				.body(error!(PHONE_NUMBER_NOT_FOUND).to_string())?
 	}
 
