@@ -283,9 +283,32 @@ async fn migrate_from_v0_4_3(
 
 	query!(
 		r#"
+		UPDATE
+			deployment
+		SET
+			name = TRIM(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK 
-			(trim(name) = name);
+		ADD CONSTRAINT deployment_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			name = TRIM(name),
+			db_name = TRIM(db_name);
 		"#
 	)
 	.execute(&mut *connection)
@@ -294,8 +317,8 @@ async fn migrate_from_v0_4_3(
 	query!(
 		r#"
 		ALTER TABLE managed_database
-		ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK 
-			(trim(name) = name);
+		ADD CONSTRAINT managed_database_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
 		"#
 	)
 	.execute(&mut *connection)
@@ -304,8 +327,19 @@ async fn migrate_from_v0_4_3(
 	query!(
 		r#"
 		ALTER TABLE managed_database
-		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK 
-			(trim(db_name) = db_name);
+		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed
+		CHECK(db_name = TRIM(db_name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			name = TRIM(name);
 		"#
 	)
 	.execute(&mut *connection)
@@ -314,8 +348,8 @@ async fn migrate_from_v0_4_3(
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
-		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK 
-			(trim(name) = name);
+		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
 		"#
 	)
 	.execute(&mut *connection)

@@ -49,7 +49,10 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL
+				CONSTRAINT deployment_chk_name_is_trimmed CHECK(
+					name = TRIM(name)
+				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
 			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
@@ -88,9 +91,7 @@ pub async fn initialize_deployment_pre(
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
-			),
-			CONSTRAINT deployment_chk_name_is_trimmed CHECK 
-			(trim(name) = name)
+			)
 		);
 		"#
 	)
