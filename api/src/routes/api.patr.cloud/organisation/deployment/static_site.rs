@@ -866,9 +866,12 @@ async fn get_domain_dns_records_for_static_site(
 		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
+		config,
 	)
 	.await?
 	.into_iter()

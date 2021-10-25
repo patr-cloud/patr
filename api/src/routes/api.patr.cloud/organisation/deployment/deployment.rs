@@ -1384,9 +1384,12 @@ async fn get_domain_dns_records(
 		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_deployments(
 		context.get_database_connection(),
 		&deployment_id,
+		config,
 	)
 	.await?
 	.into_iter()
@@ -1459,13 +1462,21 @@ async fn set_domain_name(
 		.transpose()?;
 
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) &&
+			!domain_name.is_empty()
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
 		}
 	}
 	let config = context.get_state().config.clone();
+
+	let domain_name = if domain_name == Some("") {
+		None
+	} else {
+		domain_name
+	};
 
 	service::set_domain_for_deployment(
 		context.get_database_connection(),

@@ -198,7 +198,7 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&deployment_id_string,
-		"nginx.patr.cloud",
+		&config.ssh.host_name,
 		&config,
 		false,
 	)
@@ -268,7 +268,7 @@ pub(super) async fn delete_deployment(
 		.await?
 		.status();
 
-	if response.is_success() {
+	if response.is_success() || response == 404 {
 		log::trace!(
 			"request_id: {} - deployment deleted successfully!",
 			request_id
