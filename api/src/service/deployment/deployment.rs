@@ -70,6 +70,7 @@ pub async fn create_deployment_in_organisation(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
+	user_id: &[u8],
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -102,7 +103,9 @@ pub async fn create_deployment_in_organisation(
 	}
 
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			validator::is_special_domain(domain_name, user_id).await?
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));

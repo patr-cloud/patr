@@ -774,6 +774,8 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let deployment_id = service::create_deployment_in_organisation(
 		context.get_database_connection(),
 		&organisation_id,
@@ -786,6 +788,7 @@ async fn create_deployment(
 		domain_name,
 		horizontal_scale,
 		&machine_type,
+		&user_id,
 	)
 	.await?;
 
