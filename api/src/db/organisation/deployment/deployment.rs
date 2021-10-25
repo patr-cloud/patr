@@ -88,7 +88,9 @@ pub async fn initialize_deployment_pre(
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
-			)
+			),
+			CONSTRAINT deployment_chk_name_is_trimmed CHECK 
+			(trim(name) = name)
 		);
 		"#
 	)

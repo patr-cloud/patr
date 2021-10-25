@@ -264,7 +264,7 @@ async fn migrate_from_v0_4_3(
 		ALTER TABLE deployed_domain
 		ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name
 		FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;;
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
@@ -275,7 +275,47 @@ async fn migrate_from_v0_4_3(
 		ALTER TABLE deployed_domain
 		ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name
 		FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;;
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK 
+			(trim(name) = name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database
+		ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK 
+			(trim(name) = name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database
+		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK 
+			(trim(db_name) = db_name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK 
+			(trim(name) = name);
 		"#
 	)
 	.execute(&mut *connection)

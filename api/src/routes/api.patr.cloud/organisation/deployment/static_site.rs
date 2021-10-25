@@ -568,7 +568,8 @@ async fn create_static_site_deployment(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let domain_name = body
 		.get(request_keys::DOMAIN_NAME)

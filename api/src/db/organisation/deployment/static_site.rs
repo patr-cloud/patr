@@ -25,7 +25,9 @@ pub async fn initialize_static_sites_pre(
 			CONSTRAINT deployment_static_sites_uq_name_organisation_id
 				UNIQUE(name, organisation_id),
 			CONSTRAINT deployment_static_sites_uq_id_domain_name
-				UNIQUE(id, domain_name)
+				UNIQUE(id, domain_name),
+			CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK 
+			(trim(name) = name)
 		);
 		"#
 	)

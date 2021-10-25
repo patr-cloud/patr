@@ -76,7 +76,11 @@ pub async fn initialize_managed_database_pre(
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
 			CONSTRAINT managed_database_uq_name_organisation_id
-				UNIQUE(name, organisation_id)
+				UNIQUE(name, organisation_id),
+			CONSTRAINT managed_database_chk_name_is_trimmed CHECK 
+			(trim(name) = name),
+			CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK 
+			(trim(db_name) = db_name)
 		);
 		"#
 	)
