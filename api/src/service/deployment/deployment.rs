@@ -73,6 +73,12 @@ pub async fn create_deployment_in_organisation(
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
+	let region =
+		if region == "any" || region == "anywhere" || region == "ANY" || region == "ANYWHERE" {
+			"do-blr"
+		} else {
+			region
+		};
 	match registry {
 		registry if registry == "registry.patr.cloud" => (),
 		_ => {
