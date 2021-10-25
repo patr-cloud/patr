@@ -957,8 +957,8 @@ pub async fn set_domain_for_deployment(
 	);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let old_domain = deployment.domain_name;
 
 	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for deployment", request_id);
