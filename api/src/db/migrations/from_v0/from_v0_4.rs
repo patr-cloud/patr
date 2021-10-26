@@ -42,7 +42,7 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.4.0", "0.4.1", "0.4.2", "0.4.3"]
+	vec!["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4"]
 }
 
 async fn migrate_from_v0_4_0(
@@ -419,54 +419,6 @@ async fn migrate_from_v0_4_4(
 	query!(
 		r#"
 		SET CONSTRAINTS ALL IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE 
-			deployment
-		ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK(
-			name = TRIM(name)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE 
-			deployment_static_sites
-		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK(
-			name = TRIM(name)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE 
-			managed_database
-		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK(
-			name = TRIM(name)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE 
-			managed_database
-		ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
-			name = TRIM(name)
-		);
 		"#
 	)
 	.execute(&mut *connection)
