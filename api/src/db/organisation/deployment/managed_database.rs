@@ -60,8 +60,14 @@ pub async fn initialize_managed_database_pre(
 		r#"
 		CREATE TABLE managed_database(
 			id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
-			db_name VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL
+				CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
+					name = TRIM(name)
+				),
+			db_name VARCHAR(255) NOT NULL
+				CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK(
+					db_name = TRIM(db_name)
+				),
 			engine MANAGED_DATABASE_ENGINE NOT NULL,
 			version TEXT NOT NULL,
 			num_nodes INTEGER NOT NULL,

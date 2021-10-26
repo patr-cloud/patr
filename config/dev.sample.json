@@ -64,6 +64,7 @@
 		"authorizationHeader": "auth key"
 	},
 	"ssh": {
+		"hostName": "nginx.patr.cloud",
 		"host": "127.0.0.1",
 		"port": 22,
 		"username": "root",
