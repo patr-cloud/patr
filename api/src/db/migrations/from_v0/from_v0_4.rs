@@ -424,5 +424,53 @@ async fn migrate_from_v0_4_4(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE 
+			deployment
+		ADD CONSTRAINT deployment_chk_name_is_trimmed CHECK(
+			name = TRIM(name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE 
+			deployment_static_sites
+		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK(
+			name = TRIM(name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE 
+			managed_database
+		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK(
+			name = TRIM(name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE 
+			managed_database
+		ADD CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
+			name = TRIM(name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
