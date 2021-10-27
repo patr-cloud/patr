@@ -217,18 +217,60 @@ async fn get_user_info(
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
-	let personal_emails = db::get_personal_emails_for_user(
+
+	let backup_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?;
 
-	let phone_numbers = db::get_phone_numbers_for_user(
+	let secondary_emails = db::get_personal_emails_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
 	.into_iter()
+	.filter(|email| {
+		if let Some(backup_email) = &backup_email {
+			email != backup_email
+		} else {
+			true
+		}
+	})
+	.collect::<Vec<_>>();
+
+	let backup_country_code = user.backup_phone_country_code;
+	let backup_phone_number = user.backup_phone_number;
+
+	let backup_phone_number = backup_country_code
+		.as_ref()
+		.zip(backup_phone_number.as_ref())
+		.map(|(backup_country_code, backup_phone_number)| {
+			json!({
+				request_keys::COUNTRY_CODE: backup_country_code,
+				request_keys::PHONE_NUMBER: backup_phone_number
+			})
+		});
+
+	let secondary_phone_numbers = db::get_phone_numbers_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.filter(|phone_number| {
+		if let Some((backup_country_code, backup_phone_number)) =
+			backup_country_code
+				.as_ref()
+				.zip(backup_phone_number.as_ref())
+		{
+			// If phone code AND number is the same as backup, return false
+			!(phone_number.country_code != *backup_country_code &&
+				phone_number.number != *backup_phone_number)
+		} else {
+			true
+		}
+	})
 	.map(|phone_number| {
 		json!({
 			request_keys::COUNTRY_CODE: phone_number.country_code,
@@ -246,8 +288,10 @@ async fn get_user_info(
 		request_keys::BIO: user.bio,
 		request_keys::LOCATION: user.location,
 		request_keys::CREATED: user.created,
-		request_keys::EMAILS: personal_emails,
-		request_keys::PHONE_NUMBERS: phone_numbers
+		request_keys::BACKUP_EMAIL: backup_email,
+		request_keys::SECONDARY_EMAILS: secondary_emails,
+		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
+		request_keys::SECONDARY_PHONE_NUMBERS: secondary_phone_numbers,
 	}));
 	Ok(context)
 }
@@ -537,15 +581,31 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let email_addresses_list = db::get_personal_emails_for_user(
+	let backup_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?;
 
+	let secondary_emails = db::get_personal_emails_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?
+	.into_iter()
+	.filter(|email| {
+		if let Some(backup_email) = &backup_email {
+			email != backup_email
+		} else {
+			true
+		}
+	})
+	.collect::<Vec<_>>();
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::EMAILS: email_addresses_list
+		request_keys::BACKUP_EMAIL: backup_email,
+		request_keys::SECONDARY_EMAILS: secondary_emails
 	}));
 	Ok(context)
 }
@@ -585,12 +645,44 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let phone_numbers_list = db::get_phone_numbers_for_user(
+	let user_data =
+		db::get_user_by_user_id(context.get_database_connection(), &user_id)
+			.await?
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let backup_country_code = user_data.backup_phone_country_code;
+	let backup_phone_number = user_data.backup_phone_number;
+
+	let backup_phone_number = backup_country_code
+		.as_ref()
+		.zip(backup_phone_number.as_ref())
+		.map(|(backup_country_code, backup_phone_number)| {
+			json!({
+				request_keys::COUNTRY_CODE: backup_country_code,
+				request_keys::PHONE_NUMBER: backup_phone_number
+			})
+		});
+
+	let secondary_phone_numbers = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
 	.into_iter()
+	.filter(|phone_number| {
+		if let Some((backup_country_code, backup_phone_number)) =
+			backup_country_code
+				.as_ref()
+				.zip(backup_phone_number.as_ref())
+		{
+			// If phone code AND number is the same as backup, return false
+			!(phone_number.country_code != *backup_country_code &&
+				phone_number.number != *backup_phone_number)
+		} else {
+			true
+		}
+	})
 	.map(|phone_number| {
 		json!({
 			request_keys::COUNTRY_CODE: phone_number.country_code,
@@ -601,7 +693,8 @@ async fn list_phone_numbers(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::PHONE_NUMBERS: phone_numbers_list
+		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
+		request_keys::SECONDARY_PHONE_NUMBERS: secondary_phone_numbers
 	}));
 	Ok(context)
 }

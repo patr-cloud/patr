@@ -6,7 +6,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::EventData,
+		db_mapping::{DeploymentStatus, EventData},
 		error::{id as ErrorId, message as ErrorMessage},
 	},
 	pin_fn,
@@ -35,7 +35,6 @@ use crate::{
 /// containing context, middleware, object of [`App`] and Error
 ///
 /// [`App`]: App
-// TODO: add custom header for this endpoint
 pub fn create_sub_app(
 	app: &App,
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
@@ -163,6 +162,9 @@ pub async fn notification_handler(
 			.await?;
 
 		for deployment in deployments {
+			if let DeploymentStatus::Stopped = deployment.status {
+				continue;
+			}
 			let full_image_name = format!(
 				"{}@{}",
 				deployment

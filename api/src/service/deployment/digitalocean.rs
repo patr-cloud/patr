@@ -3,6 +3,7 @@ use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
+use uuid::Uuid;
 
 use crate::{
 	db,
@@ -43,6 +44,12 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean App platform with request_id: {}",
+		hex::encode(&deployment_id),
+		image_id,
+		request_id
+	);
 	let deployment = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&deployment_id,
@@ -54,37 +61,45 @@ pub(super) async fn deploy_container(
 	let client = Client::new();
 	let deployment_id_string = hex::encode(&deployment_id);
 
-	log::trace!("Deploying deployment: {}", deployment_id_string);
+	log::trace!(
+		"request_id: {} - Deploying deployment: {}",
+		request_id,
+		deployment_id_string,
+	);
 	let _ = super::update_deployment_status(
 		&deployment_id,
 		&DeploymentStatus::Pushed,
 	)
 	.await;
 
-	log::trace!("Pulling image from registry");
+	log::trace!("request_id: {} - Pulling image from registry", request_id);
 	super::pull_image_from_registry(&image_id, &config).await?;
-	log::trace!("Image pulled");
+	log::trace!("request_id: {} - Image pulled", request_id);
 
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
 		config.digitalocean.registry, deployment_id_string,
 	);
-	log::trace!("Pushing to {}", new_repo_name);
+	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
 
 	// rename the docker image with the digital ocean registry url
 	super::tag_docker_image(&image_id, &new_repo_name).await?;
-	log::trace!("Image tagged");
+	log::trace!("request_id: {} - Image tagged", request_id);
 
 	// Get login details from digital ocean registry and decode from base 64 to
 	// binary
 	let auth_token =
 		base64::decode(get_registry_auth_token(&config, &client).await?)?;
-	log::trace!("Got auth token");
+	log::trace!("request_id: {} - Got auth token", request_id);
 
 	// Convert auth token from binary to utf8
 	let auth_token = str::from_utf8(&auth_token)?;
-	log::trace!("Decoded auth token as {}", auth_token);
+	log::trace!(
+		"request_id: {} - Decoded auth token as {}",
+		auth_token,
+		request_id
+	);
 
 	// get username and password from the auth token
 	let (username, password) = auth_token
@@ -105,14 +120,14 @@ pub(super) async fn deploy_container(
 		.spawn()?
 		.wait()
 		.await?;
-	log::trace!("Logged into DO registry");
+	log::trace!("request_id: {} - Logged into DO registry", request_id);
 
 	if !output.success() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
-	log::trace!("Login was success");
+	log::trace!("request_id: {} - Login was success", request_id);
 
 	// if the loggin in is successful the push the docker image to registry
 	let push_status = Command::new("docker")
@@ -123,18 +138,26 @@ pub(super) async fn deploy_container(
 		.spawn()?
 		.wait()
 		.await?;
-	log::trace!("Pushing to DO to {}", new_repo_name);
+	log::trace!(
+		"request_id: {} - Pushing to DO to {}",
+		request_id,
+		new_repo_name,
+	);
 
 	if !push_status.success() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
-	log::trace!("Pushed to DO");
+	log::trace!("request_id: {} - Pushed to DO", request_id);
 
 	// if the app exists then only create a deployment
 	let app_exists = app_exists(&deployment_id, &config, &client).await?;
-	log::trace!("App exists as {:?}", app_exists);
+	log::trace!(
+		"request_id: {} - App exists as {:?}",
+		request_id,
+		app_exists
+	);
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -144,8 +167,9 @@ pub(super) async fn deploy_container(
 
 	let app_id = if let Some(app_id) = app_exists {
 		// the function to create a new deployment
+		log::trace!("request_id: {} - Redeploying app", request_id);
 		redeploy_application(&app_id, &config, &client).await?;
-		log::trace!("App redeployed");
+		log::trace!("request_id: {} - App redeployed", request_id);
 		app_id
 	} else {
 		// if the app doesn't exists then create a new app
@@ -158,31 +182,36 @@ pub(super) async fn deploy_container(
 			&client,
 		)
 		.await?;
-		log::trace!("App created");
+		log::trace!("request_id: {} - App created", request_id);
 		app_id
 	};
 
 	// wait for the app to be completed to be deployed
 	let default_url = wait_for_app_deploy(&app_id, &config, &client).await;
-	log::trace!("App ingress is at {}", default_url);
+	log::trace!(
+		"request_id: {} - App ingress is at {}",
+		default_url,
+		request_id
+	);
 
 	// update DNS
-	log::trace!("updating DNS");
+	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&deployment_id_string,
-		"nginx.patr.cloud",
+		&config.ssh.host_name,
 		&config,
 		false,
 	)
 	.await?;
-	log::trace!("DNS Updated");
+	log::trace!("request_id: {} - DNS Updated", request_id);
 
-	log::trace!("adding reverse proxy");
+	log::trace!("request_id: {} - adding reverse proxy", request_id);
 	super::update_nginx_with_all_domains_for_deployment(
 		&deployment_id_string,
 		&default_url,
 		deployment.domain_name.as_deref(),
 		&config,
+		request_id,
 	)
 	.await?;
 
@@ -191,11 +220,14 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
-	log::trace!("deleting image tagged with digitalocean registry");
+	log::trace!(
+		"request_id: {} - deleting image tagged with digitalocean registry",
+		request_id
+	);
 	let _ = super::delete_docker_image(&new_repo_name).await;
-	log::trace!("deleting the pulled image");
+	log::trace!("request_id: {} - deleting the pulled image", request_id);
 	let _ = super::delete_docker_image(&image_id).await;
-	log::trace!("Docker image deleted");
+	log::trace!("request_id: {} - Docker image deleted", request_id);
 
 	Ok(())
 }
@@ -204,24 +236,31 @@ pub(super) async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<(), Error> {
-	log::trace!("retreiving and comparing the deployment ids");
+	log::trace!(
+		"request_id: {} - retreiving and comparing the deployment ids",
+		request_id
+	);
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)?
 		.digitalocean_app_id;
 	let app_id = if let Some(app_id) = app_id {
-		log::trace!("deployment ids matched");
+		log::trace!("request_id: {} - deployment ids matched", request_id);
 		app_id
 	} else {
 		log::error!("deployment ids did not match");
 		return Ok(());
 	};
 
-	log::trace!("deleting the image from registry");
+	log::trace!(
+		"request_id: {} - deleting the image from registry",
+		request_id
+	);
 	delete_image_from_digitalocean_registry(deployment_id, config).await?;
 
-	log::trace!("deleting the deployment");
+	log::trace!("request_id: {} - deleting the deployment", request_id);
 	let response = Client::new()
 		.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 		.bearer_auth(&config.digitalocean.api_key)
@@ -229,11 +268,14 @@ pub(super) async fn delete_deployment(
 		.await?
 		.status();
 
-	if response.is_success() {
-		log::trace!("deployment deleted successfully!");
+	if response.is_success() || response == 404 {
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
 		Ok(())
 	} else {
-		log::trace!("deployment deletion failed");
+		log::trace!("request_id: {} - deployment deletion failed", request_id);
 		Err(Error::empty())
 	}
 }
@@ -242,17 +284,24 @@ pub(super) async fn get_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	config: &Settings,
+	request_id: Uuid,
 ) -> Result<String, Error> {
 	let client = Client::new();
 
-	log::info!("retreiving deployment info from db");
+	log::trace!(
+		"request_id: {} - retreiving deployment info from db",
+		request_id
+	);
 	let app_id = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.map(|deployment| deployment.digitalocean_app_id)
 		.flatten()
 		.status(500)?;
 
-	log::info!("getting app id from digitalocean api");
+	log::trace!(
+		"request_id: {} - getting app id from digitalocean api",
+		request_id
+	);
 	let deployment_id = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments",
@@ -269,7 +318,10 @@ pub(super) async fn get_container_logs(
 		.map(|deployment| deployment.id)
 		.status(500)?;
 
-	log::info!("getting RUN logs from digitalocean");
+	log::trace!(
+		"request_id: {} - getting RUN logs from digitalocean",
+		request_id
+	);
 	let log_url = client
 		.get(format!(
 			"https://api.digitalocean.com/v2/apps/{}/deployments/{}/logs",
@@ -284,7 +336,7 @@ pub(super) async fn get_container_logs(
 		.live_url;
 
 	let logs = client.get(log_url).send().await?.text().await?;
-	log::info!("logs retreived successfully!");
+	log::trace!("request_id: {} - logs retreived successfully!", request_id);
 	Ok(logs)
 }
 
@@ -299,7 +351,12 @@ pub(super) async fn create_managed_database_cluster(
 	region: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
-	log::trace!("creating a digital ocean managed database");
+	let request_id = Uuid::new_v4();
+	log::trace!("Creating a managed database on digitalocean with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
+		hex::encode(&database_id),
+		db_name,
+		request_id
+	);
 	let client = Client::new();
 
 	let do_db_name = format!("database-{}", get_current_time().as_millis());
@@ -326,7 +383,7 @@ pub(super) async fn create_managed_database_cluster(
 		}
 	};
 
-	log::trace!("sending the create db cluster request to digital ocean");
+	log::trace!("request_id: {} - sending the create db cluster request to digital ocean", request_id);
 	let database_cluster = client
 		.post("https://api.digitalocean.com/v2/databases")
 		.bearer_auth(&config.digitalocean.api_key)
@@ -342,7 +399,7 @@ pub(super) async fn create_managed_database_cluster(
 		.await?
 		.json::<DatabaseResponse>()
 		.await?;
-	log::trace!("database created");
+	log::trace!("request_id: {} - database created", request_id);
 
 	db::update_digitalocean_db_id_for_database(
 		connection,
@@ -359,6 +416,7 @@ pub(super) async fn create_managed_database_cluster(
 			database_id.clone(),
 			db_name,
 			database_cluster.database.id,
+			request_id,
 		)
 		.await;
 
@@ -382,6 +440,11 @@ pub(super) async fn delete_database(
 	digitalocean_db_id: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("Deleting managed database on DigitalOcean with digital_ocean_id: {} and request_id: {}",
+		digitalocean_db_id,
+		request_id,
+	);
 	let client = Client::new();
 
 	let database_status = client
@@ -399,6 +462,7 @@ pub(super) async fn delete_database(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
+	log::trace!("request_id: {} - database deletion successfull", request_id);
 	Ok(())
 }
 
@@ -459,12 +523,16 @@ async fn update_database_cluster_credentials(
 	database_id: Vec<u8>,
 	db_name: String,
 	digitalocean_db_id: String,
+	request_id: Uuid,
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let settings = service::get_settings();
 
 	// Wait for the database to be online
-	log::trace!("waiting for database to be online");
+	log::trace!(
+		"request_id: {} - waiting for database to be online",
+		request_id
+	);
 	loop {
 		let database_status = client
 			.get(format!(
@@ -496,9 +564,12 @@ async fn update_database_cluster_credentials(
 
 		time::sleep(Duration::from_millis(1000)).await;
 	}
-	log::trace!("database online");
+	log::trace!("request_id: {} - database online", request_id);
 
-	log::trace!("creating a new database inside cluster");
+	log::trace!(
+		"request_id: {} - creating a new database inside cluster",
+		request_id
+	);
 	let new_db_status = client
 		.post(format!(
 			"https://api.digitalocean.com/v2/databases/{}/dbs",
@@ -516,14 +587,17 @@ async fn update_database_cluster_credentials(
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
 
-	log::trace!("updating to the db status to running");
+	log::trace!(
+		"request_id: {} - updating to the db status to running",
+		request_id
+	);
 	// wait for database to start
 	super::update_managed_database_status(
 		&database_id,
 		&ManagedDatabaseStatus::Running,
 	)
 	.await?;
-	log::trace!("database successfully updated");
+	log::trace!("request_id: {} - database successfully updated", request_id);
 
 	Ok(())
 }

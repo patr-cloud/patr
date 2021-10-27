@@ -149,7 +149,7 @@ pub async fn delete_managed_database(
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
-			log::trace!("deleting the database from digitalocean");
+			log::trace!("Deleting the database from digitalocean");
 			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
 				digitalocean::delete_database(&digitalocean_db_id, config)
 					.await?;

@@ -1,6 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -564,7 +565,8 @@ async fn create_static_site_deployment(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let domain_name = body
 		.get(request_keys::DOMAIN_NAME)
@@ -588,15 +590,14 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let static_site_id = service::create_static_site_deployment_in_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-		name,
-		domain_name,
-		file,
-		&config,
-	)
-	.await?;
+	let static_site_id =
+		service::create_static_site_deployment_in_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			name,
+			domain_name,
+		)
+		.await?;
 
 	context.commit_database_transaction().await?;
 
@@ -604,6 +605,7 @@ async fn create_static_site_deployment(
 		context.get_database_connection(),
 		static_site_id.as_bytes(),
 		&config,
+		file,
 	)
 	.await?;
 
@@ -652,6 +654,7 @@ async fn start_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 		&config,
+		None,
 	)
 	.await?;
 
@@ -706,11 +709,18 @@ async fn upload_files_for_static_site(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"Uploading the file for static site with id: {} and request_id: {}",
+		hex::encode(&static_site_id),
+		request_id
+	);
 	service::upload_files_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
 		file,
 		&config,
+		request_id,
 	)
 	.await?;
 
@@ -854,9 +864,12 @@ async fn get_domain_dns_records_for_static_site(
 		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
+		config,
 	)
 	.await?
 	.into_iter()

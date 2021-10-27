@@ -111,7 +111,7 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 			)
 			.appender(
 				Appender::builder().build(
-					"requests",
+					"app",
 					Box::new(
 						RollingFileAppender::builder()
 							.encoder(Box::new(PatternEncoder::new(
@@ -126,6 +126,30 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 										FixedWindowRoller::builder()
 											.base(0)
 											.build("log/app.{}.gz", 10)
+											.expect("unable to build fixed window roller"),
+									),
+								)),
+							)?,
+					),
+				),
+			)
+			.appender(
+				Appender::builder().build(
+					"requests",
+					Box::new(
+						RollingFileAppender::builder()
+							.encoder(Box::new(PatternEncoder::new(
+								"[{d(%a, %d-%b-%Y %I:%M:%S %P)} - {l}]: {m}{n}",
+							)))
+							.append(true)
+							.build(
+								"log/requests.log",
+								Box::new(CompoundPolicy::new(
+									Box::new(SizeTrigger::new(1024 * 1024 * 100)),
+									Box::new(
+										FixedWindowRoller::builder()
+											.base(0)
+											.build("log/requests.{}.gz", 10)
 											.expect("unable to build fixed window roller"),
 									),
 								)),
@@ -160,7 +184,7 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 			.logger(
 				Logger::builder()
 					.appender("console")
-					.appender("requests")
+					.appender("app")
 					.additive(false)
 					.build("api", LevelFilter::Trace),
 			)
@@ -169,6 +193,12 @@ pub async fn initialize(config: &Settings) -> Result<Handle> {
 					.appender("queries")
 					.additive(false)
 					.build("api::queries", LevelFilter::Trace),
+			)
+			.logger(
+				Logger::builder()
+					.appender("requests")
+					.additive(false)
+					.build("api::requests", LevelFilter::Trace),
 			)
 			.logger(
 				Logger::builder()
