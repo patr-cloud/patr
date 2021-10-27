@@ -6,7 +6,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::EventData,
+		db_mapping::{DeploymentStatus, EventData},
 		error::{id as ErrorId, message as ErrorMessage},
 	},
 	pin_fn,
@@ -161,6 +161,9 @@ pub async fn notification_handler(
 			.await?;
 
 		for deployment in deployments {
+			if let DeploymentStatus::Stopped = deployment.status {
+				continue;
+			}
 			let full_image_name = format!(
 				"{}@{}",
 				deployment

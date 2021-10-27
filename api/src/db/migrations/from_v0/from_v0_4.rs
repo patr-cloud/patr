@@ -25,6 +25,7 @@ pub async fn migrate(
 		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection).await?,
 		(0, 4, 2) => migrate_from_v0_4_2(&mut *connection).await?,
 		(0, 4, 3) => migrate_from_v0_4_3(&mut *connection).await?,
+		(0, 4, 4) => migrate_from_v0_4_4(&mut *connection).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -41,7 +42,7 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.4.0", "0.4.1", "0.4.2", "0.4.3"]
+	vec!["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4"]
 }
 
 async fn migrate_from_v0_4_0(
@@ -264,7 +265,7 @@ async fn migrate_from_v0_4_3(
 		ALTER TABLE deployed_domain
 		ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name
 		FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;;
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
@@ -275,7 +276,149 @@ async fn migrate_from_v0_4_3(
 		ALTER TABLE deployed_domain
 		ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name
 		FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;;
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn migrate_from_v0_4_4(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			name = TRIM(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			managed_database
+		SET
+			name = TRIM(name),
+			db_name = TRIM(db_name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database
+		ADD CONSTRAINT managed_database_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_database
+		ADD CONSTRAINT managed_database_chk_db_name_is_trimmed
+		CHECK(db_name = TRIM(db_name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment_static_sites
+		SET
+			name = TRIM(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		ADD CONSTRAINT deployment_static_sites_chk_name_is_trimmed
+		CHECK(name = TRIM(name));
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		SET CONSTRAINTS ALL DEFERRED;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			domain_name = CONCAT(
+				'deleted.patr.cloud.',
+				ENCODE(id, 'hex'),
+				'.',
+				REPLACE(
+					domain_name,
+					CONCAT(
+						'deleted.patr.cloud.',
+						ENCODE(id, 'hex')
+					),
+					''
+				)
+			)
+		WHERE
+			domain_name NOT LIKE CONCAT(
+				'deleted.patr.cloud.',
+				ENCODE(id, 'hex'),
+				'.%'
+			) AND
+			status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployed_domain
+		SET
+			domain_name = deployment.domain_name
+		FROM
+			deployment
+		WHERE
+			deployed_domain.deployment_id = deployment.id AND
+			deployment.status = 'deleted';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		SET CONSTRAINTS ALL IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)

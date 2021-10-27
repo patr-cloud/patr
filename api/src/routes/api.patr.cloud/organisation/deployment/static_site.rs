@@ -568,7 +568,8 @@ async fn create_static_site_deployment(
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim();
 
 	let domain_name = body
 		.get(request_keys::DOMAIN_NAME)
@@ -866,9 +867,12 @@ async fn get_domain_dns_records_for_static_site(
 		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
 			.unwrap();
 
+	let config = context.get_state().config.clone();
+
 	let cname_records = service::get_dns_records_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
+		config,
 	)
 	.await?
 	.into_iter()

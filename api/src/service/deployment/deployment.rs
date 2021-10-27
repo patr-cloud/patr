@@ -70,9 +70,19 @@ pub async fn create_deployment_in_organisation(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
+	user_id: &[u8],
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
+	let region = if region == "any" ||
+		region == "anywhere" ||
+		region == "ANY" ||
+		region == "ANYWHERE"
+	{
+		"do-blr"
+	} else {
+		region
+	};
 	match registry {
 		registry if registry == "registry.patr.cloud" => (),
 		_ => {
@@ -102,7 +112,13 @@ pub async fn create_deployment_in_organisation(
 	}
 
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		let is_god_user =
+			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+		// If the entry point is not valid, OR if (the domain is special and the
+		// user is not god user)
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			(validator::is_domain_special(domain_name) && !is_god_user)
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
@@ -751,6 +767,7 @@ pub async fn set_environment_variables_for_deployment(
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
+	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
@@ -764,7 +781,7 @@ pub async fn get_dns_records_for_deployments(
 
 	Ok(vec![CNameRecord {
 		cname: domain_name,
-		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+		value: config.ssh.host_name,
 	}])
 }
 
@@ -956,8 +973,8 @@ pub async fn set_domain_for_deployment(
 	);
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let old_domain = deployment.domain_name;
 
 	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for deployment", request_id);
