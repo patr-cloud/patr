@@ -590,14 +590,13 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let static_site_id =
-		service::create_static_site_deployment_in_workspace(
-			context.get_database_connection(),
-			&workspace_id,
-			name,
-			domain_name,
-		)
-		.await?;
+	let static_site_id = service::create_static_site_deployment_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		name,
+		domain_name,
+	)
+	.await?;
 
 	context.commit_database_transaction().await?;
 
