@@ -1,10 +1,10 @@
 use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
-mod deployment;
+mod docker_registry;
 mod domain;
+mod infrastructure;
 
-pub use deployment::*;
-pub use domain::*;
+pub use self::{docker_registry::*, domain::*, infrastructure::*};
 
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -64,7 +64,8 @@ pub async fn initialize_workspaces_pre(
 	.await?;
 
 	domain::initialize_domain_pre(connection).await?;
-	deployment::initialize_deployment_pre(connection).await?;
+	docker_registry::initialize_docker_registry_pre(connection).await?;
+	infrastructure::initialize_deployment_pre(connection).await?;
 
 	Ok(())
 }
@@ -85,7 +86,8 @@ pub async fn initialize_workspaces_post(
 	.await?;
 
 	domain::initialize_domain_post(connection).await?;
-	deployment::initialize_deployment_post(connection).await?;
+	docker_registry::initialize_docker_registry_post(connection).await?;
+	infrastructure::initialize_deployment_post(connection).await?;
 
 	Ok(())
 }
