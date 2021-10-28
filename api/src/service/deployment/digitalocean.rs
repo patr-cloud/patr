@@ -149,6 +149,7 @@ pub(super) async fn deploy_container(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
+
 	log::trace!("request_id: {} - Pushed to DO", request_id);
 
 	// if the app exists then only create a deployment
