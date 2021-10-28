@@ -8,6 +8,7 @@ mod config;
 mod email_template;
 mod iterable_module;
 mod migrate_query;
+mod migrate_query_as;
 mod query;
 mod query_as;
 mod render;
@@ -22,6 +23,11 @@ pub fn query(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn migrate_query(input: TokenStream) -> TokenStream {
 	migrate_query::parse(input)
+}
+
+#[proc_macro]
+pub fn migrate_query_as(input: TokenStream) -> TokenStream {
+	migrate_query_as::parse(input)
 }
 
 #[proc_macro]

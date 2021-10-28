@@ -75,9 +75,9 @@ pub struct UserToSignUp {
 	pub backup_phone_country_code: Option<String>,
 	pub backup_phone_number: Option<String>,
 
-	pub org_email_local: Option<String>,
-	pub org_domain_name: Option<String>,
-	pub organisation_name: Option<String>,
+	pub business_email_local: Option<String>,
+	pub business_domain_name: Option<String>,
+	pub business_name: Option<String>,
 
 	pub otp_hash: String,
 	pub otp_expiry: u64,

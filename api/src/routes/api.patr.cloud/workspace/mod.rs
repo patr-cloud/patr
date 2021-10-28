@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -18,18 +18,16 @@ use crate::{
 	},
 };
 
-mod application;
-mod deployment;
 mod docker_registry;
 mod domain;
-mod portus;
+mod infrastructure;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
 /// creates an eve app which binds the endpoint with functions. This file
-/// contains major enpoints which are meant for the organisations, and all other
+/// contains major enpoints which are meant for the workspaces, and all other
 /// endpoints will come uder these
 ///
 /// # Arguments
@@ -48,30 +46,27 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
-		"/:organisationId/info",
+		"/:workspaceId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_organisation_info)),
+			EveMiddleware::CustomFunction(pin_fn!(get_workspace_info)),
 		],
 	);
-	// Disabled for the demo
-	/*
 	sub_app.post(
-		"/:organisationId/info",
+		"/:workspaceId/info",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::EDIT_INFO,
+				permissions::workspace::EDIT_INFO,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -84,28 +79,19 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(update_organisation_info)),
+			EveMiddleware::CustomFunction(pin_fn!(update_workspace_info)),
 		],
 	);
 	sub_app.use_sub_app(
-		"/:organisationId/application",
-		application::create_sub_app(app),
-	);
-	*/
-	sub_app.use_sub_app(
-		"/:organisationId/deployment",
-		deployment::create_sub_app(app),
+		"/:workspaceId/infrastructure",
+		infrastructure::create_sub_app(app),
 	);
 	sub_app.use_sub_app(
-		"/:organisationId/docker-registry",
+		"/:workspaceId/docker-registry",
 		docker_registry::create_sub_app(app),
 	);
-	// Disabled for the demo
-	/*
-	sub_app.use_sub_app("/:organisationId/domain", domain::create_sub_app(app));
-	sub_app.use_sub_app("/:organisationId/portus", portus::creare_sub_app(app));
-	sub_app
-		.use_sub_app("/:organisationId/rbac", rbac_routes::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 
 	sub_app.get(
 		"/is-name-available",
@@ -118,18 +104,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(create_new_organisation)),
+			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
 		],
 	);
-	*/
 	sub_app
 }
 
 /// # Description
-/// This function is used to get details about an organisation
+/// This function is used to get details about an workspace
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -144,7 +129,7 @@ pub fn create_sub_app(
 /// ```
 /// {
 ///    success: true or false,
-///    organisationId: ,
+///    workspaceId: ,
 ///    name: ,
 ///    active: true or false,
 ///    created:
@@ -153,21 +138,23 @@ pub fn create_sub_app(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_organisation_info(
+async fn get_workspace_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let org_id_string = context
-		.get_param(request_keys::ORGANISATION_ID)
+	let workspace_id_string = context
+		.get_param(request_keys::WORKSPACE_ID)
 		.unwrap()
 		.clone();
-	let organisation_id = hex::decode(&org_id_string)
+	let workspace_id = hex::decode(&workspace_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let access_token_data = context.get_token_data().unwrap();
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
-	if !access_token_data.orgs.contains_key(&org_id_string) &&
+	if !access_token_data
+		.workspaces
+		.contains_key(&workspace_id_string) &&
 		access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
@@ -175,9 +162,9 @@ async fn get_organisation_info(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	let organisation = db::get_organisation_info(
+	let workspace = db::get_workspace_info(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.status(500)
@@ -185,15 +172,15 @@ async fn get_organisation_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ORGANISATION_ID: org_id_string,
-		request_keys::NAME: organisation.name,
-		request_keys::ACTIVE: organisation.active
+		request_keys::WORKSPACE_ID: workspace_id_string,
+		request_keys::NAME: workspace.name,
+		request_keys::ACTIVE: workspace.active
 	}));
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to check if the organisation name is available or not
+/// This function is used to check if the workspace name is available or not
 /// required inputs:
 /// auth token in the authorization headers
 /// ```
@@ -225,7 +212,7 @@ async fn is_name_available(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_name = context
+	let workspace_name = context
 		.get_request()
 		.get_query()
 		.get(request_keys::NAME)
@@ -233,9 +220,9 @@ async fn is_name_available(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let allowed = service::is_organisation_name_allowed(
+	let allowed = service::is_workspace_name_allowed(
 		context.get_database_connection(),
-		&organisation_name,
+		&workspace_name,
 	)
 	.await?;
 
@@ -247,12 +234,12 @@ async fn is_name_available(
 }
 
 /// # Description
-/// This function is used to create new organisation
+/// This function is used to create new workspace
 /// required inputs:
 /// auth token in the authorization headers
 /// ```
 /// {
-///     organisationName:
+///     workspaceName:
 /// }
 /// ```
 ///
@@ -269,20 +256,20 @@ async fn is_name_available(
 /// ```
 /// {
 ///    success: true or false,
-///    organisationId:
+///    workspaceId:
 /// }
 /// ```
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn create_new_organisation(
+async fn create_new_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let organisation_name = body
-		.get(request_keys::ORGANISATION_NAME)
+	let workspace_name = body
+		.get(request_keys::WORKSPACE_NAME)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
@@ -291,26 +278,26 @@ async fn create_new_organisation(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let org_id = service::create_organisation(
+	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
-		&organisation_name,
+		&workspace_name,
 		&user_id,
 	)
 	.await?;
-	let org_id_string = org_id.as_bytes().encode_hex::<String>();
+	let workspace_id_string = workspace_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ORGANISATION_ID: org_id_string
+		request_keys::WORKSPACE_ID: workspace_id_string
 	}));
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to update the organisation details
+/// This function is used to update the workspace details
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///     name:
@@ -335,15 +322,14 @@ async fn create_new_organisation(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_organisation_info(
+async fn update_workspace_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let body = context.get_body_object().clone();
 
-	let organisation_id =
-		context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let organisation_id = hex::decode(&organisation_id).unwrap();
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = hex::decode(&workspace_id).unwrap();
 
 	let name = body
 		.get(request_keys::NAME)
@@ -364,7 +350,7 @@ async fn update_organisation_info(
 	}
 	let name = name.unwrap();
 
-	let allowed = service::is_organisation_name_allowed(
+	let allowed = service::is_workspace_name_allowed(
 		context.get_database_connection(),
 		&name,
 	)
@@ -372,12 +358,12 @@ async fn update_organisation_info(
 	if !allowed {
 		Error::as_result()
 			.status(400)
-			.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
+			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 	}
 
-	db::update_organisation_name(
+	db::update_workspace_name(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 		&name,
 	)
 	.await?;

@@ -34,9 +34,9 @@ use crate::{
 	Database,
 };
 
-pub async fn create_static_site_deployment_in_organisation(
+pub async fn create_static_site_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
 ) -> Result<Uuid, Error> {
@@ -47,10 +47,10 @@ pub async fn create_static_site_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	let existing_static_site = db::get_static_site_by_name_in_organisation(
+	let existing_static_site = db::get_static_site_by_name_in_workspace(
 		connection,
 		name,
-		organisation_id,
+		workspace_id,
 	)
 	.await?;
 	if existing_static_site.is_some() {
@@ -71,7 +71,7 @@ pub async fn create_static_site_deployment_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -81,7 +81,7 @@ pub async fn create_static_site_deployment_in_organisation(
 		static_site_id,
 		name,
 		domain_name,
-		organisation_id,
+		workspace_id,
 	)
 	.await?;
 

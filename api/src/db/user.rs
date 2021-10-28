@@ -3,7 +3,6 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		PhoneCountryCode,
@@ -12,6 +11,7 @@ use crate::{
 		UserLogin,
 		UserPhoneNumber,
 		UserToSignUp,
+		Workspace,
 	},
 	query,
 	query_as,
@@ -183,17 +183,17 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE organisation_email(
+		CREATE TABLE business_email(
 			user_id BYTEA NOT NULL
-				CONSTRAINT organisation_email_fk_user_id REFERENCES "user"(id),
+				CONSTRAINT business_email_fk_user_id REFERENCES "user"(id),
 			local VARCHAR(64) NOT NULL
-				CONSTRAINT organisation_email_chk_local_is_lower_case CHECK(
+				CONSTRAINT business_email_chk_local_is_lower_case CHECK(
 					local = LOWER(local)
 				),
 			domain_id BYTEA NOT NULL
-				CONSTRAINT organisation_email_fk_domain_id
-					REFERENCES organisation_domain(id),
-			CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id)
+				CONSTRAINT business_email_fk_domain_id
+					REFERENCES workspace_domain(id),
+			CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id)
 		);
 		"#
 	)
@@ -203,9 +203,9 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_email_idx_user_id
+			business_email_idx_user_id
 		ON
-			organisation_email
+			business_email
 		(user_id);
 		"#
 	)
@@ -374,39 +374,42 @@ pub async fn initialize_users_post(
 					CAST(backup_phone_number AS BIGINT) > 0
 				),
 
-			/* Organisation email address */
-			org_email_local VARCHAR(64)
-				CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK(
-					org_email_local = LOWER(org_email_local)
-				),
-			org_domain_name VARCHAR(100)
-				CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK(
-					org_domain_name = LOWER(org_domain_name)
-				),
-			organisation_name VARCHAR(100)
-				CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK(
-					organisation_name = LOWER(organisation_name)
-				),
+			/* Workspace email address */
+			business_email_local VARCHAR(64)
+				CONSTRAINT
+					user_to_sign_up_chk_business_email_local_is_lower_case
+						CHECK(
+							business_email_local = LOWER(business_email_local)
+						),
+			business_domain_name VARCHAR(100)
+				CONSTRAINT
+					user_to_sign_up_chk_business_domain_name_is_lower_case
+						CHECK(
+							business_domain_name = LOWER(business_domain_name)
+						),
+			business_name VARCHAR(100)
+				CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
+					CHECK(business_name = LOWER(business_name)),
 			otp_hash TEXT NOT NULL,
 			otp_expiry BIGINT NOT NULL
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
 
-			CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK(
+			CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
 				(
 					account_type = 'personal' AND
 					(
-						org_email_local IS NULL AND
-						org_domain_name IS NULL AND
-						organisation_name IS NULL
+						business_email_local IS NULL AND
+						business_domain_name IS NULL AND
+						business_name IS NULL
 					)
 				) OR
 				(
-					account_type = 'organisation' AND
+					account_type = 'business' AND
 					(
-						org_email_local IS NOT NULL AND
-						org_domain_name IS NOT NULL AND
-						organisation_name IS NOT NULL
+						business_email_local IS NOT NULL AND
+						business_domain_name IS NOT NULL AND
+						business_name IS NOT NULL
 					)
 				)
 			),
@@ -775,14 +778,14 @@ pub async fn get_user_by_username_email_or_phone_number(
 		ON
 			personal_email.user_id = "user".id
 		LEFT JOIN
-			organisation_email
+			business_email
 		ON
-			organisation_email.user_id = "user".id
+			business_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
-			domain.id = organisation_email.domain_id
+			domain.id = business_email.domain_id
 		LEFT JOIN
 			user_phone_number
 		ON
@@ -794,7 +797,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 		WHERE
 			"user".username = $1 OR
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1 OR
+			CONCAT(business_email.local, '@', domain.name) = $1 OR
 			CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;
 		"#,
 		user_id
@@ -836,17 +839,17 @@ pub async fn get_user_by_email(
 		ON
 			personal_email.user_id = "user".id
 		LEFT JOIN
-			organisation_email
+			business_email
 		ON
-			organisation_email.user_id = "user".id
+			business_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
-			domain.id = organisation_email.domain_id
+			domain.id = business_email.domain_id
 		WHERE
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1;
+			CONCAT(business_email.local, '@', domain.name) = $1;
 		"#,
 		email
 	)
@@ -1096,9 +1099,9 @@ pub async fn set_personal_user_to_be_signed_up(
 			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
 			backup_phone_number = EXCLUDED.backup_phone_number,
 			
-			org_email_local = NULL,
-			org_domain_name = NULL,
-			organisation_name = NULL,
+			business_email_local = NULL,
+			business_domain_name = NULL,
+			business_name = NULL,
 			
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry;
@@ -1120,7 +1123,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	Ok(())
 }
 
-pub async fn set_organisation_user_to_be_signed_up(
+pub async fn set_business_user_to_be_signed_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	password: &str,
@@ -1131,9 +1134,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 	backup_phone_country_code: Option<&str>,
 	backup_phone_number: Option<&str>,
 
-	org_email_local: &str,
-	org_domain_name: &str,
-	organisation_name: &str,
+	business_email_local: &str,
+	business_domain_name: &str,
+	business_name: &str,
 
 	otp_hash: &str,
 	otp_expiry: u64,
@@ -1145,7 +1148,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 		VALUES
 			(
 				$1,
-				'organisation',
+				'business',
 				
 				$2,
 				$3,
@@ -1165,7 +1168,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 				$13
 			)
 		ON CONFLICT(username) DO UPDATE SET
-			account_type = 'organisation',
+			account_type = 'business',
 
 			password = EXCLUDED.password,
 			first_name = EXCLUDED.first_name,
@@ -1177,9 +1180,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
 			backup_phone_number = EXCLUDED.backup_phone_number,
 			
-			org_email_local = EXCLUDED.org_email_local,
-			org_domain_name = EXCLUDED.org_domain_name,
-			organisation_name = EXCLUDED.organisation_name,
+			business_email_local = EXCLUDED.business_email_local,
+			business_domain_name = EXCLUDED.business_domain_name,
+			business_name = EXCLUDED.business_name,
 			
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry;
@@ -1192,9 +1195,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 		backup_email_domain_id,
 		backup_phone_country_code,
 		backup_phone_number,
-		org_email_local,
-		org_domain_name,
-		organisation_name,
+		business_email_local,
+		business_domain_name,
+		business_name,
 		otp_hash,
 		otp_expiry as i64
 	)
@@ -1220,9 +1223,9 @@ pub async fn get_user_to_sign_up_by_username(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
@@ -1245,9 +1248,9 @@ pub async fn get_user_to_sign_up_by_username(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
@@ -1272,9 +1275,9 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
@@ -1299,9 +1302,9 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
@@ -1325,9 +1328,9 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.backup_email_domain_id,
 			user_to_sign_up.backup_phone_country_code,
 			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
+			user_to_sign_up.business_email_local,
+			user_to_sign_up.business_domain_name,
+			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
 			user_to_sign_up.otp_expiry
 		FROM
@@ -1354,9 +1357,9 @@ pub async fn get_user_to_sign_up_by_email(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
@@ -1364,9 +1367,9 @@ pub async fn get_user_to_sign_up_by_email(
 	Ok(rows.next())
 }
 
-pub async fn get_user_to_sign_up_by_organisation_name(
+pub async fn get_user_to_sign_up_by_business_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_name: &str,
+	business_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let mut rows = query!(
 		r#"
@@ -1380,17 +1383,17 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			organisation_name = $1;
+			business_name = $1;
 		"#,
-		organisation_name
+		business_name
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -1405,9 +1408,9 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
@@ -1415,9 +1418,9 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 	Ok(rows.next())
 }
 
-pub async fn get_user_to_sign_up_by_org_domain_name(
+pub async fn get_user_to_sign_up_by_business_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	org_domain_name: &str,
+	business_domain_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
 	let mut rows = query!(
 		r#"
@@ -1431,17 +1434,17 @@ pub async fn get_user_to_sign_up_by_org_domain_name(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			org_domain_name = $1;
+			business_domain_name = $1;
 		"#,
-		org_domain_name
+		business_domain_name
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -1456,9 +1459,9 @@ pub async fn get_user_to_sign_up_by_org_domain_name(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
@@ -1767,7 +1770,7 @@ pub async fn add_personal_email_for_user(
 	Ok(())
 }
 
-pub async fn add_organisation_email_for_user(
+pub async fn add_business_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
@@ -1776,7 +1779,7 @@ pub async fn add_organisation_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			organisation_email
+			business_email
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -2331,31 +2334,34 @@ pub async fn delete_password_reset_request_for_user(
 	Ok(())
 }
 
-pub async fn get_all_organisations_for_user(
+pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<Organisation>, sqlx::Error> {
-	let organisations = query_as!(
-		Organisation,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	let workspaces = query_as!(
+		Workspace,
 		r#"
 		SELECT DISTINCT
-			organisation.*
+			workspace.id,
+			workspace.name as "name: _",
+			workspace.super_admin_id,
+			workspace.active
 		FROM
-			organisation
+			workspace
 		LEFT JOIN
-			organisation_user
+			workspace_user
 		ON
-			organisation.id = organisation_user.organisation_id
+			workspace.id = workspace_user.workspace_id
 		WHERE
-			organisation.super_admin_id = $1 OR
-			organisation_user.user_id = $1;
+			workspace.super_admin_id = $1 OR
+			workspace_user.user_id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(&mut *connection)
 	.await?;
 
-	Ok(organisations)
+	Ok(workspaces)
 }
 
 pub async fn get_phone_country_by_country_code(
