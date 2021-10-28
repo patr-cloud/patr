@@ -295,7 +295,7 @@ pub async fn get_managed_database_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &[u8],
 ) -> Result<Option<ManagedDatabase>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		ManagedDatabase,
 		r#"
 		SELECT
@@ -322,12 +322,8 @@ pub async fn get_managed_database_by_id(
 		"#,
 		id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn update_digitalocean_db_id_for_database(

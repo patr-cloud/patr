@@ -767,7 +767,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -802,9 +802,8 @@ pub async fn get_user_by_username_email_or_phone_number(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -821,14 +820,14 @@ pub async fn get_user_by_username_email_or_phone_number(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -853,9 +852,8 @@ pub async fn get_user_by_email(
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -872,7 +870,7 @@ pub async fn get_user_by_email(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_phone_number(
@@ -880,7 +878,7 @@ pub async fn get_user_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -897,9 +895,8 @@ pub async fn get_user_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -916,14 +913,14 @@ pub async fn get_user_by_phone_number(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			*
@@ -934,9 +931,8 @@ pub async fn get_user_by_username(
 		"#,
 		username
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -953,14 +949,14 @@ pub async fn get_user_by_username(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			*
@@ -971,9 +967,8 @@ pub async fn get_user_by_user_id(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -990,7 +985,7 @@ pub async fn get_user_by_user_id(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn generate_new_user_id(
@@ -1034,10 +1029,8 @@ pub async fn get_god_user_id(
 		LIMIT 1;
 		"#
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
-	.next()
 	.map(|row| {
 		Uuid::from_slice(row.id.as_ref())
 			.expect("unable to unwrap UUID from Vec<u8>")
@@ -1211,7 +1204,7 @@ pub async fn get_user_to_sign_up_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			username,
@@ -1235,9 +1228,8 @@ pub async fn get_user_to_sign_up_by_username(
 		"#,
 		username
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1255,7 +1247,7 @@ pub async fn get_user_to_sign_up_by_username(
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_to_sign_up_by_phone_number(
@@ -1263,7 +1255,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1289,9 +1281,8 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1309,14 +1300,14 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn get_user_to_sign_up_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			user_to_sign_up.username,
@@ -1344,9 +1335,8 @@ pub async fn get_user_to_sign_up_by_email(
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1364,14 +1354,14 @@ pub async fn get_user_to_sign_up_by_email(
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn get_user_to_sign_up_by_business_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	business_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1395,9 +1385,8 @@ pub async fn get_user_to_sign_up_by_business_name(
 		"#,
 		business_name
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1415,14 +1404,14 @@ pub async fn get_user_to_sign_up_by_business_name(
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn get_user_to_sign_up_by_business_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	business_domain_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1446,9 +1435,8 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		"#,
 		business_domain_name
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1466,7 +1454,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn update_user_to_sign_up_with_otp(
@@ -1490,9 +1478,8 @@ pub async fn update_user_to_sign_up_with_otp(
 		username
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -1562,7 +1549,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	user_id: &[u8],
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let email = query!(
 		r#"
 		SELECT
 			user_unverified_personal_email.*
@@ -1579,9 +1566,8 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		user_id,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PersonalEmailToBeVerified {
 		local: row.local,
 		domain_id: row.domain_id,
@@ -1590,14 +1576,14 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(email)
 }
 
 pub async fn get_personal_email_to_be_verified_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let email = query!(
 		r#"
 		SELECT
 			user_unverified_personal_email.*
@@ -1612,9 +1598,8 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PersonalEmailToBeVerified {
 		local: row.local,
 		domain_id: row.domain_id,
@@ -1623,7 +1608,7 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(email)
 }
 
 pub async fn delete_personal_email_to_be_verified_for_user(
@@ -1657,7 +1642,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let phone_number = query!(
 		r#"
 		SELECT
 			user_unverified_phone_number.*
@@ -1676,9 +1661,8 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PhoneNumberToBeVerified {
 		country_code: row.country_code,
 		phone_number: row.phone_number,
@@ -1687,7 +1671,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(phone_number)
 }
 
 pub async fn get_phone_number_to_be_verified_by_phone_number(
@@ -1695,7 +1679,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let phone_number = query!(
 		r#"
 		SELECT
 			*
@@ -1708,9 +1692,8 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PhoneNumberToBeVerified {
 		country_code: row.country_code,
 		phone_number: row.phone_number,
@@ -1719,7 +1702,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(phone_number)
 }
 
 pub async fn delete_phone_number_to_be_verified_for_user(
@@ -1899,7 +1882,7 @@ pub async fn get_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let mut rows = query!(
+	let login = query!(
 		r#"
 		SELECT
 			*
@@ -1910,9 +1893,8 @@ pub async fn get_user_login(
 		"#,
 		login_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
@@ -1922,7 +1904,7 @@ pub async fn get_user_login(
 		last_activity: row.last_activity as u64,
 	});
 
-	Ok(rows.next())
+	Ok(login)
 }
 
 pub async fn get_user_login_for_user(
@@ -2292,7 +2274,7 @@ pub async fn get_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
-	let mut rows = query!(
+	let reset = query!(
 		r#"
 		SELECT
 			*
@@ -2303,16 +2285,15 @@ pub async fn get_password_reset_request_for_user(
 		"#,
 		user_id,
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PasswordResetRequest {
 		user_id: row.user_id,
 		token: row.token,
 		token_expiry: row.token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(reset)
 }
 
 pub async fn delete_password_reset_request_for_user(
@@ -2338,7 +2319,7 @@ pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<Workspace>, sqlx::Error> {
-	let workspaces = query_as!(
+	query_as!(
 		Workspace,
 		r#"
 		SELECT DISTINCT
@@ -2359,16 +2340,14 @@ pub async fn get_all_workspaces_for_user(
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(workspaces)
+	.await
 }
 
 pub async fn get_phone_country_by_country_code(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 ) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		PhoneCountryCode,
 		r#"
 		SELECT
@@ -2380,10 +2359,8 @@ pub async fn get_phone_country_by_country_code(
 		"#,
 		country_code
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn add_phone_number_for_user(
@@ -2440,10 +2417,10 @@ pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<u64, sqlx::Error> {
-	let count = query!(
+	query!(
 		r#"
 		SELECT
-			COUNT(personal_email.domain_id) as "count!"
+			COUNT(personal_email.domain_id) as "count!: i64"
 		FROM
 			personal_email
 		WHERE
@@ -2451,21 +2428,16 @@ pub async fn get_personal_email_count_for_domain_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.map(|row| row.count)
-	.unwrap_or(0);
-
-	Ok(count as u64)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.count as u64)
 }
 
 pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
-	let phone_numbers = query_as!(
+	query_as!(
 		UserPhoneNumber,
 		r#"
 		SELECT
@@ -2480,9 +2452,7 @@ pub async fn get_phone_numbers_for_user(
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(phone_numbers)
+	.await
 }
 
 pub async fn get_backup_email_for_user(

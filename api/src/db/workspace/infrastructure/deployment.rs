@@ -510,7 +510,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 	image_tag: &str,
 	workspace_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -554,16 +554,14 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 		workspace_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -590,16 +588,14 @@ pub async fn get_deployments_for_workspace(
 		workspace_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -625,12 +621,8 @@ pub async fn get_deployment_by_id(
 		"#,
 		deployment_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn get_deployment_by_name_in_workspace(
@@ -795,6 +787,7 @@ pub async fn get_environment_variables_for_deployment(
 	.into_iter()
 	.map(|row| (row.name, row.value))
 	.collect();
+
 	Ok(rows)
 }
 

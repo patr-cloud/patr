@@ -85,9 +85,8 @@ pub async fn get_repository_by_name(
 		repository_name as _,
 		workspace_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await
-	.map(|rows| rows.into_iter().next())
 }
 
 pub async fn get_docker_repositories_for_workspace(
@@ -130,9 +129,8 @@ pub async fn get_docker_repository_by_id(
 		"#,
 		repository_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await
-	.map(|repos| repos.into_iter().next())
 }
 
 pub async fn delete_docker_repository_by_id(
