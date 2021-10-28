@@ -472,7 +472,7 @@ async fn migrate_from_v0_4_4(
 			deployment_static_sites
 		WHERE
 			deployed_domain.static_site_id = deployment_static_sites.id AND
-			deployment.status = 'deleted';
+			deployment_static_sites.status = 'deleted';
 		"#
 	)
 	.execute(&mut *connection)
