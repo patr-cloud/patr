@@ -18,7 +18,7 @@ use crate::{
 	},
 };
 
-mod deployment;
+mod infrastructure;
 mod docker_registry;
 mod domain;
 #[path = "./rbac.rs"]
@@ -83,8 +83,8 @@ pub fn create_sub_app(
 		],
 	);
 	sub_app.use_sub_app(
-		"/:workspaceId/deployment",
-		deployment::create_sub_app(app),
+		"/:workspaceId/infrastructure",
+		infrastructure::create_sub_app(app),
 	);
 	sub_app.use_sub_app(
 		"/:workspaceId/docker-registry",
