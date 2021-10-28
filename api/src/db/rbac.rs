@@ -560,7 +560,7 @@ pub async fn get_resource_type_for_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<ResourceType>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		ResourceType,
 		r#"
 		SELECT
@@ -576,10 +576,8 @@ pub async fn get_resource_type_for_resource(
 		"#,
 		resource_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn create_role(
@@ -601,9 +599,9 @@ pub async fn create_role(
 		description,
 		owner_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-	Ok(())
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn create_resource(
@@ -665,7 +663,7 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let mut rows = query!(
+	let resource = query!(
 		r#"
 		SELECT
 			*
@@ -676,9 +674,8 @@ pub async fn get_resource_by_id(
 		"#,
 		resource_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| Resource {
 		id: row.id,
 		name: row.name,
@@ -687,7 +684,7 @@ pub async fn get_resource_by_id(
 		created: row.created as u64,
 	});
 
-	Ok(rows.next())
+	Ok(resource)
 }
 
 pub async fn delete_resource(
@@ -733,7 +730,7 @@ pub async fn get_role_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<Option<Role>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Role,
 		r#"
 		SELECT
@@ -745,10 +742,8 @@ pub async fn get_role_by_id(
 		"#,
 		role_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 /// For a given role, what permissions does it have and on what resources?

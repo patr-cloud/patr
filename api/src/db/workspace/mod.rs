@@ -120,7 +120,7 @@ pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &[u8],
 ) -> Result<Option<Workspace>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		Workspace,
 		r#"
 		SELECT
@@ -135,19 +135,15 @@ pub async fn get_workspace_info(
 		"#,
 		workspace_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn get_workspace_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 ) -> Result<Option<Workspace>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		Workspace,
 		r#"
 		SELECT
@@ -162,12 +158,8 @@ pub async fn get_workspace_by_name(
 		"#,
 		name as _
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn update_workspace_name(

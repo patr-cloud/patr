@@ -432,7 +432,7 @@ pub async fn get_workspace_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<WorkspaceDomain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		WorkspaceDomain,
 		r#"
 		SELECT
@@ -451,17 +451,15 @@ pub async fn get_workspace_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn get_personal_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<Option<PersonalDomain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		PersonalDomain,
 		r#"
 		SELECT
@@ -479,17 +477,15 @@ pub async fn get_personal_domain_by_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn get_domain_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<Option<Domain>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Domain,
 		r#"
 		SELECT
@@ -503,8 +499,6 @@ pub async fn get_domain_by_name(
 		"#,
 		domain_name
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
