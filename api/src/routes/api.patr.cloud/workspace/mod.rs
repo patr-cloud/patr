@@ -18,9 +18,9 @@ use crate::{
 	},
 };
 
-mod infrastructure;
 mod docker_registry;
 mod domain;
+mod infrastructure;
 #[path = "./rbac.rs"]
 mod rbac_routes;
 
