@@ -69,8 +69,7 @@ impl RegistryToken {
 		let encoded =
 			base32::encode(base32::Alphabet::RFC4648 { padding: false }, &hash);
 		let mut kid = String::with_capacity(59);
-		for i in 0..encoded.len() {
-			let character = encoded.chars().nth(i).unwrap();
+		for (i, character) in encoded.chars().enumerate() {
 			kid.push(character);
 			if i % 4 == 3 && i != (encoded.len() - 1) {
 				kid.push(':');

@@ -18,7 +18,7 @@ mod sms;
 ///
 /// # Arguments
 /// * `welcome_email` - an Option<String> containing either String which has
-/// user's personal or organisation email to send a welcome notification to or
+/// user's personal or business email to send a welcome notification to or
 /// `None`
 /// * `backup_email` - an Option<String> containing either String which has
 /// user's backup email to send a verification email to or `None`
@@ -290,7 +290,7 @@ pub async fn send_forgot_password_otp(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `domain_id` - An unsigned 8 bit integer array containing id of
-/// organisation domain
+/// workspace domain
 /// * `email_string` - a string containing user's email_local
 ///  
 /// # Returns

@@ -46,8 +46,8 @@ pub async fn set_database_version(
 		version.patch.to_string()
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
@@ -68,16 +68,18 @@ pub async fn get_database_version(app: &App) -> Result<Version, sqlx::Error> {
 
 	let mut version = Version::new(0, 0, 0);
 
+	// If versions can't be parsed, assume it to be the max value, so that
+	// migrations would fail
 	for row in rows {
-		match row.id.as_ref() {
+		match row.id.as_str() {
 			"version_major" => {
-				version.major = row.value.parse::<u64>().unwrap()
+				version.major = row.value.parse::<u64>().unwrap_or(u64::MAX);
 			}
 			"version_minor" => {
-				version.minor = row.value.parse::<u64>().unwrap()
+				version.minor = row.value.parse::<u64>().unwrap_or(u64::MAX);
 			}
 			"version_patch" => {
-				version.patch = row.value.parse::<u64>().unwrap()
+				version.patch = row.value.parse::<u64>().unwrap_or(u64::MAX);
 			}
 			_ => {}
 		}

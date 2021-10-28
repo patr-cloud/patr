@@ -360,8 +360,9 @@ def check_formatting(step_name):
 def check_clippy(step_name):
     return {
         "name": step_name,
-        "image": "rustlang/rust:nightly",
+        "image": "rust:1",
         "commands": [
+            "rustup component add clippy",
             "cargo clippy -- -D warnings"
         ]
     }

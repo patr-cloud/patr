@@ -3,7 +3,6 @@ use uuid::Uuid;
 use crate::{
 	constants::ResourceOwnerType,
 	models::db_mapping::{
-		Organisation,
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
 		PhoneCountryCode,
@@ -12,6 +11,7 @@ use crate::{
 		UserLogin,
 		UserPhoneNumber,
 		UserToSignUp,
+		Workspace,
 	},
 	query,
 	query_as,
@@ -183,17 +183,17 @@ pub async fn initialize_users_post(
 
 	query!(
 		r#"
-		CREATE TABLE organisation_email(
+		CREATE TABLE business_email(
 			user_id BYTEA NOT NULL
-				CONSTRAINT organisation_email_fk_user_id REFERENCES "user"(id),
+				CONSTRAINT business_email_fk_user_id REFERENCES "user"(id),
 			local VARCHAR(64) NOT NULL
-				CONSTRAINT organisation_email_chk_local_is_lower_case CHECK(
+				CONSTRAINT business_email_chk_local_is_lower_case CHECK(
 					local = LOWER(local)
 				),
 			domain_id BYTEA NOT NULL
-				CONSTRAINT organisation_email_fk_domain_id
-					REFERENCES organisation_domain(id),
-			CONSTRAINT organisation_email_pk PRIMARY KEY(local, domain_id)
+				CONSTRAINT business_email_fk_domain_id
+					REFERENCES workspace_domain(id),
+			CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id)
 		);
 		"#
 	)
@@ -203,9 +203,9 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_email_idx_user_id
+			business_email_idx_user_id
 		ON
-			organisation_email
+			business_email
 		(user_id);
 		"#
 	)
@@ -374,39 +374,42 @@ pub async fn initialize_users_post(
 					CAST(backup_phone_number AS BIGINT) > 0
 				),
 
-			/* Organisation email address */
-			org_email_local VARCHAR(64)
-				CONSTRAINT user_to_sign_up_chk_org_email_is_lower_case CHECK(
-					org_email_local = LOWER(org_email_local)
-				),
-			org_domain_name VARCHAR(100)
-				CONSTRAINT user_to_sign_up_chk_org_domain_name_is_lower_case CHECK(
-					org_domain_name = LOWER(org_domain_name)
-				),
-			organisation_name VARCHAR(100)
-				CONSTRAINT user_to_sign_up_chk_org_name_is_lower_case CHECK(
-					organisation_name = LOWER(organisation_name)
-				),
+			/* Workspace email address */
+			business_email_local VARCHAR(64)
+				CONSTRAINT
+					user_to_sign_up_chk_business_email_local_is_lower_case
+						CHECK(
+							business_email_local = LOWER(business_email_local)
+						),
+			business_domain_name VARCHAR(100)
+				CONSTRAINT
+					user_to_sign_up_chk_business_domain_name_is_lower_case
+						CHECK(
+							business_domain_name = LOWER(business_domain_name)
+						),
+			business_name VARCHAR(100)
+				CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
+					CHECK(business_name = LOWER(business_name)),
 			otp_hash TEXT NOT NULL,
 			otp_expiry BIGINT NOT NULL
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
 
-			CONSTRAINT user_to_sign_up_chk_org_details_valid CHECK(
+			CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
 				(
 					account_type = 'personal' AND
 					(
-						org_email_local IS NULL AND
-						org_domain_name IS NULL AND
-						organisation_name IS NULL
+						business_email_local IS NULL AND
+						business_domain_name IS NULL AND
+						business_name IS NULL
 					)
 				) OR
 				(
-					account_type = 'organisation' AND
+					account_type = 'business' AND
 					(
-						org_email_local IS NOT NULL AND
-						org_domain_name IS NOT NULL AND
-						organisation_name IS NOT NULL
+						business_email_local IS NOT NULL AND
+						business_domain_name IS NOT NULL AND
+						business_name IS NOT NULL
 					)
 				)
 			),
@@ -764,7 +767,7 @@ pub async fn get_user_by_username_email_or_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -775,14 +778,14 @@ pub async fn get_user_by_username_email_or_phone_number(
 		ON
 			personal_email.user_id = "user".id
 		LEFT JOIN
-			organisation_email
+			business_email
 		ON
-			organisation_email.user_id = "user".id
+			business_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
-			domain.id = organisation_email.domain_id
+			domain.id = business_email.domain_id
 		LEFT JOIN
 			user_phone_number
 		ON
@@ -794,14 +797,13 @@ pub async fn get_user_by_username_email_or_phone_number(
 		WHERE
 			"user".username = $1 OR
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1 OR
+			CONCAT(business_email.local, '@', domain.name) = $1 OR
 			CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -818,14 +820,14 @@ pub async fn get_user_by_username_email_or_phone_number(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -836,23 +838,22 @@ pub async fn get_user_by_email(
 		ON
 			personal_email.user_id = "user".id
 		LEFT JOIN
-			organisation_email
+			business_email
 		ON
-			organisation_email.user_id = "user".id
+			business_email.user_id = "user".id
 		LEFT JOIN
 			domain
 		ON
 			domain.id = personal_email.domain_id OR
-			domain.id = organisation_email.domain_id
+			domain.id = business_email.domain_id
 		WHERE
 			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(organisation_email.local, '@', domain.name) = $1;
+			CONCAT(business_email.local, '@', domain.name) = $1;
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -869,7 +870,7 @@ pub async fn get_user_by_email(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_phone_number(
@@ -877,7 +878,7 @@ pub async fn get_user_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			"user".*
@@ -894,9 +895,8 @@ pub async fn get_user_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -913,14 +913,14 @@ pub async fn get_user_by_phone_number(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			*
@@ -931,9 +931,8 @@ pub async fn get_user_by_username(
 		"#,
 		username
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -950,14 +949,14 @@ pub async fn get_user_by_username(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_by_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Option<User>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			*
@@ -968,9 +967,8 @@ pub async fn get_user_by_user_id(
 		"#,
 		user_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| User {
 		id: row.id,
 		username: row.username,
@@ -987,7 +985,7 @@ pub async fn get_user_by_user_id(
 		backup_phone_number: row.backup_phone_number,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn generate_new_user_id(
@@ -1031,10 +1029,8 @@ pub async fn get_god_user_id(
 		LIMIT 1;
 		"#
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
-	.next()
 	.map(|row| {
 		Uuid::from_slice(row.id.as_ref())
 			.expect("unable to unwrap UUID from Vec<u8>")
@@ -1096,9 +1092,9 @@ pub async fn set_personal_user_to_be_signed_up(
 			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
 			backup_phone_number = EXCLUDED.backup_phone_number,
 			
-			org_email_local = NULL,
-			org_domain_name = NULL,
-			organisation_name = NULL,
+			business_email_local = NULL,
+			business_domain_name = NULL,
+			business_name = NULL,
 			
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry;
@@ -1120,7 +1116,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	Ok(())
 }
 
-pub async fn set_organisation_user_to_be_signed_up(
+pub async fn set_business_user_to_be_signed_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 	password: &str,
@@ -1131,9 +1127,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 	backup_phone_country_code: Option<&str>,
 	backup_phone_number: Option<&str>,
 
-	org_email_local: &str,
-	org_domain_name: &str,
-	organisation_name: &str,
+	business_email_local: &str,
+	business_domain_name: &str,
+	business_name: &str,
 
 	otp_hash: &str,
 	otp_expiry: u64,
@@ -1145,7 +1141,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 		VALUES
 			(
 				$1,
-				'organisation',
+				'business',
 				
 				$2,
 				$3,
@@ -1165,7 +1161,7 @@ pub async fn set_organisation_user_to_be_signed_up(
 				$13
 			)
 		ON CONFLICT(username) DO UPDATE SET
-			account_type = 'organisation',
+			account_type = 'business',
 
 			password = EXCLUDED.password,
 			first_name = EXCLUDED.first_name,
@@ -1177,9 +1173,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
 			backup_phone_number = EXCLUDED.backup_phone_number,
 			
-			org_email_local = EXCLUDED.org_email_local,
-			org_domain_name = EXCLUDED.org_domain_name,
-			organisation_name = EXCLUDED.organisation_name,
+			business_email_local = EXCLUDED.business_email_local,
+			business_domain_name = EXCLUDED.business_domain_name,
+			business_name = EXCLUDED.business_name,
 			
 			otp_hash = EXCLUDED.otp_hash,
 			otp_expiry = EXCLUDED.otp_expiry;
@@ -1192,9 +1188,9 @@ pub async fn set_organisation_user_to_be_signed_up(
 		backup_email_domain_id,
 		backup_phone_country_code,
 		backup_phone_number,
-		org_email_local,
-		org_domain_name,
-		organisation_name,
+		business_email_local,
+		business_domain_name,
+		business_name,
 		otp_hash,
 		otp_expiry as i64
 	)
@@ -1208,7 +1204,7 @@ pub async fn get_user_to_sign_up_by_username(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let user = query!(
 		r#"
 		SELECT
 			username,
@@ -1220,9 +1216,9 @@ pub async fn get_user_to_sign_up_by_username(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
@@ -1232,9 +1228,8 @@ pub async fn get_user_to_sign_up_by_username(
 		"#,
 		username
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1245,14 +1240,14 @@ pub async fn get_user_to_sign_up_by_username(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(user)
 }
 
 pub async fn get_user_to_sign_up_by_phone_number(
@@ -1260,7 +1255,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1272,9 +1267,9 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
@@ -1286,9 +1281,8 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1299,21 +1293,21 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn get_user_to_sign_up_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			user_to_sign_up.username,
@@ -1325,9 +1319,9 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.backup_email_domain_id,
 			user_to_sign_up.backup_phone_country_code,
 			user_to_sign_up.backup_phone_number,
-			user_to_sign_up.org_email_local,
-			user_to_sign_up.org_domain_name,
-			user_to_sign_up.organisation_name,
+			user_to_sign_up.business_email_local,
+			user_to_sign_up.business_domain_name,
+			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
 			user_to_sign_up.otp_expiry
 		FROM
@@ -1341,9 +1335,8 @@ pub async fn get_user_to_sign_up_by_email(
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1354,21 +1347,21 @@ pub async fn get_user_to_sign_up_by_email(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
-pub async fn get_user_to_sign_up_by_organisation_name(
+pub async fn get_user_to_sign_up_by_business_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_name: &str,
+	business_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1380,21 +1373,20 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			organisation_name = $1;
+			business_name = $1;
 		"#,
-		organisation_name
+		business_name
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1405,21 +1397,21 @@ pub async fn get_user_to_sign_up_by_organisation_name(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
-pub async fn get_user_to_sign_up_by_org_domain_name(
+pub async fn get_user_to_sign_up_by_business_domain_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	org_domain_name: &str,
+	business_domain_name: &str,
 ) -> Result<Option<UserToSignUp>, sqlx::Error> {
-	let mut rows = query!(
+	let sign_up = query!(
 		r#"
 		SELECT
 			username,
@@ -1431,21 +1423,20 @@ pub async fn get_user_to_sign_up_by_org_domain_name(
 			backup_email_domain_id,
 			backup_phone_country_code,
 			backup_phone_number,
-			org_email_local,
-			org_domain_name,
-			organisation_name,
+			business_email_local,
+			business_domain_name,
+			business_name,
 			otp_hash,
 			otp_expiry
 		FROM
 			user_to_sign_up
 		WHERE
-			org_domain_name = $1;
+			business_domain_name = $1;
 		"#,
-		org_domain_name
+		business_domain_name
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserToSignUp {
 		username: row.username,
 		account_type: row.account_type,
@@ -1456,14 +1447,14 @@ pub async fn get_user_to_sign_up_by_org_domain_name(
 		backup_email_domain_id: row.backup_email_domain_id,
 		backup_phone_country_code: row.backup_phone_country_code,
 		backup_phone_number: row.backup_phone_number,
-		org_email_local: row.org_email_local,
-		org_domain_name: row.org_domain_name,
-		organisation_name: row.organisation_name,
+		business_email_local: row.business_email_local,
+		business_domain_name: row.business_domain_name,
+		business_name: row.business_name,
 		otp_hash: row.otp_hash,
 		otp_expiry: row.otp_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(sign_up)
 }
 
 pub async fn update_user_to_sign_up_with_otp(
@@ -1487,9 +1478,8 @@ pub async fn update_user_to_sign_up_with_otp(
 		username
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_personal_email_to_be_verified_for_user(
@@ -1559,7 +1549,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	user_id: &[u8],
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let email = query!(
 		r#"
 		SELECT
 			user_unverified_personal_email.*
@@ -1576,9 +1566,8 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		user_id,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PersonalEmailToBeVerified {
 		local: row.local,
 		domain_id: row.domain_id,
@@ -1587,14 +1576,14 @@ pub async fn get_personal_email_to_be_verified_for_user(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(email)
 }
 
 pub async fn get_personal_email_to_be_verified_by_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let email = query!(
 		r#"
 		SELECT
 			user_unverified_personal_email.*
@@ -1609,9 +1598,8 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		"#,
 		email
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PersonalEmailToBeVerified {
 		local: row.local,
 		domain_id: row.domain_id,
@@ -1620,7 +1608,7 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(email)
 }
 
 pub async fn delete_personal_email_to_be_verified_for_user(
@@ -1654,7 +1642,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let phone_number = query!(
 		r#"
 		SELECT
 			user_unverified_phone_number.*
@@ -1673,9 +1661,8 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PhoneNumberToBeVerified {
 		country_code: row.country_code,
 		phone_number: row.phone_number,
@@ -1684,7 +1671,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(phone_number)
 }
 
 pub async fn get_phone_number_to_be_verified_by_phone_number(
@@ -1692,7 +1679,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
-	let mut rows = query!(
+	let phone_number = query!(
 		r#"
 		SELECT
 			*
@@ -1705,9 +1692,8 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		country_code,
 		phone_number
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PhoneNumberToBeVerified {
 		country_code: row.country_code,
 		phone_number: row.phone_number,
@@ -1716,7 +1702,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 		verification_token_expiry: row.verification_token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(phone_number)
 }
 
 pub async fn delete_phone_number_to_be_verified_for_user(
@@ -1767,7 +1753,7 @@ pub async fn add_personal_email_for_user(
 	Ok(())
 }
 
-pub async fn add_organisation_email_for_user(
+pub async fn add_business_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	email_local: &str,
@@ -1776,7 +1762,7 @@ pub async fn add_organisation_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			organisation_email
+			business_email
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -1896,7 +1882,7 @@ pub async fn get_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	login_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
-	let mut rows = query!(
+	let login = query!(
 		r#"
 		SELECT
 			*
@@ -1907,9 +1893,8 @@ pub async fn get_user_login(
 		"#,
 		login_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| UserLogin {
 		login_id: row.login_id,
 		refresh_token: row.refresh_token,
@@ -1919,7 +1904,7 @@ pub async fn get_user_login(
 		last_activity: row.last_activity as u64,
 	});
 
-	Ok(rows.next())
+	Ok(login)
 }
 
 pub async fn get_user_login_for_user(
@@ -2289,7 +2274,7 @@ pub async fn get_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
-	let mut rows = query!(
+	let reset = query!(
 		r#"
 		SELECT
 			*
@@ -2300,16 +2285,15 @@ pub async fn get_password_reset_request_for_user(
 		"#,
 		user_id,
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| PasswordResetRequest {
 		user_id: row.user_id,
 		token: row.token,
 		token_expiry: row.token_expiry as u64,
 	});
 
-	Ok(rows.next())
+	Ok(reset)
 }
 
 pub async fn delete_password_reset_request_for_user(
@@ -2331,38 +2315,39 @@ pub async fn delete_password_reset_request_for_user(
 	Ok(())
 }
 
-pub async fn get_all_organisations_for_user(
+pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<Vec<Organisation>, sqlx::Error> {
-	let organisations = query_as!(
-		Organisation,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	query_as!(
+		Workspace,
 		r#"
 		SELECT DISTINCT
-			organisation.*
+			workspace.id,
+			workspace.name as "name: _",
+			workspace.super_admin_id,
+			workspace.active
 		FROM
-			organisation
+			workspace
 		LEFT JOIN
-			organisation_user
+			workspace_user
 		ON
-			organisation.id = organisation_user.organisation_id
+			workspace.id = workspace_user.workspace_id
 		WHERE
-			organisation.super_admin_id = $1 OR
-			organisation_user.user_id = $1;
+			workspace.super_admin_id = $1 OR
+			workspace_user.user_id = $1;
 		"#,
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(organisations)
+	.await
 }
 
 pub async fn get_phone_country_by_country_code(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 ) -> Result<Option<PhoneCountryCode>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		PhoneCountryCode,
 		r#"
 		SELECT
@@ -2374,10 +2359,8 @@ pub async fn get_phone_country_by_country_code(
 		"#,
 		country_code
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn add_phone_number_for_user(
@@ -2434,10 +2417,10 @@ pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
 ) -> Result<u64, sqlx::Error> {
-	let count = query!(
+	query!(
 		r#"
 		SELECT
-			COUNT(personal_email.domain_id) as "count!"
+			COUNT(personal_email.domain_id) as "count!: i64"
 		FROM
 			personal_email
 		WHERE
@@ -2445,21 +2428,16 @@ pub async fn get_personal_email_count_for_domain_id(
 		"#,
 		domain_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next()
-	.map(|row| row.count)
-	.unwrap_or(0);
-
-	Ok(count as u64)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.count as u64)
 }
 
 pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 ) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
-	let phone_numbers = query_as!(
+	query_as!(
 		UserPhoneNumber,
 		r#"
 		SELECT
@@ -2474,9 +2452,31 @@ pub async fn get_phone_numbers_for_user(
 		user_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await
+}
 
-	Ok(phone_numbers)
+pub async fn get_backup_email_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Option<String>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			CONCAT("user".backup_email_local, '@', domain.name) as "email!: String"
+		FROM
+			"user"
+		INNER JOIN
+			domain
+		ON
+			"user".backup_email_domain_id = domain.id
+		WHERE
+			"user".id = $1;
+		"#,
+		user_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| row.map(|row| row.email))
 }
 
 pub async fn delete_personal_email_for_user(

@@ -34,9 +34,9 @@ use crate::{
 	Database,
 };
 
-pub async fn create_static_site_deployment_in_organisation(
+pub async fn create_static_site_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
 ) -> Result<Uuid, Error> {
@@ -47,10 +47,10 @@ pub async fn create_static_site_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	let existing_static_site = db::get_static_site_by_name_in_organisation(
+	let existing_static_site = db::get_static_site_by_name_in_workspace(
 		connection,
 		name,
-		organisation_id,
+		workspace_id,
 	)
 	.await?;
 	if existing_static_site.is_some() {
@@ -71,7 +71,7 @@ pub async fn create_static_site_deployment_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::STATIC_SITE)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -81,7 +81,7 @@ pub async fn create_static_site_deployment_in_organisation(
 		static_site_id,
 		name,
 		domain_name,
-		organisation_id,
+		workspace_id,
 	)
 	.await?;
 
@@ -533,8 +533,8 @@ pub async fn set_domain_for_static_site_deployment(
 	);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let old_domain = static_site.domain_name;
 
 	log::trace!("request_id: {} - logging into the ssh server for adding a new domain name for static site", request_id);
@@ -695,6 +695,7 @@ pub async fn set_domain_for_static_site_deployment(
 pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
+	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
@@ -708,7 +709,7 @@ pub async fn get_dns_records_for_static_site(
 
 	Ok(vec![CNameRecord {
 		cname: domain_name,
-		value: "nginx.patr.cloud".to_string(), // TODO make this a config
+		value: config.ssh.host_name,
 	}])
 }
 
@@ -909,6 +910,20 @@ async fn upload_static_site_files_to_nginx(
 		"request_id: {} - creating directory for static sites",
 		request_id
 	);
+
+	//delete existing directory if present
+	let delete_existing_directory_result = session
+		.command("rm")
+		.arg("-r")
+		.arg("-f")
+		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !delete_existing_directory_result.success() {
+		return Err(Error::empty());
+	}
 	let create_directory_result = session
 		.command("mkdir")
 		.arg("-p")
@@ -1038,7 +1053,7 @@ async fn deploy_static_site(
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
 		&hex::encode(static_site_id),
-		"nginx.patr.cloud",
+		&config.ssh.host_name,
 		config,
 		false,
 	)

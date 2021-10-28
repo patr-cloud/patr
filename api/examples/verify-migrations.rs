@@ -479,8 +479,6 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 	let success = Command::new("diff")
 		.arg("-s")
 		.arg("-y")
-		.arg("-W")
-		.arg("70")
 		.arg("--ignore-matching-lines")
 		.arg("\\\\x[a-f0-9]*")
 		.arg("--suppress-common-lines")

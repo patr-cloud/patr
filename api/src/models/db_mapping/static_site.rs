@@ -5,5 +5,5 @@ pub struct DeploymentStaticSite {
 	pub name: String,
 	pub status: DeploymentStatus,
 	pub domain_name: Option<String>,
-	pub organisation_id: Vec<u8>,
+	pub workspace_id: Vec<u8>,
 }

@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::{
 	models::{
-		db_mapping::{Permission, Resource, ResourceType, Role},
-		rbac::{self, OrgPermissions},
+		db_mapping::{Permission, Resource, ResourceType, Role, Workspace},
+		rbac::{self, WorkspacePermissions},
 	},
 	query,
 	query_as,
@@ -40,10 +40,10 @@ pub async fn initialize_rbac_pre(
 				CONSTRAINT resource_fk_resource_type_id
 					REFERENCES resource_type(id),
 			owner_id BYTEA NOT NULL
-				CONSTRAINT resource_fk_owner_id REFERENCES organisation(id)
+				CONSTRAINT resource_fk_owner_id REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			created BIGINT NOT NULL
-				CONSTRAINT organisation_created_chk_unsigned
+				CONSTRAINT resource_created_chk_unsigned
 						CHECK(created >= 0),
 			CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id)
 		);
@@ -64,7 +64,7 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// Roles belong to an organisation
+	// Roles belong to an workspace
 	query!(
 		r#"
 		CREATE TABLE role(
@@ -72,7 +72,7 @@ pub async fn initialize_rbac_pre(
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500),
 			owner_id BYTEA NOT NULL
-				CONSTRAINT role_fk_owner_id REFERENCES organisation(id),
+				CONSTRAINT role_fk_owner_id REFERENCES workspace(id),
 			CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id)
 		);
 		"#
@@ -92,19 +92,19 @@ pub async fn initialize_rbac_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an organisation through a role
+	// Users belong to an workspace through a role
 	query!(
 		r#"
-		CREATE TABLE organisation_user(
+		CREATE TABLE workspace_user(
 			user_id BYTEA NOT NULL
-				CONSTRAINT organisation_user_fk_user_id REFERENCES "user"(id),
-			organisation_id BYTEA NOT NULL
-				CONSTRAINT organisation_user_fk_organisation_id
-					REFERENCES organisation(id),
+				CONSTRAINT workspace_user_fk_user_id REFERENCES "user"(id),
+			workspace_id BYTEA NOT NULL
+				CONSTRAINT workspace_user_fk_workspace_id
+					REFERENCES workspace(id),
 			role_id BYTEA NOT NULL
-				CONSTRAINT organisation_user_fk_role_id REFERENCES role(id),
-			CONSTRAINT organisation_user_pk
-				PRIMARY KEY(user_id, organisation_id, role_id)
+				CONSTRAINT workspace_user_fk_role_id REFERENCES role(id),
+			CONSTRAINT workspace_user_pk
+				PRIMARY KEY(user_id, workspace_id, role_id)
 		);
 		"#
 	)
@@ -114,9 +114,9 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_user_idx_user_id
+			workspace_user_idx_user_id
 		ON
-			organisation_user
+			workspace_user
 		(user_id);
 		"#
 	)
@@ -126,10 +126,10 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE INDEX
-			organisation_user_idx_user_id_organisation_id
+			workspace_user_idx_user_id_workspace_id
 		ON
-			organisation_user
-		(user_id, organisation_id);
+			workspace_user
+		(user_id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -278,30 +278,30 @@ pub async fn initialize_rbac_post(
 	Ok(())
 }
 
-pub async fn get_all_organisation_roles_for_user(
+pub async fn get_all_workspace_roles_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<HashMap<String, OrgPermissions>, sqlx::Error> {
-	let mut orgs: HashMap<String, OrgPermissions> = HashMap::new();
+) -> Result<HashMap<String, WorkspacePermissions>, sqlx::Error> {
+	let mut workspaces: HashMap<String, WorkspacePermissions> = HashMap::new();
 
-	let org_roles = query!(
+	let workspace_roles = query!(
 		r#"
 		SELECT
 			*
 		FROM
-			organisation_user
+			workspace_user
 		WHERE
 			user_id = $1
 		ORDER BY
-			organisation_id;
+			workspace_id;
 		"#,
 		user_id
 	)
 	.fetch_all(&mut *connection)
 	.await?;
 
-	for org_role in org_roles {
-		let org_id = org_role.organisation_id.encode_hex();
+	for workspace_role in workspace_roles {
+		let workspace_id = workspace_role.workspace_id.encode_hex();
 
 		let resources = query!(
 			r#"
@@ -312,7 +312,7 @@ pub async fn get_all_organisation_roles_for_user(
 			WHERE
 				role_id = $1;
 			"#,
-			org_role.role_id
+			workspace_role.role_id
 		)
 		.fetch_all(&mut *connection)
 		.await?;
@@ -326,12 +326,12 @@ pub async fn get_all_organisation_roles_for_user(
 			WHERE
 				role_id = $1;
 			"#,
-			org_role.role_id
+			workspace_role.role_id
 		)
 		.fetch_all(&mut *connection)
 		.await?;
 
-		if let Some(permission) = orgs.get_mut(&org_id) {
+		if let Some(permission) = workspaces.get_mut(&workspace_id) {
 			for resource in resources {
 				let permission_id = resource.permission_id.encode_hex();
 				if let Some(permissions) =
@@ -363,7 +363,7 @@ pub async fn get_all_organisation_roles_for_user(
 				}
 			}
 		} else {
-			let mut permission = OrgPermissions {
+			let mut permission = WorkspacePermissions {
 				is_super_admin: false,
 				resources: HashMap::new(),
 				resource_types: HashMap::new(),
@@ -398,17 +398,21 @@ pub async fn get_all_organisation_roles_for_user(
 					);
 				}
 			}
-			orgs.insert(org_id, permission);
+			workspaces.insert(workspace_id, permission);
 		}
 	}
 
 	// add superadmins to the data-structure too
-	let orgs_details = query!(
+	let workspaces_details = query_as!(
+		Workspace,
 		r#"
 		SELECT
-			*
+			id,
+			name as "name: _",
+			super_admin_id,
+			active
 		FROM
-			organisation
+			workspace
 		WHERE
 			super_admin_id = $1;
 		"#,
@@ -417,14 +421,14 @@ pub async fn get_all_organisation_roles_for_user(
 	.fetch_all(&mut *connection)
 	.await?;
 
-	for org_details in orgs_details {
-		let org_id = org_details.id.encode_hex();
-		if let Some(org) = orgs.get_mut(&org_id) {
-			org.is_super_admin = true;
+	for workspace_details in workspaces_details {
+		let workspace_id = workspace_details.id.encode_hex();
+		if let Some(workspace) = workspaces.get_mut(&workspace_id) {
+			workspace.is_super_admin = true;
 		} else {
-			orgs.insert(
-				org_id,
-				OrgPermissions {
+			workspaces.insert(
+				workspace_id,
+				WorkspacePermissions {
 					is_super_admin: true,
 					resources: HashMap::new(),
 					resource_types: HashMap::new(),
@@ -433,7 +437,7 @@ pub async fn get_all_organisation_roles_for_user(
 		}
 	}
 
-	Ok(orgs)
+	Ok(workspaces)
 }
 
 pub async fn generate_new_role_id(
@@ -556,7 +560,7 @@ pub async fn get_resource_type_for_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<ResourceType>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		ResourceType,
 		r#"
 		SELECT
@@ -572,10 +576,8 @@ pub async fn get_resource_type_for_resource(
 		"#,
 		resource_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 pub async fn create_role(
@@ -597,9 +599,9 @@ pub async fn create_role(
 		description,
 		owner_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-	Ok(())
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn create_resource(
@@ -661,7 +663,7 @@ pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 ) -> Result<Option<Resource>, sqlx::Error> {
-	let mut rows = query!(
+	let resource = query!(
 		r#"
 		SELECT
 			*
@@ -672,9 +674,8 @@ pub async fn get_resource_by_id(
 		"#,
 		resource_id
 	)
-	.fetch_all(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await?
-	.into_iter()
 	.map(|row| Resource {
 		id: row.id,
 		name: row.name,
@@ -683,7 +684,7 @@ pub async fn get_resource_by_id(
 		created: row.created as u64,
 	});
 
-	Ok(rows.next())
+	Ok(resource)
 }
 
 pub async fn delete_resource(
@@ -705,9 +706,9 @@ pub async fn delete_resource(
 	Ok(())
 }
 
-pub async fn get_all_organisation_roles(
+pub async fn get_all_workspace_roles(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<Role>, sqlx::Error> {
 	query_as!(
 		Role,
@@ -719,7 +720,7 @@ pub async fn get_all_organisation_roles(
 		WHERE
 			owner_id = $1;
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -729,7 +730,7 @@ pub async fn get_role_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &[u8],
 ) -> Result<Option<Role>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Role,
 		r#"
 		SELECT
@@ -741,10 +742,8 @@ pub async fn get_role_by_id(
 		"#,
 		role_id
 	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows.into_iter().next())
+	.fetch_optional(&mut *connection)
+	.await
 }
 
 /// For a given role, what permissions does it have and on what resources?
@@ -936,7 +935,7 @@ pub async fn remove_all_users_from_role(
 	query!(
 		r#"
 		DELETE FROM
-			organisation_user
+			workspace_user
 		WHERE
 			role_id = $1;
 		"#,

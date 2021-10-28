@@ -14,20 +14,18 @@ pub const APP_VERSION: &str = crate_version!();
 pub const APP_AUTHORS: &str = crate_authors!();
 pub const APP_ABOUT: &str = crate_description!();
 
-pub const PORTUS_DOCKER_IMAGE: &str = "portus_image:1.0";
-
 #[derive(sqlx::Type, Debug)]
 #[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum ResourceOwnerType {
 	Personal,
-	Organisation,
+	Business,
 }
 
 impl Display for ResourceOwnerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			ResourceOwnerType::Personal => write!(f, "personal"),
-			ResourceOwnerType::Organisation => write!(f, "organisation"),
+			ResourceOwnerType::Business => write!(f, "business"),
 		}
 	}
 }
@@ -38,8 +36,7 @@ impl FromStr for ResourceOwnerType {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"personal" => Ok(Self::Personal),
-			// Disabled for the demo
-			//"organisation" => Ok(Self::Organisation),
+			"business" => Ok(Self::Business),
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
@@ -70,8 +67,8 @@ pub mod request_keys {
 	pub const ACCOUNT_TYPE: &str = "accountType";
 	pub const DOMAIN: &str = "domain";
 	pub const DOMAIN_ID: &str = "domainId";
-	pub const ORGANISATION_NAME: &str = "organisationName";
-	pub const ORGANISATION_EMAIL_LOCAL: &str = "organisationEmailLocal";
+	pub const WORKSPACE_NAME: &str = "workspaceName";
+	pub const BUSINESS_EMAIL_LOCAL: &str = "businessEmailLocal";
 	pub const BACKUP_EMAIL: &str = "backupEmail";
 	pub const EMAILS: &str = "emails";
 	pub const BACKUP_PHONE_COUNTRY_CODE: &str = "backupPhoneCountryCode";
@@ -82,8 +79,8 @@ pub mod request_keys {
 	pub const BIRTHDAY: &str = "birthday";
 	pub const BIO: &str = "bio";
 	pub const LOCATION: &str = "location";
-	pub const ORGANISATION_ID: &str = "organisationId";
-	pub const ORGANISATIONS: &str = "organisations";
+	pub const WORKSPACE_ID: &str = "workspaceId";
+	pub const WORKSPACES: &str = "workspaces";
 	pub const NAME: &str = "name";
 	pub const ACTIVE: &str = "active";
 	pub const CREATED: &str = "created";
@@ -181,4 +178,6 @@ pub mod request_keys {
 	pub const RESPONSE_TIME: &str = "responseTime";
 	pub const DISTANCE: &str = "distance";
 	pub const RECOMMENDED_DATA_CENTER: &str = "recommendedDataCenter";
+	pub const SECONDARY_EMAILS: &str = "secondaryEmails";
+	pub const SECONDARY_PHONE_NUMBERS: &str = "secondaryPhoneNumbers";
 }

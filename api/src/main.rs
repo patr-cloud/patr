@@ -40,8 +40,7 @@ fn main() -> Result<()> {
 		// Each CPU gets at least 2 workers to avoid idling
 		.worker_threads(num_cpus::get() * 2)
 		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overflow
-		.build()
-		.unwrap()
+		.build()?
 		.block_on(async_main())
 }
 
