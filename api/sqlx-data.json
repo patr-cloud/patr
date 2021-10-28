@@ -4414,6 +4414,26 @@
       ]
     }
   },
+  "a69106420eb20523380486866b32d9b4d3c45c39b139274c4aeb9442bb823300": {
+    "query": "SELECT COUNT(personal_email.domain_id) as \"count!: i64\" FROM personal_email WHERE personal_email.domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!: i64",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "a780a4512b2ca58787f293e3033771d289cd7b0308573b4271865e3d63121215": {
     "query": "DELETE FROM password_reset_request WHERE user_id = $1;",
     "describe": {
@@ -5357,26 +5377,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "d804031c51fffec0b41dda4db1854bf360dacedcbf11e61467b3f77546568db6": {
-    "query": "SELECT COUNT(personal_email.domain_id) as \"count!\" FROM personal_email WHERE personal_email.domain_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "d821d9d80d2d3cd5d58a34fb99e9187f8471824effb128d75ae42a7c0fef00c0": {
