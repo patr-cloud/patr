@@ -62,6 +62,16 @@
       "nullable": []
     }
   },
+  "02cf8beffafabae130645732176997ebda9c3d99e4817d52447457feaedf590d": {
+    "query": "ALTER TABLE deployment_static_sites ADD CONSTRAINT deployment_static_sites_fk_id_domain_name FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(static_site_id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "046c6b19462914789d8ae29cf351948c95aeaa858d959a7b22af0937f54ace8d": {
     "query": "UPDATE deployment SET deployed_image = NULL WHERE id = $1;",
     "describe": {
@@ -200,19 +210,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
-    "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -376,6 +373,16 @@
           },
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "166bbeb029d935c10ddf181c92a69aee020912f75499dd7acd98e964865abb5a": {
+    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id BYTEA NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -870,19 +877,6 @@
       ]
     }
   },
-  "27c549c54b3d00c771f2f3aba6aca180ae35d5f6b89c25471bdf798369673a4e": {
-    "query": "UPDATE deployment_static_sites SET name = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "270a9741b4b636eaac230d41a5d74fc16d29d9d560bd8a9d5c636c8f5c77cd2f": {
     "query": "SELECT id, name as \"name: _\", registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id FROM deployment WHERE workspace_id = $1 AND status != 'deleted';",
     "describe": {
@@ -1013,6 +1007,24 @@
       ]
     }
   },
+  "27c549c54b3d00c771f2f3aba6aca180ae35d5f6b89c25471bdf798369673a4e": {
+    "query": "UPDATE deployment_static_sites SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "2812382d5ca4d1161895439f22493c75e9e99c344fbb46ed89d3bb2441543a39": {
     "query": "SELECT * FROM role_permissions_resource WHERE role_id = $1;",
     "describe": {
@@ -1069,16 +1081,6 @@
   },
   "2a3306e1296bee4aecb5ebd09308aa350474e0d2853ed76ce3eddc2eb3d80485": {
     "query": "CREATE TABLE workspace_domain ( id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_dmn_typ CHECK(domain_type = 'business'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "2af902872bfbda747ebd3d9dc7f7b2d72c716f90024c1b06c758bd1d6cee7752": {
-    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_pk_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_pk_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), workspace_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1551,6 +1553,16 @@
       "nullable": []
     }
   },
+  "36d0bf3ff3b81131ac3e282053edc155a826c8687a972b1010d79dc9edc5ac78": {
+    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', workspace_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_domain_name UNIQUE(id, domain_name), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3735ed21a5154da535799d8cda3eadbb9b5758d93ff35ee0318330fed1b67858": {
     "query": "UPDATE deployment SET domain_name = $1 WHERE id = $2;",
     "describe": {
@@ -1717,18 +1729,6 @@
             }
           },
           "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "3fd358a1ce65800e2194b888923a2346da3e63ce7ce91b99f8b8830a97e10346": {
-    "query": "UPDATE \"user\" SET dob = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Int8"
         ]
       },
       "nullable": []
@@ -2875,6 +2875,19 @@
       ]
     }
   },
+  "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
+    "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "6c06e110efb137ecfc7322d47557b6492b827c0f9d5690ada1f826a98865b9c0": {
     "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3;",
     "describe": {
@@ -3302,19 +3315,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "985017bf290c3b482b9ecf7c939085b9f344b97e9ef6f57696fe91e7affb5e91": {
-    "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -3840,6 +3840,19 @@
       "nullable": []
     }
   },
+  "985017bf290c3b482b9ecf7c939085b9f344b97e9ef6f57696fe91e7affb5e91": {
+    "query": "UPDATE \"user\" SET location = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -4191,6 +4204,26 @@
       ]
     }
   },
+  "a1bf8a497d7d6b8762434743b2da880011018fc4bff4f94fffe1e9b41ba6d567": {
+    "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!: String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "a1c57ac318caa2d1e5b12bd5a3d49224c7e33a2cdec7e93f30a7dc1745c2b433": {
     "query": "SELECT id, name as \"name: _\", status as \"status: _\", domain_name, workspace_id FROM deployment_static_sites WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
     "describe": {
@@ -4525,6 +4558,19 @@
       "nullable": []
     }
   },
+  "ab9db8b1e715c6e16f1b0d2a21ed137fda79520fda7cfe66a6d57147fc3de526": {
+    "query": "INSERT INTO deployed_domain VALUES ($1, NULL, $2) ON CONFLICT(deployment_id) DO UPDATE SET domain_name = EXCLUDED.domain_name;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "abfe8ca19a172c6f4f5f2525f94ca20434872d25c327f511a4fa3d5dfaa5b3e0": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -4832,12 +4878,14 @@
       "nullable": []
     }
   },
-  "b3642d4bc2948b06e95fad15f215fbb0ee6d7699c04e18cb157bf2a759778ac8": {
-    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id BYTEA NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );",
+  "b77e59ea76065896eb214074058090e1d6da014c10d7dccefeac002907dc2093": {
+    "query": "DELETE FROM deployed_domain WHERE deployment_id = $1;",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Bytea"
+        ]
       },
       "nullable": []
     }
@@ -4936,7 +4984,12 @@
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
           "Bytea"
         ]
       },
@@ -5213,6 +5266,16 @@
         false,
         false
       ]
+    }
+  },
+  "c9c1da0ad2a1a2d0360361aab1419fc65d610ac3a3b56f20375c77848c99d0cc": {
+    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), workspace_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_sites_uq_id_domain_name UNIQUE(id, domain_name) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "c9f4bff6c8cdb941b0203a88612ff37835c10070ab9155461e11c85cb3d4f03b": {
@@ -5526,7 +5589,12 @@
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
           "Bytea"
         ]
       },
@@ -5952,16 +6020,6 @@
       "nullable": []
     }
   },
-  "eeda1bb900b63a6c7501b77285004494396e137d98fc86c651dd48077e6796c5": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', workspace_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_domain_name UNIQUE(id, domain_name), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "f573945b87b888f9207a9672804ad53589783632fc74e6215b737bcd1a55f889": {
     "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
     "describe": {
@@ -6064,6 +6122,16 @@
       ]
     }
   },
+  "f91a0a4bb5c15b244e6f328b1f67a63bb3edcc017a41ea5195cef21a96b95b11": {
+    "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "fae57054668bd320a2e513fb937f06e40324b1393ffd6da90e070c4cbd2cdd25": {
     "query": "INSERT INTO docker_registry_repository VALUES ($1, $2, $3);",
     "describe": {
@@ -6079,6 +6147,16 @@
             }
           }
         ]
+      },
+      "nullable": []
+    }
+  },
+  "fd7c1fc75c8cbe57877b01cb4b73c2fc98bb25f736209fd68fa51751267a58db": {
+    "query": "CREATE TABLE deployed_domain( deployment_id BYTEA CONSTRAINT deployed_domain_uq_deployment_id UNIQUE, static_site_id BYTEA CONSTRAINT deployed_domain_uq_static_site_id UNIQUE, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployed_domain_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name), CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name), CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK( ( deployment_id IS NULL AND static_site_id IS NOT NULL ) OR ( deployment_id IS NOT NULL AND static_site_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -6218,111 +6296,6 @@
         false,
         false
       ]
-    }
-  },
-  "02cf8beffafabae130645732176997ebda9c3d99e4817d52447457feaedf590d": {
-    "query": "ALTER TABLE deployment_static_sites ADD CONSTRAINT deployment_static_sites_fk_id_domain_name FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(static_site_id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "a1bf8a497d7d6b8762434743b2da880011018fc4bff4f94fffe1e9b41ba6d567": {
-    "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email!: String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "36d0bf3ff3b81131ac3e282053edc155a826c8687a972b1010d79dc9edc5ac78": {
-    "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', workspace_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_domain_name UNIQUE(id, domain_name), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "fd7c1fc75c8cbe57877b01cb4b73c2fc98bb25f736209fd68fa51751267a58db": {
-    "query": "CREATE TABLE deployed_domain( deployment_id BYTEA CONSTRAINT deployed_domain_uq_deployment_id UNIQUE, static_site_id BYTEA CONSTRAINT deployed_domain_uq_static_site_id UNIQUE, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployed_domain_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name), CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name), CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK( ( deployment_id IS NULL AND static_site_id IS NOT NULL ) OR ( deployment_id IS NOT NULL AND static_site_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "f91a0a4bb5c15b244e6f328b1f67a63bb3edcc017a41ea5195cef21a96b95b11": {
-    "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "ab9db8b1e715c6e16f1b0d2a21ed137fda79520fda7cfe66a6d57147fc3de526": {
-    "query": "INSERT INTO deployed_domain VALUES ($1, NULL, $2) ON CONFLICT(deployment_id) DO UPDATE SET domain_name = EXCLUDED.domain_name;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "b77e59ea76065896eb214074058090e1d6da014c10d7dccefeac002907dc2093": {
-    "query": "DELETE FROM deployed_domain WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "166bbeb029d935c10ddf181c92a69aee020912f75499dd7acd98e964865abb5a": {
-    "query": "CREATE TABLE managed_database( id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id BYTEA NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "c9c1da0ad2a1a2d0360361aab1419fc65d610ac3a3b56f20375c77848c99d0cc": {
-    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), workspace_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_sites_uq_id_domain_name UNIQUE(id, domain_name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "fea8fe4eb8151508a43bd8a1af74ed745e4b06c32308df3818751d4a7bb72423": {
