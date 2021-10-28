@@ -910,6 +910,20 @@ async fn upload_static_site_files_to_nginx(
 		"request_id: {} - creating directory for static sites",
 		request_id
 	);
+
+	//delete existing directory if present
+	let delete_existing_directory_result = session
+		.command("rm")
+		.arg("-r")
+		.arg("-f")
+		.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
+		.spawn()?
+		.wait()
+		.await?;
+
+	if !delete_existing_directory_result.success() {
+		return Err(Error::empty());
+	}
 	let create_directory_result = session
 		.command("mkdir")
 		.arg("-p")

@@ -223,10 +223,10 @@ pub async fn start_deployment(
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
 				let result = digitalocean::deploy_container(
-					image_id,
+					image_id.clone(),
 					region,
 					deployment_id.clone(),
-					config,
+					config.clone(),
 				)
 				.await;
 
@@ -241,12 +241,43 @@ pub async fn start_deployment(
 						error.get_error()
 					);
 				}
+
+				let digital_ocean_image = format!(
+					"registry.digitalocean.com/{}/{}",
+					config.digitalocean.registry,
+					hex::encode(&deployment_id),
+				);
+
+				log::trace!(
+					"Deleting image tagged with registry.digitalocean.com"
+				);
+				let delete_result =
+					super::delete_docker_image(&digital_ocean_image).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						digital_ocean_image,
+						delete_result.get_error()
+					);
+				}
+
+				log::trace!("deleting the pulled image");
+
+				let delete_result = super::delete_docker_image(&image_id).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						image_id,
+						delete_result.get_error()
+					);
+				}
+				log::trace!("Docker image deleted");
 			});
 		}
 		Ok(CloudPlatform::Aws) => {
 			task::spawn(async move {
 				let result = aws::deploy_container(
-					image_id,
+					image_id.clone(),
 					region,
 					deployment_id.clone(),
 					config,
@@ -264,6 +295,33 @@ pub async fn start_deployment(
 						error.get_error()
 					);
 				}
+
+				let aws_image =
+					format!("patr-cloud/{}", hex::encode(&deployment_id),);
+
+				log::trace!("Deleting image tagged with patr-cloud");
+				let delete_result =
+					super::delete_docker_image(&aws_image).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						aws_image,
+						delete_result.get_error()
+					);
+				}
+
+				log::trace!("deleting the pulled image");
+
+				let delete_result =
+					super::delete_docker_image(image_id.as_str()).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						image_id,
+						delete_result.get_error()
+					);
+				}
+				log::trace!("Docker image deleted");
 			});
 		}
 		_ => {
