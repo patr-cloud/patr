@@ -248,7 +248,7 @@ pub async fn update_managed_database_name(
 		WHERE
 			id = $2;
 		"#,
-		name,
+		name as _,
 		database_id,
 	)
 	.execute(&mut *connection)

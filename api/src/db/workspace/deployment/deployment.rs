@@ -767,7 +767,7 @@ pub async fn update_deployment_name(
 		WHERE
 			id = $2;
 		"#,
-		name,
+		name as _,
 		deployment_id
 	)
 	.execute(&mut *connection)

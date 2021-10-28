@@ -197,7 +197,7 @@ pub async fn update_static_site_name(
 		WHERE
 			id = $2;
 		"#,
-		name,
+		name as _,
 		static_site_id
 	)
 	.execute(&mut *connection)
