@@ -14,7 +14,7 @@ pub async fn initialize_static_sites_pre(
 		r#"
 		CREATE TABLE deployment_static_sites(
 			id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL
+			name CITEXT NOT NULL
 				CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
 				),
@@ -24,9 +24,9 @@ pub async fn initialize_static_sites_pre(
 				CONSTRAINT
 					deployment_static_sites_chk_domain_name_is_lower_case
 						CHECK(domain_name = LOWER(domain_name)),
-			organisation_id BYTEA NOT NULL,
-			CONSTRAINT deployment_static_sites_uq_name_organisation_id
-				UNIQUE(name, organisation_id),
+			workspace_id BYTEA NOT NULL,
+			CONSTRAINT deployment_static_sites_uq_name_workspace_id
+				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_static_sites_uq_id_domain_name
 				UNIQUE(id, domain_name)
 		);
@@ -46,8 +46,8 @@ pub async fn initialize_static_sites_post(
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
-		ADD CONSTRAINT deployment_static_sites_fk_id_organisation_id
-		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT deployment_static_sites_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -72,7 +72,7 @@ pub async fn create_static_site(
 	static_site_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -83,9 +83,9 @@ pub async fn create_static_site(
 				($1, $2, 'created', $3, $4);
 			"#,
 			static_site_id,
-			name,
+			name as _,
 			domain,
-			organisation_id
+			workspace_id
 		)
 		.execute(&mut *connection)
 		.await
@@ -99,8 +99,8 @@ pub async fn create_static_site(
 				($1, $2, 'created', NULL, $3);
 			"#,
 			static_site_id,
-			name,
-			organisation_id
+			name as _,
+			workspace_id
 		)
 		.execute(&mut *connection)
 		.await
@@ -117,10 +117,10 @@ pub async fn get_static_site_by_id(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
-			organisation_id
+			workspace_id
 		FROM
 			deployment_static_sites
 		WHERE
@@ -133,29 +133,29 @@ pub async fn get_static_site_by_id(
 	.await
 }
 
-pub async fn get_static_site_by_name_in_organisation(
+pub async fn get_static_site_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Option<DeploymentStaticSite>, sqlx::Error> {
 	query_as!(
 		DeploymentStaticSite,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
-			organisation_id
+			workspace_id
 		FROM
 			deployment_static_sites
 		WHERE
 			name = $1 AND
-			organisation_id = $2 AND
+			workspace_id = $2 AND
 			status != 'deleted';
 		"#,
-		name,
-		organisation_id,
+		name as _,
+		workspace_id,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -197,7 +197,7 @@ pub async fn update_static_site_name(
 		WHERE
 			id = $2;
 		"#,
-		name,
+		name as _,
 		static_site_id
 	)
 	.execute(&mut *connection)
@@ -205,26 +205,26 @@ pub async fn update_static_site_name(
 	.map(|_| ())
 }
 
-pub async fn get_static_sites_for_organisation(
+pub async fn get_static_sites_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<DeploymentStaticSite>, sqlx::Error> {
 	query_as!(
 		DeploymentStaticSite,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			status as "status: _",
 			domain_name,
-			organisation_id
+			workspace_id
 		FROM
 			deployment_static_sites
 		WHERE
-			organisation_id = $1 AND
+			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await

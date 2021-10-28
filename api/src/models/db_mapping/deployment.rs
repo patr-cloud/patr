@@ -7,7 +7,7 @@ use crate::{db, error, service, utils::Error, Database};
 
 pub struct DockerRepository {
 	pub id: Vec<u8>,
-	pub organisation_id: Vec<u8>,
+	pub workspace_id: Vec<u8>,
 	pub name: String,
 }
 
@@ -63,7 +63,7 @@ pub struct Deployment {
 	pub domain_name: Option<String>,
 	pub horizontal_scale: i16,
 	pub machine_type: DeploymentMachineType,
-	pub organisation_id: Vec<u8>,
+	pub workspace_id: Vec<u8>,
 }
 
 impl Deployment {
@@ -83,9 +83,9 @@ impl Deployment {
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 
-			let organisation = db::get_organisation_info(
+			let workspace = db::get_workspace_info(
 				&mut *connection,
-				&docker_repository.organisation_id,
+				&docker_repository.workspace_id,
 			)
 			.await?
 			.status(500)
@@ -94,7 +94,7 @@ impl Deployment {
 			Ok(format!(
 				"{}/{}/{}",
 				service::get_settings().docker_registry.registry_url,
-				organisation.name,
+				workspace.name,
 				docker_repository.name
 			))
 		} else {

@@ -123,10 +123,10 @@ pub fn create_sub_app(
 		],
 	);
 	app.get(
-		"/organisations",
+		"/workspaces",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_organisations_for_user)),
+			EveMiddleware::CustomFunction(pin_fn!(get_workspaces_for_user)),
 		],
 	);
 	app.post(
@@ -1167,7 +1167,7 @@ async fn verify_email_address(
 }
 
 /// # Description
-/// This function is used to get a list of all organisations in which the user
+/// This function is used to get a list of all workspaces in which the user
 /// is a member
 /// required inputs:
 /// auth token in the authorization headers
@@ -1186,7 +1186,7 @@ async fn verify_email_address(
 /// ```
 /// {
 ///    success: true or false,
-///    organisations:
+///    workspaces:
 ///    [
 ///       {
 ///           id: ,
@@ -1201,29 +1201,29 @@ async fn verify_email_address(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_organisations_for_user(
+async fn get_workspaces_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let organisations = db::get_all_organisations_for_user(
+	let workspaces = db::get_all_workspaces_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
 	.await?
 	.into_iter()
-	.map(|org| {
+	.map(|workspace| {
 		json!({
-			request_keys::ID: org.id.encode_hex::<String>(),
-			request_keys::NAME: org.name,
-			request_keys::ACTIVE: org.active
+			request_keys::ID: workspace.id.encode_hex::<String>(),
+			request_keys::NAME: workspace.name,
+			request_keys::ACTIVE: workspace.active
 		})
 	})
 	.collect::<Vec<_>>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ORGANISATIONS: organisations
+		request_keys::WORKSPACES: workspaces
 	}));
 	Ok(context)
 }

@@ -39,12 +39,12 @@ use crate::{
 };
 
 /// # Description
-/// This function creates a deployment under an organisation account
+/// This function creates a deployment under an workspace account
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
+/// * `workspace_id` -  an unsigned 8 bit integer array containing the id of
+///   workspace
 /// * `name` - a string containing the name of deployment
 /// * `registry` - a string containing the url of docker registry
 /// * `repository_id` - An Option<&str> containing either a repository id of
@@ -58,9 +58,9 @@ use crate::{
 /// deployment or an error
 ///
 /// [`Transaction`]: Transaction
-pub async fn create_deployment_in_organisation(
+pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 	registry: &str,
 	repository_id: Option<&str>,
@@ -99,12 +99,9 @@ pub async fn create_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	let existing_deployment = db::get_deployment_by_name_in_organisation(
-		connection,
-		name,
-		organisation_id,
-	)
-	.await?;
+	let existing_deployment =
+		db::get_deployment_by_name_in_workspace(connection, name, workspace_id)
+			.await?;
 	if existing_deployment.is_some() {
 		Error::as_result()
 			.status(200)
@@ -137,7 +134,7 @@ pub async fn create_deployment_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -158,7 +155,7 @@ pub async fn create_deployment_in_organisation(
 				domain_name,
 				horizontal_scale,
 				machine_type,
-				organisation_id,
+				workspace_id,
 			)
 			.await?;
 		} else {
@@ -178,7 +175,7 @@ pub async fn create_deployment_in_organisation(
 			domain_name,
 			horizontal_scale,
 			machine_type,
-			organisation_id,
+			workspace_id,
 		)
 		.await?;
 	} else {
@@ -226,10 +223,10 @@ pub async fn start_deployment(
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
 				let result = digitalocean::deploy_container(
-					image_id,
+					image_id.clone(),
 					region,
 					deployment_id.clone(),
-					config,
+					config.clone(),
 				)
 				.await;
 
@@ -244,12 +241,43 @@ pub async fn start_deployment(
 						error.get_error()
 					);
 				}
+
+				let digital_ocean_image = format!(
+					"registry.digitalocean.com/{}/{}",
+					config.digitalocean.registry,
+					hex::encode(&deployment_id),
+				);
+
+				log::trace!(
+					"Deleting image tagged with registry.digitalocean.com"
+				);
+				let delete_result =
+					super::delete_docker_image(&digital_ocean_image).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						digital_ocean_image,
+						delete_result.get_error()
+					);
+				}
+
+				log::trace!("deleting the pulled image");
+
+				let delete_result = super::delete_docker_image(&image_id).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						image_id,
+						delete_result.get_error()
+					);
+				}
+				log::trace!("Docker image deleted");
 			});
 		}
 		Ok(CloudPlatform::Aws) => {
 			task::spawn(async move {
 				let result = aws::deploy_container(
-					image_id,
+					image_id.clone(),
 					region,
 					deployment_id.clone(),
 					config,
@@ -267,6 +295,33 @@ pub async fn start_deployment(
 						error.get_error()
 					);
 				}
+
+				let aws_image =
+					format!("patr-cloud/{}", hex::encode(&deployment_id),);
+
+				log::trace!("Deleting image tagged with patr-cloud");
+				let delete_result =
+					super::delete_docker_image(&aws_image).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						aws_image,
+						delete_result.get_error()
+					);
+				}
+
+				log::trace!("deleting the pulled image");
+
+				let delete_result =
+					super::delete_docker_image(image_id.as_str()).await;
+				if let Err(delete_result) = delete_result {
+					log::error!(
+						"Failed to delete the image: {}, Error: {}",
+						image_id,
+						delete_result.get_error()
+					);
+				}
+				log::trace!("Docker image deleted");
 			});
 		}
 		_ => {

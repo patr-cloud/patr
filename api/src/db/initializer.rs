@@ -37,6 +37,14 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	.execute(&app.database)
 	.await?;
 
+	query!(
+		r#"
+		CREATE EXTENSION IF NOT EXISTS citext;
+		"#
+	)
+	.execute(&app.database)
+	.await?;
+
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");
@@ -44,11 +52,11 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		// Create all tables
 		db::initialize_meta_pre(&mut transaction).await?;
 		db::initialize_users_pre(&mut transaction).await?;
-		db::initialize_organisations_pre(&mut transaction).await?;
+		db::initialize_workspaces_pre(&mut transaction).await?;
 		db::initialize_rbac_pre(&mut transaction).await?;
 
 		db::initialize_rbac_post(&mut transaction).await?;
-		db::initialize_organisations_post(&mut transaction).await?;
+		db::initialize_workspaces_post(&mut transaction).await?;
 		db::initialize_users_post(&mut transaction).await?;
 		db::initialize_meta_post(&mut transaction).await?;
 

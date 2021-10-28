@@ -43,18 +43,18 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::LIST,
+				permissions::workspace::deployment::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -76,18 +76,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::CREATE,
+				permissions::workspace::deployment::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -109,7 +108,7 @@ pub fn create_sub_app(
 		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -141,7 +140,7 @@ pub fn create_sub_app(
 		"/:deploymentId/start",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -173,7 +172,7 @@ pub fn create_sub_app(
 		"/:deploymentId/stop",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -205,7 +204,7 @@ pub fn create_sub_app(
 		"/:deploymentId/logs",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -237,7 +236,7 @@ pub fn create_sub_app(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -269,7 +268,7 @@ pub fn create_sub_app(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -301,7 +300,7 @@ pub fn create_sub_app(
 		"/:deploymentId/horizontal-scale",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -333,7 +332,7 @@ pub fn create_sub_app(
 		"/:deploymentId/machine-type",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::EDIT,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -365,7 +364,7 @@ pub fn create_sub_app(
 		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::DELETE,
+				permissions::workspace::deployment::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -397,7 +396,7 @@ pub fn create_sub_app(
 		"/:deploymentId/domain-dns-records",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -429,7 +428,7 @@ pub fn create_sub_app(
 		"/:deploymentId/domain",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -461,18 +460,17 @@ pub fn create_sub_app(
 		"/:deploymentId/domain-validated",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -494,18 +492,17 @@ pub fn create_sub_app(
 		"/:deploymentId/recommended-data-center",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::deployment::INFO,
+				permissions::workspace::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -528,7 +525,7 @@ pub fn create_sub_app(
 /// # Description
 /// This function is used to list of all the deployments present with the user
 /// required inputs:
-/// OrganisationId in url
+/// workspaceId in url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -553,12 +550,12 @@ async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let deployments = db::get_deployments_for_organisation(
+	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -630,7 +627,7 @@ async fn list_deployments(
 /// This function is used to create a new deployment
 /// required inputs
 /// auth token in the header
-/// organisation id in parameter
+/// workspace id in parameter
 /// ```
 /// {
 ///    name: ,
@@ -667,8 +664,8 @@ async fn create_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 
@@ -779,9 +776,9 @@ async fn create_deployment(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let deployment_id = service::create_deployment_in_organisation(
+	let deployment_id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 		name,
 		registry,
 		repository_id,

@@ -22,16 +22,10 @@ pub fn initialize_jobs(app: &App) {
 }
 
 async fn run_job(job: Job) {
-	let mut last_tick = None;
+	let mut last_tick = Utc::now();
 	loop {
 		let now = Utc::now();
-		if last_tick.is_none() {
-			last_tick = Some(now);
-			continue;
-		}
-		if let Some(event) =
-			job.schedule.after(last_tick.as_ref().unwrap()).next()
-		{
+		if let Some(event) = job.schedule.after(&last_tick).next() {
 			if event > now {
 				time::sleep(Duration::from_millis(
 					(event - now).num_milliseconds().abs() as u64,
@@ -39,7 +33,7 @@ async fn run_job(job: Job) {
 				.await;
 				continue;
 			}
-			last_tick = Some(now);
+			last_tick = now;
 			let result = (job.runner)().await;
 			if let Err(err) = result {
 				log::error!(

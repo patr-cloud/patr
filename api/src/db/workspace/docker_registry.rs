@@ -8,12 +8,12 @@ pub async fn initialize_docker_registry_pre(
 		r#"
 		CREATE TABLE docker_registry_repository(
 			id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
-			organisation_id BYTEA NOT NULL
-				CONSTRAINT docker_registry_repository_fk_id
-					REFERENCES organisation(id),
-			name VARCHAR(255) NOT NULL,
-			CONSTRAINT docker_registry_repository_uq_organisation_id_name
-				UNIQUE(organisation_id, name)
+			workspace_id BYTEA NOT NULL
+				CONSTRAINT docker_registry_repository_fk_workspace_id
+					REFERENCES workspace(id),
+			name CITEXT NOT NULL,
+			CONSTRAINT docker_registry_repository_uq_workspace_id_name
+				UNIQUE(workspace_id, name)
 		);
 		"#
 	)
@@ -30,8 +30,8 @@ pub async fn initialize_docker_registry_post(
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
-		ADD CONSTRAINT docker_registry_repository_fk_id_organisation_id
-		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -45,7 +45,7 @@ pub async fn create_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &[u8],
 	name: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -55,8 +55,8 @@ pub async fn create_docker_repository(
 			($1, $2, $3);
 		"#,
 		resource_id,
-		organisation_id,
-		name
+		workspace_id,
+		name as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -66,43 +66,47 @@ pub async fn create_docker_repository(
 pub async fn get_repository_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_name: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
 		r#"
 		SELECT
-			*
+			id,
+			workspace_id,
+			name as "name: _"
 		FROM
 			docker_registry_repository
 		WHERE
 			name = $1
 		AND
-			organisation_id = $2;
+			workspace_id = $2;
 		"#,
-		repository_name,
-		organisation_id
+		repository_name as _,
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await
 	.map(|rows| rows.into_iter().next())
 }
 
-pub async fn get_docker_repositories_for_organisation(
+pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
 		r#"
 		SELECT
-			*
+			id,
+			workspace_id,
+			name as "name: _"
 		FROM
 			docker_registry_repository
 		WHERE
-			organisation_id = $1;
+			workspace_id = $1;
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -116,7 +120,9 @@ pub async fn get_docker_repository_by_id(
 		DockerRepository,
 		r#"
 		SELECT
-			*
+			id,
+			workspace_id,
+			name as "name: _"
 		FROM
 			docker_registry_repository
 		WHERE

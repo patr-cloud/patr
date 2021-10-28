@@ -43,17 +43,17 @@ pub fn create_sub_app(
 		"/roles",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_ROLES,
+				permissions::workspace::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -73,17 +73,17 @@ pub fn create_sub_app(
 		"/permissions",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_ROLES,
+				permissions::workspace::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -103,17 +103,17 @@ pub fn create_sub_app(
 		"/resourceTypes",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_ROLES,
+				permissions::workspace::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -135,17 +135,17 @@ pub fn create_sub_app(
 		"/role",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::CREATE_ROLE,
+				permissions::workspace::CREATE_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -166,17 +166,17 @@ pub fn create_sub_app(
 		"/role/:roleId/permissions",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_ROLES,
+				permissions::workspace::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -197,17 +197,17 @@ pub fn create_sub_app(
 		"/role/:roleId/permissions",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::EDIT_ROLE,
+				permissions::workspace::EDIT_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -227,17 +227,17 @@ pub fn create_sub_app(
 		"/role/:roleId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::DELETE_ROLE,
+				permissions::workspace::DELETE_ROLE,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -259,17 +259,17 @@ pub fn create_sub_app(
 		"/resource/:resourceId/info",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::VIEW_ROLES,
+				permissions::workspace::VIEW_ROLES,
 				api_macros::closure_as_pinned_box!(|mut context| {
-					let organisation_id = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&organisation_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -291,10 +291,10 @@ pub fn create_sub_app(
 
 /// # Description
 /// This function is used to list all the roles available within the
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
-/// orgnisation id in the url
+/// workspace id in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -326,12 +326,11 @@ async fn list_all_roles(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let organisation_id = hex::decode(organisation_id).unwrap();
-	let roles = db::get_all_organisation_roles(
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = hex::decode(workspace_id).unwrap();
+	let roles = db::get_all_workspace_roles(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -427,7 +426,7 @@ async fn list_all_permissions(
 /// the API
 /// required inputs:
 /// auth token in the description
-/// organisation id in the url
+/// workspace id in the url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -489,7 +488,7 @@ async fn list_all_resource_types(
 /// This function is used to get the list of permissions for the role
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 /// role id in the url
 /// ```
 /// {
@@ -623,7 +622,7 @@ async fn get_permissions_for_role(
 /// This function is used to create a new role
 /// required inputs:
 /// auth token in the header
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///     name: ,
@@ -654,9 +653,9 @@ async fn create_role(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id = hex::decode(
+	let workspace_id = hex::decode(
 		context
-			.get_param(request_keys::ORGANISATION_ID)
+			.get_param(request_keys::WORKSPACE_ID)
 			.unwrap()
 			.clone(),
 	)
@@ -688,7 +687,7 @@ async fn create_role(
 		&role_id,
 		name,
 		description,
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?;
 
@@ -703,7 +702,7 @@ async fn create_role(
 /// This function is used to update the permissions of the role
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 /// role id in the url
 /// ```
 /// {
@@ -854,7 +853,7 @@ async fn update_role_permissions(
 /// This function is used to delete a role
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 /// role id in the url
 ///
 /// # Arguments
@@ -900,7 +899,7 @@ async fn delete_role(
 /// This function is used to get details about the resource
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in the url
+/// workspace id in the url
 /// ```
 /// {
 ///     resourceId:
