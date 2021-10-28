@@ -221,13 +221,34 @@ pub(super) async fn deploy_container(
 		&DeploymentStatus::Running,
 	)
 	.await;
+
 	log::trace!(
 		"request_id: {} - deleting image tagged with digitalocean registry",
 		request_id
 	);
-	let _ = super::delete_docker_image(&new_repo_name).await;
+	log::trace!(
+		"request_id: {} - deleting image tagged with registry.digitalocean.com",
+		request_id
+	);
+	let delete_result = super::delete_docker_image(&new_repo_name).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			new_repo_name,
+			delete_result.get_error()
+		);
+	}
+
 	log::trace!("request_id: {} - deleting the pulled image", request_id);
-	let _ = super::delete_docker_image(&image_id).await;
+
+	let delete_result = super::delete_docker_image(&image_id).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			image_id,
+			delete_result.get_error()
+		);
+	}
 	log::trace!("request_id: {} - Docker image deleted", request_id);
 
 	Ok(())
