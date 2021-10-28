@@ -4478,16 +4478,6 @@
       ]
     }
   },
-  "9fe4405a36d65ff61b6cebebaccd5ee57662645456a207b0b97dbb212e20591c": {
-    "query": "CREATE TABLE deployment_static_sites( id BYTEA CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), organisation_id BYTEA NOT NULL, CONSTRAINT deployment_static_sites_uq_name_organisation_id UNIQUE(name, organisation_id), CONSTRAINT deployment_static_sites_uq_id_domain_name UNIQUE(id, domain_name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "a1bf8a497d7d6b8762434743b2da880011018fc4bff4f94fffe1e9b41ba6d567": {
     "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
     "describe": {
