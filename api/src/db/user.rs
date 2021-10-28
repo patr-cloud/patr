@@ -2431,7 +2431,6 @@ pub async fn get_personal_email_count_for_domain_id(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.count as u64)
-	.into()
 }
 
 pub async fn get_phone_numbers_for_user(
