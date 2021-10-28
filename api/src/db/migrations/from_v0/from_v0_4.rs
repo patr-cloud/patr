@@ -438,7 +438,7 @@ async fn migrate_from_v0_4_5(
 }
 
 async fn migrate_from_v0_4_6(
-	_connection: &mut <Database as sqlx::Database>::Connection,
+	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
