@@ -1372,6 +1372,24 @@
       "nullable": []
     }
   },
+  "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
+    "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "3735ed21a5154da535799d8cda3eadbb9b5758d93ff35ee0318330fed1b67858": {
     "query": "UPDATE deployment SET domain_name = $1 WHERE id = $2;",
     "describe": {
@@ -1393,6 +1411,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
@@ -1513,6 +1549,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "3c9d1ea4466117373233fc7413eb1290e2c1cdfd276781a0ec5995133c34be4a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "3cb20f213827519db975ea8e9b37a716ddbabeaba861ec1c9f7cb9485dded728": {
@@ -2618,6 +2672,24 @@
       ]
     }
   },
+  "5da0c27ce496203a39e2dbb482151947f0f0bed024a8737b7f9f064ad49ee82a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "5da293f9bd84592d9bbf11fd8d5f143e65bb472d94ebf2792b51496c2a686d02": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, org_email_local, org_domain_name, organisation_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE backup_phone_country_code = $1 AND backup_phone_number = $2;",
     "describe": {
@@ -3325,6 +3397,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "77543d83cf31ee064300d72d0052ee7737cb0a5f0d7f56c7f15da4311e8e07c7": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "782949dcc37fdbd3869a003cb06ce6740c514fbca85fa9c28ccfc09b8dc63112": {
@@ -4104,6 +4194,24 @@
       "nullable": []
     }
   },
+  "923a2a04848ec56b4977634d4cf1afb7f1890839555768d880df83023d723395": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "927aceafdc77e7658f7637ccbfb5d84ee5f2b63a43816cf69e06bc4e50e72ec4": {
     "query": "INSERT INTO portus_tunnel VALUES ($1, $2, $3, $4, $5);",
     "describe": {
@@ -4132,6 +4240,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
@@ -5568,6 +5694,24 @@
       "nullable": []
     }
   },
+  "d1345ac4986e1103b9cb35fc05f4a558184314ddb1e0d560461b4c3c2576b974": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "d1fe46b2a74918c7f0ee963f4bf1d32bf30e3c2e09907c3ba4799eecb2589f8e": {
     "query": "SELECT * FROM organisation_user WHERE user_id = $1 ORDER BY organisation_id;",
     "describe": {
@@ -6360,6 +6504,24 @@
       ]
     }
   },
+  "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
     "describe": {
@@ -6436,6 +6598,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "fd7c1fc75c8cbe57877b01cb4b73c2fc98bb25f736209fd68fa51751267a58db": {

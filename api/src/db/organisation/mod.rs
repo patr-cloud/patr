@@ -4,12 +4,14 @@ mod application;
 mod deployment;
 mod domain;
 mod drive;
+mod metrics;
 mod portus;
 
 pub use application::*;
 pub use deployment::*;
 pub use domain::*;
 pub use drive::*;
+pub use metrics::*;
 pub use portus::*;
 
 pub async fn initialize_organisations_pre(

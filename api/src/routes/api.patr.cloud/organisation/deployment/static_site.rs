@@ -612,6 +612,8 @@ async fn create_static_site_deployment(
 	)
 	.await?;
 
+	service::get_deployment_metrics(context.get_database_connection()).await?;
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
@@ -819,6 +821,8 @@ async fn delete_static_site(
 	)
 	.await?;
 
+	service::get_deployment_metrics(context.get_database_connection()).await?;
+
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
@@ -960,6 +964,8 @@ async fn set_domain_name_for_static_site(
 		domain_name,
 	)
 	.await?;
+
+	service::get_deployment_metrics(context.get_database_connection()).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

@@ -801,6 +801,8 @@ async fn create_deployment(
 	// be deployed
 	// TODO: add start deployment function here
 
+	service::get_deployment_metrics(context.get_database_connection()).await?;
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id.as_bytes())
@@ -1093,6 +1095,8 @@ async fn delete_deployment(
 		&config,
 	)
 	.await?;
+
+	service::get_deployment_metrics(context.get_database_connection()).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -1491,6 +1495,8 @@ async fn set_domain_name(
 		domain_name,
 	)
 	.await?;
+
+	service::get_deployment_metrics(context.get_database_connection()).await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
