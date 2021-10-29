@@ -1372,6 +1372,24 @@
       "nullable": []
     }
   },
+  "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
+    "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "3735ed21a5154da535799d8cda3eadbb9b5758d93ff35ee0318330fed1b67858": {
     "query": "UPDATE deployment SET domain_name = $1 WHERE id = $2;",
     "describe": {
@@ -1393,6 +1411,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
@@ -1513,6 +1549,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "3c9d1ea4466117373233fc7413eb1290e2c1cdfd276781a0ec5995133c34be4a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "3cb20f213827519db975ea8e9b37a716ddbabeaba861ec1c9f7cb9485dded728": {
@@ -2618,6 +2672,24 @@
       ]
     }
   },
+  "5da0c27ce496203a39e2dbb482151947f0f0bed024a8737b7f9f064ad49ee82a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "5da293f9bd84592d9bbf11fd8d5f143e65bb472d94ebf2792b51496c2a686d02": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, org_email_local, org_domain_name, organisation_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE backup_phone_country_code = $1 AND backup_phone_number = $2;",
     "describe": {
@@ -3150,6 +3222,38 @@
       ]
     }
   },
+  "6e5dda42490ee18a2926c17dee677aad477c08812614b73d063f2f2234861a35": {
+    "query": "SELECT * FROM docker_registry_repository WHERE id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "6f8c57740dcbc022323bca29182394eb09dd6beceab8b987330556896f29e2c4": {
     "query": "SELECT id, name, status as \"status: _\", domain_name, organisation_id FROM deployment_static_sites WHERE organisation_id = $1 AND status != 'deleted';",
     "describe": {
@@ -3325,6 +3429,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "77543d83cf31ee064300d72d0052ee7737cb0a5f0d7f56c7f15da4311e8e07c7": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "782949dcc37fdbd3869a003cb06ce6740c514fbca85fa9c28ccfc09b8dc63112": {
@@ -4090,6 +4212,131 @@
       "nullable": []
     }
   },
+  "9161a487b65daef3b89cede342bd295e427b414a6f0b87cc0b9b19e23fafee94": {
+    "query": "SELECT id, name, registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", organisation_id FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digitalocean_app_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 12,
+          "name": "machine_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 13,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "9186f2b1c4478b0bd198eca9e513bfb69799d4ce6a12371c3334bc33e8c71f60": {
     "query": "INSERT INTO personal_email VALUES ($1, $2, $3);",
     "describe": {
@@ -4102,6 +4349,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "923a2a04848ec56b4977634d4cf1afb7f1890839555768d880df83023d723395": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "927aceafdc77e7658f7637ccbfb5d84ee5f2b63a43816cf69e06bc4e50e72ec4": {
@@ -4132,6 +4397,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
@@ -4321,18 +4604,6 @@
       "nullable": []
     }
   },
-  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
-    "query": "DELETE FROM docker_registry_repository WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
     "query": "DELETE FROM personal_domain WHERE id = $1;",
     "describe": {
@@ -4508,6 +4779,39 @@
       "nullable": []
     }
   },
+  "a45d488bab33401af962817e8387a8db490d3c4f3391fa189cc3544bfaf70d45": {
+    "query": "SELECT * FROM docker_registry_repository WHERE name = $1 AND organisation_id = $2 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "a4a2f1cf647e8612f0b461bc85e215e590fc186f0ef948c3d2c2786e7c7fd50f": {
     "query": "SELECT * FROM permission WHERE id = $1;",
     "describe": {
@@ -4600,6 +4904,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
+    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
       },
       "nullable": []
     }
@@ -4947,38 +5264,6 @@
       },
       "nullable": [
         false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "b4d622915f6f0f0d5765d48e13394a021569866553db2c1935025cd26c4d268a": {
-    "query": "SELECT * FROM docker_registry_repository WHERE organisation_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false
@@ -5568,6 +5853,24 @@
       "nullable": []
     }
   },
+  "d1345ac4986e1103b9cb35fc05f4a558184314ddb1e0d560461b4c3c2576b974": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "d1fe46b2a74918c7f0ee963f4bf1d32bf30e3c2e09907c3ba4799eecb2589f8e": {
     "query": "SELECT * FROM organisation_user WHERE user_id = $1 ORDER BY organisation_id;",
     "describe": {
@@ -5688,38 +5991,6 @@
         false,
         false,
         false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "d9f1a85d68405c7372854b9141d5218b66253723fc52f51e42290323ed42f111": {
-    "query": "SELECT * FROM docker_registry_repository WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false
@@ -6360,6 +6631,24 @@
       ]
     }
   },
+  "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
     "describe": {
@@ -6414,6 +6703,38 @@
       ]
     }
   },
+  "f8d1c176b8edd1f9d7bc4ca89aa129fb1d7901dd984e4cd226d96b4ecf4d0ba2": {
+    "query": "SELECT * FROM docker_registry_repository WHERE organisation_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "organisation_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "f91a0a4bb5c15b244e6f328b1f67a63bb3edcc017a41ea5195cef21a96b95b11": {
     "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6436,6 +6757,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "fd7c1fc75c8cbe57877b01cb4b73c2fc98bb25f736209fd68fa51751267a58db": {
@@ -6480,39 +6819,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "fec57570e6a73eaf97a7cb37e5e027c6723a94d7b4e34621aca3258a62a0efe4": {
-    "query": "SELECT * FROM docker_registry_repository WHERE name = $1 AND organisation_id = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "organisation_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "ff908727dc27ddb488aafa68cb7b32c061cc8ecfe14870095e35762ba4aecb9a": {

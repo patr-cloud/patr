@@ -39,12 +39,27 @@ pub async fn create_static_site_deployment_in_organisation(
 	organisation_id: &[u8],
 	name: &str,
 	domain_name: Option<&str>,
+	user_id: &[u8],
 ) -> Result<Uuid, Error> {
 	// validate static site name
 	if !validator::is_deployment_name_valid(name) {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+	}
+
+	if let Some(domain_name) = domain_name {
+		let is_god_user =
+			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+		// If the entry point is not valid, OR if (the domain is special and the
+		// user is not god user)
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			(validator::is_domain_special(domain_name) && !is_god_user)
+		{
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
+		}
 	}
 
 	let existing_static_site = db::get_static_site_by_name_in_organisation(
