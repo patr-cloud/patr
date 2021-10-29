@@ -353,7 +353,7 @@ async fn delete_docker_repository(
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
 	let repository_id = hex::decode(&repo_id_string).unwrap();
 
-	db::get_docker_repository_by_id(
+	let repository = db::get_docker_repository_by_id(
 		context.get_database_connection(),
 		&repository_id,
 	)
@@ -363,9 +363,26 @@ async fn delete_docker_repository(
 
 	// TODO delete from docker registry using its API
 
-	db::delete_docker_repository_by_id(
+	let running_deployments = db::get_deployments_by_repository_id(
 		context.get_database_connection(),
 		&repository_id,
+	)
+	.await?;
+
+	if running_deployments.len() > 0 {
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string())?;
+	}
+
+	db::update_docker_repository_name(
+		context.get_database_connection(),
+		&repository_id,
+		&format!(
+			"patr-deleted: {}-{}",
+			repository.name,
+			hex::encode(&repository_id)
+		),
 	)
 	.await?;
 

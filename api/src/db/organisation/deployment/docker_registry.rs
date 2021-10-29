@@ -78,7 +78,8 @@ pub async fn get_repository_by_name(
 		WHERE
 			name = $1
 		AND
-			organisation_id = $2;
+			organisation_id = $2 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_name,
 		organisation_id
@@ -100,7 +101,8 @@ pub async fn get_docker_repositories_for_organisation(
 		FROM
 			docker_registry_repository
 		WHERE
-			organisation_id = $1;
+			organisation_id = $1 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		organisation_id
 	)
@@ -120,7 +122,8 @@ pub async fn get_docker_repository_by_id(
 		FROM
 			docker_registry_repository
 		WHERE
-			id = $1;
+			id = $1 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_id
 	)
@@ -129,18 +132,22 @@ pub async fn get_docker_repository_by_id(
 	.map(|repos| repos.into_iter().next())
 }
 
-pub async fn delete_docker_repository_by_id(
+pub async fn update_docker_repository_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
+	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		DELETE FROM
+		UPDATE
 			docker_registry_repository
+		SET
+			name = $2
 		WHERE
 			id = $1;
 		"#,
-		repository_id
+		repository_id,
+		name
 	)
 	.execute(&mut *connection)
 	.await
