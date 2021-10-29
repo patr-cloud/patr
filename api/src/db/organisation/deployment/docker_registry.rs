@@ -78,7 +78,8 @@ pub async fn get_repository_by_name(
 		WHERE
 			name = $1
 		AND
-			organisation_id = $2;
+			organisation_id = $2 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_name,
 		organisation_id
@@ -100,7 +101,8 @@ pub async fn get_docker_repositories_for_organisation(
 		FROM
 			docker_registry_repository
 		WHERE
-			organisation_id = $1;
+			organisation_id = $1 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		organisation_id
 	)
@@ -120,7 +122,8 @@ pub async fn get_docker_repository_by_id(
 		FROM
 			docker_registry_repository
 		WHERE
-			id = $1;
+			id = $1 AND
+			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_id
 	)
