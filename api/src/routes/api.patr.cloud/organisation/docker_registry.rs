@@ -363,6 +363,18 @@ async fn delete_docker_repository(
 
 	// TODO delete from docker registry using its API
 
+	let running_deployments = db::get_deployments_by_repository_id(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?;
+
+	if running_deployments.len() > 0 {
+		Error::as_result()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string())?;
+	}
+
 	db::update_docker_repository_name(
 		context.get_database_connection(),
 		&repository_id,
