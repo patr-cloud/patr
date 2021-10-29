@@ -28,6 +28,7 @@ pub async fn migrate(
 		(0, 4, 4) => migrate_from_v0_4_4(&mut *connection).await?,
 		(0, 4, 5) => migrate_from_v0_4_5(&mut *connection).await?,
 		(0, 4, 6) => migrate_from_v0_4_6(&mut *connection).await?,
+		(0, 4, 7) => migrate_from_v0_4_7(&mut *connection).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -45,7 +46,7 @@ pub async fn migrate(
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
 	vec![
-		"0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6",
+		"0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7",
 	]
 }
 
@@ -502,5 +503,11 @@ async fn migrate_from_v0_4_6(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn migrate_from_v0_4_7(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
 	Ok(())
 }
