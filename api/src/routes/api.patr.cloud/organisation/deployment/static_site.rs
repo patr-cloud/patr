@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -593,12 +593,15 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let static_site_id =
 		service::create_static_site_deployment_in_organisation(
 			context.get_database_connection(),
 			&organisation_id,
 			name,
 			domain_name,
+			&user_id,
 		)
 		.await?;
 
@@ -944,8 +947,13 @@ async fn set_domain_name_for_static_site(
 		})
 		.transpose()?;
 
+	let user_id = &context.get_token_data().unwrap().user.id;
+	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			(validator::is_domain_special(domain_name) && !is_god_user)
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
