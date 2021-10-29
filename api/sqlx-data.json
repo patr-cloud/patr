@@ -4321,18 +4321,6 @@
       "nullable": []
     }
   },
-  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
-    "query": "DELETE FROM docker_registry_repository WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
     "query": "DELETE FROM personal_domain WHERE id = $1;",
     "describe": {
@@ -4600,6 +4588,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
+    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
       },
       "nullable": []
     }
