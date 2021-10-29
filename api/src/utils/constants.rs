@@ -183,7 +183,7 @@ pub mod request_keys {
 	pub const RECOMMENDED_DATA_CENTER: &str = "recommendedDataCenter";
 	pub const SECONDARY_EMAILS: &str = "secondaryEmails";
 	pub const SECONDARY_PHONE_NUMBERS: &str = "secondaryPhoneNumbers";
-	pub const USERS_TO_SIGN_UP: &str = "UsersToSignUp";
+	pub const USERS_TO_SIGN_UP: &str = "usersToSignUp";
 	pub const USERS: &str = "users";
 	pub const CUSTOM_DOMAINS_FOR_DEPLOYMENTS: &str =
 		"customDomainsForDeployments";
