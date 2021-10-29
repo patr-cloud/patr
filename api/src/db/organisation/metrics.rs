@@ -9,7 +9,7 @@ pub async fn get_sign_up_count(
 			COUNT(*) as "count!"
 		FROM
 			user_to_sign_up;
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -30,7 +30,7 @@ pub async fn get_join_count(
 			COUNT(*) "count!"
 		FROM
 			"user";
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -53,7 +53,7 @@ pub async fn get_created_deployment_count(
 			deployment
 		WHERE
 			status != 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -70,14 +70,14 @@ pub async fn get_deployment_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
+		SELECT
 			COUNT(*) "count!"
-        FROM
+		FROM
 			deployment
-        WHERE
+		WHERE
 			domain_name IS NOT NULL AND
 			status != 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -100,7 +100,7 @@ pub async fn get_deleted_deployment_count(
 			deployment
 		WHERE
 			status = 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -123,7 +123,7 @@ pub async fn get_created_database_count(
 			managed_database
 		WHERE
 			status != 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -146,7 +146,7 @@ pub async fn get_deleted_database_count(
 			managed_database
 		WHERE
 			status = 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -169,7 +169,7 @@ pub async fn get_created_static_site_count(
 			deployment_static_sites
 		WHERE
 			status != 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -193,7 +193,7 @@ pub async fn get_static_site_domain_count(
 		WHERE 
 			domain_name IS NOT NULL AND
 			status != 'deleted';
-        "#
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?
