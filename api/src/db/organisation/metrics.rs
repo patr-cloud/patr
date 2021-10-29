@@ -5,10 +5,10 @@ pub async fn get_sign_up_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) as "count!"
-        FROM 
-            user_to_sign_up;
+		SELECT
+			COUNT(*) as "count!"
+		FROM
+			user_to_sign_up;
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -26,10 +26,10 @@ pub async fn get_join_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            "user";
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			"user";
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -47,12 +47,12 @@ pub async fn get_created_deployment_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM
-            deployment
-        WHERE
-            status != 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			deployment
+		WHERE
+			status != 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -71,12 +71,12 @@ pub async fn get_deployment_domain_count(
 	let count = query!(
 		r#"
         SELECT
-            COUNT(*) "count!"
-        FROM 
-            deployment
-        WHERE 
-            domain_name IS NOT NULL AND
-            status != 'deleted';
+			COUNT(*) "count!"
+        FROM
+			deployment
+        WHERE
+			domain_name IS NOT NULL AND
+			status != 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -94,12 +94,12 @@ pub async fn get_deleted_deployment_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            deployment
-        WHERE 
-            status = 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			deployment
+		WHERE
+			status = 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -117,12 +117,12 @@ pub async fn get_created_database_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM
-            managed_database
-        WHERE
-            status != 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			managed_database
+		WHERE
+			status != 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -140,12 +140,12 @@ pub async fn get_deleted_database_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            managed_database
-        WHERE 
-            status = 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			managed_database
+		WHERE
+			status = 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -163,12 +163,12 @@ pub async fn get_created_static_site_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            deployment_static_sites
-        WHERE 
-            status != 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM
+			deployment_static_sites
+		WHERE
+			status != 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -186,13 +186,13 @@ pub async fn get_static_site_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            deployment_static_sites
-        WHERE 
-            domain_name IS NOT NULL AND
-            status != 'deleted';
+		SELECT
+			COUNT(*) "count!"
+		FROM 
+			deployment_static_sites
+		WHERE 
+			domain_name IS NOT NULL AND
+			status != 'deleted';
         "#
 	)
 	.fetch_all(&mut *connection)
@@ -210,13 +210,13 @@ pub async fn get_deleted_static_site_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-        SELECT
-            COUNT(*) "count!"
-        FROM 
-            deployment_static_sites
-        WHERE 
-            status = 'deleted';
-        "#
+		SELECT
+			COUNT(*) "count!"
+		FROM 
+			deployment_static_sites
+		WHERE 
+			status = 'deleted';
+		"#
 	)
 	.fetch_all(&mut *connection)
 	.await?

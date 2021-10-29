@@ -279,7 +279,8 @@ async fn create_database_cluster(
 	)
 	.await?;
 
-	service::get_deployment_metrics(context.get_database_connection()).await?;
+	let _ = service::get_deployment_metrics(context.get_database_connection())
+		.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -342,7 +343,8 @@ async fn delete_managed_database(
 	)
 	.await?;
 
-	service::get_deployment_metrics(context.get_database_connection()).await?;
+	let _ = service::get_deployment_metrics(context.get_database_connection())
+		.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
