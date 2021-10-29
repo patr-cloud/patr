@@ -369,7 +369,7 @@ async fn delete_docker_repository(
 	)
 	.await?;
 
-	if running_deployments.len() > 0 {
+	if !running_deployments.is_empty() {
 		Error::as_result()
 			.status(400)
 			.body(error!(RESOURCE_IN_USE).to_string())?;
