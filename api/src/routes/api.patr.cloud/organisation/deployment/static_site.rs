@@ -579,7 +579,8 @@ async fn create_static_site_deployment(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
 
 	let file = body
 		.get(request_keys::STATIC_SITE_FILE)
@@ -957,7 +958,8 @@ async fn set_domain_name_for_static_site(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
 
 	let user_id = &context.get_token_data().unwrap().user.id;
 	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();

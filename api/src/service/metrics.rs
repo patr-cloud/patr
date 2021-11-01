@@ -86,7 +86,7 @@ pub async fn get_deployment_metrics(
 						},
 						{
 							"name": request_keys::TOTAL_WEBSITES,
-							"value": create_database_count + create_static_site_count
+							"value": create_deployment_count + create_static_site_count
 						},
 						{
 							"name": request_keys::TOTAL_RESOURCES,
