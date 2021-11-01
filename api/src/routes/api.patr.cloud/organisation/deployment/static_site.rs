@@ -615,8 +615,11 @@ async fn create_static_site_deployment(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(context.get_database_connection())
-		.await;
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A static site has been created",
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -825,8 +828,11 @@ async fn delete_static_site(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(context.get_database_connection())
-		.await;
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A static site has been deleted",
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
@@ -971,12 +977,19 @@ async fn set_domain_name_for_static_site(
 		context.get_database_connection(),
 		&config,
 		&static_site_id,
-		domain_name,
+		domain_name.clone(),
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(context.get_database_connection())
-		.await;
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		if domain_name.is_some() {
+			"A domain name has been set for a deployment"
+		} else {
+			"A domain name has been unset for a deployment"
+		},
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true
