@@ -979,7 +979,7 @@ async fn set_domain_name_for_static_site(
 		context.get_database_connection(),
 		&config,
 		&static_site_id,
-		domain_name.clone(),
+		domain_name,
 	)
 	.await?;
 

@@ -1500,7 +1500,7 @@ async fn set_domain_name(
 		context.get_database_connection(),
 		&config,
 		&deployment_id,
-		domain_name.clone(),
+		domain_name,
 	)
 	.await?;
 
