@@ -566,7 +566,7 @@ pub async fn get_deployments_by_repository_id(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,

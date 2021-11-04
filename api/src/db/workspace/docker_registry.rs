@@ -151,7 +151,7 @@ pub async fn update_docker_repository_name(
 			id = $1;
 		"#,
 		repository_id,
-		name
+		name as _
 	)
 	.execute(&mut *connection)
 	.await

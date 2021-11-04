@@ -84,19 +84,6 @@
       "nullable": []
     }
   },
-  "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
-    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "0542a8e4d89792838222f1a7b10d4e01a198116017d6cc7d9b3a9c67b5f622a7": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE username = $1;",
     "describe": {
@@ -266,103 +253,6 @@
         false,
         false,
         true
-      ]
-    }
-  },
-  "c51452aa0add152f1b2799d1840b8c13d554b32f8b3c93f0c767629642312384": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "cd99286bf0c134bcf4c64f4cf9a7ebe20af97d1115dde0dc92555cd2c4fd65b5": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "250042314f11b1f6bbe708bd101fa7deeffe84c1515e3767ac4103b50fd18949": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
       ]
     }
   },
@@ -711,43 +601,6 @@
       "nullable": []
     }
   },
-  "1f65c222a8ec4a21b6fb7a909e9beea162a99fd19432a21f4eb0033c5e47c04a": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "1fbbf7824b6eec88e9a07501d790b7ec4a3d154754defc787de7e4c8ba323981": {
     "query": "CREATE TYPE MANAGED_DATABASE_STATUS AS ENUM( 'creating', /* Started the creation of database */ 'running', /* Database is running successfully */ 'stopped', /* Database is stopped by the user */ 'errored', /* Database encountered errors */ 'deleted' /* Database is deled by the user */ );",
     "describe": {
@@ -915,6 +768,49 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "250042314f11b1f6bbe708bd101fa7deeffe84c1515e3767ac4103b50fd18949": {
+    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "25a74d79e5822e2afec092e8b8a9d0bf67839fde9a61235bdab5923102de08cc": {
@@ -1663,6 +1559,24 @@
       "nullable": []
     }
   },
+  "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
+    "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "36d0bf3ff3b81131ac3e282053edc155a826c8687a972b1010d79dc9edc5ac78": {
     "query": "CREATE TABLE deployment( id BYTEA CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id BYTEA CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', workspace_id BYTEA NOT NULL, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_domain_name UNIQUE(id, domain_name), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
@@ -1694,6 +1608,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
@@ -1793,6 +1725,24 @@
         true,
         true,
         true
+      ]
+    }
+  },
+  "3c9d1ea4466117373233fc7413eb1290e2c1cdfd276781a0ec5995133c34be4a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
       ]
     }
   },
@@ -2190,49 +2140,6 @@
       ]
     }
   },
-  "588f26be3faf5a2922b7ba1b1b613fa2fd7b741d0908f3c1337312ae4a9f3f7d": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "590ff578a9c44722785786cad76db74663d69b9ed9a2ae1ec072eff2fbe20f5d": {
     "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id BYTEA NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
     "describe": {
@@ -2305,6 +2212,24 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "5da0c27ce496203a39e2dbb482151947f0f0bed024a8737b7f9f064ad49ee82a": {
+    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
       ]
     }
   },
@@ -2948,43 +2873,6 @@
       "nullable": []
     }
   },
-  "67e67888c0f11aa2d21f4883d8d174ac0dcb4d98973ef24d028fcc0962c12602": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
     "describe": {
@@ -3290,6 +3178,24 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "77543d83cf31ee064300d72d0052ee7737cb0a5f0d7f56c7f15da4311e8e07c7": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
       ]
     }
   },
@@ -3849,6 +3755,24 @@
       "nullable": []
     }
   },
+  "923a2a04848ec56b4977634d4cf1afb7f1890839555768d880df83023d723395": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "92cb68bcd82d8a30b074f101652edef6d91d86319027bd83b4563732a3bf8ceb": {
     "query": "SELECT DISTINCT workspace.id, workspace.name as \"name: _\", workspace.super_admin_id, workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE workspace.super_admin_id = $1 OR workspace_user.user_id = $1;",
     "describe": {
@@ -3914,6 +3838,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
@@ -4089,18 +4031,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
-    "query": "DELETE FROM docker_registry_repository WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -4556,6 +4486,24 @@
       "nullable": []
     }
   },
+  "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
+    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        ]
+      },
+      "nullable": []
+    }
+  },
   "aa4b13b2a2cb91848830cb553eb0520dd9d8d97cb1675bef90abd3c56a47dbbe": {
     "query": "UPDATE workspace_domain SET is_verified = FALSE WHERE id = $1;",
     "describe": {
@@ -4821,6 +4769,136 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "b2511f68bcb388dd97296c2ed68dc50ff7777c4db40e9f68ccc3167f83015789": {
+    "query": "SELECT id, name as \"name: _\", registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "deployed_image",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "digitalocean_app_id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "region",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 12,
+          "name": "machine_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_machine_type",
+              "kind": {
+                "Enum": [
+                  "micro",
+                  "small",
+                  "medium",
+                  "large"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 13,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false
+      ]
     }
   },
   "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
@@ -5355,6 +5433,43 @@
       ]
     }
   },
+  "c51452aa0add152f1b2799d1840b8c13d554b32f8b3c93f0c767629642312384": {
+    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "c734d35a36ea8b19e571254fbe57eec5b2a95f8ecb587e9983af473c621ce582": {
     "query": "SELECT id, name as \"name: _\", super_admin_id, active FROM workspace WHERE super_admin_id = $1;",
     "describe": {
@@ -5455,6 +5570,43 @@
       "nullable": []
     }
   },
+  "cd99286bf0c134bcf4c64f4cf9a7ebe20af97d1115dde0dc92555cd2c4fd65b5": {
+    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name: _",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -5477,6 +5629,24 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "d1345ac4986e1103b9cb35fc05f4a558184314ddb1e0d560461b4c3c2576b974": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE domain_name IS NOT NULL AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
@@ -6130,6 +6300,24 @@
       "nullable": []
     }
   },
+  "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "f573945b87b888f9207a9672804ad53589783632fc74e6215b737bcd1a55f889": {
     "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
     "describe": {
@@ -6259,6 +6447,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
+    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "fd7c1fc75c8cbe57877b01cb4b73c2fc98bb25f736209fd68fa51751267a58db": {
@@ -6430,311 +6636,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "923a2a04848ec56b4977634d4cf1afb7f1890839555768d880df83023d723395": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status = 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "77543d83cf31ee064300d72d0052ee7737cb0a5f0d7f56c7f15da4311e8e07c7": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
-    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "5da0c27ce496203a39e2dbb482151947f0f0bed024a8737b7f9f064ad49ee82a": {
-    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "3c9d1ea4466117373233fc7413eb1290e2c1cdfd276781a0ec5995133c34be4a": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status = 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "d1345ac4986e1103b9cb35fc05f4a558184314ddb1e0d560461b4c3c2576b974": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE domain_name IS NOT NULL AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
-    "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "f0f61d6c683953e8f0ad3c94e7493b7f2fe5520d7d98420eed7c6fdab0d1ecc2": {
-    "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
-  "b01e170546c08ab0c86825b8549f6f89f259a1bf07e710601a5cd981bf4672f8": {
-    "query": "SELECT id, name, registry, repository_id, image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
     }
   },
   "febfb7b885f275907b8474e9fee5becbb58af87021e228eba9340347650c3441": {
