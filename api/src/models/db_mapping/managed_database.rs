@@ -101,7 +101,7 @@ pub struct ManagedDatabase {
 	pub port: i32,
 	pub username: String,
 	pub password: String,
-	pub organisation_id: Vec<u8>,
+	pub workspace_id: Vec<u8>,
 	pub digitalocean_db_id: Option<String>,
 }
 

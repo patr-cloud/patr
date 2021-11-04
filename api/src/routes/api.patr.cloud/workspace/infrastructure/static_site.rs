@@ -44,18 +44,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::LIST,
+				permissions::workspace::static_site::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -77,7 +76,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::INFO,
+				permissions::workspace::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -110,7 +109,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/start",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::EDIT,
+				permissions::workspace::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -143,7 +142,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/upload",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::EDIT,
+				permissions::workspace::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -178,7 +177,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/stop",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::EDIT,
+				permissions::workspace::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -211,18 +210,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::CREATE,
+				permissions::workspace::static_site::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -246,7 +244,7 @@ pub fn create_sub_app(
 		"/:staticSiteId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::DELETE,
+				permissions::workspace::static_site::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -279,7 +277,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain-dns-records",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::INFO,
+				permissions::workspace::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -314,7 +312,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::EDIT,
+				permissions::workspace::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -349,18 +347,17 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain-validated",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::static_site::INFO,
+				permissions::workspace::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -457,7 +454,7 @@ async fn get_static_site_info(
 /// # Description
 /// This function is used to list of all the static sites present with the user
 /// required inputs:
-/// OrganisationId in url
+/// WorkspaceId in url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -482,12 +479,12 @@ async fn list_static_sites(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let static_sites = db::get_static_sites_for_organisation(
+	let static_sites = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -528,7 +525,7 @@ async fn list_static_sites(
 /// This function is used to create a new static site
 /// required inputs
 /// auth token in the header
-/// organisation id in parameter
+/// workspace id in parameter
 /// ```
 /// {
 ///    name: ,
@@ -558,8 +555,8 @@ async fn create_static_site_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 
@@ -596,15 +593,14 @@ async fn create_static_site_deployment(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let static_site_id =
-		service::create_static_site_deployment_in_organisation(
-			context.get_database_connection(),
-			&organisation_id,
-			name,
-			domain_name,
-			&user_id,
-		)
-		.await?;
+	let static_site_id = service::create_static_site_deployment_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		name,
+		domain_name,
+		&user_id,
+	)
+	.await?;
 
 	context.commit_database_transaction().await?;
 

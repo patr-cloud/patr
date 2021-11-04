@@ -6,25 +6,21 @@
 //! [`App`]: App
 mod auth;
 mod deployment;
-mod docker;
 mod domain;
 mod metrics;
 mod notifier;
-mod organisation;
-mod portus;
 mod user;
 mod utils;
+mod workspace;
 
 pub use auth::*;
 pub use deployment::*;
-pub use docker::*;
 pub use domain::*;
 pub use metrics::*;
 pub use notifier::*;
-pub use organisation::*;
-pub use portus::*;
 pub use user::*;
 pub use utils::*;
+pub use workspace::*;
 
 use crate::{app::App, utils::settings::Settings};
 

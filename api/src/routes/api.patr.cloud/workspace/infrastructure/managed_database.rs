@@ -26,18 +26,18 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::managed_database::LIST,
+				permissions::workspace::managed_database::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -58,18 +58,18 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::managed_database::CREATE,
+				permissions::workspace::managed_database::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -90,17 +90,18 @@ pub fn create_sub_app(
 		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::managed_database::INFO,
+				permissions::workspace::managed_database::INFO,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string =
+					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -121,17 +122,18 @@ pub fn create_sub_app(
 		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::managed_database::DELETE,
+				permissions::workspace::managed_database::DELETE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string =
+					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();
-					let organisation_id = hex::decode(&org_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id =
+						hex::decode(&workspace_id)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -154,13 +156,13 @@ async fn list_all_database_clusters(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let database_clusters = db::get_all_database_clusters_for_organisation(
+	let database_clusters = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -197,8 +199,8 @@ async fn create_database_cluster(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let organisation_id =
-		hex::decode(context.get_param(request_keys::ORGANISATION_ID).unwrap())
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 	let config = context.get_state().config.clone();
@@ -265,7 +267,7 @@ async fn create_database_cluster(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let database_id = service::create_managed_database_in_organisation(
+	let database_id = service::create_managed_database_in_workspace(
 		context.get_database_connection(),
 		name,
 		db_name,
@@ -274,7 +276,7 @@ async fn create_database_cluster(
 		num_nodes,
 		&database_plan,
 		region,
-		&organisation_id,
+		&workspace_id,
 		&config,
 	)
 	.await?;

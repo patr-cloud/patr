@@ -1,9 +1,9 @@
 [package]
 authors = ["Rakshith Ravi <rakshith.ravi@gmx.com>"]
 default-run = "api"
-edition = "2018"
+edition = "2021"
 name = "api"
-version = "0.4.9"
+version = "0.5.0"
 
 [features]
 default = []

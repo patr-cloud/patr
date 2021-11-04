@@ -10,42 +10,40 @@ use crate::{
 };
 
 /// # Description
-/// This function is used to check if the organisation name is valid
+/// This function is used to check if the workspace name is valid
 /// or if it is already present in the database
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_name` - a string containing name of the organisation
+/// * `workspace_name` - a string containing name of the workspace
 ///
 /// # Returns
 /// This function returns Result<bool, Error> containing bool which either
-/// contains a boolean stating whether the organisation name is allowed or not
+/// contains a boolean stating whether the workspace name is allowed or not
 /// or an error
 ///
 /// [`Transaction`]: Transaction
-pub async fn is_organisation_name_allowed(
+pub async fn is_workspace_name_allowed(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_name: &str,
+	workspace_name: &str,
 ) -> Result<bool, Error> {
-	if !validator::is_organisation_name_valid(organisation_name) {
+	if !validator::is_workspace_name_valid(workspace_name) {
 		Error::as_result()
 			.status(200)
-			.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
+			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 	}
 
-	let org =
-		db::get_organisation_by_name(connection, organisation_name).await?;
-	if org.is_some() {
+	let workspace =
+		db::get_workspace_by_name(connection, workspace_name).await?;
+	if workspace.is_some() {
 		return Ok(false);
 	}
 
-	let org_sign_up_status = db::get_user_to_sign_up_by_organisation_name(
-		connection,
-		organisation_name,
-	)
-	.await?;
+	let workspace_sign_up_status =
+		db::get_user_to_sign_up_by_business_name(connection, workspace_name)
+			.await?;
 
-	if let Some(status) = org_sign_up_status {
+	if let Some(status) = workspace_sign_up_status {
 		if status.otp_expiry > get_current_time_millis() {
 			return Ok(false);
 		}
@@ -54,69 +52,69 @@ pub async fn is_organisation_name_allowed(
 }
 
 /// # Description
-/// This function is used to create organisation
+/// This function is used to create workspace
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_name` - a string containing name of the organisation
+/// * `workspace_name` - a string containing name of the workspace
 /// * `super_admin_id` - an unsigned 8 bit integer array containing id of the
 /// super admin of
-/// organisation
+/// workspace
 ///
 /// # Returns
-/// This function returns `Result<Uuid, Error>` containing organisation id
+/// This function returns `Result<Uuid, Error>` containing workspace id
 /// (uuid) or an error
 ///
 /// [`Transaction`]: Transaction
-pub async fn create_organisation(
+pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_name: &str,
+	workspace_name: &str,
 	super_admin_id: &[u8],
 ) -> Result<Uuid, Error> {
-	if !is_organisation_name_allowed(connection, organisation_name).await? {
+	if !is_workspace_name_allowed(connection, workspace_name).await? {
 		Error::as_result()
 			.status(400)
-			.body(error!(ORGANISATION_EXISTS).to_string())?;
+			.body(error!(WORKSPACE_EXISTS).to_string())?;
 	}
 
-	let organisation_id = db::generate_new_resource_id(connection).await?;
-	let resource_id = organisation_id.as_bytes();
+	let workspace_id = db::generate_new_resource_id(connection).await?;
+	let resource_id = workspace_id.as_bytes();
 
 	db::begin_deferred_constraints(connection).await?;
 	db::create_resource(
 		connection,
 		resource_id,
-		&format!("Organisation: {}", organisation_name),
+		&format!("Workspace: {}", workspace_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
-			.get(rbac::resource_types::ORGANISATION)
+			.get(rbac::resource_types::WORKSPACE)
 			.unwrap(),
 		resource_id,
 		get_current_time_millis(),
 	)
 	.await?;
-	db::create_organisation(
+	db::create_workspace(
 		connection,
 		resource_id,
-		organisation_name,
+		workspace_name,
 		super_admin_id,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
-	Ok(organisation_id)
+	Ok(workspace_id)
 }
 
 /// # Description
-/// This function is used to convert username into personal organisation name
+/// This function is used to convert username into personal workspace name
 ///
 /// # Arguments
 /// * `username` - a string containing username of the user
 ///
 /// # Returns
 /// This function returns a string containing the name of the personal
-/// organisation
-pub fn get_personal_org_name(username: &str) -> String {
-	format!("personal-organisation-{}", username)
+/// workspace
+pub fn get_personal_workspace_name(username: &str) -> String {
+	format!("personal-workspace-{}", username)
 }
