@@ -49,7 +49,7 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment(
 			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL
+			name CITEXT NOT NULL
 				CONSTRAINT deployment_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
 				),
@@ -74,9 +74,9 @@ pub async fn initialize_deployment_pre(
 				)
 				DEFAULT 1,
 			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
-			organisation_id BYTEA NOT NULL,
-			CONSTRAINT deployment_uq_name_organisation_id
-				UNIQUE(name, organisation_id),
+			workspace_id BYTEA NOT NULL,
+			CONSTRAINT deployment_uq_name_workspace_id
+				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_uq_id_domain_name
 				UNIQUE(id, domain_name),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
@@ -254,8 +254,8 @@ pub async fn initialize_deployment_post(
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_id_organisation_id
-		FOREIGN KEY(id, organisation_id) REFERENCES resource(id, owner_id);
+		ADD CONSTRAINT deployment_fk_id_workspace_id
+		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -339,7 +339,7 @@ pub async fn create_deployment_with_internal_registry(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -365,14 +365,14 @@ pub async fn create_deployment_with_internal_registry(
 				);
 			"#,
 			deployment_id,
-			name,
+			name as _,
 			repository_id,
 			image_tag,
 			region,
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
-			organisation_id,
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -401,13 +401,13 @@ pub async fn create_deployment_with_internal_registry(
 				);
 			"#,
 			deployment_id,
-			name,
+			name as _,
 			repository_id,
 			image_tag,
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
-			organisation_id,
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -426,7 +426,7 @@ pub async fn create_deployment_with_external_registry(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -452,7 +452,7 @@ pub async fn create_deployment_with_external_registry(
 				);
 			"#,
 			deployment_id,
-			name,
+			name as _,
 			registry,
 			image_name,
 			image_tag,
@@ -460,7 +460,7 @@ pub async fn create_deployment_with_external_registry(
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
-			organisation_id,
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -489,14 +489,14 @@ pub async fn create_deployment_with_external_registry(
 				);
 			"#,
 			deployment_id,
-			name,
+			name as _,
 			registry,
 			image_name,
 			image_tag,
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
-			organisation_id,
+			workspace_id,
 		)
 		.execute(&mut *connection)
 		.await
@@ -504,18 +504,18 @@ pub async fn create_deployment_with_external_registry(
 	}
 }
 
-pub async fn get_deployments_by_image_name_and_tag_for_organisation(
+pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	image_name: &str,
 	image_tag: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
 			deployment.id,
-			deployment.name,
+			deployment.name as "name: _",
 			deployment.registry,
 			deployment.repository_id,
 			deployment.image_name,
@@ -527,7 +527,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 			deployment.domain_name,
 			deployment.horizontal_scale,
 			deployment.machine_type as "machine_type: _",
-			deployment.organisation_id
+			deployment.workspace_id
 		FROM
 			deployment
 		LEFT JOIN
@@ -546,17 +546,15 @@ pub async fn get_deployments_by_image_name_and_tag_for_organisation(
 				)
 			) AND
 			deployment.image_tag = $2 AND
-			deployment.organisation_id = $3 AND
+			deployment.workspace_id = $3 AND
 			deployment.status != 'deleted';
 		"#,
-		image_name,
+		image_name as _,
 		image_tag,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployments_by_repository_id(
@@ -580,13 +578,12 @@ pub async fn get_deployments_by_repository_id(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			organisation_id
+			workspace_id
 		FROM
 			deployment
 		WHERE
 			repository_id = $1 AND
 			status != 'deleted';
-
 		"#,
 		repository_id
 	)
@@ -595,16 +592,16 @@ pub async fn get_deployments_by_repository_id(
 	Ok(rows)
 }
 
-pub async fn get_deployments_for_organisation(
+pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,
@@ -616,31 +613,29 @@ pub async fn get_deployments_for_organisation(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			organisation_id
+			workspace_id
 		FROM
 			deployment
 		WHERE
-			organisation_id = $1 AND
+			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		organisation_id
+		workspace_id
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
-	let row = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,
@@ -652,7 +647,7 @@ pub async fn get_deployment_by_id(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			organisation_id
+			workspace_id
 		FROM
 			deployment
 		WHERE
@@ -661,25 +656,21 @@ pub async fn get_deployment_by_id(
 		"#,
 		deployment_id
 	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.next();
-
-	Ok(row)
+	.fetch_optional(&mut *connection)
+	.await
 }
 
-pub async fn get_deployment_by_name_in_organisation(
+pub async fn get_deployment_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,
@@ -691,16 +682,16 @@ pub async fn get_deployment_by_name_in_organisation(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			organisation_id
+			workspace_id
 		FROM
 			deployment
 		WHERE
 			name = $1 AND
-			organisation_id = $2 AND
+			workspace_id = $2 AND
 			status != 'deleted';
 		"#,
-		name,
-		organisation_id
+		name as _,
+		workspace_id
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -803,7 +794,7 @@ pub async fn update_deployment_name(
 		WHERE
 			id = $2;
 		"#,
-		name,
+		name as _,
 		deployment_id
 	)
 	.execute(&mut *connection)
@@ -831,6 +822,7 @@ pub async fn get_environment_variables_for_deployment(
 	.into_iter()
 	.map(|row| (row.name, row.value))
 	.collect();
+
 	Ok(rows)
 }
 
@@ -1066,7 +1058,7 @@ pub async fn get_deployment_by_domain_name(
 		r#"
 		SELECT
 			id,
-			name,
+			name as "name: _",
 			registry,
 			repository_id,
 			image_name,
@@ -1078,7 +1070,7 @@ pub async fn get_deployment_by_domain_name(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			organisation_id
+			workspace_id
 		FROM
 			deployment
 		WHERE

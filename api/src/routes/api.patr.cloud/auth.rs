@@ -207,7 +207,7 @@ async fn sign_in(
 ///    backupPhoneNumber:
 /// }
 /// ```
-/// Organisation account:
+/// Business account:
 /// ```
 /// {
 ///    username:
@@ -218,9 +218,9 @@ async fn sign_in(
 ///    backupEmail:
 ///    backupPhoneCountryCode:
 ///    backupPhoneNumber:
-///    organisationEmailLocal:
+///    businessEmailLocal:
 ///    domain:
-///    organisationName:
+///    businessName:
 /// }
 /// ```
 ///
@@ -323,9 +323,9 @@ async fn sign_up(
 		})
 		.transpose()?;
 
-	// store org email as lower case
-	let org_email_local = body
-		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
+	// store business email as lower case
+	let business_email_local = body
+		.get(request_keys::BUSINESS_EMAIL_LOCAL)
 		.map(|param| {
 			param
 				.as_str()
@@ -335,8 +335,8 @@ async fn sign_up(
 		.transpose()?
 		.map(|val| val.to_lowercase());
 
-	// store org domain name as lower case
-	let org_domain_name = body
+	// store workspace domain name as lower case
+	let business_domain_name = body
 		.get(request_keys::DOMAIN)
 		.map(|param| {
 			param
@@ -347,8 +347,8 @@ async fn sign_up(
 		.transpose()?
 		.map(|val| val.to_lowercase());
 
-	let organisation_name = body
-		.get(request_keys::ORGANISATION_NAME)
+	let business_name = body
+		.get(request_keys::WORKSPACE_NAME)
 		.map(|param| {
 			param
 				.as_str()
@@ -367,9 +367,9 @@ async fn sign_up(
 		backup_email.as_deref(),
 		backup_phone_country_code.as_deref(),
 		backup_phone_number,
-		org_email_local.as_deref(),
-		org_domain_name.as_deref(),
-		organisation_name.as_deref(),
+		business_email_local.as_deref(),
+		business_domain_name.as_deref(),
+		business_name.as_deref(),
 	)
 	.await?;
 	// send otp
@@ -1312,7 +1312,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let scope = query.get(request_keys::SCOPE).unwrap();
+	let scope = query.get(request_keys::SCOPE).status(500)?;
 	let mut splitter = scope.split(':');
 	let access_type = splitter.next().status(401).body(
 		json!({
@@ -1365,9 +1365,9 @@ async fn docker_registry_authenticate(
 		.split(',')
 		.filter_map(|permission| match permission {
 			"push" | "tag" => {
-				Some(permissions::organisation::docker_registry::PUSH)
+				Some(permissions::workspace::docker_registry::PUSH)
 			}
-			"pull" => Some(permissions::organisation::docker_registry::PULL),
+			"pull" => Some(permissions::workspace::docker_registry::PULL),
 			_ => None,
 		})
 		.map(String::from)
@@ -1380,7 +1380,7 @@ async fn docker_registry_authenticate(
 			json!({
 				request_keys::ERRORS: [{
 					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::NO_ORGANISATION_OR_REPOSITORY,
+					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
 					request_keys::DETAIL: []
 				}]
 			})
@@ -1388,7 +1388,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let workspace_name = split_array.get(0).unwrap(); // get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1405,9 +1405,9 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let org = db::get_organisation_by_name(
+	let workspace = db::get_workspace_by_name(
 		context.get_database_connection(),
-		org_name,
+		workspace_name,
 	)
 	.await?
 	.status(400)
@@ -1425,7 +1425,7 @@ async fn docker_registry_authenticate(
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
-		&org.id,
+		&workspace.id,
 	)
 	.await?
 	// reject request if repository does not exist
@@ -1459,9 +1459,9 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	if resource.owner_id != org.id {
+	if resource.owner_id != workspace.id {
 		log::error!(
-			"Resource owner_id is not the same as org id. This is illegal"
+			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
 		Error::as_result().status(500).body(
 			json!({
@@ -1475,18 +1475,18 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_id = org.id.encode_hex::<String>();
+	let workspace_id = workspace.id.encode_hex::<String>();
 	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
-	// get all org roles for the user using the id
+	// get all workspace roles for the user using the id
 	let user_id = &user.id;
-	let user_roles = db::get_all_organisation_roles_for_user(
+	let user_roles = db::get_all_workspace_roles_for_user(
 		context.get_database_connection(),
 		&user.id,
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id);
+	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
@@ -1525,10 +1525,10 @@ async fn docker_registry_authenticate(
 		}
 
 		match permission.as_str() {
-			permissions::organisation::docker_registry::PUSH => {
+			permissions::workspace::docker_registry::PUSH => {
 				approved_permissions.push("push".to_string());
 			}
-			permissions::organisation::docker_registry::PULL => {
+			permissions::workspace::docker_registry::PULL => {
 				approved_permissions.push("pull".to_string());
 			}
 			_ => {}

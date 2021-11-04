@@ -16,10 +16,10 @@ pub use twilio_sms::*;
 /*
 New:
 
-Users belong to an organisation through a role
-Users can create an organisation for all their personal resources
+Users belong to an workspace through a role
+Users can create an workspace for all their personal resources
 Roles have permissions on a resource type or a specific resource
-Resources belong to an organisation
+Resources belong to an workspace
 Actions on a resource require permissions on that resource
 
 
@@ -27,8 +27,8 @@ When validating a request:
 - Check how the user has access to the resouce.
 - If the user has access to the resource directly,
 	- Check if their personal roles grant the required permissions
-- If the user has access to the resource through an organisation,
-	- Check if their organisation roles grant the required permissions
+- If the user has access to the resource through an workspace,
+	- Check if their workspace roles grant the required permissions
 
 
 Each resource must be "owned" by someone or the other.
@@ -41,7 +41,7 @@ There can't be a resouce that doesn't have an owner.
 	Cons:
 	- In case, by mistake, the role is removed, we now have a dangling resource
 - The database schema for a resource has a "owner" field
-  that points to either a user or an org
+  that points to either a user or an workspace
 	Pros:
 	- Dangling resources can't exist. They NEED to be owned by someone as per the db schema
 	Cons:
@@ -81,7 +81,7 @@ Users:
 - UserID
 - Roles[]
 
-Organizations:
+Workspaces:
 - Users[]
 
 Roles:
@@ -126,7 +126,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 
 	#[derive(Debug, Deserialize)]
 	#[serde(rename_all = "camelCase")]
-	struct SampleDataOrganisation {
+	struct SampleDataWorkspace {
 		name: String,
 		domains: Vec<String>,
 		applications: Vec<SampleDataApplication>,
@@ -138,7 +138,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 	#[serde(rename_all = "camelCase")]
 	struct SampleData {
 		users: Vec<SampleDataUser>,
-		organisations: Vec<SampleDataOrganisation>,
+		workspaces: Vec<SampleDataWorkspace>,
 	}
 
 	fn get_user_by_username<'a>(
@@ -209,9 +209,9 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		}
 	}
 
-	for organisation in &data.organisations {
+	for workspace in &data.workspaces {
 		let super_user =
-			get_user_by_username(&data.users, &organisation.super_user);
+			get_user_by_username(&data.users, &workspace.super_user);
 		let response: Value = client
 			.post(format!(
 				"http://localhost:{}/auth/sign-in",
@@ -239,14 +239,11 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 		let token = response[request_keys::ACCESS_TOKEN].as_str().unwrap();
 
 		let response: Value = client
-			.post(format!(
-				"http://localhost:{}/organisation",
-				config.config.port
-			))
+			.post(format!("http://localhost:{}/workspace", config.config.port))
 			.header("Authorization", token)
 			.json(&json!({
-				"domain": organisation.domains.get(0).unwrap(),
-				"organisationName": organisation.name
+				"domain": workspace.domains.get(0).unwrap(),
+				"workspaceName": workspace.name
 			}))
 			.send()
 			.await
@@ -256,14 +253,11 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 			.unwrap();
 
 		if response["success"].as_bool().unwrap() {
-			log::info!(
-				"Organisation `{}` created successfully",
-				organisation.name
-			);
+			log::info!("workspace `{}` created successfully", workspace.name);
 		} else {
 			log::error!(
-				"Error creating organisation {}: {}",
-				organisation.name,
+				"Error creating workspace {}: {}",
+				workspace.name,
 				response
 			);
 		}

@@ -44,18 +44,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::docker_registry::CREATE,
+				permissions::workspace::docker_registry::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -76,18 +75,17 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::docker_registry::LIST,
+				permissions::workspace::docker_registry::LIST,
 				closure_as_pinned_box!(|mut context| {
-					let org_id_string = context
-						.get_param(request_keys::ORGANISATION_ID)
-						.unwrap();
-					let organisation_id = hex::decode(&org_id_string)
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = hex::decode(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&organisation_id,
+						&workspace_id,
 					)
 					.await?;
 
@@ -108,7 +106,7 @@ pub fn create_sub_app(
 		"/:repositoryId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::organisation::docker_registry::DELETE,
+				permissions::workspace::docker_registry::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
@@ -147,7 +145,7 @@ pub fn create_sub_app(
 /// This middleware creates a new docker repository
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in url
+/// workspace id in url
 /// ```
 /// {
 ///    repository: ,
@@ -193,15 +191,15 @@ async fn create_docker_repository(
 		return Ok(context);
 	}
 
-	let org_id_string =
-		context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let organisation_id = hex::decode(&org_id_string).unwrap();
+	let workspace_id_string =
+		context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = hex::decode(&workspace_id_string).unwrap();
 
 	// check if repository already exists
 	let check = db::get_repository_by_name(
 		context.get_database_connection(),
 		repository,
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?;
 
@@ -211,15 +209,14 @@ async fn create_docker_repository(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	// split the repo nam in 2 halves, and validate org, and repo name
+	// split the repo nam in 2 halves, and validate workspace, and repo name
 	let resource_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
 	let resource_id = resource_id.as_bytes();
 
-	// safe to assume that org id is present here
-	let organisation_id =
-		context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let organisation_id = hex::decode(&organisation_id).unwrap();
+	// safe to assume that workspace id is present here
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = hex::decode(&workspace_id).unwrap();
 
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
@@ -232,7 +229,7 @@ async fn create_docker_repository(
 			.unwrap()
 			.get(rbac::resource_types::DOCKER_REPOSITORY)
 			.unwrap(),
-		&organisation_id,
+		&workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -241,7 +238,7 @@ async fn create_docker_repository(
 		context.get_database_connection(),
 		resource_id,
 		repository,
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?;
 
@@ -255,10 +252,10 @@ async fn create_docker_repository(
 
 /// # Description
 /// This function is used to list the docker repositories registered under
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in url
+/// workspace id in url
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -289,13 +286,13 @@ async fn list_docker_repositories(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let org_id_string =
-		context.get_param(request_keys::ORGANISATION_ID).unwrap();
-	let organisation_id = hex::decode(&org_id_string).unwrap();
+	let workspace_id_string =
+		context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = hex::decode(&workspace_id_string).unwrap();
 
-	let repositories = db::get_docker_repositories_for_organisation(
+	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
-		&organisation_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()
@@ -317,10 +314,10 @@ async fn list_docker_repositories(
 
 /// # Description
 /// This function is used to delete the docker repository present under the
-/// organisation
+/// workspace
 /// required inputs:
 /// auth token in the authorization headers
-/// organisation id in url
+/// workspace id in url
 /// ```
 /// {
 ///    repositoryId:
