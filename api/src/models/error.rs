@@ -47,6 +47,7 @@ pub mod id {
 		"cannotDeleteBackupPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
+	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 }
 
 #[allow(dead_code)]
@@ -147,4 +148,5 @@ pub mod message {
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
+	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 }

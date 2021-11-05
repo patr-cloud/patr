@@ -7,6 +7,7 @@
 mod auth;
 mod deployment;
 mod domain;
+mod metrics;
 mod notifier;
 mod user;
 mod utils;
@@ -15,6 +16,7 @@ mod workspace;
 pub use auth::*;
 pub use deployment::*;
 pub use domain::*;
+pub use metrics::*;
 pub use notifier::*;
 pub use user::*;
 pub use utils::*;

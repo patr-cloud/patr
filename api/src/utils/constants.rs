@@ -180,4 +180,15 @@ pub mod request_keys {
 	pub const RECOMMENDED_DATA_CENTER: &str = "recommendedDataCenter";
 	pub const SECONDARY_EMAILS: &str = "secondaryEmails";
 	pub const SECONDARY_PHONE_NUMBERS: &str = "secondaryPhoneNumbers";
+	pub const USERS_TO_SIGN_UP: &str = "usersToSignUp";
+	pub const USERS: &str = "users";
+	pub const CUSTOM_DOMAINS_FOR_DEPLOYMENTS: &str =
+		"customDomainsForDeployments";
+	pub const DELETED_DEPLOYMENTS: &str = "deletedDeployments";
+	pub const DELETED_DATABASES: &str = "deletedDatabases";
+	pub const CUSTOM_DOMAINS_FOR_STATIC_SITES: &str =
+		"customDomainsForStaticSites";
+	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
+	pub const TOTAL_WEBSITES: &str = "totalWebsites";
+	pub const TOTAL_RESOURCES: &str = "totalResources";
 }

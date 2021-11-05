@@ -3,8 +3,9 @@ use crate::{models::db_mapping::Workspace, query, query_as, Database};
 mod docker_registry;
 mod domain;
 mod infrastructure;
+mod metrics;
 
-pub use self::{docker_registry::*, domain::*, infrastructure::*};
+pub use self::{docker_registry::*, domain::*, infrastructure::*, metrics::*};
 
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
