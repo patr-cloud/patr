@@ -9,6 +9,7 @@ use crate::{
 
 pub async fn get_deployment_metrics(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	event: &str,
 ) -> Result<(), Error> {
 	let sign_up_count = db::get_sign_up_count(connection).await?;
 	let join_count = db::get_join_count(connection).await?;
@@ -35,11 +36,11 @@ pub async fn get_deployment_metrics(
 			"@context": "http://schema.org/extensions",
 			"themeColor": "0076D7",
 			"contentType": "application/vnd.microsoft.teams.card.o365connector",
-			"summary": "New activity on PATR",
+			"summary": format!("New activity on PATR: {}", event),
 			"sections": [
 				{
 					"activityTitle": "PATR metrics",
-					"activitySubtitle": "New activity on PATR"
+					"activitySubtitle": format!("New activity on PATR: {}", event)
 				},
 				{
 					"facts": [
@@ -85,7 +86,7 @@ pub async fn get_deployment_metrics(
 						},
 						{
 							"name": request_keys::TOTAL_WEBSITES,
-							"value": create_database_count + create_static_site_count
+							"value": create_deployment_count + create_static_site_count
 						},
 						{
 							"name": request_keys::TOTAL_RESOURCES,
@@ -99,7 +100,7 @@ pub async fn get_deployment_metrics(
 	);
 
 	let _ = Client::new()
-		.post("https://vicara226.webhook.office.com/webhookb2/2e56e471-996a-4e82-a7dc-bfcb1d616a9f@91758051-159a-45e9-bb70-714f7dd9de97/IncomingWebhook/bd8a13617f224d109fa56a8acc22c829/513e0dc2-9755-4f21-b8ad-bddc1373014c")
+		.post("https://vicara226.webhook.office.com/webhookb2/a336cf2e-2aa4-4a33-9abb-a2c81c90b218@91758051-159a-45e9-bb70-714f7dd9de97/IncomingWebhook/9d21313b8f534ad8bcbb2447584ec657/4d71d254-6079-4d1c-8118-eb7df388e8ac")
 		.json(&deployment_metrics)
 		.send()
 		.await;
