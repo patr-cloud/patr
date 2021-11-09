@@ -557,6 +557,41 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 	.await
 }
 
+pub async fn get_deployments_by_repository_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	let rows = query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id,
+			name as "name: _",
+			registry,
+			repository_id,
+			image_name,
+			image_tag,
+			status as "status: _",
+			deployed_image,
+			digitalocean_app_id,
+			region,
+			domain_name,
+			horizontal_scale,
+			machine_type as "machine_type: _",
+			workspace_id
+		FROM
+			deployment
+		WHERE
+			repository_id = $1 AND
+			status != 'deleted';
+		"#,
+		repository_id
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+	Ok(rows)
+}
+
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &[u8],

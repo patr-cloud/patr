@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -576,7 +576,8 @@ async fn create_static_site_deployment(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
 
 	let file = body
 		.get(request_keys::STATIC_SITE_FILE)
@@ -590,11 +591,14 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
 	let static_site_id = service::create_static_site_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
 		domain_name,
+		&user_id,
 	)
 	.await?;
 
@@ -607,6 +611,12 @@ async fn create_static_site_deployment(
 		file,
 	)
 	.await?;
+
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A static site has been created",
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -815,6 +825,12 @@ async fn delete_static_site(
 	)
 	.await?;
 
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A static site has been deleted",
+	)
+	.await;
+
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
@@ -938,10 +954,16 @@ async fn set_domain_name_for_static_site(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
-		.transpose()?;
+		.transpose()?
+		.filter(|domain_name| !domain_name.is_empty());
+
+	let user_id = &context.get_token_data().unwrap().user.id;
+	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
 
 	if let Some(domain_name) = domain_name {
-		if !validator::is_deployment_entry_point_valid(domain_name) {
+		if !validator::is_deployment_entry_point_valid(domain_name) ||
+			(validator::is_domain_special(domain_name) && !is_god_user)
+		{
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(INVALID_DOMAIN_NAME).to_string()));
@@ -956,6 +978,16 @@ async fn set_domain_name_for_static_site(
 		domain_name,
 	)
 	.await?;
+
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		if domain_name.is_some() {
+			"A domain name has been set for a deployment"
+		} else {
+			"A domain name has been unset for a deployment"
+		},
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

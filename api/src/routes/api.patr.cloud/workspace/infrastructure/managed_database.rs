@@ -281,6 +281,12 @@ async fn create_database_cluster(
 	)
 	.await?;
 
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A database instance has been created",
+	)
+	.await;
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASE_ID: hex::encode(database_id.as_bytes())
@@ -341,6 +347,12 @@ async fn delete_managed_database(
 		&config,
 	)
 	.await?;
+
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A database instance has been deleted",
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

@@ -380,6 +380,12 @@ async fn sign_up(
 	)
 	.await?;
 
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A new user has attempted to sign-up",
+	)
+	.await;
+
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
@@ -509,6 +515,12 @@ async fn join(
 		join_user.backup_phone_number_to,
 	)
 	.await?;
+
+	let _ = service::get_deployment_metrics(
+		context.get_database_connection(),
+		"A new user has completed sign-up",
+	)
+	.await;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
