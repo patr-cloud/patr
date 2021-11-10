@@ -59,7 +59,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -90,7 +90,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -122,7 +122,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -153,7 +153,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -186,7 +186,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -259,7 +259,7 @@ async fn get_domains_for_workspace(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::DOMAINS: domains,
 	}));
@@ -323,7 +323,7 @@ async fn add_domain_to_workspace(
 	.await?;
 	let domain_id = domain_id.as_bytes().encode_hex::<String>();
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::DOMAIN_ID: domain_id,
 	}));
@@ -395,12 +395,12 @@ async fn verify_domain_in_workspace(
 	.await?;
 
 	if verified {
-		context.json(json!({
+		context.json(&json!({
 			request_keys::SUCCESS: true
 		}));
 	} else {
 		// NOPE
-		context.json(error!(DOMAIN_UNVERIFIED));
+		context.json(&error!(DOMAIN_UNVERIFIED));
 	}
 	Ok(context)
 }
@@ -472,14 +472,14 @@ async fn get_domain_info_in_workspace(
 		// name exists. If the domain is null but the resource exists, then you
 		// have a dangling resource. This is a big problem. Make sure it's
 		// logged and investigated into
-		context.status(500).json(error!(SERVER_ERROR));
+		context.status(500).json(&error!(SERVER_ERROR));
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
 	let domain_id = domain.id.encode_hex::<String>();
 
 	context.json(
-		if domain.is_verified {
+		&if domain.is_verified {
 			json!({
 				request_keys::SUCCESS: true,
 				request_keys::DOMAIN_ID: domain_id,
@@ -552,7 +552,7 @@ async fn delete_domain_in_workspace(
 		.await?;
 	db::delete_resource(context.get_database_connection(), &domain_id).await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)

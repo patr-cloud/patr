@@ -170,7 +170,7 @@ async fn sign_in(
 	let success = service::validate_hash(password, &user_data.password)?;
 
 	if !success {
-		context.json(error!(INVALID_PASSWORD));
+		context.json(&error!(INVALID_PASSWORD));
 		return Ok(context);
 	}
 
@@ -182,7 +182,7 @@ async fn sign_in(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: jwt,
 		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
@@ -386,7 +386,7 @@ async fn sign_up(
 	)
 	.await;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -443,7 +443,7 @@ async fn sign_out(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS:true,
 	}));
 	Ok(context)
@@ -522,7 +522,7 @@ async fn join(
 	)
 	.await;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: join_user.jwt,
 		request_keys::REFRESH_TOKEN: join_user.refresh_token.to_simple().to_string().to_lowercase(),
@@ -599,7 +599,7 @@ async fn get_access_token(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::ACCESS_TOKEN: access_token
 	}));
@@ -652,7 +652,7 @@ async fn is_email_valid(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::AVAILABLE: allowed
 	}));
@@ -705,7 +705,7 @@ async fn is_username_valid(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::AVAILABLE: allowed
 	}));
@@ -774,7 +774,7 @@ async fn forgot_password(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -857,7 +857,7 @@ async fn reset_password(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -928,7 +928,7 @@ async fn resend_otp(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1175,7 +1175,7 @@ async fn docker_registry_login(
 		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
-	context.json(json!({ request_keys::TOKEN: token }));
+	context.json(&json!({ request_keys::TOKEN: token }));
 	Ok(context)
 }
 
@@ -1298,7 +1298,7 @@ async fn docker_registry_authenticate(
 		)
 		.is_ok()
 		{
-			context.json(json!({ request_keys::TOKEN: password }));
+			context.json(&json!({ request_keys::TOKEN: password }));
 			return Ok(context);
 		}
 	}
@@ -1559,7 +1559,7 @@ async fn docker_registry_authenticate(
 		config.docker_registry.public_key_der.as_ref(),
 	)?;
 
-	context.json(json!({ request_keys::TOKEN: token }));
+	context.json(&json!({ request_keys::TOKEN: token }));
 	Ok(context)
 }
 
@@ -1642,6 +1642,6 @@ async fn list_recovery_options(
 
 	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
 	let response = serde_json::to_value(response_map)?;
-	context.json(response);
+	context.json(&response);
 	Ok(context)
 }

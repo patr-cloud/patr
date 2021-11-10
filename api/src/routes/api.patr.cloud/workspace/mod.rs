@@ -73,7 +73,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
+							.json(&error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -170,7 +170,7 @@ async fn get_workspace_info(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::WORKSPACE_ID: workspace_id_string,
 		request_keys::NAME: workspace.name,
@@ -226,7 +226,7 @@ async fn is_name_available(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::AVAILABLE: allowed
 	}));
@@ -286,7 +286,7 @@ async fn create_new_workspace(
 	.await?;
 	let workspace_id_string = workspace_id.as_bytes().encode_hex::<String>();
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true,
 		request_keys::WORKSPACE_ID: workspace_id_string
 	}));
@@ -368,7 +368,7 @@ async fn update_workspace_info(
 	)
 	.await?;
 
-	context.json(json!({
+	context.json(&json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
