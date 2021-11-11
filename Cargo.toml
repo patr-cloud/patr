@@ -2,7 +2,7 @@
 members = [
   "api",
   "patr-macros",
-  # "patr-api-models"
+  "patr-api-models"
 ]
 
 [profile.release]
