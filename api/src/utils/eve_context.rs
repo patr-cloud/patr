@@ -3,6 +3,7 @@ use std::{
 	sync::Arc,
 };
 
+use api_models::{ApiResponse, ErrorType};
 use eve_rs::{
 	handlebars::Handlebars,
 	Context,
@@ -10,7 +11,7 @@ use eve_rs::{
 	Request,
 	Response,
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
 
@@ -87,6 +88,26 @@ impl EveContext {
 	{
 		serde_json::from_value(self.body_object.clone())
 			.map_err(|err| Error::new(Box::new(err)))
+	}
+
+	pub fn success<TBody>(&mut self, data: TBody) -> &mut Self
+	where
+		TBody: Serialize + Debug,
+	{
+		self.json(ApiResponse::success(data))
+	}
+
+	pub fn error(&mut self, error: ErrorType) -> &mut Self {
+		self.json(ApiResponse::error(error))
+	}
+
+	#[allow(dead_code)]
+	pub fn error_with_message(
+		&mut self,
+		error: ErrorType,
+		message: impl Into<String>,
+	) -> &mut Self {
+		self.json(ApiResponse::error_with_message(error, message))
 	}
 
 	pub fn set_body_object(&mut self, body: Value) {

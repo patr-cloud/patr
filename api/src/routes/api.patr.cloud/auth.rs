@@ -1,4 +1,4 @@
-use api_models::{models::auth::*, ApiResponse, ErrorType};
+use api_models::{models::auth::*, ErrorType};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -158,7 +158,7 @@ async fn sign_in(
 	let success = service::validate_hash(&password, &user_data.password)?;
 
 	if !success {
-		context.json(ApiResponse::error(ErrorType::InvalidPassword));
+		context.error(ErrorType::InvalidPassword);
 		return Ok(context);
 	}
 
@@ -170,11 +170,11 @@ async fn sign_in(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(LoginResponse {
+	context.success(LoginResponse {
 		access_token,
 		login_id,
 		refresh_token,
-	}));
+	});
 	Ok(context)
 }
 
@@ -272,7 +272,7 @@ async fn sign_up(
 	)
 	.await;
 
-	context.json(ApiResponse::success(CreateAccountResponse));
+	context.success(CreateAccountResponse);
 	Ok(context)
 }
 
@@ -327,7 +327,7 @@ async fn sign_out(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(LogoutResponse));
+	context.success(LogoutResponse);
 	Ok(context)
 }
 
@@ -395,11 +395,11 @@ async fn join(
 	)
 	.await;
 
-	context.json(ApiResponse::success(CompleteSignUpResponse {
+	context.success(CompleteSignUpResponse {
 		access_token: join_user.jwt,
 		login_id: join_user.login_id,
 		refresh_token: join_user.refresh_token,
-	}));
+	});
 	Ok(context)
 }
 
@@ -473,9 +473,7 @@ async fn get_access_token(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(RenewAccessTokenResponse {
-		access_token,
-	}));
+	context.success(RenewAccessTokenResponse { access_token });
 	Ok(context)
 }
 
@@ -526,7 +524,7 @@ async fn is_email_valid(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(IsEmailValidResponse { available }));
+	context.success(IsEmailValidResponse { available });
 	Ok(context)
 }
 
@@ -577,7 +575,7 @@ async fn is_username_valid(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(IsUsernameValidResponse { available }));
+	context.success(IsUsernameValidResponse { available });
 	Ok(context)
 }
 
@@ -632,7 +630,7 @@ async fn forgot_password(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(ForgotPasswordResponse));
+	context.success(ForgotPasswordResponse);
 	Ok(context)
 }
 
@@ -700,7 +698,7 @@ async fn reset_password(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(ResetPasswordResponse));
+	context.success(ResetPasswordResponse);
 	Ok(context)
 }
 
@@ -757,7 +755,7 @@ async fn resend_otp(
 	)
 	.await?;
 
-	context.json(ApiResponse::success(ResendOtpResponse));
+	context.success(ResendOtpResponse);
 	Ok(context)
 }
 
@@ -1462,9 +1460,9 @@ async fn list_recovery_options(
 			None
 		};
 
-	context.json(ApiResponse::success(ListRecoveryOptionsResponse {
+	context.success(ListRecoveryOptionsResponse {
 		backup_email,
 		backup_phone_number,
-	}));
+	});
 	Ok(context)
 }

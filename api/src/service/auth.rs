@@ -380,9 +380,8 @@ pub async fn create_user_join_request(
 				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
-				backup_phone_country_code: phone_country_code
-					.map(|s| s.to_string()),
-				backup_phone_number: phone_number.map(|s| s.to_string()),
+				backup_phone_country_code: phone_country_code,
+				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
 				business_domain_name: Some(domain.to_string()),
 				business_name: Some(business_name.to_string()),
@@ -414,9 +413,8 @@ pub async fn create_user_join_request(
 				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
-				backup_phone_country_code: phone_country_code
-					.map(|s| s.to_string()),
-				backup_phone_number: phone_number.map(|s| s.to_string()),
+				backup_phone_country_code: phone_country_code,
+				backup_phone_number: phone_number,
 				business_email_local: None,
 				business_domain_name: None,
 				business_name: None,
