@@ -10,9 +10,11 @@ use eve_rs::{
 	Request,
 	Response,
 };
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use sqlx::Transaction;
 
+use super::Error;
 use crate::{app::App, models::AccessTokenData, Database};
 
 pub struct EveContext {
@@ -77,6 +79,14 @@ impl EveContext {
 
 	pub const fn get_body_object(&self) -> &Value {
 		&self.body_object
+	}
+
+	pub fn get_body_as<TBody>(&self) -> Result<TBody, Error>
+	where
+		TBody: DeserializeOwned,
+	{
+		serde_json::from_value(self.body_object.clone())
+			.map_err(|err| Error::new(Box::new(err)))
 	}
 
 	pub fn set_body_object(&mut self, body: Value) {

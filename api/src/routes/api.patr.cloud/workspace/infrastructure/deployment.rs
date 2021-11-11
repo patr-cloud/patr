@@ -616,7 +616,7 @@ async fn list_deployments(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DEPLOYMENTS: deployments
 	}));
@@ -804,7 +804,7 @@ async fn create_deployment(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id.as_bytes())
 	}));
@@ -914,7 +914,7 @@ async fn get_deployment_info(
 		Value::String(deployment.machine_type.to_string()),
 	);
 
-	context.json(&Value::Object(response));
+	context.json(Value::Object(response));
 	Ok(context)
 }
 
@@ -958,7 +958,7 @@ async fn start_deployment(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1004,7 +1004,7 @@ async fn stop_deployment(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1050,7 +1050,7 @@ async fn get_logs(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::LOGS: logs,
 	}));
@@ -1103,7 +1103,7 @@ async fn delete_deployment(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1150,7 +1150,7 @@ async fn get_environment_variables(
 		.map(|(key, value)| (key, Value::String(value)))
 		.collect();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ENVIRONMENT_VARIABLES: env_vars
 	}));
@@ -1214,7 +1214,7 @@ async fn set_environment_variables(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1296,7 +1296,7 @@ async fn set_horizontal_scale(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1351,7 +1351,7 @@ async fn set_machine_type(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1416,7 +1416,7 @@ async fn get_domain_dns_records(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::CNAME_RECORDS: cname_records
 	}));
@@ -1511,7 +1511,7 @@ async fn set_domain_name(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1561,7 +1561,7 @@ async fn is_domain_validated(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
 	}));

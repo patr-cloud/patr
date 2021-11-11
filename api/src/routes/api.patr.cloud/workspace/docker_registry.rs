@@ -242,7 +242,7 @@ async fn create_docker_repository(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ID: hex::encode(resource_id)
 	}));
@@ -304,7 +304,7 @@ async fn list_docker_repositories(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::REPOSITORIES: repositories
 	}));
@@ -383,7 +383,7 @@ async fn delete_docker_repository(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 	}));
 	Ok(context)

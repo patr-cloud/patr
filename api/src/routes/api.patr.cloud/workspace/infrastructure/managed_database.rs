@@ -187,7 +187,7 @@ async fn list_all_database_clusters(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASES: database_clusters
 	}));
@@ -287,7 +287,7 @@ async fn create_database_cluster(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASE_ID: hex::encode(database_id.as_bytes())
 	}));
@@ -310,7 +310,7 @@ async fn get_managed_database_info(
 	.status(400)
 	.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASE_ID: hex::encode(database.id),
 		request_keys::NAME: database.name,
@@ -354,7 +354,7 @@ async fn delete_managed_database(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)

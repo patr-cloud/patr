@@ -13,6 +13,7 @@ sample-data = []
 
 [dependencies]
 api_macros = { path = "../patr-macros", package = "patr-macros" }
+api_models = { path = "../patr-api-models", package = "patr-api-dto" }
 argon2 = "0.3.1"
 askama = "0.10.3"
 async-trait = "0.1.36"

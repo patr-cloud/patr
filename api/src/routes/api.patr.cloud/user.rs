@@ -279,7 +279,7 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::USERNAME: user.username,
 		request_keys::FIRST_NAME: user.first_name,
@@ -354,7 +354,7 @@ async fn get_user_info_by_username(
 	object.remove(request_keys::ID);
 	object.insert(request_keys::SUCCESS.to_string(), true.into());
 
-	context.json(&json!(data));
+	context.json(json!(data));
 	Ok(context)
 }
 
@@ -486,7 +486,7 @@ async fn update_user_info(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -544,7 +544,7 @@ async fn add_email_address(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -602,7 +602,7 @@ async fn list_email_addresses(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::BACKUP_EMAIL: backup_email,
 		request_keys::SECONDARY_EMAILS: secondary_emails
@@ -691,7 +691,7 @@ async fn list_phone_numbers(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
 		request_keys::SECONDARY_PHONE_NUMBERS: secondary_phone_numbers
@@ -751,7 +751,7 @@ async fn update_backup_email_address(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -818,7 +818,7 @@ async fn update_backup_phone_number(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -876,7 +876,7 @@ async fn delete_personal_email_address(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -950,7 +950,7 @@ async fn add_phone_number_for_user(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 
@@ -1026,7 +1026,7 @@ async fn verify_phone_number(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1093,7 +1093,7 @@ async fn delete_phone_number(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1160,7 +1160,7 @@ async fn verify_email_address(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1221,7 +1221,7 @@ async fn get_workspaces_for_user(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::WORKSPACES: workspaces
 	}));
@@ -1299,7 +1299,7 @@ async fn change_password(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1328,7 +1328,7 @@ async fn get_all_logins_for_user(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::LOGINS: logins
 	}));
@@ -1353,7 +1353,7 @@ async fn get_login_info(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::LOGIN_ID: login_id_string,
 		request_keys::TOKEN_EXPIRY: login.token_expiry,
@@ -1383,7 +1383,7 @@ async fn delete_user_login(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 	}));
 	Ok(context)

@@ -351,7 +351,7 @@ async fn list_all_roles(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ROLES: roles
 	}));
@@ -414,7 +414,7 @@ async fn list_all_permissions(
 			})
 			.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::PERMISSIONS: permissions
 	}));
@@ -477,7 +477,7 @@ async fn list_all_resource_types(
 			})
 			.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::RESOURCE_TYPES: resource_types
 	}));
@@ -610,7 +610,7 @@ async fn get_permissions_for_role(
 		);
 	}
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::RESOURCE_PERMISSIONS: Value::Object(resource_map),
 		request_keys::RESOURCE_TYPE_PERMISSIONS: Value::Object(resource_type_map),
@@ -691,7 +691,7 @@ async fn create_role(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::ROLE_ID: role_id.encode_hex::<String>(),
 	}));
@@ -843,7 +843,7 @@ async fn update_role_permissions(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -889,7 +889,7 @@ async fn delete_role(
 	// Delete role
 	db::delete_role(context.get_database_connection(), &role_id).await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -954,7 +954,7 @@ async fn get_resource_info(
 	.await?
 	.unwrap();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::RESOURCE: {
 			request_keys::ID: resource_id_string,

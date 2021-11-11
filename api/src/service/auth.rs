@@ -1,3 +1,8 @@
+use api_models::models::auth::{
+	PreferredRecoveryOption,
+	RecoveryMethod,
+	SignUpAccountType,
+};
 use eve_rs::AsError;
 use uuid::Uuid;
 
@@ -10,13 +15,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{
-			JoinUser,
-			PreferredRecoveryOption,
-			User,
-			UserLogin,
-			UserToSignUp,
-		},
+		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -225,17 +224,11 @@ pub async fn is_phone_number_allowed(
 pub async fn create_user_join_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
-	account_type: ResourceOwnerType,
 	password: &str,
-	(first_name, last_name): (&str, &str),
-
-	backup_email: Option<&str>,
-	backup_phone_country_code: Option<&str>,
-	backup_phone_number: Option<&str>,
-
-	business_email_local: Option<&str>,
-	business_domain_name: Option<&str>,
-	business_name: Option<&str>,
+	first_name: &str,
+	last_name: &str,
+	account_type: &SignUpAccountType,
+	recovery_method: &RecoveryMethod,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -258,23 +251,30 @@ pub async fn create_user_join_request(
 	let phone_country_code;
 	let phone_number;
 
-	match (backup_email, backup_phone_country_code, backup_phone_number) {
+	match recovery_method {
 		// If phone is provided
-		(None, Some(country_code), Some(number)) => {
-			if !is_phone_number_allowed(connection, country_code, number)
-				.await?
+		RecoveryMethod::PhoneNumber {
+			backup_phone_country_code,
+			backup_phone_number,
+		} => {
+			if !is_phone_number_allowed(
+				connection,
+				backup_phone_country_code,
+				backup_phone_number,
+			)
+			.await?
 			{
 				Error::as_result()
 					.status(400)
 					.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 			}
-			phone_country_code = Some(country_code);
-			phone_number = Some(number);
+			phone_country_code = Some(backup_phone_country_code.clone());
+			phone_number = Some(backup_phone_number.clone());
 			backup_email_local = None;
 			backup_email_domain_id = None;
 		}
 		// If backup_email is only provided
-		(Some(backup_email), None, None) => {
+		RecoveryMethod::Email { backup_email } => {
 			// Check if backup_email is allowed and valid
 			if !is_email_allowed(connection, backup_email).await? {
 				Error::as_result()
@@ -293,12 +293,6 @@ pub async fn create_user_join_request(
 			backup_email_local = Some(email_local);
 			backup_email_domain_id = Some(domain_id);
 		}
-		// If both or neither recovery options are provided
-		_ => {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
-		}
 	}
 	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
@@ -310,18 +304,13 @@ pub async fn create_user_join_request(
 	let token_hash = service::hash(otp.as_bytes())?;
 
 	match account_type {
-		ResourceOwnerType::Business => {
-			let business_domain_name = business_domain_name
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-			let business_name = business_name
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-			let business_email_local = business_email_local
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			if !validator::is_domain_name_valid(business_domain_name).await {
+		SignUpAccountType::Business {
+			account_type: _,
+			business_name,
+			business_email_local,
+			domain,
+		} => {
+			if !validator::is_domain_name_valid(domain).await {
 				Error::as_result()
 					.status(200)
 					.body(error!(INVALID_DOMAIN_NAME).to_string())?;
@@ -357,7 +346,7 @@ pub async fn create_user_join_request(
 
 			if !validator::is_email_valid(&format!(
 				"{}@{}",
-				business_email_local, business_domain_name
+				business_email_local, domain
 			)) {
 				Error::as_result()
 					.status(200)
@@ -371,10 +360,10 @@ pub async fn create_user_join_request(
 				(first_name, last_name),
 				backup_email_local.as_deref(),
 				backup_email_domain_id,
-				phone_country_code,
-				phone_number,
+				phone_country_code.as_deref(),
+				phone_number.as_deref(),
 				business_email_local,
-				business_domain_name,
+				domain,
 				business_name,
 				&token_hash,
 				token_expiry,
@@ -395,13 +384,13 @@ pub async fn create_user_join_request(
 					.map(|s| s.to_string()),
 				backup_phone_number: phone_number.map(|s| s.to_string()),
 				business_email_local: Some(business_email_local.to_string()),
-				business_domain_name: Some(business_domain_name.to_string()),
+				business_domain_name: Some(domain.to_string()),
 				business_name: Some(business_name.to_string()),
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 			}
 		}
-		ResourceOwnerType::Personal => {
+		SignUpAccountType::Personal { account_type: _ } => {
 			db::set_personal_user_to_be_signed_up(
 				connection,
 				username,
@@ -409,8 +398,8 @@ pub async fn create_user_join_request(
 				(first_name, last_name),
 				backup_email_local.as_deref(),
 				backup_email_domain_id,
-				phone_country_code,
-				phone_number,
+				phone_country_code.as_deref(),
+				phone_number.as_deref(),
 				&token_hash,
 				token_expiry,
 			)
@@ -650,7 +639,7 @@ pub async fn generate_access_token(
 pub async fn forgot_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-	preferred_recovery_option: PreferredRecoveryOption,
+	preferred_recovery_option: &PreferredRecoveryOption,
 ) -> Result<(), Error> {
 	let user =
 		db::get_user_by_username_email_or_phone_number(connection, user_id)

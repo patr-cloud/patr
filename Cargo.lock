@@ -93,6 +93,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "openssh",
+ "patr-api-dto",
  "patr-macros",
  "rand",
  "redis",
@@ -536,9 +537,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cfg-if"
@@ -956,7 +957,7 @@ dependencies = [
 [[package]]
 name = "eve-rs"
 version = "0.3.0"
-source = "git+https://github.com/vicara-hq/eve-rs?branch=develop#ba77b12ae43b07ac0881184b3e0dcd56a1b59776"
+source = "git+https://github.com/vicara-hq/eve-rs?branch=develop#ec9be3381c4ec92c7263a932be6f64238cb9058f"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2036,6 +2037,18 @@ dependencies = [
  "base64ct",
  "rand_core",
  "subtle",
+]
+
+[[package]]
+name = "patr-api-dto"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "reqwest",
+ "serde 1.0.130",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

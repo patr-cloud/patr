@@ -447,7 +447,7 @@ async fn get_static_site_info(
 		);
 	}
 
-	context.json(&Value::Object(response));
+	context.json(Value::Object(response));
 	Ok(context)
 }
 
@@ -514,7 +514,7 @@ async fn list_static_sites(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::STATIC_SITES: static_sites
 	}));
@@ -618,7 +618,7 @@ async fn create_static_site_deployment(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
 	}));
@@ -667,7 +667,7 @@ async fn start_static_site(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -733,7 +733,7 @@ async fn upload_files_for_static_site(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -779,7 +779,7 @@ async fn stop_static_site(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -831,7 +831,7 @@ async fn delete_static_site(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -896,7 +896,7 @@ async fn get_domain_dns_records_for_static_site(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::CNAME_RECORDS: cname_records
 	}));
@@ -989,7 +989,7 @@ async fn set_domain_name_for_static_site(
 	)
 	.await;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
 	Ok(context)
@@ -1039,7 +1039,7 @@ async fn is_domain_validated_for_static_site(
 	)
 	.await?;
 
-	context.json(&json!({
+	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::VALIDATED: validated,
 	}));
