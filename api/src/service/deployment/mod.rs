@@ -2,6 +2,7 @@ mod aws;
 #[allow(clippy::module_inception)]
 mod deployment;
 mod digitalocean;
+mod kubernetes;
 mod managed_database;
 mod static_site;
 
@@ -36,7 +37,12 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
-pub use self::{deployment::*, managed_database::*, static_site::*};
+pub use self::{
+	deployment::*,
+	kubernetes::*,
+	managed_database::*,
+	static_site::*,
+};
 use crate::{
 	db,
 	error,

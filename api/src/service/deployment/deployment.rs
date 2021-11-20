@@ -32,7 +32,7 @@ use crate::{
 	},
 	service::{
 		self,
-		deployment::{aws, digitalocean, CNameRecord},
+		deployment::{aws, digitalocean, kubernetes, CNameRecord},
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -225,7 +225,15 @@ pub async fn start_deployment(
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
-				let result = digitalocean::deploy_container(
+				// let result = digitalocean::deploy_container(
+				// 	image_id.clone(),
+				// 	region,
+				// 	deployment_id.clone(),
+				// 	config.clone(),
+				// )
+				// .await;
+
+				let result = kubernetes::deploy_container(
 					image_id.clone(),
 					region,
 					deployment_id.clone(),

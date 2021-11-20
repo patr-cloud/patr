@@ -624,7 +624,7 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-async fn get_registry_auth_token(
+pub async fn get_registry_auth_token(
 	config: &Settings,
 	client: &Client,
 ) -> Result<String, Error> {
