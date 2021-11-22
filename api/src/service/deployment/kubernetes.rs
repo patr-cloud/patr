@@ -192,6 +192,7 @@ pub(super) async fn deploy_container(
 						image: Some(new_repo_name),
 						ports: Some(vec![ContainerPort {
 							container_port: 80,
+							host_port: Some(80),
 							name: Some("http".to_owned()),
 							..ContainerPort::default()
 						}]),
@@ -231,14 +232,14 @@ pub(super) async fn deploy_container(
 
 	println!("DEPLOYMENT: {:#?}", api);
 
-	let service: Service = Service {
+	let kubernetes_service: Service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", &deployment_id_string)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
 			ports: Some(vec![ServicePort {
-				port: 8080,
+				port: 80,
 				target_port: Some(IntOrString::Int(80)),
 				name: Some("http".to_owned()),
 				..ServicePort::default()
@@ -251,8 +252,18 @@ pub(super) async fn deploy_container(
 
 	log::trace!("request_id: {} creating Load balancer Service", request_id);
 	let service_api: Api<Service> = Api::namespaced(client.clone(), namespace);
+
+	let params =
+		PatchParams::apply(&format!("service-{}", &deployment_id_string));
+
+	let patch = Patch::Apply(kubernetes_service);
+
 	let api = service_api
-		.create(&PostParams::default(), &service)
+		.patch(
+			&format!("service-{}", &deployment_id_string),
+			&params,
+			&patch,
+		)
 		.await?
 		.status
 		.status(500)
@@ -264,7 +275,7 @@ pub(super) async fn deploy_container(
 	annotations
 		.insert("kubernetes.io/ingress.class".to_owned(), "nginx".to_owned());
 
-	let ingress: Ingress = Ingress {
+	let kubernetes_ingress: Ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", &deployment_id_string)),
 			annotations: Some(annotations),
@@ -272,17 +283,17 @@ pub(super) async fn deploy_container(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(vec![IngressRule {
-				host: deployment.domain_name,
+				host: Some("test.samyak.tk".to_string()),
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
 							service_name: format!(
-								"{}-service",
+								"service-{}",
 								&deployment_id_string
 							),
-							service_port: IntOrString::Int(8080),
+							service_port: IntOrString::Int(80),
 						},
-						path: Some("/".to_string()),
+						path: None,
 					}],
 				}),
 			}]),
@@ -292,8 +303,18 @@ pub(super) async fn deploy_container(
 	};
 
 	let ingress_api: Api<Ingress> = Api::namespaced(client, namespace);
+
+	let params =
+		PatchParams::apply(&format!("ingress-{}", &deployment_id_string));
+
+	let patch = Patch::Apply(kubernetes_ingress);
+
 	let api = ingress_api
-		.create(&PostParams::default(), &ingress)
+		.patch(
+			&format!("ingress-{}", &deployment_id_string),
+			&params,
+			&patch,
+		)
 		.await?
 		.status
 		.status(500)
