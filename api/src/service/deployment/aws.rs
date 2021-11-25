@@ -75,7 +75,7 @@ pub(super) async fn deploy_container(
 	// new name for the docker image
 	let new_repo_name = format!("patr-cloud/{}", deployment_id_string);
 
-	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
+	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
 	super::tag_docker_image(&image_id, &new_repo_name).await?;
@@ -186,7 +186,8 @@ pub(super) async fn deploy_container(
 	let delete_result = super::delete_docker_image(&new_repo_name).await;
 	if let Err(delete_result) = delete_result {
 		log::error!(
-			"Failed to delete the image: {}, Error: {}",
+			"request_id: {} - Failed to delete the image: {}, Error: {}",
+			request_id,
 			new_repo_name,
 			delete_result.get_error()
 		);
@@ -197,7 +198,8 @@ pub(super) async fn deploy_container(
 	let delete_result = super::delete_docker_image(&image_id).await;
 	if let Err(delete_result) = delete_result {
 		log::error!(
-			"Failed to delete the image: {}, Error: {}",
+			"request_id: {} - Failed to delete the image: {}, Error: {}",
+			request_id,
 			image_id,
 			delete_result.get_error()
 		);

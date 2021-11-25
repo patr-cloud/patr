@@ -38,7 +38,7 @@ use crate::{
 	Database,
 };
 
-pub(super) async fn deploy_container(
+pub(super) async fn _deploy_container(
 	image_id: String,
 	region: String,
 	deployment_id: Vec<u8>,
@@ -81,7 +81,7 @@ pub(super) async fn deploy_container(
 		"registry.digitalocean.com/{}/{}",
 		config.digitalocean.registry, deployment_id_string,
 	);
-	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
+	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
 	super::tag_docker_image(&image_id, &new_repo_name).await?;
@@ -191,8 +191,8 @@ pub(super) async fn deploy_container(
 	let default_url = wait_for_app_deploy(&app_id, &config, &client).await;
 	log::trace!(
 		"request_id: {} - App ingress is at {}",
-		default_url,
-		request_id
+		request_id,
+		default_url
 	);
 
 	// update DNS
@@ -233,7 +233,8 @@ pub(super) async fn deploy_container(
 	let delete_result = super::delete_docker_image(&new_repo_name).await;
 	if let Err(delete_result) = delete_result {
 		log::error!(
-			"Failed to delete the image: {}, Error: {}",
+			"request_id: {} - Failed to delete the image: {}, Error: {}",
+			request_id,
 			new_repo_name,
 			delete_result.get_error()
 		);
