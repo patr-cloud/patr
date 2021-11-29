@@ -148,6 +148,8 @@ pub async fn create_deployment_in_organisation(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 
+			db::begin_deferred_constraints(connection).await?;
+
 			db::create_deployment_with_internal_registry(
 				connection,
 				deployment_id,
@@ -161,12 +163,16 @@ pub async fn create_deployment_in_organisation(
 				organisation_id,
 			)
 			.await?;
+
+			db::end_deferred_constraints(connection).await?;
 		} else {
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	} else if let Some(image_name) = image_name {
+		db::begin_deferred_constraints(connection).await?;
+
 		db::create_deployment_with_external_registry(
 			connection,
 			deployment_id,
@@ -181,6 +187,8 @@ pub async fn create_deployment_in_organisation(
 			organisation_id,
 		)
 		.await?;
+
+		db::end_deferred_constraints(connection).await?;
 	} else {
 		return Err(Error::empty()
 			.status(400)
@@ -225,14 +233,6 @@ pub async fn start_deployment(
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
-				// let result = digitalocean::deploy_container(
-				// 	image_id.clone(),
-				// 	region,
-				// 	deployment_id.clone(),
-				// 	config.clone(),
-				// )
-				// .await;
-
 				let result = kubernetes::deploy_container(
 					image_id.clone(),
 					region,
@@ -376,17 +376,22 @@ pub async fn stop_deployment(
 
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
+			// log::trace!(
+			// 	"request_id: {} - deleting the deployment from digitalocean",
+			// 	request_id
+			// );
+			// digitalocean::delete_deployment(
+			// 	connection,
+			// 	deployment_id,
+			// 	config,
+			// 	request_id,
+			// )
+			// .await?;
 			log::trace!(
-				"request_id: {} - deleting the deployment from digitalocean",
-				request_id
-			);
-			digitalocean::delete_deployment(
-				connection,
-				deployment_id,
-				config,
-				request_id,
-			)
-			.await?;
+				"request_id: {} - deleting the deployment from digitalocean kubernetes",
+				request_id);
+			kubernetes::delete_deployment(deployment_id, config, request_id)
+				.await?;
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!(
@@ -772,16 +777,10 @@ pub async fn get_deployment_container_logs(
 	let logs = match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			log::trace!(
-				"request_id: {} - getting logs from digitalocean deployment",
+				"request_id: {} - getting logs from kubernetes",
 				request_id
 			);
-			digitalocean::get_container_logs(
-				connection,
-				deployment_id,
-				config,
-				request_id,
-			)
-			.await?
+			kubernetes::get_container_logs(deployment_id, request_id).await?
 		}
 		Ok(CloudPlatform::Aws) => {
 			log::trace!(

@@ -345,6 +345,21 @@ pub async fn create_deployment_with_internal_registry(
 		query!(
 			r#"
 			INSERT INTO
+				deployed_domain
+			VALUES
+				($1, NULL, $2)
+			ON CONFLICT(deployment_id) DO UPDATE SET
+				domain_name = EXCLUDED.domain_name;
+			"#,
+			deployment_id,
+			domain_name,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			INSERT INTO
 				deployment
 			VALUES
 				(
@@ -429,6 +444,21 @@ pub async fn create_deployment_with_external_registry(
 	organisation_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
+		query!(
+			r#"
+			INSERT INTO
+				deployed_domain
+			VALUES
+				($1, NULL, $2)
+			ON CONFLICT(deployment_id) DO UPDATE SET
+				domain_name = EXCLUDED.domain_name;
+			"#,
+			deployment_id,
+			domain_name,
+		)
+		.execute(&mut *connection)
+		.await?;
+
 		query!(
 			r#"
 			INSERT INTO

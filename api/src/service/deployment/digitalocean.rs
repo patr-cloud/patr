@@ -792,7 +792,7 @@ async fn get_app_default_ingress(
 		.default_ingress
 }
 
-async fn delete_image_from_digitalocean_registry(
+pub(super) async fn delete_image_from_digitalocean_registry(
 	deployment_id: &[u8],
 	config: &Settings,
 ) -> Result<(), Error> {

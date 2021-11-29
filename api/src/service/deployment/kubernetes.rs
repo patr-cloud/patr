@@ -14,6 +14,7 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			LocalObjectReference,
+			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			Service,
@@ -27,6 +28,7 @@ use k8s_openapi::{
 			IngressBackend,
 			IngressRule,
 			IngressSpec,
+			IngressTLS,
 		},
 	},
 	apimachinery::pkg::{
@@ -35,7 +37,15 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{ObjectMeta, Patch, PatchParams, PostParams},
+	api::{
+		DeleteParams,
+		ListParams,
+		LogParams,
+		ObjectMeta,
+		Patch,
+		PatchParams,
+		PostParams,
+	},
 	Api,
 };
 use reqwest::Client;
@@ -46,7 +56,13 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::DeploymentStatus,
-	service::{self, deployment::digitalocean::get_registry_auth_token},
+	service::{
+		self,
+		deployment::digitalocean::{
+			delete_image_from_digitalocean_registry,
+			get_registry_auth_token,
+		},
+	},
 	utils::{settings::Settings, Error},
 };
 
@@ -56,6 +72,8 @@ pub(super) async fn deploy_container(
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
+	// TODO: add namespace to the database
+
 	let kubernetes_client = kube::Client::try_default()
 		.await
 		.expect("Expected a valid KUBECONFIG environment variable.");
@@ -246,15 +264,15 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - DNS Updated", request_id);
 
 	// TODO: configure reverse proxy for kubernetes for custom domains
-	// log::trace!("request_id: {} - adding reverse proxy", request_id);
-	// super::update_nginx_with_all_domains_for_deployment(
-	// 	&deployment_id_string,
-	// 	&default_url,
-	// 	deployment.domain_name.as_deref(),
-	// 	&config,
-	// 	request_id,
-	// )
-	// .await?;
+	log::trace!("request_id: {} - adding reverse proxy", request_id);
+	update_ingress_with_all_domains_for_deployment(
+		&deployment_id_string,
+		kubernetes_client.clone(),
+		deployment.domain_name.as_deref(),
+		&namespace,
+		&request_id,
+	)
+	.await?;
 
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -293,6 +311,111 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - Docker image deleted", request_id);
 
 	Ok(())
+}
+
+pub(super) async fn delete_deployment(
+	deployment_id: &[u8],
+	config: &Settings,
+	request_id: Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - deleting the image from registry",
+		request_id
+	);
+	let kubernetes_client = kube::Client::try_default()
+		.await
+		.expect("Expected a valid KUBECONFIG environment variable.");
+
+	if !app_exists(deployment_id, kubernetes_client.clone(), "default").await? {
+		log::trace!(
+			"request_id: {} - App doesn't exist as {}",
+			request_id,
+			hex::encode(deployment_id)
+		);
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
+		Ok(())
+	} else {
+		log::trace!(
+			"request_id: {} - App exists as {}",
+			request_id,
+			hex::encode(deployment_id)
+		);
+		delete_image_from_digitalocean_registry(deployment_id, config).await?;
+
+		log::trace!("request_id: {} - deleting the deployment", request_id);
+		// TODO: add namespace to the database
+		// TODO: add code for catching errors
+		let _deployment_api =
+			Api::<Deployment>::namespaced(kubernetes_client.clone(), "default")
+				.delete(&hex::encode(deployment_id), &DeleteParams::default())
+				.await?;
+		let _service_api =
+			Api::<Service>::namespaced(kubernetes_client.clone(), "default")
+				.delete(
+					&format!("service-{}", &hex::encode(deployment_id)),
+					&DeleteParams::default(),
+				)
+				.await?;
+		let _ingress_api =
+			Api::<Ingress>::namespaced(kubernetes_client, "default")
+				.delete(
+					&format!("ingress-{}", &hex::encode(deployment_id)),
+					&DeleteParams::default(),
+				)
+				.await?;
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
+		Ok(())
+	}
+}
+
+pub(super) async fn get_container_logs(
+	deployment_id: &[u8],
+	request_id: Uuid,
+) -> Result<String, Error> {
+	// TODO: interact with prometheus to get the logs
+
+	let kubernetes_client = kube::Client::try_default()
+		.await
+		.expect("Expected a valid KUBECONFIG environment variable.");
+
+	log::trace!(
+		"request_id: {} - retreiving deployment info from db",
+		request_id
+	);
+
+	// TODO: change log to stream_log when eve gets websockets
+	// TODO: change customise LogParams for different types of logs
+	// TODO: this is a temporary log retrieval method, use prometheus to get the
+	// logs
+	let pod_api = Api::<Pod>::namespaced(kubernetes_client, "default");
+
+	let pod_name = pod_api
+		.list(&ListParams {
+			label_selector: Some(format!("app={}", hex::encode(deployment_id))),
+			..ListParams::default()
+		})
+		.await?
+		.items
+		.into_iter()
+		.next()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.metadata
+		.name
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let deployment_logs =
+		pod_api.logs(&pod_name, &LogParams::default()).await?;
+
+	log::trace!("request_id: {} - logs retreived successfully!", request_id);
+	Ok(deployment_logs)
 }
 
 async fn app_exists(
@@ -481,8 +604,10 @@ async fn create_app(
 		.body(error!(SERVER_ERROR).to_string())?;
 
 	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
-	annotations
-		.insert("kubernetes.io/ingress.class".to_owned(), "nginx".to_owned());
+	annotations.insert(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	);
 
 	let kubernetes_ingress: Ingress = Ingress {
 		metadata: ObjectMeta {
@@ -496,13 +621,14 @@ async fn create_app(
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
-							service_name: format!(
+							service_name: Some(format!(
 								"service-{}",
 								&deployment_id_string
-							),
-							service_port: IntOrString::Int(80),
+							)),
+							service_port: Some(IntOrString::Int(80)),
+							..IngressBackend::default()
 						},
-						path: None,
+						..HTTPIngressPath::default()
 					}],
 				}),
 			}]),
@@ -555,6 +681,331 @@ async fn wait_for_app_deploy(
 
 		time::sleep(Duration::from_secs(1)).await;
 	}
+
+	Ok(())
+}
+
+async fn update_ingress_with_all_domains_for_deployment(
+	deployment_id_string: &str,
+	kubernetes_client: kube::Client,
+	domain_name: Option<&str>,
+	namespace: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - updating ingress with all domains",
+		request_id
+	);
+	// TODO: refactor this
+
+	// TODO: test if the certificate exists
+	// if yes then make https
+	// else  {
+	// 	continue with http
+	// 	create certificate
+	// 	make https
+	// }
+	// for custom domain
+	// check for certificate
+	// if it exists then
+	// 	create https
+	// else
+	// 	continue with http only
+
+	// let certificate_api = Api::<CertificateSigningRequest>::namespaced(
+	// 	kubernetes_client.clone(),
+	// 	namespace,
+	// );
+
+	// let certificate_check = certificate_api
+	// 	.get(&format!("certificate-{}", deployment_id_string))
+	// 	.await;
+
+	update_nginx_config_for_domain_with_http_only(
+		deployment_id_string,
+		kubernetes_client.clone(),
+		domain_name,
+		namespace,
+		request_id,
+	)
+	.await?;
+
+	create_https_certificates_for_domain(
+		&deployment_id_string,
+		kubernetes_client.clone(),
+		domain_name,
+		namespace,
+		request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_nginx_config_for_domain_with_http_only(
+	deployment_id_string: &str,
+	kubernetes_client: kube::Client,
+	domain_name: Option<&str>,
+	namespace: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - updating nginx config for domain",
+		request_id
+	);
+
+	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
+	annotations.insert(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	);
+
+	let custom_domain_rule = if let Some(domain) = domain_name {
+		log::trace!("request_id: {} - custom domain present, adding domain details to the ingress", request_id);
+		annotations.insert(
+			"nginx.ingress.kubernetes.io/proxy-redirect-from".to_string(),
+			domain.to_string(),
+		);
+
+		annotations.insert(
+			"nginx.ingress.kubernetes.io/proxy-redirect-to".to_string(),
+			format!("{}.patr.cloud", deployment_id_string),
+		);
+
+		vec![
+			IngressRule {
+				host: Some(format!("{}.patr.cloud", deployment_id_string)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service_name: Some(format!(
+								"service-{}",
+								&deployment_id_string
+							)),
+							service_port: Some(IntOrString::Int(80)),
+							..IngressBackend::default()
+						},
+						..HTTPIngressPath::default()
+					}],
+				}),
+			},
+			IngressRule {
+				host: domain_name.map(|d| d.to_string()),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service_name: Some(format!(
+								"service-{}",
+								deployment_id_string
+							)),
+							service_port: Some(IntOrString::Int(80)),
+							..IngressBackend::default()
+						},
+						..HTTPIngressPath::default()
+					}],
+				}),
+			},
+		]
+	} else {
+		vec![IngressRule {
+			host: Some(format!("{}.patr.cloud", deployment_id_string)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service_name: Some(format!(
+							"service-{}",
+							&deployment_id_string
+						)),
+						service_port: Some(IntOrString::Int(80)),
+						..IngressBackend::default()
+					},
+					..HTTPIngressPath::default()
+				}],
+			}),
+		}]
+	};
+
+	let kubernetes_ingress: Ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", &deployment_id_string)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(custom_domain_rule),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+
+	// Create the ingress defined above
+	log::trace!("request_id: {} - creating ingress", request_id);
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+
+	ingress_api
+		.patch(
+			&format!("ingress-{}", &deployment_id_string),
+			&PatchParams::apply(&format!("ingress-{}", &deployment_id_string)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	log::trace!("request_id: {} - ingress updated", request_id);
+
+	Ok(())
+}
+
+async fn create_https_certificates_for_domain(
+	deployment_id_string: &str,
+	kubernetes_client: kube::Client,
+	domain_name: Option<&str>,
+	namespace: &str,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - creating https certificates for domain",
+		request_id
+	);
+
+	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
+	annotations.insert(
+		"kubernetes.io/ingress.class".to_string(),
+		"nginx".to_string(),
+	);
+	annotations.insert(
+		"cert-manager.io/issuer".to_string(),
+		"letsencrypt-prod".to_string(),
+	);
+
+	let custom_domain_rule = if let Some(domain) = domain_name {
+		annotations.insert(
+			"nginx.ingress.kubernetes.io/proxy-redirect-from".to_string(),
+			domain.to_string(),
+		);
+
+		annotations.insert(
+			"nginx.ingress.kubernetes.io/proxy-redirect-to".to_string(),
+			format!("{}.patr.cloud", deployment_id_string),
+		);
+
+		vec![
+			IngressRule {
+				host: Some(format!("{}.patr.cloud", deployment_id_string)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service_name: Some(format!(
+								"service-{}",
+								&deployment_id_string
+							)),
+							service_port: Some(IntOrString::Int(80)),
+							..IngressBackend::default()
+						},
+						..HTTPIngressPath::default()
+					}],
+				}),
+			},
+			IngressRule {
+				host: domain_name.map(|d| d.to_string()),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service_name: Some(format!(
+								"service-{}",
+								deployment_id_string
+							)),
+							service_port: Some(IntOrString::Int(80)),
+							..IngressBackend::default()
+						},
+						..HTTPIngressPath::default()
+					}],
+				}),
+			},
+		]
+	} else {
+		vec![IngressRule {
+			host: Some(format!("{}.patr.cloud", deployment_id_string)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service_name: Some(format!(
+							"service-{}",
+							&deployment_id_string
+						)),
+						service_port: Some(IntOrString::Int(80)),
+						..IngressBackend::default()
+					},
+					..HTTPIngressPath::default()
+				}],
+			}),
+		}]
+	};
+
+	let custom_domain_tls = if let Some(domain) = domain_name {
+		log::trace!(
+			"request_id: {} - adding custom domain config to ingress",
+			request_id
+		);
+		vec![
+			IngressTLS {
+				hosts: Some(vec![format!(
+					"{}.patr.cloud",
+					deployment_id_string
+				)]),
+				secret_name: Some(format!("tls-{}", &deployment_id_string)),
+			},
+			IngressTLS {
+				hosts: Some(vec![domain.to_string()]),
+				secret_name: Some(format!(
+					"custom-tls-{}",
+					&deployment_id_string
+				)),
+			},
+		]
+	} else {
+		log::trace!(
+			"request_id: {} - adding patr domain config to ingress",
+			request_id
+		);
+		vec![IngressTLS {
+			hosts: Some(vec![format!("{}.patr.cloud", deployment_id_string)]),
+			secret_name: Some(format!("tls-{}", &deployment_id_string)),
+		}]
+	};
+
+	let kubernetes_ingress: Ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", &deployment_id_string)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(custom_domain_rule),
+			tls: Some(custom_domain_tls),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+
+	// Create the ingress defined above
+	log::trace!("request_id: {} - creating ingress", request_id);
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+
+	ingress_api
+		.patch(
+			&format!("ingress-{}", &deployment_id_string),
+			&PatchParams::apply(&format!("ingress-{}", &deployment_id_string)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	Ok(())
 }
