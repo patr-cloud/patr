@@ -1614,7 +1614,7 @@ async fn get_recommended_data_center(
 	.await?;
 
 	context.json(
-		&if let Some(data_center) = data_center {
+		if let Some(data_center) = data_center {
 			json!({
 				request_keys::SUCCESS: true,
 				request_keys::RECOMMENDED_DATA_CENTER: data_center

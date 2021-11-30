@@ -479,7 +479,7 @@ async fn get_domain_info_in_workspace(
 	let domain_id = domain.id.encode_hex::<String>();
 
 	context.json(
-		&if domain.is_verified {
+		if domain.is_verified {
 			json!({
 				request_keys::SUCCESS: true,
 				request_keys::DOMAIN_ID: domain_id,
