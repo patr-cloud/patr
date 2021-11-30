@@ -99,7 +99,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					if let Some(token) = decode_access_token(&context) {
 						token
 					} else {
-						context.status(401).json(&error!(UNAUTHORIZED));
+						context.status(401).json(error!(UNAUTHORIZED));
 						return Ok(context);
 					};
 
@@ -111,13 +111,13 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				.await;
 				if let Err(err) = token_valid {
 					log::error!("Error checking access token: {}", err);
-					context.status(500).json(&error!(SERVER_ERROR));
+					context.status(500).json(error!(SERVER_ERROR));
 					return Ok(context);
 				}
 				let access_token_valid = token_valid.unwrap();
 
 				if !access_token_valid {
-					context.status(401).json(&error!(EXPIRED));
+					context.status(401).json(error!(EXPIRED));
 					return Ok(context);
 				}
 
@@ -132,7 +132,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					if let Some(token) = decode_access_token(&context) {
 						token
 					} else {
-						context.status(401).json(&error!(UNAUTHORIZED));
+						context.status(401).json(error!(UNAUTHORIZED));
 						return Ok(context);
 					};
 
@@ -144,13 +144,13 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				.await;
 				if let Err(err) = token_valid {
 					log::error!("Error checking access token: {}", err);
-					context.status(500).json(&error!(SERVER_ERROR));
+					context.status(500).json(error!(SERVER_ERROR));
 					return Ok(context);
 				}
 				let access_token_valid = token_valid.unwrap();
 
 				if !access_token_valid {
-					context.status(401).json(&error!(UNAUTHORIZED));
+					context.status(401).json(error!(UNAUTHORIZED));
 					return Ok(context);
 				}
 
@@ -166,7 +166,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				let workspace_permission =
 					access_data.workspaces.get(&workspace_id);
 				if workspace_permission.is_none() {
-					context.status(404).json(&error!(RESOURCE_DOES_NOT_EXIST));
+					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);
 				}
 				let workspace_permission = workspace_permission.unwrap();
@@ -203,7 +203,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					context.set_token_data(access_data);
 					next(context).await
 				} else {
-					context.status(401).json(&error!(UNPRIVILEGED));
+					context.status(401).json(error!(UNPRIVILEGED));
 					Ok(context)
 				}
 			}

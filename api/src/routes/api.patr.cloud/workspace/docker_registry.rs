@@ -61,7 +61,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -92,7 +92,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -123,7 +123,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -187,7 +187,7 @@ async fn create_docker_repository(
 	// check if repo name is valid
 	let is_repo_name_valid = validator::is_docker_repo_name_valid(repository);
 	if !is_repo_name_valid {
-		context.status(400).json(&error!(INVALID_REPOSITORY_NAME));
+		context.status(400).json(error!(INVALID_REPOSITORY_NAME));
 		return Ok(context);
 	}
 

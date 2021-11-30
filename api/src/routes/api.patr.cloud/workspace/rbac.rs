@@ -60,7 +60,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -90,7 +90,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -120,7 +120,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -152,7 +152,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -183,7 +183,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -214,7 +214,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -244,7 +244,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -276,7 +276,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -745,7 +745,7 @@ async fn update_role_permissions(
 	{
 		permissions
 	} else {
-		context.status(400).json(&error!(WRONG_PARAMETERS));
+		context.status(400).json(error!(WRONG_PARAMETERS));
 		return Ok(context);
 	};
 	let resource_type_permissions_map =
@@ -754,7 +754,7 @@ async fn update_role_permissions(
 		{
 			permissions
 		} else {
-			context.status(400).json(&error!(WRONG_PARAMETERS));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 
@@ -765,13 +765,13 @@ async fn update_role_permissions(
 		let resource_id = if let Ok(resource_id) = hex::decode(resource_id) {
 			resource_id
 		} else {
-			context.status(400).json(&error!(WRONG_PARAMETERS));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 		let permissions = if let Value::Array(permissions) = permissions {
 			permissions
 		} else {
-			context.status(400).json(&error!(WRONG_PARAMETERS));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 		let mut permissions_values = Vec::with_capacity(permissions.len());
@@ -780,13 +780,13 @@ async fn update_role_permissions(
 			{
 				permission
 			} else {
-				context.status(400).json(&error!(WRONG_PARAMETERS));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			};
 			if let Ok(permission_id) = hex::decode(permission_id) {
 				permissions_values.push(permission_id);
 			} else {
-				context.status(400).json(&error!(WRONG_PARAMETERS));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			}
 		}
@@ -797,13 +797,13 @@ async fn update_role_permissions(
 			if let Ok(resource_type_id) = hex::decode(resource_type_id) {
 				resource_type_id
 			} else {
-				context.status(400).json(&error!(WRONG_PARAMETERS));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			};
 		let permissions = if let Value::Array(permissions) = permissions {
 			permissions
 		} else {
-			context.status(400).json(&error!(WRONG_PARAMETERS));
+			context.status(400).json(error!(WRONG_PARAMETERS));
 			return Ok(context);
 		};
 		let mut permissions_values = Vec::with_capacity(permissions.len());
@@ -812,13 +812,13 @@ async fn update_role_permissions(
 			{
 				permission
 			} else {
-				context.status(400).json(&error!(WRONG_PARAMETERS));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			};
 			if let Ok(permission_id) = hex::decode(permission_id) {
 				permissions_values.push(permission_id);
 			} else {
-				context.status(400).json(&error!(WRONG_PARAMETERS));
+				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			}
 		}

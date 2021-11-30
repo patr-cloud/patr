@@ -59,7 +59,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -90,7 +90,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -122,7 +122,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -153,7 +153,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -186,7 +186,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -472,7 +472,7 @@ async fn get_domain_info_in_workspace(
 		// name exists. If the domain is null but the resource exists, then you
 		// have a dangling resource. This is a big problem. Make sure it's
 		// logged and investigated into
-		context.status(500).json(&error!(SERVER_ERROR));
+		context.status(500).json(error!(SERVER_ERROR));
 		return Ok(context);
 	}
 	let domain = domain.unwrap();

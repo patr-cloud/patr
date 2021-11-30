@@ -61,7 +61,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -93,7 +93,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -125,7 +125,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -157,7 +157,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -189,7 +189,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -221,7 +221,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -253,7 +253,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -285,7 +285,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -317,7 +317,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -349,7 +349,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -381,7 +381,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -413,7 +413,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -445,7 +445,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -477,7 +477,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
@@ -509,7 +509,7 @@ pub fn create_sub_app(
 					if resource.is_none() {
 						context
 							.status(404)
-							.json(&error!(RESOURCE_DOES_NOT_EXIST));
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
 					}
 
 					Ok((context, resource))
