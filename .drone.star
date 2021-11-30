@@ -22,6 +22,9 @@ def main(ctx):
 def get_pipeline_steps(ctx):
     if is_pr(ctx, "develop"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in debug mode
             build_code(
                 "Build code offline",
@@ -68,6 +71,9 @@ def get_pipeline_steps(ctx):
         ])
     elif is_pr(ctx, "staging"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in release mode
             build_code(
                 "Build code offline",
@@ -114,6 +120,9 @@ def get_pipeline_steps(ctx):
         ])
     elif is_pr(ctx, "master"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in release mode
             build_code(
                 "Build code offline",
@@ -160,6 +169,9 @@ def get_pipeline_steps(ctx):
         ])
     elif is_push(ctx, "develop"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in debug mode
             build_code(
                 "Build code offline",
@@ -193,6 +205,9 @@ def get_pipeline_steps(ctx):
         ])
     elif is_push(ctx, "staging"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in release mode
             build_code(
                 "Build code offline",
@@ -239,6 +254,9 @@ def get_pipeline_steps(ctx):
         ])
     elif is_push(ctx, "master"):
         return ([
+            # Clone submodules
+            deep_clone_repo("Deep Clone Submodules"),
+
             # Build in release mode
             build_code(
                 "Build code offline",
@@ -293,6 +311,16 @@ def is_pr(ctx, to_branch):
 
 def is_push(ctx, on_branch):
     return ctx.build.event == "push" and ctx.build.branch == on_branch
+
+
+def deep_clone_repo(step_name):
+    return {
+        "name": step_name,
+        "image": "alpine/git",
+        "commands": [
+            "git submodule update --init --recursive"
+        ]
+    }
 
 
 def build_code(step_name, release, sqlx_offline):

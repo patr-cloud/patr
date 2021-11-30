@@ -1,9 +1,10 @@
+use api_models::models::auth::PreferredRecoveryOption;
 use eve_rs::AsError;
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
+	models::db_mapping::{User, UserToSignUp},
 	utils::Error,
 	Database,
 };
@@ -243,7 +244,7 @@ pub async fn send_user_reset_password_notification(
 pub async fn send_forgot_password_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
-	recovery_option: PreferredRecoveryOption,
+	recovery_option: &PreferredRecoveryOption,
 	otp: &str,
 ) -> Result<(), Error> {
 	// match on the recovery type

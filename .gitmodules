@@ -1,0 +1,6 @@
+[submodule "patr-macros"]
+	path = patr-macros
+	url = https://develop.vicara.co/vicara/patr-macros
+[submodule "patr-api-models"]
+	path = patr-api-models
+	url = https://develop.vicara.co/vicara/patr-api-dto

@@ -12,7 +12,8 @@ sample-data = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-api_macros = { path = "../macros", package = "macros" }
+api_macros = { path = "../patr-macros", package = "patr-macros" }
+api_models = { path = "../patr-api-models", package = "patr-api-dto" }
 argon2 = "0.3.1"
 askama = "0.10.3"
 async-trait = "0.1.36"
@@ -34,7 +35,7 @@ lazy_static = "1.4.0"
 lettre = { version = "=0.10.0-rc.3", features = [
   "tokio1",
   "smtp-transport",
-  "tokio1-native-tls",
+  "tokio1-rustls-tls",
 ] }
 lightsail = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.16-alpha", package = "aws-sdk-lightsail" }
 log = "0.4.8"
