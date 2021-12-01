@@ -272,7 +272,7 @@ async fn sign_up(
 	)
 	.await;
 
-	context.success(CreateAccountResponse);
+	context.success(CreateAccountResponse {});
 	Ok(context)
 }
 
@@ -327,7 +327,7 @@ async fn sign_out(
 	)
 	.await?;
 
-	context.success(LogoutResponse);
+	context.success(LogoutResponse {});
 	Ok(context)
 }
 
@@ -630,7 +630,7 @@ async fn forgot_password(
 	)
 	.await?;
 
-	context.success(ForgotPasswordResponse);
+	context.success(ForgotPasswordResponse {});
 	Ok(context)
 }
 
@@ -698,7 +698,7 @@ async fn reset_password(
 	)
 	.await?;
 
-	context.success(ResetPasswordResponse);
+	context.success(ResetPasswordResponse {});
 	Ok(context)
 }
 
@@ -755,7 +755,7 @@ async fn resend_otp(
 	)
 	.await?;
 
-	context.success(ResendOtpResponse);
+	context.success(ResendOtpResponse {});
 	Ok(context)
 }
 
