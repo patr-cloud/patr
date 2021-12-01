@@ -1,13 +1,13 @@
+use api_models::{models::auth::*, ErrorType};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
-use serde_json::{json, Map};
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::{
-		db_mapping::PreferredRecoveryOption,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
 		RegistryToken,
@@ -16,7 +16,7 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
-		constants::{request_keys, ResourceOwnerType},
+		constants::request_keys,
 		get_current_time,
 		validator,
 		Error,
@@ -142,52 +142,39 @@ async fn sign_in(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let user_id = body
-		.get(request_keys::USER_ID)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let password = body
-		.get(request_keys::PASSWORD)
-		.map(|param| param.as_str())
-		.flatten()
+	let LoginRequest { user_id, password } = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_data = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		&user_id,
+		user_id.to_lowercase().trim(),
 	)
 	.await?
 	.status(200)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(password, &user_data.password)?;
+	let success = service::validate_hash(&password, &user_data.password)?;
 
 	if !success {
-		context.json(error!(INVALID_PASSWORD));
+		context.error(ErrorType::InvalidPassword);
 		return Ok(context);
 	}
 
 	let config = context.get_state().config.clone();
-	let (jwt, login_id, refresh_token) = service::sign_in_user(
+	let (access_token, login_id, refresh_token) = service::sign_in_user(
 		context.get_database_connection(),
 		&user_data.id,
 		&config,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: jwt,
-		request_keys::REFRESH_TOKEN: refresh_token.to_simple().to_string().to_lowercase(),
-		request_keys::LOGIN_ID: login_id.to_simple().to_string().to_lowercase(),
-	}));
+	context.success(LoginResponse {
+		access_token,
+		login_id,
+		refresh_token,
+	});
 	Ok(context)
 }
 
@@ -207,7 +194,7 @@ async fn sign_in(
 ///    backupPhoneNumber:
 /// }
 /// ```
-/// Organisation account:
+/// Business account:
 /// ```
 /// {
 ///    username:
@@ -218,9 +205,9 @@ async fn sign_in(
 ///    backupEmail:
 ///    backupPhoneCountryCode:
 ///    backupPhoneNumber:
-///    organisationEmailLocal:
+///    businessEmailLocal:
 ///    domain:
-///    organisationName:
+///    businessName:
 /// }
 /// ```
 ///
@@ -249,127 +236,26 @@ async fn sign_up(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let username = body
-		.get(request_keys::USERNAME)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let password = body
-		.get(request_keys::PASSWORD)
-		.map(|param| param.as_str())
-		.flatten()
+	let CreateAccountRequest {
+		username,
+		password,
+		first_name,
+		last_name,
+		recovery_method,
+		account_type,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let account_type = body
-		.get(request_keys::ACCOUNT_TYPE)
-		.map(|param| param.as_str())
-		.flatten()
-		.map(|a| a.parse::<ResourceOwnerType>().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let first_name = body
-		.get(request_keys::FIRST_NAME)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let last_name = body
-		.get(request_keys::LAST_NAME)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// store email as lowercase
-	let backup_email = body
-		.get(request_keys::BACKUP_EMAIL)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_lowercase());
-
-	// store Phone Country Code as uppercase
-	let backup_phone_country_code = body
-		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_uppercase());
-
-	let backup_phone_number = body
-		.get(request_keys::BACKUP_PHONE_NUMBER)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	// store org email as lower case
-	let org_email_local = body
-		.get(request_keys::ORGANISATION_EMAIL_LOCAL)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_lowercase());
-
-	// store org domain name as lower case
-	let org_domain_name = body
-		.get(request_keys::DOMAIN)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_lowercase());
-
-	let organisation_name = body
-		.get(request_keys::ORGANISATION_NAME)
-		.map(|param| {
-			param
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_lowercase());
 
 	let (user_to_sign_up, otp) = service::create_user_join_request(
 		context.get_database_connection(),
-		&username,
-		account_type,
-		password,
-		(first_name, last_name),
-		backup_email.as_deref(),
-		backup_phone_country_code.as_deref(),
-		backup_phone_number,
-		org_email_local.as_deref(),
-		org_domain_name.as_deref(),
-		organisation_name.as_deref(),
+		username.to_lowercase().trim(),
+		&password,
+		&first_name,
+		&last_name,
+		&account_type,
+		&recovery_method,
 	)
 	.await?;
 	// send otp
@@ -386,9 +272,7 @@ async fn sign_up(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(CreateAccountResponse {});
 	Ok(context)
 }
 
@@ -443,9 +327,7 @@ async fn sign_out(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS:true,
-	}));
+	context.success(LogoutResponse {});
 	Ok(context)
 }
 
@@ -482,30 +364,21 @@ async fn join(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let otp = body
-		.get(request_keys::VERIFICATION_TOKEN)
-		.map(|param| param.as_str())
-		.flatten()
+	let CompleteSignUpRequest {
+		username,
+		verification_token,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let username = body
-		.get(request_keys::USERNAME)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
 
 	let config = context.get_state().config.clone();
 
 	let join_user = service::join_user(
 		context.get_database_connection(),
 		&config,
-		otp,
-		&username,
+		&verification_token,
+		username.to_lowercase().trim(),
 	)
 	.await?;
 
@@ -522,12 +395,11 @@ async fn join(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: join_user.jwt,
-		request_keys::REFRESH_TOKEN: join_user.refresh_token.to_simple().to_string().to_lowercase(),
-		request_keys::LOGIN_ID: join_user.login_id.to_simple().to_string().to_lowercase(),
-	}));
+	context.success(CompleteSignUpResponse {
+		access_token: join_user.jwt,
+		login_id: join_user.login_id,
+		refresh_token: join_user.refresh_token,
+	});
 	Ok(context)
 }
 
@@ -571,7 +443,9 @@ async fn get_access_token(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let login_id = context
-		.get_param(request_keys::LOGIN_ID)
+		.get_request()
+		.get_params()
+		.get(request_keys::LOGIN_ID)
 		.map(|value| hex::decode(value).ok())
 		.flatten()
 		.status(400)
@@ -599,10 +473,7 @@ async fn get_access_token(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ACCESS_TOKEN: access_token
-	}));
+	context.success(RenewAccessTokenResponse { access_token });
 	Ok(context)
 }
 
@@ -638,24 +509,22 @@ async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
-
-	let email_address = query
+	let email_address = context
+		.get_request()
+		.get_query()
 		.get(request_keys::EMAIL)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim()
 		.to_lowercase();
 
-	let allowed = service::is_email_allowed(
+	let available = service::is_email_allowed(
 		context.get_database_connection(),
 		&email_address,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::AVAILABLE: allowed
-	}));
+	context.success(IsEmailValidResponse { available });
 	Ok(context)
 }
 
@@ -691,24 +560,22 @@ async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let query = context.get_request().get_query().clone();
-
-	let username = query
+	let username = context
+		.get_request()
+		.get_query()
 		.get(request_keys::USERNAME)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
+		.trim()
 		.to_lowercase();
 
-	let allowed = service::is_username_allowed(
+	let available = service::is_username_allowed(
 		context.get_database_connection(),
 		&username,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::AVAILABLE: allowed
-	}));
+	context.success(IsUsernameValidResponse { available });
 	Ok(context)
 }
 
@@ -746,22 +613,11 @@ async fn forgot_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let user_id = body
-		.get(request_keys::USER_ID)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let preferred_recovery_option = body
-		.get(request_keys::PREFERRED_RECOVERY_OPTION)
-		.map(|param| param.as_str())
-		.flatten()
-		.map(|a| a.parse::<PreferredRecoveryOption>().ok())
-		.flatten()
+	let ForgotPasswordRequest {
+		user_id,
+		preferred_recovery_option,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -769,14 +625,12 @@ async fn forgot_password(
 	// otp to the preferred recovery option
 	service::forgot_password(
 		context.get_database_connection(),
-		&user_id,
-		preferred_recovery_option,
+		user_id.to_lowercase().trim(),
+		&preferred_recovery_option,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(ForgotPasswordResponse {});
 	Ok(context)
 }
 
@@ -813,31 +667,18 @@ async fn reset_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let new_password = body
-		.get(request_keys::PASSWORD)
-		.map(|value| value.as_str())
-		.flatten()
+	let ResetPasswordRequest {
+		user_id,
+		password,
+		verification_token,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let token = body
-		.get(request_keys::VERIFICATION_TOKEN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let user_id = body
-		.get(request_keys::USER_ID)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		&user_id,
+		user_id.to_lowercase().trim(),
 	)
 	.await?
 	.status(400)
@@ -845,8 +686,8 @@ async fn reset_password(
 
 	service::reset_password(
 		context.get_database_connection(),
-		new_password,
-		token,
+		&password,
+		&verification_token,
 		&user.id,
 	)
 	.await?;
@@ -857,9 +698,7 @@ async fn reset_password(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(ResetPasswordResponse {});
 	Ok(context)
 }
 
@@ -896,28 +735,16 @@ async fn resend_otp(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let username = body
-		.get(request_keys::USERNAME)
-		.map(|param| param.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let password = body
-		.get(request_keys::PASSWORD)
-		.map(|param| param.as_str())
-		.flatten()
+	let ResendOtpRequest { username, password } = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// update database with newly generated otp
 	let (user_to_sign_up, otp) = service::resend_user_sign_up_otp(
 		context.get_database_connection(),
-		&username,
-		password,
+		username.to_lowercase().trim(),
+		&password,
 	)
 	.await?;
 	// send otp
@@ -928,9 +755,7 @@ async fn resend_otp(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(ResendOtpResponse {});
 	Ok(context)
 }
 
@@ -1318,7 +1143,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let scope = query.get(request_keys::SCOPE).unwrap();
+	let scope = query.get(request_keys::SCOPE).status(500)?;
 	let mut splitter = scope.split(':');
 	let access_type = splitter.next().status(401).body(
 		json!({
@@ -1371,9 +1196,9 @@ async fn docker_registry_authenticate(
 		.split(',')
 		.filter_map(|permission| match permission {
 			"push" | "tag" => {
-				Some(permissions::organisation::docker_registry::PUSH)
+				Some(permissions::workspace::docker_registry::PUSH)
 			}
-			"pull" => Some(permissions::organisation::docker_registry::PULL),
+			"pull" => Some(permissions::workspace::docker_registry::PULL),
 			_ => None,
 		})
 		.map(String::from)
@@ -1386,7 +1211,7 @@ async fn docker_registry_authenticate(
 			json!({
 				request_keys::ERRORS: [{
 					request_keys::CODE: ErrorId::INVALID_REQUEST,
-					request_keys::MESSAGE: ErrorMessage::NO_ORGANISATION_OR_REPOSITORY,
+					request_keys::MESSAGE: ErrorMessage::NO_WORKSPACE_OR_REPOSITORY,
 					request_keys::DETAIL: []
 				}]
 			})
@@ -1394,7 +1219,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_name = split_array.get(0).unwrap(); // get first index from the vector
+	let workspace_name = split_array.get(0).unwrap(); // get first index from the vector
 	let repo_name = split_array.get(1).unwrap();
 
 	// check if repo name is valid
@@ -1411,9 +1236,9 @@ async fn docker_registry_authenticate(
 			.to_string(),
 		)?;
 	}
-	let org = db::get_organisation_by_name(
+	let workspace = db::get_workspace_by_name(
 		context.get_database_connection(),
-		org_name,
+		workspace_name,
 	)
 	.await?
 	.status(400)
@@ -1431,7 +1256,7 @@ async fn docker_registry_authenticate(
 	let repository = db::get_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
-		&org.id,
+		&workspace.id,
 	)
 	.await?
 	// reject request if repository does not exist
@@ -1465,9 +1290,9 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	if resource.owner_id != org.id {
+	if resource.owner_id != workspace.id {
 		log::error!(
-			"Resource owner_id is not the same as org id. This is illegal"
+			"Resource owner_id is not the same as workspace id. This is illegal"
 		);
 		Error::as_result().status(500).body(
 			json!({
@@ -1481,18 +1306,18 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let org_id = org.id.encode_hex::<String>();
+	let workspace_id = workspace.id.encode_hex::<String>();
 	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
 
-	// get all org roles for the user using the id
+	// get all workspace roles for the user using the id
 	let user_id = &user.id;
-	let user_roles = db::get_all_organisation_roles_for_user(
+	let user_roles = db::get_all_workspace_roles_for_user(
 		context.get_database_connection(),
 		&user.id,
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&org_id);
+	let required_role_for_user = user_roles.get(&workspace_id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
@@ -1531,10 +1356,10 @@ async fn docker_registry_authenticate(
 		}
 
 		match permission.as_str() {
-			permissions::organisation::docker_registry::PUSH => {
+			permissions::workspace::docker_registry::PUSH => {
 				approved_permissions.push("push".to_string());
 			}
-			permissions::organisation::docker_registry::PULL => {
+			permissions::workspace::docker_registry::PULL => {
 				approved_permissions.push("pull".to_string());
 			}
 			_ => {}
@@ -1587,61 +1412,57 @@ async fn list_recovery_options(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-	let mut response_map = Map::new();
-	// get user id from the body
-	let user_id = body
-		.get(request_keys::USER_ID)
-		.map(|value| value.as_str())
-		.flatten()
+	let ListRecoveryOptionsRequest { user_id } = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user = db::get_user_by_username_email_or_phone_number(
 		context.get_database_connection(),
-		user_id,
+		user_id.to_lowercase().trim(),
 	)
 	.await?
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	// mask phone number
-	if let Some(phone_number) = user.backup_phone_number {
-		let phone_number = service::mask_phone_number(&phone_number);
-		let country_code = db::get_phone_country_by_country_code(
-			context.get_database_connection(),
-			&user.backup_phone_country_code.unwrap(),
-		)
-		.await?
-		.status(500)
-		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
-		response_map.insert(
-			request_keys::BACKUP_PHONE_NUMBER.to_string(),
-			format!("+{}{}", country_code.phone_code, phone_number).into(),
-		);
-	}
+	let backup_email =
+		if let (Some(backup_email_local), Some(backup_email_domain_id)) =
+			(user.backup_email_local, user.backup_email_domain_id)
+		{
+			Some(format!(
+				"{}@{}",
+				service::mask_email_local(&backup_email_local),
+				db::get_personal_domain_by_id(
+					context.get_database_connection(),
+					&backup_email_domain_id
+				)
+				.await?
+				.status(500)?
+				.name
+			))
+		} else {
+			None
+		};
 
-	if let (Some(backup_email_local), Some(backup_email_domain_id)) =
-		(user.backup_email_local, user.backup_email_domain_id)
-	{
-		let email = format!(
-			"{}@{}",
-			service::mask_email_local(&backup_email_local),
-			db::get_personal_domain_by_id(
+	let backup_phone_number =
+		if let Some(phone_number) = user.backup_phone_number {
+			let phone_number = service::mask_phone_number(&phone_number);
+			let country_code = db::get_phone_country_by_country_code(
 				context.get_database_connection(),
-				&backup_email_domain_id
+				&user.backup_phone_country_code.unwrap(),
 			)
 			.await?
-			.status(500)?
-			.name
-		);
+			.status(500)
+			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 
-		response_map
-			.insert(request_keys::BACKUP_EMAIL.to_string(), email.into());
-	}
+			Some(format!("+{}{}", country_code.phone_code, phone_number))
+		} else {
+			None
+		};
 
-	response_map.insert(request_keys::SUCCESS.to_string(), true.into());
-	let response = serde_json::to_value(response_map)?;
-	context.json(response);
+	context.success(ListRecoveryOptionsResponse {
+		backup_email,
+		backup_phone_number,
+	});
 	Ok(context)
 }

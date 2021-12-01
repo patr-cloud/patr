@@ -1,3 +1,8 @@
+use api_models::models::auth::{
+	PreferredRecoveryOption,
+	RecoveryMethod,
+	SignUpAccountType,
+};
 use eve_rs::AsError;
 use uuid::Uuid;
 
@@ -10,13 +15,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{
-			JoinUser,
-			PreferredRecoveryOption,
-			User,
-			UserLogin,
-			UserToSignUp,
-		},
+		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -201,7 +200,7 @@ pub async fn is_phone_number_allowed(
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `username` - A string which contains username
 /// * `account_type` - An enum object which contains the type of resource
-///   {Personal, Organisation}
+///   {Personal, Business}
 /// * `password` - A string which contains password of the user
 /// * `first_name` - A string which contains first name of the user
 /// * `last_name` - A string which contains last name of the user
@@ -209,12 +208,12 @@ pub async fn is_phone_number_allowed(
 /// * `backup_phone_country_code` - A string which contains phone number country
 ///   code
 /// * `backup_phone_number` - A string which contains phone number of of user
-/// * `org_email_local` - A string which contains a pre-existing email_local of
-///   the user's
-/// organisation email
-/// * `org_domain_name` - A string which contains domain name of the user's
-///   organisation's email id
-/// * `organisation_name` - A string which contains user's organisation name.
+/// * `business_email_local` - A string which contains a pre-existing
+///   email_local of the user's
+/// business email
+/// * `business_domain_name` - A string which contains domain name of the user's
+///   business email id
+/// * `business_name` - A string which contains user's business name.
 ///
 /// # Return
 /// This function returns a `Result<string, error>` which contains either
@@ -225,17 +224,11 @@ pub async fn is_phone_number_allowed(
 pub async fn create_user_join_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	username: &str,
-	account_type: ResourceOwnerType,
 	password: &str,
-	(first_name, last_name): (&str, &str),
-
-	backup_email: Option<&str>,
-	backup_phone_country_code: Option<&str>,
-	backup_phone_number: Option<&str>,
-
-	org_email_local: Option<&str>,
-	org_domain_name: Option<&str>,
-	organisation_name: Option<&str>,
+	first_name: &str,
+	last_name: &str,
+	account_type: &SignUpAccountType,
+	recovery_method: &RecoveryMethod,
 ) -> Result<(UserToSignUp, String), Error> {
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
@@ -258,23 +251,30 @@ pub async fn create_user_join_request(
 	let phone_country_code;
 	let phone_number;
 
-	match (backup_email, backup_phone_country_code, backup_phone_number) {
+	match recovery_method {
 		// If phone is provided
-		(None, Some(country_code), Some(number)) => {
-			if !is_phone_number_allowed(connection, country_code, number)
-				.await?
+		RecoveryMethod::PhoneNumber {
+			backup_phone_country_code,
+			backup_phone_number,
+		} => {
+			if !is_phone_number_allowed(
+				connection,
+				backup_phone_country_code,
+				backup_phone_number,
+			)
+			.await?
 			{
 				Error::as_result()
 					.status(400)
 					.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 			}
-			phone_country_code = Some(country_code);
-			phone_number = Some(number);
+			phone_country_code = Some(backup_phone_country_code.clone());
+			phone_number = Some(backup_phone_number.clone());
 			backup_email_local = None;
 			backup_email_domain_id = None;
 		}
 		// If backup_email is only provided
-		(Some(backup_email), None, None) => {
+		RecoveryMethod::Email { backup_email } => {
 			// Check if backup_email is allowed and valid
 			if !is_email_allowed(connection, backup_email).await? {
 				Error::as_result()
@@ -293,12 +293,6 @@ pub async fn create_user_join_request(
 			backup_email_local = Some(email_local);
 			backup_email_domain_id = Some(domain_id);
 		}
-		// If both or neither recovery options are provided
-		_ => {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
-		}
 	}
 	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
@@ -310,72 +304,67 @@ pub async fn create_user_join_request(
 	let token_hash = service::hash(otp.as_bytes())?;
 
 	match account_type {
-		ResourceOwnerType::Organisation => {
-			let org_domain_name = org_domain_name
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-			let organisation_name = organisation_name
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-			let org_email_local = org_email_local
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			if !validator::is_domain_name_valid(org_domain_name).await {
+		SignUpAccountType::Business {
+			account_type: _,
+			business_name,
+			business_email_local,
+			domain,
+		} => {
+			if !validator::is_domain_name_valid(domain).await {
 				Error::as_result()
 					.status(200)
 					.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 			}
 
-			if !validator::is_organisation_name_valid(organisation_name) {
+			if !validator::is_workspace_name_valid(business_name) {
 				Error::as_result()
 					.status(200)
-					.body(error!(INVALID_ORGANISATION_NAME).to_string())?;
+					.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 			}
 
-			if db::get_organisation_by_name(connection, organisation_name)
+			if db::get_workspace_by_name(connection, business_name)
 				.await?
 				.is_some()
 			{
 				Error::as_result()
 					.status(200)
-					.body(error!(ORGANISATION_EXISTS).to_string())?;
+					.body(error!(WORKSPACE_EXISTS).to_string())?;
 			}
 
-			let user_sign_up = db::get_user_to_sign_up_by_organisation_name(
+			let user_sign_up = db::get_user_to_sign_up_by_business_name(
 				connection,
-				organisation_name,
+				business_name,
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
 				if user_sign_up.otp_expiry < get_current_time_millis() {
 					Error::as_result()
 						.status(200)
-						.body(error!(ORGANISATION_EXISTS).to_string())?;
+						.body(error!(WORKSPACE_EXISTS).to_string())?;
 				}
 			}
 
 			if !validator::is_email_valid(&format!(
 				"{}@{}",
-				org_email_local, org_domain_name
+				business_email_local, domain
 			)) {
 				Error::as_result()
 					.status(200)
 					.body(error!(INVALID_EMAIL).to_string())?;
 			}
 
-			db::set_organisation_user_to_be_signed_up(
+			db::set_business_user_to_be_signed_up(
 				connection,
 				username,
 				&password,
 				(first_name, last_name),
 				backup_email_local.as_deref(),
 				backup_email_domain_id,
-				phone_country_code,
-				phone_number,
-				org_email_local,
-				org_domain_name,
-				organisation_name,
+				phone_country_code.as_deref(),
+				phone_number.as_deref(),
+				business_email_local,
+				domain,
+				business_name,
 				&token_hash,
 				token_expiry,
 			)
@@ -384,24 +373,23 @@ pub async fn create_user_join_request(
 
 			response = UserToSignUp {
 				username: username.to_string(),
-				account_type: ResourceOwnerType::Organisation,
+				account_type: ResourceOwnerType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
 				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
-				backup_phone_country_code: phone_country_code
-					.map(|s| s.to_string()),
-				backup_phone_number: phone_number.map(|s| s.to_string()),
-				org_email_local: Some(org_email_local.to_string()),
-				org_domain_name: Some(org_domain_name.to_string()),
-				organisation_name: Some(organisation_name.to_string()),
+				backup_phone_country_code: phone_country_code,
+				backup_phone_number: phone_number,
+				business_email_local: Some(business_email_local.to_string()),
+				business_domain_name: Some(domain.to_string()),
+				business_name: Some(business_name.to_string()),
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 			}
 		}
-		ResourceOwnerType::Personal => {
+		SignUpAccountType::Personal { account_type: _ } => {
 			db::set_personal_user_to_be_signed_up(
 				connection,
 				username,
@@ -409,8 +397,8 @@ pub async fn create_user_join_request(
 				(first_name, last_name),
 				backup_email_local.as_deref(),
 				backup_email_domain_id,
-				phone_country_code,
-				phone_number,
+				phone_country_code.as_deref(),
+				phone_number.as_deref(),
 				&token_hash,
 				token_expiry,
 			)
@@ -418,19 +406,18 @@ pub async fn create_user_join_request(
 
 			response = UserToSignUp {
 				username: username.to_string(),
-				account_type: ResourceOwnerType::Organisation,
+				account_type: ResourceOwnerType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
 				backup_email_local,
 				backup_email_domain_id: backup_email_domain_id
 					.map(|s| s.to_vec()),
-				backup_phone_country_code: phone_country_code
-					.map(|s| s.to_string()),
-				backup_phone_number: phone_number.map(|s| s.to_string()),
-				org_email_local: None,
-				org_domain_name: None,
-				organisation_name: None,
+				backup_phone_country_code: phone_country_code,
+				backup_phone_number: phone_number,
+				business_email_local: None,
+				business_domain_name: None,
+				business_name: None,
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 			}
@@ -594,11 +581,9 @@ pub async fn generate_access_token(
 	// use that info to populate the data in the token_data
 	let iat = get_current_time_millis();
 	let exp = iat + service::get_access_token_expiry(); // 3 days
-	let orgs = db::get_all_organisation_roles_for_user(
-		connection,
-		&user_login.user_id,
-	)
-	.await?;
+	let workspaces =
+		db::get_all_workspace_roles_for_user(connection, &user_login.user_id)
+			.await?;
 
 	let User {
 		username,
@@ -623,7 +608,7 @@ pub async fn generate_access_token(
 	let token_data = AccessTokenData::new(
 		iat,
 		exp,
-		orgs,
+		workspaces,
 		hex::encode(&user_login.login_id),
 		user,
 	);
@@ -652,7 +637,7 @@ pub async fn generate_access_token(
 pub async fn forgot_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &str,
-	preferred_recovery_option: PreferredRecoveryOption,
+	preferred_recovery_option: &PreferredRecoveryOption,
 ) -> Result<(), Error> {
 	let user =
 		db::get_user_by_username_email_or_phone_number(connection, user_id)
@@ -752,10 +737,10 @@ pub async fn reset_password(
 ///     5. last_name
 ///     6. (backup_email_local, backup_email_domain_id) OR
 ///     7. (backup_phone_country_code, backup_phone_number)
-/// extra parameters required for organisation account:
-///     1. domain_name
-///     2. organisation_name
-///     3. backup_email
+/// extra parameters required for business account:
+///     1. business_domain_name
+///     2. business_name
+///     3. business_email_local
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `config` - An object of [`Settings`] struct which stores configuration of
@@ -794,9 +779,9 @@ pub async fn join_user(
 	}
 
 	// First create user,
-	// Then create an organisation if an org account,
-	// Then add the domain if org account,
-	// Then create personal org regardless,
+	// Then create an workspace if a business account,
+	// Then add the domain if business account,
+	// Then create personal workspace regardless,
 	// Then set email to backup email if personal account,
 	// And finally send the token, along with the email to the user
 
@@ -870,37 +855,37 @@ pub async fn join_user(
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
-	// For an organisation, create the organisation and domain
-	if let ResourceOwnerType::Organisation = user_data.account_type {
-		let organisation_id = service::create_organisation(
+	// For an business, create the workspace and domain
+	if let ResourceOwnerType::Business = user_data.account_type {
+		let workspace_id = service::create_workspace(
 			connection,
-			&user_data.organisation_name.unwrap(),
+			&user_data.business_name.unwrap(),
 			user_id,
 		)
 		.await?;
-		let organisation_id = organisation_id.as_bytes();
+		let workspace_id = workspace_id.as_bytes();
 
-		let domain_id = service::add_domain_to_organisation(
+		let domain_id = service::add_domain_to_workspace(
 			connection,
-			user_data.org_domain_name.as_ref().unwrap(),
-			organisation_id,
+			user_data.business_domain_name.as_ref().unwrap(),
+			workspace_id,
 		)
 		.await?
 		.as_bytes()
 		.to_vec();
 
-		db::add_organisation_email_for_user(
+		db::add_business_email_for_user(
 			connection,
 			user_id,
-			user_data.org_email_local.as_ref().unwrap(),
+			user_data.business_email_local.as_ref().unwrap(),
 			&domain_id,
 		)
 		.await?;
 
 		welcome_email_to = Some(format!(
 			"{}@{}",
-			user_data.org_email_local.unwrap(),
-			user_data.org_domain_name.unwrap()
+			user_data.business_email_local.unwrap(),
+			user_data.business_domain_name.unwrap()
 		));
 		if let Some((email_local, domain_id)) = user_data
 			.backup_email_local
@@ -981,14 +966,11 @@ pub async fn join_user(
 		backup_email_to = None;
 	}
 
-	// add personal organisation
-	let personal_organisation_name = service::get_personal_org_name(username);
-	service::create_organisation(
-		connection,
-		&personal_organisation_name,
-		user_id,
-	)
-	.await?;
+	// add personal workspace
+	let personal_workspace_name =
+		service::get_personal_workspace_name(username);
+	service::create_workspace(connection, &personal_workspace_name, user_id)
+		.await?;
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 

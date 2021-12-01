@@ -39,12 +39,12 @@ use crate::{
 };
 
 /// # Description
-/// This function creates a deployment under an organisation account
+/// This function creates a deployment under an workspace account
 ///
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
-/// * `organisation_id` -  an unsigned 8 bit integer array containing the id of
-///   organisation
+/// * `workspace_id` -  an unsigned 8 bit integer array containing the id of
+///   workspace
 /// * `name` - a string containing the name of deployment
 /// * `registry` - a string containing the url of docker registry
 /// * `repository_id` - An Option<&str> containing either a repository id of
@@ -58,9 +58,9 @@ use crate::{
 /// deployment or an error
 ///
 /// [`Transaction`]: Transaction
-pub async fn create_deployment_in_organisation(
+pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	name: &str,
 	registry: &str,
 	repository_id: Option<&str>,
@@ -99,12 +99,9 @@ pub async fn create_deployment_in_organisation(
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
-	let existing_deployment = db::get_deployment_by_name_in_organisation(
-		connection,
-		name,
-		organisation_id,
-	)
-	.await?;
+	let existing_deployment =
+		db::get_deployment_by_name_in_workspace(connection, name, workspace_id)
+			.await?;
 	if existing_deployment.is_some() {
 		Error::as_result()
 			.status(200)
@@ -137,7 +134,7 @@ pub async fn create_deployment_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::DEPLOYMENT)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -160,7 +157,7 @@ pub async fn create_deployment_in_organisation(
 				domain_name,
 				horizontal_scale,
 				machine_type,
-				organisation_id,
+				workspace_id,
 			)
 			.await?;
 
@@ -184,7 +181,7 @@ pub async fn create_deployment_in_organisation(
 			domain_name,
 			horizontal_scale,
 			machine_type,
-			organisation_id,
+			workspace_id,
 		)
 		.await?;
 

@@ -1,16 +1,7 @@
-use std::str::FromStr;
-
-use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{
-	error,
-	utils::{
-		constants::{request_keys, ResourceOwnerType},
-		Error,
-	},
-};
+use crate::utils::constants::ResourceOwnerType;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -75,9 +66,9 @@ pub struct UserToSignUp {
 	pub backup_phone_country_code: Option<String>,
 	pub backup_phone_number: Option<String>,
 
-	pub org_email_local: Option<String>,
-	pub org_domain_name: Option<String>,
-	pub organisation_name: Option<String>,
+	pub business_email_local: Option<String>,
+	pub business_domain_name: Option<String>,
+	pub business_name: Option<String>,
 
 	pub otp_hash: String,
 	pub otp_expiry: u64,
@@ -109,32 +100,6 @@ pub struct PhoneCountryCode {
 	pub country_code: String,
 	pub phone_code: String,
 	pub country_name: String,
-}
-
-// enum taken in as response from the front end
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub enum PreferredRecoveryOption {
-	BackupPhoneNumber,
-	BackupEmail,
-}
-
-impl FromStr for PreferredRecoveryOption {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			request_keys::BACKUP_PHONE_NUMBER => {
-				Ok(PreferredRecoveryOption::BackupPhoneNumber)
-			}
-			request_keys::BACKUP_EMAIL => {
-				Ok(PreferredRecoveryOption::BackupEmail)
-			}
-			_ => Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
 }
 
 pub struct JoinUser {

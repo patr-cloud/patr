@@ -23,7 +23,7 @@ use crate::{
 	Database,
 };
 
-pub async fn create_managed_database_in_organisation(
+pub async fn create_managed_database_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
 	db_name: &str,
@@ -32,7 +32,7 @@ pub async fn create_managed_database_in_organisation(
 	num_nodes: Option<u64>,
 	database_plan: &ManagedDatabasePlan,
 	region: &str,
-	organisation_id: &[u8],
+	workspace_id: &[u8],
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	if !validator::is_database_name_valid(db_name) {
@@ -66,7 +66,7 @@ pub async fn create_managed_database_in_organisation(
 			.unwrap()
 			.get(rbac::resource_types::MANAGED_DATABASE)
 			.unwrap(),
-		organisation_id,
+		workspace_id,
 		get_current_time_millis(),
 	)
 	.await?;
@@ -86,7 +86,7 @@ pub async fn create_managed_database_in_organisation(
 		0,
 		"",
 		"",
-		organisation_id,
+		workspace_id,
 		None,
 	)
 	.await?;

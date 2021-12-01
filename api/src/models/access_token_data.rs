@@ -9,7 +9,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::models::rbac::OrgPermissions;
+use crate::models::rbac::WorkspacePermissions;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,7 @@ pub struct AccessTokenData {
 	pub iat: u64,
 	pub typ: String,
 	pub exp: u64,
-	pub orgs: HashMap<String, OrgPermissions>,
+	pub workspaces: HashMap<String, WorkspacePermissions>,
 	pub login_id: String,
 	pub user: ExposedUserData,
 	// Do we need to add more?
@@ -50,7 +50,7 @@ impl AccessTokenData {
 	pub fn new(
 		iat: u64,
 		exp: u64,
-		orgs: HashMap<String, OrgPermissions>,
+		workspaces: HashMap<String, WorkspacePermissions>,
 		login_id: String,
 		user: ExposedUserData,
 	) -> Self {
@@ -60,7 +60,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			orgs,
+			workspaces,
 			login_id,
 			user,
 		}

@@ -129,7 +129,7 @@ pub async fn notification_handler(
 
 		let repository = target.repository;
 		let mut splitter = repository.split('/');
-		let org_name = if let Some(val) = splitter.next() {
+		let workspace_name = if let Some(val) = splitter.next() {
 			val
 		} else {
 			continue;
@@ -141,22 +141,23 @@ pub async fn notification_handler(
 		};
 		let tag = target.tag;
 
-		let organisation = db::get_organisation_by_name(
+		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
-			org_name,
+			workspace_name,
 		)
 		.await?;
-		if organisation.is_none() {
+		let workspace = if let Some(workspace) = workspace {
+			workspace
+		} else {
 			continue;
-		}
-		let organisation = organisation.unwrap();
+		};
 
 		let deployments =
-			db::get_deployments_by_image_name_and_tag_for_organisation(
+			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),
 				image_name,
 				&tag,
-				&organisation.id,
+				&workspace.id,
 			)
 			.await?;
 
