@@ -230,7 +230,7 @@ pub async fn start_deployment(
 	match provider.parse() {
 		Ok(CloudPlatform::DigitalOcean) => {
 			task::spawn(async move {
-				let result = kubernetes::deploy_container(
+				let result = kubernetes::update_deployment(
 					image_id.clone(),
 					region,
 					deployment_id.clone(),

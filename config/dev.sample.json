@@ -73,5 +73,14 @@
 	"digitalocean": {
 		"apiKey": "key",
 		"registry": "test"
+	},
+	"kubernetes": {
+		"certificateAuthorityData": "",
+		"clusterName": "",
+		"clusterUrl": "",
+		"authName": "",
+		"authUsername": "",
+		"authToken": "",
+		"contextName": ""
 	}
 }

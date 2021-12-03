@@ -64,6 +64,7 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub ssh: SshSettings,
+	pub kubernetes: KubernetesSettings,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -185,6 +186,18 @@ pub struct SshSettings {
 	pub port: u16,
 	pub username: String,
 	pub key_file: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct KubernetesSettings {
+	pub certificate_authority_data: String,
+	pub cluster_name: String,
+	pub cluster_url: String,
+	pub auth_name: String,
+	pub auth_username: String,
+	pub auth_token: String,
+	pub context_name: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>

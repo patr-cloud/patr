@@ -46,7 +46,17 @@ use kube::{
 		PatchParams,
 		PostParams,
 	},
+	config::{
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
+		NamedContext,
+	},
 	Api,
+	Config,
 };
 use reqwest::Client;
 use tokio::{process::Command, time};
@@ -66,17 +76,14 @@ use crate::{
 	utils::{settings::Settings, Error},
 };
 
-pub(super) async fn deploy_container(
+pub(super) async fn update_deployment(
 	image_id: String,
 	_region: String,
 	deployment_id: Vec<u8>,
 	config: Settings,
 ) -> Result<(), Error> {
-	// TODO: add namespace to the database
+	let kubernetes_client = get_kubernetes_config(&config).await?;
 
-	let kubernetes_client = kube::Client::try_default()
-		.await
-		.expect("Expected a valid KUBECONFIG environment variable.");
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean Managed Kubernetes with request_id: {}",
 		hex::encode(&deployment_id),
@@ -416,6 +423,54 @@ pub(super) async fn get_container_logs(
 
 	log::trace!("request_id: {} - logs retreived successfully!", request_id);
 	Ok(deployment_logs)
+}
+
+async fn get_kubernetes_config(config: &Settings) -> Result<kube::Client, Error> {
+	let config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await?;
+
+	let client = kube::Client::try_from(config)?;
+
+	Ok(client)
 }
 
 async fn app_exists(
