@@ -897,6 +897,7 @@ async fn get_deployment_info(
 		request_keys::IMAGE_TAG.to_string(),
 		Value::String(deployment.image_tag),
 	);
+	// TODO: fetch status from kubernetes api
 	response.insert(
 		request_keys::STATUS.to_string(),
 		Value::String(deployment.status.to_string()),
