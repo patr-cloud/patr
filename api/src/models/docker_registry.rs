@@ -100,3 +100,16 @@ impl RegistryToken {
 		Ok(claims)
 	}
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerRegistryListImagesResponse {
+    pub repositories: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerRegistryImageListTagsResponse {
+    pub name: String,
+    pub tags: Vec<String>,
+}

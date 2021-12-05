@@ -1,3 +1,5 @@
+use api_models::models::workspace::docker_registry::DockerRepositoryTagInfo;
+
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
 pub async fn initialize_docker_registry_pre(
@@ -14,6 +16,30 @@ pub async fn initialize_docker_registry_pre(
 			name CITEXT NOT NULL,
 			CONSTRAINT docker_registry_repository_uq_workspace_id_name
 				UNIQUE(workspace_id, name)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE docker_registry_repository_digest(
+			repository_id BYTEA NOT NULL
+				CONSTRAINT docker_registry_repository_digest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			digest TEXT NOT NULL,
+			tag TEXT
+				CONSTRAINT docker_registry_repository_digest_uq_tag UNIQUE,
+			size BIGINT NOT NULL
+				CONSTRAINT docker_registry_repository_digest_chk_size_unsigned
+					CHECK(size >= 0),
+			pushed_at BIGINT NOT NULL CONSTRAINT
+				docker_registry_repository_digest_chk_pushed_at_unsigned CHECK(
+					pushed_at >= 0
+				),
+			CONSTRAINT docker_registry_repository_digest_pk
+				PRIMARY KEY(repository_id, digest)
 		);
 		"#
 	)
@@ -156,4 +182,33 @@ pub async fn update_docker_repository_name(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_list_of_tags_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<Vec<DockerRepositoryTagInfo>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			tag as "name!",
+			pushed_at
+		FROM
+			docker_registry_repository_digest
+		WHERE
+			repository_id = $1 AND
+			tag IS NOT NULL;
+		"#,
+		repository_id
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| DockerRepositoryTagInfo {
+		name: row.name,
+		last_updated: row.pushed_at as u64,
+	})
+	.collect();
+
+	Ok(rows)
 }

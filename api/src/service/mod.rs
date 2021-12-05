@@ -6,6 +6,7 @@
 //! [`App`]: App
 mod auth;
 mod deployment;
+mod docker_registry;
 mod domain;
 mod metrics;
 mod notifier;
@@ -15,6 +16,7 @@ mod workspace;
 
 pub use auth::*;
 pub use deployment::*;
+pub use docker_registry::*;
 pub use domain::*;
 pub use metrics::*;
 pub use notifier::*;
