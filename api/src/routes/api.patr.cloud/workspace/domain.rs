@@ -196,6 +196,38 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.post(
+		"/:deploymentId/automate-dns-control",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				automate_dns_control_and_create_domain
+			)),
+		],
+	);
 	// Do something with the domains, etc, maybe?
 
 	app
@@ -555,5 +587,15 @@ async fn delete_domain_in_workspace(
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
+	Ok(context)
+}
+
+/// This function registers given domain with Cloudflare account and provide the
+/// user with 2 nameservers. Additionally, it will populate DNS records for the
+/// user.
+async fn automate_dns_control_and_create_domain(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	Ok(context)
 }
