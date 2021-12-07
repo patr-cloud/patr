@@ -605,9 +605,9 @@ async fn delete_domain_in_workspace(
 	Ok(context)
 }
 
-/// This function registers given domain with Cloudflare account and provide the
-/// user with 2 nameservers. Additionally, it will populate DNS records for the
-/// user.
+/// #Description
+/// This function registers given domain on Patr and Cloudflare account and provides the
+/// user with domain id
 ///
 /// TODO: change the name of this function to something more appropriate and
 /// also implement adding domain to the database here. return Domain id upon
@@ -616,30 +616,23 @@ async fn automate_dns_control_for_domain_id(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let workspace_id = hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap()).unwrap();
+	let body = context.get_body_object().clone();
 
-	// hex::decode throws an error for a wrong string
-	// This error is handled by the resource authenticator middleware
-	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless hex::decode(domain_id) returns Ok
-	let domain_id = hex::decode(domain_id).unwrap();
+	let domain_name = body
+		.get(request_keys::DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
 
-	let domain = db::get_workspace_domain_by_id(
+	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
-		&domain_id,
+		&domain_name,
+		&workspace_id,
 	)
 	.await?;
-
-	if domain.is_none() {
-		// Domain cannot be null.
-		// This function wouldn't run unless the resource middleware executes
-		// successfully The resource middleware checks if a resource with that
-		// name exists. If the domain is null but the resource exists, then you
-		// have a dangling resource. This is a big problem. Make sure it's
-		// logged and investigated into
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
 
 	let config = context.get_state().config.clone();
 
@@ -657,10 +650,6 @@ async fn automate_dns_control_for_domain_id(
 	} else {
 		return Err(Error::empty());
 	};
-
-	// TODO: use client to create a new zone
-
-	let domain_name = domain.unwrap().name.clone();
 
 	// create zone
 	client
@@ -688,8 +677,13 @@ async fn automate_dns_control_for_domain_id(
 		.next()
 		.status(500)?
 		.id;
-	let zone_identifier = zone_identifier.as_str();
-	// todo: store the id in database
+	let _zone_identifier = zone_identifier.as_str();
+	// todo: store the zone id in database
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+	}));
 
 	// TODO: send nameserver details to the user
 	// TODO: update DNS A record
