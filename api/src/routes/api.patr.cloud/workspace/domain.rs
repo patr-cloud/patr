@@ -1,10 +1,13 @@
 use cloudflare::{
-	endpoints::zone::{
-		CreateZone,
-		CreateZoneParams,
-		ListZones,
-		ListZonesParams,
-		Type,
+	endpoints::{
+		dns::{CreateDnsRecord, CreateDnsRecordParams},
+		zone::{
+			CreateZone,
+			CreateZoneParams,
+			ListZones,
+			ListZonesParams,
+			Type,
+		},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
@@ -238,9 +241,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				automate_dns_control_for_domain_id
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(add_domain_and_create_zone)),
 		],
 	);
 	// Do something with the domains, etc, maybe?
@@ -606,17 +607,19 @@ async fn delete_domain_in_workspace(
 }
 
 /// #Description
-/// This function registers given domain on Patr and Cloudflare account and provides the
-/// user with domain id
+/// This function registers given domain on Patr and Cloudflare account and
+/// provides the user with domain id
 ///
 /// TODO: change the name of this function to something more appropriate and
 /// also implement adding domain to the database here. return Domain id upon
 /// successfull zone creation on CloudFlare
-async fn automate_dns_control_for_domain_id(
+async fn add_domain_and_create_zone(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id = hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap()).unwrap();
+	let workspace_id =
+		hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let body = context.get_body_object().clone();
 
 	let domain_name = body
@@ -680,13 +683,23 @@ async fn automate_dns_control_for_domain_id(
 	let _zone_identifier = zone_identifier.as_str();
 	// todo: store the zone id in database
 
+	// TODO: update DNS A record
+	// let update_dns_record_status = client.request( &CreateDnsRecord{
+	// 	zone_identifier,
+	// 	params: CreateDnsRecordParams{
+	// 		ttl: Some(1),
+	// 		priority: None,
+	// 		proxied: None,
+	// 		name: &domain_name,
+	// 		content: &domain_name,
+	// })
+	// .await?;
+
+	// TODO: send nameserver details to the user
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
 	}));
-
-	// TODO: send nameserver details to the user
-	// TODO: update DNS A record
 
 	Ok(context)
 }
