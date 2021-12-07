@@ -14,16 +14,17 @@ mod user;
 mod utils;
 mod workspace;
 
-pub use auth::*;
-pub use deployment::*;
-pub use docker_registry::*;
-pub use domain::*;
-pub use metrics::*;
-pub use notifier::*;
-pub use user::*;
-pub use utils::*;
-pub use workspace::*;
-
+pub use self::{
+	auth::*,
+	deployment::*,
+	docker_registry::*,
+	domain::*,
+	metrics::*,
+	notifier::*,
+	user::*,
+	utils::*,
+	workspace::*,
+};
 use crate::{app::App, utils::settings::Settings};
 
 /// stores the configuration and database of the whole API

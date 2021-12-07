@@ -1,16 +1,64 @@
 use std::ops::DerefMut;
 
-use api_models::models::workspace::docker_registry::DockerRepositoryTagInfo;
+use api_models::models::workspace::docker_registry::{
+	DockerRepository,
+	DockerRepositoryTagInfo,
+	GetDockerRepositoryInfoResponse,
+};
 use eve_rs::AsError;
+use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::{rbac, DockerRegistryImageListTagsResponse, RegistryToken, RegistryTokenAccess},
+	models::{
+		db_mapping::DockerRepository as DbDockerRepository,
+		rbac,
+		DockerRegistryImageListTagsResponse,
+		RegistryToken,
+		RegistryTokenAccess,
+	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},
 	Database,
 };
+
+pub async fn get_docker_repository_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<GetDockerRepositoryInfoResponse, Error> {
+	let DbDockerRepository {
+		id,
+		name,
+		workspace_id: _,
+	} = db::get_docker_repository_by_id(connection, repository_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let mut size = 0;
+	let mut last_updated = 0;
+
+	let images = db::get_list_of_digests_for_docker_repository(
+		connection,
+		&repository_id,
+	)
+	.await?;
+	images.iter().for_each(|image| {
+		size += image.size;
+		last_updated = last_updated.max(image.created);
+	});
+
+	Ok(GetDockerRepositoryInfoResponse {
+		repository: DockerRepository {
+			id: Uuid::from_slice(&id)?,
+			name,
+			size,
+		},
+		images,
+		last_updated,
+	})
+}
 
 #[allow(dead_code)]
 pub async fn get_docker_repository_tags(
@@ -42,10 +90,10 @@ pub async fn get_docker_repository_tags(
 		god_username.clone(),
 		config,
 		vec![RegistryTokenAccess {
-            name: format!("{}/{}", workspace_name, repository),
-            actions: vec!["pull".to_string()],
-            r#type: "repository".to_string(),
-        }],
+			name: format!("{}/{}", workspace_name, repository),
+			actions: vec!["pull".to_string()],
+			r#type: "repository".to_string(),
+		}],
 	)
 	.to_string(
 		config.docker_registry.private_key.as_ref(),

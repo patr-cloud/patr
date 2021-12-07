@@ -1,4 +1,8 @@
 use api_macros::closure_as_pinned_box;
+use api_models::models::workspace::docker_registry::{
+	DockerRepository,
+	GetDockerRepositoryInfoResponse,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -9,6 +13,7 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		get_current_time_millis,
@@ -99,6 +104,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_docker_repositories)),
+		],
+	);
+
+	app.get(
+		"/:repositoryId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let repository_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repository_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_docker_repository_info)),
 		],
 	);
 
@@ -309,6 +345,67 @@ async fn list_docker_repositories(
 		request_keys::REPOSITORIES: repositories
 	}));
 
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get information about a docker repository
+/// required inputs:
+/// auth token in the authorization headers
+/// repository id in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_docker_repository_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let repository_id_string = context
+		.get_param(request_keys::REPOSITORY_ID)
+		.unwrap()
+		.clone();
+	let repository_id = hex::decode(&repository_id_string).unwrap();
+
+	let GetDockerRepositoryInfoResponse {
+		repository: DockerRepository { id: _, name, size },
+		images,
+		last_updated,
+	} = service::get_docker_repository_info(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?;
+
+	let images = images
+		.into_iter()
+		.map(|image| {
+			json!({
+				request_keys::DIGEST: image.digest,
+				request_keys::SIZE: image.size,
+				request_keys::CREATED: image.created,
+			})
+		})
+		.collect::<Vec<_>>();
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::ID: repository_id_string,
+		request_keys::NAME: name,
+		request_keys::SIZE: size,
+		request_keys::IMAGES: images,
+		request_keys::LAST_UPDATED: last_updated,
+	}));
 	Ok(context)
 }
 

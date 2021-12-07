@@ -320,6 +320,42 @@ pub async fn get_list_of_digests_for_docker_repository(
 	Ok(rows)
 }
 
+pub async fn delete_all_tags_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_digest_tag
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_all_images_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository_digest
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
 pub async fn delete_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
