@@ -453,14 +453,14 @@ pub async fn create_user_join_request(
 ///   user
 ///
 /// # Returns
-/// This function returns a `Result<UserLogin, error>` which contains an
-/// instance of UserLogin or an error
+/// This function returns a `Result<(UserLogin, Uuid), error>` which contains an
+/// instance of UserLogin with a refresh token or an error
 ///
 /// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<UserLogin, Error> {
+) -> Result<(UserLogin, Uuid), Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
 	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
@@ -469,7 +469,7 @@ pub async fn create_login_for_user(
 
 	db::add_user_login(
 		connection,
-		login_id.as_bytes(),
+		&login_id,
 		&hashed_refresh_token,
 		iat + get_refresh_token_expiry(),
 		user_id,
@@ -478,15 +478,15 @@ pub async fn create_login_for_user(
 	)
 	.await?;
 	let user_login = UserLogin {
-		login_id: login_id.as_bytes().to_vec(),
+		login_id,
 		user_id: user_id.to_vec(),
 		last_activity: iat,
 		last_login: iat,
-		refresh_token,
+		refresh_token: hashed_refresh_token,
 		token_expiry: iat + get_refresh_token_expiry(),
 	};
 
-	Ok(user_login)
+	Ok((user_login, refresh_token))
 }
 
 /// # Description
@@ -502,8 +502,8 @@ pub async fn create_login_for_user(
 ///   the whole API
 ///
 /// # Returns
-/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing
-/// jwt, login_id, and refresh token or an error
+/// This function returns a `Result<(UserLogin, String, Uuid), Error>`
+/// containing the user login, jwt and refresh token or an error
 ///
 /// [`create_login_for_user()`]: self.create_login_for_user()
 /// [`UserLogin`]: UserLogin
@@ -513,18 +513,13 @@ pub async fn sign_in_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
 	config: &Settings,
-) -> Result<(String, Uuid, Uuid), Error> {
-	let refresh_token = Uuid::new_v4();
+) -> Result<(UserLogin, String, Uuid), Error> {
+	let (user_login, refresh_token) =
+		create_login_for_user(connection, user_id).await?;
 
-	let user_login = create_login_for_user(connection, user_id).await?;
+	let jwt = generate_access_token(connection, &user_login, config).await?;
 
-	let jwt = generate_access_token(connection, config, &user_login).await?;
-
-	Ok((
-		jwt,
-		Uuid::from_slice(&user_login.login_id).unwrap(),
-		refresh_token,
-	))
+	Ok((user_login, jwt, refresh_token))
 }
 
 /// # Description
@@ -543,7 +538,7 @@ pub async fn sign_in_user(
 /// [`Transaction`]: Transaction
 pub async fn get_user_login_for_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
 		.await?
@@ -574,8 +569,8 @@ pub async fn get_user_login_for_login_id(
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
 	user_login: &UserLogin,
+	config: &Settings,
 ) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
@@ -597,6 +592,8 @@ pub async fn generate_access_token(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
+
 	let user = ExposedUserData {
 		id,
 		username,
@@ -605,16 +602,9 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data = AccessTokenData::new(
-		iat,
-		exp,
-		workspaces,
-		hex::encode(&user_login.login_id),
-		user,
-	);
+	let token_data =
+		AccessTokenData::new(iat, exp, workspaces, user_login.login_id, user);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
-
-	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
 
 	Ok(jwt)
 }
@@ -974,7 +964,7 @@ pub async fn join_user(
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-	let (jwt, login_id, refresh_token) =
+	let (UserLogin { login_id, .. }, jwt, refresh_token) =
 		sign_in_user(connection, user_id, config).await?;
 	let response = JoinUser {
 		jwt,

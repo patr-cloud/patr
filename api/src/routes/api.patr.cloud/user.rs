@@ -1,6 +1,7 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -1318,7 +1319,7 @@ async fn get_all_logins_for_user(
 	.await?
 	.into_iter()
 	.map(|login| {
-		let id = login.login_id.encode_hex::<String>();
+		let id = login.login_id.to_simple_ref().to_string();
 		json!({
 			request_keys::LOGIN_ID: id,
 			request_keys::TOKEN_EXPIRY: login.token_expiry,
@@ -1339,13 +1340,12 @@ async fn get_login_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id_string = context
+	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
+		.map(|param| Uuid::parse_str(param).ok())
+		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
-
-	let login_id = hex::decode(&login_id_string)?;
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let login =
 		db::get_user_login(context.get_database_connection(), &login_id)
@@ -1355,7 +1355,7 @@ async fn get_login_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::LOGIN_ID: login_id_string,
+		request_keys::LOGIN_ID: login_id.to_simple_ref().to_string(),
 		request_keys::TOKEN_EXPIRY: login.token_expiry,
 		request_keys::LAST_LOGIN: login.last_login,
 		request_keys::LAST_ACTIVITY: login.last_activity
@@ -1369,10 +1369,10 @@ async fn delete_user_login(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
+		.map(|param| Uuid::parse_str(param).ok())
+		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
-	let login_id = hex::decode(login_id)?;
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 

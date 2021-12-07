@@ -2,12 +2,14 @@ use api_models::{models::auth::*, ErrorType};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
 	models::{
+		db_mapping::UserLogin,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
 		RegistryToken,
@@ -163,12 +165,13 @@ async fn sign_in(
 	}
 
 	let config = context.get_state().config.clone();
-	let (access_token, login_id, refresh_token) = service::sign_in_user(
-		context.get_database_connection(),
-		&user_data.id,
-		&config,
-	)
-	.await?;
+	let (UserLogin { login_id, .. }, access_token, refresh_token) =
+		service::sign_in_user(
+			context.get_database_connection(),
+			&user_data.id,
+			&config,
+		)
+		.await?;
 
 	context.success(LoginResponse {
 		access_token,
@@ -305,10 +308,7 @@ async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id =
-		hex::decode(context.get_token_data().unwrap().login_id.clone())
-			.status(400)
-			.body(error!(UNAUTHORIZED).to_string())?;
+	let login_id = context.get_token_data().unwrap().login_id.clone();
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	db::get_user_login_for_user(
@@ -446,7 +446,7 @@ async fn get_access_token(
 		.get_request()
 		.get_params()
 		.get(request_keys::LOGIN_ID)
-		.map(|value| hex::decode(value).ok())
+		.map(|value| Uuid::parse_str(value).ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -468,8 +468,8 @@ async fn get_access_token(
 
 	let access_token = service::generate_access_token(
 		context.get_database_connection(),
-		&config,
 		&user_login,
+		&config,
 	)
 	.await?;
 

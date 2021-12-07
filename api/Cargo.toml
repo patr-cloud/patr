@@ -61,6 +61,7 @@ sqlx = { version = "0.5", features = [
   "offline",
   "ipnetwork",
   "bigdecimal",
+  "uuid"
 ] }
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.20"

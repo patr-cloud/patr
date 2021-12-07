@@ -3128,6 +3128,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
  "webpki",
  "webpki-roots 0.21.1",
  "whoami",

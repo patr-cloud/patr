@@ -2,6 +2,7 @@ use semver::Version;
 
 use crate::{migrate_query as query, Database};
 
+mod bytea_to_uuid;
 mod organisation_to_workspace;
 
 /// # Description
@@ -526,5 +527,8 @@ async fn migrate_from_v0_4_8(
 async fn migrate_from_v0_4_9(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	organisation_to_workspace::migrate(connection).await
+	organisation_to_workspace::migrate(&mut *connection).await?;
+	bytea_to_uuid::migrate(&mut *connection).await?;
+
+	Ok(())
 }

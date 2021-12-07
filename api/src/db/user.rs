@@ -1851,7 +1851,7 @@ pub async fn create_user(
 
 pub async fn add_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	refresh_token: &str,
 	token_expiry: u64,
 	user_id: &[u8],
@@ -1880,7 +1880,7 @@ pub async fn add_user_login(
 
 pub async fn get_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let login = query!(
 		r#"
@@ -1909,7 +1909,7 @@ pub async fn get_user_login(
 
 pub async fn get_user_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	user_id: &[u8],
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let row = query!(
@@ -1954,7 +1954,7 @@ pub async fn generate_new_login_id(
 			WHERE
 				login_id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			&uuid
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -2031,7 +2031,7 @@ pub async fn get_login_for_user_with_refresh_token(
 
 pub async fn delete_user_login_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	user_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -2052,7 +2052,7 @@ pub async fn delete_user_login_by_id(
 
 pub async fn set_login_expiry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	last_activity: u64,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {

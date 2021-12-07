@@ -32,7 +32,8 @@ pub struct User {
 }
 
 pub struct UserLogin {
-	pub login_id: Vec<u8>,
+	pub login_id: Uuid,
+	/// Hashed refresh token
 	pub refresh_token: String,
 	pub token_expiry: u64,
 	pub user_id: Vec<u8>,

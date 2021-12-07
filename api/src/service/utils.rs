@@ -8,7 +8,6 @@ use argon2::{
 	Version,
 };
 use eve_rs::AsError;
-use hex::ToHex;
 use uuid::Uuid;
 
 use crate::{db, error, service, utils::Error, Database};
@@ -109,9 +108,9 @@ pub fn get_refresh_token_expiry() -> u64 {
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-) -> Result<(String, String), Error> {
+) -> Result<(Uuid, String), Error> {
 	loop {
-		let refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
+		let refresh_token = Uuid::new_v4();
 		let hashed = hash(refresh_token.as_bytes())?;
 		let login = db::get_login_for_user_with_refresh_token(
 			connection, user_id, &hashed,

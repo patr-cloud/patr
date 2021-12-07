@@ -8,10 +8,11 @@ use jsonwebtoken::{
 	Validation,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::models::rbac::WorkspacePermissions;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
 	pub iss: String,
@@ -20,7 +21,8 @@ pub struct AccessTokenData {
 	pub typ: String,
 	pub exp: u64,
 	pub workspaces: HashMap<String, WorkspacePermissions>,
-	pub login_id: String,
+	#[serde(with = "api_models::with::uuid")]
+	pub login_id: Uuid,
 	pub user: ExposedUserData,
 	// Do we need to add more?
 }
@@ -51,7 +53,7 @@ impl AccessTokenData {
 		iat: u64,
 		exp: u64,
 		workspaces: HashMap<String, WorkspacePermissions>,
-		login_id: String,
+		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
 		AccessTokenData {
