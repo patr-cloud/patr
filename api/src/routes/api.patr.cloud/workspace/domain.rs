@@ -241,7 +241,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(add_domain_and_create_zone)),
+			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_wrokspace_and_create_zone)),
 		],
 	);
 	// Do something with the domains, etc, maybe?
@@ -362,6 +362,8 @@ async fn add_domain_to_workspace(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
+
+	// todo: check if patr has control and call add_domain_to_wrokspace_and_create_zone fn from service layer
 
 	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
@@ -609,11 +611,10 @@ async fn delete_domain_in_workspace(
 /// #Description
 /// This function registers given domain on Patr and Cloudflare account and
 /// provides the user with domain id
-///
-/// TODO: change the name of this function to something more appropriate and
-/// also implement adding domain to the database here. return Domain id upon
-/// successfull zone creation on CloudFlare
-async fn add_domain_and_create_zone(
+/// 
+/// NOTE: this function can be transfered to Service layer and be called with
+/// add_domain_to_workspace function
+async fn add_domain_to_wrokspace_and_create_zone(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -624,6 +625,17 @@ async fn add_domain_and_create_zone(
 
 	let domain_name = body
 		.get(request_keys::DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
+	// #is_patr_controled will determine if we control the DNS records or the
+	// user
+	// todo: store this in the database
+	let is_patr_controled = body
+		.get(request_keys::IS_PATR_CONTROLLED)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
@@ -682,18 +694,6 @@ async fn add_domain_and_create_zone(
 		.id;
 	let _zone_identifier = zone_identifier.as_str();
 	// todo: store the zone id in database
-
-	// TODO: update DNS A record
-	// let update_dns_record_status = client.request( &CreateDnsRecord{
-	// 	zone_identifier,
-	// 	params: CreateDnsRecordParams{
-	// 		ttl: Some(1),
-	// 		priority: None,
-	// 		proxied: None,
-	// 		name: &domain_name,
-	// 		content: &domain_name,
-	// })
-	// .await?;
 
 	// TODO: send nameserver details to the user
 	context.json(json!({
