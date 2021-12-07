@@ -331,6 +331,38 @@
       "nullable": []
     }
   },
+  "12f3f1a3e3267abe94c5b1d2afe1181ff8d50807b365d0388b17fc0dc72367d3": {
+    "query": "SELECT digest, size, created FROM docker_registry_repository_digest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "size",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "1478e049e620cdd3592a2f14e0f25a668c95e62854c5facb14517c62d6210275": {
     "query": "CREATE INDEX business_email_idx_user_id ON business_email (user_id);",
     "describe": {
@@ -1091,6 +1123,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2b57994cc1484b154b4b9e877695bb396e44195e13679dc37f4478e29af105c1": {
+    "query": "DELETE FROM docker_registry_repository_digest WHERE repository_id = $1 AND digest = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
       },
       "nullable": []
     }
@@ -3625,6 +3670,16 @@
       ]
     }
   },
+  "8acda7e748747b9ff27a059821f01f756c2ad194fd034d87675702e2c9e2ef88": {
+    "query": "CREATE TABLE docker_registry_repository_digest( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_digest_fk_repository_id REFERENCES docker_registry_repository(id), digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_digest_chk_size_unsigned CHECK(size >= 0), created BIGINT NOT NULL CONSTRAINT docker_registry_digest_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT docker_registry_digest_pk PRIMARY KEY( repository_id, digest ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "8cb6670b215102202242b6d68955a7bc913f3995df415bf4f8796eb8732e3c08": {
     "query": "SELECT * FROM \"user\" WHERE username = $1;",
     "describe": {
@@ -3905,6 +3960,19 @@
       "nullable": []
     }
   },
+  "98a3e794d1a19173c49d4ecec6a7d7d936e541c7830dd4bd6fea30b245fb5b30": {
+    "query": "DELETE FROM docker_registry_digest_tag WHERE repository_id = $1 AND tag = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -3953,6 +4021,16 @@
         false,
         false
       ]
+    }
+  },
+  "9a442e1a694b253772850b6b1cbcd72bca7825ac3964edeaa6a09a58d1d6157d": {
+    "query": "CREATE TABLE docker_registry_digest_tag( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_digest_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_digest_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_digest_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_digest_tag_fk_repository_id_digest FOREIGN KEY(repository_id, digest) REFERENCES docker_registry_repository_digest(repository_id, digest) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "9a7541654f9aea4a24830f06ff49a9a5e1126d4241b91470436470b47d3f2798": {
@@ -4035,6 +4113,18 @@
       "nullable": []
     }
   },
+  "9e8e2ff3a720e95dfb284e5fe053621df3a009d454eb5c571d73782e59507efb": {
+    "query": "DELETE FROM docker_registry_repository WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "9eb0993ca671ecb32e1ed2303b5bd741a025fb8b0c7ce6a1600cc64f57eb8002": {
     "query": "DELETE FROM personal_domain WHERE id = $1;",
     "describe": {
@@ -4089,6 +4179,21 @@
           },
           "Text",
           "Float4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "9fc4e37681ab5b60283641e6ec7299ea71ee6ce7354432cf7f83c4abc2d1f6f7": {
+    "query": "INSERT INTO docker_registry_repository_digest VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Int8",
+          "Int8"
         ]
       },
       "nullable": []
@@ -5607,6 +5712,21 @@
       ]
     }
   },
+  "cf75b411ef5fd0ce29de2c470936da35030cb93d78943696f99bc9588b093822": {
+    "query": "INSERT INTO docker_registry_digest_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET digest = $3, last_updated = $4;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -6386,6 +6506,32 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "f7611e2f5f3d6bbd8ba940976d1779a764d7e3a2a0b66d5f7dff279283f14718": {
+    "query": "SELECT tag, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "last_updated",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
     }
   },
   "f88c23e19d38e7662a587487220522d5ab9c870ad053daf370a4730e7220802e": {
