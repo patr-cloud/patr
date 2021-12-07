@@ -72,7 +72,7 @@ pub async fn get_docker_repository_tags(
 		.tags
 		.into_iter()
 		.map(|tag| DockerRepositoryTagInfo {
-			name: tag,
+			tag,
 			last_updated: 0,
 		})
 		.collect();

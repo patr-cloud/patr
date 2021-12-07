@@ -6,8 +6,10 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{DeploymentStatus, EventData},
+		db_mapping::DeploymentStatus,
 		error::{id as ErrorId, message as ErrorMessage},
+		Action,
+		EventData,
 	},
 	pin_fn,
 	service,
@@ -119,7 +121,7 @@ pub async fn notification_handler(
 	// check if the event is a push event
 	// get image name, repository name, tag if present
 	for event in events.events {
-		if event.action != "push" {
+		if event.action != Action::Push {
 			continue;
 		}
 		let target = event.target;

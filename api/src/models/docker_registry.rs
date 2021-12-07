@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{
 	errors::Error as JWTError,
 	Algorithm,
@@ -13,7 +14,7 @@ use sha2::{Digest, Sha256};
 
 use crate::utils::settings::Settings;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RegistryToken {
 	pub iss: String,
 	pub sub: String,
@@ -25,7 +26,7 @@ pub struct RegistryToken {
 	pub access: Vec<RegistryTokenAccess>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RegistryTokenAccess {
 	pub r#type: String,
 	pub name: String,
@@ -101,15 +102,85 @@ impl RegistryToken {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistryListImagesResponse {
-    pub repositories: Vec<String>,
+	pub repositories: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistryImageListTagsResponse {
-    pub name: String,
-    pub tags: Vec<String>,
+	pub name: String,
+	pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EventData {
+	pub events: Vec<Event>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged, rename_all = "camelCase")]
+pub enum Action {
+	Push,
+	Pull,
+	Delete,
+	Mount,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Event {
+	pub id: String,
+	pub timestamp: DateTime<Utc>,
+	pub action: Action,
+	pub target: Target,
+	pub request: Request,
+	pub actor: Actor,
+	pub source: Source,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Target {
+	pub media_type: String,
+	pub size: u64,
+	pub digest: String,
+	pub length: u64,
+	pub repository: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub from_repository: String,
+	pub url: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
+	pub tag: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Request {
+	pub id: String,
+	pub addr: String,
+	pub host: String,
+	pub method: String,
+	pub useragent: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Actor {
+	pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Source {
+	pub addr: String,
+	#[serde(
+		alias = "instanceID",
+		default,
+		skip_serializing_if = "String::is_empty"
+	)]
+	pub instance_id: String,
 }
