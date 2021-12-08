@@ -70,7 +70,8 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE patr_controlled_domain (
 			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			zone_identifier BYTEA NOT NULL
+			zone_identifier BYTEA NOT NULL,
+			is_verified BOOLEAN NOT NULL DEFAULT FALSE
 		);
 		"#
 	)
@@ -99,6 +100,25 @@ pub async fn initialize_domain_pre(
 					CHECK(domain_type = 'personal'),
 			CONSTRAINT personal_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE dns_record (
+			domain_id BYTEA,
+			name VARCHAR(255) DEFAULT "/",
+			a_record TEXT [],
+			aaaa_record TEXT [],
+			text_record TEXT [],
+			cname_record TEXT,
+			mx_record TEXT [],
+			content VARCHAR(255),
+			ttl INTEGER NOT NULL,
+			proxied BOOLEAN NOT NULL DEFAULT TRUE
 		);
 		"#
 	)
@@ -545,13 +565,12 @@ pub async fn add_patr_controlled_domain(
 		INSERT INTO
 			patr_controlled_domain
 		VALUES
-		($1, $2);
+		($1, $2, 'false');
 		"#,
 		domain_id,
-		zone_identifier
+		zone_identifier,
 	)
 	.execute(&mut *connection)
 	.await?;
-
 	Ok(())
 }

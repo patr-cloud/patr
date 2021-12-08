@@ -428,6 +428,19 @@
       "nullable": []
     }
   },
+  "188c0016230319764212f12f60f0f5125fb63dfed32551b2c71e5e18ec88c5b9": {
+    "query": "INSERT INTO patr_controlled_domain VALUES ($1, $2, 'false');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "19518b37fdef6233e6d06cf37a0aaae9240caf47976ca5b6ac070c9d69a6cec6": {
     "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id, backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_domain_name = $1;",
     "describe": {
@@ -1304,19 +1317,6 @@
       ]
     }
   },
-  "32fbda9b0d5b61ff9261b0e07d0e4aa6cfe01abad4e2b4753a63f49d592c19b0": {
-    "query": "INSERT INTO patr_controlled_domain VALUES ($1, $2);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "333da8ffd1e90a8f41cb260722d9a20053a709510eb7b022e28ee8a5ecc97c27": {
     "query": "SELECT id, name, type as \"type: ResourceOwnerType\" FROM domain WHERE id = $1;",
     "describe": {
@@ -1761,16 +1761,6 @@
   },
   "3d7d9cb7f8508d11c312a20f5368b7c20bbe1cab40e6997c9db6700d408961f2": {
     "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "3e172dab09b13c3ec17d2db65426c970a23f5a6b8d76abf7934909ad8f4aefc3": {
-    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5200,6 +5190,16 @@
       "nullable": []
     }
   },
+  "bd6a5f69a56cfb7effb2e8a547c9a559a2d72c942cbfcd199794d3957c5d52c8": {
+    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL, is_verified BOOLEAN NOT NULL DEFAULT FALSE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "bdaeb51981c627273df25d9f429211412a10aecdf420ea483c71fa45c480a52f": {
     "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );",
     "describe": {
@@ -6646,6 +6646,16 @@
         false,
         false
       ]
+    }
+  },
+  "fdf2126399929dd1f2d8677f0666bc33a3424500295217303c45c3b46e1660af": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) DEFAULT \"/\", a_record TEXT [], aaaa_record TEXT [], text_record TEXT [], cname_record TEXT, mx_record TEXT [], content VARCHAR(255), ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "fea8fe4eb8151508a43bd8a1af74ed745e4b06c32308df3818751d4a7bb72423": {
