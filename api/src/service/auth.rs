@@ -306,7 +306,7 @@ pub async fn create_user_join_request(
 	match account_type {
 		SignUpAccountType::Business {
 			account_type: _,
-			business_name,
+			workspace_name,
 			business_email_local,
 			domain,
 		} => {
@@ -316,13 +316,13 @@ pub async fn create_user_join_request(
 					.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 			}
 
-			if !validator::is_workspace_name_valid(business_name) {
+			if !validator::is_workspace_name_valid(workspace_name) {
 				Error::as_result()
 					.status(200)
 					.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 			}
 
-			if db::get_workspace_by_name(connection, business_name)
+			if db::get_workspace_by_name(connection, workspace_name)
 				.await?
 				.is_some()
 			{
@@ -333,7 +333,7 @@ pub async fn create_user_join_request(
 
 			let user_sign_up = db::get_user_to_sign_up_by_business_name(
 				connection,
-				business_name,
+				workspace_name,
 			)
 			.await?;
 			if let Some(user_sign_up) = user_sign_up {
@@ -364,7 +364,7 @@ pub async fn create_user_join_request(
 				phone_number.as_deref(),
 				business_email_local,
 				domain,
-				business_name,
+				workspace_name,
 				&token_hash,
 				token_expiry,
 			)
@@ -384,7 +384,7 @@ pub async fn create_user_join_request(
 				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
 				business_domain_name: Some(domain.to_string()),
-				business_name: Some(business_name.to_string()),
+				business_name: Some(workspace_name.to_string()),
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,
 			}

@@ -3,6 +3,7 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
+	models::db_mapping::User,
 	service,
 	utils::{get_current_time_millis, validator, Error},
 	Database,
@@ -151,15 +152,15 @@ pub async fn verify_personal_email_address_for_user(
 pub async fn change_password_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &[u8],
-	old_password: &str,
+	current_password: &str,
 	new_password: &str,
-) -> Result<(), Error> {
+) -> Result<User, Error> {
 	let user = db::get_user_by_user_id(connection, user_id)
 		.await?
 		.status(500)
 		.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(old_password, &user.password)?;
+	let success = service::validate_hash(current_password, &user.password)?;
 
 	if !success {
 		Error::as_result()
@@ -171,7 +172,7 @@ pub async fn change_password_for_user(
 
 	db::update_user_password(connection, user_id, &new_password).await?;
 
-	Ok(())
+	Ok(user)
 }
 
 pub async fn update_user_backup_email(
