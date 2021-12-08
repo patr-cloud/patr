@@ -3,9 +3,10 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
+	models::db_mapping::User,
 	service,
 	utils::{get_current_time_millis, validator, Error},
-	Database, models::db_mapping::User,
+	Database,
 };
 
 /// # Description

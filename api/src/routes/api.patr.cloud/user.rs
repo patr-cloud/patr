@@ -439,13 +439,15 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let dob_string = birthday.map(|value| value.to_string());
+
 	// If no parameters to update
 	first_name
 		.as_ref()
-		.or(last_name.as_ref())
-		.or(birthday.map(|value| value.to_string()).as_ref())
-		.or(bio.as_ref())
-		.or(location.as_ref())
+		.or_else(|| last_name.as_ref())
+		.or_else(|| dob_string.as_ref())
+		.or_else(|| bio.as_ref())
+		.or_else(|| location.as_ref())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
