@@ -1,11 +1,45 @@
+use api_models::models::{
+	user::{
+		AddPersonalEmailRequest,
+		AddPersonalEmailResponse,
+		AddPhoneNumberRequest,
+		AddPhoneNumberResponse,
+		ChangePasswordRequest,
+		ChangePasswordResponse,
+		DeletePersonalEmailRequest,
+		DeletePersonalEmailResponse,
+		DeletePhoneNumberRequest,
+		DeletePhoneNumberResponse,
+		DeleteUserLoginResponse,
+		GetUserInfoByUsernameResponse,
+		GetUserInfoResponse,
+		GetUserLoginInfoResponse,
+		ListPersonalEmailsResponse,
+		ListPhoneNumbersResponse,
+		ListUserLoginsResponse,
+		ListUserWorkspacesResponse,
+		UpdateBackupEmailRequest,
+		UpdateBackupEmailResponse,
+		UpdateBackupPhoneNumberRequest,
+		UpdateBackupPhoneNumberResponse,
+		UpdateUserInfoRequest,
+		UpdateUserInfoResponse,
+		UserLogin,
+		VerifyPersonalEmailRequest,
+		VerifyPersonalEmailResponse,
+		VerifyPhoneNumberRequest,
+		VerifyPhoneNumberResponse,
+	},
+	workspace::Workspace,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
-use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
+	models::db_mapping::User,
 	pin_fn,
 	service,
 	utils::{
@@ -212,11 +246,20 @@ async fn get_user_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let user =
-		db::get_user_by_user_id(context.get_database_connection(), &user_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+	let User {
+		id,
+		username,
+		first_name,
+		last_name,
+		location,
+		dob,
+		bio,
+		created,
+		..
+	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
 	let backup_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
@@ -239,18 +282,11 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
-	let backup_country_code = user.backup_phone_country_code;
-	let backup_phone_number = user.backup_phone_number;
-
-	let backup_phone_number = backup_country_code
-		.as_ref()
-		.zip(backup_phone_number.as_ref())
-		.map(|(backup_country_code, backup_phone_number)| {
-			json!({
-				request_keys::COUNTRY_CODE: backup_country_code,
-				request_keys::PHONE_NUMBER: backup_phone_number
-			})
-		});
+	let backup_phone_number = db::get_backup_phone_number_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?;
 
 	let secondary_phone_numbers = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
@@ -259,40 +295,28 @@ async fn get_user_info(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some((backup_country_code, backup_phone_number)) =
-			backup_country_code
-				.as_ref()
-				.zip(backup_phone_number.as_ref())
-		{
-			// If phone code AND number is the same as backup, return false
-			!(phone_number.country_code != *backup_country_code &&
-				phone_number.number != *backup_phone_number)
+		if let Some(backup_phone_number) = &backup_phone_number {
+			phone_number != backup_phone_number
 		} else {
 			true
 		}
 	})
-	.map(|phone_number| {
-		json!({
-			request_keys::COUNTRY_CODE: phone_number.country_code,
-			request_keys::PHONE_NUMBER: phone_number.number
-		})
-	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::USERNAME: user.username,
-		request_keys::FIRST_NAME: user.first_name,
-		request_keys::LAST_NAME: user.last_name,
-		request_keys::BIRTHDAY: user.dob,
-		request_keys::BIO: user.bio,
-		request_keys::LOCATION: user.location,
-		request_keys::CREATED: user.created,
-		request_keys::BACKUP_EMAIL: backup_email,
-		request_keys::SECONDARY_EMAILS: secondary_emails,
-		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
-		request_keys::SECONDARY_PHONE_NUMBERS: secondary_phone_numbers,
-	}));
+	context.success(GetUserInfoResponse {
+		id: Uuid::from_slice(&id)?,
+		username,
+		first_name,
+		last_name,
+		birthday: dob,
+		bio,
+		location,
+		created,
+		backup_email,
+		secondary_emails,
+		backup_phone_number,
+		secondary_phone_numbers,
+	});
 	Ok(context)
 }
 
@@ -343,18 +367,27 @@ async fn get_user_info_by_username(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let user_data =
-		db::get_user_by_username(context.get_database_connection(), &username)
-			.await?
-			.status(400)
-			.body(error!(PROFILE_NOT_FOUND).to_string())?;
+	let User {
+		id,
+		username,
+		first_name,
+		last_name,
+		location,
+		bio,
+		..
+	} = db::get_user_by_username(context.get_database_connection(), &username)
+		.await?
+		.status(400)
+		.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
-	let mut data = serde_json::to_value(user_data)?;
-	let object = data.as_object_mut().unwrap();
-	object.remove(request_keys::ID);
-	object.insert(request_keys::SUCCESS.to_string(), true.into());
-
-	context.json(json!(data));
+	context.success(GetUserInfoByUsernameResponse {
+		id: Uuid::from_slice(&id)?,
+		username,
+		first_name,
+		last_name,
+		location,
+		bio,
+	});
 	Ok(context)
 }
 
@@ -395,81 +428,24 @@ async fn update_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let first_name = body
-		.get(request_keys::FIRST_NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let last_name = body
-		.get(request_keys::LAST_NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let dob = body
-		.get(request_keys::BIRTHDAY)
-		.map(|value| match value {
-			Value::String(value) => value
-				.parse::<u64>()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-			Value::Number(num) => {
-				if let Some(num) = num.as_u64() {
-					Ok(num)
-				} else if let Some(num) = num.as_i64() {
-					Ok(num as u64)
-				} else {
-					Err(Error::empty()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string()))
-				}
-			}
-			_ => Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())),
-		})
-		.transpose()?;
-
-	let bio = body
-		.get(request_keys::BIO)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let location = body
-		.get(request_keys::LOCATION)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let dob_string = dob.map(|value| value.to_string());
-	let dob_str = dob_string.as_deref();
+	let UpdateUserInfoRequest {
+		first_name,
+		last_name,
+		birthday,
+		bio,
+		location,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// If no parameters to update
 	first_name
-		.or(last_name)
-		.or(dob_str)
-		.or(bio)
-		.or(location)
+		.as_ref()
+		.or(last_name.as_ref())
+		.or(birthday.map(|value| value.to_string()).as_ref())
+		.or(bio.as_ref())
+		.or(location.as_ref())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -478,17 +454,15 @@ async fn update_user_info(
 	db::update_user_data(
 		context.get_database_connection(),
 		&user_id,
-		first_name,
-		last_name,
-		dob,
-		bio,
-		location,
+		first_name.as_deref(),
+		last_name.as_deref(),
+		birthday,
+		bio.as_deref(),
+		location.as_deref(),
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.json(UpdateUserInfoResponse {});
 	Ok(context)
 }
 
@@ -525,15 +499,12 @@ async fn add_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let email_address = body
-		.get(request_keys::EMAIL)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+	let AddPersonalEmailRequest { email } =
+		context
+			.get_body_as()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
+	let email_address = email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -544,9 +515,7 @@ async fn add_email_address(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.json(AddPersonalEmailResponse {});
 	Ok(context)
 }
 
@@ -602,11 +571,10 @@ async fn list_email_addresses(
 	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::BACKUP_EMAIL: backup_email,
-		request_keys::SECONDARY_EMAILS: secondary_emails
-	}));
+	context.success(ListPersonalEmailsResponse {
+		backup_email,
+		secondary_emails,
+	});
 	Ok(context)
 }
 
@@ -645,24 +613,11 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let user_data =
-		db::get_user_by_user_id(context.get_database_connection(), &user_id)
-			.await?
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let backup_country_code = user_data.backup_phone_country_code;
-	let backup_phone_number = user_data.backup_phone_number;
-
-	let backup_phone_number = backup_country_code
-		.as_ref()
-		.zip(backup_phone_number.as_ref())
-		.map(|(backup_country_code, backup_phone_number)| {
-			json!({
-				request_keys::COUNTRY_CODE: backup_country_code,
-				request_keys::PHONE_NUMBER: backup_phone_number
-			})
-		});
+	let backup_phone_number = db::get_backup_phone_number_for_user(
+		context.get_database_connection(),
+		&user_id,
+	)
+	.await?;
 
 	let secondary_phone_numbers = db::get_phone_numbers_for_user(
 		context.get_database_connection(),
@@ -671,31 +626,18 @@ async fn list_phone_numbers(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some((backup_country_code, backup_phone_number)) =
-			backup_country_code
-				.as_ref()
-				.zip(backup_phone_number.as_ref())
-		{
-			// If phone code AND number is the same as backup, return false
-			!(phone_number.country_code != *backup_country_code &&
-				phone_number.number != *backup_phone_number)
+		if let Some(backup_phone_number) = &backup_phone_number {
+			phone_number != backup_phone_number
 		} else {
 			true
 		}
 	})
-	.map(|phone_number| {
-		json!({
-			request_keys::COUNTRY_CODE: phone_number.country_code,
-			request_keys::PHONE_NUMBER: phone_number.number
-		})
-	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::BACKUP_PHONE_NUMBER: backup_phone_number,
-		request_keys::SECONDARY_PHONE_NUMBERS: secondary_phone_numbers
-	}));
+	context.success(ListPhoneNumbersResponse {
+		backup_phone_number,
+		secondary_phone_numbers,
+	});
 	Ok(context)
 }
 
@@ -732,17 +674,13 @@ async fn update_backup_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
+	let UpdateBackupEmailRequest { backup_email } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let email_address = backup_email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let email_address = body
-		.get(request_keys::BACKUP_EMAIL)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
 
 	service::update_user_backup_email(
 		context.get_database_connection(),
@@ -751,9 +689,7 @@ async fn update_backup_email_address(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(UpdateBackupEmailResponse {});
 	Ok(context)
 }
 
@@ -791,36 +727,26 @@ async fn update_backup_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let country_code = body
-		.get(request_keys::BACKUP_PHONE_COUNTRY_CODE)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_uppercase();
-
-	let phone_number = body
-		.get(request_keys::BACKUP_PHONE_NUMBER)
-		.map(|value| value.as_str())
-		.flatten()
+	let UpdateBackupPhoneNumberRequest {
+		backup_phone_country_code,
+		backup_phone_number: phone_number,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let country_code = backup_phone_country_code.to_uppercase();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::update_user_backup_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		phone_number,
+		&phone_number,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(UpdateBackupPhoneNumberResponse {});
 	Ok(context)
 }
 
@@ -857,17 +783,13 @@ async fn delete_personal_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
+	let DeletePersonalEmailRequest { email } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let email_address = email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let email_address = body
-		.get(request_keys::EMAIL)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
 
 	service::delete_personal_email_address(
 		context.get_database_connection(),
@@ -876,9 +798,7 @@ async fn delete_personal_email_address(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(DeletePersonalEmailResponse {});
 	Ok(context)
 }
 
@@ -916,44 +836,34 @@ async fn add_phone_number_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	// two letter country code instead of the numeric one
-	let country_code = body
-		.get(request_keys::COUNTRY_CODE)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_uppercase();
-
-	let phone_number = body
-		.get(request_keys::PHONE_NUMBER)
-		.map(|value| value.as_str())
-		.flatten()
+	let AddPhoneNumberRequest {
+		country_code,
+		phone_number,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// two letter country code instead of the numeric one
+	let country_code = country_code.to_uppercase();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		phone_number,
+		&phone_number,
 	)
 	.await?;
 	service::send_phone_number_verification_otp(
 		context.get_database_connection(),
 		&country_code,
-		phone_number,
+		&phone_number,
 		&otp,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-
+	context.success(AddPhoneNumberResponse {});
 	Ok(context)
 }
 
@@ -992,43 +902,29 @@ async fn verify_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let country_code = body
-		.get(request_keys::COUNTRY_CODE)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_uppercase();
-
-	let phone_number = body
-		.get(request_keys::PHONE_NUMBER)
-		.map(|value| value.as_str())
-		.flatten()
+	let VerifyPhoneNumberRequest {
+		country_code,
+		phone_number,
+		verification_token: otp,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// two letter country code instead of the numeric one
+	let country_code = country_code.to_uppercase();
 
-	let otp = body
-		.get(request_keys::VERIFICATION_TOKEN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		phone_number,
-		otp,
+		&phone_number,
+		&otp,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(VerifyPhoneNumberResponse {});
 	Ok(context)
 }
 
@@ -1066,36 +962,27 @@ async fn delete_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let country_code = body
-		.get(request_keys::COUNTRY_CODE)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_uppercase();
-
-	let phone_number = body
-		.get(request_keys::PHONE_NUMBER)
-		.map(|value| value.as_str())
-		.flatten()
+	let DeletePhoneNumberRequest {
+		country_code,
+		phone_number,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// two letter country code instead of the numeric one
+	let country_code = country_code.to_uppercase();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	service::delete_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
-		phone_number,
+		&phone_number,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(DeletePhoneNumberResponse {});
 	Ok(context)
 }
 
@@ -1133,22 +1020,14 @@ async fn verify_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let email_address = body
-		.get(request_keys::EMAIL)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let otp = body
-		.get(request_keys::VERIFICATION_TOKEN)
-		.map(|value| value.as_str())
-		.flatten()
+	let VerifyPersonalEmailRequest {
+		email,
+		verification_token: otp,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let email_address = email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -1156,13 +1035,11 @@ async fn verify_email_address(
 		context.get_database_connection(),
 		&user_id,
 		&email_address,
-		otp,
+		&otp,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(VerifyPersonalEmailResponse {});
 	Ok(context)
 }
 
@@ -1212,19 +1089,16 @@ async fn get_workspaces_for_user(
 	)
 	.await?
 	.into_iter()
-	.map(|workspace| {
-		json!({
-			request_keys::ID: workspace.id.encode_hex::<String>(),
-			request_keys::NAME: workspace.name,
-			request_keys::ACTIVE: workspace.active
+	.filter_map(|workspace| {
+		Some(Workspace {
+			id: Uuid::from_slice(&workspace.id).ok()?,
+			name: workspace.name,
+			active: workspace.active,
 		})
 	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::WORKSPACES: workspaces
-	}));
+	context.success(ListUserWorkspacesResponse { workspaces });
 	Ok(context)
 }
 
@@ -1261,47 +1135,30 @@ async fn change_password(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
+	let ChangePasswordRequest {
+		current_password,
+		new_password,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let new_password = body
-		.get(request_keys::NEW_PASSWORD)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let password = body
-		.get(request_keys::PASSWORD)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let user =
-		db::get_user_by_user_id(context.get_database_connection(), &user_id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-	service::change_password_for_user(
+	let user = service::change_password_for_user(
 		context.get_database_connection(),
 		&user_id,
-		password,
-		new_password,
+		&current_password,
+		&new_password,
 	)
 	.await?;
-
 	service::send_password_changed_notification(
 		context.get_database_connection(),
 		user,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(ChangePasswordResponse {});
 	Ok(context)
 }
 
@@ -1317,21 +1174,18 @@ async fn get_all_logins_for_user(
 	)
 	.await?
 	.into_iter()
-	.map(|login| {
-		let id = login.login_id.encode_hex::<String>();
-		json!({
-			request_keys::LOGIN_ID: id,
-			request_keys::TOKEN_EXPIRY: login.token_expiry,
-			request_keys::LAST_LOGIN: login.last_login,
-			request_keys::LAST_ACTIVITY: login.last_activity
+	.filter_map(|login| {
+		let login_id = Uuid::from_slice(&login.login_id).ok()?;
+		Some(UserLogin {
+			login_id,
+			token_expiry: login.token_expiry,
+			last_login: login.last_login,
+			last_activity: login.last_activity,
 		})
 	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::LOGINS: logins
-	}));
+	context.success(ListUserLoginsResponse { logins });
 	Ok(context)
 }
 
@@ -1350,16 +1204,18 @@ async fn get_login_info(
 	let login =
 		db::get_user_login(context.get_database_connection(), &login_id)
 			.await?
+			.and_then(|login| {
+				Some(UserLogin {
+					login_id: Uuid::from_slice(&login.login_id).ok()?,
+					token_expiry: login.token_expiry,
+					last_login: login.last_login,
+					last_activity: login.last_activity,
+				})
+			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::LOGIN_ID: login_id_string,
-		request_keys::TOKEN_EXPIRY: login.token_expiry,
-		request_keys::LAST_LOGIN: login.last_login,
-		request_keys::LAST_ACTIVITY: login.last_activity
-	}));
+	context.success(GetUserLoginInfoResponse { login });
 	Ok(context)
 }
 
@@ -1383,8 +1239,6 @@ async fn delete_user_login(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-	}));
+	context.success(DeleteUserLoginResponse {});
 	Ok(context)
 }
