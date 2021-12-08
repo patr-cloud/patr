@@ -32,7 +32,7 @@ use api_models::models::{
 	},
 	workspace::Workspace,
 };
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, NextHandler};
 use uuid::Uuid;
 
 use crate::{
@@ -462,7 +462,7 @@ async fn update_user_info(
 	)
 	.await?;
 
-	context.json(UpdateUserInfoResponse {});
+	context.success(UpdateUserInfoResponse {});
 	Ok(context)
 }
 
@@ -515,7 +515,7 @@ async fn add_email_address(
 	)
 	.await?;
 
-	context.json(AddPersonalEmailResponse {});
+	context.success(AddPersonalEmailResponse {});
 	Ok(context)
 }
 

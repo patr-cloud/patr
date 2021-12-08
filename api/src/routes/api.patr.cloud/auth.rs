@@ -509,14 +509,11 @@ async fn is_email_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let email_address = context
-		.get_request()
-		.get_query()
-		.get(request_keys::EMAIL)
+	let IsEmailValidRequest { email } = context
+		.get_query_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim()
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let email_address = email.trim().to_lowercase();
 
 	let available = service::is_email_allowed(
 		context.get_database_connection(),
@@ -560,14 +557,11 @@ async fn is_username_valid(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let username = context
-		.get_request()
-		.get_query()
-		.get(request_keys::USERNAME)
+	let IsUsernameValidRequest { username } = context
+		.get_query_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim()
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let username = username.trim().to_lowercase();
 
 	let available = service::is_username_allowed(
 		context.get_database_connection(),
