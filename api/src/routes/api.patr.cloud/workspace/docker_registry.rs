@@ -76,6 +76,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get list of repositories
 	app.get(
 		"/",
 		[
@@ -107,6 +108,7 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get repository info
 	app.get(
 		"/:repositoryId",
 		[
@@ -138,6 +140,137 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get repository image details
+	app.get(
+		"/:repositoryId/image/:digest",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let repo_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repo_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				get_repository_image_details
+			)),
+		],
+	);
+
+	// Get repository tag details
+	app.get(
+		"/:repositoryId/tag/:tag",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let repo_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repo_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_repository_tag_details)),
+		],
+	);
+
+	// Get repository image details
+	app.delete(
+		"/:repositoryId/image/:digest",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let repo_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repo_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository_image)),
+		],
+	);
+
+	// Get repository tag details
+	app.delete(
+		"/:repositoryId/tag/:tag",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::docker_registry::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let repo_id_string =
+						context.get_param(request_keys::REPOSITORY_ID).unwrap();
+					let repository_id = hex::decode(&repo_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&repository_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository_tag)),
+		],
+	);
+
+	// Delete repository
 	app.delete(
 		"/:repositoryId",
 		[
@@ -406,6 +539,134 @@ async fn get_docker_repository_info(
 		request_keys::IMAGES: images,
 		request_keys::LAST_UPDATED: last_updated,
 	}));
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get information about a docker repository's image
+/// required inputs:
+/// auth token in the authorization headers
+/// repositoryId in the URL
+/// image digest in the URL
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_repository_image_details(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get information about a docker repository's tag
+/// required inputs:
+/// auth token in the authorization headers
+/// repositoryId in the URL
+/// tag in the URL
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_repository_tag_details(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to delete a specific docker repository image inside a
+/// repository.
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in url
+/// ```
+/// {
+///    repositoryId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn delete_docker_repository_image(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to delete a specific docker repository tag inside a
+/// repository.
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in url
+/// ```
+/// {
+///    repositoryId:
+/// }
+/// ```
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn delete_docker_repository_tag(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
 	Ok(context)
 }
 

@@ -290,6 +290,37 @@ pub async fn get_list_of_tags_for_docker_repository(
 	Ok(rows)
 }
 
+pub async fn get_tags_for_docker_repository_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+	digest: &str,
+) -> Result<Vec<DockerRepositoryTagInfo>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			tag,
+			last_updated
+		FROM
+			docker_registry_digest_tag
+		WHERE
+			repository_id = $1 AND
+			digest = $2;
+		"#,
+		repository_id,
+		digest
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| DockerRepositoryTagInfo {
+		tag: row.tag,
+		last_updated: row.last_updated as u64,
+	})
+	.collect();
+
+	Ok(rows)
+}
+
 pub async fn get_list_of_digests_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
