@@ -204,6 +204,16 @@
       "nullable": []
     }
   },
+  "0722cfbbd5c48f96be378882ad3fb3e1ef08ffdd8edbbe9d2c03af3ab8e2cc82": {
+    "query": "CREATE TABLE personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "0ba65499ecae8902b5e35d4c272af2c09970683633d0cb1822835ebaade7d41b": {
     "query": "CREATE TABLE role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
     "describe": {
@@ -1085,16 +1095,6 @@
       "nullable": []
     }
   },
-  "2a3306e1296bee4aecb5ebd09308aa350474e0d2853ed76ce3eddc2eb3d80485": {
-    "query": "CREATE TABLE workspace_domain ( id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_dmn_typ CHECK(domain_type = 'business'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "2babea13ca72e7fcb354b2acb11e2b630677a5d4b29176390f839bc93a4a5f60": {
     "query": "SELECT data_center_locations.region FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) );",
     "describe": {
@@ -1302,6 +1302,19 @@
         true,
         true
       ]
+    }
+  },
+  "32fbda9b0d5b61ff9261b0e07d0e4aa6cfe01abad4e2b4753a63f49d592c19b0": {
+    "query": "INSERT INTO patr_controlled_domain VALUES ($1, $2);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "333da8ffd1e90a8f41cb260722d9a20053a709510eb7b022e28ee8a5ecc97c27": {
@@ -1748,6 +1761,16 @@
   },
   "3d7d9cb7f8508d11c312a20f5368b7c20bbe1cab40e6997c9db6700d408961f2": {
     "query": "CREATE TABLE user_phone_number( user_id BYTEA NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "3e172dab09b13c3ec17d2db65426c970a23f5a6b8d76abf7934909ad8f4aefc3": {
+    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -4726,18 +4749,6 @@
       "nullable": []
     }
   },
-  "afa157379be66ecf9912bb718ae2a4ad2a5794807a7e1d733d7be74feef97095": {
-    "query": "INSERT INTO workspace_domain VALUES ($1, 'business', FALSE);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "afca68f12ec6c952445155c410f17886b7582c32a7a12f743c3975dfc89ba30e": {
     "query": "UPDATE deployment SET digitalocean_app_id = $1 WHERE id = $2;",
     "describe": {
@@ -4763,6 +4774,16 @@
   },
   "b0f9ddd3982bfc24fbe6d8f7a06617d038818c52ed9e462b7404f324fd0a804f": {
     "query": "CREATE TABLE user_login( login_id BYTEA CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id BYTEA NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b142fdd5f90dd8d661f81861765d08fd3b3e3f5f2684ab12ad1f00591da60c79": {
+    "query": "CREATE TABLE workspace_domain ( id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_dmn_typ CHECK(domain_type = 'business'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5081,6 +5102,19 @@
           "Int8",
           "Int8",
           "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b34e15dbe276de0a5bc5e5ba2454fc683ee1711cd5766afe21c44fa8d3a79867": {
+    "query": "INSERT INTO workspace_domain VALUES ($1, 'business', FALSE, $2);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Bool"
         ]
       },
       "nullable": []

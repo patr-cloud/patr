@@ -867,8 +867,10 @@ pub async fn join_user(
 
 		let domain_id = service::add_domain_to_workspace(
 			connection,
+			config,
 			user_data.business_domain_name.as_ref().unwrap(),
 			workspace_id,
+			false,
 		)
 		.await?
 		.as_bytes()

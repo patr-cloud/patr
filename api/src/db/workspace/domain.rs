@@ -39,8 +39,38 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT workspace_domain_chk_dmn_typ
 					CHECK(domain_type = 'business'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
 			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE personal_domain (
+			id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT personal_domain_chk_dmn_typ
+					CHECK(domain_type = 'personal'),
+			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+			CONSTRAINT personal_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// todo: create composite key for this table
+	query!(
+		r#"
+		CREATE TABLE patr_controlled_domain (
+			domain_id BYTEA NOT NULL REFERENCES domain(id),
+			zone_identifier BYTEA NOT NULL
 		);
 		"#
 	)
@@ -170,15 +200,17 @@ pub async fn create_generic_domain(
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
+	is_patr_controled: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			workspace_domain
 		VALUES
-			($1, 'business', FALSE);
+			($1, 'business', FALSE, $2);
 		"#,
-		domain_id
+		domain_id,
+		is_patr_controled
 	)
 	.execute(&mut *connection)
 	.await
@@ -501,4 +533,25 @@ pub async fn get_domain_by_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+}
+
+pub async fn add_patr_controlled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			patr_controlled_domain
+		VALUES
+		($1, $2);
+		"#,
+		domain_id,
+		zone_identifier
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }

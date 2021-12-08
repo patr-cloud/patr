@@ -1,3 +1,18 @@
+use cloudflare::{
+	endpoints::zone::{
+		CreateZone,
+		CreateZoneParams,
+		ListZones,
+		ListZonesParams,
+		Type,
+	},
+	framework::{
+		async_api::{ApiClient, Client as CloudflareClient},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
 use eve_rs::AsError;
 use hex::ToHex;
 use tokio::{net::UdpSocket, task};
@@ -15,6 +30,7 @@ use crate::{
 	utils::{
 		constants::ResourceOwnerType,
 		get_current_time_millis,
+		settings::Settings,
 		validator,
 		Error,
 	},
@@ -97,8 +113,10 @@ pub async fn ensure_personal_domain_exists(
 ///[`Transaction`]: Transaction
 pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 	domain_name: &str,
 	workspace_id: &[u8],
+	is_patr_controled: bool,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -145,7 +163,62 @@ pub async fn add_domain_to_workspace(
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id).await?;
+	db::add_to_workspace_domain(connection, domain_id, is_patr_controled)
+		.await?;
+	if is_patr_controled {
+		// create zone
+
+		// login to cloudflare and create zone in cloudflare
+		let credentials = Credentials::UserAuthToken {
+			token: config.cloudflare.api_token.clone(),
+		};
+
+		let client = if let Ok(client) = CloudflareClient::new(
+			credentials,
+			HttpApiClientConfig::default(),
+			Environment::Production,
+		) {
+			client
+		} else {
+			return Err(Error::empty());
+		};
+
+		// create zone
+		client
+			.request(&CreateZone {
+				params: CreateZoneParams {
+					name: &domain_name,
+					jump_start: Some(false),
+					account: &config.cloudflare.account_id,
+					// Full because the DNS record
+					zone_type: Some(Type::Full),
+				},
+			})
+			.await?;
+
+		let zone_identifier = client
+			.request(&ListZones {
+				params: ListZonesParams {
+					name: Some(domain_name.to_string()),
+					..Default::default()
+				},
+			})
+			.await?
+			.result
+			.into_iter()
+			.next()
+			.status(500)?
+			.id;
+
+		// let zone_identifier = zone_identifier.as_str();
+		// create a new function to store zone related data
+		db::add_patr_controlled_domain(
+			connection,
+			domain_id,
+			zone_identifier.as_bytes(),
+		)
+		.await?;
+	}
 
 	Ok(domain_uuid)
 }

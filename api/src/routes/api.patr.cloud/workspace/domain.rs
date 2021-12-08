@@ -1,21 +1,3 @@
-use cloudflare::{
-	endpoints::{
-		dns::{CreateDnsRecord, CreateDnsRecordParams},
-		zone::{
-			CreateZone,
-			CreateZoneParams,
-			ListZones,
-			ListZonesParams,
-			Type,
-		},
-	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
-};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -214,36 +196,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.post(
-		"/:deploymentId/automate-dns-control",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::ADD,
-				api_macros::closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_wrokspace_and_create_zone)),
-		],
-	);
 	// Do something with the domains, etc, maybe?
 
 	app
@@ -363,19 +315,29 @@ async fn add_domain_to_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	// todo: check if patr has control and call add_domain_to_wrokspace_and_create_zone fn from service layer
+	// will determine if we control the DNS records or the user
+	// todo: store this in the database
+	let is_patr_controlled = body
+		.get(request_keys::IS_PATR_CONTROLLED)
+		.map(|value| value.as_bool())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// move this to service layer
+	let config = context.get_state().config.clone();
 	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
+		&config,
 		&domain_name,
 		&workspace_id,
+		is_patr_controlled,
 	)
 	.await?;
-	let domain_id = domain_id.as_bytes().encode_hex::<String>();
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DOMAIN_ID: domain_id,
+		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
 	}));
 	Ok(context)
 }
@@ -605,101 +567,5 @@ async fn delete_domain_in_workspace(
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
-	Ok(context)
-}
-
-/// #Description
-/// This function registers given domain on Patr and Cloudflare account and
-/// provides the user with domain id
-/// 
-/// NOTE: this function can be transfered to Service layer and be called with
-/// add_domain_to_workspace function
-async fn add_domain_to_wrokspace_and_create_zone(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let workspace_id =
-		hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let body = context.get_body_object().clone();
-
-	let domain_name = body
-		.get(request_keys::DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	// #is_patr_controled will determine if we control the DNS records or the
-	// user
-	// todo: store this in the database
-	let is_patr_controled = body
-		.get(request_keys::IS_PATR_CONTROLLED)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	let domain_id = service::add_domain_to_workspace(
-		context.get_database_connection(),
-		&domain_name,
-		&workspace_id,
-	)
-	.await?;
-
-	let config = context.get_state().config.clone();
-
-	// login to cloudflare and create zone in cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	// create zone
-	client
-		.request(&CreateZone {
-			params: CreateZoneParams {
-				name: &domain_name,
-				jump_start: Some(false),
-				account: &config.cloudflare.account_id,
-				// Full because the DNS record
-				zone_type: Some(Type::Full),
-			},
-		})
-		.await?;
-
-	let zone_identifier = client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some(domain_name),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.status(500)?
-		.id;
-	let _zone_identifier = zone_identifier.as_str();
-	// todo: store the zone id in database
-
-	// TODO: send nameserver details to the user
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
-	}));
-
 	Ok(context)
 }
