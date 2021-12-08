@@ -570,6 +570,32 @@
       "nullable": []
     }
   },
+  "1c258cdf5e4f891a42018dbd6a99ad7cae3698e386c38415a5823d07d48ace98": {
+    "query": "SELECT country_code, number as \"phone_number\" FROM user_phone_number WHERE user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "1d910355f58fd3f630a39be384b98423a9abfc38721774e0d0d83080581433d4": {
     "query": "SELECT * FROM role_permissions_resource_type WHERE role_id = $1;",
     "describe": {
@@ -3594,6 +3620,32 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "86b65641c9298e4ee92844aef07c16d79fd401584f2a84b30361efa91114e24c": {
+    "query": "SELECT \"user\".backup_phone_country_code as \"backup_phone_country_code!\", \"user\".backup_phone_number as \"backup_phone_number!\" FROM \"user\" WHERE \"user\".id = $1 AND \"user\".backup_phone_number IS NOT NULL AND \"user\".backup_phone_country_code IS NOT NULL;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "backup_phone_country_code!",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "backup_phone_number!",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        true,
+        true
+      ]
     }
   },
   "873d6d3789fe5ca0d11c2b14280e2e6e7dad6162dd2c74c5108e77916face3ad": {
