@@ -2838,6 +2838,33 @@
       ]
     }
   },
+  "63a796a38ea6461ef4493ec2f6f3d1ef964e3a097d5aadbfc3be86e38bd43aa3": {
+    "query": "SELECT tag, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1 AND digest = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "last_updated",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "647f5db16c8c918c9d1427223d80f176f791666d7aaff74d50ebd2ff7948e125": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, user_to_sign_up.business_domain_name, user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
     "describe": {
@@ -2954,6 +2981,59 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "65e1061850ff39f8ec7b55057429545e7df2c553c4206765ee7ea1a42548c6b7": {
+    "query": "SELECT SUM(size) as \"size!: i64\" FROM docker_registry_repository_digest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "size!: i64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "692fbc62a688bfd052ac2ce0fa7d5c94b6b4c81a6f58cce2343bf895290f8d2f": {
+    "query": "SELECT tag, last_updated, digest FROM docker_registry_digest_tag WHERE repository_id = $1 AND tag = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "last_updated",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "digest",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
@@ -3742,6 +3822,39 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "8c6b54225a971800e4479c687e782cc2a6b6da1f85eecee3e6983e87cd50a5de": {
+    "query": "SELECT digest, size, created FROM docker_registry_repository_digest WHERE repository_id = $1 AND digest = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "size",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "8cb6670b215102202242b6d68955a7bc913f3995df415bf4f8796eb8732e3c08": {
