@@ -28,7 +28,9 @@ pub async fn get_docker_repository_info(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let mut size = 0;
+	let size =
+		db::get_total_size_of_docker_repository(connection, &repository_id)
+			.await?;
 	let mut last_updated = 0;
 
 	let images = db::get_list_of_digests_for_docker_repository(
@@ -37,7 +39,6 @@ pub async fn get_docker_repository_info(
 	)
 	.await?;
 	images.iter().for_each(|image| {
-		size += image.size;
 		last_updated = last_updated.max(image.created);
 	});
 

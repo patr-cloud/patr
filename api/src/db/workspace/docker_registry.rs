@@ -321,6 +321,92 @@ pub async fn get_tags_for_docker_repository_image(
 	Ok(rows)
 }
 
+pub async fn get_total_size_of_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<u64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			SUM(size) as "size!: i64"
+		FROM
+			docker_registry_repository_digest
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.size as u64)
+}
+
+pub async fn get_docker_repository_image_by_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+	digest: &str,
+) -> Result<Option<DockerRepositoryImageInfo>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			digest,
+			size,
+			created
+		FROM
+			docker_registry_repository_digest
+		WHERE
+			repository_id = $1 AND
+			digest = $2;
+		"#,
+		repository_id,
+		digest
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| {
+		row.map(|row| DockerRepositoryImageInfo {
+			digest: row.digest,
+			size: row.size as u64,
+			created: row.created as u64,
+		})
+	})
+}
+
+pub async fn get_docker_repository_tag_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+	tag: &str,
+) -> Result<Option<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			tag,
+			last_updated,
+			digest
+		FROM
+			docker_registry_digest_tag
+		WHERE
+			repository_id = $1 AND
+			tag = $2;
+		"#,
+		repository_id,
+		tag
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| {
+		row.map(|row| {
+			(
+				DockerRepositoryTagInfo {
+					tag: row.tag,
+					last_updated: row.last_updated as u64,
+				},
+				row.digest,
+			)
+		})
+	})
+}
+
 pub async fn get_list_of_digests_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],

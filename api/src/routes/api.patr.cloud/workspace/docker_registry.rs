@@ -1,7 +1,9 @@
 use api_macros::closure_as_pinned_box;
 use api_models::models::workspace::docker_registry::{
 	DockerRepository,
+	GetDockerRepositoryImageDetailsResponse,
 	GetDockerRepositoryInfoResponse,
+	GetDockerRepositoryTagDetailsResponse,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
@@ -234,7 +236,9 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository_image)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				delete_docker_repository_image
+			)),
 		],
 	);
 
@@ -266,7 +270,9 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository_tag)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				delete_docker_repository_tag
+			)),
 		],
 	);
 
@@ -566,6 +572,31 @@ async fn get_repository_image_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let repository_id_string = context
+		.get_param(request_keys::REPOSITORY_ID)
+		.unwrap()
+		.clone();
+	let repository_id = hex::decode(&repository_id_string).unwrap();
+
+	let digest = context.get_param(request_keys::DIGEST).unwrap().clone();
+
+	let image = db::get_docker_repository_image_by_digest(
+		context.get_database_connection(),
+		&repository_id,
+		&digest,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let tags = db::get_tags_for_docker_repository_image(
+		context.get_database_connection(),
+		&repository_id,
+		&digest,
+	)
+	.await?;
+
+	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
 	Ok(context)
 }
 
@@ -593,6 +624,24 @@ async fn get_repository_tag_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let repository_id_string = context
+		.get_param(request_keys::REPOSITORY_ID)
+		.unwrap()
+		.clone();
+	let repository_id = hex::decode(&repository_id_string).unwrap();
+
+	let tag = context.get_param(request_keys::TAG).unwrap().clone();
+
+	let (tag_info, digest) = db::get_docker_repository_tag_details(
+		context.get_database_connection(),
+		&repository_id,
+		&tag,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	context.success(GetDockerRepositoryTagDetailsResponse { tag_info, digest });
 	Ok(context)
 }
 
