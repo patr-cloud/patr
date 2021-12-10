@@ -138,7 +138,7 @@ pub struct CloudflareSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 pub enum RunningEnvironment {
 	Development,
 	Production,
