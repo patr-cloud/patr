@@ -85,9 +85,9 @@ pub async fn notification_handler(
 	if context.get_content_type().as_str() !=
 		"application/vnd.docker.distribution.events.v1+json"
 	{
-		Error::as_result()
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
 	let custom_header = context.get_header("Authorization").status(400).body(
@@ -121,16 +121,14 @@ pub async fn notification_handler(
 	// check if the event is a push event
 	// get image name, repository name, tag if present
 	for event in events.events {
-		if event.action != Action::Push {
+		if event.action != Action::Push || event.action != Action::Mount {
 			continue;
 		}
 		let target = event.target;
-		if target.tag.is_empty() {
-			continue;
-		}
 
-		let repository = target.repository;
-		let mut splitter = repository.split('/');
+		// Update the docker registry db with details on the image
+		let repository_name = target.repository;
+		let mut splitter = repository_name.split('/');
 		let workspace_name = if let Some(val) = splitter.next() {
 			val
 		} else {
@@ -141,7 +139,6 @@ pub async fn notification_handler(
 		} else {
 			continue;
 		};
-		let tag = target.tag;
 
 		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
@@ -154,11 +151,47 @@ pub async fn notification_handler(
 			continue;
 		};
 
+		let repository = db::get_docker_repository_by_name(
+			context.get_database_connection(),
+			image_name,
+			&workspace.id,
+		)
+		.await?;
+		let repository = if let Some(repository) = repository {
+			repository
+		} else {
+			continue;
+		};
+
+		let current_time = get_current_time_millis();
+
+		db::create_docker_repository_digest(
+			context.get_database_connection(),
+			&repository.id,
+			&target.digest,
+			target.size,
+			current_time,
+		)
+		.await?;
+
+		if target.tag.is_empty() {
+			continue;
+		}
+
+		db::set_docker_repository_tag_details(
+			context.get_database_connection(),
+			&repository.id,
+			&target.tag,
+			&target.digest,
+			current_time,
+		)
+		.await?;
+
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),
 				image_name,
-				&tag,
+				&target.tag,
 				&workspace.id,
 			)
 			.await?;

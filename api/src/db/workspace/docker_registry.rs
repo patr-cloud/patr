@@ -72,6 +72,8 @@ pub async fn initialize_docker_registry_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	// TODO indexes for size, last_updated, etc
+
 	Ok(())
 }
 
@@ -115,7 +117,7 @@ pub async fn create_docker_repository(
 	Ok(())
 }
 
-pub async fn get_repository_by_name(
+pub async fn get_docker_repository_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_name: &str,
 	workspace_id: &[u8],
@@ -145,16 +147,28 @@ pub async fn get_repository_by_name(
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &[u8],
-) -> Result<Vec<DockerRepository>, sqlx::Error> {
-	query_as!(
-		DockerRepository,
+) -> Result<Vec<(DockerRepository, u64)>, sqlx::Error> {
+	let rows = query!(
 		r#"
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name as "name: String",
+			size as "size!: i64"
 		FROM
 			docker_registry_repository
+		INNER JOIN (
+			SELECT
+				SUM(size) as size,
+				repository_id
+			FROM
+				docker_registry_repository_digest
+			GROUP BY
+				repository_id
+		) docker_registry_repository_digest
+		ON
+			docker_registry_repository_digest.repository_id =
+				docker_registry_repository.id
 		WHERE
 			workspace_id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
@@ -162,7 +176,21 @@ pub async fn get_docker_repositories_for_workspace(
 		workspace_id
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			DockerRepository {
+				id: row.id,
+				name: row.name,
+				workspace_id: row.workspace_id,
+			},
+			row.size as u64,
+		)
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_docker_repository_by_id(
@@ -265,11 +293,12 @@ pub async fn set_docker_repository_tag_details(
 pub async fn get_list_of_tags_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
-) -> Result<Vec<DockerRepositoryTagInfo>, sqlx::Error> {
+) -> Result<Vec<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
 			tag,
+			digest,
 			last_updated
 		FROM
 			docker_registry_digest_tag
@@ -281,9 +310,14 @@ pub async fn get_list_of_tags_for_docker_repository(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| DockerRepositoryTagInfo {
-		tag: row.tag,
-		last_updated: row.last_updated as u64,
+	.map(|row| {
+		(
+			DockerRepositoryTagInfo {
+				tag: row.tag,
+				last_updated: row.last_updated as u64,
+			},
+			row.digest,
+		)
 	})
 	.collect();
 
@@ -473,6 +507,7 @@ pub async fn delete_all_images_for_docker_repository(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn delete_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &[u8],
