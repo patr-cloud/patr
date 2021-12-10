@@ -8,6 +8,7 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			LocalObjectReference,
+			Pod,
 			PodSpec,
 			PodTemplateSpec,
 			Service,
@@ -32,7 +33,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{Patch, PatchParams},
+	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -52,23 +53,28 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::DeploymentStatus,
-	service,
+	service::{self, digitalocean},
 	utils::{settings::Settings, Error},
 	Database,
 };
 
-pub(super) async fn update_deployment(
+pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	config: Settings,
+	config: &Settings,
 ) -> Result<(), Error> {
-	let kubernetes_client = get_kubernetes_config(&config).await?;
+	let _ = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let kubernetes_client = get_kubernetes_config(config).await?;
 
 	let request_id = Uuid::new_v4();
 	// TODO: remove this once DTO part is complete
 	let deployment = db::get_deployment_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
-		&deployment_id,
+		deployment_id,
 	)
 	.await?
 	.status(500)
@@ -94,7 +100,7 @@ pub(super) async fn update_deployment(
 		deployment_id_string,
 	);
 	let _ = super::update_deployment_status(
-		&deployment_id,
+		deployment_id,
 		&DeploymentStatus::Pushed,
 	)
 	.await;
@@ -111,7 +117,7 @@ pub(super) async fn update_deployment(
 	);
 
 	let _ = super::update_deployment_status(
-		&deployment_id,
+		deployment_id,
 		&DeploymentStatus::Deploying,
 	)
 	.await;
@@ -315,7 +321,7 @@ pub(super) async fn update_deployment(
 				secret_name: Some(format!("tls-{}", &deployment_id_string)),
 			},
 			IngressTLS {
-				hosts: Some(vec![domain.to_string()]),
+				hosts: Some(vec![domain]),
 				secret_name: Some(format!(
 					"custom-tls-{}",
 					&deployment_id_string
@@ -374,6 +380,115 @@ pub(super) async fn update_deployment(
 	Ok(())
 }
 
+pub(super) async fn delete_deployment(
+	deployment_id: &[u8],
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - deleting the image from registry",
+		request_id
+	);
+	let kubernetes_client = kube::Client::try_default()
+		.await
+		.expect("Expected a valid KUBECONFIG environment variable.");
+
+	if !app_exists(deployment_id, kubernetes_client.clone(), "default").await? {
+		log::trace!(
+			"request_id: {} - App doesn't exist as {}",
+			request_id,
+			hex::encode(deployment_id)
+		);
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
+		Ok(())
+	} else {
+		log::trace!(
+			"request_id: {} - App exists as {}",
+			request_id,
+			hex::encode(deployment_id)
+		);
+		digitalocean::delete_image_from_digitalocean_registry(
+			deployment_id,
+			config,
+		)
+		.await?;
+
+		log::trace!("request_id: {} - deleting the deployment", request_id);
+		// TODO: add namespace to the database
+		// TODO: add code for catching errors
+		let _deployment_api =
+			Api::<Deployment>::namespaced(kubernetes_client.clone(), "default")
+				.delete(&hex::encode(deployment_id), &DeleteParams::default())
+				.await?;
+		let _service_api =
+			Api::<Service>::namespaced(kubernetes_client.clone(), "default")
+				.delete(
+					&format!("service-{}", &hex::encode(deployment_id)),
+					&DeleteParams::default(),
+				)
+				.await?;
+		let _ingress_api =
+			Api::<Ingress>::namespaced(kubernetes_client, "default")
+				.delete(
+					&format!("ingress-{}", &hex::encode(deployment_id)),
+					&DeleteParams::default(),
+				)
+				.await?;
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
+		Ok(())
+	}
+}
+
+pub(super) async fn get_container_logs(
+	deployment_id: &[u8],
+	request_id: Uuid,
+) -> Result<String, Error> {
+	// TODO: interact with prometheus to get the logs
+
+	let kubernetes_client = kube::Client::try_default()
+		.await
+		.expect("Expected a valid KUBECONFIG environment variable.");
+
+	log::trace!(
+		"request_id: {} - retreiving deployment info from db",
+		request_id
+	);
+
+	// TODO: change log to stream_log when eve gets websockets
+	// TODO: change customise LogParams for different types of logs
+	// TODO: this is a temporary log retrieval method, use prometheus to get the
+	// logs
+	let pod_api = Api::<Pod>::namespaced(kubernetes_client, "default");
+
+	let pod_name = pod_api
+		.list(&ListParams {
+			label_selector: Some(format!("app={}", hex::encode(deployment_id))),
+			..ListParams::default()
+		})
+		.await?
+		.items
+		.into_iter()
+		.next()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.metadata
+		.name
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let deployment_logs =
+		pod_api.logs(&pod_name, &LogParams::default()).await?;
+
+	log::trace!("request_id: {} - logs retreived successfully!", request_id);
+	Ok(deployment_logs)
+}
+
 async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
@@ -422,4 +537,22 @@ async fn get_kubernetes_config(
 	let client = kube::Client::try_from(config)?;
 
 	Ok(client)
+}
+
+async fn app_exists(
+	deployment_id: &[u8],
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, Error> {
+	let deployment_app =
+		Api::<Deployment>::namespaced(kubernetes_client, namespace)
+			.get(&hex::encode(&deployment_id))
+			.await;
+
+	if deployment_app.is_err() {
+		// TODO: catch the not found error here
+		return Ok(false);
+	}
+
+	Ok(true)
 }

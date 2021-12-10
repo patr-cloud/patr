@@ -776,6 +776,8 @@ async fn create_deployment(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
+	let config = context.get_state().config.clone();
+
 	let deployment_id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -789,14 +791,11 @@ async fn create_deployment(
 		horizontal_scale,
 		&machine_type,
 		&user_id,
+		&config,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
-
-	// Deploy the app as soon as it's created, so that any existing images can
-	// be deployed
-	// TODO: add start deployment function here
 
 	let _ = service::get_deployment_metrics(
 		context.get_database_connection(),
@@ -1043,11 +1042,9 @@ async fn get_logs(
 			.unwrap();
 
 	// stop the running container, if it exists
-	let config = context.get_state().config.clone();
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
-		&config,
 	)
 	.await?;
 

@@ -1,5 +1,9 @@
+use std::{process::Stdio, str};
+
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use reqwest::Client;
 use serde_json::json;
+use tokio::process::Command;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -10,7 +14,10 @@ use crate::{
 		error::{id as ErrorId, message as ErrorMessage},
 	},
 	pin_fn,
-	service,
+	service::{
+		self,
+		deployment::{digitalocean, kubernetes},
+	},
 	utils::{
 		constants::request_keys,
 		get_current_time_millis,
@@ -180,7 +187,117 @@ pub async fn notification_handler(
 			)
 			.await?;
 
-			service::start_deployment(
+			// Fetch the image from patr registry
+			// upload the image to DOCR
+			// Update kubernetes
+
+			let client = Client::new();
+			let deployment_id_string = hex::encode(&deployment.id);
+
+			// log::trace!(
+			// 	"request_id: {} - Deploying deployment: {}",
+			// 	request_id,
+			// 	hex::encode(&deployment.id),
+			// );
+			let _ = service::update_deployment_status(
+				&deployment.id,
+				&DeploymentStatus::Pushed,
+			)
+			.await;
+
+			// log::trace!(
+			// 	"request_id: {} - Pulling image from registry",
+			// 	request_id
+			// );
+			service::pull_image_from_registry(&full_image_name, &config)
+				.await?;
+			// log::trace!("request_id: {} - Image pulled", request_id);
+
+			// new name for the docker image
+			let new_repo_name = format!(
+				"registry.digitalocean.com/{}/{}",
+				config.digitalocean.registry, deployment_id_string,
+			);
+			// log::trace!(
+			// 	"request_id: {} - Pushing to {}",
+			// 	request_id,
+			// 	new_repo_name
+			// );
+
+			// rename the docker image with the digital ocean registry url
+			service::tag_docker_image(&full_image_name, &new_repo_name).await?;
+			// log::trace!("request_id: {} - Image tagged", request_id);
+
+			// Get login details from digital ocean registry and decode from
+			// base 64 to binary
+			let auth_token = base64::decode(
+				digitalocean::get_registry_auth_token(&config, &client).await?,
+			)?;
+			// log::trace!("request_id: {} - Got auth token", request_id);
+
+			// Convert auth token from binary to utf8
+			let auth_token = str::from_utf8(&auth_token)?;
+			// log::trace!(
+			// 	"request_id: {} - Decoded auth token as {}",
+			// 	auth_token,
+			// 	request_id
+			// );
+
+			// get username and password from the auth token
+			let (username, password) =
+				auth_token
+					.split_once(":")
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?;
+
+			// Login into the registry
+			let output = Command::new("docker")
+				.arg("login")
+				.arg("-u")
+				.arg(username)
+				.arg("-p")
+				.arg(password)
+				.arg("registry.digitalocean.com")
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.spawn()?
+				.wait()
+				.await?;
+			// log::trace!("request_id: {} - Logged into DO registry",
+			// request_id);
+
+			if !output.success() {
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+			// log::trace!("request_id: {} - Login was success", request_id);
+
+			// if the loggin in is successful the push the docker image to
+			// registry
+			let push_status = Command::new("docker")
+				.arg("push")
+				.arg(&new_repo_name)
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.spawn()?
+				.wait()
+				.await?;
+			// log::trace!(
+			// 	"request_id: {} - Pushing to DO to {}",
+			// 	request_id,
+			// 	new_repo_name,
+			// );
+
+			if !push_status.success() {
+				return Err(Error::empty()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string()));
+			}
+
+			// log::trace!("request_id: {} - Pushed to DO", request_id);
+
+			kubernetes::update_deployment(
 				context.get_database_connection(),
 				&deployment.id,
 				&config,

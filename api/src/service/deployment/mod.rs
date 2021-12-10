@@ -1,8 +1,8 @@
 mod aws;
 #[allow(clippy::module_inception)]
 mod deployment;
-mod digitalocean;
-mod kubernetes;
+pub mod digitalocean;
+pub mod kubernetes;
 mod managed_database;
 mod static_site;
 
@@ -205,7 +205,7 @@ async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
 	Ok(())
 }
 
-async fn update_deployment_status(
+pub async fn update_deployment_status(
 	deployment_id: &[u8],
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
@@ -221,7 +221,7 @@ async fn update_deployment_status(
 	Ok(())
 }
 
-async fn tag_docker_image(
+pub async fn tag_docker_image(
 	image_id: &str,
 	new_repo_name: &str,
 ) -> Result<(), Error> {
@@ -240,7 +240,7 @@ async fn tag_docker_image(
 	Ok(())
 }
 
-async fn pull_image_from_registry(
+pub async fn pull_image_from_registry(
 	image_id: &str,
 	config: &Settings,
 ) -> Result<(), Error> {

@@ -766,28 +766,6 @@ pub async fn update_deployment_deployed_image(
 	}
 }
 
-pub async fn update_digitalocean_app_id_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	app_deployment_id: &str,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			digitalocean_app_id = $1
-		WHERE
-			id = $2;
-		"#,
-		app_deployment_id,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn update_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],

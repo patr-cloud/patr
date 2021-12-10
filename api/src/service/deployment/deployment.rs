@@ -1,26 +1,9 @@
-use std::time::Duration;
+use std::{process::Stdio, str, time::Duration};
 
-use cloudflare::{
-	endpoints::{
-		dns::{
-			DeleteDnsRecord,
-			DnsContent,
-			ListDnsRecords,
-			ListDnsRecordsParams,
-		},
-		zone::{ListZones, ListZonesParams},
-	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
-};
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
-use tokio::{io::AsyncWriteExt, task, time};
+use tokio::{io::AsyncWriteExt, process::Command, time};
 use uuid::Uuid;
 
 use crate::{
@@ -71,6 +54,7 @@ pub async fn create_deployment_in_workspace(
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
 	user_id: &[u8],
+	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -192,6 +176,18 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	let image_id = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.get_full_image(connection)
+		.await?;
+
+	if check_if_image_exists_in_registry(connection, &image_id).await? {
+		kubernetes::update_deployment(connection, deployment_id, config)
+			.await?;
+	}
+
 	Ok(deployment_uuid)
 }
 
@@ -204,8 +200,7 @@ pub async fn start_deployment(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let (provider, region) = deployment
+	let (_provider, _region) = deployment
 		.region
 		.split_once('-')
 		.status(500)
@@ -216,10 +211,110 @@ pub async fn start_deployment(
 	} else {
 		deployment.get_full_image(connection).await?
 	};
-	let config = config.clone();
-	let region = region.to_string();
-	let deployment_id = deployment.id;
 
+	let request_id = Uuid::new_v4();
+	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean App platform with request_id: {}",
+		hex::encode(&deployment_id),
+		image_id,
+		request_id
+	);
+
+	let client = Client::new();
+	let deployment_id_string = hex::encode(&deployment_id);
+
+	log::trace!(
+		"request_id: {} - Deploying deployment: {}",
+		request_id,
+		deployment_id_string,
+	);
+	let _ = super::update_deployment_status(
+		deployment_id,
+		&DeploymentStatus::Pushed,
+	)
+	.await;
+
+	log::trace!("request_id: {} - Pulling image from registry", request_id);
+	super::pull_image_from_registry(&image_id, config).await?;
+	log::trace!("request_id: {} - Image pulled", request_id);
+
+	// new name for the docker image
+	let new_repo_name = format!(
+		"registry.digitalocean.com/{}/{}",
+		config.digitalocean.registry, deployment_id_string,
+	);
+	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
+
+	// rename the docker image with the digital ocean registry url
+	super::tag_docker_image(&image_id, &new_repo_name).await?;
+	log::trace!("request_id: {} - Image tagged", request_id);
+
+	// Get login details from digital ocean registry and decode from base 64 to
+	// binary
+	let auth_token = base64::decode(
+		digitalocean::get_registry_auth_token(config, &client).await?,
+	)?;
+	log::trace!("request_id: {} - Got auth token", request_id);
+
+	// Convert auth token from binary to utf8
+	let auth_token = str::from_utf8(&auth_token)?;
+	log::trace!(
+		"request_id: {} - Decoded auth token as {}",
+		auth_token,
+		request_id
+	);
+
+	// get username and password from the auth token
+	let (username, password) = auth_token
+		.split_once(":")
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	// Login into the registry
+	let output = Command::new("docker")
+		.arg("login")
+		.arg("-u")
+		.arg(username)
+		.arg("-p")
+		.arg(password)
+		.arg("registry.digitalocean.com")
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped())
+		.spawn()?
+		.wait()
+		.await?;
+	log::trace!("request_id: {} - Logged into DO registry", request_id);
+
+	if !output.success() {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+	log::trace!("request_id: {} - Login was success", request_id);
+
+	// if the loggin in is successful the push the docker image to registry
+	let push_status = Command::new("docker")
+		.arg("push")
+		.arg(&new_repo_name)
+		.stdout(Stdio::piped())
+		.stderr(Stdio::piped())
+		.spawn()?
+		.wait()
+		.await?;
+	log::trace!(
+		"request_id: {} - Pushing to DO to {}",
+		request_id,
+		new_repo_name,
+	);
+
+	if !push_status.success() {
+		return Err(Error::empty()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string()));
+	}
+
+	log::trace!("request_id: {} - Pushed to DO", request_id);
+	let config = config.clone();
+	let deployment_id = deployment_id.to_vec();
 	db::update_deployment_deployed_image(
 		connection,
 		&deployment_id,
@@ -227,117 +322,43 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
-			task::spawn(async move {
-				let result = kubernetes::update_deployment(
-					image_id.clone(),
-					region,
-					deployment_id.clone(),
-					config.clone(),
-				)
-				.await;
+	let result = kubernetes::update_deployment(
+		connection,
+		&deployment_id,
+		&config.clone(),
+	)
+	.await;
 
-				if let Err(error) = result {
-					let _ = super::update_deployment_status(
-						&deployment_id,
-						&DeploymentStatus::Errored,
-					)
-					.await;
-					log::info!(
-						"Error with the deployment, {}",
-						error.get_error()
-					);
-				}
-
-				let digital_ocean_image = format!(
-					"registry.digitalocean.com/{}/{}",
-					config.digitalocean.registry,
-					hex::encode(&deployment_id),
-				);
-
-				log::trace!(
-					"Deleting image tagged with registry.digitalocean.com"
-				);
-				let delete_result =
-					super::delete_docker_image(&digital_ocean_image).await;
-				if let Err(delete_result) = delete_result {
-					log::error!(
-						"Failed to delete the image: {}, Error: {}",
-						digital_ocean_image,
-						delete_result.get_error()
-					);
-				}
-
-				log::trace!("deleting the pulled image");
-
-				let delete_result = super::delete_docker_image(&image_id).await;
-				if let Err(delete_result) = delete_result {
-					log::error!(
-						"Failed to delete the image: {}, Error: {}",
-						image_id,
-						delete_result.get_error()
-					);
-				}
-				log::trace!("Docker image deleted");
-			});
-		}
-		Ok(CloudPlatform::Aws) => {
-			task::spawn(async move {
-				let result = aws::deploy_container(
-					image_id.clone(),
-					region,
-					deployment_id.clone(),
-					config,
-				)
-				.await;
-
-				if let Err(error) = result {
-					let _ = super::update_deployment_status(
-						&deployment_id,
-						&DeploymentStatus::Errored,
-					)
-					.await;
-					log::info!(
-						"Error with the deployment, {}",
-						error.get_error()
-					);
-				}
-
-				let aws_image =
-					format!("patr-cloud/{}", hex::encode(&deployment_id),);
-
-				log::trace!("Deleting image tagged with patr-cloud");
-				let delete_result =
-					super::delete_docker_image(&aws_image).await;
-				if let Err(delete_result) = delete_result {
-					log::error!(
-						"Failed to delete the image: {}, Error: {}",
-						aws_image,
-						delete_result.get_error()
-					);
-				}
-
-				log::trace!("deleting the pulled image");
-
-				let delete_result =
-					super::delete_docker_image(image_id.as_str()).await;
-				if let Err(delete_result) = delete_result {
-					log::error!(
-						"Failed to delete the image: {}, Error: {}",
-						image_id,
-						delete_result.get_error()
-					);
-				}
-				log::trace!("Docker image deleted");
-			});
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
+	if let Err(error) = result {
+		let _ = super::update_deployment_status(
+			&deployment_id,
+			&DeploymentStatus::Errored,
+		)
+		.await;
+		log::info!("Error with the deployment, {}", error.get_error());
 	}
+
+	log::trace!("Deleting image tagged with registry.digitalocean.com");
+	let delete_result = super::delete_docker_image(&new_repo_name).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			new_repo_name,
+			delete_result.get_error()
+		);
+	}
+
+	log::trace!("deleting the pulled image");
+
+	let delete_result = super::delete_docker_image(&image_id).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			image_id,
+			delete_result.get_error()
+		);
+	}
+	log::trace!("Docker image deleted");
 
 	Ok(())
 }
@@ -354,16 +375,11 @@ pub async fn stop_deployment(
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
+	let _ = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (provider, region) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
 	log::trace!(
 		"request_id: {} - removing the deployed image info from db",
 		request_id
@@ -371,206 +387,13 @@ pub async fn stop_deployment(
 	db::update_deployment_deployed_image(connection, deployment_id, None)
 		.await?;
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
-			// log::trace!(
-			// 	"request_id: {} - deleting the deployment from digitalocean",
-			// 	request_id
-			// );
-			// digitalocean::delete_deployment(
-			// 	connection,
-			// 	deployment_id,
-			// 	config,
-			// 	request_id,
-			// )
-			// .await?;
-			log::trace!(
-				"request_id: {} - deleting the deployment from digitalocean kubernetes",
-				request_id);
-			kubernetes::delete_deployment(deployment_id, config, request_id)
-				.await?;
-		}
-		Ok(CloudPlatform::Aws) => {
-			log::trace!(
-				"request_id: {} - deleting the deployment from aws",
-				request_id
-			);
-			aws::delete_deployment(
-				connection,
-				deployment_id,
-				region,
-				config,
-				request_id,
-			)
-			.await?;
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-	}
+	log::trace!(
+		"request_id: {} - deleting the deployment from digitalocean kubernetes",
+		request_id
+	);
+	kubernetes::delete_deployment(deployment_id, config, &request_id).await?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
-	let session = SessionBuilder::default()
-		.user(config.ssh.username.clone())
-		.port(config.ssh.port)
-		.keyfile(&config.ssh.key_file)
-		.known_hosts_check(KnownHosts::Add)
-		.connect(&config.ssh.host)
-		.await?;
-	let mut sftp = session.sftp();
-
-	let default_domain_ssl = session
-		.command("test")
-		.arg("-f")
-		.arg(format!(
-			"/etc/letsencrypt/live/{}/fullchain.pem",
-			patr_domain
-		))
-		.spawn()?
-		.wait()
-		.await?;
-
-	let mut writer = sftp
-		.write_to(format!("/etc/nginx/sites-enabled/{}", patr_domain))
-		.await?;
-	writer
-		.write_all(
-			if default_domain_ssl.success() {
-				format!(
-					r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-
-	return 301 https://{domain}$request_uri;
-}}
-
-server {{
-	listen 443 ssl http2;
-	listen [::]:443 ssl http2;
-	server_name {domain};
-
-	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-	
-	root /var/www/stopped;
-
-	include snippets/letsencrypt.conf;
-	include snippets/patr-verification.conf;
-}}
-"#,
-					domain = patr_domain
-				)
-			} else {
-				format!(
-					r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-
-	root /var/www/stopped;
-
-	include snippets/letsencrypt.conf;
-	include snippets/patr-verification.conf;
-}}
-"#,
-					domain = patr_domain,
-				)
-			}
-			.as_bytes(),
-		)
-		.await?;
-	writer.close().await?;
-
-	if let Some(custom_domain) = deployment.domain_name {
-		let custom_domain_ssl = session
-			.command("test")
-			.arg("-f")
-			.arg(format!(
-				"/etc/letsencrypt/live/{}/fullchain.pem",
-				custom_domain
-			))
-			.spawn()?
-			.wait()
-			.await?;
-
-		let mut writer = sftp
-			.write_to(format!("/etc/nginx/sites-enabled/{}", custom_domain))
-			.await?;
-		writer
-			.write_all(
-				if custom_domain_ssl.success() {
-					format!(
-						r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-
-	return 301 https://{domain}$request_uri;
-}}
-
-server {{
-	listen 443 ssl http2;
-	listen [::]:443 ssl http2;
-	server_name {domain};
-
-	ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-	
-	root /var/www/stopped;
-
-	include snippets/letsencrypt.conf;
-	include snippets/patr-verification.conf;
-}}
-"#,
-						domain = custom_domain
-					)
-				} else {
-					format!(
-						r#"
-server {{
-	listen 80;
-	listen [::]:80;
-	server_name {domain};
-
-	root /var/www/stopped;
-
-	include snippets/letsencrypt.conf;
-	include snippets/patr-verification.conf;
-}}
-"#,
-						domain = custom_domain,
-					)
-				}
-				.as_bytes(),
-			)
-			.await?;
-		writer.close().await?;
-	}
-
-	drop(sftp);
-	time::sleep(Duration::from_millis(1000)).await;
-
-	let reload_result = session
-		.command("nginx")
-		.arg("-s")
-		.arg("reload")
-		.spawn()?
-		.wait()
-		.await?;
-
-	if !reload_result.success() {
-		return Err(Error::empty());
-	}
-
-	log::trace!("request_id: {} - reloaded nginx", request_id);
-
-	session.close().await?;
+	// TODO: implement logic for handling domains of the stopped deployment
 
 	db::update_deployment_status(
 		connection,
@@ -605,6 +428,8 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
+	// TODO: implement logic for handling domains of the deleted deployment
+
 	db::update_deployment_status(
 		connection,
 		deployment_id,
@@ -612,145 +437,12 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
-	let session = SessionBuilder::default()
-		.user(config.ssh.username.clone())
-		.port(config.ssh.port)
-		.keyfile(&config.ssh.key_file)
-		.known_hosts_check(KnownHosts::Add)
-		.connect(&config.ssh.host)
-		.await?;
-
-	session
-		.command("rm")
-		.arg(format!("/etc/nginx/sites-enabled/{}", patr_domain))
-		.spawn()?
-		.wait()
-		.await?;
-
-	session
-		.command("certbot")
-		.arg("delete")
-		.arg("--cert-name")
-		.arg(&patr_domain)
-		.spawn()?
-		.wait()
-		.await?;
-
-	if let Some(domain_name) = deployment.domain_name {
-		db::begin_deferred_constraints(connection).await?;
-
-		db::set_domain_name_for_deployment(
-			connection,
-			deployment_id,
-			Some(format!(
-				"deleted.patr.cloud.{}.{}",
-				hex::encode(deployment_id),
-				domain_name
-			))
-			.as_deref(),
-		)
-		.await?;
-
-		db::end_deferred_constraints(connection).await?;
-
-		session
-			.command("rm")
-			.arg(format!("/etc/nginx/sites-enabled/{}", domain_name))
-			.spawn()?
-			.wait()
-			.await?;
-
-		session
-			.command("certbot")
-			.arg("delete")
-			.arg("--cert-name")
-			.arg(&domain_name)
-			.spawn()?
-			.wait()
-			.await?;
-	}
-
-	// Delete DNS Record
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-	let zone_identifier = client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some(String::from("patr.cloud")),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.status(500)?
-		.id;
-	let zone_identifier = zone_identifier.as_str();
-
-	let dns_record = client
-		.request(&ListDnsRecords {
-			zone_identifier,
-			params: ListDnsRecordsParams {
-				name: Some(patr_domain.clone()),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.find(|record| {
-			if let DnsContent::CNAME { .. } = record.content {
-				record.name == patr_domain
-			} else {
-				false
-			}
-		});
-
-	if let Some(dns_record) = dns_record {
-		client
-			.request(&DeleteDnsRecord {
-				zone_identifier,
-				identifier: &dns_record.id,
-			})
-			.await?;
-	}
-
-	let reload_result = session
-		.command("nginx")
-		.arg("-s")
-		.arg("reload")
-		.spawn()?
-		.wait_with_output()
-		.await?;
-
-	if !reload_result.status.success() {
-		log::error!(
-			"Unable to reload nginx config: Stdout: {:?}. Stderr: {:?}",
-			String::from_utf8(reload_result.stdout),
-			String::from_utf8(reload_result.stderr)
-		);
-		return Err(Error::empty());
-	}
-
 	Ok(())
 }
 
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
-	config: &Settings,
 ) -> Result<String, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
@@ -759,45 +451,16 @@ pub async fn get_deployment_container_logs(
 		request_id
 	);
 
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
+	let _ = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	log::trace!("request_id: {} - get the deployment id from db", request_id);
 
-	let (provider, _) = deployment
-		.region
-		.split_once('-')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+	log::trace!("request_id: {} - getting logs from kubernetes", request_id);
 
-	let logs = match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
-			log::trace!(
-				"request_id: {} - getting logs from kubernetes",
-				request_id
-			);
-			kubernetes::get_container_logs(deployment_id, request_id).await?
-		}
-		Ok(CloudPlatform::Aws) => {
-			log::trace!(
-				"request_id: {} - getting logs from aws deployment",
-				request_id
-			);
-			aws::get_container_logs(
-				connection,
-				deployment_id,
-				config,
-				request_id,
-			)
-			.await?
-		}
-		_ => {
-			return Err(Error::empty()
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string()));
-		}
-	};
+	let logs =
+		kubernetes::get_container_logs(deployment_id, request_id).await?;
 
 	Ok(logs)
 }
@@ -822,6 +485,13 @@ pub async fn set_environment_variables_for_deployment(
 		)
 		.await?;
 	}
+
+	kubernetes::update_deployment(
+		connection,
+		deployment_id,
+		service::get_settings(),
+	)
+	.await?;
 
 	Ok(())
 }
@@ -1225,107 +895,6 @@ pub async fn set_domain_for_deployment(
 	Ok(())
 }
 
-pub(super) async fn update_nginx_with_all_domains_for_deployment(
-	deployment_id_string: &str,
-	default_url: &str,
-	custom_domain: Option<&str>,
-	config: &Settings,
-	request_id: Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - logging into the ssh server for checking certificate",
-		request_id
-	);
-	let session = SessionBuilder::default()
-		.user(config.ssh.username.clone())
-		.port(config.ssh.port)
-		.keyfile(&config.ssh.key_file)
-		.known_hosts_check(KnownHosts::Add)
-		.connect(&config.ssh.host)
-		.await?;
-
-	let patr_domain = format!("{}.patr.cloud", deployment_id_string);
-
-	log::trace!(
-		"request_id: {} - checking if the certificates exist or not",
-		request_id
-	);
-	let check_file = session
-		.command("test")
-		.arg("-f")
-		.arg(format!(
-			"/etc/letsencrypt/live/{}/fullchain.pem",
-			patr_domain
-		))
-		.spawn()?
-		.wait()
-		.await?;
-
-	if check_file.success() {
-		log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
-		update_nginx_config_for_domain_with_https(
-			&patr_domain,
-			default_url,
-			config,
-			request_id,
-		)
-		.await?;
-	} else {
-		log::trace!("request_id: {} - certificate does not exists", request_id);
-		update_nginx_config_for_domain_with_http_only(
-			&patr_domain,
-			default_url,
-			config,
-			request_id,
-		)
-		.await?;
-		super::create_https_certificates_for_domain(
-			&patr_domain,
-			config,
-			request_id,
-		)
-		.await?;
-		update_nginx_config_for_domain_with_https(
-			&patr_domain,
-			default_url,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-
-	if let Some(domain) = custom_domain {
-		log::trace!("request_id: {} - custom domain present, updating nginx with custom domain", request_id);
-		let check_file = session
-			.command("test")
-			.arg("-f")
-			.arg(format!("/etc/letsencrypt/live/{}/fullchain.pem", domain))
-			.spawn()?
-			.wait()
-			.await?;
-		if check_file.success() {
-			update_nginx_config_for_domain_with_https(
-				domain,
-				default_url,
-				config,
-				request_id,
-			)
-			.await?;
-		} else {
-			update_nginx_config_for_domain_with_http_only(
-				domain,
-				default_url,
-				config,
-				request_id,
-			)
-			.await?;
-		}
-	}
-
-	session.close().await?;
-	Ok(())
-}
-
 async fn update_nginx_config_for_domain_with_http_only(
 	domain: &str,
 	default_url: &str,
@@ -1477,4 +1046,14 @@ server {{
 	log::trace!("request_id: {} - reloaded nginx", request_id);
 	session.close().await?;
 	Ok(())
+}
+
+async fn check_if_image_exists_in_registry(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	_image_id: &str,
+) -> Result<bool, Error> {
+	// TODO: fill this function for checking if the user has pushed the image
+	// before making the deployment if the user has pushed the image then return
+	// true
+	Ok(false)
 }

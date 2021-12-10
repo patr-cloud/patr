@@ -5,7 +5,7 @@
 //!
 //! [`App`]: App
 mod auth;
-mod deployment;
+pub mod deployment;
 mod domain;
 mod metrics;
 mod notifier;

@@ -4738,19 +4738,6 @@
       "nullable": []
     }
   },
-  "afca68f12ec6c952445155c410f17886b7582c32a7a12f743c3975dfc89ba30e": {
-    "query": "UPDATE deployment SET digitalocean_app_id = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "afd00dfc5df4a543e4012ebe5f7c47f3ad72d3d7b8ddd9d1e16c49b9235051d9": {
     "query": "CREATE TABLE workspace( id BYTEA CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id BYTEA NOT NULL CONSTRAINT workspace_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE );",
     "describe": {
