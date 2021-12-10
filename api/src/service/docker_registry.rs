@@ -91,7 +91,7 @@ pub async fn delete_docker_repository(
 
 	db::update_docker_repository_name(
 		connection,
-		&repository_id,
+		repository_id,
 		&format!(
 			"patr-deleted: {}-{}",
 			repository.name,

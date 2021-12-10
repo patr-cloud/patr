@@ -5864,43 +5864,6 @@
       "nullable": []
     }
   },
-  "cd99286bf0c134bcf4c64f4cf9a7ebe20af97d1115dde0dc92555cd2c4fd65b5": {
-    "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name: _",
-          "type_info": {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "cf75b411ef5fd0ce29de2c470936da35030cb93d78943696f99bc9588b093822": {
     "query": "INSERT INTO docker_registry_digest_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET digest = $3, last_updated = $4;",
     "describe": {
@@ -6576,6 +6539,38 @@
       ]
     }
   },
+  "e8a76ee8047535de27430ef1c3eda48fcaa3ce319f2f6b4a11a1349efb56923f": {
+    "query": "SELECT tag, digest, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "last_updated",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "e8fc5c9cf1321c4b222e0bc263662c19e54a0b11d3efd9a52fcda05750195aef": {
     "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6697,32 +6692,6 @@
       "nullable": []
     }
   },
-  "f7611e2f5f3d6bbd8ba940976d1779a764d7e3a2a0b66d5f7dff279283f14718": {
-    "query": "SELECT tag, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "tag",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "last_updated",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false
-      ]
-    }
-  },
   "f91a0a4bb5c15b244e6f328b1f67a63bb3edcc017a41ea5195cef21a96b95b11": {
     "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6750,6 +6719,49 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "fcc3a712b32f9922431f849404caaf7508f8cdde37acce5e3d2617e3887d4bbb": {
+    "query": "SELECT id, workspace_id, name as \"name: String\", size as \"size!: i64\" FROM docker_registry_repository INNER JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_digest GROUP BY repository_id ) docker_registry_repository_digest ON docker_registry_repository_digest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name: String",
+          "type_info": {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "size!: i64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        null
+      ]
     }
   },
   "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
