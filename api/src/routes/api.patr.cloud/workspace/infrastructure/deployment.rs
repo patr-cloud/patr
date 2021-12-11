@@ -1205,10 +1205,13 @@ async fn set_environment_variables(
 		environment_variables.push((key.clone(), value.to_string()));
 	}
 
+	let config = context.get_state().config.clone();
+
 	service::set_environment_variables_for_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&environment_variables,
+		&config,
 	)
 	.await?;
 

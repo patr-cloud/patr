@@ -53,7 +53,7 @@ use crate::{
 	db,
 	error,
 	models::db_mapping::DeploymentStatus,
-	service::{self, digitalocean},
+	service::{self, deployment::digitalocean},
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -380,7 +380,7 @@ pub async fn update_deployment(
 	Ok(())
 }
 
-pub(super) async fn delete_deployment(
+pub(super) async fn delete_kubernetes_deployment(
 	deployment_id: &[u8],
 	config: &Settings,
 	request_id: &Uuid,

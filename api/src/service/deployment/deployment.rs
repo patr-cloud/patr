@@ -1,9 +1,9 @@
-use std::{process::Stdio, str, time::Duration};
+use std::{str, time::Duration};
 
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
-use tokio::{io::AsyncWriteExt, process::Command, time};
+use tokio::{io::AsyncWriteExt, time};
 use uuid::Uuid;
 
 use crate::{
@@ -219,100 +219,13 @@ pub async fn start_deployment(
 		request_id
 	);
 
-	let client = Client::new();
-	let deployment_id_string = hex::encode(&deployment_id);
-
-	log::trace!(
-		"request_id: {} - Deploying deployment: {}",
-		request_id,
-		deployment_id_string,
-	);
-	let _ = super::update_deployment_status(
+	let new_repo_name = digitalocean::push_to_docr(
 		deployment_id,
-		&DeploymentStatus::Pushed,
+		&image_id,
+		Client::new(),
+		config,
 	)
-	.await;
-
-	log::trace!("request_id: {} - Pulling image from registry", request_id);
-	super::pull_image_from_registry(&image_id, config).await?;
-	log::trace!("request_id: {} - Image pulled", request_id);
-
-	// new name for the docker image
-	let new_repo_name = format!(
-		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry, deployment_id_string,
-	);
-	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
-
-	// rename the docker image with the digital ocean registry url
-	super::tag_docker_image(&image_id, &new_repo_name).await?;
-	log::trace!("request_id: {} - Image tagged", request_id);
-
-	// Get login details from digital ocean registry and decode from base 64 to
-	// binary
-	let auth_token = base64::decode(
-		digitalocean::get_registry_auth_token(config, &client).await?,
-	)?;
-	log::trace!("request_id: {} - Got auth token", request_id);
-
-	// Convert auth token from binary to utf8
-	let auth_token = str::from_utf8(&auth_token)?;
-	log::trace!(
-		"request_id: {} - Decoded auth token as {}",
-		auth_token,
-		request_id
-	);
-
-	// get username and password from the auth token
-	let (username, password) = auth_token
-		.split_once(":")
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	// Login into the registry
-	let output = Command::new("docker")
-		.arg("login")
-		.arg("-u")
-		.arg(username)
-		.arg("-p")
-		.arg(password)
-		.arg("registry.digitalocean.com")
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()?
-		.wait()
-		.await?;
-	log::trace!("request_id: {} - Logged into DO registry", request_id);
-
-	if !output.success() {
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
-	log::trace!("request_id: {} - Login was success", request_id);
-
-	// if the loggin in is successful the push the docker image to registry
-	let push_status = Command::new("docker")
-		.arg("push")
-		.arg(&new_repo_name)
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()?
-		.wait()
-		.await?;
-	log::trace!(
-		"request_id: {} - Pushing to DO to {}",
-		request_id,
-		new_repo_name,
-	);
-
-	if !push_status.success() {
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
-
-	log::trace!("request_id: {} - Pushed to DO", request_id);
+	.await?;
 	let config = config.clone();
 	let deployment_id = deployment_id.to_vec();
 	db::update_deployment_deployed_image(
@@ -391,7 +304,12 @@ pub async fn stop_deployment(
 		"request_id: {} - deleting the deployment from digitalocean kubernetes",
 		request_id
 	);
-	kubernetes::delete_deployment(deployment_id, config, &request_id).await?;
+	kubernetes::delete_kubernetes_deployment(
+		deployment_id,
+		config,
+		&request_id,
+	)
+	.await?;
 
 	// TODO: implement logic for handling domains of the stopped deployment
 
@@ -469,6 +387,7 @@ pub async fn set_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	environment_variables: &[(String, String)],
+	config: &Settings,
 ) -> Result<(), Error> {
 	db::remove_all_environment_variables_for_deployment(
 		connection,
@@ -486,12 +405,7 @@ pub async fn set_environment_variables_for_deployment(
 		.await?;
 	}
 
-	kubernetes::update_deployment(
-		connection,
-		deployment_id,
-		service::get_settings(),
-	)
-	.await?;
+	kubernetes::update_deployment(connection, deployment_id, config).await?;
 
 	Ok(())
 }

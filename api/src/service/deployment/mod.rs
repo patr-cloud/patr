@@ -221,7 +221,7 @@ pub async fn update_deployment_status(
 	Ok(())
 }
 
-pub async fn tag_docker_image(
+pub(super) async fn tag_docker_image(
 	image_id: &str,
 	new_repo_name: &str,
 ) -> Result<(), Error> {
@@ -240,7 +240,7 @@ pub async fn tag_docker_image(
 	Ok(())
 }
 
-pub async fn pull_image_from_registry(
+pub(super) async fn pull_image_from_registry(
 	image_id: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
