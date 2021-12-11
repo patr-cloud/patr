@@ -2,8 +2,8 @@ use semver::Version;
 
 use crate::{migrate_query as query, Database};
 
-mod organisation_to_workspace;
 mod docker_registry;
+mod organisation_to_workspace;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
