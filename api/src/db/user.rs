@@ -1,3 +1,4 @@
+use api_models::models::user::UserPhoneNumber;
 use uuid::Uuid;
 
 use crate::{
@@ -9,7 +10,6 @@ use crate::{
 		PhoneNumberToBeVerified,
 		User,
 		UserLogin,
-		UserPhoneNumber,
 		UserToSignUp,
 		Workspace,
 	},
@@ -2441,9 +2441,8 @@ pub async fn get_phone_numbers_for_user(
 		UserPhoneNumber,
 		r#"
 		SELECT
-			user_id,
 			country_code,
-			number
+			number as "phone_number"
 		FROM
 			user_phone_number
 		WHERE
@@ -2453,6 +2452,34 @@ pub async fn get_phone_numbers_for_user(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn get_backup_phone_number_for_user(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &[u8],
+) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			"user".backup_phone_country_code as "backup_phone_country_code!",
+			"user".backup_phone_number as "backup_phone_number!"
+		FROM
+			"user"
+		WHERE
+			"user".id = $1 AND
+			"user".backup_phone_number IS NOT NULL AND
+			"user".backup_phone_country_code IS NOT NULL;
+		"#,
+		user_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| {
+		row.map(|row| UserPhoneNumber {
+			country_code: row.backup_phone_country_code,
+			phone_number: row.backup_phone_number,
+		})
+	})
 }
 
 pub async fn get_backup_email_for_user(

@@ -46,12 +46,6 @@ pub struct UserEmailAddress {
 	pub domain_id: Vec<u8>,
 }
 
-pub struct UserPhoneNumber {
-	pub user_id: Vec<u8>,
-	pub country_code: String,
-	pub number: String,
-}
-
 pub struct UserToSignUp {
 	pub username: String,
 	pub account_type: ResourceOwnerType,
