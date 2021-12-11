@@ -128,7 +128,7 @@ pub async fn get_docker_repository_by_name(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
@@ -153,11 +153,11 @@ pub async fn get_docker_repositories_for_workspace(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: String",
-			size as "size!: i64"
+			name::TEXT as "name!: String",
+			COALESCE(size, 0) as "size!: i64"
 		FROM
 			docker_registry_repository
-		INNER JOIN (
+		LEFT JOIN (
 			SELECT
 				SUM(size) as size,
 				repository_id
@@ -203,7 +203,7 @@ pub async fn get_docker_repository_by_id(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
@@ -250,7 +250,8 @@ pub async fn create_docker_repository_digest(
 		INSERT INTO
 			docker_registry_repository_digest
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4)
+		ON CONFLICT DO NOTHING;
 		"#,
 		repository_id,
 		digest,
@@ -362,7 +363,7 @@ pub async fn get_total_size_of_docker_repository(
 	query!(
 		r#"
 		SELECT
-			SUM(size) as "size!: i64"
+			COALESCE(SUM(size), 0) as "size!: i64"
 		FROM
 			docker_registry_repository_digest
 		WHERE

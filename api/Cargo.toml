@@ -1,5 +1,5 @@
 [package]
-authors = ["Rakshith Ravi <rakshith.ravi@gmx.com>"]
+authors = ["Rakshith Ravi <rakshith.ravi@vicara.co>"]
 default-run = "api"
 edition = "2021"
 name = "api"

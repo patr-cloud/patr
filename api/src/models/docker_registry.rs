@@ -122,7 +122,7 @@ pub struct EventData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 pub enum Action {
 	Push,
 	Pull,
@@ -170,6 +170,7 @@ pub struct Request {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Actor {
+	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub name: String,
 }
 

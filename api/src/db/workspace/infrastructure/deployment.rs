@@ -515,7 +515,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 		r#"
 		SELECT
 			deployment.id,
-			deployment.name as "name: _",
+			deployment.name::TEXT as "name!: _",
 			deployment.registry,
 			deployment.repository_id,
 			deployment.image_name,
@@ -566,7 +566,7 @@ pub async fn get_deployments_by_repository_id(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			registry,
 			repository_id,
 			image_name,
@@ -601,7 +601,7 @@ pub async fn get_deployments_for_workspace(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			registry,
 			repository_id,
 			image_name,
@@ -635,7 +635,7 @@ pub async fn get_deployment_by_id(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			registry,
 			repository_id,
 			image_name,
@@ -670,7 +670,7 @@ pub async fn get_deployment_by_name_in_workspace(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			registry,
 			repository_id,
 			image_name,
@@ -1058,7 +1058,7 @@ pub async fn get_deployment_by_domain_name(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			registry,
 			repository_id,
 			image_name,

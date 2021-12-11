@@ -121,7 +121,7 @@ pub async fn notification_handler(
 	// check if the event is a push event
 	// get image name, repository name, tag if present
 	for event in events.events {
-		if event.action != Action::Push || event.action != Action::Mount {
+		if event.action != Action::Push && event.action != Action::Mount {
 			continue;
 		}
 		let target = event.target;
