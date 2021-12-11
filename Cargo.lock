@@ -2224,9 +2224,7 @@ dependencies = [
 name = "patr-api-dto"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "log",
- "regex",
  "reqwest",
  "serde 1.0.130",
  "serde_json",
