@@ -2120,6 +2120,19 @@
       ]
     }
   },
+  "555b28e06044079d461d9d79c0bbee7d94757af93220cc3b4b096b7a2e3607d1": {
+    "query": "INSERT INTO entry_point VALUES ($1, $2, default);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "58588b0fef1f1776ad864f5848e574efe54860064634245963578037c3030e81": {
     "query": "SELECT id, name as \"name: _\", super_admin_id, active FROM workspace WHERE id = $1;",
     "describe": {
@@ -2161,6 +2174,29 @@
         false,
         false
       ]
+    }
+  },
+  "58cdf126ef724ca6acf3849f4a32d282ce2eab4a48990d65bfe914245f89150a": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "TextArray",
+          "TextArray",
+          "TextArray",
+          "Text",
+          "TextArray",
+          "Varchar",
+          "Int4",
+          "Bool",
+          "Bytea"
+        ]
+      },
+      "nullable": []
     }
   },
   "590ff578a9c44722785786cad76db74663d69b9ed9a2ae1ec072eff2fbe20f5d": {
@@ -3315,6 +3351,16 @@
       "nullable": []
     }
   },
+  "798789afda41f6d6e84845f70ace9cd7976c629bd8c3114df9514d6efda595cf": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA, sub_domain VARCHAR(255), path VARCHAR(255) NOT NULL DEFAULT '/', a_record TEXT [] NOT NULL, aaaa_record TEXT [] NOT NULL, text_record TEXT [] NOT NULL, cname_record TEXT NOT NULL, mx_record TEXT [] NOT NULL, content VARCHAR(255) NOT NULL, ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE, deployment_id BYTEA NOT NULL, CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, path), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
     "describe": {
@@ -3325,16 +3371,6 @@
           "Text",
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "7a79f6125b7aa53af18392647e8983e20dea2c2c09f1b68e6d5224d4997daf4c": {
-    "query": "CREATE TABLE entry_point ( domain_id BYTEA NOT NULL REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL DEFAULT \"/\", is_verified BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain), CONSTRAING entry_point_chk_verified CHECK(is_verified = TRUE) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -5624,16 +5660,6 @@
       "nullable": []
     }
   },
-  "cd93260a916995d43c794583131f93c41a1bbbfeff78227fccfed19a8323c05f": {
-    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) NOT NULL DEFAULT '/', a_record TEXT [] NOT NULL, aaaa_record TEXT [] NOT NULL, text_record TEXT [] NOT NULL, cname_record TEXT NOT NULL, mx_record TEXT [] NOT NULL, content VARCHAR(255) NOT NULL, ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE, deployment_id BYTEA NOT NULL, CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "cd99286bf0c134bcf4c64f4cf9a7ebe20af97d1115dde0dc92555cd2c4fd65b5": {
     "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
     "describe": {
@@ -5955,6 +5981,16 @@
       "nullable": []
     }
   },
+  "dcb82581d97dce6d63c44eb15858a0bbd71bdc6b6c79d09b938083ed3cc192e5": {
+    "query": "CREATE TABLE entry_point ( domain_id BYTEA NOT NULL REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL DEFAULT '/', is_verified BOOLEAN NOT NULL DEFAULT TRUE, path VARCHAR(255) NOT NULL, deployment_id BYTEA NOT NULL, CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain), CONSTRAINT entry_point_chk_verified CHECK(is_verified = TRUE) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "dcf5652abc4e53233d42ab139f2e3e3847b57af9ead655be2471f51c8e1f780e": {
     "query": "INSERT INTO managed_database VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );",
     "describe": {
@@ -6069,51 +6105,56 @@
         },
         {
           "ordinal": 1,
-          "name": "name",
+          "name": "sub_domain",
           "type_info": "Varchar"
         },
         {
           "ordinal": 2,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
           "name": "a_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 3,
+          "ordinal": 4,
           "name": "aaaa_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 4,
+          "ordinal": 5,
           "name": "text_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 5,
+          "ordinal": 6,
           "name": "cname_record",
           "type_info": "Text"
         },
         {
-          "ordinal": 6,
+          "ordinal": 7,
           "name": "mx_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 7,
+          "ordinal": 8,
           "name": "content",
           "type_info": "Varchar"
         },
         {
-          "ordinal": 8,
+          "ordinal": 9,
           "name": "ttl",
           "type_info": "Int4"
         },
         {
-          "ordinal": 9,
+          "ordinal": 10,
           "name": "proxied",
           "type_info": "Bool"
         },
         {
-          "ordinal": 10,
+          "ordinal": 11,
           "name": "deployment_id",
           "type_info": "Bytea"
         }
@@ -6125,6 +6166,7 @@
       },
       "nullable": [
         false,
+        true,
         false,
         false,
         false,

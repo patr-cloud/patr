@@ -196,12 +196,12 @@ pub fn create_sub_app(
 		],
 	);
 
-	// GEet list of records for a domain
+	// Get list of records for a domain
 	app.get(
 		"/:domainId/dns-record",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::DELETE,
+				permissions::workspace::domain::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -224,6 +224,66 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_record)),
+		],
+	);
+
+	//  add entry point
+	app.post(
+		"/:domainId/entry-point",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = hex::decode(&domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_entry_point)),
+		],
+	);
+
+	//  add dns record
+	app.post(
+		"/:domainId/dns-record",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = hex::decode(&domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
 		],
 	);
 
@@ -624,5 +684,155 @@ async fn get_domain_dns_record(
 		request_keys::SUCCESS: true,
 		request_keys::DNS_RECORD: dns_record
 	}));
+	Ok(context)
+}
+
+//  this will move to deployments
+async fn add_entry_point(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let body = context.get_body_object().clone();
+
+	// hex::decode throws an error for a wrong string
+	// This error is handled by the resource authenticator middleware
+	// So it's safe to call unwrap() here without crashing the system
+	// This won't be executed unless hex::decode(domain_id) returns Ok
+	let domain_id = hex::decode(domain_id).unwrap();
+	let sub_domain = body
+		.get(request_keys::SUB_DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
+	let path = body
+		.get(request_keys::PATH)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+
+	//add to database
+	db::add_entry_point(
+		context.get_database_connection(),
+		&domain_id,
+		&sub_domain,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn add_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let domain_id = hex::decode(domain_id).unwrap();
+	let body = context.get_body_object().clone();
+
+	let sub_domain = body
+		.get(request_keys::SUB_DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let path = body
+		.get(request_keys::PATH)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let a_record = body
+		.get(request_keys::A_RECORD)
+		.map(|value| value.as_array())
+		.flatten()
+		.map(|vector| {
+			vector
+				.into_iter()
+				.filter_map(|value| Some(value.to_string()))
+				.collect::<Vec<String>>()
+		})
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let aaaa_record = body
+		.get(request_keys::AAAA_RECORD)
+		.map(|value| value.as_array())
+		.flatten()
+		.map(|vector| {
+			vector
+				.into_iter()
+				.filter_map(|value| Some(value.to_string()))
+				.collect::<Vec<String>>()
+		})
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let mx_record = body
+		.get(request_keys::MX_RECORD)
+		.map(|value| value.as_array())
+		.flatten()
+		.map(|vector| {
+			vector
+				.into_iter()
+				.filter_map(|value| Some(value.to_string()))
+				.collect::<Vec<String>>()
+		})
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let text_record = body
+		.get(request_keys::TEXT_RECORD)
+		.map(|value| value.as_array())
+		.flatten()
+		.map(|vector| {
+			vector
+				.into_iter()
+				.filter_map(|value| Some(value.to_string()))
+				.collect::<Vec<String>>()
+		})
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let cname_record = body
+		.get(request_keys::CNAME_RECORD)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let content = body
+		.get(request_keys::CONTENT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let ttl = body
+		.get(request_keys::TTL)
+		.map(|value| value.as_u64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let proxied = body
+		.get(request_keys::PROXIED)
+		.map(|value| value.as_bool())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	//add to database`
+
 	Ok(context)
 }

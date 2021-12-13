@@ -193,4 +193,12 @@ pub mod request_keys {
 	pub const TOTAL_RESOURCES: &str = "totalResources";
 	pub const IS_PATR_CONTROLLED: &str = "isPatrControlled";
 	pub const DNS_RECORD: &str = "dns_record";
+	pub const A_RECORD: &str = "a_record";
+	pub const AAAA_RECORD: &str = "aaaa_record";
+	pub const CNAME_RECORD: &str = "cname_record";
+	pub const TEXT_RECORD: &str = "text_record";
+	pub const MX_RECORD: &str = "mx_record";
+	pub const CONTENT: &str = "content";
+	pub const PROXIED: &str = "proxied";
+	pub const TTL: &str = "ttl";
 }

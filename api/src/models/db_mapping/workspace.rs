@@ -33,7 +33,8 @@ pub struct WorkspaceDomain {
 pub struct DnsRecord {
 	pub deployment_id: Vec<u8>,
 	pub domain_id: Vec<u8>,
-	pub name: String,
+	pub sub_domain: Option<String>,
+	pub path: String,
 	pub a_record: Vec<String>,
 	pub aaaa_record: Vec<String>,
 	pub cname_record: String,
@@ -42,4 +43,14 @@ pub struct DnsRecord {
 	pub content: String,
 	pub ttl: i32,
 	pub proxied: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EntryPoint {
+	pub domain_id: Vec<u8>,
+	pub is_verified: bool,
+	pub sub_domains: String,
+	pub path: String,
+	pub deployment_id: Vec<u8>,
 }

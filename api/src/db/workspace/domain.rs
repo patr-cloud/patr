@@ -110,10 +110,12 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE entry_point (
 			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			sub_domain VARCHAR(255) NOT NULL DEFAULT "/",
+			sub_domain VARCHAR(255) NOT NULL DEFAULT '/',
 			is_verified BOOLEAN NOT NULL DEFAULT TRUE,
+			path VARCHAR(255) NOT NULL,
+			deployment_id BYTEA NOT NULL,
 			CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain),
-			CONSTRAING entry_point_chk_verified
+			CONSTRAINT entry_point_chk_verified
 				CHECK(is_verified = TRUE)
 		);
 		"#
@@ -151,11 +153,13 @@ pub async fn initialize_domain_pre(
 
 	// todo: check if MX record exists for domain, then other records should be
 	// null and vice versa
+	// also name will reference to
 	query!(
 		r#"
 		CREATE TABLE dns_record (
 			domain_id BYTEA,
-			name VARCHAR(255) NOT NULL DEFAULT '/',
+			sub_domain VARCHAR(255),
+			path VARCHAR(255) NOT NULL DEFAULT '/',
 			a_record TEXT [] NOT NULL,
 			aaaa_record TEXT [] NOT NULL,
 			text_record TEXT [] NOT NULL,
@@ -165,7 +169,7 @@ pub async fn initialize_domain_pre(
 			ttl INTEGER NOT NULL,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
 			deployment_id BYTEA NOT NULL,
-			CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name),
+			CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, path),
 			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
@@ -641,4 +645,64 @@ pub async fn get_dns_record_by_domain_id(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn add_entry_point(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	sub_domain: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			entry_point
+		VALUES
+		($1, $2, default);
+		"#,
+		domain_id,
+		sub_domain
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+pub async fn add_dns_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+	a_recotrd: Vec<String>,
+	aaaa_record: Vec<String>,
+	cname_record: String,
+	mx_record: Vec<String>,
+	text_record: Vec<String>,
+	content: &str,
+	ttl: i32,
+	proxied: bool,
+	deployment_id: &[u8],
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			dns_record
+		VALUES
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+		"#,
+		domain_id,
+		sub_domain,
+		path,
+		&a_recotrd,
+		&aaaa_record,
+		&text_record,
+		cname_record,
+		&mx_record,
+		content,
+		ttl,
+		proxied,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
 }
