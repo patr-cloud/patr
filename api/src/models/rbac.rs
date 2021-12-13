@@ -5,16 +5,21 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
-pub static RESOURCE_TYPES: OnceCell<HashMap<String, Vec<u8>>> = OnceCell::new();
+// A mapping of resource type name -> resource type IDs
+pub static RESOURCE_TYPES: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
+// A mapping of permission names -> permission IDs
+pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspacePermissions {
 	pub is_super_admin: bool,
-	pub resources: HashMap<Vec<u8>, Vec<String>>, /* Given a resource, what
+	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
+	pub resources: HashMap<Uuid, Vec<Uuid>>, /* Given a resource, what
 	                                               * and all permissions do
 	                                               * you have on it */
-	pub resource_types: HashMap<Vec<u8>, Vec<String>>, /* Given a resource
+	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
+	pub resource_types: HashMap<Uuid, Vec<Uuid>>, /* Given a resource
 	                                                    * type, what and all
 	                                                    * permissions do you
 	                                                    * have on it */

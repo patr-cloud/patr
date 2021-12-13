@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::{
 	models::db_mapping::{
 		Deployment,
@@ -48,13 +50,13 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment(
-			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
+			id UUID CONSTRAINT deployment_pk PRIMARY KEY,
 			name CITEXT NOT NULL
 				CONSTRAINT deployment_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
-			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
+			repository_id UUID CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
@@ -74,7 +76,7 @@ pub async fn initialize_deployment_pre(
 				)
 				DEFAULT 1,
 			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
-			workspace_id BYTEA NOT NULL,
+			workspace_id UUID NOT NULL,
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_uq_id_domain_name
@@ -137,7 +139,7 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_environment_variable(
-			deployment_id BYTEA
+			deployment_id UUID
 				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
@@ -182,7 +184,7 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment_request_logs(
 			id BIGSERIAL PRIMARY KEY,
-			deployment_id BYTEA NOT NULL
+			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_request_logs_fk_deployment_id
 					REFERENCES deployment(id),
 			timestamp BIGINT NOT NULL
@@ -217,9 +219,9 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployed_domain(
-			deployment_id BYTEA 
+			deployment_id UUID
 				CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
-			static_site_id BYTEA 
+			static_site_id UUID
 				CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
 			domain_name VARCHAR(255) NOT NULL
 				CONSTRAINT deployed_domain_uq_domain_name UNIQUE
@@ -331,15 +333,15 @@ pub async fn initialize_deployment_post(
 
 pub async fn create_deployment_with_internal_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	name: &str,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -417,7 +419,7 @@ pub async fn create_deployment_with_internal_registry(
 
 pub async fn create_deployment_with_external_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	name: &str,
 	registry: &str,
 	image_name: &str,
@@ -426,7 +428,7 @@ pub async fn create_deployment_with_external_registry(
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain) = domain_name {
 		query!(
@@ -508,7 +510,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	image_name: &str,
 	image_tag: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -559,7 +561,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 
 pub async fn get_deployments_by_repository_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	let rows = query_as!(
 		Deployment,
@@ -594,7 +596,7 @@ pub async fn get_deployments_by_repository_id(
 
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -628,7 +630,7 @@ pub async fn get_deployments_for_workspace(
 
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -663,7 +665,7 @@ pub async fn get_deployment_by_id(
 pub async fn get_deployment_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -699,7 +701,7 @@ pub async fn get_deployment_by_name_in_workspace(
 
 pub async fn update_deployment_deployed_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	deployed_image: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(deployed_image) = deployed_image {
@@ -739,7 +741,7 @@ pub async fn update_deployment_deployed_image(
 pub async fn update_digitalocean_app_id_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	app_deployment_id: &str,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -760,7 +762,7 @@ pub async fn update_digitalocean_app_id_for_deployment(
 
 pub async fn update_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -782,7 +784,7 @@ pub async fn update_deployment_status(
 
 pub async fn update_deployment_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -804,7 +806,7 @@ pub async fn update_deployment_name(
 
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<Vec<(String, String)>, sqlx::Error> {
 	let rows = query!(
 		r#"
@@ -828,7 +830,7 @@ pub async fn get_environment_variables_for_deployment(
 
 pub async fn add_environment_variable_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	key: &str,
 	value: &str,
 ) -> Result<(), sqlx::Error> {
@@ -850,7 +852,7 @@ pub async fn add_environment_variable_for_deployment(
 
 pub async fn remove_all_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -868,7 +870,7 @@ pub async fn remove_all_environment_variables_for_deployment(
 
 pub async fn set_domain_name_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	domain_name: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(domain_name) = domain_name {
@@ -934,7 +936,7 @@ pub async fn set_domain_name_for_deployment(
 
 pub async fn set_horizontal_scale_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	horizontal_scale: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -956,7 +958,7 @@ pub async fn set_horizontal_scale_for_deployment(
 
 pub async fn set_machine_type_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	machine_type: &DeploymentMachineType,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -978,7 +980,7 @@ pub async fn set_machine_type_for_deployment(
 
 pub async fn create_log_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	timestamp: u64,
 	ip_address: &str,
 	ip_address_latitude: f64,
@@ -1014,7 +1016,7 @@ pub async fn create_log_for_deployment(
 
 pub async fn get_recommended_data_center(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
 	let row = query!(
 		r#"

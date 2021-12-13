@@ -39,12 +39,12 @@ use crate::{
 pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
-	deployment_id: Vec<u8>,
+	deployment_id: Uuid,
 	config: Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on Aws Lightsail with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id.to_simple_ref().to_string(),
 		image_id,
 		request_id
 	);
@@ -56,7 +56,7 @@ pub(super) async fn deploy_container(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let deployment_id_string = hex::encode(&deployment_id);
+	let deployment_id_string = deployment_id.to_simple_ref().to_string();
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
@@ -209,7 +209,7 @@ pub(super) async fn deploy_container(
 
 pub(super) async fn delete_deployment(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	region: &str,
 	_config: &Settings,
 	request_id: Uuid,
@@ -220,7 +220,7 @@ pub(super) async fn delete_deployment(
 		request_id
 	);
 	let client = get_lightsail_client(region);
-	let deployment_id_string = hex::encode(deployment_id);
+	let deployment_id_string = deployment_id.to_simple_ref().to_string();
 
 	// certificate needs to be detached inorder to get deleted but there is no
 	// endpoint to detach the certificate
@@ -230,7 +230,7 @@ pub(super) async fn delete_deployment(
 	);
 	let check_service_result = client
 		.get_container_services()
-		.service_name(hex::encode(deployment_id))
+		.service_name(deployment_id.to_simple_ref().to_string())
 		.send()
 		.await;
 
@@ -271,7 +271,7 @@ pub(super) async fn delete_deployment(
 
 pub(super) async fn get_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	_config: &Settings,
 	request_id: Uuid,
 ) -> Result<String, Error> {
@@ -306,8 +306,8 @@ pub(super) async fn get_container_logs(
 	log::info!("getting logs from aws");
 	let logs = client
 		.get_container_log()
-		.set_service_name(Some(hex::encode(&deployment_id)))
-		.set_container_name(Some(hex::encode(&deployment_id)))
+		.set_service_name(Some(deployment_id.to_simple_ref().to_string()))
+		.set_container_name(Some(deployment_id.to_simple_ref().to_string()))
 		.send()
 		.await
 		.map_err(|err| {
@@ -330,7 +330,7 @@ pub(super) async fn get_container_logs(
 
 pub(super) async fn create_managed_database_cluster(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
 	version: &str,
@@ -341,7 +341,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} with request_id: {}",
-		hex::encode(&database_id),
+		database_id.to_simple_ref().to_string(),
 		db_name,
 		request_id
 	);
@@ -373,12 +373,12 @@ pub(super) async fn create_managed_database_cluster(
 			}
 		))
 		.relational_database_bundle_id(database_plan.as_aws_plan()?)
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.to_simple_ref().to_string())
 		.send()
 		.await?;
 	log::trace!("request_id: {} - database created", request_id);
 
-	let database_id = database_id.to_vec();
+	let database_id = database_id.clone();
 	let region = region.to_string();
 
 	task::spawn(async move {
@@ -408,12 +408,12 @@ pub(super) async fn create_managed_database_cluster(
 }
 
 pub(super) async fn delete_database(
-	database_id: &[u8],
+	database_id: &Uuid,
 	region: &str,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deleting managed database on Awl lightsail with digital_ocean_id: {} and request_id: {}",
-		hex::encode(database_id),
+		database_id.to_simple_ref().to_string(),
 		request_id,
 	);
 
@@ -426,7 +426,7 @@ pub(super) async fn delete_database(
 	);
 	let database_cluster = client
 		.get_relational_database()
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.to_simple_ref().to_string())
 		.send()
 		.await;
 
@@ -440,7 +440,7 @@ pub(super) async fn delete_database(
 	);
 	client
 		.delete_relational_database()
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.to_simple_ref().to_string())
 		.send()
 		.await?;
 
@@ -473,7 +473,7 @@ pub(super) async fn get_app_default_url(
 }
 
 async fn update_database_cluster_credentials(
-	database_id: Vec<u8>,
+	database_id: Uuid,
 	region: String,
 	username: String,
 	password: String,
@@ -488,7 +488,7 @@ async fn update_database_cluster_credentials(
 	let (host, port) = loop {
 		let database = client
 			.get_relational_database()
-			.relational_database_name(hex::encode(&database_id))
+			.relational_database_name(database_id.to_simple_ref().to_string())
 			.send()
 			.await?
 			.relational_database
@@ -656,7 +656,7 @@ async fn create_container_service(
 }
 
 async fn deploy_application(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	deployment_id_string: &str,
 	client: &lightsail::Client,
 	request_id: Uuid,

@@ -107,7 +107,7 @@ pub fn get_refresh_token_expiry() -> u64 {
 /// [`Transaction`]: Transaction
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<(Uuid, String), Error> {
 	loop {
 		let refresh_token = Uuid::new_v4();
@@ -185,17 +185,14 @@ pub fn generate_new_otp() -> String {
 pub async fn split_email_with_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
-) -> Result<(String, Vec<u8>), Error> {
+) -> Result<(String, Uuid), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 
 	let domain_id =
-		service::ensure_personal_domain_exists(connection, domain_name)
-			.await?
-			.as_bytes()
-			.to_vec();
+		service::ensure_personal_domain_exists(connection, domain_name).await?;
 
 	Ok((email_local.to_string(), domain_id))
 }

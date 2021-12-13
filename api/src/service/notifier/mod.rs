@@ -1,5 +1,6 @@
 use api_models::models::auth::PreferredRecoveryOption;
 use eve_rs::AsError;
+use uuid::Uuid;
 
 use crate::{
 	db,
@@ -301,7 +302,7 @@ pub async fn send_forgot_password_otp(
 /// [`Transaction`]: Transaction
 async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 	email_string: &str,
 ) -> Result<String, Error> {
 	let domain = db::get_personal_domain_by_id(connection, domain_id)

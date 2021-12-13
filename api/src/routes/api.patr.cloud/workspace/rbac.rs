@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::{json, Map, Value};
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -47,10 +47,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -77,10 +76,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -107,10 +105,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -139,10 +136,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -170,10 +166,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -201,10 +196,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -231,10 +225,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -263,10 +256,9 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(&workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
 						&workspace_id,
@@ -327,7 +319,7 @@ async fn list_all_roles(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let roles = db::get_all_workspace_roles(
 		context.get_database_connection(),
 		&workspace_id,
@@ -335,7 +327,7 @@ async fn list_all_roles(
 	.await?
 	.into_iter()
 	.map(|role| {
-		let role_id = role.id.encode_hex::<String>();
+		let role_id = role.id.to_simple_ref().to_string();
 		if let Some(description) = role.description {
 			json!({
 				request_keys::ROLE_ID: role_id,
@@ -398,7 +390,7 @@ async fn list_all_permissions(
 			.await?
 			.into_iter()
 			.map(|permission| {
-				let permission_id = permission.id.encode_hex::<String>();
+				let permission_id = permission.id.to_simple_ref().to_string();
 				if let Some(description) = permission.description {
 					json!({
 						request_keys::PERMISSION_ID: permission_id,
@@ -461,7 +453,8 @@ async fn list_all_resource_types(
 			.await?
 			.into_iter()
 			.map(|resource_type| {
-				let resource_type_id = resource_type.id.encode_hex::<String>();
+				let resource_type_id =
+					resource_type.id.to_simple_ref().to_string();
 				if let Some(description) = resource_type.description {
 					json!({
 						request_keys::RESOURCE_TYPE_ID: resource_type_id,
@@ -536,7 +529,7 @@ async fn get_permissions_for_role(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = hex::decode(role_id)
+	let role_id = Uuid::parse_str(role_id)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -563,20 +556,20 @@ async fn get_permissions_for_role(
 
 	for (resource_id, permissions) in resource_permissions {
 		resource_map.insert(
-			resource_id.encode_hex::<String>(),
+			resource_id.to_simple_ref().to_string(),
 			Value::Array(
 				permissions
 					.into_iter()
 					.map(|permission| {
 						if let Some(description) = permission.description {
 							json!({
-								request_keys::ID: permission.id,
+								request_keys::ID: permission.id.to_simple_ref().to_string(),
 								request_keys::NAME: permission.name,
 								request_keys::DESCRIPTION: description,
 							})
 						} else {
 							json!({
-								request_keys::ID: permission.id,
+								request_keys::ID: permission.id.to_simple_ref().to_string(),
 								request_keys::NAME: permission.name,
 							})
 						}
@@ -587,14 +580,14 @@ async fn get_permissions_for_role(
 	}
 	for (resource_id, permissions) in resource_type_permissions {
 		resource_type_map.insert(
-			resource_id.encode_hex::<String>(),
+			resource_id.to_simple_ref().to_string(),
 			Value::Array(
 				permissions
 					.into_iter()
 					.map(|permission| {
 						if let Some(description) = permission.description {
 							json!({
-								request_keys::ID: permission.id,
+								request_keys::ID: permission.id.to_simple_ref().to_string(),
 								request_keys::NAME: permission.name,
 								request_keys::DESCRIPTION: description,
 							})
@@ -653,14 +646,10 @@ async fn create_role(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id = hex::decode(
-		context
-			.get_param(request_keys::WORKSPACE_ID)
-			.unwrap()
-			.clone(),
-	)
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let body = context.get_body_object().clone();
 	let name = body
@@ -678,10 +667,8 @@ async fn create_role(
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
 		.transpose()?;
-	let role_id = db::generate_new_role_id(context.get_database_connection())
-		.await?
-		.as_bytes()
-		.to_vec();
+	let role_id =
+		db::generate_new_role_id(context.get_database_connection()).await?;
 	db::create_role(
 		context.get_database_connection(),
 		&role_id,
@@ -693,7 +680,7 @@ async fn create_role(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ROLE_ID: role_id.encode_hex::<String>(),
+		request_keys::ROLE_ID: role_id.to_simple_ref().to_string(),
 	}));
 	Ok(context)
 }
@@ -734,7 +721,7 @@ async fn update_role_permissions(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = hex::decode(role_id)
+	let role_id = Uuid::parse_str(role_id)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -762,7 +749,8 @@ async fn update_role_permissions(
 	let mut resource_type_permissions = HashMap::new();
 
 	for (resource_id, permissions) in resource_permissions_map {
-		let resource_id = if let Ok(resource_id) = hex::decode(resource_id) {
+		let resource_id = if let Ok(resource_id) = Uuid::parse_str(resource_id)
+		{
 			resource_id
 		} else {
 			context.status(400).json(error!(WRONG_PARAMETERS));
@@ -783,7 +771,7 @@ async fn update_role_permissions(
 				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			};
-			if let Ok(permission_id) = hex::decode(permission_id) {
+			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
 				permissions_values.push(permission_id);
 			} else {
 				context.status(400).json(error!(WRONG_PARAMETERS));
@@ -794,7 +782,7 @@ async fn update_role_permissions(
 	}
 	for (resource_type_id, permissions) in resource_type_permissions_map {
 		let resource_type_id =
-			if let Ok(resource_type_id) = hex::decode(resource_type_id) {
+			if let Ok(resource_type_id) = Uuid::parse_str(resource_type_id) {
 				resource_type_id
 			} else {
 				context.status(400).json(error!(WRONG_PARAMETERS));
@@ -815,7 +803,7 @@ async fn update_role_permissions(
 				context.status(400).json(error!(WRONG_PARAMETERS));
 				return Ok(context);
 			};
-			if let Ok(permission_id) = hex::decode(permission_id) {
+			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
 				permissions_values.push(permission_id);
 			} else {
 				context.status(400).json(error!(WRONG_PARAMETERS));
@@ -879,7 +867,7 @@ async fn delete_role(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let role_id = context.get_param(request_keys::ROLE_ID).unwrap();
-	let role_id = hex::decode(role_id)
+	let role_id = Uuid::parse_str(role_id)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -938,7 +926,7 @@ async fn get_resource_info(
 		.get_param(request_keys::RESOURCE_ID)
 		.unwrap()
 		.clone();
-	let resource_id = hex::decode(&resource_id_string)
+	let resource_id = Uuid::parse_str(&resource_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 

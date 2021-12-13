@@ -6,7 +6,7 @@ use crate::utils::constants::ResourceOwnerType;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub username: String,
 	#[serde(skip)]
 	pub password: String,
@@ -23,7 +23,7 @@ pub struct User {
 	#[serde(skip)]
 	pub backup_email_local: Option<String>,
 	#[serde(skip)]
-	pub backup_email_domain_id: Option<Vec<u8>>,
+	pub backup_email_domain_id: Option<Uuid>,
 
 	#[serde(skip)]
 	pub backup_phone_country_code: Option<String>,
@@ -36,7 +36,7 @@ pub struct UserLogin {
 	/// Hashed refresh token
 	pub refresh_token: String,
 	pub token_expiry: u64,
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub last_login: u64,
 	pub last_activity: u64,
 }
@@ -44,11 +44,11 @@ pub struct UserLogin {
 #[derive(Clone)]
 pub struct UserEmailAddress {
 	pub email_local: String,
-	pub domain_id: Vec<u8>,
+	pub domain_id: Uuid,
 }
 
 pub struct UserPhoneNumber {
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub country_code: String,
 	pub number: String,
 }
@@ -62,7 +62,7 @@ pub struct UserToSignUp {
 	pub last_name: String,
 
 	pub backup_email_local: Option<String>,
-	pub backup_email_domain_id: Option<Vec<u8>>,
+	pub backup_email_domain_id: Option<Uuid>,
 
 	pub backup_phone_country_code: Option<String>,
 	pub backup_phone_number: Option<String>,
@@ -76,15 +76,15 @@ pub struct UserToSignUp {
 }
 
 pub struct PasswordResetRequest {
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub token: String,
 	pub token_expiry: u64,
 }
 
 pub struct PersonalEmailToBeVerified {
 	pub local: String,
-	pub domain_id: Vec<u8>,
-	pub user_id: Vec<u8>,
+	pub domain_id: Uuid,
+	pub user_id: Uuid,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,
 }
@@ -92,7 +92,7 @@ pub struct PersonalEmailToBeVerified {
 pub struct PhoneNumberToBeVerified {
 	pub country_code: String,
 	pub phone_number: String,
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,
 }

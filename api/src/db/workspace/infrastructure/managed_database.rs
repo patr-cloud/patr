@@ -1,4 +1,5 @@
 use api_macros::{query, query_as};
+use uuid::Uuid;
 
 use crate::{
 	models::db_mapping::{
@@ -59,7 +60,7 @@ pub async fn initialize_managed_database_pre(
 	query!(
 		r#"
 		CREATE TABLE managed_database(
-			id BYTEA CONSTRAINT managed_database_pk PRIMARY KEY,
+			id UUID CONSTRAINT managed_database_pk PRIMARY KEY,
 			name CITEXT NOT NULL
 				CONSTRAINT managed_database_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
@@ -78,7 +79,7 @@ pub async fn initialize_managed_database_pre(
 			port INTEGER NOT NULL,
 			username TEXT NOT NULL,
 			password TEXT NOT NULL,
-			workspace_id BYTEA NOT NULL,
+			workspace_id UUID NOT NULL,
 			digitalocean_db_id TEXT
 				CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE,
 			CONSTRAINT managed_database_uq_name_workspace_id
@@ -111,7 +112,7 @@ pub async fn initialize_managed_database_post(
 
 pub async fn create_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	id: &[u8],
+	id: &Uuid,
 	name: &str,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
@@ -123,7 +124,7 @@ pub async fn create_managed_database(
 	port: i32,
 	username: &str,
 	password: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	digital_ocean_id: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(digitalocean_db_id) = digital_ocean_id {
@@ -214,7 +215,7 @@ pub async fn create_managed_database(
 
 pub async fn update_managed_database_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	id: &[u8],
+	id: &Uuid,
 	status: &ManagedDatabaseStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -236,7 +237,7 @@ pub async fn update_managed_database_status(
 
 pub async fn update_managed_database_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -258,7 +259,7 @@ pub async fn update_managed_database_name(
 
 pub async fn get_all_database_clusters_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
 	query_as!(
 		ManagedDatabase,
@@ -293,7 +294,7 @@ pub async fn get_all_database_clusters_for_workspace(
 
 pub async fn get_managed_database_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	id: &[u8],
+	id: &Uuid,
 ) -> Result<Option<ManagedDatabase>, sqlx::Error> {
 	query_as!(
 		ManagedDatabase,
@@ -328,7 +329,7 @@ pub async fn get_managed_database_by_id(
 
 pub async fn update_digitalocean_db_id_for_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	digitalocean_db_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -350,7 +351,7 @@ pub async fn update_digitalocean_db_id_for_database(
 
 pub async fn update_managed_database_credentials_for_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	host: &str,
 	port: i32,
 	username: &str,

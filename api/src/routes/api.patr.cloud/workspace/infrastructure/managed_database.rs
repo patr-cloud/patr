@@ -1,6 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -31,7 +32,7 @@ pub fn create_sub_app(
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id =
-						hex::decode(&workspace_id)
+						Uuid::parse_str(&workspace_id)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -63,7 +64,7 @@ pub fn create_sub_app(
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id =
-						hex::decode(&workspace_id)
+						Uuid::parse_str(&workspace_id)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -95,7 +96,7 @@ pub fn create_sub_app(
 					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();
 					let workspace_id =
-						hex::decode(&workspace_id)
+						Uuid::parse_str(&workspace_id)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -127,7 +128,7 @@ pub fn create_sub_app(
 					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();
 					let workspace_id =
-						hex::decode(&workspace_id)
+						Uuid::parse_str(&workspace_id)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -157,7 +158,7 @@ async fn list_all_database_clusters(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
 	let database_clusters = db::get_all_database_clusters_for_workspace(
@@ -168,7 +169,7 @@ async fn list_all_database_clusters(
 	.into_iter()
 	.map(|database| {
 		json!({
-			request_keys::ID: hex::encode(database.id),
+			request_keys::ID: database.id.to_simple_ref().to_string(),
 			request_keys::NAME: database.name,
 			request_keys::DATABASE_NAME: database.db_name,
 			request_keys::ENGINE: database.engine,
@@ -200,7 +201,7 @@ async fn create_database_cluster(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 	let config = context.get_state().config.clone();
@@ -299,7 +300,7 @@ async fn get_managed_database_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let database_id =
-		hex::decode(context.get_param(request_keys::DATABASE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 
 	let database = db::get_managed_database_by_id(
@@ -312,7 +313,7 @@ async fn get_managed_database_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DATABASE_ID: hex::encode(database.id),
+		request_keys::DATABASE_ID: database.id.to_simple_ref().to_string(),
 		request_keys::NAME: database.name,
 		request_keys::DATABASE_NAME: database.db_name,
 		request_keys::ENGINE: database.engine,
@@ -337,7 +338,7 @@ async fn delete_managed_database(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let database_id =
-		hex::decode(context.get_param(request_keys::DATABASE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 	let config = context.get_state().config.clone();
 

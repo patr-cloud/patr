@@ -10,17 +10,21 @@ use eve_rs::{
 		url_encoded::parser as url_encoded_parser,
 	},
 	App as EveApp,
+	AsError,
 	Context,
 	Middleware,
 	NextHandler,
 };
-use hex::ToHex;
 use redis::{AsyncCommands, RedisError};
 
 use crate::{
 	app::App,
 	error,
-	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
+	models::{
+		db_mapping::Resource,
+		rbac::{self, GOD_USER_ID},
+		AccessTokenData,
+	},
 	utils::{get_current_time_millis, Error, ErrorData, EveContext},
 };
 
@@ -128,26 +132,20 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				permission_required,
 				resource_in_question,
 			) => {
-				let access_data =
-					if let Some(token) = decode_access_token(&context) {
-						token
-					} else {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					};
+				let access_data = decode_access_token(&context)
+					.status(401)
+					.body(error!(UNAUTHORIZED).to_string())?;
 
-				let token_valid = is_access_token_valid(
+				let access_token_valid = is_access_token_valid(
 					&access_data,
 					&context.get_header("Authorization").unwrap(),
 					context.get_state_mut(),
 				)
-				.await;
-				if let Err(err) = token_valid {
+				.await
+				.map_err(|err| {
 					log::error!("Error checking access token: {}", err);
-					context.status(500).json(error!(SERVER_ERROR));
-					return Ok(context);
-				}
-				let access_token_valid = token_valid.unwrap();
+					err
+				})?;
 
 				if !access_token_valid {
 					context.status(401).json(error!(UNAUTHORIZED));
@@ -157,19 +155,21 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				// check if the access token has access to the resource
 				let (mut context, resource) =
 					resource_in_question(context).await?;
-				if resource.is_none() {
+				let resource = if let Some(resource) = resource {
+					resource
+				} else {
 					return Ok(context);
-				}
-				let resource = resource.unwrap();
+				};
 
-				let workspace_id = resource.owner_id.encode_hex::<String>();
-				let workspace_permission =
-					access_data.workspaces.get(&workspace_id);
-				if workspace_permission.is_none() {
+				let workspace_id = resource.owner_id;
+				let workspace_permission = if let Some(permission) =
+					access_data.workspaces.get(&workspace_id)
+				{
+					permission
+				} else {
 					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);
-				}
-				let workspace_permission = workspace_permission.unwrap();
+				};
 
 				let allowed = {
 					// Check if the resource type is allowed
@@ -177,7 +177,13 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						.resource_types
 						.get(&resource.resource_type_id)
 					{
-						permissions.contains(&permission_required.to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission_required).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}
@@ -186,16 +192,21 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					if let Some(permissions) =
 						workspace_permission.resources.get(&resource.id)
 					{
-						permissions
-							.contains(&(*permission_required).to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission_required).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}
 				} || {
 					// Check if super admin or god is permitted
 					workspace_permission.is_super_admin || {
-						let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
-						access_data.user.id == god_user_id
+						let god_user_id = GOD_USER_ID.get().unwrap();
+						god_user_id == &access_data.user.id
 					}
 				};
 
@@ -263,7 +274,10 @@ async fn is_access_token_valid(
 
 	let user_exp: Option<u64> = app
 		.redis
-		.get(format!("user-{}-exp", token.user.id.encode_hex::<String>()))
+		.get(format!(
+			"user-{}-exp",
+			token.user.id.to_simple_ref().to_string()
+		))
 		.await?;
 	if let Some(exp) = user_exp {
 		if exp < get_current_time_millis() {

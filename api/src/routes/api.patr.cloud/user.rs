@@ -1,5 +1,4 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -1215,7 +1214,7 @@ async fn get_workspaces_for_user(
 	.into_iter()
 	.map(|workspace| {
 		json!({
-			request_keys::ID: workspace.id.encode_hex::<String>(),
+			request_keys::ID: workspace.id.to_simple_ref().to_string(),
 			request_keys::NAME: workspace.name,
 			request_keys::ACTIVE: workspace.active
 		})

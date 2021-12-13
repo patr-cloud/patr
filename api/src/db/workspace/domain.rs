@@ -16,7 +16,7 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE domain(
-			id BYTEA CONSTRAINT domain_pk PRIMARY KEY,
+			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name VARCHAR(255) NOT NULL 
 				CONSTRAINT domain_uq_name UNIQUE
 				CONSTRAINT domain_chk_name_is_lower_case 
@@ -33,8 +33,8 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE workspace_domain (
-			id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY,
+		CREATE TABLE workspace_domain(
+			id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
 				CONSTRAINT workspace_domain_chk_dmn_typ
 					CHECK(domain_type = 'business'),
@@ -61,8 +61,8 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE personal_domain (
-			id BYTEA
+		CREATE TABLE personal_domain(
+			id UUID
 				CONSTRAINT personal_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
 				CONSTRAINT personal_domain_chk_dmn_typ
@@ -115,7 +115,7 @@ pub async fn generate_new_domain_id(
 				WHERE
 					id = $1;
 				"#,
-				uuid.as_bytes().as_ref()
+				&uuid
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -132,7 +132,7 @@ pub async fn generate_new_domain_id(
 				WHERE
 					id = $1;
 				"#,
-				uuid.as_bytes().as_ref()
+				&uuid
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -147,7 +147,7 @@ pub async fn generate_new_domain_id(
 
 pub async fn create_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 	domain_name: &str,
 	domain_type: &ResourceOwnerType,
 ) -> Result<(), sqlx::Error> {
@@ -169,7 +169,7 @@ pub async fn create_generic_domain(
 
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -187,7 +187,7 @@ pub async fn add_to_workspace_domain(
 
 pub async fn add_to_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -205,7 +205,7 @@ pub async fn add_to_personal_domain(
 
 pub async fn get_domains_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
 	query_as!(
 		WorkspaceDomain,
@@ -261,7 +261,7 @@ pub async fn get_all_unverified_domains(
 
 pub async fn set_domain_as_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -306,7 +306,7 @@ pub async fn get_all_verified_domains(
 
 pub async fn set_domain_as_unverified(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -327,7 +327,7 @@ pub async fn set_domain_as_unverified(
 // TODO get the correct email based on permission
 pub async fn get_notification_email_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
 	let email = query!(
 		r#"
@@ -373,7 +373,7 @@ pub async fn get_notification_email_for_domain(
 
 pub async fn delete_personal_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -392,7 +392,7 @@ pub async fn delete_personal_domain(
 
 pub async fn delete_domain_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -411,7 +411,7 @@ pub async fn delete_domain_from_workspace(
 
 pub async fn delete_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -430,7 +430,7 @@ pub async fn delete_generic_domain(
 
 pub async fn get_workspace_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<Option<WorkspaceDomain>, sqlx::Error> {
 	query_as!(
 		WorkspaceDomain,
@@ -457,7 +457,7 @@ pub async fn get_workspace_domain_by_id(
 
 pub async fn get_personal_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<Option<PersonalDomain>, sqlx::Error> {
 	query_as!(
 		PersonalDomain,

@@ -20,7 +20,7 @@ pub struct AccessTokenData {
 	pub iat: u64,
 	pub typ: String,
 	pub exp: u64,
-	pub workspaces: HashMap<String, WorkspacePermissions>,
+	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
 	#[serde(with = "api_models::with::uuid")]
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
@@ -52,7 +52,7 @@ impl AccessTokenData {
 	pub fn new(
 		iat: u64,
 		exp: u64,
-		workspaces: HashMap<String, WorkspacePermissions>,
+		workspaces: HashMap<Uuid, WorkspacePermissions>,
 		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
@@ -73,7 +73,8 @@ impl AccessTokenData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExposedUserData {
-	pub id: Vec<u8>,
+	#[serde(with = "api_models::with::uuid")]
+	pub id: Uuid,
 	pub username: String,
 	pub first_name: String,
 	pub last_name: String,

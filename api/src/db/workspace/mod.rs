@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
 mod docker_registry;
@@ -14,11 +16,11 @@ pub async fn initialize_workspaces_pre(
 	query!(
 		r#"
 		CREATE TABLE workspace(
-			id BYTEA
+			id UUID
 				CONSTRAINT workspace_pk PRIMARY KEY,
 			name CITEXT NOT NULL
 				CONSTRAINT workspace_uq_name UNIQUE,
-			super_admin_id BYTEA NOT NULL
+			super_admin_id UUID NOT NULL
 				CONSTRAINT workspace_super_admin_id_fk_user_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE
@@ -95,9 +97,9 @@ pub async fn initialize_workspaces_post(
 
 pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
-	super_admin_id: &[u8],
+	super_admin_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -119,7 +121,7 @@ pub async fn create_workspace(
 
 pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query_as!(
 		Workspace,
@@ -165,7 +167,7 @@ pub async fn get_workspace_by_name(
 
 pub async fn update_workspace_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(

@@ -1,6 +1,5 @@
 use api_models::{models::auth::*, ErrorType};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -1103,12 +1102,10 @@ async fn docker_registry_authenticate(
 			)?;
 
 	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
-	let god_user = db::get_user_by_user_id(
-		context.get_database_connection(),
-		god_user_id.as_bytes(),
-	)
-	.await?
-	.unwrap();
+	let god_user =
+		db::get_user_by_user_id(context.get_database_connection(), god_user_id)
+			.await?
+			.unwrap();
 	// check if user is GOD_USER then return the token
 	if username == god_user.username {
 		// return token.
@@ -1306,8 +1303,7 @@ async fn docker_registry_authenticate(
 		)?;
 	}
 
-	let workspace_id = workspace.id.encode_hex::<String>();
-	let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
+	let god_user_id = GOD_USER_ID.get().unwrap();
 
 	// get all workspace roles for the user using the id
 	let user_id = &user.id;
@@ -1317,7 +1313,7 @@ async fn docker_registry_authenticate(
 	)
 	.await?;
 
-	let required_role_for_user = user_roles.get(&workspace_id);
+	let required_role_for_user = user_roles.get(&workspace.id);
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
@@ -1328,7 +1324,13 @@ async fn docker_registry_authenticate(
 						.resource_types
 						.get(&resource.resource_type_id)
 					{
-						permissions.contains(&permission.to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}
@@ -1337,7 +1339,13 @@ async fn docker_registry_authenticate(
 					if let Some(permissions) =
 						required_role_for_user.resources.get(&resource.id)
 					{
-						permissions.contains(&permission.to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}

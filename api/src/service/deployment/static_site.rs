@@ -36,10 +36,10 @@ use crate::{
 
 pub async fn create_static_site_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 	domain_name: Option<&str>,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate static site name
 	if !validator::is_deployment_name_valid(name) {
@@ -50,7 +50,7 @@ pub async fn create_static_site_deployment_in_workspace(
 
 	if let Some(domain_name) = domain_name {
 		let is_god_user =
-			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+			user_id == rbac::GOD_USER_ID.get().unwrap();
 		// If the entry point is not valid, OR if (the domain is special and the
 		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
@@ -74,12 +74,11 @@ pub async fn create_static_site_deployment_in_workspace(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	let static_uuid = db::generate_new_resource_id(connection).await?;
-	let static_site_id = static_uuid.as_bytes();
+	let static_site_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 	db::create_resource(
 		connection,
-		static_site_id,
+		&static_site_id,
 		&format!("Static_site: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -93,26 +92,26 @@ pub async fn create_static_site_deployment_in_workspace(
 	log::trace!("Adding entry to database");
 	db::create_static_site(
 		connection,
-		static_site_id,
+		&static_site_id,
 		name,
 		domain_name,
 		workspace_id,
 	)
 	.await?;
 
-	Ok(static_uuid)
+	Ok(static_site_id)
 }
 
 pub async fn start_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 	file: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id.to_simple_ref().to_string(),
 		request_id
 	);
 
@@ -120,7 +119,7 @@ pub async fn start_static_site_deployment(
 		log::trace!("Uploading files to nginx server");
 		upload_static_site_files_to_nginx(
 			file,
-			&hex::encode(&static_site_id),
+			&static_site_id.to_simple_ref().to_string(),
 			config,
 			request_id,
 		)
@@ -138,7 +137,7 @@ pub async fn start_static_site_deployment(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = config.clone();
-	let static_site_id = static_site_id.to_vec();
+	let static_site_id = static_site_id.clone();
 
 	task::spawn(async move {
 		let deploy_result = deploy_static_site(
@@ -163,13 +162,13 @@ pub async fn start_static_site_deployment(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Stopping the static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -178,7 +177,7 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let patr_domain = format!("{}.patr.cloud", static_site_id.to_simple_ref().to_string());
 	log::trace!("request_id: {} - logging into the ssh server for stopping the static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
@@ -367,7 +366,7 @@ server {{
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
@@ -383,7 +382,7 @@ pub async fn delete_static_site(
 		&format!(
 			"patr-deleted: {}-{}",
 			static_site.name,
-			hex::encode(static_site_id)
+			static_site_id.to_simple_ref().to_string()
 		),
 	)
 	.await?;
@@ -395,7 +394,8 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let patr_domain =
+		format!("{}.patr.cloud", static_site_id.to_simple_ref().to_string());
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -428,7 +428,7 @@ pub async fn delete_static_site(
 			static_site_id,
 			Some(format!(
 				"deleted.patr.cloud.{}.{}",
-				hex::encode(static_site_id),
+				static_site_id.to_simple_ref().to_string(),
 				domain_name
 			))
 			.as_deref(),
@@ -533,13 +533,13 @@ pub async fn delete_static_site(
 pub async fn set_domain_for_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Set domain for static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!(
@@ -602,7 +602,7 @@ pub async fn set_domain_for_static_site_deployment(
 				);
 				update_nginx_for_static_site_with_https(
 					new_domain,
-					&hex::encode(static_site_id),
+					&static_site_id.to_simple_ref().to_string(),
 					config,
 					request_id,
 				)
@@ -611,7 +611,7 @@ pub async fn set_domain_for_static_site_deployment(
 				log::trace!("request_id: {} - certificate not present updating nginx with http", request_id);
 				update_nginx_for_static_site_with_http(
 					new_domain,
-					&hex::encode(static_site_id),
+					&static_site_id.to_simple_ref().to_string(),
 					config,
 					request_id,
 				)
@@ -680,7 +680,7 @@ pub async fn set_domain_for_static_site_deployment(
 					log::trace!("request_id: {} - certificate creation successfull updating nginx with https", request_id);
 					update_nginx_for_static_site_with_https(
 						new_domain,
-						&hex::encode(static_site_id),
+						&static_site_id.to_simple_ref().to_string(),
 						config,
 						request_id,
 					)
@@ -691,7 +691,7 @@ pub async fn set_domain_for_static_site_deployment(
 					);
 					update_nginx_for_static_site_with_http(
 						new_domain,
-						&hex::encode(static_site_id),
+						&static_site_id.to_simple_ref().to_string(),
 						config,
 						request_id,
 					)
@@ -709,7 +709,7 @@ pub async fn set_domain_for_static_site_deployment(
 
 pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
@@ -730,7 +730,7 @@ pub async fn get_dns_records_for_static_site(
 
 pub async fn upload_files_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	file: &str,
 	config: &Settings,
 	request_id: Uuid,
@@ -742,7 +742,7 @@ pub async fn upload_files_for_static_site(
 
 	upload_static_site_files_to_nginx(
 		file,
-		&hex::encode(&static_site_id),
+		&static_site_id.to_simple_ref().to_string(),
 		config,
 		request_id,
 	)
@@ -753,13 +753,13 @@ pub async fn upload_files_for_static_site(
 
 pub async fn get_static_site_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Getting validation status for static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!("request_id: {} - validating the custom domain", request_id);
@@ -847,7 +847,7 @@ pub async fn get_static_site_validation_status(
 			log::trace!("request_id: {} - certificate exists updating nginx config for https", request_id);
 			update_nginx_for_static_site_with_https(
 				&domain_name,
-				&hex::encode(static_site_id),
+				&static_site_id.to_simple_ref().to_string(),
 				config,
 				request_id,
 			)
@@ -867,7 +867,7 @@ pub async fn get_static_site_validation_status(
 		log::trace!("request_id: {} - updating nginx with https", request_id);
 		update_nginx_for_static_site_with_https(
 			&domain_name,
-			&hex::encode(static_site_id),
+			&static_site_id.to_simple_ref().to_string(),
 			config,
 			request_id,
 		)
@@ -1059,7 +1059,7 @@ server {{
 }
 
 async fn deploy_static_site(
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	custom_domain: Option<&str>,
 	config: &Settings,
 	request_id: Uuid,
@@ -1067,7 +1067,7 @@ async fn deploy_static_site(
 	// update DNS
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
-		&hex::encode(static_site_id),
+		&static_site_id.to_simple_ref().to_string(),
 		&config.ssh.host_name,
 		config,
 		false,
@@ -1076,7 +1076,7 @@ async fn deploy_static_site(
 	log::trace!("request_id: {} - DNS Updated", request_id);
 
 	update_nginx_with_all_domains_for_static_site(
-		&hex::encode(static_site_id),
+		&static_site_id.to_simple_ref().to_string(),
 		custom_domain,
 		config,
 		request_id,
@@ -1281,7 +1281,7 @@ async fn update_nginx_with_all_domains_for_static_site(
 }
 
 async fn update_static_site_status(
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	let app = service::get_app();

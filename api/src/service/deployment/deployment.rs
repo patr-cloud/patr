@@ -60,17 +60,17 @@ use crate::{
 /// [`Transaction`]: Transaction
 pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 	registry: &str,
-	repository_id: Option<&str>,
+	repository_id: Option<&Uuid>,
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -110,7 +110,7 @@ pub async fn create_deployment_in_workspace(
 
 	if let Some(domain_name) = domain_name {
 		let is_god_user =
-			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+			user_id == rbac::GOD_USER_ID.get().unwrap();
 		// If the entry point is not valid, OR if (the domain is special and the
 		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
@@ -122,12 +122,11 @@ pub async fn create_deployment_in_workspace(
 		}
 	}
 
-	let deployment_uuid = db::generate_new_resource_id(connection).await?;
-	let deployment_id = deployment_uuid.as_bytes();
+	let deployment_id = db::generate_new_resource_id(connection).await?;
 
 	db::create_resource(
 		connection,
-		deployment_id,
+		&deployment_id,
 		&format!("Deployment: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -141,15 +140,11 @@ pub async fn create_deployment_in_workspace(
 
 	if registry == "registry.patr.cloud" {
 		if let Some(repository_id) = repository_id {
-			let repository_id = hex::decode(repository_id)
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
 			db::create_deployment_with_internal_registry(
 				connection,
-				deployment_id,
+				&deployment_id,
 				name,
-				&repository_id,
+				repository_id,
 				image_tag,
 				region,
 				domain_name,
@@ -166,7 +161,7 @@ pub async fn create_deployment_in_workspace(
 	} else if let Some(image_name) = image_name {
 		db::create_deployment_with_external_registry(
 			connection,
-			deployment_id,
+			&deployment_id,
 			name,
 			registry,
 			image_name,
@@ -184,12 +179,12 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	Ok(deployment_uuid)
+	Ok(deployment_id)
 }
 
 pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -245,7 +240,7 @@ pub async fn start_deployment(
 				let digital_ocean_image = format!(
 					"registry.digitalocean.com/{}/{}",
 					config.digitalocean.registry,
-					hex::encode(&deployment_id),
+					deployment_id.to_simple_ref().to_string(),
 				);
 
 				log::trace!(
@@ -296,8 +291,10 @@ pub async fn start_deployment(
 					);
 				}
 
-				let aws_image =
-					format!("patr-cloud/{}", hex::encode(&deployment_id),);
+				let aws_image = format!(
+					"patr-cloud/{}",
+					deployment_id.to_simple_ref().to_string()
+				);
 
 				log::trace!("Deleting image tagged with patr-cloud");
 				let delete_result =
@@ -336,13 +333,13 @@ pub async fn start_deployment(
 
 pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
-		hex::encode(deployment_id),
+		deployment_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -398,7 +395,8 @@ pub async fn stop_deployment(
 		}
 	}
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
+	let patr_domain =
+		format!("{}.patr.cloud", deployment_id.to_simple_ref().to_string());
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -571,7 +569,7 @@ server {{
 
 pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -587,7 +585,7 @@ pub async fn delete_deployment(
 		&format!(
 			"patr-deleted: {}-{}",
 			deployment.name,
-			hex::encode(deployment_id)
+			deployment_id.to_simple_ref().to_string()
 		),
 	)
 	.await?;
@@ -599,7 +597,8 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(deployment_id));
+	let patr_domain =
+		format!("{}.patr.cloud", deployment_id.to_simple_ref().to_string());
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -632,7 +631,7 @@ pub async fn delete_deployment(
 			deployment_id,
 			Some(format!(
 				"deleted.patr.cloud.{}.{}",
-				hex::encode(deployment_id),
+				deployment_id.to_simple_ref().to_string(),
 				domain_name
 			))
 			.as_deref(),
@@ -736,13 +735,13 @@ pub async fn delete_deployment(
 
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<String, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id.to_simple_ref().to_string(),
 		request_id
 	);
 
@@ -797,7 +796,7 @@ pub async fn get_deployment_container_logs(
 
 pub async fn set_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	environment_variables: &[(String, String)],
 ) -> Result<(), Error> {
 	db::remove_all_environment_variables_for_deployment(
@@ -821,7 +820,7 @@ pub async fn set_environment_variables_for_deployment(
 
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -842,13 +841,13 @@ pub async fn get_dns_records_for_deployments(
 
 pub async fn get_domain_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Validating the deployment_id: {} with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!("request_id: {} - validating the custom domain", request_id);
@@ -873,12 +872,13 @@ pub async fn get_domain_validation_status(
 		request_id
 	);
 	let default_url = match provider.parse() {
-		Ok(CloudPlatform::Aws) => {
-			aws::get_app_default_url(&hex::encode(deployment_id), region)
-				.await?
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
-		}
+		Ok(CloudPlatform::Aws) => aws::get_app_default_url(
+			&deployment_id.to_simple_ref().to_string(),
+			region,
+		)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?,
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
 			digitalocean::get_app_default_url(deployment_id, config, &client)
@@ -1013,13 +1013,13 @@ pub async fn get_domain_validation_status(
 pub async fn set_domain_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
-		hex::encode(deployment_id),
+		deployment_id.to_simple_ref().to_string(),
 		request_id
 	);
 	log::trace!(
@@ -1052,12 +1052,13 @@ pub async fn set_domain_for_deployment(
 		request_id
 	);
 	let deployment_default_url = match provider.parse() {
-		Ok(CloudPlatform::Aws) => {
-			aws::get_app_default_url(&hex::encode(deployment_id), region)
-				.await?
-				.status(500)
-				.body(error!(SERVER_ERROR).to_string())?
-		}
+		Ok(CloudPlatform::Aws) => aws::get_app_default_url(
+			&deployment_id.to_simple_ref().to_string(),
+			region,
+		)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?,
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
 			digitalocean::get_app_default_url(deployment_id, config, &client)

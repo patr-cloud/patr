@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
 pub async fn initialize_docker_registry_pre(
@@ -7,8 +9,8 @@ pub async fn initialize_docker_registry_pre(
 	query!(
 		r#"
 		CREATE TABLE docker_registry_repository(
-			id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
-			workspace_id BYTEA NOT NULL
+			id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
+			workspace_id UUID NOT NULL
 				CONSTRAINT docker_registry_repository_fk_workspace_id
 					REFERENCES workspace(id),
 			name CITEXT NOT NULL,
@@ -43,9 +45,9 @@ pub async fn initialize_docker_registry_post(
 // function to add new repositorys
 pub async fn create_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 	name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -66,7 +68,7 @@ pub async fn create_docker_repository(
 pub async fn get_repository_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
@@ -92,7 +94,7 @@ pub async fn get_repository_by_name(
 
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
@@ -115,7 +117,7 @@ pub async fn get_docker_repositories_for_workspace(
 
 pub async fn get_docker_repository_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
@@ -138,7 +140,7 @@ pub async fn get_docker_repository_by_id(
 
 pub async fn update_docker_repository_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(

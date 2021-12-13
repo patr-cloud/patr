@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -48,7 +48,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -79,7 +79,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -110,7 +110,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(&repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -193,7 +193,7 @@ async fn create_docker_repository(
 
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(&workspace_id_string).unwrap();
 
 	// check if repository already exists
 	let check = db::get_repository_by_name(
@@ -212,17 +212,16 @@ async fn create_docker_repository(
 	// split the repo nam in 2 halves, and validate workspace, and repo name
 	let resource_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
-	let resource_id = resource_id.as_bytes();
 
 	// safe to assume that workspace id is present here
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(&workspace_id).unwrap();
 
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
 	db::create_resource(
 		context.get_database_connection(),
-		resource_id,
+		&resource_id,
 		repository,
 		rbac::RESOURCE_TYPES
 			.get()
@@ -236,7 +235,7 @@ async fn create_docker_repository(
 
 	db::create_docker_repository(
 		context.get_database_connection(),
-		resource_id,
+		&resource_id,
 		repository,
 		&workspace_id,
 	)
@@ -244,7 +243,7 @@ async fn create_docker_repository(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ID: hex::encode(resource_id)
+		request_keys::ID: resource_id.to_simple_ref().to_string()
 	}));
 
 	Ok(context)
@@ -288,7 +287,7 @@ async fn list_docker_repositories(
 ) -> Result<EveContext, Error> {
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(&workspace_id_string).unwrap();
 
 	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
@@ -298,7 +297,7 @@ async fn list_docker_repositories(
 	.into_iter()
 	.map(|repository| {
 		json!({
-			request_keys::ID: repository.id.encode_hex::<String>(),
+			request_keys::ID: repository.id.to_simple_ref().to_string(),
 			request_keys::NAME: repository.name,
 		})
 	})
@@ -348,7 +347,7 @@ async fn delete_docker_repository(
 ) -> Result<EveContext, Error> {
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
-	let repository_id = hex::decode(&repo_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repo_id_string).unwrap();
 
 	let repository = db::get_docker_repository_by_id(
 		context.get_database_connection(),
@@ -378,7 +377,7 @@ async fn delete_docker_repository(
 		&format!(
 			"patr-deleted: {}-{}",
 			repository.name,
-			hex::encode(&repository_id)
+			repository_id.to_simple_ref().to_string()
 		),
 	)
 	.await?;

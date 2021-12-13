@@ -32,7 +32,7 @@ pub async fn create_managed_database_in_workspace(
 	num_nodes: Option<u64>,
 	database_plan: &ManagedDatabasePlan,
 	region: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	if !validator::is_database_name_valid(db_name) {
@@ -48,8 +48,7 @@ pub async fn create_managed_database_in_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!("generating new resource");
-	let database_uuid = db::generate_new_resource_id(connection).await?;
-	let database_id = database_uuid.as_bytes();
+	let database_id = db::generate_new_resource_id(connection).await?;
 
 	let version = match engine {
 		ManagedDatabaseEngine::Postgres => version.unwrap_or("12"),
@@ -59,8 +58,12 @@ pub async fn create_managed_database_in_workspace(
 
 	db::create_resource(
 		connection,
-		database_id,
-		&format!("{}-database-{}", provider, hex::encode(database_id)),
+		&database_id,
+		&format!(
+			"{}-database-{}",
+			provider,
+			database_id.to_simple_ref().to_string()
+		),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -74,7 +77,7 @@ pub async fn create_managed_database_in_workspace(
 	log::trace!("creating entry for newly created managed database");
 	db::create_managed_database(
 		connection,
-		database_id,
+		&database_id,
 		name,
 		db_name,
 		engine,
@@ -96,7 +99,7 @@ pub async fn create_managed_database_in_workspace(
 		Ok(CloudPlatform::DigitalOcean) => {
 			digitalocean::create_managed_database_cluster(
 				connection,
-				database_id,
+				&database_id,
 				db_name,
 				engine,
 				version,
@@ -110,7 +113,7 @@ pub async fn create_managed_database_in_workspace(
 		Ok(CloudPlatform::Aws) => {
 			aws::create_managed_database_cluster(
 				connection,
-				database_id,
+				&database_id,
 				db_name,
 				engine,
 				version,
@@ -128,12 +131,12 @@ pub async fn create_managed_database_in_workspace(
 		}
 	}
 
-	Ok(database_uuid)
+	Ok(database_id)
 }
 
 pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let database = db::get_managed_database_by_id(connection, database_id)
@@ -172,7 +175,7 @@ pub async fn delete_managed_database(
 		&format!(
 			"patr-deleted: {}-{}",
 			database.name,
-			hex::encode(database.id)
+			database.id.to_simple_ref().to_string()
 		),
 	)
 	.await?;
@@ -187,7 +190,7 @@ pub async fn delete_managed_database(
 }
 
 pub(super) async fn update_managed_database_status(
-	database_id: &[u8],
+	database_id: &Uuid,
 	status: &ManagedDatabaseStatus,
 ) -> Result<(), sqlx::Error> {
 	let app = service::get_app();
@@ -203,7 +206,7 @@ pub(super) async fn update_managed_database_status(
 }
 
 pub(super) async fn update_managed_database_credentials_for_database(
-	database_id: &[u8],
+	database_id: &Uuid,
 	host: &str,
 	port: i32,
 	username: &str,

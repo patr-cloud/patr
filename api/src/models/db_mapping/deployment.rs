@@ -2,12 +2,13 @@ use std::{fmt::Display, str::FromStr};
 
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{db, error, service, utils::Error, Database};
 
 pub struct DockerRepository {
-	pub id: Vec<u8>,
-	pub workspace_id: Vec<u8>,
+	pub id: Uuid,
+	pub workspace_id: Uuid,
 	pub name: String,
 }
 
@@ -50,10 +51,10 @@ pub struct Request {
 }
 
 pub struct Deployment {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub registry: String,
-	pub repository_id: Option<Vec<u8>>,
+	pub repository_id: Option<Uuid>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
 	pub status: DeploymentStatus,
@@ -63,7 +64,7 @@ pub struct Deployment {
 	pub domain_name: Option<String>,
 	pub horizontal_scale: i16,
 	pub machine_type: DeploymentMachineType,
-	pub workspace_id: Vec<u8>,
+	pub workspace_id: Uuid,
 }
 
 impl Deployment {
@@ -113,7 +114,7 @@ impl Deployment {
 #[allow(dead_code)]
 pub struct DeploymentRequestLogs {
 	id: i64,
-	deplyoment_id: Vec<u8>,
+	deplyoment_id: Uuid,
 	timestamp: u64,
 	ip_address: String,
 	ip_address_location: (f64, f64),

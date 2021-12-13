@@ -1,5 +1,6 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -289,7 +290,7 @@ async fn add_deployment_request_log(
 
 	let deployment_id = if host.ends_with(".patr.cloud") {
 		let deployment_id_string = host.replace(".patr.cloud", "");
-		let deployment_id = if let Ok(id) = hex::decode(deployment_id_string) {
+		let deployment_id = if let Ok(id) = Uuid::parse_str(&deployment_id_string) {
 			id
 		} else {
 			return Ok(context);

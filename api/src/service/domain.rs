@@ -1,5 +1,4 @@
 use eve_rs::AsError;
-use hex::ToHex;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
@@ -53,7 +52,7 @@ pub async fn ensure_personal_domain_exists(
 				.status(500)
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())
 		} else {
-			Ok(Uuid::from_slice(domain.id.as_ref())?)
+			Ok(domain.id)
 		}
 	} else {
 		// check if personal domain given by the user is registerd as a
@@ -64,19 +63,18 @@ pub async fn ensure_personal_domain_exists(
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
 		}
 
-		let domain_uuid = db::generate_new_domain_id(connection).await?;
-		let domain_id = domain_uuid.as_bytes();
+		let domain_id = db::generate_new_domain_id(connection).await?;
 		db::create_generic_domain(
 			connection,
-			domain_id,
+			&domain_id,
 			domain_name,
 			&ResourceOwnerType::Personal,
 		)
 		.await?;
 
-		db::add_to_personal_domain(connection, domain_id).await?;
+		db::add_to_personal_domain(connection, &domain_id).await?;
 
-		Ok(domain_uuid)
+		Ok(domain_id)
 	}
 }
 
@@ -98,7 +96,7 @@ pub async fn ensure_personal_domain_exists(
 pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -123,11 +121,10 @@ pub async fn add_domain_to_workspace(
 		}
 	}
 
-	let domain_uuid = db::generate_new_domain_id(connection).await?;
-	let domain_id = domain_uuid.as_bytes();
+	let domain_id = db::generate_new_domain_id(connection).await?;
 	db::create_resource(
 		connection,
-		domain_id,
+		&domain_id,
 		&format!("Domain: {}", domain_name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -140,14 +137,14 @@ pub async fn add_domain_to_workspace(
 	.await?;
 	db::create_generic_domain(
 		connection,
-		domain_id,
+		&domain_id,
 		domain_name,
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id).await?;
+	db::add_to_workspace_domain(connection, &domain_id).await?;
 
-	Ok(domain_uuid)
+	Ok(domain_id)
 }
 
 /// # Description
@@ -167,7 +164,7 @@ pub async fn add_domain_to_workspace(
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
@@ -190,7 +187,7 @@ pub async fn is_domain_verified(
 		let expected_cname = RData::CNAME(
 			Name::from_utf8(format!(
 				"{}.patr.cloud",
-				domain_id.encode_hex::<String>()
+				domain_id.to_simple_ref().to_string()
 			))
 			.unwrap(),
 		);

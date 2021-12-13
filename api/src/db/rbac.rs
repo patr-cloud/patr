@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use hex::ToHex;
 use uuid::Uuid;
 
 use crate::{
@@ -22,7 +21,7 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE resource_type(
-			id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY,
+			id UUID CONSTRAINT resource_type_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE,
 			description VARCHAR(500)
 		);
@@ -34,12 +33,12 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE resource(
-			id BYTEA CONSTRAINT resource_pk PRIMARY KEY,
+			id UUID CONSTRAINT resource_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
-			resource_type_id BYTEA NOT NULL
+			resource_type_id UUID NOT NULL
 				CONSTRAINT resource_fk_resource_type_id
 					REFERENCES resource_type(id),
-			owner_id BYTEA NOT NULL
+			owner_id UUID NOT NULL
 				CONSTRAINT resource_fk_owner_id REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			created BIGINT NOT NULL
@@ -68,10 +67,10 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE role(
-			id BYTEA CONSTRAINT role_pk PRIMARY KEY,
+			id UUID CONSTRAINT role_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500),
-			owner_id BYTEA NOT NULL
+			owner_id UUID NOT NULL
 				CONSTRAINT role_fk_owner_id REFERENCES workspace(id),
 			CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id)
 		);
@@ -83,7 +82,7 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE permission(
-			id BYTEA CONSTRAINT permission_pk PRIMARY KEY,
+			id UUID CONSTRAINT permission_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500)
 		);
@@ -96,12 +95,12 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE workspace_user(
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT workspace_user_fk_user_id REFERENCES "user"(id),
-			workspace_id BYTEA NOT NULL
+			workspace_id UUID NOT NULL
 				CONSTRAINT workspace_user_fk_workspace_id
 					REFERENCES workspace(id),
-			role_id BYTEA NOT NULL
+			role_id UUID NOT NULL
 				CONSTRAINT workspace_user_fk_role_id REFERENCES role(id),
 			CONSTRAINT workspace_user_pk
 				PRIMARY KEY(user_id, workspace_id, role_id)
@@ -139,13 +138,13 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE role_permissions_resource_type(
-			role_id BYTEA
+			role_id UUID
 				CONSTRAINT role_permissions_resource_type_fk_role_id
 					REFERENCES role(id),
-			permission_id BYTEA
+			permission_id UUID
 				CONSTRAINT role_permissions_resource_type_fk_permission_id
 					REFERENCES permission(id),
-			resource_type_id BYTEA
+			resource_type_id UUID
 				CONSTRAINT role_permissions_resource_type_fk_resource_type_id
 					REFERENCES resource_type(id),
 			CONSTRAINT role_permissions_resource_type_pk
@@ -184,13 +183,13 @@ pub async fn initialize_rbac_pre(
 	query!(
 		r#"
 		CREATE TABLE role_permissions_resource(
-			role_id BYTEA
+			role_id UUID
 				CONSTRAINT role_permissions_resource_fk_role_id
 					REFERENCES role(id),
-			permission_id BYTEA
+			permission_id UUID
 				CONSTRAINT role_permissions_resource_fk_permission_id
 					REFERENCES permission(id),
-			resource_id BYTEA
+			resource_id UUID
 				CONSTRAINT role_permissions_resource_fk_resource_id
 					REFERENCES resource(id),
 			CONSTRAINT role_permissions_resource_pk
@@ -234,7 +233,6 @@ pub async fn initialize_rbac_post(
 	log::info!("Finishing up rbac tables initialization");
 	for (_, permission) in rbac::permissions::consts_iter().iter() {
 		let uuid = generate_new_permission_id(&mut *connection).await?;
-		let uuid = uuid.as_bytes().as_ref();
 		query!(
 			r#"
 			INSERT INTO
@@ -252,10 +250,7 @@ pub async fn initialize_rbac_post(
 	let mut resource_types = HashMap::new();
 	for (_, resource_type) in rbac::resource_types::consts_iter().iter() {
 		let resource_type = resource_type.to_string();
-		let uuid = generate_new_resource_type_id(&mut *connection)
-			.await?
-			.as_bytes()
-			.to_vec();
+		let uuid = generate_new_resource_type_id(&mut *connection).await?;
 		query!(
 			r#"
 			INSERT INTO
@@ -280,9 +275,9 @@ pub async fn initialize_rbac_post(
 
 pub async fn get_all_workspace_roles_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<HashMap<String, WorkspacePermissions>, sqlx::Error> {
-	let mut workspaces: HashMap<String, WorkspacePermissions> = HashMap::new();
+	user_id: &Uuid,
+) -> Result<HashMap<Uuid, WorkspacePermissions>, sqlx::Error> {
+	let mut workspaces: HashMap<Uuid, WorkspacePermissions> = HashMap::new();
 
 	let workspace_roles = query!(
 		r#"
@@ -301,7 +296,7 @@ pub async fn get_all_workspace_roles_for_user(
 	.await?;
 
 	for workspace_role in workspace_roles {
-		let workspace_id = workspace_role.workspace_id.encode_hex();
+		let workspace_id = workspace_role.workspace_id;
 
 		let resources = query!(
 			r#"
@@ -333,7 +328,7 @@ pub async fn get_all_workspace_roles_for_user(
 
 		if let Some(permission) = workspaces.get_mut(&workspace_id) {
 			for resource in resources {
-				let permission_id = resource.permission_id.encode_hex();
+				let permission_id = resource.permission_id;
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -347,7 +342,7 @@ pub async fn get_all_workspace_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = resource_type.permission_id.encode_hex();
+				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -369,7 +364,7 @@ pub async fn get_all_workspace_roles_for_user(
 				resource_types: HashMap::new(),
 			};
 			for resource in resources {
-				let permission_id = resource.permission_id.encode_hex();
+				let permission_id = resource.permission_id;
 				if let Some(permissions) =
 					permission.resources.get_mut(&resource.resource_id)
 				{
@@ -383,7 +378,7 @@ pub async fn get_all_workspace_roles_for_user(
 				}
 			}
 			for resource_type in resource_types {
-				let permission_id = resource_type.permission_id.encode_hex();
+				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
 					.resource_types
 					.get_mut(&resource_type.resource_type_id)
@@ -422,7 +417,7 @@ pub async fn get_all_workspace_roles_for_user(
 	.await?;
 
 	for workspace_details in workspaces_details {
-		let workspace_id = workspace_details.id.encode_hex();
+		let workspace_id = workspace_details.id;
 		if let Some(workspace) = workspaces.get_mut(&workspace_id) {
 			workspace.is_super_admin = true;
 		} else {
@@ -456,7 +451,7 @@ pub async fn generate_new_role_id(
 			WHERE
 				id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			&uuid
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -484,7 +479,7 @@ pub async fn generate_new_permission_id(
 			WHERE
 				id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			&uuid
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -512,7 +507,7 @@ pub async fn generate_new_resource_type_id(
 			WHERE
 				id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			&uuid
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -558,7 +553,7 @@ pub async fn get_all_permissions(
 
 pub async fn get_resource_type_for_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 ) -> Result<Option<ResourceType>, sqlx::Error> {
 	query_as!(
 		ResourceType,
@@ -582,10 +577,10 @@ pub async fn get_resource_type_for_resource(
 
 pub async fn create_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
+	role_id: &Uuid,
 	name: &str,
 	description: Option<&str>,
-	owner_id: &[u8],
+	owner_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -606,10 +601,10 @@ pub async fn create_role(
 
 pub async fn create_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 	resource_name: &str,
-	resource_type_id: &[u8],
-	owner_id: &[u8],
+	resource_type_id: &Uuid,
+	owner_id: &Uuid,
 	created: u64,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -647,7 +642,7 @@ pub async fn generate_new_resource_id(
 			WHERE
 				id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			&uuid
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -661,7 +656,7 @@ pub async fn generate_new_resource_id(
 
 pub async fn get_resource_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 ) -> Result<Option<Resource>, sqlx::Error> {
 	let resource = query!(
 		r#"
@@ -689,7 +684,7 @@ pub async fn get_resource_by_id(
 
 pub async fn delete_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -708,7 +703,7 @@ pub async fn delete_resource(
 
 pub async fn get_all_workspace_roles(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<Role>, sqlx::Error> {
 	query_as!(
 		Role,
@@ -728,7 +723,7 @@ pub async fn get_all_workspace_roles(
 
 pub async fn get_role_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
+	role_id: &Uuid,
 ) -> Result<Option<Role>, sqlx::Error> {
 	query_as!(
 		Role,
@@ -750,9 +745,9 @@ pub async fn get_role_by_id(
 /// Returns a HashMap of Resource -> Permission[]
 pub async fn get_permissions_on_resources_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
-) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
+	role_id: &Uuid,
+) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
+	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
 	let rows = query!(
 		r#"
 		SELECT
@@ -790,9 +785,9 @@ pub async fn get_permissions_on_resources_for_role(
 /// Returns a HashMap of ResourceType -> Permission[]
 pub async fn get_permissions_on_resource_types_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
-) -> Result<HashMap<Vec<u8>, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Vec<u8>, Vec<Permission>>::new();
+	role_id: &Uuid,
+) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
+	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
 	let rows = query!(
 		r#"
 		SELECT
@@ -828,7 +823,7 @@ pub async fn get_permissions_on_resource_types_for_role(
 
 pub async fn remove_all_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
+	role_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -859,8 +854,8 @@ pub async fn remove_all_permissions_for_role(
 
 pub async fn insert_resource_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
-	resource_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
+	role_id: &Uuid,
+	resource_permissions: &HashMap<Uuid, Vec<Uuid>>,
 ) -> Result<(), sqlx::Error> {
 	for (resource_id, permissions) in resource_permissions {
 		for permission_id in permissions {
@@ -884,8 +879,8 @@ pub async fn insert_resource_permissions_for_role(
 
 pub async fn insert_resource_type_permissions_for_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
-	resource_type_permissions: &HashMap<Vec<u8>, Vec<Vec<u8>>>,
+	role_id: &Uuid,
+	resource_type_permissions: &HashMap<Uuid, Vec<Uuid>>,
 ) -> Result<(), sqlx::Error> {
 	for (resource_id, permissions) in resource_type_permissions {
 		for permission_id in permissions {
@@ -909,7 +904,7 @@ pub async fn insert_resource_type_permissions_for_role(
 
 pub async fn delete_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
+	role_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	remove_all_permissions_for_role(&mut *connection, role_id).await?;
 
@@ -930,7 +925,7 @@ pub async fn delete_role(
 
 pub async fn remove_all_users_from_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &[u8],
+	role_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

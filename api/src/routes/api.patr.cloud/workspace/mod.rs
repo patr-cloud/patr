@@ -1,6 +1,7 @@
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -60,7 +61,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(&workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -146,16 +147,14 @@ async fn get_workspace_info(
 		.get_param(request_keys::WORKSPACE_ID)
 		.unwrap()
 		.clone();
-	let workspace_id = hex::decode(&workspace_id_string)
+	let workspace_id = Uuid::parse_str(&workspace_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let access_token_data = context.get_token_data().unwrap();
-	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data
-		.workspaces
-		.contains_key(&workspace_id_string) &&
-		access_token_data.user.id != god_user_id
+	if !access_token_data.workspaces.contains_key(&workspace_id) &&
+		&access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -329,7 +328,7 @@ async fn update_workspace_info(
 	let body = context.get_body_object().clone();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(&workspace_id).unwrap();
 
 	let name = body
 		.get(request_keys::NAME)
