@@ -846,16 +846,6 @@
       ]
     }
   },
-  "2595fbc1edc58dc0cb8db8f4deb657cd0eb929bf570d025bd11fc2551527a9a4": {
-    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) DEFAULT \"/\", a_record TEXT [], aaaa_record TEXT [], text_record TEXT [], cname_record TEXT, mx_record TEXT [], content VARCHAR(255), ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE, deployment_id BYTEA NOT NULL, CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "25a74d79e5822e2afec092e8b8a9d0bf67839fde9a61235bdab5923102de08cc": {
     "query": "DELETE FROM deployed_domain WHERE static_site_id = $1;",
     "describe": {
@@ -5634,6 +5624,16 @@
       "nullable": []
     }
   },
+  "cd93260a916995d43c794583131f93c41a1bbbfeff78227fccfed19a8323c05f": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) NOT NULL DEFAULT '/', a_record TEXT [] NOT NULL, aaaa_record TEXT [] NOT NULL, text_record TEXT [] NOT NULL, cname_record TEXT NOT NULL, mx_record TEXT [] NOT NULL, content VARCHAR(255) NOT NULL, ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE, deployment_id BYTEA NOT NULL, CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "cd99286bf0c134bcf4c64f4cf9a7ebe20af97d1115dde0dc92555cd2c4fd65b5": {
     "query": "SELECT id, workspace_id, name as \"name: _\" FROM docker_registry_repository WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
     "describe": {
@@ -6056,6 +6056,86 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "df88feee5a9b816b74dbe80eea347e94279bbdc5e757cb40ebc0674438ef8fd1": {
+    "query": "SELECT * FROM dns_record WHERE domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "a_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 3,
+          "name": "aaaa_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 4,
+          "name": "text_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 5,
+          "name": "cname_record",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "mx_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "content",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "ttl",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 9,
+          "name": "proxied",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 10,
+          "name": "deployment_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {

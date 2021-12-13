@@ -192,4 +192,5 @@ pub mod request_keys {
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
 	pub const IS_PATR_CONTROLLED: &str = "isPatrControlled";
+	pub const DNS_RECORD: &str = "dns_record";
 }

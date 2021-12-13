@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::{Domain, PersonalDomain, WorkspaceDomain},
+	models::db_mapping::{DnsRecord, Domain, PersonalDomain, WorkspaceDomain},
 	query,
 	query_as,
 	utils::constants::ResourceOwnerType,
@@ -155,13 +155,13 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE dns_record (
 			domain_id BYTEA,
-			name VARCHAR(255) DEFAULT "/",
-			a_record TEXT [],
-			aaaa_record TEXT [],
-			text_record TEXT [],
-			cname_record TEXT,
-			mx_record TEXT [],
-			content VARCHAR(255),
+			name VARCHAR(255) NOT NULL DEFAULT '/',
+			a_record TEXT [] NOT NULL,
+			aaaa_record TEXT [] NOT NULL,
+			text_record TEXT [] NOT NULL,
+			cname_record TEXT NOT NULL,
+			mx_record TEXT [] NOT NULL,
+			content VARCHAR(255) NOT NULL,
 			ttl INTEGER NOT NULL,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
 			deployment_id BYTEA NOT NULL,
@@ -621,4 +621,24 @@ pub async fn add_patr_controlled_domain(
 	.execute(&mut *connection)
 	.await?;
 	Ok(())
+}
+
+pub async fn get_dns_record_by_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+) -> Result<Vec<DnsRecord>, sqlx::Error> {
+	query_as!(
+		DnsRecord,
+		r#"
+		SELECT
+			*
+		FROM
+			dns_record
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id
+	)
+	.fetch_all(&mut *connection)
+	.await
 }

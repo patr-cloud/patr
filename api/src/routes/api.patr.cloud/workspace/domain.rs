@@ -196,6 +196,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	// GEet list of records for a domain
+	app.get(
+		"/:domainId/dns-record",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::DELETE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = hex::decode(&domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_record)),
+		],
+	);
+
 	// Do something with the domains, etc, maybe?
 
 	app
@@ -566,6 +597,32 @@ async fn delete_domain_in_workspace(
 
 	context.json(json!({
 		request_keys::SUCCESS: true
+	}));
+	Ok(context)
+}
+
+async fn get_domain_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+
+	// hex::decode throws an error for a wrong string
+	// This error is handled by the resource authenticator middleware
+	// So it's safe to call unwrap() here without crashing the system
+	// This won't be executed unless hex::decode(domain_id) returns Ok
+	let domain_id = hex::decode(domain_id).unwrap();
+
+	// get dns records from database
+	let dns_record = db::get_dns_record_by_domain_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+		request_keys::DNS_RECORD: dns_record
 	}));
 	Ok(context)
 }
