@@ -110,7 +110,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -142,7 +142,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -175,7 +175,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = Uuid::parse_str(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -303,7 +303,7 @@ async fn add_domain_to_workspace(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id = Uuid::parse_str(
-		&context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 	)
 	.unwrap();
 

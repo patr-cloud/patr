@@ -307,8 +307,8 @@ async fn sign_out(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id = context.get_token_data().unwrap().login_id.clone();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let login_id = context.get_token_data().unwrap().login_id;
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	db::get_user_login_for_user(
 		context.get_database_connection(),

@@ -430,12 +430,12 @@ pub(super) async fn create_managed_database_cluster(
 	)
 	.await?;
 
-	let database_id = database_id.clone();
+	let database_id = *database_id;
 	let db_name = db_name.to_string();
 
 	task::spawn(async move {
 		let result = update_database_cluster_credentials(
-			database_id.clone(),
+			database_id,
 			db_name,
 			database_cluster.database.id,
 			request_id,

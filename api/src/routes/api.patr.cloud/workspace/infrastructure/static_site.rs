@@ -48,7 +48,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -82,7 +82,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -116,7 +116,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -150,7 +150,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -186,7 +186,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -218,7 +218,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -254,7 +254,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -288,7 +288,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -324,7 +324,7 @@ pub fn create_sub_app(
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
 					let static_site_id =
-						Uuid::parse_str(&static_site_id_string)
+						Uuid::parse_str(static_site_id_string)
 							.status(400)
 							.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -358,7 +358,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -599,7 +599,7 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let static_site_id = service::create_static_site_deployment_in_workspace(
 		context.get_database_connection(),

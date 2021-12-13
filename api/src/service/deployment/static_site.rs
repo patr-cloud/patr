@@ -136,7 +136,7 @@ pub async fn start_static_site_deployment(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = config.clone();
-	let static_site_id = static_site_id.clone();
+	let static_site_id = *static_site_id;
 
 	task::spawn(async move {
 		let deploy_result = deploy_static_site(

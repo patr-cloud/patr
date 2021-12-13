@@ -48,7 +48,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -79,7 +79,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -110,7 +110,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = Uuid::parse_str(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -193,7 +193,7 @@ async fn create_docker_repository(
 
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
 	// check if repository already exists
 	let check = db::get_repository_by_name(
@@ -215,7 +215,7 @@ async fn create_docker_repository(
 
 	// safe to assume that workspace id is present here
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
@@ -287,7 +287,7 @@ async fn list_docker_repositories(
 ) -> Result<EveContext, Error> {
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
 	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
@@ -347,7 +347,7 @@ async fn delete_docker_repository(
 ) -> Result<EveContext, Error> {
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
-	let repository_id = Uuid::parse_str(&repo_id_string).unwrap();
+	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
 
 	let repository = db::get_docker_repository_by_id(
 		context.get_database_connection(),

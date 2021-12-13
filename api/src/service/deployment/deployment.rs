@@ -219,7 +219,7 @@ pub async fn start_deployment(
 				let result = digitalocean::deploy_container(
 					image_id.clone(),
 					region,
-					deployment_id.clone(),
+					deployment_id,
 					config.clone(),
 				)
 				.await;
@@ -273,7 +273,7 @@ pub async fn start_deployment(
 				let result = aws::deploy_container(
 					image_id.clone(),
 					region,
-					deployment_id.clone(),
+					deployment_id,
 					config,
 				)
 				.await;

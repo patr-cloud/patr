@@ -475,7 +475,7 @@ pub async fn create_login_for_user(
 	.await?;
 	let user_login = UserLogin {
 		login_id,
-		user_id: user_id.clone(),
+		user_id: *user_id,
 		last_activity: iat,
 		last_login: iat,
 		refresh_token: hashed_refresh_token,
@@ -776,7 +776,7 @@ pub async fn join_user(
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
-			.set(user_id.clone())
+			.set(user_id)
 			.expect("GOD_USER_ID was already set");
 	}
 

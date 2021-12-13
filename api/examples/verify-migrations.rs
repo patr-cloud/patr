@@ -188,7 +188,7 @@ async fn main() {
 }
 
 fn get_env_var(env_name: &str) -> String {
-	env::var(env_name).expect(&format!("{} is not set", env_name))
+	env::var(env_name).unwrap_or_else(|_| panic!("{} is not set", env_name))
 }
 
 async fn get_total_number_of_releases(
@@ -301,22 +301,22 @@ async fn handle_release(
 
 	println!("Clearing database...");
 	clear_database(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 	)
 	.await;
 	println!("Database cleared");
 
 	println!("Restoring database dump...");
 	restore_database_dump(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		"database.sql",
 	)
 	.await;
@@ -325,11 +325,11 @@ async fn handle_release(
 	println!("Testing migrations against version {}...", release.tag_name);
 	println!("Running api to run migrations...");
 	run_api_with_only_db(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		redis_host,
 	)
 	.await;
@@ -337,11 +337,11 @@ async fn handle_release(
 
 	println!("Dumping migrated database to migrated.sql");
 	dump_database(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		"migrated.sql",
 	)
 	.await;
@@ -365,7 +365,7 @@ async fn dump_database(
 	if fs::metadata(file_name).await.is_ok() {
 		fs::remove_file(file_name)
 			.await
-			.expect(&format!("unable to delete {}", file_name));
+			.unwrap_or_else(|_| panic!("unable to delete {}", file_name));
 	}
 
 	let pg_dump = Command::new("pg_dump")
@@ -386,13 +386,13 @@ async fn dump_database(
 		.create(true)
 		.open(file_name)
 		.await
-		.expect(&format!("unable to open {} file for writing", file_name));
+		.unwrap_or_else(|_| panic!("unable to open {} file for writing", file_name));
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
 		output_file
 			.write_all(format!("{}\n", line).as_bytes())
 			.await
-			.expect(&format!("Unable to write to file {}", file_name));
+			.unwrap_or_else(|_| panic!("Unable to write to file {}", file_name));
 	}
 }
 
@@ -521,7 +521,7 @@ async fn restore_database_dump(
 		.read(true)
 		.open(file_name)
 		.await
-		.expect(&format!("unable to open {} file for reading", file_name));
+		.unwrap_or_else(|_| panic!("unable to open {} file for reading", file_name));
 	let mut line_iterator = BufReader::new(input_file).lines();
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {

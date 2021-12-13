@@ -245,7 +245,7 @@ async fn get_user_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 	let User {
 		id,
 		username,
@@ -451,7 +451,7 @@ async fn update_user_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	db::update_user_data(
 		context.get_database_connection(),
@@ -508,7 +508,7 @@ async fn add_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::add_personal_email_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -550,7 +550,7 @@ async fn list_email_addresses(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let backup_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
@@ -613,7 +613,7 @@ async fn list_phone_numbers(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let backup_phone_number = db::get_backup_phone_number_for_user(
 		context.get_database_connection(),
@@ -682,7 +682,7 @@ async fn update_backup_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = backup_email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::update_user_backup_email(
 		context.get_database_connection(),
@@ -738,7 +738,7 @@ async fn update_backup_phone_number(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let country_code = backup_phone_country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::update_user_backup_phone_number(
 		context.get_database_connection(),
@@ -791,7 +791,7 @@ async fn delete_personal_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::delete_personal_email_address(
 		context.get_database_connection(),
@@ -848,7 +848,7 @@ async fn add_phone_number_for_user(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let otp = service::add_phone_number_to_be_verified_for_user(
 		context.get_database_connection(),
@@ -915,7 +915,7 @@ async fn verify_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::verify_phone_number_for_user(
 		context.get_database_connection(),
@@ -974,7 +974,7 @@ async fn delete_phone_number(
 	// two letter country code instead of the numeric one
 	let country_code = country_code.to_uppercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::delete_phone_number(
 		context.get_database_connection(),
@@ -1031,7 +1031,7 @@ async fn verify_email_address(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let email_address = email.to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	service::verify_personal_email_address_for_user(
 		context.get_database_connection(),
@@ -1084,7 +1084,7 @@ async fn get_workspaces_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 	let workspaces = db::get_all_workspaces_for_user(
 		context.get_database_connection(),
 		&user_id,
@@ -1143,7 +1143,7 @@ async fn change_password(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let user = service::change_password_for_user(
 		context.get_database_connection(),
@@ -1166,7 +1166,7 @@ async fn get_all_logins_for_user(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	let logins = db::get_all_logins_for_user(
 		context.get_database_connection(),
@@ -1224,7 +1224,7 @@ async fn delete_user_login(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 
 	db::delete_user_login_by_id(
 		context.get_database_connection(),

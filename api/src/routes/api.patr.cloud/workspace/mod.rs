@@ -69,7 +69,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -274,7 +274,7 @@ async fn create_new_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let workspace_name = workspace_name.trim().to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id;
 	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
 		&workspace_name,
@@ -326,7 +326,7 @@ async fn update_workspace_info(
 	let name = name.trim().to_lowercase();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	if name.is_empty() {
 		// No parameters to update
