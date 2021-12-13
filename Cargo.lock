@@ -103,6 +103,7 @@ dependencies = [
  "semver",
  "serde 1.0.130",
  "serde_json",
+ "serde_qs 0.8.5",
  "sha2",
  "shiplift",
  "sqlx",
@@ -598,7 +599,7 @@ dependencies = [
  "reqwest",
  "serde 1.0.130",
  "serde_json",
- "serde_qs",
+ "serde_qs 0.4.6",
  "serde_with",
  "slog",
  "slog-term",
@@ -2701,6 +2702,17 @@ dependencies = [
  "error-chain",
  "percent-encoding 1.0.1",
  "serde 1.0.130",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7715380eec75f029a4ef7de39a9200e0a63823176b759d055b613f5a87df6a6"
+dependencies = [
+ "percent-encoding 2.1.0",
+ "serde 1.0.130",
+ "thiserror",
 ]
 
 [[package]]

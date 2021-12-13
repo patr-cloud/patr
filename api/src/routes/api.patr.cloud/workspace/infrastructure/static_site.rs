@@ -81,9 +81,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -114,9 +115,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -147,9 +149,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -182,9 +185,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -249,9 +253,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -282,9 +287,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -317,9 +323,10 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = Uuid::parse_str(&static_site_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id =
+						Uuid::parse_str(&static_site_id_string)
+							.status(400)
+							.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -413,9 +420,10 @@ async fn get_static_site_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 	let static_site = db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
@@ -653,9 +661,10 @@ async fn start_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
@@ -705,9 +714,10 @@ async fn upload_files_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 	let body = context.get_body_object().clone();
 
 	let file = body
@@ -766,9 +776,10 @@ async fn stop_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	// stop the running site, if it exists
 	let config = context.get_state().config.clone();
@@ -812,9 +823,10 @@ async fn delete_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
@@ -875,9 +887,10 @@ async fn get_domain_dns_records_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let config = context.get_state().config.clone();
 
@@ -941,9 +954,10 @@ async fn set_domain_name_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let body = context.get_body_object().clone();
 	let domain_name = body
@@ -1027,9 +1041,10 @@ async fn is_domain_validated_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		Uuid::parse_str(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 	let config = context.get_state().config.clone();
 
 	let validated = service::get_static_site_validation_status(

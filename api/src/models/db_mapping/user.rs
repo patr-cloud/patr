@@ -47,12 +47,6 @@ pub struct UserEmailAddress {
 	pub domain_id: Uuid,
 }
 
-pub struct UserPhoneNumber {
-	pub user_id: Uuid,
-	pub country_code: String,
-	pub number: String,
-}
-
 pub struct UserToSignUp {
 	pub username: String,
 	pub account_type: ResourceOwnerType,

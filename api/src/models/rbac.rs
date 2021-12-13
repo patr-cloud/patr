@@ -16,13 +16,13 @@ pub struct WorkspacePermissions {
 	pub is_super_admin: bool,
 	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
 	pub resources: HashMap<Uuid, Vec<Uuid>>, /* Given a resource, what
-	                                               * and all permissions do
-	                                               * you have on it */
+	                                          * and all permissions do
+	                                          * you have on it */
 	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
 	pub resource_types: HashMap<Uuid, Vec<Uuid>>, /* Given a resource
-	                                                    * type, what and all
-	                                                    * permissions do you
-	                                                    * have on it */
+	                                               * type, what and all
+	                                               * permissions do you
+	                                               * have on it */
 }
 
 #[api_macros::iterable_module(consts, recursive = true)]

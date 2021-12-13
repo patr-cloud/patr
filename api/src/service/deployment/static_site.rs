@@ -49,8 +49,7 @@ pub async fn create_static_site_deployment_in_workspace(
 	}
 
 	if let Some(domain_name) = domain_name {
-		let is_god_user =
-			user_id == rbac::GOD_USER_ID.get().unwrap();
+		let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
 		// If the entry point is not valid, OR if (the domain is special and the
 		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
@@ -177,7 +176,8 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let patr_domain = format!("{}.patr.cloud", static_site_id.to_simple_ref().to_string());
+	let patr_domain =
+		format!("{}.patr.cloud", static_site_id.to_simple_ref().to_string());
 	log::trace!("request_id: {} - logging into the ssh server for stopping the static site", request_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
