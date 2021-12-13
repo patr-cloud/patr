@@ -8,7 +8,7 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	service,
+	service::{self, kubernetes},
 	utils::{
 		constants::request_keys,
 		validator,
@@ -896,10 +896,17 @@ async fn get_deployment_info(
 		request_keys::IMAGE_TAG.to_string(),
 		Value::String(deployment.image_tag),
 	);
-	// TODO: fetch status from kubernetes api
+
+	let config = context.get_state().config.clone();
+	let status = kubernetes::get_kubernetes_deployment_status(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
 	response.insert(
 		request_keys::STATUS.to_string(),
-		Value::String(deployment.status.to_string()),
+		Value::String(status.to_string()),
 	);
 	response.insert(
 		request_keys::REGION.to_string(),
@@ -1297,6 +1304,15 @@ async fn set_horizontal_scale(
 	)
 	.await?;
 
+	let config = context.get_state().config.clone();
+
+	kubernetes::update_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
+	)
+	.await?;
+
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
@@ -1349,6 +1365,15 @@ async fn set_machine_type(
 		context.get_database_connection(),
 		&deployment_id,
 		&machine_type,
+	)
+	.await?;
+
+	let config = context.get_state().config.clone();
+
+	kubernetes::update_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+		&config,
 	)
 	.await?;
 

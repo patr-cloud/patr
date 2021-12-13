@@ -200,7 +200,7 @@ pub async fn start_deployment(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	let (_provider, _region) = deployment
+	let _ = deployment
 		.region
 		.split_once('-')
 		.status(500)
@@ -219,59 +219,32 @@ pub async fn start_deployment(
 		request_id
 	);
 
-	let new_repo_name = digitalocean::push_to_docr(
+	let _ = digitalocean::push_to_docr(
 		deployment_id,
 		&image_id,
 		Client::new(),
 		config,
 	)
 	.await?;
-	let config = config.clone();
-	let deployment_id = deployment_id.to_vec();
+
 	db::update_deployment_deployed_image(
 		connection,
-		&deployment_id,
+		deployment_id,
 		Some(&image_id),
 	)
 	.await?;
 
-	let result = kubernetes::update_deployment(
-		connection,
-		&deployment_id,
-		&config.clone(),
-	)
-	.await;
+	let result =
+		kubernetes::update_deployment(connection, deployment_id, config).await;
 
 	if let Err(error) = result {
 		let _ = super::update_deployment_status(
-			&deployment_id,
+			deployment_id,
 			&DeploymentStatus::Errored,
 		)
 		.await;
 		log::info!("Error with the deployment, {}", error.get_error());
 	}
-
-	log::trace!("Deleting image tagged with registry.digitalocean.com");
-	let delete_result = super::delete_docker_image(&new_repo_name).await;
-	if let Err(delete_result) = delete_result {
-		log::error!(
-			"Failed to delete the image: {}, Error: {}",
-			new_repo_name,
-			delete_result.get_error()
-		);
-	}
-
-	log::trace!("deleting the pulled image");
-
-	let delete_result = super::delete_docker_image(&image_id).await;
-	if let Err(delete_result) = delete_result {
-		log::error!(
-			"Failed to delete the image: {}, Error: {}",
-			image_id,
-			delete_result.get_error()
-		);
-	}
-	log::trace!("Docker image deleted");
 
 	Ok(())
 }

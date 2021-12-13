@@ -7,10 +7,12 @@ use k8s_openapi::{
 		core::v1::{
 			Container,
 			ContainerPort,
+			EnvVar,
 			LocalObjectReference,
 			Pod,
 			PodSpec,
 			PodTemplateSpec,
+			ResourceRequirements,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -28,6 +30,7 @@ use k8s_openapi::{
 		},
 	},
 	apimachinery::pkg::{
+		api::resource::Quantity,
 		apis::meta::v1::LabelSelector,
 		util::intstr::IntOrString,
 	},
@@ -52,7 +55,7 @@ use uuid::Uuid;
 use crate::{
 	db,
 	error,
-	models::db_mapping::DeploymentStatus,
+	models::db_mapping::{DeploymentMachineType, DeploymentStatus},
 	service::{self, deployment::digitalocean},
 	utils::{settings::Settings, Error},
 	Database,
@@ -94,6 +97,18 @@ pub async fn update_deployment(
 	);
 	let horizontal_scale = deployment.horizontal_scale as i32;
 
+	let mut machine_type: BTreeMap<String, Quantity> = BTreeMap::new();
+
+	let mt = match deployment.machine_type {
+		DeploymentMachineType::Micro => ("512M".to_string(), "1.0".to_string()),
+		DeploymentMachineType::Small => ("1G".to_string(), "1.0".to_string()),
+		DeploymentMachineType::Medium => ("2G".to_string(), "1.0".to_string()),
+		DeploymentMachineType::Large => ("4G".to_string(), "2.0".to_string()),
+	};
+
+	machine_type.insert("memory".to_string(), Quantity(mt.0));
+	machine_type.insert("cpu".to_string(), Quantity(mt.1));
+
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
@@ -122,6 +137,17 @@ pub async fn update_deployment(
 	)
 	.await;
 
+	let deployment_environment_variable =
+		db::get_environment_variables_for_deployment(connection, deployment_id)
+			.await?
+			.into_iter()
+			.map(|env_variable| EnvVar {
+				name: env_variable.0,
+				value: Some(env_variable.1),
+				..EnvVar::default()
+			})
+			.collect::<Vec<_>>();
+
 	let kubernetes_deployment = Deployment {
 		metadata: ObjectMeta {
 			name: Some(deployment_id_string.to_string()),
@@ -145,6 +171,11 @@ pub async fn update_deployment(
 							name: Some("http".to_owned()),
 							..ContainerPort::default()
 						}]),
+						env: Some(deployment_environment_variable),
+						resources: Some(ResourceRequirements {
+							limits: Some(machine_type.clone()),
+							requests: Some(machine_type.clone()),
+						}),
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
@@ -555,4 +586,37 @@ async fn app_exists(
 	}
 
 	Ok(true)
+}
+
+// TODO: add the logic of errored deployment
+pub async fn get_kubernetes_deployment_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+	config: &Settings,
+) -> Result<DeploymentStatus, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let kubernetes_client = get_kubernetes_config(config).await?;
+	let deployment_status =
+		Api::<Deployment>::namespaced(kubernetes_client.clone(), "default")
+			.get(&hex::encode(deployment.id.clone()))
+			.await?
+			.status
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	if deployment_status.available_replicas ==
+		Some(deployment.horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Running)
+	} else if deployment_status.available_replicas <=
+		Some(deployment.horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Deploying)
+	} else {
+		Ok(DeploymentStatus::Errored)
+	}
 }

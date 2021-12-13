@@ -308,6 +308,27 @@ pub async fn push_to_docr(
 	}
 
 	// log::trace!("request_id: {} - Pushed to DO", request_id);
+	log::trace!("Deleting image tagged with registry.digitalocean.com");
+	let delete_result = super::delete_docker_image(&new_repo_name).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			new_repo_name,
+			delete_result.get_error()
+		);
+	}
+
+	log::trace!("deleting the pulled image");
+
+	let delete_result = super::delete_docker_image(full_image_name).await;
+	if let Err(delete_result) = delete_result {
+		log::error!(
+			"Failed to delete the image: {}, Error: {}",
+			full_image_name,
+			delete_result.get_error()
+		);
+	}
+	log::trace!("Docker image deleted");
 	Ok(new_repo_name)
 }
 
