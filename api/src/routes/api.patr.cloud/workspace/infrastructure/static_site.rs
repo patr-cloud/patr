@@ -81,10 +81,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -115,10 +114,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -149,10 +147,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -185,10 +182,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -253,10 +249,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -287,10 +282,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -323,10 +317,9 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id =
-						Uuid::parse_str(static_site_id_string)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),

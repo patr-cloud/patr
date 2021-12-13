@@ -300,14 +300,8 @@ async fn handle_release(
 	println!("Database dump downloaded");
 
 	println!("Clearing database...");
-	clear_database(
-		db_host,
-		db_port,
-		db_username,
-		db_password,
-		db_database,
-	)
-	.await;
+	clear_database(db_host, db_port, db_username, db_password, db_database)
+		.await;
 	println!("Database cleared");
 
 	println!("Restoring database dump...");
@@ -386,13 +380,17 @@ async fn dump_database(
 		.create(true)
 		.open(file_name)
 		.await
-		.unwrap_or_else(|_| panic!("unable to open {} file for writing", file_name));
+		.unwrap_or_else(|_| {
+			panic!("unable to open {} file for writing", file_name)
+		});
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
 		output_file
 			.write_all(format!("{}\n", line).as_bytes())
 			.await
-			.unwrap_or_else(|_| panic!("Unable to write to file {}", file_name));
+			.unwrap_or_else(|_| {
+				panic!("Unable to write to file {}", file_name)
+			});
 	}
 }
 
@@ -521,7 +519,9 @@ async fn restore_database_dump(
 		.read(true)
 		.open(file_name)
 		.await
-		.unwrap_or_else(|_| panic!("unable to open {} file for reading", file_name));
+		.unwrap_or_else(|_| {
+			panic!("unable to open {} file for reading", file_name)
+		});
 	let mut line_iterator = BufReader::new(input_file).lines();
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {

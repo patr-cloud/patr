@@ -302,10 +302,9 @@ async fn add_domain_to_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_id = Uuid::parse_str(
-		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-	)
-	.unwrap();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 
 	let body = context.get_body_object().clone();
 
