@@ -65,13 +65,56 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM (
+			'patr',
+			'user'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// todo: create composite key for this table
 	query!(
 		r#"
 		CREATE TABLE patr_controlled_domain (
 			domain_id BYTEA NOT NULL REFERENCES domain(id),
 			zone_identifier BYTEA NOT NULL,
-			is_verified BOOLEAN NOT NULL DEFAULT FALSE
+			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr',
+			CONSTRAINT patr_controlled_domain_chk_control_status
+				CHECK(control_status ='patr')
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_controlled_domain (
+			domain_id BYTEA NOT NULL REFERENCES domain(id),
+			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user',
+			CONSTRAINT user_controlled_domain_chk_control_status
+				CHECK(control_status = 'user')
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE entry_point (
+			domain_id BYTEA NOT NULL REFERENCES domain(id),
+			sub_domain VARCHAR(255) NOT NULL DEFAULT "/",
+			is_verified BOOLEAN NOT NULL DEFAULT TRUE,
+			CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain),
+			CONSTRAING entry_point_chk_verified
+				CHECK(is_verified = TRUE)
 		);
 		"#
 	)
@@ -106,6 +149,8 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	// todo: check if MX record exists for domain, then other records should be
+	// null and vice versa
 	query!(
 		r#"
 		CREATE TABLE dns_record (
@@ -118,7 +163,10 @@ pub async fn initialize_domain_pre(
 			mx_record TEXT [],
 			content VARCHAR(255),
 			ttl INTEGER NOT NULL,
-			proxied BOOLEAN NOT NULL DEFAULT TRUE
+			proxied BOOLEAN NOT NULL DEFAULT TRUE,
+			deployment_id BYTEA NOT NULL,
+			CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name),
+			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
 	)

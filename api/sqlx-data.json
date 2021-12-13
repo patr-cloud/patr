@@ -314,6 +314,16 @@
       ]
     }
   },
+  "1073a864f20d4a248c0ae85ede1fc4b605b340d879f0bf0328d3a78e36c4a160": {
+    "query": "CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM ( 'patr', 'user' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "124c4789134d31861ed5682f3769ca275c6ead752b6681258b087ee7c85c8eb3": {
     "query": "UPDATE deployment SET deployed_image = $1 WHERE id = $2;",
     "describe": {
@@ -834,6 +844,16 @@
         false,
         false
       ]
+    }
+  },
+  "2595fbc1edc58dc0cb8db8f4deb657cd0eb929bf570d025bd11fc2551527a9a4": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) DEFAULT \"/\", a_record TEXT [], aaaa_record TEXT [], text_record TEXT [], cname_record TEXT, mx_record TEXT [], content VARCHAR(255), ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE, deployment_id BYTEA NOT NULL, CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "25a74d79e5822e2afec092e8b8a9d0bf67839fde9a61235bdab5923102de08cc": {
@@ -3319,6 +3339,16 @@
       "nullable": []
     }
   },
+  "7a79f6125b7aa53af18392647e8983e20dea2c2c09f1b68e6d5224d4997daf4c": {
+    "query": "CREATE TABLE entry_point ( domain_id BYTEA NOT NULL REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL DEFAULT \"/\", is_verified BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain), CONSTRAING entry_point_chk_verified CHECK(is_verified = TRUE) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "7c5a4a0c3e45414231965992272912e05a6dfc88247f92f17cc9a389b08af83d": {
     "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', NULL, $3);",
     "describe": {
@@ -3504,6 +3534,16 @@
   },
   "81b89a964e176af57c481f109c4e5d1fe334a498ef49639f2aaab01aedef6d0e": {
     "query": "CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM( 'http', 'https' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "82a24c71e27d7d8647232dcdde569deb25e2a487cd4d1441cffc307d32da69df": {
+    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL, is_verified BOOLEAN NOT NULL DEFAULT FALSE, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr', CONSTRAINT patr_controlled_domain_chk_control_status CHECK(control_status ='patr') );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5190,16 +5230,6 @@
       "nullable": []
     }
   },
-  "bd6a5f69a56cfb7effb2e8a547c9a559a2d72c942cbfcd199794d3957c5d52c8": {
-    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL, is_verified BOOLEAN NOT NULL DEFAULT FALSE );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "bdaeb51981c627273df25d9f429211412a10aecdf420ea483c71fa45c480a52f": {
     "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );",
     "describe": {
@@ -6301,6 +6331,16 @@
       ]
     }
   },
+  "e847da2b7efd8b39279c5b705b27e1de2e4871548eb759fe782e2103c4d90310": {
+    "query": "CREATE TABLE user_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), is_verified BOOLEAN NOT NULL DEFAULT FALSE, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user', CONSTRAINT user_controlled_domain_chk_control_status CHECK(control_status = 'user') );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "e8fc5c9cf1321c4b222e0bc263662c19e54a0b11d3efd9a52fcda05750195aef": {
     "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6646,16 +6686,6 @@
         false,
         false
       ]
-    }
-  },
-  "fdf2126399929dd1f2d8677f0666bc33a3424500295217303c45c3b46e1660af": {
-    "query": "CREATE TABLE dns_record ( domain_id BYTEA, name VARCHAR(255) DEFAULT \"/\", a_record TEXT [], aaaa_record TEXT [], text_record TEXT [], cname_record TEXT, mx_record TEXT [], content VARCHAR(255), ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL DEFAULT TRUE );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "fea8fe4eb8151508a43bd8a1af74ed745e4b06c32308df3818751d4a7bb72423": {
