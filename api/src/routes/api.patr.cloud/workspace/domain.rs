@@ -730,13 +730,36 @@ async fn add_entry_point(
 	Ok(context)
 }
 
+// todo: update this to cloudflare
+// add priority
 async fn add_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = hex::decode(domain_id).unwrap();
+
+	// check if domain is patr controlled
+	let domain = db::get_patr_controlled_domain_by_domain_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?;
+
+	if domain.is_none() {
+		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
+		return Ok(context);
+	}
+	let domain = domain.unwrap();
 	let body = context.get_body_object().clone();
+
+	// type determines what kind of record is being added
+	let r#type = body
+		.get(request_keys::TYPE)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let sub_domain = body
 		.get(request_keys::SUB_DOMAIN)
@@ -751,6 +774,44 @@ async fn add_dns_record(
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let ttl = body
+		.get(request_keys::TTL)
+		.map(|value| value.as_u64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let proxied = body
+		.get(request_keys::PROXIED)
+		.map(|value| value.as_bool())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// only be used my MX record
+	let priority = body
+		.get(request_keys::PRIORITY)
+		.map(|value| value.as_u64())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let content = body
+		.get(request_keys::CONTENT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	match r#type {
+		"A" => {}
+		"AAAA" => {}
+		"MX" => {}
+		"CNAME" => {}
+		"TXT" => {}
+		_ => {}
+	}
 
 	let a_record = body
 		.get(request_keys::A_RECORD)
@@ -811,28 +872,31 @@ async fn add_dns_record(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let content = body
-		.get(request_keys::CONTENT)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// get zone identifier
+	let zone_identifier = domain.zone_identifier;
 
-	let ttl = body
-		.get(request_keys::TTL)
-		.map(|value| value.as_u64())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// add records to cloudflare
 
-	let proxied = body
-		.get(request_keys::PROXIED)
-		.map(|value| value.as_bool())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	//add to database
+	// db::add_dns_record(
+	// 	context.get_database_connection(),
+	// 	&domain_id,
+	// 	&sub_domain,
+	// 	&path,
+	// 	a_record,
+	// 	aaaa_record,
+	// 	cname_record,
+	// 	mx_record,
+	// 	text_record,
+	// 	content,
+	// 	ttl as i32,
+	// 	proxied,
+	// 	priority as i32,
+	// )
+	// .await?;
 
-	//add to database`
-
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }

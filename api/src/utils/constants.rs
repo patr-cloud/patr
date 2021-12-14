@@ -201,4 +201,6 @@ pub mod request_keys {
 	pub const CONTENT: &str = "content";
 	pub const PROXIED: &str = "proxied";
 	pub const TTL: &str = "ttl";
+	pub const PRIORITY: &str = "priority";
+	pub const TYPE: &str = "type";
 }

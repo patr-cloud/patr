@@ -210,7 +210,6 @@ pub async fn add_domain_to_workspace(
 			.status(500)?
 			.id;
 
-		// let zone_identifier = zone_identifier.as_str();
 		// create a new function to store zone related data
 		db::add_patr_controlled_domain(
 			connection,

@@ -48,6 +48,7 @@ pub mod id {
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
+	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 }
 
 #[allow(dead_code)]
@@ -149,4 +150,6 @@ pub mod message {
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
+	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
+		"The domain is not controlled by PATR";
 }

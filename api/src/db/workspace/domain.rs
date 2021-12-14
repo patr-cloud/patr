@@ -1,7 +1,13 @@
 use uuid::Uuid;
 
 use crate::{
-	models::db_mapping::{DnsRecord, Domain, PersonalDomain, WorkspaceDomain},
+	models::db_mapping::{
+		DnsRecord,
+		Domain,
+		PatrControlledDomain,
+		PersonalDomain,
+		WorkspaceDomain,
+	},
 	query,
 	query_as,
 	utils::constants::ResourceOwnerType,
@@ -157,19 +163,19 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE dns_record (
-			domain_id BYTEA,
-			sub_domain VARCHAR(255),
+			domain_id BYTEA NOT NULL,
+			sub_domain VARCHAR(255) NOT NULL DEFAULT '',
 			path VARCHAR(255) NOT NULL DEFAULT '/',
-			a_record TEXT [] NOT NULL,
-			aaaa_record TEXT [] NOT NULL,
-			text_record TEXT [] NOT NULL,
-			cname_record TEXT NOT NULL,
-			mx_record TEXT [] NOT NULL,
+			a_record TEXT [] NOT NULL DEFAULT '{{}}',
+			aaaa_record TEXT [] NOT NULL DEFAULT '{{}}',
+			text_record TEXT [] NOT NULL DEFAULT '{{}}',
+			cname_record TEXT NOT NULL DEFAULT '',
+			mx_record TEXT [] NOT NULL DEFAULT '{{}}',
 			content VARCHAR(255) NOT NULL,
 			ttl INTEGER NOT NULL,
+			priority INTEGER NOT NULL DEFAULT 0,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
-			deployment_id BYTEA NOT NULL,
-			CONSTRAINT dns_record_pk PRIMARY KEY (domain_id, path),
+			CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, sub_domain, path),
 			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
@@ -667,42 +673,79 @@ pub async fn add_entry_point(
 	Ok(())
 }
 
-pub async fn add_dns_record(
+// pub async fn add_dns_record(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	domain_id: &[u8],
+// 	sub_domain: &str,
+// 	path: &str,
+// 	a_recotrd: Vec<String>,
+// 	aaaa_record: Vec<String>,
+// 	cname_record: &str,
+// 	mx_record: Vec<String>,
+// 	text_record: Vec<String>,
+// 	content: &str,
+// 	ttl: i32,
+// 	proxied: bool,
+// 	priority: i32,
+// ) -> Result<(), sqlx::Error> {
+// 	query!(
+// 		r#"
+// 		INSERT INTO
+// 			dns_record
+// 		VALUES
+// 		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 12$);
+// 		"#,
+// 		domain_id,
+// 		sub_domain,
+// 		path,
+// 		&a_recotrd,
+// 		&aaaa_record,
+// 		&text_record,
+// 		cname_record,
+// 		&mx_record,
+// 		content,
+// 		ttl,
+// 		proxied,
+// 		priority
+// 	)
+// 	.execute(&mut *connection)
+// 	.await?;
+// 	Ok(())
+// }
+
+pub async fn get_patr_controlled_domain_by_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
-	a_recotrd: Vec<String>,
-	aaaa_record: Vec<String>,
-	cname_record: String,
-	mx_record: Vec<String>,
-	text_record: Vec<String>,
-	content: &str,
-	ttl: i32,
-	proxied: bool,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
+) -> Result<Option<PatrControlledDomain>, sqlx::Error> {
+	query_as!(
+		PatrControlledDomain,
 		r#"
-		INSERT INTO
-			dns_record
-		VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+		SELECT
+			*
+		FROM
+			patr_controlled_domain
+		WHERE
+			domain_id = $1;
 		"#,
-		domain_id,
-		sub_domain,
-		path,
-		&a_recotrd,
-		&aaaa_record,
-		&text_record,
-		cname_record,
-		&mx_record,
-		content,
-		ttl,
-		proxied,
-		deployment_id
+		domain_id
 	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.fetch_optional(&mut *connection)
+	.await
 }
+
+// pub async fn add_patr_dns_a_record(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	domain_id: &[u8],
+// 	sub_domain: &str,
+// 	path: &str,
+// 	content: &str
+// ) -> Result<(), sqlx::Error> {
+// 	query!(
+// 		r#"
+// 			INSERT INTO
+// 				dns_record
+// 			VALUES
+
+// 		"#
+// 	)
+// }

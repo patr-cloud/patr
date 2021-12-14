@@ -31,9 +31,8 @@ pub struct WorkspaceDomain {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
-	pub deployment_id: Vec<u8>,
 	pub domain_id: Vec<u8>,
-	pub sub_domain: Option<String>,
+	pub sub_domain: String,
 	pub path: String,
 	pub a_record: Vec<String>,
 	pub aaaa_record: Vec<String>,
@@ -43,6 +42,9 @@ pub struct DnsRecord {
 	pub content: String,
 	pub ttl: i32,
 	pub proxied: bool,
+	pub priority: i32,
+	//default: 0 since this value will only be updated when mx record is
+	// updated
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -53,4 +55,12 @@ pub struct EntryPoint {
 	pub sub_domains: String,
 	pub path: String,
 	pub deployment_id: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PatrControlledDomain {
+	pub domain_id: Vec<u8>,
+	pub zone_identifier: Vec<u8>,
+	pub is_verified: bool,
 }
