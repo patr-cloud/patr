@@ -92,8 +92,7 @@ pub(super) async fn deploy_container(
 	)
 	.await;
 
-	let app_exists =
-		get_app_default_url(deployment_id_string, &region).await?;
+	let app_exists = get_app_default_url(deployment_id_string, &region).await?;
 	let default_url = if let Some(default_url) = app_exists {
 		push_image_to_lightsail(
 			deployment_id_string,
