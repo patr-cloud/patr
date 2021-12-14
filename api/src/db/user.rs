@@ -1,5 +1,4 @@
-use api_models::models::user::UserPhoneNumber;
-use uuid::Uuid;
+use api_models::{models::user::UserPhoneNumber, utils::Uuid};
 
 use crate::{
 	constants::ResourceOwnerType,
@@ -772,7 +771,19 @@ pub async fn get_user_by_username_email_or_phone_number(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -832,7 +843,19 @@ pub async fn get_user_by_email(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -883,7 +906,19 @@ pub async fn get_user_by_phone_number(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		INNER JOIN
@@ -925,7 +960,19 @@ pub async fn get_user_by_username(
 	let user = query!(
 		r#"
 		SELECT
-			*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		WHERE
@@ -961,13 +1008,25 @@ pub async fn get_user_by_user_id(
 	let user = query!(
 		r#"
 		SELECT
-			*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		WHERE
 			id = $1;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1005,7 +1064,7 @@ pub async fn generate_new_user_id(
 			WHERE
 				id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -1023,7 +1082,7 @@ pub async fn get_god_user_id(
 	let uuid = query!(
 		r#"
 		SELECT
-			*
+			id as "id: Uuid"
 		FROM
 			"user"
 		ORDER BY
@@ -1103,7 +1162,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		first_name,
 		last_name,
 		email_local,
-		email_domain_id,
+		email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number,
 		otp_hash,
@@ -1184,7 +1243,7 @@ pub async fn set_business_user_to_be_signed_up(
 		first_name,
 		last_name,
 		backup_email_local,
-		backup_email_domain_id,
+		backup_email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number,
 		business_email_local,
@@ -1212,7 +1271,7 @@ pub async fn get_user_to_sign_up_by_username(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1263,7 +1322,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1315,7 +1374,7 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.first_name,
 			user_to_sign_up.last_name,
 			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_email_domain_id as "backup_email_domain_id: Uuid",
 			user_to_sign_up.backup_phone_country_code,
 			user_to_sign_up.backup_phone_number,
 			user_to_sign_up.business_email_local,
@@ -1369,7 +1428,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1419,7 +1478,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1501,8 +1560,8 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			verification_token_expiry = EXCLUDED.verification_token_expiry;
 		"#,
 		email_local,
-		domain_id,
-		user_id,
+		domain_id as _,
+		user_id as _,
 		verification_token,
 		token_expiry as i64
 	)
@@ -1533,7 +1592,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 		"#,
 		country_code,
 		phone_number,
-		user_id,
+		user_id as _,
 		verification_token,
 		token_expiry as i64
 	)
@@ -1551,7 +1610,11 @@ pub async fn get_personal_email_to_be_verified_for_user(
 	let email = query!(
 		r#"
 		SELECT
-			user_unverified_personal_email.*
+			user_unverified_personal_email.local,
+			user_unverified_personal_email.domain_id as "domain_id: Uuid",
+			user_unverified_personal_email.user_id as "user_id: Uuid",
+			user_unverified_personal_email.verification_token_hash,
+			user_unverified_personal_email.verification_token_expiry
 		FROM
 			user_unverified_personal_email
 		INNER JOIN
@@ -1562,7 +1625,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 			user_id = $1 AND
 			CONCAT(local, '@', domain.name) = $2;
 		"#,
-		user_id,
+		user_id as _,
 		email
 	)
 	.fetch_optional(&mut *connection)
@@ -1585,7 +1648,11 @@ pub async fn get_personal_email_to_be_verified_by_email(
 	let email = query!(
 		r#"
 		SELECT
-			user_unverified_personal_email.*
+			user_unverified_personal_email.local,
+			user_unverified_personal_email.domain_id as "domain_id: Uuid",
+			user_unverified_personal_email.user_id as "user_id: Uuid",
+			user_unverified_personal_email.verification_token_hash,
+			user_unverified_personal_email.verification_token_expiry
 		FROM
 			user_unverified_personal_email
 		INNER JOIN
@@ -1625,9 +1692,9 @@ pub async fn delete_personal_email_to_be_verified_for_user(
 			local = $2 AND
 			domain_id = $3;
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1644,7 +1711,11 @@ pub async fn get_phone_number_to_be_verified_for_user(
 	let phone_number = query!(
 		r#"
 		SELECT
-			user_unverified_phone_number.*
+			user_unverified_phone_number.country_code,
+			user_unverified_phone_number.phone_number,
+			user_unverified_phone_number.user_id as "user_id: Uuid",
+			user_unverified_phone_number.verification_token_hash,
+			user_unverified_phone_number.verification_token_expiry
 		FROM
 			user_unverified_phone_number
 		INNER JOIN
@@ -1656,7 +1727,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 			user_unverified_phone_number.country_code = $2 AND
 			user_unverified_phone_number.phone_number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)
@@ -1681,7 +1752,11 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	let phone_number = query!(
 		r#"
 		SELECT
-			*
+			country_code,
+			phone_number,
+			user_id as "user_id: Uuid",
+			verification_token_hash,
+			verification_token_expiry
 		FROM
 			user_unverified_phone_number
 		WHERE
@@ -1719,7 +1794,7 @@ pub async fn delete_phone_number_to_be_verified_for_user(
 			country_code = $2 AND
 			phone_number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)
@@ -1742,9 +1817,9 @@ pub async fn add_personal_email_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1765,9 +1840,9 @@ pub async fn add_business_email_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1831,14 +1906,14 @@ pub async fn create_user(
 				$10
 			);
 		"#,
-		user_id,
+		user_id as _,
 		username,
 		password,
 		first_name,
 		last_name,
 		created as i64,
 		backup_email_local,
-		backup_email_domain_id,
+		backup_email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number
 	)
@@ -1864,10 +1939,10 @@ pub async fn add_user_login(
 		VALUES
 			($1, $2, $3, $4, $5, $6);
 		"#,
-		login_id,
+		login_id as _,
 		refresh_token,
 		token_expiry as i64,
-		user_id,
+		user_id as _,
 		last_login as i64,
 		last_activity as i64
 	)
@@ -1884,13 +1959,18 @@ pub async fn get_user_login(
 	let login = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			login_id = $1;
 		"#,
-		login_id
+		login_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1914,15 +1994,20 @@ pub async fn get_user_login_for_user(
 	let row = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
 		"#,
-		login_id,
-		user_id,
+		login_id as _,
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1953,7 +2038,7 @@ pub async fn generate_new_login_id(
 			WHERE
 				login_id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -1972,13 +2057,18 @@ pub async fn get_all_logins_for_user(
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			user_id = $1;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -2004,14 +2094,19 @@ pub async fn get_login_for_user_with_refresh_token(
 	let login = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			user_id = $1 AND
 			refresh_token = $2;
 		"#,
-		user_id,
+		user_id as _,
 		refresh_token,
 	)
 	.fetch_optional(&mut *connection)
@@ -2041,8 +2136,8 @@ pub async fn delete_user_login_by_id(
 			login_id = $1 AND
 			user_id = $2;
 		"#,
-		login_id,
-		user_id,
+		login_id as _,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -2067,7 +2162,7 @@ pub async fn set_login_expiry(
 		"#,
 		token_expiry as i64,
 		last_activity as i64,
-		login_id
+		login_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2095,7 +2190,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			first_name,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2111,7 +2206,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			last_name,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2127,7 +2222,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			dob as i64,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2143,7 +2238,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			bio,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2159,7 +2254,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			location,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2183,7 +2278,7 @@ pub async fn update_user_password(
 			id = $2;
 		"#,
 		password,
-		user_id,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2208,8 +2303,8 @@ pub async fn update_backup_email_for_user(
 			id = $3;
 		"#,
 		email_local,
-		domain_id,
-		user_id
+		domain_id as _,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2235,7 +2330,7 @@ pub async fn update_backup_phone_number_for_user(
 		"#,
 		country_code,
 		phone_number,
-		user_id
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2259,7 +2354,7 @@ pub async fn add_password_reset_request(
 			token = EXCLUDED.token,
 			token_expiry = EXCLUDED.token_expiry;
 		"#,
-		user_id,
+		user_id as _,
 		token_hash,
 		token_expiry as i64
 	)
@@ -2276,13 +2371,15 @@ pub async fn get_password_reset_request_for_user(
 	let reset = query!(
 		r#"
 		SELECT
-			*
+			user_id as "user_id: Uuid",
+			token,
+			token_expiry
 		FROM
 			password_reset_request
 		WHERE
 			user_id = $1;
 		"#,
-		user_id,
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -2306,7 +2403,7 @@ pub async fn delete_password_reset_request_for_user(
 		WHERE
 			user_id = $1;
 		"#,
-		user_id,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2322,9 +2419,9 @@ pub async fn get_all_workspaces_for_user(
 		Workspace,
 		r#"
 		SELECT DISTINCT
-			workspace.id,
+			workspace.id as "id: _",
 			workspace.name as "name: _",
-			workspace.super_admin_id,
+			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active
 		FROM
 			workspace
@@ -2336,7 +2433,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.super_admin_id = $1 OR
 			workspace_user.user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -2375,7 +2472,7 @@ pub async fn add_phone_number_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		phone_country_code,
 		phone_number
 	)
@@ -2401,7 +2498,7 @@ pub async fn get_personal_emails_for_user(
 		WHERE
 			personal_email.user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -2425,7 +2522,7 @@ pub async fn get_personal_email_count_for_domain_id(
 		WHERE
 			personal_email.domain_id = $1;
 		"#,
-		domain_id
+		domain_id as _,
 	)
 	.fetch_one(&mut *connection)
 	.await
@@ -2447,7 +2544,7 @@ pub async fn get_phone_numbers_for_user(
 		WHERE
 			user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -2469,7 +2566,7 @@ pub async fn get_backup_phone_number_for_user(
 			"user".backup_phone_number IS NOT NULL AND
 			"user".backup_phone_country_code IS NOT NULL;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -2498,7 +2595,7 @@ pub async fn get_backup_email_for_user(
 		WHERE
 			"user".id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -2520,9 +2617,9 @@ pub async fn delete_personal_email_for_user(
 			local = $2 AND
 			domain_id = $3;
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2545,7 +2642,7 @@ pub async fn delete_phone_number_for_user(
 			country_code = $2 AND
 			number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)

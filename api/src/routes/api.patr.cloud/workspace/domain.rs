@@ -1,7 +1,7 @@
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -251,9 +251,8 @@ async fn get_domains_for_workspace(
 	.await?
 	.into_iter()
 	.map(|domain| {
-		let id = domain.id.to_simple_ref().to_string();
 		json!({
-			request_keys::ID: id,
+			request_keys::ID: domain.id,
 			request_keys::NAME: domain.name,
 			request_keys::VERIFIED: domain.is_verified,
 		})
@@ -477,20 +476,19 @@ async fn get_domain_info_in_workspace(
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
-	let domain_id = domain.id.to_simple_ref().to_string();
 
 	context.json(
 		if domain.is_verified {
 			json!({
 				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain_id,
+				request_keys::DOMAIN_ID: domain.id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: true
 			})
 		} else {
 			json!({
 				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain_id,
+				request_keys::DOMAIN_ID: domain.id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: false,
 				request_keys::VERIFICATION_TOKEN: domain_id

@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -243,7 +243,7 @@ async fn create_docker_repository(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ID: resource_id.to_simple_ref().to_string()
+		request_keys::ID: resource_id
 	}));
 
 	Ok(context)
@@ -297,7 +297,7 @@ async fn list_docker_repositories(
 	.into_iter()
 	.map(|repository| {
 		json!({
-			request_keys::ID: repository.id.to_simple_ref().to_string(),
+			request_keys::ID: repository.id,
 			request_keys::NAME: repository.name,
 		})
 	})
@@ -374,11 +374,7 @@ async fn delete_docker_repository(
 	db::update_docker_repository_name(
 		context.get_database_connection(),
 		&repository_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			repository.name,
-			repository_id.to_simple_ref().to_string()
-		),
+		&format!("patr-deleted: {}-{}", repository.name, repository_id),
 	)
 	.await?;
 

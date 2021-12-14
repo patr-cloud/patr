@@ -1,6 +1,6 @@
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},

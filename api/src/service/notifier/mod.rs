@@ -1,6 +1,5 @@
-use api_models::models::auth::PreferredRecoveryOption;
+use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{
 	db,

@@ -1,7 +1,7 @@
 use std::ops::DerefMut;
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -59,11 +59,7 @@ pub async fn create_managed_database_in_workspace(
 	db::create_resource(
 		connection,
 		&database_id,
-		&format!(
-			"{}-database-{}",
-			provider,
-			database_id.to_simple_ref().to_string()
-		),
+		&format!("{}-database-{}", provider, database_id),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -172,11 +168,7 @@ pub async fn delete_managed_database(
 	db::update_managed_database_name(
 		connection,
 		database_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			database.name,
-			database.id.to_simple_ref().to_string()
-		),
+		&format!("patr-deleted: {}-{}", database.name, database.id),
 	)
 	.await?;
 

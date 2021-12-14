@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{
 	models::db_mapping::{Domain, PersonalDomain, WorkspaceDomain},
@@ -115,7 +115,7 @@ pub async fn generate_new_domain_id(
 				WHERE
 					id = $1;
 				"#,
-				&uuid
+				uuid as _
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -124,15 +124,13 @@ pub async fn generate_new_domain_id(
 			query!(
 				r#"
 				SELECT
-					id,
-					name,
-					type as "type: ResourceOwnerType"
+					id
 				FROM
 					domain
 				WHERE
 					id = $1;
 				"#,
-				&uuid
+				uuid as _
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -158,7 +156,7 @@ pub async fn create_generic_domain(
 		VALUES
 			($1, $2, $3);
 		"#,
-		domain_id,
+		domain_id as _,
 		domain_name,
 		domain_type as _
 	)
@@ -178,7 +176,7 @@ pub async fn add_to_workspace_domain(
 		VALUES
 			($1, 'business', FALSE);
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -196,7 +194,7 @@ pub async fn add_to_personal_domain(
 		VALUES
 			($1, 'personal');
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -212,7 +210,7 @@ pub async fn get_domains_for_workspace(
 		r#"
 		SELECT
 			domain.name,
-			workspace_domain.id,
+			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified
 		FROM
@@ -228,7 +226,7 @@ pub async fn get_domains_for_workspace(
 		WHERE
 			resource.owner_id = $1;
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -242,7 +240,7 @@ pub async fn get_all_unverified_domains(
 		r#"
 		SELECT
 			domain.name as "name!",
-			workspace_domain.id as "id!",
+			workspace_domain.id as "id!: _",
 			workspace_domain.domain_type as "domain_type!: _",
 			workspace_domain.is_verified as "is_verified!"
 		FROM
@@ -272,7 +270,7 @@ pub async fn set_domain_as_verified(
 		WHERE
 			id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -287,7 +285,7 @@ pub async fn get_all_verified_domains(
 		r#"
 		SELECT
 			domain.name as "name!",
-			workspace_domain.id as "id!",
+			workspace_domain.id as "id!: _",
 			workspace_domain.domain_type as "domain_type!: _",
 			workspace_domain.is_verified as "is_verified!"
 		FROM
@@ -317,7 +315,7 @@ pub async fn set_domain_as_unverified(
 		WHERE
 			id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -355,7 +353,7 @@ pub async fn get_notification_email_for_domain(
 		WHERE
 			workspace_domain.id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -382,7 +380,7 @@ pub async fn delete_personal_domain(
 		WHERE
 			id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -401,7 +399,7 @@ pub async fn delete_domain_from_workspace(
 		WHERE
 			id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -420,7 +418,7 @@ pub async fn delete_generic_domain(
 		WHERE
 			id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -437,7 +435,7 @@ pub async fn get_workspace_domain_by_id(
 		r#"
 		SELECT
 			domain.name,
-			workspace_domain.id,
+			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified
 		FROM
@@ -449,7 +447,7 @@ pub async fn get_workspace_domain_by_id(
 		WHERE
 			domain.id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -464,7 +462,7 @@ pub async fn get_personal_domain_by_id(
 		r#"
 		SELECT
 			domain.name,
-			personal_domain.id,
+			personal_domain.id as "id: _",
 			personal_domain.domain_type as "domain_type: _"
 		FROM
 			personal_domain
@@ -475,7 +473,7 @@ pub async fn get_personal_domain_by_id(
 		WHERE
 			domain.id = $1;
 		"#,
-		domain_id
+		domain_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -489,7 +487,7 @@ pub async fn get_domain_by_name(
 		Domain,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name,
 			type as "type: _"
 		FROM

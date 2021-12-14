@@ -141,7 +141,7 @@
 			"password": "Rentbaaz@123"
 		}
 	],
-	"organisations": [
+	"workspaces": [
 		{
 			"name": "Vicara",
 			"domains": [

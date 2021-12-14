@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{
 	models::db_mapping::{
@@ -366,15 +366,15 @@ pub async fn create_deployment_with_internal_registry(
 					$9
 				);
 			"#,
-			deployment_id,
+			deployment_id as _,
 			name as _,
-			repository_id,
+			repository_id as _,
 			image_tag,
 			region,
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
-			workspace_id,
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -402,14 +402,14 @@ pub async fn create_deployment_with_internal_registry(
 					$8
 				);
 			"#,
-			deployment_id,
+			deployment_id as _,
 			name as _,
-			repository_id,
+			repository_id as _,
 			image_tag,
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
-			workspace_id,
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -453,7 +453,7 @@ pub async fn create_deployment_with_external_registry(
 					$10
 				);
 			"#,
-			deployment_id,
+			deployment_id as _,
 			name as _,
 			registry,
 			image_name,
@@ -462,7 +462,7 @@ pub async fn create_deployment_with_external_registry(
 			domain,
 			horizontal_scale as i16,
 			machine_type as _,
-			workspace_id,
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -490,7 +490,7 @@ pub async fn create_deployment_with_external_registry(
 					$9
 				);
 			"#,
-			deployment_id,
+			deployment_id as _,
 			name as _,
 			registry,
 			image_name,
@@ -498,7 +498,7 @@ pub async fn create_deployment_with_external_registry(
 			region,
 			horizontal_scale as i16,
 			machine_type as _,
-			workspace_id,
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -516,10 +516,10 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 		Deployment,
 		r#"
 		SELECT
-			deployment.id,
+			deployment.id as "id: _",
 			deployment.name as "name: _",
 			deployment.registry,
-			deployment.repository_id,
+			deployment.repository_id as "repository_id: _",
 			deployment.image_name,
 			deployment.image_tag,
 			deployment.status as "status: _",
@@ -529,7 +529,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.domain_name,
 			deployment.horizontal_scale,
 			deployment.machine_type as "machine_type: _",
-			deployment.workspace_id
+			deployment.workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		LEFT JOIN
@@ -553,7 +553,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 		"#,
 		image_name as _,
 		image_tag,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -567,10 +567,10 @@ pub async fn get_deployments_by_repository_id(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
@@ -580,14 +580,14 @@ pub async fn get_deployments_by_repository_id(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		WHERE
 			repository_id = $1 AND
 			status != 'deleted';
 		"#,
-		repository_id
+		repository_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -602,10 +602,10 @@ pub async fn get_deployments_for_workspace(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
@@ -615,14 +615,14 @@ pub async fn get_deployments_for_workspace(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -636,10 +636,10 @@ pub async fn get_deployment_by_id(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
@@ -649,14 +649,14 @@ pub async fn get_deployment_by_id(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		WHERE
 			id = $1 AND
 			status != 'deleted';
 		"#,
-		deployment_id
+		deployment_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -671,10 +671,10 @@ pub async fn get_deployment_by_name_in_workspace(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
@@ -684,7 +684,7 @@ pub async fn get_deployment_by_name_in_workspace(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		WHERE
@@ -693,7 +693,7 @@ pub async fn get_deployment_by_name_in_workspace(
 			status != 'deleted';
 		"#,
 		name as _,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -715,7 +715,7 @@ pub async fn update_deployment_deployed_image(
 				id = $2;
 			"#,
 			deployed_image,
-			deployment_id
+			deployment_id as _
 		)
 		.execute(&mut *connection)
 		.await
@@ -730,7 +730,7 @@ pub async fn update_deployment_deployed_image(
 			WHERE
 				id = $1;
 			"#,
-			deployment_id
+			deployment_id as _
 		)
 		.execute(&mut *connection)
 		.await
@@ -753,7 +753,7 @@ pub async fn update_digitalocean_app_id_for_deployment(
 			id = $2;
 		"#,
 		app_deployment_id,
-		deployment_id
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -775,7 +775,7 @@ pub async fn update_deployment_status(
 			id = $2;
 		"#,
 		status as _,
-		deployment_id
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -797,7 +797,7 @@ pub async fn update_deployment_name(
 			id = $2;
 		"#,
 		name as _,
-		deployment_id
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -811,13 +811,14 @@ pub async fn get_environment_variables_for_deployment(
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			name,
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id
+		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -841,7 +842,7 @@ pub async fn add_environment_variable_for_deployment(
 		VALUES
 			($1, $2, $3);
 		"#,
-		deployment_id,
+		deployment_id as _,
 		key,
 		value
 	)
@@ -861,7 +862,7 @@ pub async fn remove_all_environment_variables_for_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id,
+		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -883,7 +884,7 @@ pub async fn set_domain_name_for_deployment(
 			ON CONFLICT(deployment_id) DO UPDATE SET
 				domain_name = EXCLUDED.domain_name;
 			"#,
-			deployment_id,
+			deployment_id as _,
 			domain_name,
 		)
 		.execute(&mut *connection)
@@ -899,7 +900,7 @@ pub async fn set_domain_name_for_deployment(
 				id = $2;
 			"#,
 			domain_name,
-			deployment_id,
+			deployment_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -912,7 +913,7 @@ pub async fn set_domain_name_for_deployment(
 			WHERE
 				deployment_id = $1;
 			"#,
-			deployment_id,
+			deployment_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -926,7 +927,7 @@ pub async fn set_domain_name_for_deployment(
 			WHERE
 				id = $1;
 			"#,
-			deployment_id,
+			deployment_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -949,7 +950,7 @@ pub async fn set_horizontal_scale_for_deployment(
 			id = $2;
 		"#,
 		horizontal_scale as i16,
-		deployment_id,
+		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -971,7 +972,7 @@ pub async fn set_machine_type_for_deployment(
 			id = $2;
 		"#,
 		machine_type as _,
-		deployment_id,
+		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -998,7 +999,7 @@ pub async fn create_log_for_deployment(
 		VALUES
 			(DEFAULT, $1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6, $7, $8, $9, $10);
 		"#,
-		deployment_id,
+		deployment_id as _,
 		timestamp as i64,
 		ip_address,
 		ip_address_longitude,
@@ -1042,7 +1043,7 @@ pub async fn get_recommended_data_center(
 				)
 			);
 		"#,
-		deployment_id
+		deployment_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1059,10 +1060,10 @@ pub async fn get_deployment_by_domain_name(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
@@ -1072,7 +1073,7 @@ pub async fn get_deployment_by_domain_name(
 			domain_name,
 			horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment
 		WHERE

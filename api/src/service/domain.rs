@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
@@ -5,7 +6,6 @@ use trust_dns_client::{
 	rr::{DNSClass, Name, RData, RecordType},
 	udp::UdpClientStream,
 };
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -185,11 +185,8 @@ pub async fn is_domain_verified(
 		.await?;
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_cname = RData::CNAME(
-			Name::from_utf8(format!(
-				"{}.patr.cloud",
-				domain_id.to_simple_ref().to_string()
-			))
-			.unwrap(),
+			Name::from_utf8(format!("{}.patr.cloud", domain_id.as_str()))
+				.unwrap(),
 		);
 		record.rdata() == &expected_cname
 	});

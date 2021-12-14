@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use api_models::utils::Uuid;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 pub static GOD_USER_ID: OnceCell<Uuid> = OnceCell::new();
 // A mapping of resource type name -> resource type IDs
@@ -14,11 +14,9 @@ pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 #[serde(rename_all = "camelCase")]
 pub struct WorkspacePermissions {
 	pub is_super_admin: bool,
-	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
 	pub resources: HashMap<Uuid, Vec<Uuid>>, /* Given a resource, what
 	                                          * and all permissions do
 	                                          * you have on it */
-	#[serde(with = "api_models::with::uuid_to_vec_uuid_hashmap")]
 	pub resource_types: HashMap<Uuid, Vec<Uuid>>, /* Given a resource
 	                                               * type, what and all
 	                                               * permissions do you

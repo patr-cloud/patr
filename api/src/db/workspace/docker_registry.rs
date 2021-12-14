@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
@@ -56,8 +56,8 @@ pub async fn create_docker_repository(
 		VALUES
 			($1, $2, $3);
 		"#,
-		resource_id,
-		workspace_id,
+		resource_id as _,
+		workspace_id as _,
 		name as _
 	)
 	.execute(&mut *connection)
@@ -74,8 +74,8 @@ pub async fn get_repository_by_name(
 		DockerRepository,
 		r#"
 		SELECT
-			id,
-			workspace_id,
+			id as "id: _",
+			workspace_id as "workspace_id: _",
 			name as "name: _"
 		FROM
 			docker_registry_repository
@@ -86,7 +86,7 @@ pub async fn get_repository_by_name(
 			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_name as _,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -100,8 +100,8 @@ pub async fn get_docker_repositories_for_workspace(
 		DockerRepository,
 		r#"
 		SELECT
-			id,
-			workspace_id,
+			id as "id: _",
+			workspace_id as "workspace_id: _",
 			name as "name: _"
 		FROM
 			docker_registry_repository
@@ -109,7 +109,7 @@ pub async fn get_docker_repositories_for_workspace(
 			workspace_id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -123,8 +123,8 @@ pub async fn get_docker_repository_by_id(
 		DockerRepository,
 		r#"
 		SELECT
-			id,
-			workspace_id,
+			id as "id: _",
+			workspace_id as "workspace_id: _",
 			name as "name: _"
 		FROM
 			docker_registry_repository
@@ -132,7 +132,7 @@ pub async fn get_docker_repository_by_id(
 			id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
-		repository_id
+		repository_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -152,7 +152,7 @@ pub async fn update_docker_repository_name(
 		WHERE
 			id = $1;
 		"#,
-		repository_id,
+		repository_id as _,
 		name as _
 	)
 	.execute(&mut *connection)

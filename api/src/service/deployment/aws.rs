@@ -1,5 +1,6 @@
 use std::{ops::DerefMut, process::Stdio, time::Duration};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use lightsail::{
 	model::{
@@ -15,7 +16,6 @@ use lightsail::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use tokio::{process::Command, task, time};
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -44,7 +44,7 @@ pub(super) async fn deploy_container(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on Aws Lightsail with request_id: {}",
-		deployment_id.to_simple_ref().to_string(),
+		deployment_id,
 		image_id,
 		request_id
 	);
@@ -56,11 +56,11 @@ pub(super) async fn deploy_container(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let deployment_id_string = deployment_id.to_simple_ref().to_string();
+	let deployment_id_string = deployment_id.as_str();
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
-		deployment_id_string
+		deployment_id
 	);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -73,7 +73,7 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - Image pulled", request_id);
 
 	// new name for the docker image
-	let new_repo_name = format!("patr-cloud/{}", deployment_id_string);
+	let new_repo_name = format!("patr-cloud/{}", deployment_id);
 
 	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
 
@@ -93,14 +93,14 @@ pub(super) async fn deploy_container(
 	.await;
 
 	let app_exists =
-		get_app_default_url(&deployment_id_string, &region).await?;
+		get_app_default_url(deployment_id_string, &region).await?;
 	let default_url = if let Some(default_url) = app_exists {
 		push_image_to_lightsail(
-			&deployment_id_string,
+			deployment_id_string,
 			&new_repo_name,
 			&label_name,
 			&region,
-			request_id,
+			&request_id,
 		)
 		.await?;
 		log::trace!(
@@ -115,14 +115,14 @@ pub(super) async fn deploy_container(
 			request_id
 		);
 		create_container_service(
-			&deployment_id_string,
+			deployment_id_string,
 			&label_name,
 			&new_repo_name,
 			&region,
 			deployment.horizontal_scale,
 			&deployment.machine_type,
 			&client,
-			request_id,
+			&request_id,
 		)
 		.await?
 	};
@@ -130,9 +130,9 @@ pub(super) async fn deploy_container(
 	log::trace!("request_id: {} - Creating container deployment", request_id);
 	deploy_application(
 		&deployment_id,
-		&deployment_id_string,
+		deployment_id_string,
 		&client,
-		request_id,
+		&request_id,
 	)
 	.await?;
 	log::trace!("request_id: {} - App deployed", request_id);
@@ -144,12 +144,12 @@ pub(super) async fn deploy_container(
 		request_id
 	);
 	log::trace!("request_id: {} - checking deployment status", request_id);
-	wait_for_deployment(&deployment_id_string, &client).await?;
+	wait_for_deployment(deployment_id_string, &client).await?;
 
 	// update DNS
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
-		&deployment_id_string,
+		deployment_id_string,
 		&config.ssh.host_name,
 		&config,
 		false,
@@ -159,11 +159,11 @@ pub(super) async fn deploy_container(
 
 	log::trace!("request_id: {} - adding reverse proxy", request_id);
 	deployment::update_nginx_with_all_domains_for_deployment(
-		&deployment_id_string,
+		deployment_id_string,
 		&default_url,
 		deployment.domain_name.as_deref(),
 		&config,
-		request_id,
+		&request_id,
 	)
 	.await?;
 
@@ -181,7 +181,7 @@ pub(super) async fn deploy_container(
 
 	log::trace!(
 		"request_id: {} - deleting image tagged with patr-cloud",
-		request_id
+		&request_id
 	);
 	let delete_result = super::delete_docker_image(&new_repo_name).await;
 	if let Err(delete_result) = delete_result {
@@ -212,7 +212,7 @@ pub(super) async fn delete_deployment(
 	deployment_id: &Uuid,
 	region: &str,
 	_config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	// Get credentails for aws lightsail
 	log::trace!(
@@ -220,7 +220,6 @@ pub(super) async fn delete_deployment(
 		request_id
 	);
 	let client = get_lightsail_client(region);
-	let deployment_id_string = deployment_id.to_simple_ref().to_string();
 
 	// certificate needs to be detached inorder to get deleted but there is no
 	// endpoint to detach the certificate
@@ -230,7 +229,7 @@ pub(super) async fn delete_deployment(
 	);
 	let check_service_result = client
 		.get_container_services()
-		.service_name(deployment_id.to_simple_ref().to_string())
+		.service_name(deployment_id.as_str())
 		.send()
 		.await;
 
@@ -254,7 +253,7 @@ pub(super) async fn delete_deployment(
 
 	client
 		.delete_container_service()
-		.service_name(&deployment_id_string)
+		.service_name(deployment_id.as_str())
 		.send()
 		.await
 		.map_err(|err| {
@@ -273,7 +272,7 @@ pub(super) async fn get_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	_config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
 	log::info!("retreiving deployment info from db");
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -306,8 +305,8 @@ pub(super) async fn get_container_logs(
 	log::info!("getting logs from aws");
 	let logs = client
 		.get_container_log()
-		.set_service_name(Some(deployment_id.to_simple_ref().to_string()))
-		.set_container_name(Some(deployment_id.to_simple_ref().to_string()))
+		.set_service_name(Some(deployment_id.to_string()))
+		.set_container_name(Some(deployment_id.to_string()))
 		.send()
 		.await
 		.map_err(|err| {
@@ -341,7 +340,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} with request_id: {}",
-		database_id.to_simple_ref().to_string(),
+		database_id,
 		db_name,
 		request_id
 	);
@@ -373,17 +372,17 @@ pub(super) async fn create_managed_database_cluster(
 			}
 		))
 		.relational_database_bundle_id(database_plan.as_aws_plan()?)
-		.relational_database_name(database_id.to_simple_ref().to_string())
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await?;
 	log::trace!("request_id: {} - database created", request_id);
 
-	let database_id = *database_id;
+	let database_id = database_id.clone();
 	let region = region.to_string();
 
 	task::spawn(async move {
 		let result = update_database_cluster_credentials(
-			database_id,
+			database_id.clone(),
 			region,
 			username,
 			password,
@@ -413,7 +412,7 @@ pub(super) async fn delete_database(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deleting managed database on Awl lightsail with digital_ocean_id: {} and request_id: {}",
-		database_id.to_simple_ref().to_string(),
+		database_id,
 		request_id,
 	);
 
@@ -426,7 +425,7 @@ pub(super) async fn delete_database(
 	);
 	let database_cluster = client
 		.get_relational_database()
-		.relational_database_name(database_id.to_simple_ref().to_string())
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await;
 
@@ -440,7 +439,7 @@ pub(super) async fn delete_database(
 	);
 	client
 		.delete_relational_database()
-		.relational_database_name(database_id.to_simple_ref().to_string())
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await?;
 
@@ -488,7 +487,7 @@ async fn update_database_cluster_credentials(
 	let (host, port) = loop {
 		let database = client
 			.get_relational_database()
-			.relational_database_name(database_id.to_simple_ref().to_string())
+			.relational_database_name(database_id.as_str())
 			.send()
 			.await?
 			.relational_database
@@ -568,7 +567,7 @@ async fn create_container_service(
 	horizontal_scale: i16,
 	machine_type: &DeploymentMachineType,
 	client: &lightsail::Client,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
 	log::trace!("request_id: {} - checking if the service exists or is in the process of getting deleted", request_id);
 	let created_service = loop {
@@ -659,7 +658,7 @@ async fn deploy_application(
 	deployment_id: &Uuid,
 	deployment_id_string: &str,
 	client: &lightsail::Client,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let container_image_name =
 		get_latest_image_name(deployment_id_string, client, request_id).await?;
@@ -715,7 +714,7 @@ async fn deploy_application(
 async fn get_latest_image_name(
 	deployment_id: &str,
 	client: &lightsail::Client,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
 	log::trace!("request_id: {} - getting container list", request_id);
 	let container_image = client
@@ -740,7 +739,7 @@ async fn push_image_to_lightsail(
 	new_repo_name: &str,
 	label_name: &str,
 	region: &str,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - pushing image to lightsail", request_id);
 	let output = Command::new("aws")

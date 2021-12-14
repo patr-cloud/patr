@@ -7,6 +7,7 @@ mod static_site;
 
 use std::ops::DerefMut;
 
+use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -34,7 +35,6 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::io::AsyncWriteExt;
-use uuid::Uuid;
 
 pub use self::{deployment::*, managed_database::*, static_site::*};
 use crate::{
@@ -61,7 +61,7 @@ use crate::{
 async fn create_https_certificates_for_domain(
 	domain: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for adding ssl certificate", request_id);
 	let session = SessionBuilder::default()

@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
@@ -108,9 +108,9 @@ pub async fn create_workspace(
 		VALUES
 			($1, $2, $3, $4);
 		"#,
-		workspace_id,
+		workspace_id as _,
 		name as _,
-		super_admin_id,
+		super_admin_id as _,
 		true,
 	)
 	.execute(&mut *connection)
@@ -127,16 +127,16 @@ pub async fn get_workspace_info(
 		Workspace,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
-			super_admin_id,
+			super_admin_id as "super_admin_id: _",
 			active
 		FROM
 			workspace
 		WHERE
 			id = $1;
 		"#,
-		workspace_id
+		workspace_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -150,9 +150,9 @@ pub async fn get_workspace_by_name(
 		Workspace,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
-			super_admin_id,
+			super_admin_id as "super_admin_id: _",
 			active
 		FROM
 			workspace
@@ -180,7 +180,7 @@ pub async fn update_workspace_name(
 			id = $2;
 		"#,
 		name as _,
-		workspace_id,
+		workspace_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;

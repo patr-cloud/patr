@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -327,16 +327,15 @@ async fn list_all_roles(
 	.await?
 	.into_iter()
 	.map(|role| {
-		let role_id = role.id.to_simple_ref().to_string();
 		if let Some(description) = role.description {
 			json!({
-				request_keys::ROLE_ID: role_id,
+				request_keys::ROLE_ID: role.id,
 				request_keys::NAME: role.name,
 				request_keys::DESCRIPTION: description,
 			})
 		} else {
 			json!({
-				request_keys::ROLE_ID: role_id,
+				request_keys::ROLE_ID: role.id,
 				request_keys::NAME: role.name,
 			})
 		}
@@ -390,16 +389,15 @@ async fn list_all_permissions(
 			.await?
 			.into_iter()
 			.map(|permission| {
-				let permission_id = permission.id.to_simple_ref().to_string();
 				if let Some(description) = permission.description {
 					json!({
-						request_keys::PERMISSION_ID: permission_id,
+						request_keys::PERMISSION_ID: permission.id,
 						request_keys::NAME: permission.name,
 						request_keys::DESCRIPTION: description,
 					})
 				} else {
 					json!({
-						request_keys::PERMISSION_ID: permission_id,
+						request_keys::PERMISSION_ID: permission.id,
 						request_keys::NAME: permission.name,
 					})
 				}
@@ -453,17 +451,15 @@ async fn list_all_resource_types(
 			.await?
 			.into_iter()
 			.map(|resource_type| {
-				let resource_type_id =
-					resource_type.id.to_simple_ref().to_string();
 				if let Some(description) = resource_type.description {
 					json!({
-						request_keys::RESOURCE_TYPE_ID: resource_type_id,
+						request_keys::RESOURCE_TYPE_ID: resource_type.id,
 						request_keys::NAME: resource_type.name,
 						request_keys::DESCRIPTION: description,
 					})
 				} else {
 					json!({
-						request_keys::RESOURCE_TYPE_ID: resource_type_id,
+						request_keys::RESOURCE_TYPE_ID: resource_type.id,
 						request_keys::NAME: resource_type.name,
 					})
 				}
@@ -556,20 +552,20 @@ async fn get_permissions_for_role(
 
 	for (resource_id, permissions) in resource_permissions {
 		resource_map.insert(
-			resource_id.to_simple_ref().to_string(),
+			resource_id.to_string(),
 			Value::Array(
 				permissions
 					.into_iter()
 					.map(|permission| {
 						if let Some(description) = permission.description {
 							json!({
-								request_keys::ID: permission.id.to_simple_ref().to_string(),
+								request_keys::ID: permission.id,
 								request_keys::NAME: permission.name,
 								request_keys::DESCRIPTION: description,
 							})
 						} else {
 							json!({
-								request_keys::ID: permission.id.to_simple_ref().to_string(),
+								request_keys::ID: permission.id,
 								request_keys::NAME: permission.name,
 							})
 						}
@@ -580,14 +576,14 @@ async fn get_permissions_for_role(
 	}
 	for (resource_id, permissions) in resource_type_permissions {
 		resource_type_map.insert(
-			resource_id.to_simple_ref().to_string(),
+			resource_id.to_string(),
 			Value::Array(
 				permissions
 					.into_iter()
 					.map(|permission| {
 						if let Some(description) = permission.description {
 							json!({
-								request_keys::ID: permission.id.to_simple_ref().to_string(),
+								request_keys::ID: permission.id,
 								request_keys::NAME: permission.name,
 								request_keys::DESCRIPTION: description,
 							})
@@ -680,7 +676,7 @@ async fn create_role(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::ROLE_ID: role_id.to_simple_ref().to_string(),
+		request_keys::ROLE_ID: role_id,
 	}));
 	Ok(context)
 }

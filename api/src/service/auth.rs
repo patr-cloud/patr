@@ -1,10 +1,12 @@
-use api_models::models::auth::{
-	PreferredRecoveryOption,
-	RecoveryMethod,
-	SignUpAccountType,
+use api_models::{
+	models::auth::{
+		PreferredRecoveryOption,
+		RecoveryMethod,
+		SignUpAccountType,
+	},
+	utils::Uuid,
 };
 use eve_rs::AsError;
-use uuid::Uuid;
 
 /// This module validates user info and performs tasks related to user
 /// authentication The flow of this file will be:
@@ -475,7 +477,7 @@ pub async fn create_login_for_user(
 	.await?;
 	let user_login = UserLogin {
 		login_id,
-		user_id: *user_id,
+		user_id: user_id.clone(),
 		last_activity: iat,
 		last_login: iat,
 		refresh_token: hashed_refresh_token,
@@ -598,8 +600,13 @@ pub async fn generate_access_token(
 		created,
 	};
 
-	let token_data =
-		AccessTokenData::new(iat, exp, workspaces, user_login.login_id, user);
+	let token_data = AccessTokenData::new(
+		iat,
+		exp,
+		workspaces,
+		user_login.login_id.clone(),
+		user,
+	);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
 
 	Ok(jwt)
@@ -776,7 +783,7 @@ pub async fn join_user(
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
-			.set(user_id)
+			.set(user_id.clone())
 			.expect("GOD_USER_ID was already set");
 	}
 

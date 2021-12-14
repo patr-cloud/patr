@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use api_models::utils::Uuid;
 use jsonwebtoken::{
 	errors::Error,
 	DecodingKey,
@@ -8,7 +9,6 @@ use jsonwebtoken::{
 	Validation,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::models::rbac::WorkspacePermissions;
 
@@ -21,7 +21,6 @@ pub struct AccessTokenData {
 	pub typ: String,
 	pub exp: u64,
 	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
-	#[serde(with = "api_models::with::uuid")]
 	pub login_id: Uuid,
 	pub user: ExposedUserData,
 	// Do we need to add more?
@@ -73,7 +72,6 @@ impl AccessTokenData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExposedUserData {
-	#[serde(with = "api_models::with::uuid")]
 	pub id: Uuid,
 	pub username: String,
 	pub first_name: String,

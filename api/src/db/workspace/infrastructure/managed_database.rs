@@ -1,5 +1,5 @@
 use api_macros::{query, query_as};
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{
 	models::db_mapping::{
@@ -151,7 +151,7 @@ pub async fn create_managed_database(
 					$14
 				);
 			"#,
-			id,
+			id as _,
 			name as _,
 			db_name,
 			engine as _,
@@ -163,7 +163,7 @@ pub async fn create_managed_database(
 			port,
 			username,
 			password,
-			workspace_id,
+			workspace_id as _,
 			digitalocean_db_id
 		)
 		.execute(&mut *connection)
@@ -193,7 +193,7 @@ pub async fn create_managed_database(
 					NULL
 				);
 			"#,
-			id,
+			id as _,
 			name as _,
 			db_name,
 			engine as _,
@@ -205,7 +205,7 @@ pub async fn create_managed_database(
 			port,
 			username,
 			password,
-			workspace_id,
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -228,7 +228,7 @@ pub async fn update_managed_database_status(
 			id = $2;
 		"#,
 		status as _,
-		id
+		id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -250,7 +250,7 @@ pub async fn update_managed_database_name(
 			id = $2;
 		"#,
 		name as _,
-		database_id,
+		database_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -265,7 +265,7 @@ pub async fn get_all_database_clusters_for_workspace(
 		ManagedDatabase,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			db_name,
 			engine as "engine: _",
@@ -278,7 +278,7 @@ pub async fn get_all_database_clusters_for_workspace(
 			port,
 			username,
 			password,
-			workspace_id,
+			workspace_id as "workspace_id: _",
 			digitalocean_db_id
 		FROM
 			managed_database
@@ -286,7 +286,7 @@ pub async fn get_all_database_clusters_for_workspace(
 			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		workspace_id
+		workspace_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -300,7 +300,7 @@ pub async fn get_managed_database_by_id(
 		ManagedDatabase,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			db_name,
 			engine as "engine: _",
@@ -313,7 +313,7 @@ pub async fn get_managed_database_by_id(
 			port,
 			username,
 			password,
-			workspace_id,
+			workspace_id as "workspace_id: _",
 			digitalocean_db_id
 		FROM
 			managed_database
@@ -321,7 +321,7 @@ pub async fn get_managed_database_by_id(
 			id = $1 AND
 			status != 'deleted';
 		"#,
-		id
+		id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -342,7 +342,7 @@ pub async fn update_digitalocean_db_id_for_database(
 			id = $2;
 		"#,
 		digitalocean_db_id,
-		database_id
+		database_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -373,7 +373,7 @@ pub async fn update_managed_database_credentials_for_database(
 		port,
 		username,
 		password,
-		database_id
+		database_id as _,
 	)
 	.execute(&mut *connection)
 	.await

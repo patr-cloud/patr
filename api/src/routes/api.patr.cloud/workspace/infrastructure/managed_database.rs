@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -165,7 +165,7 @@ async fn list_all_database_clusters(
 	.into_iter()
 	.map(|database| {
 		json!({
-			request_keys::ID: database.id.to_simple_ref().to_string(),
+			request_keys::ID: database.id,
 			request_keys::NAME: database.name,
 			request_keys::DATABASE_NAME: database.db_name,
 			request_keys::ENGINE: database.engine,
@@ -309,7 +309,7 @@ async fn get_managed_database_info(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DATABASE_ID: database.id.to_simple_ref().to_string(),
+		request_keys::DATABASE_ID: database.id,
 		request_keys::NAME: database.name,
 		request_keys::DATABASE_NAME: database.db_name,
 		request_keys::ENGINE: database.engine,

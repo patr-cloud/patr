@@ -274,10 +274,7 @@ async fn is_access_token_valid(
 
 	let user_exp: Option<u64> = app
 		.redis
-		.get(format!(
-			"user-{}-exp",
-			token.user.id.to_simple_ref().to_string()
-		))
+		.get(format!("user-{}-exp", token.user.id.as_str()))
 		.await?;
 	if let Some(exp) = user_exp {
 		if exp < get_current_time_millis() {

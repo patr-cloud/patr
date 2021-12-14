@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -566,9 +566,7 @@ async fn list_deployments(
 		if deployment.registry == "registry.patr.cloud" {
 			map.insert(
 				request_keys::REPOSITORY_ID.to_string(),
-				Value::String(
-					deployment.repository_id?.to_simple_ref().to_string(),
-				),
+				Value::String(deployment.repository_id?.to_string()),
 			);
 		} else {
 			map.insert(
@@ -584,7 +582,7 @@ async fn list_deployments(
 		}
 		map.insert(
 			request_keys::DEPLOYMENT_ID.to_string(),
-			Value::String(deployment.id.to_simple_ref().to_string()),
+			Value::String(deployment.id.to_string()),
 		);
 		map.insert(
 			request_keys::NAME.to_string(),
@@ -778,7 +776,7 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id;
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let deployment_id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
@@ -872,13 +870,7 @@ async fn get_deployment_info(
 	if deployment.registry == "registry.patr.cloud" {
 		response.insert(
 			request_keys::REPOSITORY_ID.to_string(),
-			Value::String(
-				deployment
-					.repository_id
-					.status(500)?
-					.to_simple_ref()
-					.to_string(),
-			),
+			Value::String(deployment.repository_id.status(500)?.to_string()),
 		);
 	} else {
 		response.insert(
@@ -894,7 +886,7 @@ async fn get_deployment_info(
 	}
 	response.insert(
 		request_keys::DEPLOYMENT_ID.to_string(),
-		Value::String(deployment.id.to_simple_ref().to_string()),
+		Value::String(deployment.id.to_string()),
 	);
 	response.insert(
 		request_keys::NAME.to_string(),

@@ -1,8 +1,8 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::{error, utils::Error};
 

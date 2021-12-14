@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use argon2::{
 	password_hash::{PasswordVerifier, SaltString},
 	Algorithm,
@@ -8,7 +9,6 @@ use argon2::{
 	Version,
 };
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{db, error, service, utils::Error, Database};
 

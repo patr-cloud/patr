@@ -1,5 +1,5 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{
 	db,

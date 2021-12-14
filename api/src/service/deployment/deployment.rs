@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -21,7 +22,6 @@ use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
 use tokio::{io::AsyncWriteExt, task, time};
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -219,7 +219,7 @@ pub async fn start_deployment(
 				let result = digitalocean::deploy_container(
 					image_id.clone(),
 					region,
-					deployment_id,
+					deployment_id.clone(),
 					config.clone(),
 				)
 				.await;
@@ -238,8 +238,7 @@ pub async fn start_deployment(
 
 				let digital_ocean_image = format!(
 					"registry.digitalocean.com/{}/{}",
-					config.digitalocean.registry,
-					deployment_id.to_simple_ref().to_string(),
+					config.digitalocean.registry, deployment_id
 				);
 
 				log::trace!(
@@ -273,7 +272,7 @@ pub async fn start_deployment(
 				let result = aws::deploy_container(
 					image_id.clone(),
 					region,
-					deployment_id,
+					deployment_id.clone(),
 					config,
 				)
 				.await;
@@ -290,10 +289,7 @@ pub async fn start_deployment(
 					);
 				}
 
-				let aws_image = format!(
-					"patr-cloud/{}",
-					deployment_id.to_simple_ref().to_string()
-				);
+				let aws_image = format!("patr-cloud/{}", deployment_id);
 
 				log::trace!("Deleting image tagged with patr-cloud");
 				let delete_result =
@@ -338,7 +334,7 @@ pub async fn stop_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
-		deployment_id.to_simple_ref().to_string(),
+		deployment_id,
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -369,7 +365,7 @@ pub async fn stop_deployment(
 				connection,
 				deployment_id,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?;
 		}
@@ -383,7 +379,7 @@ pub async fn stop_deployment(
 				deployment_id,
 				region,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?;
 		}
@@ -394,8 +390,7 @@ pub async fn stop_deployment(
 		}
 	}
 
-	let patr_domain =
-		format!("{}.patr.cloud", deployment_id.to_simple_ref().to_string());
+	let patr_domain = format!("{}.patr.cloud", deployment_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -581,11 +576,7 @@ pub async fn delete_deployment(
 	db::update_deployment_name(
 		connection,
 		deployment_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			deployment.name,
-			deployment_id.to_simple_ref().to_string()
-		),
+		&format!("patr-deleted: {}-{}", deployment.name, deployment_id),
 	)
 	.await?;
 
@@ -596,8 +587,7 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	let patr_domain =
-		format!("{}.patr.cloud", deployment_id.to_simple_ref().to_string());
+	let patr_domain = format!("{}.patr.cloud", deployment_id);
 	let session = SessionBuilder::default()
 		.user(config.ssh.username.clone())
 		.port(config.ssh.port)
@@ -630,8 +620,7 @@ pub async fn delete_deployment(
 			deployment_id,
 			Some(format!(
 				"deleted.patr.cloud.{}.{}",
-				deployment_id.to_simple_ref().to_string(),
-				domain_name
+				deployment_id, domain_name
 			))
 			.as_deref(),
 		)
@@ -740,7 +729,7 @@ pub async fn get_deployment_container_logs(
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
-		deployment_id.to_simple_ref().to_string(),
+		deployment_id,
 		request_id
 	);
 
@@ -766,7 +755,7 @@ pub async fn get_deployment_container_logs(
 				connection,
 				deployment_id,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?
 		}
@@ -779,7 +768,7 @@ pub async fn get_deployment_container_logs(
 				connection,
 				deployment_id,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?
 		}
@@ -846,7 +835,7 @@ pub async fn get_domain_validation_status(
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Validating the deployment_id: {} with request_id: {}",
-		deployment_id.to_simple_ref().to_string(),
+		deployment_id,
 		request_id
 	);
 	log::trace!("request_id: {} - validating the custom domain", request_id);
@@ -871,13 +860,12 @@ pub async fn get_domain_validation_status(
 		request_id
 	);
 	let default_url = match provider.parse() {
-		Ok(CloudPlatform::Aws) => aws::get_app_default_url(
-			&deployment_id.to_simple_ref().to_string(),
-			region,
-		)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?,
+		Ok(CloudPlatform::Aws) => {
+			aws::get_app_default_url(deployment_id.as_str(), region)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
 			digitalocean::get_app_default_url(deployment_id, config, &client)
@@ -968,7 +956,7 @@ pub async fn get_domain_validation_status(
 				&domain_name,
 				&default_url,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?;
 			return Ok(true);
@@ -980,7 +968,7 @@ pub async fn get_domain_validation_status(
 		super::create_https_certificates_for_domain(
 			&domain_name,
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 		log::trace!("request_id: {} - updating nginx with https", request_id);
@@ -988,7 +976,7 @@ pub async fn get_domain_validation_status(
 			&domain_name,
 			&default_url,
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 		log::trace!("request_id: {} - domain validated", request_id);
@@ -1018,7 +1006,7 @@ pub async fn set_domain_for_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
-		deployment_id.to_simple_ref().to_string(),
+		deployment_id.as_str(),
 		request_id
 	);
 	log::trace!(
@@ -1051,13 +1039,12 @@ pub async fn set_domain_for_deployment(
 		request_id
 	);
 	let deployment_default_url = match provider.parse() {
-		Ok(CloudPlatform::Aws) => aws::get_app_default_url(
-			&deployment_id.to_simple_ref().to_string(),
-			region,
-		)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?,
+		Ok(CloudPlatform::Aws) => {
+			aws::get_app_default_url(deployment_id.as_str(), region)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+		}
 		Ok(CloudPlatform::DigitalOcean) => {
 			let client = Client::new();
 			digitalocean::get_app_default_url(deployment_id, config, &client)
@@ -1115,7 +1102,7 @@ pub async fn set_domain_for_deployment(
 					new_domain,
 					&deployment_default_url,
 					config,
-					request_id,
+					&request_id,
 				)
 				.await?;
 			} else {
@@ -1124,7 +1111,7 @@ pub async fn set_domain_for_deployment(
 					new_domain,
 					&deployment_default_url,
 					config,
-					request_id,
+					&request_id,
 				)
 				.await?;
 			}
@@ -1193,7 +1180,7 @@ pub async fn set_domain_for_deployment(
 						new_domain,
 						&deployment_default_url,
 						config,
-						request_id,
+						&request_id,
 					)
 					.await?;
 				} else {
@@ -1204,7 +1191,7 @@ pub async fn set_domain_for_deployment(
 						new_domain,
 						&deployment_default_url,
 						config,
-						request_id,
+						&request_id,
 					)
 					.await?;
 				}
@@ -1223,7 +1210,7 @@ pub(super) async fn update_nginx_with_all_domains_for_deployment(
 	default_url: &str,
 	custom_domain: Option<&str>,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - logging into the ssh server for checking certificate",
@@ -1323,7 +1310,7 @@ async fn update_nginx_config_for_domain_with_http_only(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for updating server with http", request_id);
 	let session = SessionBuilder::default()
@@ -1391,7 +1378,7 @@ async fn update_nginx_config_for_domain_with_https(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for updating nginx with https", request_id);
 	let session = SessionBuilder::default()

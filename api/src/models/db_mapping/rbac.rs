@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 pub struct Resource {
 	pub id: Uuid,

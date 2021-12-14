@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{
 	models::{
@@ -240,7 +240,7 @@ pub async fn initialize_rbac_post(
 			VALUES
 				($1, $2, NULL);
 			"#,
-			uuid,
+			uuid as _,
 			permission,
 		)
 		.execute(&mut *connection)
@@ -258,7 +258,7 @@ pub async fn initialize_rbac_post(
 			VALUES
 				($1, $2, NULL);
 			"#,
-			uuid,
+			uuid as _,
 			resource_type,
 		)
 		.execute(&mut *connection)
@@ -282,7 +282,8 @@ pub async fn get_all_workspace_roles_for_user(
 	let workspace_roles = query!(
 		r#"
 		SELECT
-			*
+			workspace_id as "workspace_id: Uuid",
+			role_id as "role_id: Uuid"
 		FROM
 			workspace_user
 		WHERE
@@ -290,7 +291,7 @@ pub async fn get_all_workspace_roles_for_user(
 		ORDER BY
 			workspace_id;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -301,13 +302,14 @@ pub async fn get_all_workspace_roles_for_user(
 		let resources = query!(
 			r#"
 			SELECT
-				*
+				permission_id as "permission_id: Uuid",
+				resource_id as "resource_id: Uuid"
 			FROM
 				role_permissions_resource
 			WHERE
 				role_id = $1;
 			"#,
-			workspace_role.role_id
+			workspace_role.role_id as _
 		)
 		.fetch_all(&mut *connection)
 		.await?;
@@ -315,13 +317,14 @@ pub async fn get_all_workspace_roles_for_user(
 		let resource_types = query!(
 			r#"
 			SELECT
-				*
+				permission_id as "permission_id: Uuid",
+				resource_type_id as "resource_type_id: Uuid"
 			FROM
 				role_permissions_resource_type
 			WHERE
 				role_id = $1;
 			"#,
-			workspace_role.role_id
+			workspace_role.role_id as _
 		)
 		.fetch_all(&mut *connection)
 		.await?;
@@ -402,16 +405,16 @@ pub async fn get_all_workspace_roles_for_user(
 		Workspace,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
-			super_admin_id,
+			super_admin_id as "super_admin_id: _",
 			active
 		FROM
 			workspace
 		WHERE
 			super_admin_id = $1;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -441,8 +444,7 @@ pub async fn generate_new_role_id(
 	loop {
 		let uuid = Uuid::new_v4();
 
-		let exists = query_as!(
-			Role,
+		let exists = query!(
 			r#"
 			SELECT
 				*
@@ -451,7 +453,7 @@ pub async fn generate_new_role_id(
 			WHERE
 				id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -469,8 +471,7 @@ pub async fn generate_new_permission_id(
 	loop {
 		let uuid = Uuid::new_v4();
 
-		let exists = query_as!(
-			Permission,
+		let exists = query!(
 			r#"
 			SELECT
 				*
@@ -479,7 +480,7 @@ pub async fn generate_new_permission_id(
 			WHERE
 				id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -497,8 +498,7 @@ pub async fn generate_new_resource_type_id(
 	loop {
 		let uuid = Uuid::new_v4();
 
-		let exists = query_as!(
-			ResourceType,
+		let exists = query!(
 			r#"
 			SELECT
 				*
@@ -507,7 +507,7 @@ pub async fn generate_new_resource_type_id(
 			WHERE
 				id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -526,7 +526,9 @@ pub async fn get_all_resource_types(
 		ResourceType,
 		r#"
 		SELECT
-			*
+			id as "id: _",
+			name,
+			description
 		FROM
 			resource_type;
 		"#
@@ -542,7 +544,9 @@ pub async fn get_all_permissions(
 		Permission,
 		r#"
 		SELECT
-			*
+			id as "id: _",
+			name,
+			description
 		FROM
 			permission;
 		"#
@@ -559,7 +563,9 @@ pub async fn get_resource_type_for_resource(
 		ResourceType,
 		r#"
 		SELECT
-			resource_type.*
+			resource_type.id as "id: _",
+			resource_type.name,
+			resource_type.description
 		FROM
 			resource_type
 		INNER JOIN
@@ -569,7 +575,7 @@ pub async fn get_resource_type_for_resource(
 		WHERE
 			resource.id = $1;
 		"#,
-		resource_id
+		resource_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -589,10 +595,10 @@ pub async fn create_role(
 		VALUES
 			($1, $2, $3, $4);
 		"#,
-		role_id,
+		role_id as _,
 		name,
 		description,
-		owner_id
+		owner_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -614,10 +620,10 @@ pub async fn create_resource(
 		VALUES
 			($1, $2, $3, $4, $5);
 		"#,
-		resource_id,
+		resource_id as _,
 		resource_name,
-		resource_type_id,
-		owner_id,
+		resource_type_id as _,
+		owner_id as _,
 		created as i64
 	)
 	.execute(&mut *connection)
@@ -632,17 +638,16 @@ pub async fn generate_new_resource_id(
 	loop {
 		let uuid = Uuid::new_v4();
 
-		let exists = query_as!(
-			ResourceType,
+		let exists = query!(
 			r#"
 			SELECT
 				*
 			FROM
-				resource_type
+				resource
 			WHERE
 				id = $1;
 			"#,
-			&uuid
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -661,13 +666,17 @@ pub async fn get_resource_by_id(
 	let resource = query!(
 		r#"
 		SELECT
-			*
+			id as "id: Uuid",
+			name,
+			resource_type_id as "resource_type_id: Uuid",
+			owner_id as "owner_id: Uuid",
+			created
 		FROM
 			resource
 		WHERE
 			id = $1;
 		"#,
-		resource_id
+		resource_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -693,7 +702,7 @@ pub async fn delete_resource(
 		WHERE
 			id = $1;
 		"#,
-		resource_id
+		resource_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -709,13 +718,16 @@ pub async fn get_all_workspace_roles(
 		Role,
 		r#"
 		SELECT
-			*
+			id as "id: _",
+			name,
+			description,
+			owner_id as "owner_id: _"
 		FROM
 			role
 		WHERE
 			owner_id = $1;
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -729,13 +741,16 @@ pub async fn get_role_by_id(
 		Role,
 		r#"
 		SELECT
-			*
+			id as "id: _",
+			name,
+			description,
+			owner_id as "owner_id: _"
 		FROM
 			role
 		WHERE
 			id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -751,7 +766,10 @@ pub async fn get_permissions_on_resources_for_role(
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			permission_id as "permission_id: Uuid",
+			resource_id as "resource_id: Uuid",
+			name,
+			description
 		FROM
 			role_permissions_resource
 		INNER JOIN
@@ -761,7 +779,7 @@ pub async fn get_permissions_on_resources_for_role(
 		WHERE
 			role_permissions_resource.role_id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -791,7 +809,10 @@ pub async fn get_permissions_on_resource_types_for_role(
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			permission_id as "permission_id: Uuid",
+			resource_type_id as "resource_type_id: Uuid",
+			name,
+			description
 		FROM
 			role_permissions_resource_type
 		INNER JOIN
@@ -801,7 +822,7 @@ pub async fn get_permissions_on_resource_types_for_role(
 		WHERE
 			role_permissions_resource_type.role_id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -832,7 +853,7 @@ pub async fn remove_all_permissions_for_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -844,7 +865,7 @@ pub async fn remove_all_permissions_for_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -866,9 +887,9 @@ pub async fn insert_resource_permissions_for_role(
 				VALUES
 					($1, $2, $3);
 				"#,
-				role_id,
-				permission_id,
-				resource_id,
+				role_id as _,
+				permission_id as _,
+				resource_id as _,
 			)
 			.execute(&mut *connection)
 			.await?;
@@ -891,9 +912,9 @@ pub async fn insert_resource_type_permissions_for_role(
 				VALUES
 					($1, $2, $3);
 				"#,
-				role_id,
-				permission_id,
-				resource_id,
+				role_id as _,
+				permission_id as _,
+				resource_id as _,
 			)
 			.execute(&mut *connection)
 			.await?;
@@ -915,7 +936,7 @@ pub async fn delete_role(
 		WHERE
 			id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -934,7 +955,7 @@ pub async fn remove_all_users_from_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id
+		role_id as _
 	)
 	.execute(&mut *connection)
 	.await?;

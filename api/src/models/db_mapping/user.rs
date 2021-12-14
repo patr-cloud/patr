@@ -1,5 +1,5 @@
+use api_models::utils::Uuid;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::utils::constants::ResourceOwnerType;
 

@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -431,7 +431,7 @@ async fn get_static_site_info(
 
 	response.insert(
 		request_keys::STATIC_SITE_ID.to_string(),
-		Value::String(static_site.id.to_simple_ref().to_string()),
+		Value::String(static_site.id.to_string()),
 	);
 	response.insert(
 		request_keys::NAME.to_string(),
@@ -499,7 +499,7 @@ async fn list_static_sites(
 		);
 		map.insert(
 			request_keys::STATIC_SITE_ID.to_string(),
-			Value::String(static_site.id.to_simple_ref().to_string()),
+			Value::String(static_site.id.to_string()),
 		);
 		map.insert(
 			request_keys::STATUS.to_string(),
@@ -592,7 +592,7 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id;
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let static_site_id = service::create_static_site_deployment_in_workspace(
 		context.get_database_connection(),
@@ -724,7 +724,7 @@ async fn upload_files_for_static_site(
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",
-		static_site_id.to_simple_ref().to_string(),
+		static_site_id,
 		request_id
 	);
 	service::upload_files_for_static_site(

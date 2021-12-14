@@ -1,15 +1,17 @@
-use api_models::models::workspace::{
-	CreateNewWorkspaceRequest,
-	CreateNewWorkspaceResponse,
-	GetWorkspaceInfoResponse,
-	IsWorkspaceNameAvailableRequest,
-	IsWorkspaceNameAvailableResponse,
-	UpdateWorkspaceInfoRequest,
-	UpdateWorkspaceInfoResponse,
-	Workspace,
+use api_models::{
+	models::workspace::{
+		CreateNewWorkspaceRequest,
+		CreateNewWorkspaceResponse,
+		GetWorkspaceInfoResponse,
+		IsWorkspaceNameAvailableRequest,
+		IsWorkspaceNameAvailableResponse,
+		UpdateWorkspaceInfoRequest,
+		UpdateWorkspaceInfoResponse,
+		Workspace,
+	},
+	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -274,7 +276,7 @@ async fn create_new_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let workspace_name = workspace_name.trim().to_lowercase();
 
-	let user_id = context.get_token_data().unwrap().user.id;
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
 		&workspace_name,

@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use api_models::utils::Uuid;
 
 use crate::{
 	models::db_mapping::{DeploymentStaticSite, DeploymentStatus},
@@ -83,10 +83,10 @@ pub async fn create_static_site(
 			VALUES
 				($1, $2, 'created', $3, $4);
 			"#,
-			static_site_id,
+			static_site_id as _,
 			name as _,
 			domain,
-			workspace_id
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -99,9 +99,9 @@ pub async fn create_static_site(
 			VALUES
 				($1, $2, 'created', NULL, $3);
 			"#,
-			static_site_id,
+			static_site_id as _,
 			name as _,
-			workspace_id
+			workspace_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -117,18 +117,18 @@ pub async fn get_static_site_by_id(
 		DeploymentStaticSite,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			status as "status: _",
 			domain_name,
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
 		WHERE
 			id = $1 AND
 			status != 'deleted';
 		"#,
-		static_site_id
+		static_site_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -143,11 +143,11 @@ pub async fn get_static_site_by_name_in_workspace(
 		DeploymentStaticSite,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			status as "status: _",
 			domain_name,
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
 		WHERE
@@ -156,7 +156,7 @@ pub async fn get_static_site_by_name_in_workspace(
 			status != 'deleted';
 		"#,
 		name as _,
-		workspace_id,
+		workspace_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -177,7 +177,7 @@ pub async fn update_static_site_status(
 			id = $2;
 		"#,
 		status as _,
-		static_site_id
+		static_site_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -199,7 +199,7 @@ pub async fn update_static_site_name(
 			id = $2;
 		"#,
 		name as _,
-		static_site_id
+		static_site_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -214,18 +214,18 @@ pub async fn get_static_sites_for_workspace(
 		DeploymentStaticSite,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name as "name: _",
 			status as "status: _",
 			domain_name,
-			workspace_id
+			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		workspace_id
+		workspace_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -246,7 +246,7 @@ pub async fn set_domain_name_for_static_site(
 			ON CONFLICT(static_site_id) DO UPDATE SET
 				domain_name = EXCLUDED.domain_name;
 			"#,
-			static_site_id,
+			static_site_id as _,
 			domain_name,
 		)
 		.execute(&mut *connection)
@@ -262,7 +262,7 @@ pub async fn set_domain_name_for_static_site(
 				id = $2;
 			"#,
 			domain_name,
-			static_site_id,
+			static_site_id as _,
 		)
 		.execute(&mut *connection)
 		.await
@@ -275,7 +275,7 @@ pub async fn set_domain_name_for_static_site(
 			WHERE
 				static_site_id = $1;
 			"#,
-			static_site_id,
+			static_site_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -289,7 +289,7 @@ pub async fn set_domain_name_for_static_site(
 			WHERE
 				id = $1;
 			"#,
-			static_site_id,
+			static_site_id as _,
 		)
 		.execute(&mut *connection)
 		.await
