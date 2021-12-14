@@ -478,7 +478,7 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 		.arg("-s")
 		.arg("-y")
 		.arg("--ignore-matching-lines")
-		.arg("\\\\x[a-f0-9]*")
+		.arg("\\\\x[a-f0-9\\-]*")
 		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
