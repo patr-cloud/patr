@@ -534,7 +534,9 @@ async fn migrate_from_v0_4_9(
 	Ok(())
 }
 
-async fn add_trim_check_for_username(connection: &mut <Database as sqlx::Database>::Connection) -> Result<(), sqlx::Error> {
+async fn add_trim_check_for_username(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE "user"
