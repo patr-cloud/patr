@@ -2,11 +2,12 @@ use std::{env, process::Stdio};
 
 use clap::crate_version;
 use futures::StreamExt;
+use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::{
 	fs::{self, OpenOptions},
-	io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+	io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
 	process::Command,
 };
 
@@ -87,6 +88,9 @@ async fn main() {
 		"existing.sql",
 	)
 	.await;
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("existing.sql").await;
+	println!("UUIDS rewritten.");
 	println!("Database dump completed");
 
 	println!("Clearing database...");
@@ -123,6 +127,9 @@ async fn main() {
 		"fresh.sql",
 	)
 	.await;
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("fresh.sql").await;
+	println!("UUIDS rewritten.");
 	println!("Database dump completed");
 	println!();
 
@@ -316,6 +323,10 @@ async fn handle_release(
 	.await;
 	println!("Database dump restored");
 
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("database.sql").await;
+	println!("UUIDs rewritten");
+
 	println!("Testing migrations against version {}...", release.tag_name);
 	println!("Running api to run migrations...");
 	run_api_with_only_db(
@@ -339,6 +350,11 @@ async fn handle_release(
 		"migrated.sql",
 	)
 	.await;
+
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("migrated.sql").await;
+	println!("UUIDs rewritten");
+
 	println!("Migrated database dumped to migrated.sql");
 
 	println!("Checking if migrated.sql is the same as fresh.sql...");
@@ -477,8 +493,6 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 	let success = Command::new("diff")
 		.arg("-s")
 		.arg("-y")
-		.arg("--ignore-matching-lines")
-		.arg("[\\\\x]?[a-f0-9\\-]{32,36}")
 		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
@@ -545,4 +559,24 @@ async fn restore_database_dump(
 	if !success {
 		panic!("psql command exited with a non-success exit code");
 	}
+}
+
+async fn rewrite_uuids(file_name: &str) {
+	let uuid_regex =
+		Regex::new("(\\\\\\\\x[a-f0-9]{32})|([a-f0-9\\-]{36})").unwrap();
+
+	let mut contents = String::new();
+	OpenOptions::new()
+		.read(true)
+		.open(file_name)
+		.await
+		.expect("Unable to open file")
+		.read_to_string(&mut contents)
+		.await
+		.expect("Unable to read file");
+
+	let replaced = uuid_regex.replace_all(&contents, "<<uuid>>");
+	fs::write(file_name, replaced.to_string())
+		.await
+		.expect("Unable to write back to the file");
 }
