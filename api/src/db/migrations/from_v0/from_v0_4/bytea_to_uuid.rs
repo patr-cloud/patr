@@ -12,8 +12,12 @@ use crate::{migrate_query as query, Database};
  *  )
  * )
  */
-const ALL_FOREIGN_KEY_CONSTRAINTS: [(&str, bool, (&str, &str, &str, &str));
-	45] = [
+type ConstraintType = (
+	&'static str,
+	bool,
+	(&'static str, &'static str, &'static str, &'static str),
+);
+const ALL_FOREIGN_KEY_CONSTRAINTS: [ConstraintType; 45] = [
 	(
 		"user_login_fk_user_id",
 		false,
