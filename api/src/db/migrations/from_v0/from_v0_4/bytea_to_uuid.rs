@@ -166,7 +166,7 @@ const ALL_FOREIGN_KEY_CONSTRAINTS: [ConstraintType; 45] = [
 	(
 		"workspace_domain_fk_id",
 		false,
-		("workspace_domain", "id", "domain", "id"),
+		("workspace_domain", "id", "resource", "id"),
 	),
 	(
 		"docker_registry_repository_fk_id_workspace_id",
