@@ -382,16 +382,6 @@
       "nullable": []
     }
   },
-  "13468aad363fe5f32732149702070c5c12139fb96ba70788e23e7bc4673cb8f4": {
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_super_admin_id_fk_user_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "1478e049e620cdd3592a2f14e0f25a668c95e62854c5facb14517c62d6210275": {
     "query": "CREATE INDEX business_email_idx_user_id ON business_email (user_id);",
     "describe": {
@@ -4402,6 +4392,16 @@
             }
           }
         ]
+      },
+      "nullable": []
+    }
+  },
+  "a9eb08956c2e59f4d701e4baa32dafa78dca6ba244d23a5594fab33478abc372": {
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }

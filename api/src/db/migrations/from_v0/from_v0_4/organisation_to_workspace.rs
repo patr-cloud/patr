@@ -233,7 +233,7 @@ async fn rename_organisation_to_workspace(
 		r#"
 		ALTER TABLE workspace
 		RENAME CONSTRAINT organisation_super_admin_id_fk_user_id
-		TO workspace_super_admin_id_fk_user_id;
+		TO workspace_fk_super_admin_id;
 		"#
 	)
 	.execute(&mut *connection)

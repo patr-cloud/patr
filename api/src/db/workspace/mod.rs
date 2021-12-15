@@ -21,7 +21,7 @@ pub async fn initialize_workspaces_pre(
 			name CITEXT NOT NULL
 				CONSTRAINT workspace_uq_name UNIQUE,
 			super_admin_id UUID NOT NULL
-				CONSTRAINT workspace_super_admin_id_fk_user_id
+				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE
 		);
