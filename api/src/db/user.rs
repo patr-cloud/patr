@@ -31,7 +31,7 @@ pub async fn initialize_users_pre(
 					username = LOWER(username)
 				)
 				CONSTRAINT user_chk_username_is_trimmed CHECK(
-					username = LOWER(username)
+					username = TRIM(username)
 				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,

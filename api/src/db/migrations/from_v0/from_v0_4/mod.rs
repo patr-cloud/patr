@@ -529,6 +529,20 @@ async fn migrate_from_v0_4_9(
 ) -> Result<(), sqlx::Error> {
 	organisation_to_workspace::migrate(&mut *connection).await?;
 	bytea_to_uuid::migrate(&mut *connection).await?;
+	add_trim_check_for_username(&mut *connection).await?;
 
 	Ok(())
+}
+
+async fn add_trim_check_for_username(connection: &mut <Database as sqlx::Database>::Connection) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD CONSTRAINT user_chk_username_is_trimmed
+		CHECK(username = TRIM(username));
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

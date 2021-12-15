@@ -907,7 +907,7 @@ async fn remove_portus_resource_type(
 		FROM
 			resource_type
 		WHERE
-			name = 'application';
+			name = 'portus';
 		"#
 	)
 	.map(|row: PgRow| row.get::<Vec<u8>, _>("id"))
