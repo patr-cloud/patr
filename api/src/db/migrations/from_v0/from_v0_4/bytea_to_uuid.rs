@@ -1,13 +1,69 @@
+use sqlx::Row;
+
 use crate::{migrate_query as query, Database};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	let constraint_list =
+		mark_all_non_deferrable_constraints_deferrable(&mut *connection)
+			.await?;
 	alter_user_tables(&mut *connection).await?;
 	alter_workspace_tables(&mut *connection).await?;
 	alter_rbac_tables(&mut *connection).await?;
+	mark_all_non_deferrable_constraints_non_deferrable(
+		&mut *connection,
+		&constraint_list,
+	)
+	.await?;
 
 	Ok(())
+}
+
+async fn mark_all_non_deferrable_constraints_deferrable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+	let constraints = query!(
+		r#"
+		SELECT
+			pg_constraint.conname,
+			pg_class.relname
+		FROM
+			pg_catalog.pg_constraint
+		INNER JOIN
+			pg_catalog.pg_class
+		ON
+			pg_class.oid = pg_constraint.conrelid
+		INNER JOIN
+			pg_catalog.pg_namespace
+		ON
+			pg_namespace.oid = connamespace
+		WHERE
+			pg_namespace.nspname = 'public' AND
+			pg_constraint.condeferrable = 'f' AND
+			pg_constraint.conname LIKE CONCAT(pg_class.relname, '_fk_%');
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.get("relname"), row.get("conname")))
+	.collect::<Vec<_>>();
+
+	for (table_name, constraint_name) in &constraints {
+		sqlx::query(&format!(
+			r#"
+			ALTER TABLE {}
+			ALTER CONSTRAINT {}
+			SET DEFERRABLE INITIALLY DEFERRED;
+			"#,
+			table_name, constraint_name,
+		))
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(constraints)
 }
 
 async fn alter_rbac_tables(
@@ -548,6 +604,26 @@ async fn alter_static_site_tables(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn mark_all_non_deferrable_constraints_non_deferrable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	constraint_list: &[(String, String)],
+) -> Result<(), sqlx::Error> {
+	for (table_name, constraint_name) in constraint_list {
+		sqlx::query(&format!(
+			r#"
+			ALTER TABLE {}
+			ALTER CONSTRAINT {}
+			SET NOT DEFERRABLE;
+			"#,
+			table_name, constraint_name,
+		))
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
