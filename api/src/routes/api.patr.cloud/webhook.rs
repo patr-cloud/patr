@@ -165,28 +165,12 @@ pub async fn notification_handler(
 
 		let current_time = get_current_time_millis();
 
-		db::create_docker_repository_digest(
-			context.get_database_connection(),
-			&repository.id,
-			&target.digest,
-			target.size,
-			current_time,
-		)
-		.await?;
-
+		// create_docker_repository_digest
 		if target.tag.is_empty() {
 			continue;
 		}
 
-		db::set_docker_repository_tag_details(
-			context.get_database_connection(),
-			&repository.id,
-			&target.tag,
-			&target.digest,
-			current_time,
-		)
-		.await?;
-
+		// set_docker_repository_tag_details
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),

@@ -5,7 +5,9 @@ use api_models::models::workspace::docker_registry::{
 	DeleteDockerRepositoryImageResponse,
 	DeleteDockerRepositoryResponse,
 	DockerRepository,
+	DockerRepositoryImageInfo,
 	DockerRepositoryTagAndDigestInfo,
+	DockerRepositoryTagInfo,
 	GetDockerRepositoryImageDetailsResponse,
 	GetDockerRepositoryInfoResponse,
 	GetDockerRepositoryTagDetailsResponse,
@@ -463,22 +465,11 @@ async fn list_docker_repositories(
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = hex::decode(&workspace_id_string).unwrap();
 
-	let repositories = db::get_docker_repositories_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.filter_map(|(repository, size)| {
-		Some(DockerRepository {
-			id: Uuid::from_slice(&repository.id).ok()?,
-			name: repository.name,
-			size,
-		})
-	})
-	.collect::<Vec<_>>();
+	//TODO: get repositories information from this
 
-	context.success(ListDockerRepositoriesResponse { repositories });
+	context.success(ListDockerRepositoriesResponse {
+		repositories: todo!(),
+	});
 	Ok(context)
 }
 
@@ -519,18 +510,16 @@ async fn get_docker_repository_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let size = db::get_total_size_of_docker_repository(
-		context.get_database_connection(),
-		&repository_id,
-	)
-	.await?;
+	// TODO:get total size of the repository
+	let size = 69 as u64;
+
 	let mut last_updated = 0; // TODO fetch this from the db for the sake of pagination
 
-	let images = db::get_list_of_digests_for_docker_repository(
-		context.get_database_connection(),
-		&repository_id,
-	)
-	.await?;
+	let images = vec![DockerRepositoryImageInfo {
+		digest: todo!(),
+		size,
+		created: todo!(),
+	}];
 	images.iter().for_each(|image| {
 		last_updated = last_updated.max(image.created);
 	});
@@ -579,21 +568,16 @@ async fn get_repository_image_details(
 
 	let digest = context.get_param(request_keys::DIGEST).unwrap().clone();
 
-	let image = db::get_docker_repository_image_by_digest(
-		context.get_database_connection(),
-		&repository_id,
-		&digest,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let image = DockerRepositoryImageInfo {
+		digest,
+		size: todo!(),
+		created: todo!(),
+	};
 
-	let tags = db::get_tags_for_docker_repository_image(
-		context.get_database_connection(),
-		&repository_id,
-		&digest,
-	)
-	.await?;
+	let tags = vec![DockerRepositoryTagInfo {
+		tag: todo!(),
+		last_updated: todo!(),
+	}];
 
 	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
 	Ok(context)
@@ -629,17 +613,10 @@ async fn get_list_of_repository_tags(
 		.clone();
 	let repository_id = hex::decode(&repository_id_string).unwrap();
 
-	let tags = db::get_list_of_tags_for_docker_repository(
-		context.get_database_connection(),
-		&repository_id,
-	)
-	.await?
-	.into_iter()
-	.map(|(tag_info, digest)| DockerRepositoryTagAndDigestInfo {
-		tag_info,
-		digest,
-	})
-	.collect();
+	let tags = vec![DockerRepositoryTagAndDigestInfo {
+		tag_info: todo!(),
+		digest: todo!(),
+	}];
 
 	context.success(ListDockerRepositoryTagsResponse { tags });
 	Ok(context)
@@ -677,14 +654,7 @@ async fn get_repository_tag_details(
 
 	let tag = context.get_param(request_keys::TAG).unwrap().clone();
 
-	let (tag_info, digest) = db::get_docker_repository_tag_details(
-		context.get_database_connection(),
-		&repository_id,
-		&tag,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let (tag_info, digest) = (DockerRepositoryTagInfo{ tag, last_updated: todo!() }, "digest".to_string());
 
 	context.success(GetDockerRepositoryTagDetailsResponse { tag_info, digest });
 	Ok(context)

@@ -1,3 +1,7 @@
+use api_models::models::workspace::docker_registry::{
+	DockerRepositoryImageInfo,
+	DockerRepositoryTagInfo,
+};
 use eve_rs::AsError;
 
 use crate::{
@@ -19,51 +23,43 @@ pub async fn delete_docker_repository_image(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// First, delete all tags for the given image
-	let tags = db::get_tags_for_docker_repository_image(
-		connection,
-		repository_id,
-		digest,
-	)
-	.await?;
+	let tags = vec![DockerRepositoryTagInfo {
+		tag: todo!(),
+		last_updated: todo!(),
+	}];
 	for tag in tags {
-		db::delete_tag_from_docker_repository(
-			connection,
-			repository_id,
-			&tag.tag,
-		)
-		.await?;
+		// TODO: delete all tags
 	}
 
-	db::delete_docker_repository_image(connection, repository_id, digest)
-		.await?;
+	// TODO: delete all images
 
-	let response_code = reqwest::Client::new()
-		.delete(format!(
-			"{}://{}/v2/{}/manifests/{}",
-			if config.docker_registry.registry_url.starts_with("localhost") {
-				"http"
-			} else {
-				"https"
-			},
-			config.docker_registry.registry_url,
-			repository.name,
-			digest
-		))
-		.header(
-			reqwest::header::ACCEPT,
-			"application/vnd.docker.distribution.events.v1+json",
-		)
-		.send()
-		.await?
-		.status();
+	// let response_code = reqwest::Client::new()
+	// 	.delete(format!(
+	// 		"{}://{}/v2/{}/manifests/{}",
+	// 		if config.docker_registry.registry_url.starts_with("localhost") {
+	// 			"http"
+	// 		} else {
+	// 			"https"
+	// 		},
+	// 		config.docker_registry.registry_url,
+	// 		repository.name,
+	// 		digest
+	// 	))
+	// 	.header(
+	// 		reqwest::header::ACCEPT,
+	// 		"application/vnd.docker.distribution.events.v1+json",
+	// 	)
+	// 	.send()
+	// 	.await?
+	// 	.status();
 
-	if response_code == 404 {
-		return Err(Error::empty()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string()));
-	} else if !response_code.is_success() {
-		return Err(Error::empty());
-	}
+	// if response_code == 404 {
+	// 	return Err(Error::empty()
+	// 		.status(404)
+	// 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string()));
+	// } else if !response_code.is_success() {
+	// 	return Err(Error::empty());
+	// }
 
 	Ok(())
 }
@@ -78,16 +74,13 @@ pub async fn delete_docker_repository(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let images = db::get_list_of_digests_for_docker_repository(
-		connection,
-		repository_id,
-	)
-	.await?;
+	let images = vec![DockerRepositoryImageInfo {
+		digest: todo!(),
+		size: todo!(),
+		created: todo!(),
+	}];
 
-	db::delete_all_tags_for_docker_repository(connection, repository_id)
-		.await?;
-	db::delete_all_images_for_docker_repository(connection, repository_id)
-		.await?;
+	// TODO: delete all images and tagsd for docker repository
 
 	db::update_docker_repository_name(
 		connection,
