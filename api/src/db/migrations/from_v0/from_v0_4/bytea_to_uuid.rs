@@ -55,7 +55,7 @@ async fn mark_all_non_deferrable_constraints_deferrable(
 			r#"
 			ALTER TABLE {}
 			ALTER CONSTRAINT {}
-			SET DEFERRABLE INITIALLY DEFERRED;
+			DEFERRABLE INITIALLY DEFERRED;
 			"#,
 			table_name, constraint_name,
 		))
@@ -617,7 +617,7 @@ async fn mark_all_non_deferrable_constraints_non_deferrable(
 			r#"
 			ALTER TABLE {}
 			ALTER CONSTRAINT {}
-			SET NOT DEFERRABLE;
+			NOT DEFERRABLE;
 			"#,
 			table_name, constraint_name,
 		))
