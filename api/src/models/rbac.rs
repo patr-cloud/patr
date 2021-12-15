@@ -103,7 +103,6 @@ pub mod permissions {
 #[allow(dead_code)]
 #[api_macros::iterable_module(consts, recursive = false)]
 pub mod resource_types {
-	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
@@ -111,4 +110,5 @@ pub mod resource_types {
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";
+	pub const WORKSPACE: &str = "workspace";
 }
