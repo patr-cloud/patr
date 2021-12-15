@@ -9,7 +9,7 @@ use crate::{migrate_query as query, Database};
  *  from_column,
  *  to_table,
  *  to_column,
- * 	)
+ *  )
  * )
  */
 const ALL_FOREIGN_KEY_CONSTRAINTS: [(&str, bool, (&str, &str, &str, &str));
