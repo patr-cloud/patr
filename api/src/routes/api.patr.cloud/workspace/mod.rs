@@ -104,10 +104,7 @@ pub fn create_sub_app(
 
 	sub_app.get(
 		"/is-name-available",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(is_name_available)),
-		],
+		[EveMiddleware::CustomFunction(pin_fn!(is_name_available))],
 	);
 	sub_app.post(
 		"/",
