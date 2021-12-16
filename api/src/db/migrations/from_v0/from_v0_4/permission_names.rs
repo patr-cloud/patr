@@ -78,7 +78,7 @@ pub(super) async fn migrate(
 			new_name,
 			old_name,
 		)
-        .execute(&mut *connection)
+		.execute(&mut *connection)
 		.await?;
 	}
 	Ok(())
