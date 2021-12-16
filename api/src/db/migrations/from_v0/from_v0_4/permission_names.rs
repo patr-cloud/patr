@@ -69,7 +69,7 @@ pub(super) async fn migrate(
 		query!(
 			r#"
 			UPDATE
-				permissions
+				permission
 			SET
 				name = $1
 			WHERE
