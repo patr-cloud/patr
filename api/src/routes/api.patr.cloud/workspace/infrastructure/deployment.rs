@@ -43,7 +43,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::LIST,
+				permissions::workspace::infrastructure::deployment::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -76,7 +76,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::CREATE,
+				permissions::workspace::infrastructure::deployment::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -108,7 +108,7 @@ pub fn create_sub_app(
 		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -140,7 +140,7 @@ pub fn create_sub_app(
 		"/:deploymentId/start",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
+				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -172,7 +172,7 @@ pub fn create_sub_app(
 		"/:deploymentId/stop",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
+				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -204,7 +204,7 @@ pub fn create_sub_app(
 		"/:deploymentId/logs",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -236,7 +236,7 @@ pub fn create_sub_app(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -268,7 +268,7 @@ pub fn create_sub_app(
 		"/:deploymentId/environment-variables",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
+				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -300,7 +300,7 @@ pub fn create_sub_app(
 		"/:deploymentId/horizontal-scale",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
+				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -332,7 +332,7 @@ pub fn create_sub_app(
 		"/:deploymentId/machine-type",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
+				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -364,7 +364,7 @@ pub fn create_sub_app(
 		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::DELETE,
+				permissions::workspace::infrastructure::deployment::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -396,7 +396,7 @@ pub fn create_sub_app(
 		"/:deploymentId/domain-dns-records",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -428,7 +428,7 @@ pub fn create_sub_app(
 		"/:deploymentId/domain",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
@@ -460,7 +460,7 @@ pub fn create_sub_app(
 		"/:deploymentId/domain-validated",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -492,7 +492,7 @@ pub fn create_sub_app(
 		"/:deploymentId/recommended-data-center",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

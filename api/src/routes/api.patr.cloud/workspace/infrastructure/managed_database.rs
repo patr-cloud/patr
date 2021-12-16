@@ -26,7 +26,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::managed_database::LIST,
+				permissions::workspace::infrastructure::managed_database::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -58,7 +58,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::managed_database::CREATE,
+				permissions::workspace::infrastructure::managed_database::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -90,7 +90,7 @@ pub fn create_sub_app(
 		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::managed_database::INFO,
+				permissions::workspace::infrastructure::managed_database::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();
@@ -122,7 +122,7 @@ pub fn create_sub_app(
 		"/:databaseId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::managed_database::DELETE,
+				permissions::workspace::infrastructure::managed_database::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::DATABASE_ID).unwrap();

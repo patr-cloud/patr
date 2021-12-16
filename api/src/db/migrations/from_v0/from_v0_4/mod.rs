@@ -3,6 +3,7 @@ use semver::Version;
 use crate::{migrate_query as query, Database};
 
 mod organisation_to_workspace;
+mod permission_names;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -526,5 +527,8 @@ async fn migrate_from_v0_4_8(
 async fn migrate_from_v0_4_9(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	organisation_to_workspace::migrate(connection).await
+	organisation_to_workspace::migrate(&mut *connection).await?;
+	permission_names::migrate(&mut *connection).await?;
+
+	Ok(())
 }

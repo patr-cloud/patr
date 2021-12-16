@@ -44,7 +44,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -76,7 +76,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::INFO,
+				permissions::workspace::infrastructure::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -109,7 +109,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/start",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::EDIT,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -142,7 +142,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/upload",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::EDIT,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -177,7 +177,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/stop",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::EDIT,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -210,7 +210,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::CREATE,
+				permissions::workspace::infrastructure::static_site::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -244,7 +244,7 @@ pub fn create_sub_app(
 		"/:staticSiteId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::DELETE,
+				permissions::workspace::infrastructure::static_site::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -277,7 +277,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain-dns-records",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::INFO,
+				permissions::workspace::infrastructure::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -312,7 +312,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::EDIT,
+				permissions::workspace::infrastructure::static_site::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
@@ -347,7 +347,7 @@ pub fn create_sub_app(
 		"/:staticSiteId/domain-validated",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::static_site::INFO,
+				permissions::workspace::infrastructure::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

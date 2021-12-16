@@ -31,12 +31,14 @@ pub mod permissions {
 			pub const DELETE: &str = "workspace::domain::delete";
 		}
 
-		pub mod deployment {
-			pub const LIST: &str = "workspace::deployment::list";
-			pub const CREATE: &str = "workspace::deployment::create";
-			pub const INFO: &str = "workspace::deployment::info";
-			pub const DELETE: &str = "workspace::deployment::delete";
-			pub const EDIT: &str = "workspace::deployment::edit";
+		pub mod infrastructure {
+			pub mod deployment {
+				pub const LIST: &str = "workspace::deployment::list";
+				pub const CREATE: &str = "workspace::deployment::create";
+				pub const INFO: &str = "workspace::deployment::info";
+				pub const DELETE: &str = "workspace::deployment::delete";
+				pub const EDIT: &str = "workspace::deployment::edit";
+			}
 
 			#[allow(dead_code)]
 			pub mod upgrade_path {
@@ -63,6 +65,21 @@ pub mod permissions {
 				pub const DELETE: &str =
 					"workspace::deployment::entryPoint::delete";
 			}
+
+			pub mod managed_database {
+				pub const CREATE: &str = "workspace::managedDatabase::create";
+				pub const LIST: &str = "workspace::managedDatabase::list";
+				pub const DELETE: &str = "workspace::managedDatabase::delete";
+				pub const INFO: &str = "workspace::managedDatabase::info";
+			}
+
+			pub mod static_site {
+				pub const LIST: &str = "workspace::staticSite::list";
+				pub const CREATE: &str = "workspace::staticSite::create";
+				pub const INFO: &str = "workspace::staticSite::info";
+				pub const DELETE: &str = "workspace::staticSite::delete";
+				pub const EDIT: &str = "workspace::staticSite::edit";
+			}
 		}
 
 		pub mod docker_registry {
@@ -71,21 +88,6 @@ pub mod permissions {
 			pub const DELETE: &str = "workspace::dockerRegistry::delete";
 			pub const PUSH: &str = "workspace::dockerRegistry::push";
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
-		}
-
-		pub mod managed_database {
-			pub const CREATE: &str = "workspace::managedDatabase::create";
-			pub const LIST: &str = "workspace::managedDatabase::list";
-			pub const DELETE: &str = "workspace::managedDatabase::delete";
-			pub const INFO: &str = "workspace::managedDatabase::info";
-		}
-
-		pub mod static_site {
-			pub const LIST: &str = "workspace::staticSite::list";
-			pub const CREATE: &str = "workspace::staticSite::create";
-			pub const INFO: &str = "workspace::staticSite::info";
-			pub const DELETE: &str = "workspace::staticSite::delete";
-			pub const EDIT: &str = "workspace::staticSite::edit";
 		}
 
 		pub const VIEW_ROLES: &str = "workspace::viewRoles";
