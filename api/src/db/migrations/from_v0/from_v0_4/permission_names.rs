@@ -73,7 +73,7 @@ pub(super) async fn migrate(
 			SET
 				name = $1
 			WHERE
-				name = $2
+				name = $2;
 			"#,
 			new_name,
 			old_name,
