@@ -3863,26 +3863,6 @@
       "nullable": []
     }
   },
-  "888e66965845fa2d7c26ee45460182121304136604dd65489f31a10a2193b65e": {
-    "query": "SELECT COALESCE(SUM(size), 0) as \"size!: i64\" FROM docker_registry_repository_manifest WHERE repository_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "size!: i64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "8900ed9f8b98bca306f1abb236ad79db5f8adc6c8178e9749ca03a0da091e0b0": {
     "query": "SELECT * FROM user_login WHERE user_id = $1;",
     "describe": {
@@ -4403,6 +4383,26 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "9b967d734dd6b74e206a70026d38917c0e8a81fec88e56ec341715c660adeb5b": {
+    "query": "SELECT COALESCE(SUM(size), 0)::BIGINT as \"size!\" FROM docker_registry_repository_manifest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "size!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
