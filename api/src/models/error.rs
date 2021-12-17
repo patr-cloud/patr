@@ -49,6 +49,7 @@ pub mod id {
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
+	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
 }
 
 #[allow(dead_code)]
@@ -152,4 +153,5 @@ pub mod message {
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain is not controlled by PATR";
+	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
 }

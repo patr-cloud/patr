@@ -1,10 +1,18 @@
+use std::{
+	net::{Ipv4Addr, Ipv6Addr},
+	str::FromStr,
+};
+
 use cloudflare::{
-	endpoints::zone::{
-		CreateZone,
-		CreateZoneParams,
-		ListZones,
-		ListZonesParams,
-		Type,
+	endpoints::{
+		dns::{CreateDnsRecord, CreateDnsRecordParams, DnsContent},
+		zone::{
+			CreateZone,
+			CreateZoneParams,
+			ListZones,
+			ListZonesParams,
+			Type,
+		},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
@@ -303,4 +311,254 @@ async fn is_domain_used_for_sign_up(
 		}
 	}
 	Ok(true)
+}
+
+// SERVICE FUNCTIONS FOR DNS RECORD
+
+pub async fn add_patr_dns_a_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+	name: &str,
+	a_record: &str,
+	ttl: u32,
+	proxied: bool,
+) -> Result<(), Error> {
+	// login to cloudflare to create new DNS record cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+
+	let zond_id = zone_identifier.encode_hex::<String>();
+
+	// Cloudflare api takes content as Ipv4 object.
+	let a_record_ipv4 = Ipv4Addr::from_str(a_record);
+	if let Err(_) = a_record_ipv4 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(INVALID_IP_ADDRESS).to_string())?;
+	}
+	let a_record_ipv4 = a_record_ipv4.unwrap();
+
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier: &zond_id,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: Some(proxied),
+				name: &name,
+				content: DnsContent::A {
+					content: a_record_ipv4,
+				},
+			},
+		})
+		.await?;
+
+	// add to db
+
+	Ok(())
+}
+
+pub async fn add_patr_dns_aaaa_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+	name: &str,
+	aaaa_record: &str,
+	ttl: u32,
+	proxied: bool,
+) -> Result<(), Error> {
+	// login to cloudflare to create new DNS record cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+
+	let zond_id = zone_identifier.encode_hex::<String>();
+	let ipv6 = Ipv6Addr::from_str(aaaa_record);
+	if let Err(_) = ipv6 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(INVALID_IP_ADDRESS).to_string())?;
+	}
+	let ipv6 = ipv6.unwrap();
+
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier: &zond_id,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: Some(proxied),
+				name: &name,
+				content: DnsContent::AAAA { content: ipv6 },
+			},
+		})
+		.await?;
+
+	// add to db
+
+	Ok(())
+}
+
+pub async fn add_patr_dns_mx_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+	name: &str,
+	content: &str,
+	ttl: u32,
+	proxied: bool,
+	priority: u16,
+) -> Result<(), Error> {
+	// login to cloudflare to create new DNS record cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+
+	let zond_id = zone_identifier.encode_hex::<String>();
+
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier: &zond_id,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: Some(proxied),
+				name: &name,
+				content: DnsContent::MX {
+					priority,
+					content: content.to_string(),
+				},
+			},
+		})
+		.await?;
+
+	Ok(())
+}
+
+pub async fn add_patr_dns_cname_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+	name: &str,
+	content: &str,
+	ttl: u32,
+) -> Result<(), Error> {
+	// login to cloudflare to create new DNS record cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+
+	let zond_id = zone_identifier.encode_hex::<String>();
+
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier: &zond_id,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: None,
+				name: &name,
+				content: DnsContent::CNAME {
+					content: content.to_string(),
+				},
+			},
+		})
+		.await?;
+
+	Ok(())
+}
+
+pub async fn add_patr_dns_txt_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+	domain_id: &[u8],
+	zone_identifier: &[u8],
+	name: &str,
+	content: &str,
+	ttl: u32,
+) -> Result<(), Error> {
+	// login to cloudflare to create new DNS record cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+
+	let zond_id = zone_identifier.encode_hex::<String>();
+
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier: &zond_id,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: None,
+				name: &name,
+				content: DnsContent::TXT {
+					content: content.to_string(),
+				},
+			},
+		})
+		.await?;
+
+	Ok(())
 }

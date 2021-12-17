@@ -1,3 +1,4 @@
+use cloudflare::framework::auth::Credentials;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -761,15 +762,8 @@ async fn add_dns_record(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let sub_domain = body
-		.get(request_keys::SUB_DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let path = body
-		.get(request_keys::PATH)
+	let name = body
+		.get(request_keys::NAME)
 		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
@@ -789,14 +783,6 @@ async fn add_dns_record(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// only be used my MX record
-	let priority = body
-		.get(request_keys::PRIORITY)
-		.map(|value| value.as_u64())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let content = body
 		.get(request_keys::CONTENT)
 		.map(|value| value.as_str())
@@ -804,96 +790,145 @@ async fn add_dns_record(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let config = context.get_state().config.clone();
+
 	match r#type {
-		"A" => {}
-		"AAAA" => {}
-		"MX" => {}
-		"CNAME" => {}
-		"TXT" => {}
+		"A" => {
+			// content basically stores the ipv4 address. same goes with AAAA
+			// record
+			let a_record = body
+				.get(request_keys::CONTENT)
+				.map(|value| value.as_str())
+				.flatten()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+
+			// add a record to cloudflare
+			service::add_patr_dns_a_record(
+				context.get_database_connection(),
+				&config,
+				&domain_id,
+				&domain.zone_identifier,
+				name,
+				a_record,
+				ttl.try_into().unwrap(),
+				proxied,
+			)
+			.await?;
+		}
+		"AAAA" => {
+			let aaaa_record = body
+				.get(request_keys::CONTENT)
+				.map(|value| value.as_str())
+				.flatten()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+
+			service::add_patr_dns_aaaa_record(
+				context.get_database_connection(),
+				&config,
+				&domain_id,
+				&domain.zone_identifier,
+				name,
+				aaaa_record,
+				ttl.try_into().unwrap(),
+				proxied,
+			)
+			.await?;
+		}
+		"MX" => {
+			let points_to = body
+				.get(request_keys::CONTENT)
+				.map(|value| {
+					value
+						.as_str()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())
+				})
+				.transpose()?;
+			if points_to.is_none() {
+				context.status(400).json(error!(WRONG_PARAMETERS));
+				return Ok(context);
+			}
+			let points_to = points_to.unwrap();
+
+			// only be used my MX record
+			let priority = body
+				.get(request_keys::PRIORITY)
+				.map(|value| {
+					value
+						.as_u64()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())
+				})
+				.transpose()?;
+			if priority.is_none() {
+				context.status(400).json(error!(WRONG_PARAMETERS));
+				return Ok(context);
+			}
+			let priority = priority.unwrap();
+
+			service::add_patr_dns_mx_record(
+				context.get_database_connection(),
+				&config,
+				&domain_id,
+				&domain.zone_identifier,
+				name,
+				points_to,
+				ttl.try_into().unwrap(),
+				proxied,
+				priority.try_into().unwrap(),
+			)
+			.await?;
+		}
+		"CNAME" => {
+			let points_to = body
+				.get(request_keys::CONTENT)
+				.map(|value| {
+					value
+						.as_str()
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())
+				})
+				.transpose()?;
+			if points_to.is_none() {
+				context.status(400).json(error!(WRONG_PARAMETERS));
+				return Ok(context);
+			}
+			let points_to = points_to.unwrap();
+
+			service::add_patr_dns_cname_record(
+				context.get_database_connection(),
+				&config,
+				&domain_id,
+				&domain.zone_identifier,
+				name,
+				points_to,
+				ttl.try_into().unwrap(),
+			)
+			.await?;
+		}
+		"TXT" => {
+			let content = body
+				.get(request_keys::CONTENT)
+				.map(|value| value.as_str())
+				.flatten()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+
+			service::add_patr_dns_txt_record(
+				context.get_database_connection(),
+				&config,
+				&domain_id,
+				&domain.zone_identifier,
+				name,
+				content,
+				ttl.try_into().unwrap(),
+			)
+			.await?;
+		}
 		_ => {}
 	}
-
-	let a_record = body
-		.get(request_keys::A_RECORD)
-		.map(|value| value.as_array())
-		.flatten()
-		.map(|vector| {
-			vector
-				.into_iter()
-				.filter_map(|value| Some(value.to_string()))
-				.collect::<Vec<String>>()
-		})
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let aaaa_record = body
-		.get(request_keys::AAAA_RECORD)
-		.map(|value| value.as_array())
-		.flatten()
-		.map(|vector| {
-			vector
-				.into_iter()
-				.filter_map(|value| Some(value.to_string()))
-				.collect::<Vec<String>>()
-		})
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let mx_record = body
-		.get(request_keys::MX_RECORD)
-		.map(|value| value.as_array())
-		.flatten()
-		.map(|vector| {
-			vector
-				.into_iter()
-				.filter_map(|value| Some(value.to_string()))
-				.collect::<Vec<String>>()
-		})
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let text_record = body
-		.get(request_keys::TEXT_RECORD)
-		.map(|value| value.as_array())
-		.flatten()
-		.map(|vector| {
-			vector
-				.into_iter()
-				.filter_map(|value| Some(value.to_string()))
-				.collect::<Vec<String>>()
-		})
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let cname_record = body
-		.get(request_keys::CNAME_RECORD)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// get zone identifier
-	let zone_identifier = domain.zone_identifier;
-
-	// add records to cloudflare
-
-	//add to database
-	// db::add_dns_record(
-	// 	context.get_database_connection(),
-	// 	&domain_id,
-	// 	&sub_domain,
-	// 	&path,
-	// 	a_record,
-	// 	aaaa_record,
-	// 	cname_record,
-	// 	mx_record,
-	// 	text_record,
-	// 	content,
-	// 	ttl as i32,
-	// 	proxied,
-	// 	priority as i32,
-	// )
-	// .await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true

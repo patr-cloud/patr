@@ -159,7 +159,7 @@ pub async fn initialize_domain_pre(
 
 	// todo: check if MX record exists for domain, then other records should be
 	// null and vice versa
-	// also name will reference to
+	// todo: remove path and rename sub_domain to name
 	query!(
 		r#"
 		CREATE TABLE dns_record (
@@ -733,19 +733,61 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 	.await
 }
 
-// pub async fn add_patr_dns_a_record(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// 	domain_id: &[u8],
-// 	sub_domain: &str,
-// 	path: &str,
-// 	content: &str
-// ) -> Result<(), sqlx::Error> {
-// 	query!(
-// 		r#"
-// 			INSERT INTO
-// 				dns_record
-// 			VALUES
+// ON CONFLICT reference: https://www.postgresqltutorial.com/postgresql-upsert/
+pub async fn add_patr_dns_a_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+	a_record: &[String],
+	ttl: i32,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				dns_record
+			VALUES
+				($1, $2, $3, $4, default, default, default, default, default, $5, default, default)
+			ON CONFLICT
+				(domain_id, sub_domain, path)
+			DO UPDATE SET
+				a_record = $4 || EXCLUDED.a_record;
+		"#,
+		domain_id,
+		sub_domain,
+		path,
+		a_record,
+		ttl
+	).execute(&mut *connection).await?;
+	Ok(())
+}
 
-// 		"#
-// 	)
-// }
+pub async fn add_patr_dns_aaaa_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	sub_domain: &str,
+	path: &str,
+	aaaa_record: &[String],
+	ttl: i32,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				dns_record
+			VALUES
+				($1, $2, $3, default, $4, default, default, default, default, $5, default, default)
+			ON CONFLICT
+				(domain_id, sub_domain, path)
+			DO UPDATE SET
+				aaaa_record = $4 || EXCLUDED.aaaa_record;
+		"#,
+		domain_id,
+		sub_domain,
+		path,
+		aaaa_record,
+		ttl
+	).execute(&mut *connection).await?;
+	Ok(())
+}

@@ -203,4 +203,5 @@ pub mod request_keys {
 	pub const TTL: &str = "ttl";
 	pub const PRIORITY: &str = "priority";
 	pub const TYPE: &str = "type";
+	pub const POINTS_TO: &str = "pointsTo";
 }
