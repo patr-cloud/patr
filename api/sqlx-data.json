@@ -2525,16 +2525,6 @@
       ]
     }
   },
-  "5fe98af5a5aaeeda50101644967d64664a55b92ebad57c942db8506974490996": {
-    "query": "CREATE TABLE docker_registry_repository_tag( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, digest) REFERENCES docker_registry_repository_manifest(repository_id, digest) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "query": "SELECT * FROM \"user\" WHERE id = $1;",
     "describe": {
@@ -6778,6 +6768,16 @@
         "Left": [
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "f895587c02dcc87219d71f0a840f64c3fa8ee3f0d226717fc2815d63ea6976a7": {
+    "query": "CREATE TABLE docker_registry_repository_tag( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, manifest_digest) REFERENCES docker_registry_repository_manifest( repository_id, manifest_digest ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
