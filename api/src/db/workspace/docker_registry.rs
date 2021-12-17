@@ -66,8 +66,10 @@ pub async fn initialize_docker_registry_pre(
 			),
 			CONSTRAINT
 				docker_registry_repository_tag_fk_repository_id_manifest_digest
-				FOREIGN KEY(repository_id, digest) REFERENCES
-					docker_registry_repository_manifest(repository_id, digest)
+				FOREIGN KEY(repository_id, manifest_digest) REFERENCES
+					docker_registry_repository_manifest(
+						repository_id, manifest_digest
+					)
 		);
 		"#
 	)
