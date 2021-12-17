@@ -606,38 +606,6 @@
       "nullable": []
     }
   },
-  "12f3f1a3e3267abe94c5b1d2afe1181ff8d50807b365d0388b17fc0dc72367d3": {
-    "query": "SELECT digest, size, created FROM docker_registry_repository_digest WHERE repository_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "digest",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "size",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "created",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "1478e049e620cdd3592a2f14e0f25a668c95e62854c5facb14517c62d6210275": {
     "query": "CREATE INDEX business_email_idx_user_id ON business_email (user_id);",
     "describe": {
@@ -845,6 +813,33 @@
       "nullable": []
     }
   },
+  "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
+    "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "last_updated",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "1c258cdf5e4f891a42018dbd6a99ad7cae3698e386c38415a5823d07d48ace98": {
     "query": "SELECT country_code, number as \"phone_number\" FROM user_phone_number WHERE user_id = $1;",
     "describe": {
@@ -940,18 +935,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "213f241a873e4661ce5f17fb002899ad98ae17b5da0c384b24b8ab05ba7755cc": {
-    "query": "DELETE FROM docker_registry_digest_tag WHERE repository_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
       },
       "nullable": []
     }
@@ -1255,19 +1238,6 @@
         false,
         false
       ]
-    }
-  },
-  "2b57994cc1484b154b4b9e877695bb396e44195e13679dc37f4478e29af105c1": {
-    "query": "DELETE FROM docker_registry_repository_digest WHERE repository_id = $1 AND digest = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": []
     }
   },
   "2babea13ca72e7fcb354b2acb11e2b630677a5d4b29176390f839bc93a4a5f60": {
@@ -2022,6 +1992,21 @@
       "nullable": []
     }
   },
+  "42c9eaab0f826161f45bed1c88ca9c673d602037ff13aa4cbe4709eb6689ead2": {
+    "query": "INSERT INTO docker_registry_repository_manifest VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text",
+          "Int8",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "465499cd312427f9daac7b5b6a05aa0c4e266f2e44e2a880626698aee28a2577": {
     "query": "CREATE TABLE meta_data( id VARCHAR(100) CONSTRAINT meta_data_pk PRIMARY KEY, value TEXT NOT NULL );",
     "describe": {
@@ -2325,6 +2310,38 @@
       "nullable": []
     }
   },
+  "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
+    "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "manifest_digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "size",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "5b2c77ea3a5cb8b691f7a5ba6f122c2fe324137ef48330812aa7bc5776481e2d": {
     "query": "INSERT INTO meta_data VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3) ON CONFLICT(id) DO UPDATE SET value = EXCLUDED.value;",
     "describe": {
@@ -2508,6 +2525,16 @@
       ]
     }
   },
+  "5fe98af5a5aaeeda50101644967d64664a55b92ebad57c942db8506974490996": {
+    "query": "CREATE TABLE docker_registry_repository_tag( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, manifest_digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_repository_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_repository_tag_fk_repository_id_manifest_digest FOREIGN KEY(repository_id, digest) REFERENCES docker_registry_repository_manifest(repository_id, digest) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "query": "SELECT * FROM \"user\" WHERE id = $1;",
     "describe": {
@@ -2646,33 +2673,6 @@
       "nullable": []
     }
   },
-  "63a796a38ea6461ef4493ec2f6f3d1ef964e3a097d5aadbfc3be86e38bd43aa3": {
-    "query": "SELECT tag, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1 AND digest = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "tag",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "last_updated",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false
-      ]
-    }
-  },
   "647f5db16c8c918c9d1427223d80f176f791666d7aaff74d50ebd2ff7948e125": {
     "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id, user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, user_to_sign_up.business_domain_name, user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
     "describe": {
@@ -2791,37 +2791,19 @@
       "nullable": []
     }
   },
-  "692fbc62a688bfd052ac2ce0fa7d5c94b6b4c81a6f58cce2343bf895290f8d2f": {
-    "query": "SELECT tag, last_updated, digest FROM docker_registry_digest_tag WHERE repository_id = $1 AND tag = $2;",
+  "69511f3caefa1932954750f0e2e3e4ce23462a41d4fd6fa636a3373ca1cde309": {
+    "query": "INSERT INTO docker_registry_repository_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "tag",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "last_updated",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "digest",
-          "type_info": "Text"
-        }
-      ],
+      "columns": [],
       "parameters": {
         "Left": [
           "Bytea",
-          "Text"
+          "Text",
+          "Text",
+          "Int8"
         ]
       },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
@@ -2831,6 +2813,18 @@
       "parameters": {
         "Left": [
           "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
+    "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
           "Bytea"
         ]
       },
@@ -3127,44 +3121,6 @@
       "nullable": []
     }
   },
-  "7748bf1900f135c90a89590cc19f3c41a12a85f09e2b6107b8276dd50d5c682e": {
-    "query": "SELECT id, workspace_id, name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!: i64\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_digest GROUP BY repository_id ) docker_registry_repository_digest ON docker_registry_repository_digest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "name!: String",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "size!: i64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        null,
-        null
-      ]
-    }
-  },
   "77543d83cf31ee064300d72d0052ee7737cb0a5f0d7f56c7f15da4311e8e07c7": {
     "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE status != 'deleted';",
     "describe": {
@@ -3452,6 +3408,39 @@
       "nullable": []
     }
   },
+  "7c8582745f948c36a597434e40fb7f9679e9d35f06b2bbac3bb58d7fd8707098": {
+    "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "manifest_digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "size",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "created",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);",
     "describe": {
@@ -3460,26 +3449,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "7d56194a3beec5f43e06fd60c368e5f9c6a86385a6088b95e954767d18ab8ca2": {
-    "query": "SELECT COALESCE(SUM(size), 0) as \"size!: i64\" FROM docker_registry_repository_digest WHERE repository_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "size!: i64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "7d7aecddd3798072b31f38365d1df927f243e07f2ef08719c4086349b47cb239": {
@@ -3644,6 +3613,44 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "82a0e33c14c47cc9bdbfeb263cdc232bb1b8990e06a6b9b51ff447a5da723428": {
+    "query": "SELECT id, workspace_id, name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!: i64\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name!: String",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "size!: i64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        null,
+        null
+      ]
     }
   },
   "83a586b096ea87c7e5eb14460466a8af8c8ae61e37bef3f740026f4cf331dafb": {
@@ -3866,6 +3873,26 @@
       "nullable": []
     }
   },
+  "888e66965845fa2d7c26ee45460182121304136604dd65489f31a10a2193b65e": {
+    "query": "SELECT COALESCE(SUM(size), 0) as \"size!: i64\" FROM docker_registry_repository_manifest WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "size!: i64",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "8900ed9f8b98bca306f1abb236ad79db5f8adc6c8178e9749ca03a0da091e0b0": {
     "query": "SELECT * FROM user_login WHERE user_id = $1;",
     "describe": {
@@ -3910,49 +3937,6 @@
         false,
         false,
         false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "8acda7e748747b9ff27a059821f01f756c2ad194fd034d87675702e2c9e2ef88": {
-    "query": "CREATE TABLE docker_registry_repository_digest( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_digest_fk_repository_id REFERENCES docker_registry_repository(id), digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_digest_chk_size_unsigned CHECK(size >= 0), created BIGINT NOT NULL CONSTRAINT docker_registry_digest_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT docker_registry_digest_pk PRIMARY KEY( repository_id, digest ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "8c6b54225a971800e4479c687e782cc2a6b6da1f85eecee3e6983e87cd50a5de": {
-    "query": "SELECT digest, size, created FROM docker_registry_repository_digest WHERE repository_id = $1 AND digest = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "digest",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "size",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 2,
-          "name": "created",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false
@@ -4321,19 +4305,6 @@
       "nullable": []
     }
   },
-  "98a3e794d1a19173c49d4ecec6a7d7d936e541c7830dd4bd6fea30b245fb5b30": {
-    "query": "DELETE FROM docker_registry_digest_tag WHERE repository_id = $1 AND tag = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -4382,16 +4353,6 @@
         false,
         false
       ]
-    }
-  },
-  "9a442e1a694b253772850b6b1cbcd72bca7825ac3964edeaa6a09a58d1d6157d": {
-    "query": "CREATE TABLE docker_registry_digest_tag( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_digest_tag_fk_repository_id REFERENCES docker_registry_repository(id), tag TEXT NOT NULL, digest TEXT NOT NULL, last_updated BIGINT NOT NULL CONSTRAINT docker_registry_digest_tag_chk_last_updated_unsigned CHECK( last_updated >= 0 ), CONSTRAINT docker_registry_digest_tag_pk PRIMARY KEY( repository_id, tag ), CONSTRAINT docker_registry_digest_tag_fk_repository_id_digest FOREIGN KEY(repository_id, digest) REFERENCES docker_registry_repository_digest(repository_id, digest) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "9a7541654f9aea4a24830f06ff49a9a5e1126d4241b91470436470b47d3f2798": {
@@ -4821,18 +4782,6 @@
       "nullable": []
     }
   },
-  "aa2fe73c2b9059a4d08d20e186c12ea8a2d6ad53d9f3e5b0724a84f1cb7ebe19": {
-    "query": "DELETE FROM docker_registry_repository_digest WHERE repository_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "aa4b13b2a2cb91848830cb553eb0520dd9d8d97cb1675bef90abd3c56a47dbbe": {
     "query": "UPDATE workspace_domain SET is_verified = FALSE WHERE id = $1;",
     "describe": {
@@ -5177,6 +5126,19 @@
       "nullable": []
     }
   },
+  "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
+    "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
     "describe": {
@@ -5251,6 +5213,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bd587eb77417104191d600bee26bcebeefbb4b8686b14e226285479196d04cfc": {
+    "query": "DELETE FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
       },
       "nullable": []
     }
@@ -5841,21 +5816,6 @@
       "nullable": []
     }
   },
-  "cf75b411ef5fd0ce29de2c470936da35030cb93d78943696f99bc9588b093822": {
-    "query": "INSERT INTO docker_registry_digest_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET digest = $3, last_updated = $4;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text",
-          "Text",
-          "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -5898,6 +5858,16 @@
       ]
     }
   },
+  "d17565f5be00a92226d2b3be0d2448d45332d097a5c12701b64d0ae698849da4": {
+    "query": "CREATE TABLE docker_registry_repository_manifest( repository_id BYTEA NOT NULL CONSTRAINT docker_registry_repository_manifest_fk_repository_id REFERENCES docker_registry_repository(id), manifest_digest TEXT NOT NULL, size BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_size_unsigned CHECK(size >= 0), created BIGINT NOT NULL CONSTRAINT docker_registry_repository_manifest_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY( repository_id, manifest_digest ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
     "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
@@ -5906,6 +5876,39 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
+    "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "last_updated",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "manifest_digest",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "d821d9d80d2d3cd5d58a34fb99e9187f8471824effb128d75ae42a7c0fef00c0": {
@@ -6112,21 +6115,6 @@
       ]
     }
   },
-  "dc6fa56016828da57ecc3eb266061c58f7c817822867a46da9ff0ab2aa0535e1": {
-    "query": "INSERT INTO docker_registry_repository_digest VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text",
-          "Int8",
-          "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "dca6992cc85f4d617680b1e89577f622f75a94f85adbe7e5142eb8b056e115b2": {
     "query": "UPDATE deployment SET name = $1 WHERE id = $2;",
     "describe": {
@@ -6208,6 +6196,38 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "dd227e4051b6f768477c66b2ddfa2617832787a776c1f3e9b7fc1a23ed45ddd4": {
+    "query": "SELECT tag, manifest_digest, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tag",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "manifest_digest",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "last_updated",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "ddcd5ce81d2d69b7338cdc853c5235c008b9bd9e00f7110fa924ac2284e43876": {
@@ -6472,6 +6492,18 @@
       "nullable": []
     }
   },
+  "e5d15755b015b3c4f87308a59c8c625ad75a29974645d8e24875d8daa1919901": {
+    "query": "DELETE FROM docker_registry_repository_tag WHERE repository_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "e612e850c570bbc931e8a3fcbd7b87c54257d739d9a4a3dfbd367961edea354b": {
     "query": "UPDATE \"user\" SET first_name = $1 WHERE id = $2;",
     "describe": {
@@ -6558,38 +6590,6 @@
       "nullable": [
         false,
         false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "e8a76ee8047535de27430ef1c3eda48fcaa3ce319f2f6b4a11a1349efb56923f": {
-    "query": "SELECT tag, digest, last_updated FROM docker_registry_digest_tag WHERE repository_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "tag",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "digest",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "last_updated",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
         false,
         false,
         false

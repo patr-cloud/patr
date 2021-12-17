@@ -116,29 +116,29 @@ pub async fn notification_handler(
 	}
 
 	let body = context.get_body()?;
+	tokio::fs::write(format!("{}.json", get_current_time_millis()), &body)
+		.await
+		.unwrap();
 	let events: EventData = serde_json::from_str(&body)?;
 
 	// check if the event is a push event
 	// get image name, repository name, tag if present
-	for event in events.events {
-		if event.action != Action::Push && event.action != Action::Mount {
-			continue;
-		}
+	for event in events.events.into_iter().filter(|event| {
+		// Only process events that are push events of a manifest
+		(event.action == Action::Push || event.action == Action::Mount) &&
+			(event.target.media_type ==
+				"application/vnd.docker.distribution.manifest.v2+json")
+	}) {
 		let target = event.target;
 
 		// Update the docker registry db with details on the image
 		let repository_name = target.repository;
-		let mut splitter = repository_name.split('/');
-		let workspace_name = if let Some(val) = splitter.next() {
-			val
-		} else {
-			continue;
-		};
-		let image_name = if let Some(val) = splitter.next() {
-			val
-		} else {
-			continue;
-		};
+		let (workspace_name, image_name) =
+			if let Some(value) = repository_name.split_once('/') {
+				value
+			} else {
+				continue;
+			};
 
 		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
@@ -169,7 +169,15 @@ pub async fn notification_handler(
 			context.get_database_connection(),
 			&repository.id,
 			&target.digest,
-			target.size,
+			target
+				.references
+				.into_iter()
+				.filter(|reference| {
+					reference.media_type ==
+						"application/vnd.docker.image.rootfs.diff.tar.gzip"
+				})
+				.map(|reference| reference.size)
+				.sum(),
 			current_time,
 		)
 		.await?;

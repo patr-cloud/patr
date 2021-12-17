@@ -145,16 +145,31 @@ pub struct Event {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
+	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub media_type: String,
+	#[serde(default)]
 	pub size: u64,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub digest: String,
+	#[serde(default)]
 	pub length: u64,
 	pub repository: String,
 	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub from_repository: String,
+	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub url: String,
 	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub tag: String,
+	#[serde(default, skip_serializing_if = "Vec::is_empty")]
+	pub references: Vec<TargetReference>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TargetReference {
+	pub media_type: String,
+	pub size: u64,
+	pub digest: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

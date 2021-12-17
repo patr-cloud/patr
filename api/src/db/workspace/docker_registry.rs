@@ -27,20 +27,21 @@ pub async fn initialize_docker_registry_pre(
 
 	query!(
 		r#"
-		CREATE TABLE docker_registry_repository_digest(
+		CREATE TABLE docker_registry_repository_manifest(
 			repository_id BYTEA NOT NULL
-				CONSTRAINT docker_registry_repository_digest_fk_repository_id
+				CONSTRAINT docker_registry_repository_manifest_fk_repository_id
 					REFERENCES docker_registry_repository(id),
-			digest TEXT NOT NULL,
+			manifest_digest TEXT NOT NULL,
 			size BIGINT NOT NULL
-				CONSTRAINT docker_registry_digest_chk_size_unsigned
-					CHECK(size >= 0),
+				CONSTRAINT
+					docker_registry_repository_manifest_chk_size_unsigned
+						CHECK(size >= 0),
 			created BIGINT NOT NULL CONSTRAINT
-				docker_registry_digest_chk_created_unsigned CHECK(
+				docker_registry_repository_manifest_chk_created_unsigned CHECK(
 					created >= 0
 				),
-			CONSTRAINT docker_registry_digest_pk PRIMARY KEY(
-				repository_id, digest
+			CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY(
+				repository_id, manifest_digest
 			)
 		);
 		"#
@@ -50,22 +51,23 @@ pub async fn initialize_docker_registry_pre(
 
 	query!(
 		r#"
-		CREATE TABLE docker_registry_digest_tag(
+		CREATE TABLE docker_registry_repository_tag(
 			repository_id BYTEA NOT NULL
-				CONSTRAINT docker_registry_digest_tag_fk_repository_id
+				CONSTRAINT docker_registry_repository_tag_fk_repository_id
 					REFERENCES docker_registry_repository(id),
 			tag TEXT NOT NULL,
-			digest TEXT NOT NULL,
+			manifest_digest TEXT NOT NULL,
 			last_updated BIGINT NOT NULL CONSTRAINT
-				docker_registry_digest_tag_chk_last_updated_unsigned CHECK(
+				docker_registry_repository_tag_chk_last_updated_unsigned CHECK(
 					last_updated >= 0
 				),
-			CONSTRAINT docker_registry_digest_tag_pk PRIMARY KEY(
+			CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY(
 				repository_id, tag
 			),
-			CONSTRAINT docker_registry_digest_tag_fk_repository_id_digest
+			CONSTRAINT
+				docker_registry_repository_tag_fk_repository_id_manifest_digest
 				FOREIGN KEY(repository_id, digest) REFERENCES
-					docker_registry_repository_digest(repository_id, digest)
+					docker_registry_repository_manifest(repository_id, digest)
 		);
 		"#
 	)
@@ -162,12 +164,12 @@ pub async fn get_docker_repositories_for_workspace(
 				SUM(size) as size,
 				repository_id
 			FROM
-				docker_registry_repository_digest
+				docker_registry_repository_manifest
 			GROUP BY
 				repository_id
-		) docker_registry_repository_digest
+		) docker_registry_repository_manifest
 		ON
-			docker_registry_repository_digest.repository_id =
+			docker_registry_repository_manifest.repository_id =
 				docker_registry_repository.id
 		WHERE
 			workspace_id = $1 AND
@@ -248,7 +250,7 @@ pub async fn create_docker_repository_digest(
 	query!(
 		r#"
 		INSERT INTO
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		VALUES
 			($1, $2, $3, $4)
 		ON CONFLICT DO NOTHING;
@@ -273,12 +275,12 @@ pub async fn set_docker_repository_tag_details(
 	query!(
 		r#"
 		INSERT INTO
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		VALUES
 			($1, $2, $3, $4)
 		ON CONFLICT (repository_id, tag)
 		DO UPDATE SET
-			digest = $3,
+			manifest_digest = $3,
 			last_updated = $4;
 		"#,
 		repository_id,
@@ -299,10 +301,10 @@ pub async fn get_list_of_tags_for_docker_repository(
 		r#"
 		SELECT
 			tag,
-			digest,
+			manifest_digest,
 			last_updated
 		FROM
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		WHERE
 			repository_id = $1;
 		"#,
@@ -317,7 +319,7 @@ pub async fn get_list_of_tags_for_docker_repository(
 				tag: row.tag,
 				last_updated: row.last_updated as u64,
 			},
-			row.digest,
+			row.manifest_digest,
 		)
 	})
 	.collect();
@@ -336,10 +338,10 @@ pub async fn get_tags_for_docker_repository_image(
 			tag,
 			last_updated
 		FROM
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		WHERE
 			repository_id = $1 AND
-			digest = $2;
+			manifest_digest = $2;
 		"#,
 		repository_id,
 		digest
@@ -365,7 +367,7 @@ pub async fn get_total_size_of_docker_repository(
 		SELECT
 			COALESCE(SUM(size), 0) as "size!: i64"
 		FROM
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1;
 		"#,
@@ -384,14 +386,14 @@ pub async fn get_docker_repository_image_by_digest(
 	query!(
 		r#"
 		SELECT
-			digest,
+			manifest_digest,
 			size,
 			created
 		FROM
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1 AND
-			digest = $2;
+			manifest_digest = $2;
 		"#,
 		repository_id,
 		digest
@@ -400,7 +402,7 @@ pub async fn get_docker_repository_image_by_digest(
 	.await
 	.map(|row| {
 		row.map(|row| DockerRepositoryImageInfo {
-			digest: row.digest,
+			digest: row.manifest_digest,
 			size: row.size as u64,
 			created: row.created as u64,
 		})
@@ -417,9 +419,9 @@ pub async fn get_docker_repository_tag_details(
 		SELECT
 			tag,
 			last_updated,
-			digest
+			manifest_digest
 		FROM
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		WHERE
 			repository_id = $1 AND
 			tag = $2;
@@ -436,7 +438,7 @@ pub async fn get_docker_repository_tag_details(
 					tag: row.tag,
 					last_updated: row.last_updated as u64,
 				},
-				row.digest,
+				row.manifest_digest,
 			)
 		})
 	})
@@ -449,11 +451,11 @@ pub async fn get_list_of_digests_for_docker_repository(
 	let rows = query!(
 		r#"
 		SELECT
-			digest,
+			manifest_digest,
 			size,
 			created
 		FROM
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1;
 		"#,
@@ -463,7 +465,7 @@ pub async fn get_list_of_digests_for_docker_repository(
 	.await?
 	.into_iter()
 	.map(|row| DockerRepositoryImageInfo {
-		digest: row.digest,
+		digest: row.manifest_digest,
 		size: row.size as u64,
 		created: row.created as u64,
 	})
@@ -479,7 +481,7 @@ pub async fn delete_all_tags_for_docker_repository(
 	query!(
 		r#"
 		DELETE FROM
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		WHERE
 			repository_id = $1;
 		"#,
@@ -497,7 +499,7 @@ pub async fn delete_all_images_for_docker_repository(
 	query!(
 		r#"
 		DELETE FROM
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1;
 		"#,
@@ -535,10 +537,10 @@ pub async fn delete_docker_repository_image(
 	query!(
 		r#"
 		DELETE FROM
-			docker_registry_repository_digest
+			docker_registry_repository_manifest
 		WHERE
 			repository_id = $1 AND
-			digest = $2;
+			manifest_digest = $2;
 		"#,
 		repository_id,
 		digest
@@ -556,7 +558,7 @@ pub async fn delete_tag_from_docker_repository(
 	query!(
 		r#"
 		DELETE FROM
-			docker_registry_digest_tag
+			docker_registry_repository_tag
 		WHERE
 			repository_id = $1 AND
 			tag = $2;
