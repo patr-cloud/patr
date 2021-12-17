@@ -367,7 +367,7 @@ pub async fn get_total_size_of_docker_repository(
 	query!(
 		r#"
 		SELECT
-			COALESCE(SUM(size), 0) as "size!: i64"
+			COALESCE(SUM(size), 0)::BIGINT as "size!"
 		FROM
 			docker_registry_repository_manifest
 		WHERE
