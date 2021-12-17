@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use semver::Version;
 
 use crate::{migrate_query as query, Database};
@@ -532,6 +533,7 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection).await?;
 	add_trim_check_for_username(&mut *connection).await?;
+	add_deployment_info_permission(&mut *connection).await?;
 
 	Ok(())
 }
@@ -545,6 +547,24 @@ async fn add_trim_check_for_username(
 		ADD CONSTRAINT user_chk_username_is_trimmed
 		CHECK(username = TRIM(username));
 		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+async fn add_deployment_info_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			permission
+		VALUES
+			($1, $2, NULL);
+		"#,
+		Uuid::new_v4(),
+		"workspace::deployment::info"
 	)
 	.execute(&mut *connection)
 	.await
