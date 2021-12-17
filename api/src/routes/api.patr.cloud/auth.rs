@@ -1247,7 +1247,7 @@ async fn docker_registry_authenticate(
 		.to_string(),
 	)?;
 
-	let repository = db::get_repository_by_name(
+	let repository = db::get_docker_repository_by_name(
 		context.get_database_connection(),
 		repo_name,
 		&workspace.id,

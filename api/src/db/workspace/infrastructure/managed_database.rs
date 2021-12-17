@@ -265,7 +265,7 @@ pub async fn get_all_database_clusters_for_workspace(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			db_name,
 			engine as "engine: _",
 			version,
@@ -300,7 +300,7 @@ pub async fn get_managed_database_by_id(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			db_name,
 			engine as "engine: _",
 			version,
