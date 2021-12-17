@@ -3,6 +3,7 @@ use semver::Version;
 use crate::{migrate_query as query, Database};
 
 mod bytea_to_uuid;
+mod docker_registry;
 mod organisation_to_workspace;
 
 /// # Description
@@ -529,6 +530,7 @@ async fn migrate_from_v0_4_9(
 ) -> Result<(), sqlx::Error> {
 	organisation_to_workspace::migrate(&mut *connection).await?;
 	bytea_to_uuid::migrate(&mut *connection).await?;
+	docker_registry::migrate(&mut *connection).await?;
 	add_trim_check_for_username(&mut *connection).await?;
 
 	Ok(())

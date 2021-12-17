@@ -128,7 +128,7 @@ pub async fn get_workspace_info(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
+			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active
 		FROM
@@ -151,7 +151,7 @@ pub async fn get_workspace_by_name(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
+			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active
 		FROM

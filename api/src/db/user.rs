@@ -2420,7 +2420,7 @@ pub async fn get_all_workspaces_for_user(
 		r#"
 		SELECT DISTINCT
 			workspace.id as "id: _",
-			workspace.name as "name: _",
+			workspace.name::TEXT as "name!: _",
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active
 		FROM

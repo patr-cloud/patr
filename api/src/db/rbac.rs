@@ -406,7 +406,7 @@ pub async fn get_all_workspace_roles_for_user(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
+			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active
 		FROM

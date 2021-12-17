@@ -72,6 +72,7 @@ pub mod permissions {
 			pub const CREATE: &str = "workspace::dockerRegistry::create";
 			pub const LIST: &str = "workspace::dockerRegistry::list";
 			pub const DELETE: &str = "workspace::dockerRegistry::delete";
+			pub const INFO: &str = "workspace::deployment::info";
 			pub const PUSH: &str = "workspace::dockerRegistry::push";
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
 		}
