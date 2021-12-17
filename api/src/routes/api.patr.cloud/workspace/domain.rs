@@ -1,4 +1,3 @@
-use cloudflare::framework::auth::Credentials;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use hex::ToHex;
 use serde_json::json;
@@ -709,14 +708,6 @@ async fn add_entry_point(
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.to_lowercase();
 
-	let path = body
-		.get(request_keys::PATH)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
 	//add to database
 	db::add_entry_point(
 		context.get_database_connection(),
@@ -779,13 +770,6 @@ async fn add_dns_record(
 	let proxied = body
 		.get(request_keys::PROXIED)
 		.map(|value| value.as_bool())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let content = body
-		.get(request_keys::CONTENT)
-		.map(|value| value.as_str())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -905,6 +889,7 @@ async fn add_dns_record(
 				name,
 				points_to,
 				ttl.try_into().unwrap(),
+				proxied,
 			)
 			.await?;
 		}
@@ -924,6 +909,7 @@ async fn add_dns_record(
 				name,
 				content,
 				ttl.try_into().unwrap(),
+				proxied,
 			)
 			.await?;
 		}

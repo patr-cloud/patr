@@ -1633,6 +1633,16 @@
       "nullable": []
     }
   },
+  "378fa30a89394bb42cad2674f58d35f721ae2639044c0a1e39ebc24913bb6bf4": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, a_record TEXT [] NOT NULL DEFAULT '{{}}', aaaa_record TEXT [] NOT NULL DEFAULT '{{}}', text_record TEXT [] NOT NULL DEFAULT '{{}}', cname_record TEXT NOT NULL DEFAULT '', mx_record TEXT [] NOT NULL DEFAULT '{{}}', ttl INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 0, proxied BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
     "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
     "describe": {
@@ -3050,16 +3060,6 @@
   },
   "70a177cbc77cadf3e53c50c2d1f8244b87977e8a613671d8572dd96a2f429d94": {
     "query": "CREATE TABLE business_email( user_id BYTEA NOT NULL CONSTRAINT business_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id BYTEA NOT NULL CONSTRAINT business_email_fk_domain_id REFERENCES workspace_domain(id), CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "717542d2924c4991de103b39ac216cfb5952276b424404bc591a8188bb5b2d69": {
-    "query": "CREATE TABLE dns_record ( domain_id BYTEA NOT NULL, sub_domain VARCHAR(255) NOT NULL DEFAULT '', path VARCHAR(255) NOT NULL DEFAULT '/', a_record TEXT [] NOT NULL DEFAULT '{{}}', aaaa_record TEXT [] NOT NULL DEFAULT '{{}}', text_record TEXT [] NOT NULL DEFAULT '{{}}', cname_record TEXT NOT NULL DEFAULT '', mx_record TEXT [] NOT NULL DEFAULT '{{}}', content VARCHAR(255) NOT NULL, ttl INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 0, proxied BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, sub_domain, path), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -6114,56 +6114,46 @@
         },
         {
           "ordinal": 1,
-          "name": "sub_domain",
+          "name": "name",
           "type_info": "Varchar"
         },
         {
           "ordinal": 2,
-          "name": "path",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
           "name": "a_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 4,
+          "ordinal": 3,
           "name": "aaaa_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 5,
+          "ordinal": 4,
           "name": "text_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 6,
+          "ordinal": 5,
           "name": "cname_record",
           "type_info": "Text"
         },
         {
-          "ordinal": 7,
+          "ordinal": 6,
           "name": "mx_record",
           "type_info": "TextArray"
         },
         {
-          "ordinal": 8,
-          "name": "content",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
+          "ordinal": 7,
           "name": "ttl",
           "type_info": "Int4"
         },
         {
-          "ordinal": 10,
+          "ordinal": 8,
           "name": "priority",
           "type_info": "Int4"
         },
         {
-          "ordinal": 11,
+          "ordinal": 9,
           "name": "proxied",
           "type_info": "Bool"
         }
@@ -6174,8 +6164,6 @@
         ]
       },
       "nullable": [
-        false,
-        false,
         false,
         false,
         false,

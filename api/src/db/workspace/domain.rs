@@ -164,18 +164,16 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE dns_record (
 			domain_id BYTEA NOT NULL,
-			sub_domain VARCHAR(255) NOT NULL DEFAULT '',
-			path VARCHAR(255) NOT NULL DEFAULT '/',
+			name VARCHAR(255) NOT NULL,
 			a_record TEXT [] NOT NULL DEFAULT '{{}}',
 			aaaa_record TEXT [] NOT NULL DEFAULT '{{}}',
 			text_record TEXT [] NOT NULL DEFAULT '{{}}',
 			cname_record TEXT NOT NULL DEFAULT '',
 			mx_record TEXT [] NOT NULL DEFAULT '{{}}',
-			content VARCHAR(255) NOT NULL,
 			ttl INTEGER NOT NULL,
 			priority INTEGER NOT NULL DEFAULT 0,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
-			CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, sub_domain, path),
+			CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name),
 			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
@@ -673,46 +671,6 @@ pub async fn add_entry_point(
 	Ok(())
 }
 
-// pub async fn add_dns_record(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// 	domain_id: &[u8],
-// 	sub_domain: &str,
-// 	path: &str,
-// 	a_recotrd: Vec<String>,
-// 	aaaa_record: Vec<String>,
-// 	cname_record: &str,
-// 	mx_record: Vec<String>,
-// 	text_record: Vec<String>,
-// 	content: &str,
-// 	ttl: i32,
-// 	proxied: bool,
-// 	priority: i32,
-// ) -> Result<(), sqlx::Error> {
-// 	query!(
-// 		r#"
-// 		INSERT INTO
-// 			dns_record
-// 		VALUES
-// 		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 12$);
-// 		"#,
-// 		domain_id,
-// 		sub_domain,
-// 		path,
-// 		&a_recotrd,
-// 		&aaaa_record,
-// 		&text_record,
-// 		cname_record,
-// 		&mx_record,
-// 		content,
-// 		ttl,
-// 		proxied,
-// 		priority
-// 	)
-// 	.execute(&mut *connection)
-// 	.await?;
-// 	Ok(())
-// }
-
 pub async fn get_patr_controlled_domain_by_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
@@ -737,9 +695,8 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 pub async fn add_patr_dns_a_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
-	a_record: &[String],
+	name: &str,
+	content: &[String],
 	ttl: i32,
 	proxied: bool,
 ) -> Result<(), sqlx::Error> {
@@ -748,27 +705,28 @@ pub async fn add_patr_dns_a_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, $3, $4, default, default, default, default, default, $5, default, default)
+				($1, $2, $3, default, default, default, default, $4, default, $5)
 			ON CONFLICT
-				(domain_id, sub_domain, path)
+				(domain_id, name)
 			DO UPDATE SET
-				a_record = $4 || EXCLUDED.a_record;
+				a_record = $3 || EXCLUDED.a_record;
 		"#,
 		domain_id,
-		sub_domain,
-		path,
-		a_record,
-		ttl
-	).execute(&mut *connection).await?;
+		name,
+		content,
+		ttl,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
 
 pub async fn add_patr_dns_aaaa_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
-	aaaa_record: &[String],
+	name: &str,
+	content: &[String],
 	ttl: i32,
 	proxied: bool,
 ) -> Result<(), sqlx::Error> {
@@ -777,17 +735,111 @@ pub async fn add_patr_dns_aaaa_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, $3, default, $4, default, default, default, default, $5, default, default)
+				($1, $2, default, $3, default, default, default, $4, default, $5)
 			ON CONFLICT
-				(domain_id, sub_domain, path)
+				(domain_id, name)
 			DO UPDATE SET
-				aaaa_record = $4 || EXCLUDED.aaaa_record;
+				aaaa_record = $3 || EXCLUDED.aaaa_record;
 		"#,
 		domain_id,
-		sub_domain,
-		path,
-		aaaa_record,
-		ttl
-	).execute(&mut *connection).await?;
+		name,
+		content,
+		ttl,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+pub async fn add_patr_dns_mx_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	name: &str,
+	content: &[String],
+	ttl: i32,
+	priority: i32,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				dns_record
+			VALUES
+				($1, $2, default, default, $3, default, default, $4, $5, $6)
+			ON CONFLICT
+				(domain_id, name)
+			DO UPDATE SET
+				mx_record = $3 || EXCLUDED.mx_record;
+		"#,
+		domain_id,
+		name,
+		content,
+		ttl,
+		priority,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+pub async fn add_patr_dns_cname_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	name: &str,
+	content: &str,
+	ttl: i32,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				dns_record
+			VALUES
+				($1, $2, default, default, default, $3, default, $4, default, $5)
+			ON CONFLICT
+				(domain_id, name)
+			DO UPDATE SET
+				cname_record = $3;
+		"#,
+		domain_id,
+		name,
+		content,
+		ttl,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+pub async fn add_patr_dns_txt_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	name: &str,
+	content: &[String],
+	ttl: i32,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			INSERT INTO
+				dns_record
+			VALUES
+				($1, $2, default, default, $3, default, default, $4, default, $5)
+			ON CONFLICT
+				(domain_id, name)
+			DO UPDATE SET
+				text_record = $3 || EXCLUDED.text_record;
+		"#,
+		domain_id,
+		name,
+		content,
+		ttl,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }

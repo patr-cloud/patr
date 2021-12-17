@@ -32,19 +32,15 @@ pub struct WorkspaceDomain {
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
 	pub domain_id: Vec<u8>,
-	pub sub_domain: String,
-	pub path: String,
+	pub name: String,
 	pub a_record: Vec<String>,
 	pub aaaa_record: Vec<String>,
 	pub cname_record: String,
 	pub mx_record: Vec<String>,
 	pub text_record: Vec<String>,
-	pub content: String,
 	pub ttl: i32,
 	pub proxied: bool,
 	pub priority: i32,
-	//default: 0 since this value will only be updated when mx record is
-	// updated
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

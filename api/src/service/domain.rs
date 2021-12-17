@@ -368,6 +368,15 @@ pub async fn add_patr_dns_a_record(
 		.await?;
 
 	// add to db
+	db::add_patr_dns_a_record(
+		connection,
+		domain_id,
+		name,
+		&[a_record.to_string()],
+		ttl as i32,
+		proxied,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -421,6 +430,15 @@ pub async fn add_patr_dns_aaaa_record(
 		.await?;
 
 	// add to db
+	db::add_patr_dns_aaaa_record(
+		connection,
+		domain_id,
+		name,
+		&[aaaa_record.to_string()],
+		ttl as i32,
+		proxied,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -470,6 +488,18 @@ pub async fn add_patr_dns_mx_record(
 		})
 		.await?;
 
+	// add to db
+	db::add_patr_dns_mx_record(
+		connection,
+		domain_id,
+		name,
+		&[content.to_string()],
+		ttl as i32,
+		priority as i32,
+		proxied,
+	)
+	.await?;
+
 	Ok(())
 }
 
@@ -481,6 +511,7 @@ pub async fn add_patr_dns_cname_record(
 	name: &str,
 	content: &str,
 	ttl: u32,
+	proxied: bool,
 ) -> Result<(), Error> {
 	// login to cloudflare to create new DNS record cloudflare
 	let credentials = Credentials::UserAuthToken {
@@ -506,7 +537,7 @@ pub async fn add_patr_dns_cname_record(
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
-				proxied: None,
+				proxied: Some(proxied),
 				name: &name,
 				content: DnsContent::CNAME {
 					content: content.to_string(),
@@ -514,6 +545,12 @@ pub async fn add_patr_dns_cname_record(
 			},
 		})
 		.await?;
+
+	// add to db
+	db::add_patr_dns_cname_record(
+		connection, domain_id, name, content, ttl as i32, proxied,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -526,6 +563,7 @@ pub async fn add_patr_dns_txt_record(
 	name: &str,
 	content: &str,
 	ttl: u32,
+	proxied: bool,
 ) -> Result<(), Error> {
 	// login to cloudflare to create new DNS record cloudflare
 	let credentials = Credentials::UserAuthToken {
@@ -551,7 +589,7 @@ pub async fn add_patr_dns_txt_record(
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
-				proxied: None,
+				proxied: Some(proxied),
 				name: &name,
 				content: DnsContent::TXT {
 					content: content.to_string(),
@@ -559,6 +597,17 @@ pub async fn add_patr_dns_txt_record(
 			},
 		})
 		.await?;
+
+	// add to db
+	db::add_patr_dns_txt_record(
+		connection,
+		domain_id,
+		name,
+		&[content.to_string()],
+		ttl as i32,
+		proxied,
+	)
+	.await?;
 
 	Ok(())
 }
