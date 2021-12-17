@@ -5,7 +5,7 @@ use std::{
 };
 
 use config_rs::{Config, Environment, File};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
@@ -45,7 +45,7 @@ pub fn parse_config() -> Settings {
 	settings.try_into().expect("unable to parse settings")
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
 	pub port: u16,
@@ -67,7 +67,7 @@ pub struct Settings {
 	pub kubernetes: KubernetesSettings,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct S3Settings {
 	pub endpoint: String,
@@ -77,7 +77,7 @@ pub struct S3Settings {
 	pub secret: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DatabaseSettings {
 	pub host: String,
@@ -88,7 +88,7 @@ pub struct DatabaseSettings {
 	pub connection_limit: u32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MongoDbSettings {
 	pub host: String,
@@ -99,7 +99,7 @@ pub struct MongoDbSettings {
 	pub connection_limit: u32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedisSettings {
 	pub host: String,
@@ -111,7 +111,7 @@ pub struct RedisSettings {
 	pub secure: bool,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TwilioSettings {
 	pub username: String,
@@ -119,7 +119,7 @@ pub struct TwilioSettings {
 	pub from_number: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailSettings {
 	pub host: String,
@@ -130,7 +130,7 @@ pub struct EmailSettings {
 	pub password: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloudflareSettings {
 	pub account_id: String,
@@ -138,14 +138,14 @@ pub struct CloudflareSettings {
 	pub api_token: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(into = "String", rename_all = "camelCase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RunningEnvironment {
 	Development,
 	Production,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerRegistrySettings {
 	pub service_name: String,
@@ -158,7 +158,7 @@ pub struct DockerRegistrySettings {
 	pub authorization_header: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Digitalocean {
 	pub api_key: String,
@@ -178,7 +178,7 @@ impl Display for RunningEnvironment {
 	}
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SshSettings {
 	pub host_name: String,
@@ -188,7 +188,7 @@ pub struct SshSettings {
 	pub key_file: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KubernetesSettings {
 	pub certificate_authority_data: String,

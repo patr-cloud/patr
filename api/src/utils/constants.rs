@@ -191,4 +191,9 @@ pub mod request_keys {
 	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
+	pub const DIGEST: &str = "digest";
+	pub const TAG: &str = "tag";
+	pub const SIZE: &str = "size";
+	pub const IMAGES: &str = "images";
+	pub const LAST_UPDATED: &str = "lastUpdated";
 }

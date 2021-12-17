@@ -1,5 +1,5 @@
 [package]
-authors = ["Rakshith Ravi <rakshith.ravi@gmx.com>"]
+authors = ["Rakshith Ravi <rakshith.ravi@vicara.co>"]
 default-run = "api"
 edition = "2021"
 name = "api"
@@ -12,8 +12,8 @@ sample-data = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-api_macros = { path = "../patr-macros", package = "patr-macros" }
-api_models = { path = "../patr-api-models", package = "patr-api-dto" }
+api_macros = { path = "../macros", package = "patr-macros" }
+api_models = { path = "../api-models", package = "patr-api-dto" }
 argon2 = "0.3.1"
 askama = "0.10.3"
 async-trait = "0.1.36"
