@@ -73,7 +73,7 @@ pub async fn delete_docker_repository_image(
 				config.docker_registry.issuer.clone(),
 				iat,
 				god_user.username.clone(),
-				&config,
+				config,
 				vec![RegistryTokenAccess {
 					r#type: "repository".to_string(),
 					name: repo_name,
@@ -179,7 +179,7 @@ pub async fn delete_docker_repository(
 					config.docker_registry.issuer.clone(),
 					iat,
 					god_user.username.clone(),
-					&config,
+					config,
 					vec![RegistryTokenAccess {
 						r#type: "repository".to_string(),
 						name: repo_name.clone(),
