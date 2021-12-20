@@ -167,7 +167,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	// stop and delete the deployment
+	// stop the deployment
 	app.post(
 		"/:deploymentId/stop",
 		[
@@ -231,134 +231,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	// get list of environment variables for deployment
-	app.get(
-		"/:deploymentId/environment-variables",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_environment_variables)),
-		],
-	);
-
-	// set environment variables for deployment
-	app.put(
-		"/:deploymentId/environment-variables",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(set_environment_variables)),
-		],
-	);
-
-	// set horizontal scale for the deployment
-	app.put(
-		"/:deploymentId/horizontal-scale",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(set_horizontal_scale)),
-		],
-	);
-
-	// set machine type of the deployment
-	app.put(
-		"/:deploymentId/machine-type",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::EDIT,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(set_machine_type)),
-		],
-	);
-
 	// Delete a deployment
 	app.delete(
 		"/:deploymentId/",
@@ -388,102 +260,6 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(delete_deployment)),
-		],
-	);
-
-	// get domain cname and value of deployment
-	app.get(
-		"/:deploymentId/domain-dns-records",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_records)),
-		],
-	);
-
-	// update domain in the deployment
-	app.put(
-		"/:deploymentId/domain",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(set_domain_name)),
-		],
-	);
-
-	// get deployment validation status
-	app.get(
-		"/:deploymentId/domain-validated",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(is_domain_validated)),
 		],
 	);
 
@@ -795,7 +571,22 @@ async fn create_deployment(
 	)
 	.await?;
 
-	context.commit_database_transaction().await?;
+	let start_deployment_on_create = false; // TODO get this as a parameter
+
+	if start_deployment_on_create {
+		// if service::deployment::deployment::check_if_image_exists_in_registry(
+		// 	connection,
+		// 	registry,
+		// 	repository_id,
+		// 	image_name,
+		// 	image_tag,
+		// )
+		// .await?
+		// {
+		// 	service::update_deployment(connection, deployment_id, &config)
+		// 		.await?;
+		// }
+	}
 
 	let _ = service::get_deployment_metrics(
 		context.get_database_connection(),

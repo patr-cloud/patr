@@ -66,7 +66,7 @@ pub async fn initialize_workspaces_pre(
 
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
-	infrastructure::initialize_deployment_pre(connection).await?;
+	infrastructure::initialize_infrastructure_pre(connection).await?;
 
 	Ok(())
 }
@@ -88,7 +88,7 @@ pub async fn initialize_workspaces_post(
 
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
-	infrastructure::initialize_deployment_post(connection).await?;
+	infrastructure::initialize_infrastructure_post(connection).await?;
 
 	Ok(())
 }

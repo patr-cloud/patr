@@ -34,11 +34,50 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
-			'micro',
-			'small',
-			'medium',
-			'large'
+		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
+			'digitalocean'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// TODO FIX REGION STORAGE
+	query!(
+		r#"
+		CREATE TABLE deployment_region(
+			id BYTEA CONSTRAINT deployment_region_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			provider DEPLOYMENT_CLOUD_PROVIDER,
+			location GEOMETRY,
+			parent_region_id BYTEA
+				CONSTRAINT deployment_region_fk_parent_region_id
+					REFERENCES deployment_region(id),
+			CONSTRAINT
+				deployment_region_chk_provider_location_parent_region_is_valid
+				CHECK(
+					(
+						location IS NULL AND
+						provider IS NULL
+					) OR
+					(
+						provider IS NOT NULL AND
+						location IS NOT NULL AND
+						parent_region_id IS NOT NULL
+					)
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_machine_type(
+			id BYTEA CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
+			cpu_count SMALLINT NOT NULL,
+			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
 		);
 		"#
 	)
@@ -59,22 +98,22 @@ pub async fn initialize_deployment_pre(
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
-			deployed_image TEXT,
-			digitalocean_app_id TEXT
-				CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE,
-			region TEXT NOT NULL DEFAULT 'do-blr',
-			domain_name VARCHAR(255)
-				CONSTRAINT deployment_uq_domain_name UNIQUE
-				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
-				),
-			horizontal_scale SMALLINT NOT NULL
-				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
-					horizontal_scale >= 0 AND horizontal_scale <= 256
+			workspace_id BYTEA NOT NULL,
+			region BYTEA NOT NULL CONSTRAINT deployment_fk_region
+				REFERENCES deployment_region(id),
+			min_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
+					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
 				)
 				DEFAULT 1,
-			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
-			workspace_id BYTEA NOT NULL,
+			max_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
+					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			machine_type BYTEA NOT NULL CONSTRAINT deployment_fk_machine_type
+				REFERENCES deployment_machine_type(id),
+			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_uq_id_domain_name
@@ -152,9 +191,8 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
-			'http',
-			'https'
+		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
+			'http'
 		);
 		"#
 	)
@@ -163,86 +201,53 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
-			'get',
-			'post',
-			'put',
-			'delete',
-			'head',
-			'options',
-			'connect',
-			'patch'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_request_logs(
-			id BIGSERIAL PRIMARY KEY,
-			deployment_id BYTEA NOT NULL
-				CONSTRAINT deployment_request_logs_fk_deployment_id
+		CREATE TABLE deployment_exposed_port(
+			deployment_id BYTEA
+				CONSTRAINT deployment_exposed_port_fk_deployment_id
 					REFERENCES deployment(id),
-			timestamp BIGINT NOT NULL
-				CONSTRAINT deployment_request_logs_chk_unsigned
-						CHECK(timestamp >= 0),
-			ip_address VARCHAR(255) NOT NULL,
-			ip_address_location GEOMETRY NOT NULL,
-			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
-			host VARCHAR(255) NOT NULL
-				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
-					CHECK(host = LOWER(host)),
-			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
-			path TEXT NOT NULL,
-			response_time REAL NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE data_center_locations(
-			region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY,
-			location GEOMETRY NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployed_domain(
-			deployment_id BYTEA 
-				CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
-			static_site_id BYTEA 
-				CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
-			domain_name VARCHAR(255) NOT NULL
-				CONSTRAINT deployed_domain_uq_domain_name UNIQUE
-				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
+			port SMALLINT NOT NULL CONSTRAINT
+				deployment_exposed_port_chk_port_u16 CHECK(
+					port > 0 AND port <= 65535
 				),
-			CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name),
-			CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name),
-			CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
-				(
-					deployment_id IS NULL AND
-					static_site_id IS NOT NULL
-				) OR
-				(
-					deployment_id IS NOT NULL AND
-					static_site_id IS NULL
-				)
-			)
+			port_type EXPOSED_PORT_TYPE NOT NULL,
+			CONSTRAINT deployment_exposed_port_pk
+				PRIMARY KEY(deployment_id, port)
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// TODO handle this using entry points
+	// query!(
+	// 	r#"
+	// 	CREATE TABLE deployed_domain(
+	// 		deployment_id BYTEA
+	// 			CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
+	// 		static_site_id BYTEA
+	// 			CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
+	// 		domain_name VARCHAR(255) NOT NULL
+	// 			CONSTRAINT deployed_domain_uq_domain_name UNIQUE
+	// 			CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+	// 				domain_name = LOWER(domain_name)
+	// 			),
+	// 		CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name),
+	// 		CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name),
+	// 		CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
+	// 			(
+	// 				deployment_id IS NULL AND
+	// 				static_site_id IS NOT NULL
+	// 			) OR
+	// 			(
+	// 				deployment_id IS NOT NULL AND
+	// 				static_site_id IS NULL
+	// 			)
+	// 		)
+	// 	);
+	// 	"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
 
 	Ok(())
 }
@@ -289,17 +294,6 @@ pub async fn initialize_deployment_post(
 			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
 			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
 			"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_id_domain_name
-		FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(deployment_id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
 	)
 	.execute(&mut *connection)
 	.await?;

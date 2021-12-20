@@ -92,20 +92,6 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	if let Some(domain_name) = domain_name {
-		let is_god_user =
-			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
-		// If the entry point is not valid, OR if (the domain is special and the
-		// user is not god user)
-		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			(validator::is_domain_special(domain_name) && !is_god_user)
-		{
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string()));
-		}
-	}
-
 	let deployment_uuid = db::generate_new_resource_id(connection).await?;
 	let deployment_id = deployment_uuid.as_bytes();
 
@@ -129,8 +115,6 @@ pub async fn create_deployment_in_workspace(
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())?;
 
-			db::begin_deferred_constraints(connection).await?;
-
 			db::create_deployment_with_internal_registry(
 				connection,
 				deployment_id,
@@ -144,16 +128,12 @@ pub async fn create_deployment_in_workspace(
 				workspace_id,
 			)
 			.await?;
-
-			db::end_deferred_constraints(connection).await?;
 		} else {
 			return Err(Error::empty()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()));
 		}
 	} else if let Some(image_name) = image_name {
-		db::begin_deferred_constraints(connection).await?;
-
 		db::create_deployment_with_external_registry(
 			connection,
 			deployment_id,
@@ -168,24 +148,10 @@ pub async fn create_deployment_in_workspace(
 			workspace_id,
 		)
 		.await?;
-
-		db::end_deferred_constraints(connection).await?;
 	} else {
 		return Err(Error::empty()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string()));
-	}
-
-	let image_id = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.get_full_image(connection)
-		.await?;
-
-	if check_if_image_exists_in_registry(connection, &image_id).await? {
-		kubernetes::update_deployment(connection, deployment_id, config)
-			.await?;
 	}
 
 	Ok(deployment_uuid)
