@@ -1,7 +1,7 @@
 use api_models::utils::Uuid;
 use semver::Version;
 
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, models::rbac, Database};
 
 mod bytea_to_uuid;
 mod docker_registry;
@@ -567,6 +567,37 @@ async fn add_deployment_info_permission(
 		"workspace::deployment::info"
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	for (_, permission) in rbac::permissions::consts_iter() {
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = CONCAT("test::", name)
+			WHERE
+				name = $1;
+			"#,
+			&permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = $1
+			WHERE
+				name = CONCAT("test::", $1);
+			"#,
+			&permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
