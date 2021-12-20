@@ -575,7 +575,7 @@ async fn add_deployment_info_permission(
 			UPDATE
 				permission
 			SET
-				name = CONCAT("test::", name)
+				name = CONCAT('test::', name)
 			WHERE
 				name = $1;
 			"#,
@@ -591,7 +591,7 @@ async fn add_deployment_info_permission(
 			SET
 				name = $1
 			WHERE
-				name = CONCAT("test::", $1);
+				name = CONCAT('test::', $1);
 			"#,
 			&permission,
 		)
