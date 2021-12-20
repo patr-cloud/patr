@@ -533,7 +533,7 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection).await?;
 	add_trim_check_for_username(&mut *connection).await?;
-	add_deployment_info_permission(&mut *connection).await?;
+	reset_permission_order(&mut *connection).await?;
 
 	Ok(())
 }
@@ -553,9 +553,32 @@ async fn add_trim_check_for_username(
 	.map(|_| ())
 }
 
-async fn add_deployment_info_permission(
+async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	let permission_id = loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				permission
+			WHERE
+				id = $1;
+			"#,
+			&uuid
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break uuid;
+		}
+	};
+
 	query!(
 		r#"
 		INSERT INTO
@@ -563,8 +586,8 @@ async fn add_deployment_info_permission(
 		VALUES
 			($1, $2, NULL);
 		"#,
-		Uuid::new_v4(),
-		"workspace::deployment::info"
+		permission_id,
+		"workspace::dockerRegistry::info"
 	)
 	.execute(&mut *connection)
 	.await?;
