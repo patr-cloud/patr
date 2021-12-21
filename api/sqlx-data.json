@@ -1053,16 +1053,6 @@
       "nullable": []
     }
   },
-  "23e098b37e9c39da10ca030291984850108aafe94ecd18f4e591a44163a23dd1": {
-    "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "24651378057df5d6b31be9a55d60d02884c8c9d9f7cb441254a408e7dc4f05b9": {
     "query": "SELECT * FROM phone_number_country_code WHERE country_code = $1;",
     "describe": {
@@ -3498,6 +3488,16 @@
       "nullable": [
         null
       ]
+    }
+  },
+  "927bf61ea95f553c57c6baf13b645a0d62e1b3c61c082e9f424dae2d534d44b0": {
+    "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "92b0392819d776b7f7f829b44a8f9c1ab3be7b05599518d662ee53e8155d42a8": {
