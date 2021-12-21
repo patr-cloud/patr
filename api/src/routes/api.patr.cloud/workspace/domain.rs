@@ -257,6 +257,35 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.delete(
+		"/:domainId/dns-record",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::domain::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = hex::decode(&domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
+		],
+	);
+
 	// Do something with the domains, etc, maybe?
 
 	app
@@ -854,5 +883,41 @@ async fn add_dns_record(
 	context.json(json!({
 		request_keys::SUCCESS: true
 	}));
+	Ok(context)
+}
+
+pub async fn delete_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let domain_id = hex::decode(domain_id).unwrap();
+
+	// check if domain is patr controlled
+	let domain = db::get_patr_controlled_domain_by_domain_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?;
+	if domain.is_none() {
+		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
+		return Ok(context);
+	}
+	let body = context.get_body_object().clone();
+
+	let name = body
+		.get(request_keys::NAME)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::delete_patr_controlled_dns_record(
+		context.get_database_connection(),
+		&domain_id,
+		name,
+	)
+	.await?;
+
 	Ok(context)
 }

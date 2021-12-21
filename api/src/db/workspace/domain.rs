@@ -806,3 +806,25 @@ pub async fn add_patr_dns_txt_record(
 	.await?;
 	Ok(())
 }
+
+pub async fn delete_patr_controlled_dns_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			DELETE FROM
+				dns_record
+			WHERE
+				domain_id = $1
+			AND 
+				name = $2;
+		"#,
+		domain_id,
+		name,
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
