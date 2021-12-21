@@ -114,23 +114,6 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE entry_point (
-			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			sub_domain VARCHAR(255) NOT NULL DEFAULT '/',
-			is_verified BOOLEAN NOT NULL DEFAULT TRUE,
-			path VARCHAR(255) NOT NULL,
-			deployment_id BYTEA NOT NULL,
-			CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain),
-			CONSTRAINT entry_point_chk_verified
-				CHECK(is_verified = TRUE)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE INDEX
 			workspace_domain_idx_is_verified
 		ON
@@ -649,26 +632,6 @@ pub async fn get_dns_record_by_domain_id(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn add_entry_point(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
-	sub_domain: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			entry_point
-		VALUES
-		($1, $2, default);
-		"#,
-		domain_id,
-		sub_domain
-	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
 }
 
 pub async fn get_patr_controlled_domain_by_domain_id(

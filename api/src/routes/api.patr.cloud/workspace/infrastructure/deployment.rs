@@ -519,6 +519,36 @@ pub fn create_sub_app(
 		],
 	);
 
+	//  add entry point
+	app.post(
+		"/:deploymentId/entry-point",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::deployment::CREATE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = hex::decode(&deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_entry_point)),
+		],
+	);
+
 	app
 }
 
@@ -1626,5 +1656,60 @@ async fn get_recommended_data_center(
 			})
 		},
 	);
+	Ok(context)
+}
+
+//  this will move to deployments
+async fn add_entry_point(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id = context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+	let body = context.get_body_object().clone();
+
+	// hex::decode throws an error for a wrong string
+	// This error is handled by the resource authenticator middleware
+	// So it's safe to call unwrap() here without crashing the system
+	// This won't be executed unless hex::decode(domain_id) returns Ok
+	let deployment_id = hex::decode(deployment_id).unwrap();
+
+	let domain_id = body
+		.get(request_keys::DOMAIN_ID)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?
+		.to_lowercase();
+	let domain_id = hex::decode(domain_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let sub_domain = body
+		.get(request_keys::SUB_DOMAIN)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let path = body
+		.get(request_keys::PATH)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	//add to database
+	db::add_entry_point(
+		context.get_database_connection(),
+		&domain_id,
+		&sub_domain,
+		path,
+		&deployment_id,
+	)
+	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true
+	}));
 	Ok(context)
 }
