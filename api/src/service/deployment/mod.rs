@@ -205,22 +205,6 @@ async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
 	Ok(())
 }
 
-pub async fn update_deployment_status(
-	deployment_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_deployment_status(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
-}
-
 pub(super) async fn tag_docker_image(
 	image_id: &str,
 	new_repo_name: &str,

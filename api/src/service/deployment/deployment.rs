@@ -220,6 +220,7 @@ pub async fn start_deployment(
 	);
 
 	let _ = digitalocean::push_to_docr(
+		connection,
 		deployment_id,
 		&image_id,
 		Client::new(),
@@ -238,11 +239,12 @@ pub async fn start_deployment(
 		kubernetes::update_deployment(connection, deployment_id, config).await;
 
 	if let Err(error) = result {
-		let _ = super::update_deployment_status(
+		db::update_deployment_status(
+			connection,
 			deployment_id,
 			&DeploymentStatus::Errored,
 		)
-		.await;
+		.await?;
 		log::info!("Error with the deployment, {}", error.get_error());
 	}
 

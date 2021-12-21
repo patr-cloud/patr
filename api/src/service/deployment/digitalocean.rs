@@ -199,6 +199,7 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 }
 
 pub async fn push_to_docr(
+	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &[u8],
 	full_image_name: &str,
 	client: Client,
@@ -214,11 +215,6 @@ pub async fn push_to_docr(
 	// 	request_id,
 	// 	hex::encode(&deployment.id),
 	// );
-	let _ = service::update_deployment_status(
-		deployment_id,
-		&DeploymentStatus::Pushed,
-	)
-	.await;
 
 	// log::trace!(
 	// 	"request_id: {} - Pulling image from registry",
@@ -306,6 +302,13 @@ pub async fn push_to_docr(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Pushed,
+	)
+	.await?;
 
 	// log::trace!("request_id: {} - Pushed to DO", request_id);
 	log::trace!("Deleting image tagged with registry.digitalocean.com");

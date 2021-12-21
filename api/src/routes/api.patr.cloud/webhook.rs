@@ -222,6 +222,7 @@ pub async fn notification_handler(
 			.await?;
 
 			let _ = digitalocean::push_to_docr(
+				context.get_database_connection(),
 				&deployment.id,
 				&full_image_name,
 				Client::new(),

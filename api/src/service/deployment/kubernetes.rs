@@ -114,11 +114,12 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id_string,
 	);
-	let _ = super::update_deployment_status(
+	db::update_deployment_status(
+		connection,
 		deployment_id,
 		&DeploymentStatus::Pushed,
 	)
-	.await;
+	.await?;
 
 	// TODO: change the namespace to workspace id
 	let namespace = "default";
@@ -131,11 +132,12 @@ pub async fn update_deployment(
 		request_id
 	);
 
-	let _ = super::update_deployment_status(
+	db::update_deployment_status(
+		connection,
 		deployment_id,
 		&DeploymentStatus::Deploying,
 	)
-	.await;
+	.await?;
 
 	let deployment_environment_variable =
 		db::get_environment_variables_for_deployment(connection, deployment_id)
@@ -327,12 +329,13 @@ pub async fn update_deployment(
 							name: format!("service-{}", &deployment_id_string),
 							port: Some(ServiceBackendPort {
 								number: Some(80),
-								name: Some("http".to_owned()),
+								..ServiceBackendPort::default()
 							}),
 						}),
 						..IngressBackend::default()
 					},
-					..HTTPIngressPath::default()
+					path: Some("/".to_string()),
+					path_type: Some("Prefix".to_string()),
 				}],
 			}),
 		}]
