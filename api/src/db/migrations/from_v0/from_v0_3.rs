@@ -1,5 +1,5 @@
+use api_models::utils::Uuid;
 use semver::Version;
-use uuid::Uuid;
 
 use crate::{migrate_query as query, models::rbac, Database};
 

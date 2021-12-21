@@ -1,39 +1,41 @@
-use api_models::models::{
-	user::{
-		AddPersonalEmailRequest,
-		AddPersonalEmailResponse,
-		AddPhoneNumberRequest,
-		AddPhoneNumberResponse,
-		ChangePasswordRequest,
-		ChangePasswordResponse,
-		DeletePersonalEmailRequest,
-		DeletePersonalEmailResponse,
-		DeletePhoneNumberRequest,
-		DeletePhoneNumberResponse,
-		DeleteUserLoginResponse,
-		GetUserInfoByUsernameResponse,
-		GetUserInfoResponse,
-		GetUserLoginInfoResponse,
-		ListPersonalEmailsResponse,
-		ListPhoneNumbersResponse,
-		ListUserLoginsResponse,
-		ListUserWorkspacesResponse,
-		UpdateBackupEmailRequest,
-		UpdateBackupEmailResponse,
-		UpdateBackupPhoneNumberRequest,
-		UpdateBackupPhoneNumberResponse,
-		UpdateUserInfoRequest,
-		UpdateUserInfoResponse,
-		UserLogin,
-		VerifyPersonalEmailRequest,
-		VerifyPersonalEmailResponse,
-		VerifyPhoneNumberRequest,
-		VerifyPhoneNumberResponse,
+use api_models::{
+	models::{
+		user::{
+			AddPersonalEmailRequest,
+			AddPersonalEmailResponse,
+			AddPhoneNumberRequest,
+			AddPhoneNumberResponse,
+			ChangePasswordRequest,
+			ChangePasswordResponse,
+			DeletePersonalEmailRequest,
+			DeletePersonalEmailResponse,
+			DeletePhoneNumberRequest,
+			DeletePhoneNumberResponse,
+			DeleteUserLoginResponse,
+			GetUserInfoByUsernameResponse,
+			GetUserInfoResponse,
+			GetUserLoginInfoResponse,
+			ListPersonalEmailsResponse,
+			ListPhoneNumbersResponse,
+			ListUserLoginsResponse,
+			ListUserWorkspacesResponse,
+			UpdateBackupEmailRequest,
+			UpdateBackupEmailResponse,
+			UpdateBackupPhoneNumberRequest,
+			UpdateBackupPhoneNumberResponse,
+			UpdateUserInfoRequest,
+			UpdateUserInfoResponse,
+			UserLogin,
+			VerifyPersonalEmailRequest,
+			VerifyPersonalEmailResponse,
+			VerifyPhoneNumberRequest,
+			VerifyPhoneNumberResponse,
+		},
+		workspace::Workspace,
 	},
-	workspace::Workspace,
+	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, NextHandler};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -304,7 +306,7 @@ async fn get_user_info(
 	.collect::<Vec<_>>();
 
 	context.success(GetUserInfoResponse {
-		id: Uuid::from_slice(&id)?,
+		id,
 		username,
 		first_name,
 		last_name,
@@ -381,7 +383,7 @@ async fn get_user_info_by_username(
 		.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
 	context.success(GetUserInfoByUsernameResponse {
-		id: Uuid::from_slice(&id)?,
+		id,
 		username,
 		first_name,
 		last_name,
@@ -1091,12 +1093,10 @@ async fn get_workspaces_for_user(
 	)
 	.await?
 	.into_iter()
-	.filter_map(|workspace| {
-		Some(Workspace {
-			id: Uuid::from_slice(&workspace.id).ok()?,
-			name: workspace.name,
-			active: workspace.active,
-		})
+	.map(|workspace| Workspace {
+		id: workspace.id,
+		name: workspace.name,
+		active: workspace.active,
 	})
 	.collect::<Vec<_>>();
 
@@ -1176,14 +1176,11 @@ async fn get_all_logins_for_user(
 	)
 	.await?
 	.into_iter()
-	.filter_map(|login| {
-		let login_id = Uuid::from_slice(&login.login_id).ok()?;
-		Some(UserLogin {
-			login_id,
-			token_expiry: login.token_expiry,
-			last_login: login.last_login,
-			last_activity: login.last_activity,
-		})
+	.map(|login| UserLogin {
+		login_id: login.login_id,
+		token_expiry: login.token_expiry,
+		last_login: login.last_login,
+		last_activity: login.last_activity,
 	})
 	.collect::<Vec<_>>();
 
@@ -1195,24 +1192,21 @@ async fn get_login_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let login_id_string = context
+	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
+		.map(|param| Uuid::parse_str(param).ok())
+		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
-
-	let login_id = hex::decode(&login_id_string)?;
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let login =
 		db::get_user_login(context.get_database_connection(), &login_id)
 			.await?
-			.and_then(|login| {
-				Some(UserLogin {
-					login_id: Uuid::from_slice(&login.login_id).ok()?,
-					token_expiry: login.token_expiry,
-					last_login: login.last_login,
-					last_activity: login.last_activity,
-				})
+			.map(|login| UserLogin {
+				login_id: login.login_id,
+				token_expiry: login.token_expiry,
+				last_login: login.last_login,
+				last_activity: login.last_activity,
 			})
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -1227,10 +1221,10 @@ async fn delete_user_login(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
+		.map(|param| Uuid::parse_str(param).ok())
+		.flatten()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.clone();
-	let login_id = hex::decode(login_id)?;
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 

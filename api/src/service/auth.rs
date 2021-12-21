@@ -1,10 +1,12 @@
-use api_models::models::auth::{
-	PreferredRecoveryOption,
-	RecoveryMethod,
-	SignUpAccountType,
+use api_models::{
+	models::auth::{
+		PreferredRecoveryOption,
+		RecoveryMethod,
+		SignUpAccountType,
+	},
+	utils::Uuid,
 };
 use eve_rs::AsError;
-use uuid::Uuid;
 
 /// This module validates user info and performs tasks related to user
 /// authentication The flow of this file will be:
@@ -294,7 +296,6 @@ pub async fn create_user_join_request(
 			backup_email_domain_id = Some(domain_id);
 		}
 	}
-	let backup_email_domain_id = backup_email_domain_id.as_deref();
 
 	let otp = service::generate_new_otp();
 	let token_expiry =
@@ -359,7 +360,7 @@ pub async fn create_user_join_request(
 				&password,
 				(first_name, last_name),
 				backup_email_local.as_deref(),
-				backup_email_domain_id,
+				backup_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				business_email_local,
@@ -369,7 +370,6 @@ pub async fn create_user_join_request(
 				token_expiry,
 			)
 			.await?;
-			// let check = backup_email_domain_id.map(|s| s.to_vec())
 
 			response = UserToSignUp {
 				username: username.to_string(),
@@ -378,8 +378,7 @@ pub async fn create_user_join_request(
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
 				backup_email_local,
-				backup_email_domain_id: backup_email_domain_id
-					.map(|s| s.to_vec()),
+				backup_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
@@ -396,7 +395,7 @@ pub async fn create_user_join_request(
 				&password,
 				(first_name, last_name),
 				backup_email_local.as_deref(),
-				backup_email_domain_id,
+				backup_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
@@ -411,8 +410,7 @@ pub async fn create_user_join_request(
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
 				backup_email_local,
-				backup_email_domain_id: backup_email_domain_id
-					.map(|s| s.to_vec()),
+				backup_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: None,
@@ -453,14 +451,14 @@ pub async fn create_user_join_request(
 ///   user
 ///
 /// # Returns
-/// This function returns a `Result<UserLogin, error>` which contains an
-/// instance of UserLogin or an error
+/// This function returns a `Result<(UserLogin, Uuid), error>` which contains an
+/// instance of UserLogin with a refresh token or an error
 ///
 /// [`UserLogin`]: UserLogin
 pub async fn create_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<UserLogin, Error> {
+	user_id: &Uuid,
+) -> Result<(UserLogin, Uuid), Error> {
 	let login_id = db::generate_new_login_id(connection).await?;
 	let (refresh_token, hashed_refresh_token) =
 		service::generate_new_refresh_token_for_user(connection, user_id)
@@ -469,7 +467,7 @@ pub async fn create_login_for_user(
 
 	db::add_user_login(
 		connection,
-		login_id.as_bytes(),
+		&login_id,
 		&hashed_refresh_token,
 		iat + get_refresh_token_expiry(),
 		user_id,
@@ -478,15 +476,15 @@ pub async fn create_login_for_user(
 	)
 	.await?;
 	let user_login = UserLogin {
-		login_id: login_id.as_bytes().to_vec(),
-		user_id: user_id.to_vec(),
+		login_id,
+		user_id: user_id.clone(),
 		last_activity: iat,
 		last_login: iat,
-		refresh_token,
+		refresh_token: hashed_refresh_token,
 		token_expiry: iat + get_refresh_token_expiry(),
 	};
 
-	Ok(user_login)
+	Ok((user_login, refresh_token))
 }
 
 /// # Description
@@ -502,8 +500,8 @@ pub async fn create_login_for_user(
 ///   the whole API
 ///
 /// # Returns
-/// This function returns a `Result<(String, Uuid, Uuid), Error>` containing
-/// jwt, login_id, and refresh token or an error
+/// This function returns a `Result<(UserLogin, String, Uuid), Error>`
+/// containing the user login, jwt and refresh token or an error
 ///
 /// [`create_login_for_user()`]: self.create_login_for_user()
 /// [`UserLogin`]: UserLogin
@@ -511,20 +509,15 @@ pub async fn create_login_for_user(
 /// [`Settings]: Settings
 pub async fn sign_in_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	config: &Settings,
-) -> Result<(String, Uuid, Uuid), Error> {
-	let refresh_token = Uuid::new_v4();
+) -> Result<(UserLogin, String, Uuid), Error> {
+	let (user_login, refresh_token) =
+		create_login_for_user(connection, user_id).await?;
 
-	let user_login = create_login_for_user(connection, user_id).await?;
+	let jwt = generate_access_token(connection, &user_login, config).await?;
 
-	let jwt = generate_access_token(connection, config, &user_login).await?;
-
-	Ok((
-		jwt,
-		Uuid::from_slice(&user_login.login_id).unwrap(),
-		refresh_token,
-	))
+	Ok((user_login, jwt, refresh_token))
 }
 
 /// # Description
@@ -543,7 +536,7 @@ pub async fn sign_in_user(
 /// [`Transaction`]: Transaction
 pub async fn get_user_login_for_login_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
 		.await?
@@ -574,8 +567,8 @@ pub async fn get_user_login_for_login_id(
 /// [`Transaction`]: Transaction
 pub async fn generate_access_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
 	user_login: &UserLogin,
+	config: &Settings,
 ) -> Result<String, Error> {
 	// get roles and permissions of user for rbac here
 	// use that info to populate the data in the token_data
@@ -597,6 +590,8 @@ pub async fn generate_access_token(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
+	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
+
 	let user = ExposedUserData {
 		id,
 		username,
@@ -609,12 +604,10 @@ pub async fn generate_access_token(
 		iat,
 		exp,
 		workspaces,
-		hex::encode(&user_login.login_id),
+		user_login.login_id.clone(),
 		user,
 	);
 	let jwt = token_data.to_string(config.jwt_secret.as_str())?;
-
-	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
 
 	Ok(jwt)
 }
@@ -691,7 +684,7 @@ pub async fn reset_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	new_password: &str,
 	token: &str,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<(), Error> {
 	let reset_request =
 		db::get_password_reset_request_for_user(connection, user_id).await?;
@@ -785,18 +778,17 @@ pub async fn join_user(
 	// Then set email to backup email if personal account,
 	// And finally send the token, along with the email to the user
 
-	let user_uuid = db::generate_new_user_id(connection).await?;
-	let user_id = user_uuid.as_bytes();
+	let user_id = db::generate_new_user_id(connection).await?;
 	let created = get_current_time_millis();
 
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
-			.set(user_uuid)
+			.set(user_id.clone())
 			.expect("GOD_USER_ID was already set");
 	}
 
 	let backup_email_local = user_data.backup_email_local.as_deref();
-	let backup_email_domain_id = user_data.backup_email_domain_id.as_deref();
+	let backup_email_domain_id = user_data.backup_email_domain_id.as_ref();
 	let backup_phone_country_code =
 		user_data.backup_phone_country_code.as_deref();
 	let backup_phone_number = user_data.backup_phone_number.as_deref();
@@ -809,7 +801,7 @@ pub async fn join_user(
 	{
 		db::add_personal_email_for_user(
 			connection,
-			user_id,
+			&user_id,
 			email_local,
 			domain_id,
 		)
@@ -821,7 +813,7 @@ pub async fn join_user(
 	{
 		db::add_phone_number_for_user(
 			connection,
-			user_id,
+			&user_id,
 			phone_country_code,
 			phone_number,
 		)
@@ -838,7 +830,7 @@ pub async fn join_user(
 
 	db::create_user(
 		connection,
-		user_id,
+		&user_id,
 		&user_data.username,
 		&user_data.password,
 		(&user_data.first_name, &user_data.last_name),
@@ -860,23 +852,20 @@ pub async fn join_user(
 		let workspace_id = service::create_workspace(
 			connection,
 			&user_data.business_name.unwrap(),
-			user_id,
+			&user_id,
 		)
 		.await?;
-		let workspace_id = workspace_id.as_bytes();
 
 		let domain_id = service::add_domain_to_workspace(
 			connection,
 			user_data.business_domain_name.as_ref().unwrap(),
-			workspace_id,
+			&workspace_id,
 		)
-		.await?
-		.as_bytes()
-		.to_vec();
+		.await?;
 
 		db::add_business_email_for_user(
 			connection,
-			user_id,
+			&user_id,
 			user_data.business_email_local.as_ref().unwrap(),
 			&domain_id,
 		)
@@ -969,13 +958,13 @@ pub async fn join_user(
 	// add personal workspace
 	let personal_workspace_name =
 		service::get_personal_workspace_name(username);
-	service::create_workspace(connection, &personal_workspace_name, user_id)
+	service::create_workspace(connection, &personal_workspace_name, &user_id)
 		.await?;
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 
-	let (jwt, login_id, refresh_token) =
-		sign_in_user(connection, user_id, config).await?;
+	let (UserLogin { login_id, .. }, jwt, refresh_token) =
+		sign_in_user(connection, &user_id, config).await?;
 	let response = JoinUser {
 		jwt,
 		login_id,

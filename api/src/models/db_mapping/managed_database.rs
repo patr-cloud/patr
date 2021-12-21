@@ -1,5 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -88,7 +89,7 @@ impl FromStr for ManagedDatabasePlan {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ManagedDatabase {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub db_name: String,
 	pub engine: ManagedDatabaseEngine,
@@ -101,7 +102,7 @@ pub struct ManagedDatabase {
 	pub port: i32,
 	pub username: String,
 	pub password: String,
-	pub workspace_id: Vec<u8>,
+	pub workspace_id: Uuid,
 	pub digitalocean_db_id: Option<String>,
 }
 

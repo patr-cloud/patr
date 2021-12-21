@@ -1,9 +1,9 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -41,12 +41,12 @@ use crate::{
 pub(super) async fn deploy_container(
 	image_id: String,
 	region: String,
-	deployment_id: Vec<u8>,
+	deployment_id: Uuid,
 	config: Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id,
 		image_id,
 		request_id
 	);
@@ -59,12 +59,11 @@ pub(super) async fn deploy_container(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	let client = Client::new();
-	let deployment_id_string = hex::encode(&deployment_id);
 
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
-		deployment_id_string,
+		deployment_id,
 	);
 	let _ = super::update_deployment_status(
 		&deployment_id,
@@ -79,7 +78,7 @@ pub(super) async fn deploy_container(
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry, deployment_id_string,
+		config.digitalocean.registry, deployment_id,
 	);
 	log::trace!("request_id: {} - Pushing to {}", new_repo_name, request_id);
 
@@ -198,7 +197,7 @@ pub(super) async fn deploy_container(
 	// update DNS
 	log::trace!("request_id: {} - updating DNS", request_id);
 	super::add_cname_record(
-		&deployment_id_string,
+		deployment_id.as_str(),
 		&config.ssh.host_name,
 		&config,
 		false,
@@ -208,11 +207,11 @@ pub(super) async fn deploy_container(
 
 	log::trace!("request_id: {} - adding reverse proxy", request_id);
 	super::update_nginx_with_all_domains_for_deployment(
-		&deployment_id_string,
+		deployment_id.as_str(),
 		&default_url,
 		deployment.domain_name.as_deref(),
 		&config,
-		request_id,
+		&request_id,
 	)
 	.await?;
 
@@ -256,9 +255,9 @@ pub(super) async fn deploy_container(
 
 pub(super) async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - retreiving and comparing the deployment ids",
@@ -304,9 +303,9 @@ pub(super) async fn delete_deployment(
 
 pub(super) async fn get_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
 	let client = Client::new();
 
@@ -364,7 +363,7 @@ pub(super) async fn get_container_logs(
 
 pub(super) async fn create_managed_database_cluster(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
 	version: &str,
@@ -375,7 +374,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on digitalocean with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&database_id),
+		database_id,
 		db_name,
 		request_id
 	);
@@ -430,7 +429,7 @@ pub(super) async fn create_managed_database_cluster(
 	)
 	.await?;
 
-	let database_id = database_id.to_vec();
+	let database_id = database_id.clone();
 	let db_name = db_name.to_string();
 
 	task::spawn(async move {
@@ -489,7 +488,7 @@ pub(super) async fn delete_database(
 }
 
 pub(super) async fn get_app_default_url(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 	client: &Client,
 ) -> Result<Option<String>, Error> {
@@ -506,7 +505,7 @@ pub(super) async fn get_app_default_url(
 }
 
 async fn app_exists(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 	client: &Client,
 ) -> Result<Option<String>, Error> {
@@ -542,7 +541,7 @@ async fn app_exists(
 }
 
 async fn update_database_cluster_credentials(
-	database_id: Vec<u8>,
+	database_id: Uuid,
 	db_name: String,
 	digitalocean_db_id: String,
 	request_id: Uuid,
@@ -641,7 +640,7 @@ async fn get_registry_auth_token(
 
 // create a new digital ocean application
 async fn create_app(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	region: String,
 	horizontal_scale: i16,
 	machine_type: &DeploymentMachineType,
@@ -674,7 +673,7 @@ async fn create_app(
 					name: "default-service".to_string(),
 					image: Image {
 						registry_type: "DOCR".to_string(),
-						repository: hex::encode(deployment_id),
+						repository: deployment_id.to_string(),
 						tag: "latest".to_string(),
 					},
 					// for now instance count is set to 1
@@ -792,7 +791,7 @@ async fn get_app_default_ingress(
 }
 
 async fn delete_image_from_digitalocean_registry(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
@@ -801,7 +800,7 @@ async fn delete_image_from_digitalocean_registry(
 		.delete(format!(
 			"https://api.digitalocean.com/v2/registry/{}/repositories/{}/tags/latest",
 			config.digitalocean.registry,
-			hex::encode(deployment_id),
+			deployment_id,
 		))
 		.bearer_auth(&config.digitalocean.api_key)
 		.send()

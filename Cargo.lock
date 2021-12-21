@@ -104,12 +104,11 @@ dependencies = [
  "serde 1.0.132",
  "serde_json",
  "serde_qs 0.8.5",
- "sha2",
+ "sha2 0.10.0",
  "shiplift",
  "sqlx",
  "tokio",
  "trust-dns-client",
- "uuid",
 ]
 
 [[package]]
@@ -209,20 +208,20 @@ dependencies = [
 
 [[package]]
 name = "attohttpc"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a8bda305457262b339322106c776e3fd21df860018e566eb6a5b1aa4b6ae02d"
+checksum = "e69e13a99a7e6e070bb114f7ff381e58c7ccc188630121fc4c2fe4bcf24cd072"
 dependencies = [
  "http",
  "log",
  "native-tls",
  "openssl",
- "rustls 0.18.1",
+ "rustls 0.20.2",
  "serde 1.0.132",
  "serde_json",
  "url",
- "webpki 0.21.4",
- "webpki-roots 0.19.0",
+ "webpki 0.22.0",
+ "webpki-roots 0.22.1",
  "wildmatch",
 ]
 
@@ -259,9 +258,9 @@ dependencies = [
 
 [[package]]
 name = "aws-creds"
-version = "0.26.2"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e1c8f64305d3f3096cb247983a3cae16f8c2960129699bcb70639e31180794"
+checksum = "460a75eac8f3cb7683e0a9a588a83c3ff039331ea7bfbfbfcecf1dacab276e11"
 dependencies = [
  "anyhow",
  "attohttpc",
@@ -592,9 +591,9 @@ dependencies = [
 
 [[package]]
 name = "cloudflare"
-version = "0.8.7"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10114a706e77bc0115b7c67db19c5c5544dd2eabef992d5772d2f369567e71a5"
+checksum = "2c17127dbdf8ba8654a984ed7eb7d5077e137c30e34d8c0a4212753426ea6f1b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1212,8 +1211,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2088,6 +2089,7 @@ dependencies = [
  "serde 1.0.132",
  "serde_json",
  "serde_test",
+ "sqlx",
  "uuid",
 ]
 
@@ -2510,9 +2512,9 @@ dependencies = [
 
 [[package]]
 name = "rust-s3"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2f26775d15f43dc848ef0ec65f83de8775549e486c7a3a576652049a7122d32"
+checksum = "18c58d4682844a5d6301efbf915dd7a9d3d638006f9bb821527a0bbbf2a4cfc2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2521,7 +2523,6 @@ dependencies = [
  "base64 0.13.0",
  "cfg-if 1.0.0",
  "chrono",
- "futures",
  "hex",
  "hmac",
  "http",
@@ -2534,7 +2535,7 @@ dependencies = [
  "serde 1.0.132",
  "serde-xml-rs",
  "serde_derive",
- "sha2",
+ "sha2 0.9.8",
  "tokio",
  "tokio-stream",
  "url",
@@ -2553,19 +2554,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustls"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d1126dcf58e93cee7d098dbda643b5f92ed724f1f6a63007c1116eed6700c81"
-dependencies = [
- "base64 0.12.3",
- "log",
- "ring",
- "sct 0.6.1",
- "webpki 0.21.4",
 ]
 
 [[package]]
@@ -2883,6 +2871,17 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d964dd36bb15bcf2f2b35694c072feab74969a54f2bbeec7a2d725d2bdcb6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.1",
 ]
 
 [[package]]
@@ -3204,7 +3203,7 @@ dependencies = [
  "serde 1.0.132",
  "serde_json",
  "sha-1 0.9.8",
- "sha2",
+ "sha2 0.9.8",
  "smallvec",
  "sqlformat",
  "sqlx-rt",
@@ -3212,6 +3211,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
  "webpki 0.21.4",
  "webpki-roots 0.21.1",
  "whoami",
@@ -3232,7 +3232,7 @@ dependencies = [
  "quote",
  "serde 1.0.132",
  "serde_json",
- "sha2",
+ "sha2 0.9.8",
  "sqlx-core",
  "sqlx-rt",
  "syn",
@@ -3877,20 +3877,20 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.19.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8eff4b7516a57307f9349c64bf34caa34b940b66fed4b2fb3136cb7386e5739"
+checksum = "aabe153544e473b775453675851ecc86863d2a81d786d741f6b76778f2a48940"
 dependencies = [
  "webpki 0.21.4",
 ]
 
 [[package]]
 name = "webpki-roots"
-version = "0.21.1"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aabe153544e473b775453675851ecc86863d2a81d786d741f6b76778f2a48940"
+checksum = "c475786c6f47219345717a043a37ec04cb4bc185e28853adcc4fa0a947eba630"
 dependencies = [
- "webpki 0.21.4",
+ "webpki 0.22.0",
 ]
 
 [[package]]
@@ -3905,9 +3905,9 @@ dependencies = [
 
 [[package]]
 name = "wildmatch"
-version = "1.1.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f44b95f62d34113cf558c93511ac93027e03e9c29a60dd0fd70e6e025c7270a"
+checksum = "d6c48bd20df7e4ced539c12f570f937c6b4884928a87fee70a479d72f031d4e0"
 
 [[package]]
 name = "winapi"
