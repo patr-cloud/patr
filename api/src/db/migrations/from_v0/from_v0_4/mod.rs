@@ -559,7 +559,7 @@ async fn make_permission_name_unique(
 		r#"
 		ALTER TABLE permission
 		ADD CONSTRAINT permission_uq_name
-		UNIQUE;
+		UNIQUE(name);
 		"#
 	)
 	.execute(&mut *connection)
