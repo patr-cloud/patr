@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use reqwest::Client;
 use serde_json::json;
@@ -338,11 +339,12 @@ async fn add_deployment_request_log(
 
 	let deployment_id = if host.ends_with(".patr.cloud") {
 		let deployment_id_string = host.replace(".patr.cloud", "");
-		let deployment_id = if let Ok(id) = hex::decode(deployment_id_string) {
-			id
-		} else {
-			return Ok(context);
-		};
+		let deployment_id =
+			if let Ok(id) = Uuid::parse_str(&deployment_id_string) {
+				id
+			} else {
+				return Ok(context);
+			};
 		if db::get_deployment_by_id(
 			context.get_database_connection(),
 			&deployment_id,

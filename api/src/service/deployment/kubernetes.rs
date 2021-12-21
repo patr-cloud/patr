@@ -50,7 +50,6 @@ use kube::{
 	Api,
 	Config,
 };
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -60,10 +59,11 @@ use crate::{
 	utils::{settings::Settings, Error},
 	Database,
 };
+use api_models::utils::Uuid;
 
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let _ = db::get_deployment_by_id(connection, deployment_id)
@@ -84,16 +84,15 @@ pub async fn update_deployment(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	log::trace!("Deploying the container with id: {} and image: {:?} on DigitalOcean Managed Kubernetes with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id,
 		deployment.get_full_image(connection).await?,
 		request_id,
 	);
 
-	let deployment_id_string = hex::encode(&deployment_id);
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry, deployment_id_string,
+		config.digitalocean.registry, deployment_id,
 	);
 	let horizontal_scale = deployment.horizontal_scale as i32;
 
@@ -112,7 +111,7 @@ pub async fn update_deployment(
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
-		deployment_id_string,
+		deployment_id,
 	);
 	let _ = super::update_deployment_status(
 		deployment_id,
@@ -124,7 +123,7 @@ pub async fn update_deployment(
 	let namespace = "default";
 
 	let mut labels: BTreeMap<String, String> = BTreeMap::new();
-	labels.insert("app".to_owned(), deployment_id_string.clone());
+	labels.insert("app".to_owned(), deployment_id.to_string());
 
 	log::trace!(
 		"request_id: {} - generating deployment configuration",
@@ -150,7 +149,7 @@ pub async fn update_deployment(
 
 	let kubernetes_deployment = Deployment {
 		metadata: ObjectMeta {
-			name: Some(deployment_id_string.to_string()),
+			name: Some(deployment_id.to_string()),
 			namespace: Some(namespace.to_string()),
 			labels: Some(labels.clone()),
 			..ObjectMeta::default()
@@ -164,7 +163,7 @@ pub async fn update_deployment(
 			template: PodTemplateSpec {
 				spec: Some(PodSpec {
 					containers: vec![Container {
-						name: deployment_id_string.to_string(),
+						name: deployment_id.to_string(),
 						image: Some(new_repo_name.to_string()),
 						ports: Some(vec![ContainerPort {
 							container_port: 80,
@@ -200,8 +199,8 @@ pub async fn update_deployment(
 
 	deployment_api
 		.patch(
-			&deployment_id_string,
-			&PatchParams::apply(&deployment_id_string),
+			deployment_id.as_str(),
+			&PatchParams::apply(deployment_id.as_str()),
 			&Patch::Apply(kubernetes_deployment),
 		)
 		.await?
@@ -211,7 +210,7 @@ pub async fn update_deployment(
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
-			name: Some(format!("service-{}", &deployment_id_string)),
+			name: Some(format!("service-{}", deployment_id)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
@@ -234,8 +233,8 @@ pub async fn update_deployment(
 
 	service_api
 		.patch(
-			&format!("service-{}", &deployment_id_string),
-			&PatchParams::apply(&format!("service-{}", &deployment_id_string)),
+			&format!("service-{}", deployment_id),
+			&PatchParams::apply(&format!("service-{}", deployment_id)),
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?
@@ -270,19 +269,19 @@ pub async fn update_deployment(
 
 		annotations.insert(
 			"nginx.ingress.kubernetes.io/proxy-redirect-to".to_string(),
-			format!("{}.patr.cloud", deployment_id_string),
+			format!("{}.patr.cloud", deployment_id),
 		);
 
 		vec![
 			IngressRule {
-				host: Some(format!("{}.patr.cloud", deployment_id_string)),
+				host: Some(format!("{}.patr.cloud", deployment_id)),
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
 							service: Some(IngressServiceBackend {
 								name: format!(
 									"service-{}",
-									&deployment_id_string
+									deployment_id
 								),
 								port: Some(ServiceBackendPort {
 									number: Some(80),
@@ -303,7 +302,7 @@ pub async fn update_deployment(
 							service: Some(IngressServiceBackend {
 								name: format!(
 									"service-{}",
-									&deployment_id_string
+									deployment_id
 								),
 								port: Some(ServiceBackendPort {
 									number: Some(80),
@@ -319,12 +318,12 @@ pub async fn update_deployment(
 		]
 	} else {
 		vec![IngressRule {
-			host: Some(format!("{}.patr.cloud", deployment_id_string)),
+			host: Some(format!("{}.patr.cloud", deployment_id)),
 			http: Some(HTTPIngressRuleValue {
 				paths: vec![HTTPIngressPath {
 					backend: IngressBackend {
 						service: Some(IngressServiceBackend {
-							name: format!("service-{}", &deployment_id_string),
+							name: format!("service-{}", deployment_id),
 							port: Some(ServiceBackendPort {
 								number: Some(80),
 								name: Some("http".to_owned()),
@@ -347,15 +346,15 @@ pub async fn update_deployment(
 			IngressTLS {
 				hosts: Some(vec![format!(
 					"{}.patr.cloud",
-					deployment_id_string
+					deployment_id
 				)]),
-				secret_name: Some(format!("tls-{}", &deployment_id_string)),
+				secret_name: Some(format!("tls-{}", deployment_id)),
 			},
 			IngressTLS {
 				hosts: Some(vec![domain]),
 				secret_name: Some(format!(
 					"custom-tls-{}",
-					&deployment_id_string
+					deployment_id
 				)),
 			},
 		]
@@ -365,14 +364,14 @@ pub async fn update_deployment(
 			request_id
 		);
 		vec![IngressTLS {
-			hosts: Some(vec![format!("{}.patr.cloud", deployment_id_string)]),
-			secret_name: Some(format!("tls-{}", &deployment_id_string)),
+			hosts: Some(vec![format!("{}.patr.cloud", deployment_id)]),
+			secret_name: Some(format!("tls-{}", deployment_id)),
 		}]
 	};
 
 	let kubernetes_ingress: Ingress = Ingress {
 		metadata: ObjectMeta {
-			name: Some(format!("ingress-{}", &deployment_id_string)),
+			name: Some(format!("ingress-{}", deployment_id)),
 			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
@@ -391,8 +390,8 @@ pub async fn update_deployment(
 
 	ingress_api
 		.patch(
-			&format!("ingress-{}", &deployment_id_string),
-			&PatchParams::apply(&format!("ingress-{}", &deployment_id_string)),
+			&format!("ingress-{}", deployment_id),
+			&PatchParams::apply(&format!("ingress-{}", deployment_id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?
@@ -405,14 +404,14 @@ pub async fn update_deployment(
 	log::trace!(
 		"request_id: {} - App ingress is at {}.patr.cloud",
 		request_id,
-		deployment_id_string
+		deployment_id
 	);
 
 	Ok(())
 }
 
 pub(super) async fn delete_kubernetes_deployment(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -428,7 +427,7 @@ pub(super) async fn delete_kubernetes_deployment(
 		log::trace!(
 			"request_id: {} - App doesn't exist as {}",
 			request_id,
-			hex::encode(deployment_id)
+			deployment_id
 		);
 		log::trace!(
 			"request_id: {} - deployment deleted successfully!",
@@ -439,7 +438,7 @@ pub(super) async fn delete_kubernetes_deployment(
 		log::trace!(
 			"request_id: {} - App exists as {}",
 			request_id,
-			hex::encode(deployment_id)
+			deployment_id
 		);
 		digitalocean::delete_image_from_digitalocean_registry(
 			deployment_id,
@@ -452,19 +451,19 @@ pub(super) async fn delete_kubernetes_deployment(
 		// TODO: add code for catching errors
 		let _deployment_api =
 			Api::<Deployment>::namespaced(kubernetes_client.clone(), "default")
-				.delete(&hex::encode(deployment_id), &DeleteParams::default())
+				.delete(deployment_id.as_str(), &DeleteParams::default())
 				.await?;
 		let _service_api =
 			Api::<Service>::namespaced(kubernetes_client.clone(), "default")
 				.delete(
-					&format!("service-{}", &hex::encode(deployment_id)),
+					&format!("service-{}", deployment_id),
 					&DeleteParams::default(),
 				)
 				.await?;
 		let _ingress_api =
 			Api::<Ingress>::namespaced(kubernetes_client, "default")
 				.delete(
-					&format!("ingress-{}", &hex::encode(deployment_id)),
+					&format!("ingress-{}", deployment_id),
 					&DeleteParams::default(),
 				)
 				.await?;
@@ -477,7 +476,7 @@ pub(super) async fn delete_kubernetes_deployment(
 }
 
 pub(super) async fn get_container_logs(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	request_id: Uuid,
 ) -> Result<String, Error> {
 	// TODO: interact with prometheus to get the logs
@@ -499,7 +498,7 @@ pub(super) async fn get_container_logs(
 
 	let pod_name = pod_api
 		.list(&ListParams {
-			label_selector: Some(format!("app={}", hex::encode(deployment_id))),
+			label_selector: Some(format!("app={}", deployment_id)),
 			..ListParams::default()
 		})
 		.await?
@@ -571,13 +570,13 @@ async fn get_kubernetes_config(
 }
 
 async fn app_exists(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
 ) -> Result<bool, Error> {
 	let deployment_app =
 		Api::<Deployment>::namespaced(kubernetes_client, namespace)
-			.get(&hex::encode(&deployment_id))
+			.get(deployment_id.as_str())
 			.await;
 
 	if deployment_app.is_err() {
@@ -591,7 +590,7 @@ async fn app_exists(
 // TODO: add the logic of errored deployment
 pub async fn get_kubernetes_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<DeploymentStatus, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -602,7 +601,7 @@ pub async fn get_kubernetes_deployment_status(
 	let kubernetes_client = get_kubernetes_config(config).await?;
 	let deployment_status =
 		Api::<Deployment>::namespaced(kubernetes_client.clone(), "default")
-			.get(&hex::encode(deployment.id.clone()))
+			.get(&deployment.id.as_str())
 			.await?
 			.status
 			.status(500)

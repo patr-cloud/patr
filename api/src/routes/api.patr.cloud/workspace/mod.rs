@@ -1,15 +1,17 @@
-use api_models::models::workspace::{
-	CreateNewWorkspaceRequest,
-	CreateNewWorkspaceResponse,
-	GetWorkspaceInfoResponse,
-	IsWorkspaceNameAvailableRequest,
-	IsWorkspaceNameAvailableResponse,
-	UpdateWorkspaceInfoRequest,
-	UpdateWorkspaceInfoResponse,
-	Workspace,
+use api_models::{
+	models::workspace::{
+		CreateNewWorkspaceRequest,
+		CreateNewWorkspaceResponse,
+		GetWorkspaceInfoResponse,
+		IsWorkspaceNameAvailableRequest,
+		IsWorkspaceNameAvailableResponse,
+		UpdateWorkspaceInfoRequest,
+		UpdateWorkspaceInfoResponse,
+		Workspace,
+	},
+	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -69,7 +71,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -152,16 +154,14 @@ async fn get_workspace_info(
 		.get_param(request_keys::WORKSPACE_ID)
 		.unwrap()
 		.clone();
-	let workspace_id = hex::decode(&workspace_id_string)
+	let workspace_id = Uuid::parse_str(&workspace_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let access_token_data = context.get_token_data().unwrap();
-	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data
-		.workspaces
-		.contains_key(&workspace_id_string) &&
-		access_token_data.user.id != god_user_id
+	if !access_token_data.workspaces.contains_key(&workspace_id) &&
+		&access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -173,12 +173,10 @@ async fn get_workspace_info(
 		&workspace_id,
 	)
 	.await?
-	.and_then(|workspace| {
-		Some(Workspace {
-			id: Uuid::from_slice(&workspace.id).ok()?,
-			name: workspace.name,
-			active: workspace.active,
-		})
+	.map(|workspace| Workspace {
+		id: workspace.id,
+		name: workspace.name,
+		active: workspace.active,
 	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
@@ -327,7 +325,7 @@ async fn update_workspace_info(
 	let name = name.trim().to_lowercase();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	if name.is_empty() {
 		// No parameters to update

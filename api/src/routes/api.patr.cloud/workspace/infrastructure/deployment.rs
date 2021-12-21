@@ -1,4 +1,5 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
 
@@ -47,10 +48,9 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id =
-						hex::decode(&workspace_id)
-							.status(400)
-							.body(error!(WRONG_PARAMETERS).to_string())?;
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
@@ -80,7 +80,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -112,7 +112,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -144,7 +144,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -176,7 +176,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -208,7 +208,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -240,7 +240,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = hex::decode(&deployment_id_string)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -272,7 +272,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -327,7 +327,7 @@ async fn list_deployments(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
@@ -342,7 +342,7 @@ async fn list_deployments(
 		if deployment.registry == "registry.patr.cloud" {
 			map.insert(
 				request_keys::REPOSITORY_ID.to_string(),
-				Value::String(hex::encode(deployment.repository_id?)),
+				Value::String(deployment.repository_id?.to_string()),
 			);
 		} else {
 			map.insert(
@@ -358,7 +358,7 @@ async fn list_deployments(
 		}
 		map.insert(
 			request_keys::DEPLOYMENT_ID.to_string(),
-			Value::String(hex::encode(deployment.id)),
+			Value::String(deployment.id.to_string()),
 		);
 		map.insert(
 			request_keys::NAME.to_string(),
@@ -441,7 +441,7 @@ async fn create_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 
@@ -465,6 +465,8 @@ async fn create_deployment(
 		.map(|value| {
 			value
 				.as_str()
+				.map(|value| Uuid::parse_str(value).ok())
+				.flatten()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())
 		})
@@ -550,24 +552,18 @@ async fn create_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	let config = context.get_state().config.clone();
-
 	let deployment_id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
 		registry,
-		repository_id,
+		repository_id.as_ref(),
 		image_name,
 		image_tag,
 		region,
 		domain_name,
 		horizontal_scale,
 		&machine_type,
-		&user_id,
-		&config,
 	)
 	.await?;
 
@@ -640,9 +636,10 @@ async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
@@ -657,7 +654,7 @@ async fn get_deployment_info(
 	if deployment.registry == "registry.patr.cloud" {
 		response.insert(
 			request_keys::REPOSITORY_ID.to_string(),
-			Value::String(hex::encode(deployment.repository_id.status(500)?)),
+			Value::String(deployment.repository_id.status(500)?.to_string()),
 		);
 	} else {
 		response.insert(
@@ -673,7 +670,7 @@ async fn get_deployment_info(
 	}
 	response.insert(
 		request_keys::DEPLOYMENT_ID.to_string(),
-		Value::String(hex::encode(deployment.id)),
+		Value::String(deployment.id.to_string()),
 	);
 	response.insert(
 		request_keys::NAME.to_string(),
@@ -743,9 +740,10 @@ async fn start_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
@@ -789,9 +787,10 @@ async fn stop_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	// stop the running container, if it exists
 	let config = context.get_state().config.clone();
@@ -835,9 +834,10 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
@@ -880,9 +880,10 @@ async fn delete_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
@@ -932,9 +933,10 @@ async fn get_environment_variables(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	let env_vars: Map<String, Value> =
 		db::get_environment_variables_for_deployment(
@@ -980,9 +982,10 @@ async fn set_environment_variables(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 	let body = context.get_body_object().clone();
 
 	let env_var_values = body
@@ -1047,9 +1050,10 @@ async fn set_horizontal_scale(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 	let body = context.get_body_object().clone();
 
 	let horizontal_scale = body
@@ -1138,9 +1142,10 @@ async fn set_machine_type(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 	let body = context.get_body_object().clone();
 
 	let machine_type = body
@@ -1212,9 +1217,10 @@ async fn get_domain_dns_records(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	let config = context.get_state().config.clone();
 
@@ -1278,9 +1284,10 @@ async fn set_domain_name(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	let body = context.get_body_object().clone();
 	let domain_name = body
@@ -1295,7 +1302,7 @@ async fn set_domain_name(
 		.filter(|domain_name| !domain_name.is_empty());
 
 	let user_id = &context.get_token_data().unwrap().user.id;
-	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
 
 	if let Some(domain_name) = domain_name {
 		// If the entry point is not valid, OR if (the domain is special and the
@@ -1366,9 +1373,10 @@ async fn is_domain_validated(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 	let config = context.get_state().config.clone();
 
 	let validated = service::get_domain_validation_status(
@@ -1412,9 +1420,10 @@ async fn get_recommended_data_center(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let deployment_id =
-		hex::decode(context.get_param(request_keys::DEPLOYMENT_ID).unwrap())
-			.unwrap();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
 
 	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),

@@ -1,10 +1,10 @@
 use std::{str, time::Duration};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
 use reqwest::Client;
 use tokio::{io::AsyncWriteExt, time};
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -43,18 +43,16 @@ use crate::{
 /// [`Transaction`]: Transaction
 pub async fn create_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 	registry: &str,
-	repository_id: Option<&str>,
+	repository_id: Option<&Uuid>,
 	image_name: Option<&str>,
 	image_tag: &str,
 	region: &str,
 	domain_name: Option<&str>,
 	horizontal_scale: u64,
 	machine_type: &DeploymentMachineType,
-	user_id: &[u8],
-	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -92,12 +90,11 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	let deployment_uuid = db::generate_new_resource_id(connection).await?;
-	let deployment_id = deployment_uuid.as_bytes();
+	let deployment_id = db::generate_new_resource_id(connection).await?;
 
 	db::create_resource(
 		connection,
-		deployment_id,
+		&deployment_id,
 		&format!("Deployment: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -111,15 +108,11 @@ pub async fn create_deployment_in_workspace(
 
 	if registry == "registry.patr.cloud" {
 		if let Some(repository_id) = repository_id {
-			let repository_id = hex::decode(repository_id)
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
 			db::create_deployment_with_internal_registry(
 				connection,
-				deployment_id,
+				&deployment_id,
 				name,
-				&repository_id,
+				repository_id,
 				image_tag,
 				region,
 				domain_name,
@@ -136,7 +129,7 @@ pub async fn create_deployment_in_workspace(
 	} else if let Some(image_name) = image_name {
 		db::create_deployment_with_external_registry(
 			connection,
-			deployment_id,
+			&deployment_id,
 			name,
 			registry,
 			image_name,
@@ -154,12 +147,12 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	Ok(deployment_uuid)
+	Ok(deployment_id)
 }
 
 pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -180,7 +173,7 @@ pub async fn start_deployment(
 
 	let request_id = Uuid::new_v4();
 	log::trace!("Deploying the container with id: {} and image: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id,
 		image_id,
 		request_id
 	);
@@ -217,13 +210,13 @@ pub async fn start_deployment(
 
 pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
-		hex::encode(deployment_id),
+		deployment_id,
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
@@ -264,7 +257,7 @@ pub async fn stop_deployment(
 
 pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -277,11 +270,7 @@ pub async fn delete_deployment(
 	db::update_deployment_name(
 		connection,
 		deployment_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			deployment.name,
-			hex::encode(deployment_id)
-		),
+		&format!("patr-deleted: {}-{}", deployment.name, deployment_id),
 	)
 	.await?;
 
@@ -299,12 +288,12 @@ pub async fn delete_deployment(
 
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<String, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id,
 		request_id
 	);
 
@@ -324,7 +313,7 @@ pub async fn get_deployment_container_logs(
 
 pub async fn set_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	environment_variables: &[(String, String)],
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -351,7 +340,7 @@ pub async fn set_environment_variables_for_deployment(
 
 pub async fn get_dns_records_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: Settings,
 ) -> Result<Vec<CNameRecord>, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -372,13 +361,13 @@ pub async fn get_dns_records_for_deployments(
 
 pub async fn get_domain_validation_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Validating the deployment_id: {} with request_id: {}",
-		hex::encode(&deployment_id),
+		deployment_id,
 		request_id
 	);
 	log::trace!("request_id: {} - validating the custom domain", request_id);
@@ -404,7 +393,7 @@ pub async fn get_domain_validation_status(
 	);
 	let default_url = match provider.parse() {
 		Ok(CloudPlatform::Aws) => {
-			aws::get_app_default_url(&hex::encode(deployment_id), region)
+			aws::get_app_default_url(deployment_id.as_str(), region)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
@@ -499,7 +488,7 @@ pub async fn get_domain_validation_status(
 				&domain_name,
 				&default_url,
 				config,
-				request_id,
+				&request_id,
 			)
 			.await?;
 			return Ok(true);
@@ -511,7 +500,7 @@ pub async fn get_domain_validation_status(
 		super::create_https_certificates_for_domain(
 			&domain_name,
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 		log::trace!("request_id: {} - updating nginx with https", request_id);
@@ -519,7 +508,7 @@ pub async fn get_domain_validation_status(
 			&domain_name,
 			&default_url,
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 		log::trace!("request_id: {} - domain validated", request_id);
@@ -543,13 +532,13 @@ pub async fn get_domain_validation_status(
 pub async fn set_domain_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
-		hex::encode(deployment_id),
+		deployment_id.as_str(),
 		request_id
 	);
 	log::trace!(
@@ -583,7 +572,7 @@ pub async fn set_domain_for_deployment(
 	);
 	let deployment_default_url = match provider.parse() {
 		Ok(CloudPlatform::Aws) => {
-			aws::get_app_default_url(&hex::encode(deployment_id), region)
+			aws::get_app_default_url(deployment_id.as_str(), region)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
@@ -645,7 +634,7 @@ pub async fn set_domain_for_deployment(
 					new_domain,
 					&deployment_default_url,
 					config,
-					request_id,
+					&request_id,
 				)
 				.await?;
 			} else {
@@ -654,7 +643,7 @@ pub async fn set_domain_for_deployment(
 					new_domain,
 					&deployment_default_url,
 					config,
-					request_id,
+					&request_id,
 				)
 				.await?;
 			}
@@ -723,7 +712,7 @@ pub async fn set_domain_for_deployment(
 						new_domain,
 						&deployment_default_url,
 						config,
-						request_id,
+						&request_id,
 					)
 					.await?;
 				} else {
@@ -734,7 +723,7 @@ pub async fn set_domain_for_deployment(
 						new_domain,
 						&deployment_default_url,
 						config,
-						request_id,
+						&request_id,
 					)
 					.await?;
 				}
@@ -752,7 +741,7 @@ async fn update_nginx_config_for_domain_with_http_only(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for updating server with http", request_id);
 	let session = SessionBuilder::default()
@@ -820,7 +809,7 @@ async fn update_nginx_config_for_domain_with_https(
 	domain: &str,
 	default_url: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for updating nginx with https", request_id);
 	let session = SessionBuilder::default()
@@ -901,6 +890,7 @@ server {{
 	Ok(())
 }
 
+#[allow(dead_code)]
 async fn check_if_image_exists_in_registry(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_image_id: &str,

@@ -1,9 +1,9 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -30,7 +30,7 @@ use crate::{
 
 pub(super) async fn create_managed_database_cluster(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
 	version: &str,
@@ -41,7 +41,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on digitalocean with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
-		hex::encode(&database_id),
+		database_id,
 		db_name,
 		request_id
 	);
@@ -96,7 +96,7 @@ pub(super) async fn create_managed_database_cluster(
 	)
 	.await?;
 
-	let database_id = database_id.to_vec();
+	let database_id = database_id.clone();
 	let db_name = db_name.to_string();
 
 	task::spawn(async move {
@@ -155,7 +155,7 @@ pub(super) async fn delete_database(
 }
 
 pub(super) async fn get_app_default_url(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 	client: &Client,
 ) -> Result<Option<String>, Error> {
@@ -172,7 +172,7 @@ pub(super) async fn get_app_default_url(
 }
 
 pub(super) async fn delete_image_from_digitalocean_registry(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let client = Client::new();
@@ -181,7 +181,7 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 		.delete(format!(
 			"https://api.digitalocean.com/v2/registry/{}/repositories/{}/tags/latest",
 			config.digitalocean.registry,
-			hex::encode(deployment_id),
+			deployment_id,
 		))
 		.bearer_auth(&config.digitalocean.api_key)
 		.send()
@@ -199,12 +199,11 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 }
 
 pub async fn push_to_docr(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	full_image_name: &str,
 	client: Client,
 	config: &Settings,
 ) -> Result<String, Error> {
-	let deployment_id_string = hex::encode(deployment_id);
 	// Fetch the image from patr registry
 	// upload the image to DOCR
 	// Update kubernetes
@@ -230,7 +229,7 @@ pub async fn push_to_docr(
 	// new name for the docker image
 	let new_repo_name = format!(
 		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry, deployment_id_string,
+		config.digitalocean.registry, deployment_id,
 	);
 	// log::trace!(
 	// 	"request_id: {} - Pushing to {}",
@@ -333,7 +332,7 @@ pub async fn push_to_docr(
 }
 
 async fn app_exists(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	config: &Settings,
 	client: &Client,
 ) -> Result<Option<String>, Error> {
@@ -369,7 +368,7 @@ async fn app_exists(
 }
 
 async fn update_database_cluster_credentials(
-	database_id: Vec<u8>,
+	database_id: Uuid,
 	db_name: String,
 	digitalocean_db_id: String,
 	request_id: Uuid,
