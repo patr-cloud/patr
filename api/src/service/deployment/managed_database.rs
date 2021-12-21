@@ -8,7 +8,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
-			CloudPlatform,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,

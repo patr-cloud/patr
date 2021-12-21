@@ -1,18 +1,36 @@
 use api_macros::closure_as_pinned_box;
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::deployment::{
+		CreateDeploymentRequest,
+		CreateDeploymentResponse,
+		DeleteDeploymentResponse,
+		Deployment,
+		DeploymentRegistry,
+		DeploymentRunningDetails,
+		DeploymentStatus,
+		EnvironmentVariableValue,
+		GetDeploymentInfoResponse,
+		GetDeploymentLogsResponse,
+		ListDeploymentsResponse,
+		PatrRegistry,
+		StartDeploymentResponse,
+		StopDeploymentResponse,
+		UpdateDeploymentRequest,
+		UpdateDeploymentResponse,
+	},
+	utils::{constants, Uuid},
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Map, Value};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::rbac::permissions,
 	pin_fn,
-	service::{self, kubernetes},
+	service,
 	utils::{
 		constants::request_keys,
-		validator,
 		Error,
 		ErrorData,
 		EveContext,
@@ -263,22 +281,22 @@ pub fn create_sub_app(
 		],
 	);
 
-	// get data center recommendation on the basis of distance
-	app.get(
-		"/:deploymentId/recommended-data-center",
+	// Update a deployment
+	app.patch(
+		"/:deploymentId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::INFO,
+				permissions::workspace::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&deployment_id,
 					)
 					.await?;
 
@@ -291,7 +309,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(get_recommended_data_center)),
+			EveMiddleware::CustomFunction(pin_fn!(update_deployment)),
 		],
 	);
 
@@ -336,66 +354,29 @@ async fn list_deployments(
 	.await?
 	.into_iter()
 	.filter_map(|deployment| {
-		let mut map = Map::new();
-
-		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
-		if deployment.registry == "registry.patr.cloud" {
-			map.insert(
-				request_keys::REPOSITORY_ID.to_string(),
-				Value::String(deployment.repository_id?.to_string()),
-			);
-		} else {
-			map.insert(
-				request_keys::IMAGE_NAME.to_string(),
-				Value::String(deployment.image_name?),
-			);
-		}
-		if let Some(domain_name) = deployment.domain_name {
-			map.insert(
-				request_keys::DOMAIN_NAME.to_string(),
-				Value::String(domain_name),
-			);
-		}
-		map.insert(
-			request_keys::DEPLOYMENT_ID.to_string(),
-			Value::String(deployment.id.to_string()),
-		);
-		map.insert(
-			request_keys::NAME.to_string(),
-			Value::String(deployment.name),
-		);
-		map.insert(
-			request_keys::REGISTRY.to_string(),
-			Value::String(deployment.registry),
-		);
-		map.insert(
-			request_keys::IMAGE_TAG.to_string(),
-			Value::String(deployment.image_tag),
-		);
-		map.insert(
-			request_keys::STATUS.to_string(),
-			Value::String(deployment.status.to_string()),
-		);
-		map.insert(
-			request_keys::REGION.to_string(),
-			Value::String(deployment.region),
-		);
-		map.insert(
-			request_keys::HORIZONTAL_SCALE.to_string(),
-			Value::Number(deployment.horizontal_scale.into()),
-		);
-		map.insert(
-			request_keys::MACHINE_TYPE.to_string(),
-			Value::String(deployment.machine_type.to_string()),
-		);
-		Some(Value::Object(map))
+		Some(Deployment {
+			id: deployment.id,
+			name: deployment.name,
+			registry: if deployment.registry == constants::PATR_REGISTRY {
+				DeploymentRegistry::PatrRegistry {
+					registry: PatrRegistry,
+					repository_id: deployment.repository_id?,
+				}
+			} else {
+				DeploymentRegistry::ExternalRegistry {
+					registry: deployment.registry,
+					image_name: deployment.image_name?,
+				}
+			},
+			image_tag: deployment.image_tag,
+			status: deployment.status,
+			region: deployment.region,
+			machine_type: deployment.machine_type,
+		})
 	})
-	.collect::<Vec<_>>();
+	.collect();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DEPLOYMENTS: deployments
-	}));
+	context.success(ListDeploymentsResponse { deployments });
 	Ok(context)
 }
 
@@ -443,135 +424,64 @@ async fn create_deployment(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let body = context.get_body_object().clone();
-
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim();
-
-	let registry = body
-		.get(request_keys::REGISTRY)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let repository_id = body
-		.get(request_keys::REPOSITORY_ID)
-		.map(|value| {
-			value
-				.as_str()
-				.map(|value| Uuid::parse_str(value).ok())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let image_name = body
-		.get(request_keys::IMAGE_NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
-
-	let image_tag = body
-		.get(request_keys::IMAGE_TAG)
-		.map(|value| value.as_str())
-		.flatten()
+	let CreateDeploymentRequest {
+		workspace_id: _,
+		name,
+		registry,
+		image_tag,
+		region,
+		machine_type,
+		running_details:
+			DeploymentRunningDetails {
+				deploy_on_push,
+				max_horizontal_scale,
+				min_horizontal_scale,
+				ports,
+				environment_variables,
+				urls,
+			},
+		deploy_on_create,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let name = name.trim();
+	let image_tag = image_tag.trim();
 
-	let region = body
-		.get(request_keys::REGION)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let domain_name = body
-		.get(request_keys::DOMAIN_NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.filter(|domain_name| !domain_name.is_empty());
-
-	let horizontal_scale = body
-		.get(request_keys::HORIZONTAL_SCALE)
-		.map(|value| match value {
-			Value::Number(number) => {
-				if number.is_u64() {
-					number.as_u64()
-				} else if number.is_i64() {
-					number
-						.as_i64()
-						.map(|number| {
-							if number > 0 {
-								Some(number as u64)
-							} else {
-								None
-							}
-						})
-						.flatten()
-				} else {
-					None
-				}
-			}
-			Value::String(number) => number.parse::<u64>().ok(),
-			_ => None,
-		})
-		.flatten()
-		.map(|number| {
-			if number > 0 && number < 256 {
-				Some(number)
-			} else {
-				None
-			}
-		})
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let machine_type = body
-		.get(request_keys::MACHINE_TYPE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|machine_type| machine_type.parse().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let deployment_id = service::create_deployment_in_workspace(
+	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
-		registry,
-		repository_id.as_ref(),
-		image_name,
+		&registry,
 		image_tag,
-		region,
-		domain_name,
-		horizontal_scale,
+		&region,
 		&machine_type,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		&ports,
+		&environment_variables,
+		&urls,
 	)
 	.await?;
 
-	let start_deployment_on_create = false; // TODO get this as a parameter
+	// TODO:
+	// Check if image exists
+	// If it does, push to docr:
+	/*
+	let _ = digitalocean::push_to_docr(
+		deployment_id,
+		&image_id,
+		Client::new(),
+		config,
+	)
+	.await?;
+	 */
+	// If deploy_on_create is true, then deploy
 
-	if start_deployment_on_create {
-		// if service::deployment::deployment::check_if_image_exists_in_registry(
-		// 	connection,
+	if deploy_on_create {
+		// if service::deployment::deployment::
+		// check_if_image_exists_in_registry( 	connection,
 		// 	registry,
 		// 	repository_id,
 		// 	image_name,
@@ -590,10 +500,7 @@ async fn create_deployment(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DEPLOYMENT_ID: hex::encode(deployment_id.as_bytes())
-	}));
+	context.success(CreateDeploymentResponse { id });
 	Ok(context)
 }
 
@@ -640,76 +547,100 @@ async fn get_deployment_info(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
-	let deployment = db::get_deployment_by_id(
+	let (
+		mut deployment,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+	) = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
 	)
 	.await?
+	.and_then(|deployment| {
+		Some((
+			Deployment {
+				id: deployment.id,
+				name: deployment.name,
+				registry: if deployment.registry == constants::PATR_REGISTRY {
+					DeploymentRegistry::PatrRegistry {
+						registry: PatrRegistry,
+						repository_id: deployment.repository_id?,
+					}
+				} else {
+					DeploymentRegistry::ExternalRegistry {
+						registry: deployment.registry,
+						image_name: deployment.image_name?,
+					}
+				},
+				image_tag: deployment.image_tag,
+				status: deployment.status,
+				region: deployment.region,
+				machine_type: deployment.machine_type,
+			},
+			deployment.deploy_on_push,
+			deployment.min_horizontal_scale,
+			deployment.max_horizontal_scale,
+		))
+	})
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let mut response = Map::new();
-
-	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
-	if deployment.registry == "registry.patr.cloud" {
-		response.insert(
-			request_keys::REPOSITORY_ID.to_string(),
-			Value::String(deployment.repository_id.status(500)?.to_string()),
-		);
-	} else {
-		response.insert(
-			request_keys::IMAGE_NAME.to_string(),
-			Value::String(deployment.image_name.status(500)?),
-		);
-	}
-	if let Some(domain_name) = deployment.domain_name {
-		response.insert(
-			request_keys::DOMAIN_NAME.to_string(),
-			Value::String(domain_name),
-		);
-	}
-	response.insert(
-		request_keys::DEPLOYMENT_ID.to_string(),
-		Value::String(deployment.id.to_string()),
-	);
-	response.insert(
-		request_keys::NAME.to_string(),
-		Value::String(deployment.name),
-	);
-	response.insert(
-		request_keys::REGISTRY.to_string(),
-		Value::String(deployment.registry),
-	);
-	response.insert(
-		request_keys::IMAGE_TAG.to_string(),
-		Value::String(deployment.image_tag),
-	);
-
-	let config = context.get_state().config.clone();
-	let status = kubernetes::get_kubernetes_deployment_status(
+	let ports = db::get_exposed_ports_for_deployment(
 		context.get_database_connection(),
 		&deployment_id,
-		&config,
 	)
-	.await?;
-	response.insert(
-		request_keys::STATUS.to_string(),
-		Value::String(status.to_string()),
-	);
-	response.insert(
-		request_keys::REGION.to_string(),
-		Value::String(deployment.region),
-	);
-	response.insert(
-		request_keys::HORIZONTAL_SCALE.to_string(),
-		Value::Number(deployment.horizontal_scale.into()),
-	);
-	response.insert(
-		request_keys::MACHINE_TYPE.to_string(),
-		Value::String(deployment.machine_type.to_string()),
-	);
+	.await?
+	.into_iter()
+	.collect();
 
-	context.json(Value::Object(response));
+	let environment_variables = db::get_environment_variables_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
+	.collect();
+
+	let urls = vec![]; // TODO entry points
+
+	deployment.status = match deployment.status {
+		// If it's deploying or running, check with k8s on the actual status
+		db_status @ (DeploymentStatus::Deploying |
+		DeploymentStatus::Running) => {
+			let config = context.get_state().config.clone();
+			let status = service::get_kubernetes_deployment_status(
+				context.get_database_connection(),
+				&deployment_id,
+				&config,
+			)
+			.await?;
+
+			if db_status != status {
+				db::update_deployment_status(
+					context.get_database_connection(),
+					&deployment_id,
+					&status,
+				)
+				.await?;
+			}
+			status
+		}
+		status => status, // In all other cases, it is what it is
+	};
+
+	context.success(GetDeploymentInfoResponse {
+		deployment,
+		running_details: DeploymentRunningDetails {
+			deploy_on_push,
+			min_horizontal_scale: min_horizontal_scale as u16,
+			max_horizontal_scale: max_horizontal_scale as u16,
+			ports,
+			environment_variables,
+			urls,
+		},
+	});
 	Ok(context)
 }
 
@@ -754,9 +685,7 @@ async fn start_deployment(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(StartDeploymentResponse {});
 	Ok(context)
 }
 
@@ -801,9 +730,7 @@ async fn stop_deployment(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(StopDeploymentResponse {});
 	Ok(context)
 }
 
@@ -838,18 +765,17 @@ async fn get_logs(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+	let config = context.get_state().config.clone();
 
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
+		&config,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::LOGS: logs,
-	}));
+	context.success(GetDeploymentLogsResponse { logs });
 	Ok(context)
 }
 
@@ -900,36 +826,11 @@ async fn delete_deployment(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(DeleteDeploymentResponse {});
 	Ok(context)
 }
 
-/// # Description
-/// This function is used to get the environment variables for a deployment
-/// required inputs:
-/// deploymentId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_environment_variables(
+async fn update_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -937,520 +838,75 @@ async fn get_environment_variables(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 
-	let env_vars: Map<String, Value> =
-		db::get_environment_variables_for_deployment(
-			context.get_database_connection(),
-			&deployment_id,
-		)
-		.await?
-		.into_iter()
-		.map(|(key, value)| (key, Value::String(value)))
-		.collect();
-
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::ENVIRONMENT_VARIABLES: env_vars
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to set the environment variables for a deployment
-/// required inputs:
-/// deploymentId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn set_environment_variables(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-	let body = context.get_body_object().clone();
-
-	let env_var_values = body
-		.get(request_keys::ENVIRONMENT_VARIABLES)
-		.map(|values| values.as_object())
-		.flatten()
+	let UpdateDeploymentRequest {
+		workspace_id: _,
+		deployment_id: _,
+		name,
+		region,
+		machine_type,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		ports,
+		environment_variables,
+		urls,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let name = name.as_ref().map(|name| name.trim());
 
-	let mut environment_variables = vec![];
-
-	for (key, value) in env_var_values {
-		let value = value
-			.as_str()
+	// Is any one value present?
+	if name.is_none() &&
+		region.is_none() &&
+		machine_type.is_none() &&
+		deploy_on_push.is_none() &&
+		min_horizontal_scale.is_none() &&
+		max_horizontal_scale.is_none() &&
+		ports.is_none() &&
+		environment_variables.is_none() &&
+		urls.is_none()
+	{
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
-
-		environment_variables.push((key.clone(), value.to_string()));
+			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
 	let config = context.get_state().config.clone();
 
-	service::set_environment_variables_for_deployment(
+	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
-		&environment_variables,
+		name,
+		region.as_ref(),
+		machine_type.as_ref(),
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		ports.as_ref(),
+		environment_variables.as_ref(),
+		urls.as_deref(),
 		&config,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
-}
+	context.commit_database_transaction().await?;
 
-/// # Description
-/// This function is used to set the horizontal scale for a deployment.
-/// Deployments need to be restarted before the changes are applied
-/// required inputs:
-/// deploymentId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn set_horizontal_scale(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-	let body = context.get_body_object().clone();
-
-	let horizontal_scale = body
-		.get(request_keys::HORIZONTAL_SCALE)
-		.map(|value| match value {
-			Value::Number(number) => {
-				if number.is_u64() {
-					number.as_u64()
-				} else if number.is_i64() {
-					number
-						.as_i64()
-						.map(|number| {
-							if number > 0 {
-								Some(number as u64)
-							} else {
-								None
-							}
-						})
-						.flatten()
-				} else {
-					None
-				}
-			}
-			Value::String(number) => number.parse::<u64>().ok(),
-			_ => None,
-		})
-		.flatten()
-		.map(|number| {
-			if number > 0 && number < 256 {
-				Some(number)
-			} else {
-				None
-			}
-		})
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	db::set_horizontal_scale_for_deployment(
-		context.get_database_connection(),
+	service::update_kubernetes_deployment(
+		&workspace_id,
 		&deployment_id,
-		horizontal_scale,
-	)
-	.await?;
+		name,
+		match registry {
 
-	let config = context.get_state().config.clone();
-
-	kubernetes::update_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-		&config,
-	)
-	.await?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to set the machine type for a deployment.
-/// Deployments need to be restarted before the changes are applied
-/// required inputs:
-/// deploymentId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn set_machine_type(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-	let body = context.get_body_object().clone();
-
-	let machine_type = body
-		.get(request_keys::MACHINE_TYPE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|machine_type| machine_type.parse().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	db::set_machine_type_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-		&machine_type,
-	)
-	.await?;
-
-	let config = context.get_state().config.clone();
-
-	kubernetes::update_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-		&config,
-	)
-	.await?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to get the DNS records for the domain
-/// required inputs:
-/// deploymentId in the url
-/// ```
-/// {
-///     domainName:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    cnameRecords: [
-///         {
-///           cname: "domain_name",
-///           value: "provider's url"
-///         }
-///    ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_domain_dns_records(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-
-	let config = context.get_state().config.clone();
-
-	let cname_records = service::get_dns_records_for_deployments(
-		context.get_database_connection(),
-		&deployment_id,
+		},
 		config,
 	)
-	.await?
-	.into_iter()
-	.map(|record| {
-		json!({
-			request_keys::CNAME: record.cname,
-			request_keys::VALUE: record.value
-		})
-	})
-	.collect::<Vec<_>>();
-
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::CNAME_RECORDS: cname_records
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to set the domain name of the deployment
-/// required inputs:
-/// deploymentId in the url
-/// ```
-/// {
-///     domainName:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-///    cnameRecords: [
-///         {
-///           cname: "domain_name",
-///           value: "provider's url"
-///         }
-///    ]
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn set_domain_name(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-
-	let body = context.get_body_object().clone();
-	let domain_name = body
-		.get(request_keys::DOMAIN_NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.filter(|domain_name| !domain_name.is_empty());
-
-	let user_id = &context.get_token_data().unwrap().user.id;
-	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
-
-	if let Some(domain_name) = domain_name {
-		// If the entry point is not valid, OR if (the domain is special and the
-		// user is not god user)
-		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			(validator::is_domain_special(domain_name) && !is_god_user)
-		{
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string()));
-		}
-	}
-	let config = context.get_state().config.clone();
-
-	service::set_domain_for_deployment(
-		context.get_database_connection(),
-		&config,
-		&deployment_id,
-		domain_name,
-	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
-		context.get_database_connection(),
-		if domain_name.is_some() {
-			"A domain name has been set for a deployment"
-		} else {
-			"A domain name has been unset for a deployment"
-		},
-	)
-	.await;
-
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to get the status of domain set for deployment
-/// required inputs:
-/// deploymentId in the url
-/// ```
-/// {
-///     domainName:
-/// }
-/// ```
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn is_domain_validated(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-	let config = context.get_state().config.clone();
-
-	let validated = service::get_domain_validation_status(
-		context.get_database_connection(),
-		&deployment_id,
-		&config,
-	)
-	.await?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::VALIDATED: validated,
-	}));
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to get the nearest data center for the majority of the
-/// users deploymentId in the url
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error output:
-/// ```
-/// {
-///    success: true or false,
-///    datacenters: []
-/// }
-/// ```
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-async fn get_recommended_data_center(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-
-	let deployment = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let data_center = db::get_recommended_data_center(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?;
-
-	context.json(
-		if let Some(data_center) = data_center {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::RECOMMENDED_DATA_CENTER: data_center
-			})
-		} else {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::RECOMMENDED_DATA_CENTER: deployment.region
-			})
-		},
-	);
+	context.success(UpdateDeploymentResponse {});
 	Ok(context)
 }

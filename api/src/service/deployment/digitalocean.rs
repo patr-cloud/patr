@@ -1,6 +1,6 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
-use api_models::utils::Uuid;
+use api_models::{utils::Uuid, models::workspace::infrastructure::deployment::DeploymentStatus};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
@@ -10,7 +10,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
-			DeploymentStatus,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
@@ -152,23 +151,6 @@ pub(super) async fn delete_database(
 	}
 	log::trace!("request_id: {} - database deletion successfull", request_id);
 	Ok(())
-}
-
-pub(super) async fn get_app_default_url(
-	deployment_id: &Uuid,
-	config: &Settings,
-	client: &Client,
-) -> Result<Option<String>, Error> {
-	let app_id = if let Some(app_id) =
-		app_exists(deployment_id, config, client).await?
-	{
-		app_id
-	} else {
-		return Ok(None);
-	};
-	Ok(get_app_default_ingress(&app_id, config, client)
-		.await
-		.map(|ingress| ingress.replace("https://", "").replace("/", "")))
 }
 
 pub(super) async fn delete_image_from_digitalocean_registry(
@@ -331,42 +313,6 @@ pub async fn push_to_docr(
 	Ok(new_repo_name)
 }
 
-async fn app_exists(
-	deployment_id: &Uuid,
-	config: &Settings,
-	client: &Client,
-) -> Result<Option<String>, Error> {
-	let app = service::get_app().clone();
-	let deployment = db::get_deployment_by_id(
-		app.database.acquire().await?.deref_mut(),
-		deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	let app_id = if let Some(app_id) = deployment.digitalocean_app_id {
-		app_id
-	} else {
-		return Ok(None);
-	};
-
-	let deployment_status = client
-		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digitalocean.api_key)
-		.send()
-		.await?
-		.status();
-
-	if deployment_status.as_u16() == 404 {
-		Ok(None)
-	} else if deployment_status.is_success() {
-		Ok(Some(app_id))
-	} else {
-		Err(Error::empty())
-	}
-}
-
 async fn update_database_cluster_credentials(
 	database_id: Uuid,
 	db_name: String,
@@ -463,22 +409,4 @@ async fn get_registry_auth_token(
 		.await?;
 
 	Ok(registry.auths.registry.auth)
-}
-
-async fn get_app_default_ingress(
-	app_id: &str,
-	config: &Settings,
-	client: &Client,
-) -> Option<String> {
-	client
-		.get(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
-		.bearer_auth(&config.digitalocean.api_key)
-		.send()
-		.await
-		.ok()?
-		.json::<AppHolder>()
-		.await
-		.ok()?
-		.app
-		.default_ingress
 }

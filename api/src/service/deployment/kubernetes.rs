@@ -1,5 +1,14 @@
-use std::{collections::BTreeMap, ops::DerefMut};
+use std::collections::BTreeMap;
 
+use api_models::{
+	models::workspace::infrastructure::deployment::{
+		DeploymentStatus,
+		EntryPointMapping,
+		EnvironmentVariableValue,
+		ExposedPortType,
+	},
+	utils::Uuid,
+};
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -54,38 +63,34 @@ use kube::{
 use crate::{
 	db,
 	error,
-	models::db_mapping::{DeploymentMachineType, DeploymentStatus},
-	service::{self, deployment::digitalocean},
+	service::deployment::digitalocean,
 	utils::{settings::Settings, Error},
 	Database,
 };
-use api_models::utils::Uuid;
 
-pub async fn update_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
+pub async fn update_kubernetes_deployment(
+	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	name: &str,
+	registry: &str,
+	image_name: &str,
+	image_tag: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deploy_on_push: bool,
+	min_horizontal_scale: u16,
+	max_horizontal_scale: u16,
+	ports: &BTreeMap<u16, ExposedPortType>,
+	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
+	urls: &[EntryPointMapping],
 	config: &Settings,
 ) -> Result<(), Error> {
-	let _ = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
 	let kubernetes_client = get_kubernetes_config(config).await?;
 
 	let request_id = Uuid::new_v4();
-	// TODO: remove this once DTO part is complete
-	let deployment = db::get_deployment_by_id(
-		service::get_app().database.acquire().await?.deref_mut(),
+	log::trace!(
+		"Deploying the container with id: {} on kubernetes with request_id: {}",
 		deployment_id,
-	)
-	.await?
-	.status(500)
-	.body(error!(SERVER_ERROR).to_string())?;
-
-	log::trace!("Deploying the container with id: {} and image: {:?} on DigitalOcean Managed Kubernetes with request_id: {}",
-		deployment_id,
-		deployment.get_full_image(connection).await?,
 		request_id,
 	);
 
@@ -94,30 +99,20 @@ pub async fn update_deployment(
 		"registry.digitalocean.com/{}/{}",
 		config.digitalocean.registry, deployment_id,
 	);
-	let horizontal_scale = deployment.horizontal_scale as i32;
 
 	let mut machine_type: BTreeMap<String, Quantity> = BTreeMap::new();
 
-	let mt = match deployment.machine_type {
-		DeploymentMachineType::Micro => ("512M".to_string(), "1.0".to_string()),
-		DeploymentMachineType::Small => ("1G".to_string(), "1.0".to_string()),
-		DeploymentMachineType::Medium => ("2G".to_string(), "1.0".to_string()),
-		DeploymentMachineType::Large => ("4G".to_string(), "2.0".to_string()),
-	};
+	// TODO get this from machine type
+	let (ram, cpu) = ("1G".to_string(), "1.0".to_string());
 
-	machine_type.insert("memory".to_string(), Quantity(mt.0));
-	machine_type.insert("cpu".to_string(), Quantity(mt.1));
+	machine_type.insert("memory".to_string(), Quantity(ram));
+	machine_type.insert("cpu".to_string(), Quantity(cpu));
 
 	log::trace!(
 		"request_id: {} - Deploying deployment: {}",
 		request_id,
 		deployment_id,
 	);
-	let _ = super::update_deployment_status(
-		deployment_id,
-		&DeploymentStatus::Pushed,
-	)
-	.await;
 
 	// TODO: change the namespace to workspace id
 	let namespace = "default";
@@ -130,23 +125,6 @@ pub async fn update_deployment(
 		request_id
 	);
 
-	let _ = super::update_deployment_status(
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await;
-
-	let deployment_environment_variable =
-		db::get_environment_variables_for_deployment(connection, deployment_id)
-			.await?
-			.into_iter()
-			.map(|env_variable| EnvVar {
-				name: env_variable.0,
-				value: Some(env_variable.1),
-				..EnvVar::default()
-			})
-			.collect::<Vec<_>>();
-
 	let kubernetes_deployment = Deployment {
 		metadata: ObjectMeta {
 			name: Some(deployment_id.to_string()),
@@ -155,7 +133,7 @@ pub async fn update_deployment(
 			..ObjectMeta::default()
 		},
 		spec: Some(DeploymentSpec {
-			replicas: Some(horizontal_scale),
+			replicas: Some(min_horizontal_scale as i32),
 			selector: LabelSelector {
 				match_expressions: None,
 				match_labels: Some(labels.clone()),
@@ -165,12 +143,33 @@ pub async fn update_deployment(
 					containers: vec![Container {
 						name: deployment_id.to_string(),
 						image: Some(new_repo_name.to_string()),
-						ports: Some(vec![ContainerPort {
-							container_port: 80,
-							name: Some("http".to_owned()),
-							..ContainerPort::default()
-						}]),
-						env: Some(deployment_environment_variable),
+						ports: Some(
+							ports
+								.iter()
+								.map(|(port, _)| ContainerPort {
+									container_port: *port as i32,
+									..ContainerPort::default()
+								})
+								.collect::<Vec<_>>(),
+						),
+						env: Some(
+							environment_variables
+								.iter()
+								.filter_map(|(name, value)| {
+									use EnvironmentVariableValue::*;
+									Some(EnvVar {
+										name: name.to_string(),
+										value: Some(match value {
+											String(value) => value.to_string(),
+											Secret { .. } => {
+												return None;
+											}
+										}),
+										..EnvVar::default()
+									})
+								})
+								.collect::<Vec<_>>(),
+						),
 						resources: Some(ResourceRequirements {
 							limits: Some(machine_type.clone()),
 							requests: Some(machine_type.clone()),
@@ -279,10 +278,7 @@ pub async fn update_deployment(
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
 							service: Some(IngressServiceBackend {
-								name: format!(
-									"service-{}",
-									deployment_id
-								),
+								name: format!("service-{}", deployment_id),
 								port: Some(ServiceBackendPort {
 									number: Some(80),
 									name: Some("http".to_owned()),
@@ -300,10 +296,7 @@ pub async fn update_deployment(
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
 							service: Some(IngressServiceBackend {
-								name: format!(
-									"service-{}",
-									deployment_id
-								),
+								name: format!("service-{}", deployment_id),
 								port: Some(ServiceBackendPort {
 									number: Some(80),
 									name: Some("http".to_owned()),
@@ -344,18 +337,12 @@ pub async fn update_deployment(
 		);
 		vec![
 			IngressTLS {
-				hosts: Some(vec![format!(
-					"{}.patr.cloud",
-					deployment_id
-				)]),
+				hosts: Some(vec![format!("{}.patr.cloud", deployment_id)]),
 				secret_name: Some(format!("tls-{}", deployment_id)),
 			},
 			IngressTLS {
 				hosts: Some(vec![domain]),
-				secret_name: Some(format!(
-					"custom-tls-{}",
-					deployment_id
-				)),
+				secret_name: Some(format!("custom-tls-{}", deployment_id)),
 			},
 		]
 	} else {
@@ -478,12 +465,11 @@ pub(super) async fn delete_kubernetes_deployment(
 pub(super) async fn get_container_logs(
 	deployment_id: &Uuid,
 	request_id: Uuid,
+	config: &Settings,
 ) -> Result<String, Error> {
 	// TODO: interact with prometheus to get the logs
 
-	let kubernetes_client = kube::Client::try_default()
-		.await
-		.expect("Expected a valid KUBECONFIG environment variable.");
+	let kubernetes_client = get_kubernetes_config(config).await?;
 
 	log::trace!(
 		"request_id: {} - retreiving deployment info from db",
@@ -608,11 +594,11 @@ pub async fn get_kubernetes_deployment_status(
 			.body(error!(SERVER_ERROR).to_string())?;
 
 	if deployment_status.available_replicas ==
-		Some(deployment.horizontal_scale.into())
+		Some(deployment.min_horizontal_scale.into())
 	{
 		Ok(DeploymentStatus::Running)
 	} else if deployment_status.available_replicas <=
-		Some(deployment.horizontal_scale.into())
+		Some(deployment.min_horizontal_scale.into())
 	{
 		Ok(DeploymentStatus::Deploying)
 	} else {
