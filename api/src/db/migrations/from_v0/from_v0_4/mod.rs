@@ -1,7 +1,6 @@
-use api_models::utils::Uuid;
 use semver::Version;
 
-use crate::{migrate_query as query, models::rbac, Database};
+use crate::{migrate_query as query, Database};
 
 mod bytea_to_uuid;
 mod docker_registry;
@@ -533,7 +532,7 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection).await?;
 	add_trim_check_for_username(&mut *connection).await?;
-	reset_permission_order(&mut *connection).await?;
+	make_permission_name_unique(&mut *connection).await?;
 
 	Ok(())
 }
@@ -553,74 +552,17 @@ async fn add_trim_check_for_username(
 	.map(|_| ())
 }
 
-async fn reset_permission_order(
+async fn make_permission_name_unique(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	let permission_id = loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				permission
-			WHERE
-				id = $1;
-			"#,
-			&uuid
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
 	query!(
 		r#"
-		INSERT INTO
-			permission
-		VALUES
-			($1, $2, NULL);
-		"#,
-		permission_id,
-		"workspace::dockerRegistry::info"
+		ALTER TABLE permission
+		ADD CONSTRAINT permission_uq_name
+		UNIQUE;
+		"#
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	for (_, permission) in rbac::permissions::consts_iter() {
-		query!(
-			r#"
-			UPDATE
-				permission
-			SET
-				name = CONCAT('test::', name)
-			WHERE
-				name = $1;
-			"#,
-			&permission,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				permission
-			SET
-				name = $1
-			WHERE
-				name = CONCAT('test::', $1);
-			"#,
-			&permission,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	Ok(())
+	.await
+	.map(|_| ())
 }

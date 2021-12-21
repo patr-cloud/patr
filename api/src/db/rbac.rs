@@ -83,7 +83,7 @@ pub async fn initialize_rbac_pre(
 		r#"
 		CREATE TABLE permission(
 			id UUID CONSTRAINT permission_pk PRIMARY KEY,
-			name VARCHAR(100) NOT NULL,
+			name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE,
 			description VARCHAR(500)
 		);
 		"#
