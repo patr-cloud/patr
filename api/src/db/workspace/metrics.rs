@@ -70,13 +70,7 @@ pub async fn get_deployment_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT
-			COUNT(*) "count!"
-		FROM
-			deployment
-		WHERE
-			domain_name IS NOT NULL AND
-			status != 'deleted';
+		SELECT 0 as "count!";
 		"#
 	)
 	.fetch_all(&mut *connection)

@@ -894,10 +894,10 @@ async fn get_domain_dns_records_for_static_site(
 	)
 	.await?
 	.into_iter()
-	.map(|record| {
+	.map(|(cname, value)| {
 		json!({
-			request_keys::CNAME: record.cname,
-			request_keys::VALUE: record.value
+			request_keys::CNAME: cname,
+			request_keys::VALUE: value
 		})
 	})
 	.collect::<Vec<_>>();

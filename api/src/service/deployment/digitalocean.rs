@@ -1,6 +1,9 @@
 use std::{ops::DerefMut, process::Stdio, str, time::Duration};
 
-use api_models::{utils::Uuid, models::workspace::infrastructure::deployment::DeploymentStatus};
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{process::Command, task, time};

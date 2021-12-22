@@ -177,23 +177,17 @@ pub async fn start_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	let (deployment, workspace_id, full_image, running_details) =
+		service::get_full_deployment_config(connection, deployment_id).await?;
 
-	let image_id = deployment.get_full_image(connection).await?;
-
-	let request_id = Uuid::new_v4();
-	log::trace!(
-		"Deploying: {} and image: {} Kubernetes with request_id: {}",
-		deployment_id,
-		image_id,
-		request_id
-	);
-
-	kubernetes::update_kubernetes_deployment(connection, deployment_id, config)
-		.await?;
+	kubernetes::update_kubernetes_deployment(
+		&workspace_id,
+		&deployment,
+		&full_image,
+		&running_details,
+		config,
+	)
+	.await?;
 
 	Ok(())
 }
@@ -210,7 +204,7 @@ pub async fn stop_deployment(
 		request_id
 	);
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let _ = db::get_deployment_by_id(connection, deployment_id)
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -220,6 +214,7 @@ pub async fn stop_deployment(
 		request_id
 	);
 	kubernetes::delete_kubernetes_deployment(
+		&deployment.workspace_id,
 		deployment_id,
 		config,
 		&request_id,
@@ -281,14 +276,18 @@ pub async fn get_deployment_container_logs(
 		request_id
 	);
 
-	let _ = db::get_deployment_by_id(connection, deployment_id)
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let logs =
-		kubernetes::get_container_logs(deployment_id, request_id, config)
-			.await?;
+	let logs = kubernetes::get_container_logs(
+		&deployment.workspace_id,
+		deployment_id,
+		request_id,
+		config,
+	)
+	.await?;
 
 	Ok(logs)
 }
@@ -359,6 +358,110 @@ pub async fn update_deployment(
 	// TODO entry points
 
 	Ok(())
+}
+
+pub async fn get_full_deployment_config(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(Deployment, Uuid, String, DeploymentRunningDetails), Error> {
+	let (
+		deployment,
+		workspace_id,
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+	) = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.and_then(|deployment| {
+			Some((
+				Deployment {
+					id: deployment.id,
+					name: deployment.name,
+					registry: if deployment.registry == constants::PATR_REGISTRY
+					{
+						DeploymentRegistry::PatrRegistry {
+							registry: PatrRegistry,
+							repository_id: deployment.repository_id?,
+						}
+					} else {
+						DeploymentRegistry::ExternalRegistry {
+							registry: deployment.registry,
+							image_name: deployment.image_name?,
+						}
+					},
+					image_tag: deployment.image_tag,
+					status: deployment.status,
+					region: deployment.region,
+					machine_type: deployment.machine_type,
+				},
+				deployment.workspace_id,
+				deployment.deploy_on_push,
+				deployment.min_horizontal_scale as u16,
+				deployment.max_horizontal_scale as u16,
+			))
+		})
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let full_image = match &deployment.registry {
+		DeploymentRegistry::PatrRegistry {
+			registry,
+			repository_id,
+		} => {
+			let repository =
+				db::get_docker_repository_by_id(connection, &repository_id)
+					.await?
+					.status(404)
+					.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			let workspace =
+				db::get_workspace_info(connection, &repository.workspace_id)
+					.await?
+					.status(500)?;
+			format!(
+				"{}/{}/{}",
+				constants::PATR_REGISTRY,
+				workspace.name,
+				repository.name
+			)
+		}
+		DeploymentRegistry::ExternalRegistry {
+			registry,
+			image_name,
+		} => {
+			format!("{}/{}", registry, image_name)
+		}
+	};
+
+	let ports =
+		db::get_exposed_ports_for_deployment(connection, &deployment_id)
+			.await?
+			.into_iter()
+			.collect();
+
+	let environment_variables = db::get_environment_variables_for_deployment(
+		connection,
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
+	.collect();
+
+	let urls = vec![]; // TODO entry points
+
+	Ok((
+		deployment,
+		workspace_id,
+		full_image,
+		DeploymentRunningDetails {
+			deploy_on_push,
+			min_horizontal_scale,
+			max_horizontal_scale,
+			ports,
+			environment_variables,
+			urls,
+		},
+	))
 }
 
 #[allow(dead_code)]

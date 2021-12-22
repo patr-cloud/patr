@@ -1,6 +1,9 @@
 use std::{ops::DerefMut, time::Duration};
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -25,10 +28,7 @@ use tokio::{io::AsyncWriteExt, task, time};
 use crate::{
 	db,
 	error,
-	models::{
-		db_mapping::{CNameRecord, DeploymentStatus},
-		rbac,
-	},
+	models::rbac,
 	service::{self, deployment},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -704,7 +704,7 @@ pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	config: Settings,
-) -> Result<Vec<CNameRecord>, Error> {
+) -> Result<Vec<(String, String)>, Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
@@ -715,10 +715,7 @@ pub async fn get_dns_records_for_static_site(
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	Ok(vec![CNameRecord {
-		cname: domain_name,
-		value: config.ssh.host_name,
-	}])
+	Ok(vec![(domain_name, config.ssh.host_name)])
 }
 
 pub async fn upload_files_for_static_site(

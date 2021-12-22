@@ -8,7 +8,6 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
-		EnvironmentVariableValue,
 		GetDeploymentInfoResponse,
 		GetDeploymentLogsResponse,
 		ListDeploymentsResponse,
@@ -547,63 +546,12 @@ async fn get_deployment_info(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
-	let (
-		mut deployment,
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-	) = db::get_deployment_by_id(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.and_then(|deployment| {
-		Some((
-			Deployment {
-				id: deployment.id,
-				name: deployment.name,
-				registry: if deployment.registry == constants::PATR_REGISTRY {
-					DeploymentRegistry::PatrRegistry {
-						registry: PatrRegistry,
-						repository_id: deployment.repository_id?,
-					}
-				} else {
-					DeploymentRegistry::ExternalRegistry {
-						registry: deployment.registry,
-						image_name: deployment.image_name?,
-					}
-				},
-				image_tag: deployment.image_tag,
-				status: deployment.status,
-				region: deployment.region,
-				machine_type: deployment.machine_type,
-			},
-			deployment.deploy_on_push,
-			deployment.min_horizontal_scale,
-			deployment.max_horizontal_scale,
-		))
-	})
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let ports = db::get_exposed_ports_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.into_iter()
-	.collect();
-
-	let environment_variables = db::get_environment_variables_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-	)
-	.await?
-	.into_iter()
-	.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
-	.collect();
-
-	let urls = vec![]; // TODO entry points
+	let (mut deployment, _, _, running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+		)
+		.await?;
 
 	deployment.status = match deployment.status {
 		// If it's deploying or running, check with k8s on the actual status
@@ -632,14 +580,7 @@ async fn get_deployment_info(
 
 	context.success(GetDeploymentInfoResponse {
 		deployment,
-		running_details: DeploymentRunningDetails {
-			deploy_on_push,
-			min_horizontal_scale: min_horizontal_scale as u16,
-			max_horizontal_scale: max_horizontal_scale as u16,
-			ports,
-			environment_variables,
-			urls,
-		},
+		running_details,
 	});
 	Ok(context)
 }
@@ -838,9 +779,6 @@ async fn update_deployment(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
 
 	let UpdateDeploymentRequest {
 		workspace_id: _,
@@ -896,16 +834,28 @@ async fn update_deployment(
 
 	context.commit_database_transaction().await?;
 
-	service::update_kubernetes_deployment(
-		&workspace_id,
-		&deployment_id,
-		name,
-		match registry {
+	let (deployment, workspace_id, full_image, running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+		)
+		.await?;
 
-		},
-		config,
-	)
-	.await?;
+	match &deployment.status {
+		DeploymentStatus::Stopped | DeploymentStatus::Deleted => {
+			// Don't update deployments that are explicitly stopped or deleted
+		}
+		_ => {
+			service::update_kubernetes_deployment(
+				&workspace_id,
+				&deployment,
+				&full_image,
+				&running_details,
+				&config,
+			)
+			.await?;
+		}
+	}
 
 	context.success(UpdateDeploymentResponse {});
 	Ok(context)

@@ -1,7 +1,10 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 
 use crate::{
-	models::db_mapping::{DeploymentStaticSite, DeploymentStatus},
+	models::db_mapping::DeploymentStaticSite,
 	query,
 	query_as,
 	Database,
