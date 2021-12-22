@@ -328,12 +328,13 @@ pub async fn update_kubernetes_deployment(
 							name: format!("service/{}", deployment.id),
 							port: Some(ServiceBackendPort {
 								number: Some(*port as i32),
-								name: Some(format!("port-{}", port)),
+								..ServiceBackendPort::default()
 							}),
 						}),
 						..IngressBackend::default()
 					},
-					..HTTPIngressPath::default()
+					path: Some("/".to_string()),
+					path_type: Some("Prefix".to_string()),
 				}],
 			}),
 		})
