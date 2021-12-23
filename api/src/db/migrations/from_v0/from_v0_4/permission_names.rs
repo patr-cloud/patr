@@ -25,6 +25,48 @@ pub(super) async fn migrate(
 			"workspace::deployment::edit",
 			"workspace::infrastructure::deployment::edit",
 		),
+		// Upgrade paths
+		(
+			"workspace::deployment::upgradePath::list",
+			"workspace::infrastructure::upgradePath::list",
+		),
+		(
+			"workspace::deployment::upgradePath::create",
+			"workspace::infrastructure::upgradePath::create",
+		),
+		(
+			"workspace::deployment::upgradePath::info",
+			"workspace::infrastructure::upgradePath::info",
+		),
+		(
+			"workspace::deployment::upgradePath::delete",
+			"workspace::infrastructure::upgradePath::delete",
+		),
+		(
+			"workspace::deployment::upgradePath::edit",
+			"workspace::infrastructure::upgradePath::edit",
+		),
+		// Entry points
+		(
+			"workspace::deployment::entryPoint::list",
+			"workspace::infrastructure::entryPoint::list",
+		),
+		(
+			"workspace::deployment::entryPoint::create",
+			"workspace::infrastructure::entryPoint::create",
+		),
+		(
+			"workspace::deployment::entryPoint::info",
+			"workspace::infrastructure::entryPoint::info",
+		),
+		(
+			"workspace::deployment::entryPoint::delete",
+			"workspace::infrastructure::entryPoint::delete",
+		),
+		(
+			"workspace::deployment::entryPoint::edit",
+			"workspace::infrastructure::entryPoint::edit",
+		),
 		// Managed databases
 		(
 			"workspace::managedDatabase::create",
