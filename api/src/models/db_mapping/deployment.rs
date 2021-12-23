@@ -1,59 +1,22 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
 use crate::{db, error, service, utils::Error, Database};
 
 pub struct DockerRepository {
-	pub id: Vec<u8>,
-	pub workspace_id: Vec<u8>,
+	pub id: Uuid,
+	pub workspace_id: Uuid,
 	pub name: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct EventData {
-	pub events: Vec<Event>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Event {
-	pub id: String,
-	pub timestamp: String,
-	pub action: String,
-	pub target: Target,
-	pub request: Request,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Target {
-	pub media_type: String,
-	pub size: i64,
-	pub digest: String,
-	pub length: u64,
-	pub repository: String,
-	pub url: String,
-	pub tag: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Request {
-	pub id: String,
-	pub addr: String,
-	pub host: String,
-	pub method: String,
-	pub useragent: String,
 }
 
 pub struct Deployment {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub registry: String,
-	pub repository_id: Option<Vec<u8>>,
+	pub repository_id: Option<Uuid>,
 	pub image_name: Option<String>,
 	pub image_tag: String,
 	pub status: DeploymentStatus,
@@ -63,7 +26,7 @@ pub struct Deployment {
 	pub domain_name: Option<String>,
 	pub horizontal_scale: i16,
 	pub machine_type: DeploymentMachineType,
-	pub workspace_id: Vec<u8>,
+	pub workspace_id: Uuid,
 }
 
 impl Deployment {
@@ -113,7 +76,7 @@ impl Deployment {
 #[allow(dead_code)]
 pub struct DeploymentRequestLogs {
 	id: i64,
-	deplyoment_id: Vec<u8>,
+	deplyoment_id: Uuid,
 	timestamp: u64,
 	ip_address: String,
 	ip_address_location: (f64, f64),

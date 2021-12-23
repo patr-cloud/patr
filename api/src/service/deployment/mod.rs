@@ -7,6 +7,7 @@ mod static_site;
 
 use std::ops::DerefMut;
 
+use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -34,7 +35,6 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use reqwest::Client;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 use tokio::io::AsyncWriteExt;
-use uuid::Uuid;
 
 pub use self::{deployment::*, managed_database::*, static_site::*};
 use crate::{
@@ -61,7 +61,7 @@ use crate::{
 async fn create_https_certificates_for_domain(
 	domain: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - logging into the ssh server for adding ssl certificate", request_id);
 	let session = SessionBuilder::default()
@@ -205,7 +205,7 @@ async fn delete_docker_image(image_name: &str) -> Result<(), Error> {
 }
 
 async fn update_deployment_status(
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	let app = service::get_app();
@@ -246,7 +246,7 @@ async fn pull_image_from_registry(
 	let app = service::get_app().clone();
 	let god_username = db::get_user_by_user_id(
 		app.database.acquire().await?.deref_mut(),
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
+		rbac::GOD_USER_ID.get().unwrap(),
 	)
 	.await?
 	.status(500)?
@@ -298,7 +298,7 @@ async fn pull_image_from_registry(
 }
 
 async fn update_managed_database_status(
-	database_id: &[u8],
+	database_id: &Uuid,
 	status: &ManagedDatabaseStatus,
 ) -> Result<(), sqlx::Error> {
 	let app = service::get_app();
@@ -314,7 +314,7 @@ async fn update_managed_database_status(
 }
 
 async fn update_managed_database_credentials_for_database(
-	database_id: &[u8],
+	database_id: &Uuid,
 	host: &str,
 	port: i32,
 	username: &str,
@@ -366,7 +366,7 @@ async fn create_random_content_for_verification(
 
 pub async fn create_request_log_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	timestamp: u64,
 	ip_address: &str,
 	method: &DeploymentRequestMethod,
@@ -419,7 +419,7 @@ async fn get_location_from_ip_address(
 }
 
 async fn update_static_site_status(
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), Error> {
 	let app = service::get_app();

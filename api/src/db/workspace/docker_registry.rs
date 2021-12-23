@@ -1,3 +1,11 @@
+use api_models::{
+	models::workspace::docker_registry::{
+		DockerRepositoryImageInfo,
+		DockerRepositoryTagInfo,
+	},
+	utils::Uuid,
+};
+
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
 pub async fn initialize_docker_registry_pre(
@@ -7,8 +15,8 @@ pub async fn initialize_docker_registry_pre(
 	query!(
 		r#"
 		CREATE TABLE docker_registry_repository(
-			id BYTEA CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
-			workspace_id BYTEA NOT NULL
+			id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY,
+			workspace_id UUID NOT NULL
 				CONSTRAINT docker_registry_repository_fk_workspace_id
 					REFERENCES workspace(id),
 			name CITEXT NOT NULL,
@@ -19,6 +27,59 @@ pub async fn initialize_docker_registry_pre(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE docker_registry_repository_manifest(
+			repository_id UUID NOT NULL
+				CONSTRAINT docker_registry_repository_manifest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			manifest_digest TEXT NOT NULL,
+			size BIGINT NOT NULL
+				CONSTRAINT
+					docker_registry_repository_manifest_chk_size_unsigned
+						CHECK(size >= 0),
+			created BIGINT NOT NULL CONSTRAINT
+				docker_registry_repository_manifest_chk_created_unsigned CHECK(
+					created >= 0
+				),
+			CONSTRAINT docker_registry_repository_manifest_pk PRIMARY KEY(
+				repository_id, manifest_digest
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE docker_registry_repository_tag(
+			repository_id UUID NOT NULL
+				CONSTRAINT docker_registry_repository_tag_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			tag TEXT NOT NULL,
+			manifest_digest TEXT NOT NULL,
+			last_updated BIGINT NOT NULL CONSTRAINT
+				docker_registry_repository_tag_chk_last_updated_unsigned CHECK(
+					last_updated >= 0
+				),
+			CONSTRAINT docker_registry_repository_tag_pk PRIMARY KEY(
+				repository_id, tag
+			),
+			CONSTRAINT
+				docker_registry_repository_tag_fk_repository_id_manifest_digest
+				FOREIGN KEY(repository_id, manifest_digest) REFERENCES
+					docker_registry_repository_manifest(
+						repository_id, manifest_digest
+					)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// TODO indexes for size, last_updated, etc
 
 	Ok(())
 }
@@ -43,9 +104,9 @@ pub async fn initialize_docker_registry_post(
 // function to add new repositorys
 pub async fn create_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &[u8],
+	resource_id: &Uuid,
 	name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -54,8 +115,8 @@ pub async fn create_docker_repository(
 		VALUES
 			($1, $2, $3);
 		"#,
-		resource_id,
-		workspace_id,
+		resource_id as _,
+		workspace_id as _,
 		name as _
 	)
 	.execute(&mut *connection)
@@ -63,18 +124,18 @@ pub async fn create_docker_repository(
 	Ok(())
 }
 
-pub async fn get_repository_by_name(
+pub async fn get_docker_repository_by_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
 		r#"
 		SELECT
-			id,
-			workspace_id,
-			name as "name: _"
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
@@ -84,7 +145,7 @@ pub async fn get_repository_by_name(
 			name NOT LIKE 'patr-deleted:%';
 		"#,
 		repository_name as _,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -92,45 +153,71 @@ pub async fn get_repository_by_name(
 
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-) -> Result<Vec<DockerRepository>, sqlx::Error> {
-	query_as!(
-		DockerRepository,
+	workspace_id: &Uuid,
+) -> Result<Vec<(DockerRepository, u64)>, sqlx::Error> {
+	let rows = query!(
 		r#"
 		SELECT
-			id,
-			workspace_id,
-			name as "name: _"
+			id as "id: Uuid",
+			workspace_id as "workspace_id: Uuid",
+			name::TEXT as "name!: String",
+			COALESCE(size, 0) as "size!: i64"
 		FROM
 			docker_registry_repository
+		LEFT JOIN (
+			SELECT
+				SUM(size) as size,
+				repository_id
+			FROM
+				docker_registry_repository_manifest
+			GROUP BY
+				repository_id
+		) docker_registry_repository_manifest
+		ON
+			docker_registry_repository_manifest.repository_id =
+				docker_registry_repository.id
 		WHERE
 			workspace_id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			DockerRepository {
+				id: row.id,
+				name: row.name,
+				workspace_id: row.workspace_id,
+			},
+			row.size as u64,
+		)
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn get_docker_repository_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 ) -> Result<Option<DockerRepository>, sqlx::Error> {
 	query_as!(
 		DockerRepository,
 		r#"
 		SELECT
-			id,
-			workspace_id,
-			name as "name: _"
+			id as "id: _",
+			workspace_id as "workspace_id: _",
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
 			id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
-		repository_id
+		repository_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -138,7 +225,7 @@ pub async fn get_docker_repository_by_id(
 
 pub async fn update_docker_repository_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -150,8 +237,339 @@ pub async fn update_docker_repository_name(
 		WHERE
 			id = $1;
 		"#,
-		repository_id,
+		repository_id as _,
 		name as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn create_docker_repository_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	digest: &str,
+	size: u64,
+	created: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			docker_registry_repository_manifest
+		VALUES
+			($1, $2, $3, $4)
+		ON CONFLICT DO NOTHING;
+		"#,
+		repository_id as _,
+		digest,
+		size as i64,
+		created as i64
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn set_docker_repository_tag_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	tag: &str,
+	digest: &str,
+	last_updated: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			docker_registry_repository_tag
+		VALUES
+			($1, $2, $3, $4)
+		ON CONFLICT (repository_id, tag)
+		DO UPDATE SET
+			manifest_digest = $3,
+			last_updated = $4;
+		"#,
+		repository_id as _,
+		tag,
+		digest,
+		last_updated as i64
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_list_of_tags_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+) -> Result<Vec<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			tag,
+			manifest_digest,
+			last_updated
+		FROM
+			docker_registry_repository_tag
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			DockerRepositoryTagInfo {
+				tag: row.tag,
+				last_updated: row.last_updated as u64,
+			},
+			row.manifest_digest,
+		)
+	})
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn get_tags_for_docker_repository_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	digest: &str,
+) -> Result<Vec<DockerRepositoryTagInfo>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			tag,
+			last_updated
+		FROM
+			docker_registry_repository_tag
+		WHERE
+			repository_id = $1 AND
+			manifest_digest = $2;
+		"#,
+		repository_id as _,
+		digest
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| DockerRepositoryTagInfo {
+		tag: row.tag,
+		last_updated: row.last_updated as u64,
+	})
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn get_total_size_of_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<u64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			COALESCE(SUM(size), 0)::BIGINT as "size!"
+		FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.size as u64)
+}
+
+pub async fn get_docker_repository_image_by_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	digest: &str,
+) -> Result<Option<DockerRepositoryImageInfo>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			manifest_digest,
+			size,
+			created
+		FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1 AND
+			manifest_digest = $2;
+		"#,
+		repository_id as _,
+		digest
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| {
+		row.map(|row| DockerRepositoryImageInfo {
+			digest: row.manifest_digest,
+			size: row.size as u64,
+			created: row.created as u64,
+		})
+	})
+}
+
+pub async fn get_docker_repository_tag_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &[u8],
+	tag: &str,
+) -> Result<Option<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			tag,
+			last_updated,
+			manifest_digest
+		FROM
+			docker_registry_repository_tag
+		WHERE
+			repository_id = $1 AND
+			tag = $2;
+		"#,
+		repository_id as _,
+		tag
+	)
+	.fetch_optional(&mut *connection)
+	.await
+	.map(|row| {
+		row.map(|row| {
+			(
+				DockerRepositoryTagInfo {
+					tag: row.tag,
+					last_updated: row.last_updated as u64,
+				},
+				row.manifest_digest,
+			)
+		})
+	})
+}
+
+pub async fn get_list_of_digests_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<Vec<DockerRepositoryImageInfo>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			manifest_digest,
+			size,
+			created
+		FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| DockerRepositoryImageInfo {
+		digest: row.manifest_digest,
+		size: row.size as u64,
+		created: row.created as u64,
+	})
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn delete_all_tags_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository_tag
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_all_images_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1;
+		"#,
+		repository_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
+pub async fn delete_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository
+		WHERE
+			id = $1;
+		"#,
+		repository_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_docker_repository_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	digest: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository_manifest
+		WHERE
+			repository_id = $1 AND
+			manifest_digest = $2;
+		"#,
+		repository_id as _,
+		digest
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_tag_from_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+	tag: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			docker_registry_repository_tag
+		WHERE
+			repository_id = $1 AND
+			tag = $2;
+		"#,
+		repository_id as _,
+		tag
 	)
 	.execute(&mut *connection)
 	.await

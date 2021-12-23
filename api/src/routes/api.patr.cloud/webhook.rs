@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -6,8 +7,10 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{DeploymentStatus, EventData},
+		db_mapping::DeploymentStatus,
 		error::{id as ErrorId, message as ErrorMessage},
+		Action,
+		EventData,
 	},
 	pin_fn,
 	service,
@@ -83,9 +86,9 @@ pub async fn notification_handler(
 	if context.get_content_type().as_str() !=
 		"application/vnd.docker.distribution.events.v1+json"
 	{
-		Error::as_result()
+		return Err(Error::empty()
 			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
 	let custom_header = context.get_header("Authorization").status(400).body(
@@ -114,32 +117,29 @@ pub async fn notification_handler(
 	}
 
 	let body = context.get_body()?;
+	tokio::fs::write(format!("{}.json", get_current_time_millis()), &body)
+		.await
+		.unwrap();
 	let events: EventData = serde_json::from_str(&body)?;
 
 	// check if the event is a push event
 	// get image name, repository name, tag if present
-	for event in events.events {
-		if event.action != "push" {
-			continue;
-		}
+	for event in events.events.into_iter().filter(|event| {
+		// Only process events that are push events of a manifest
+		(event.action == Action::Push || event.action == Action::Mount) &&
+			(event.target.media_type ==
+				"application/vnd.docker.distribution.manifest.v2+json")
+	}) {
 		let target = event.target;
-		if target.tag.is_empty() {
-			continue;
-		}
 
-		let repository = target.repository;
-		let mut splitter = repository.split('/');
-		let workspace_name = if let Some(val) = splitter.next() {
-			val
-		} else {
-			continue;
-		};
-		let image_name = if let Some(val) = splitter.next() {
-			val
-		} else {
-			continue;
-		};
-		let tag = target.tag;
+		// Update the docker registry db with details on the image
+		let repository_name = target.repository;
+		let (workspace_name, image_name) =
+			if let Some(value) = repository_name.split_once('/') {
+				value
+			} else {
+				continue;
+			};
 
 		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
@@ -152,11 +152,55 @@ pub async fn notification_handler(
 			continue;
 		};
 
+		let repository = db::get_docker_repository_by_name(
+			context.get_database_connection(),
+			image_name,
+			&workspace.id,
+		)
+		.await?;
+		let repository = if let Some(repository) = repository {
+			repository
+		} else {
+			continue;
+		};
+
+		let current_time = get_current_time_millis();
+
+		db::create_docker_repository_digest(
+			context.get_database_connection(),
+			&repository.id,
+			&target.digest,
+			target
+				.references
+				.into_iter()
+				.filter(|reference| {
+					reference.media_type ==
+						"application/vnd.docker.image.rootfs.diff.tar.gzip"
+				})
+				.map(|reference| reference.size)
+				.sum(),
+			current_time,
+		)
+		.await?;
+
+		if target.tag.is_empty() {
+			continue;
+		}
+
+		db::set_docker_repository_tag_details(
+			context.get_database_connection(),
+			&repository.id,
+			&target.tag,
+			&target.digest,
+			current_time,
+		)
+		.await?;
+
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),
 				image_name,
-				&tag,
+				&target.tag,
 				&workspace.id,
 			)
 			.await?;
@@ -289,11 +333,12 @@ async fn add_deployment_request_log(
 
 	let deployment_id = if host.ends_with(".patr.cloud") {
 		let deployment_id_string = host.replace(".patr.cloud", "");
-		let deployment_id = if let Ok(id) = hex::decode(deployment_id_string) {
-			id
-		} else {
-			return Ok(context);
-		};
+		let deployment_id =
+			if let Ok(id) = Uuid::parse_str(&deployment_id_string) {
+				id
+			} else {
+				return Ok(context);
+			};
 		if db::get_deployment_by_id(
 			context.get_database_connection(),
 			&deployment_id,

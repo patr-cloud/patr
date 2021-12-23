@@ -1,5 +1,4 @@
-use api_models::models::user::UserPhoneNumber;
-use uuid::Uuid;
+use api_models::{models::user::UserPhoneNumber, utils::Uuid};
 
 use crate::{
 	constants::ResourceOwnerType,
@@ -25,12 +24,14 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE "user"(
-			id BYTEA
-				CONSTRAINT user_pk PRIMARY KEY,
+			id UUID CONSTRAINT user_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL
 				CONSTRAINT user_uq_username UNIQUE
 				CONSTRAINT user_chk_username_is_lower_case CHECK(
 					username = LOWER(username)
+				)
+				CONSTRAINT user_chk_username_is_trimmed CHECK(
+					username = TRIM(username)
 				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
@@ -46,7 +47,7 @@ pub async fn initialize_users_pre(
 				CONSTRAINT user_chk_backup_email_is_lower_case CHECK(
 					backup_email_local = LOWER(backup_email_local)
 				),
-			backup_email_domain_id BYTEA,
+			backup_email_domain_id UUID,
 			backup_phone_country_code CHAR(2)
 				CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK(
 					backup_phone_country_code = UPPER(backup_phone_country_code)
@@ -90,13 +91,13 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE user_login(
-			login_id BYTEA
+			login_id UUID
 				CONSTRAINT user_login_uq_login_id UNIQUE,
 			refresh_token TEXT NOT NULL,
 			token_expiry BIGINT NOT NULL
 				CONSTRAINT user_login_chk_token_expiry_unsigned
 					CHECK(token_expiry >= 0),
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
 			last_login BIGINT NOT NULL
 				CONSTRAINT user_login_chk_last_login_unsigned
@@ -126,7 +127,7 @@ pub async fn initialize_users_pre(
 	query!(
 		r#"
 		CREATE TABLE password_reset_request(
-			user_id BYTEA
+			user_id UUID
 				CONSTRAINT password_reset_request_pk PRIMARY KEY
 				CONSTRAINT password_reset_request_fk_user_id
 					REFERENCES "user"(id),
@@ -150,14 +151,14 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE personal_email(
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT personal_email_fk_user_id REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			local VARCHAR(64) NOT NULL
 				CONSTRAINT personal_email_chk_local_is_lower_case CHECK(
 					local = LOWER(local)
 				),
-			domain_id BYTEA NOT NULL
+			domain_id UUID NOT NULL
 				CONSTRAINT personal_email_fk_domain_id
 					REFERENCES personal_domain(id),
 			CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id),
@@ -184,13 +185,13 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE business_email(
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT business_email_fk_user_id REFERENCES "user"(id),
 			local VARCHAR(64) NOT NULL
 				CONSTRAINT business_email_chk_local_is_lower_case CHECK(
 					local = LOWER(local)
 				),
-			domain_id BYTEA NOT NULL
+			domain_id UUID NOT NULL
 				CONSTRAINT business_email_fk_domain_id
 					REFERENCES workspace_domain(id),
 			CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id)
@@ -243,7 +244,7 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		CREATE TABLE user_phone_number(
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT user_phone_number_fk_user_id REFERENCES "user"(id)
 					DEFERRABLE INITIALLY IMMEDIATE,
 			country_code CHAR(2) NOT NULL
@@ -286,10 +287,10 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK(
 					local = LOWER(local)
 				),
-			domain_id BYTEA NOT NULL
+			domain_id UUID NOT NULL
 				CONSTRAINT user_unverified_personal_email_fk_domain_id
 					REFERENCES personal_domain(id),
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT user_unverified_personal_email_fk_user_id
 					REFERENCES "user"(id),
 			verification_token_hash TEXT NOT NULL,
@@ -319,7 +320,7 @@ pub async fn initialize_users_post(
 					country_code = UPPER(country_code)
 				),
 			phone_number VARCHAR(15) NOT NULL,
-			user_id BYTEA NOT NULL
+			user_id UUID NOT NULL
 				CONSTRAINT user_unverified_phone_number_fk_user_id
 					REFERENCES "user"(id),
 			verification_token_hash TEXT NOT NULL,
@@ -357,7 +358,7 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK(
 					backup_email_local = LOWER(backup_email_local)
 				),
-			backup_email_domain_id BYTEA
+			backup_email_domain_id UUID
 				CONSTRAINT user_to_sign_up_fk_backup_email_domain_id
 					REFERENCES personal_domain(id),
 
@@ -770,7 +771,19 @@ pub async fn get_user_by_username_email_or_phone_number(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -830,7 +843,19 @@ pub async fn get_user_by_email(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -881,7 +906,19 @@ pub async fn get_user_by_phone_number(
 	let user = query!(
 		r#"
 		SELECT
-			"user".*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		INNER JOIN
@@ -923,7 +960,19 @@ pub async fn get_user_by_username(
 	let user = query!(
 		r#"
 		SELECT
-			*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		WHERE
@@ -954,18 +1003,30 @@ pub async fn get_user_by_username(
 
 pub async fn get_user_by_user_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Option<User>, sqlx::Error> {
 	let user = query!(
 		r#"
 		SELECT
-			*
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".backup_email_local,
+			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
+			"user".backup_phone_country_code,
+			"user".backup_phone_number
 		FROM
 			"user"
 		WHERE
 			id = $1;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1003,7 +1064,7 @@ pub async fn generate_new_user_id(
 			WHERE
 				id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -1021,7 +1082,7 @@ pub async fn get_god_user_id(
 	let uuid = query!(
 		r#"
 		SELECT
-			*
+			id as "id: Uuid"
 		FROM
 			"user"
 		ORDER BY
@@ -1031,10 +1092,7 @@ pub async fn get_god_user_id(
 	)
 	.fetch_optional(&mut *connection)
 	.await?
-	.map(|row| {
-		Uuid::from_slice(row.id.as_ref())
-			.expect("unable to unwrap UUID from Vec<u8>")
-	});
+	.map(|row| row.id);
 
 	Ok(uuid)
 }
@@ -1046,7 +1104,7 @@ pub async fn set_personal_user_to_be_signed_up(
 	(first_name, last_name): (&str, &str),
 
 	email_local: Option<&str>,
-	email_domain_id: Option<&[u8]>,
+	email_domain_id: Option<&Uuid>,
 	backup_phone_country_code: Option<&str>,
 	backup_phone_number: Option<&str>,
 
@@ -1104,7 +1162,7 @@ pub async fn set_personal_user_to_be_signed_up(
 		first_name,
 		last_name,
 		email_local,
-		email_domain_id,
+		email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number,
 		otp_hash,
@@ -1123,7 +1181,7 @@ pub async fn set_business_user_to_be_signed_up(
 	(first_name, last_name): (&str, &str),
 
 	backup_email_local: Option<&str>,
-	backup_email_domain_id: Option<&[u8]>,
+	backup_email_domain_id: Option<&Uuid>,
 	backup_phone_country_code: Option<&str>,
 	backup_phone_number: Option<&str>,
 
@@ -1185,7 +1243,7 @@ pub async fn set_business_user_to_be_signed_up(
 		first_name,
 		last_name,
 		backup_email_local,
-		backup_email_domain_id,
+		backup_email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number,
 		business_email_local,
@@ -1213,7 +1271,7 @@ pub async fn get_user_to_sign_up_by_username(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1264,7 +1322,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1316,7 +1374,7 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.first_name,
 			user_to_sign_up.last_name,
 			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id,
+			user_to_sign_up.backup_email_domain_id as "backup_email_domain_id: Uuid",
 			user_to_sign_up.backup_phone_country_code,
 			user_to_sign_up.backup_phone_number,
 			user_to_sign_up.business_email_local,
@@ -1370,7 +1428,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1420,7 +1478,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			first_name,
 			last_name,
 			backup_email_local,
-			backup_email_domain_id,
+			backup_email_domain_id as "backup_email_domain_id: Uuid",
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
@@ -1485,8 +1543,8 @@ pub async fn update_user_to_sign_up_with_otp(
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_local: &str,
-	domain_id: &[u8],
-	user_id: &[u8],
+	domain_id: &Uuid,
+	user_id: &Uuid,
 	verification_token: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -1502,8 +1560,8 @@ pub async fn add_personal_email_to_be_verified_for_user(
 			verification_token_expiry = EXCLUDED.verification_token_expiry;
 		"#,
 		email_local,
-		domain_id,
-		user_id,
+		domain_id as _,
+		user_id as _,
 		verification_token,
 		token_expiry as i64
 	)
@@ -1517,7 +1575,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	country_code: &str,
 	phone_number: &str,
-	user_id: &[u8],
+	user_id: &Uuid,
 	verification_token: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -1534,7 +1592,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 		"#,
 		country_code,
 		phone_number,
-		user_id,
+		user_id as _,
 		verification_token,
 		token_expiry as i64
 	)
@@ -1546,13 +1604,17 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 pub async fn get_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email: &str,
 ) -> Result<Option<PersonalEmailToBeVerified>, sqlx::Error> {
 	let email = query!(
 		r#"
 		SELECT
-			user_unverified_personal_email.*
+			user_unverified_personal_email.local,
+			user_unverified_personal_email.domain_id as "domain_id: Uuid",
+			user_unverified_personal_email.user_id as "user_id: Uuid",
+			user_unverified_personal_email.verification_token_hash,
+			user_unverified_personal_email.verification_token_expiry
 		FROM
 			user_unverified_personal_email
 		INNER JOIN
@@ -1563,7 +1625,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 			user_id = $1 AND
 			CONCAT(local, '@', domain.name) = $2;
 		"#,
-		user_id,
+		user_id as _,
 		email
 	)
 	.fetch_optional(&mut *connection)
@@ -1586,7 +1648,11 @@ pub async fn get_personal_email_to_be_verified_by_email(
 	let email = query!(
 		r#"
 		SELECT
-			user_unverified_personal_email.*
+			user_unverified_personal_email.local,
+			user_unverified_personal_email.domain_id as "domain_id: Uuid",
+			user_unverified_personal_email.user_id as "user_id: Uuid",
+			user_unverified_personal_email.verification_token_hash,
+			user_unverified_personal_email.verification_token_expiry
 		FROM
 			user_unverified_personal_email
 		INNER JOIN
@@ -1613,9 +1679,9 @@ pub async fn get_personal_email_to_be_verified_by_email(
 
 pub async fn delete_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_local: &str,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1626,9 +1692,9 @@ pub async fn delete_personal_email_to_be_verified_for_user(
 			local = $2 AND
 			domain_id = $3;
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1638,14 +1704,18 @@ pub async fn delete_personal_email_to_be_verified_for_user(
 
 pub async fn get_phone_number_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<Option<PhoneNumberToBeVerified>, sqlx::Error> {
 	let phone_number = query!(
 		r#"
 		SELECT
-			user_unverified_phone_number.*
+			user_unverified_phone_number.country_code,
+			user_unverified_phone_number.phone_number,
+			user_unverified_phone_number.user_id as "user_id: Uuid",
+			user_unverified_phone_number.verification_token_hash,
+			user_unverified_phone_number.verification_token_expiry
 		FROM
 			user_unverified_phone_number
 		INNER JOIN
@@ -1657,7 +1727,7 @@ pub async fn get_phone_number_to_be_verified_for_user(
 			user_unverified_phone_number.country_code = $2 AND
 			user_unverified_phone_number.phone_number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)
@@ -1682,7 +1752,11 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 	let phone_number = query!(
 		r#"
 		SELECT
-			*
+			country_code,
+			phone_number,
+			user_id as "user_id: Uuid",
+			verification_token_hash,
+			verification_token_expiry
 		FROM
 			user_unverified_phone_number
 		WHERE
@@ -1707,7 +1781,7 @@ pub async fn get_phone_number_to_be_verified_by_phone_number(
 
 pub async fn delete_phone_number_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
@@ -1720,7 +1794,7 @@ pub async fn delete_phone_number_to_be_verified_for_user(
 			country_code = $2 AND
 			phone_number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)
@@ -1732,9 +1806,9 @@ pub async fn delete_phone_number_to_be_verified_for_user(
 
 pub async fn add_personal_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_local: &str,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1743,9 +1817,9 @@ pub async fn add_personal_email_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1755,9 +1829,9 @@ pub async fn add_personal_email_for_user(
 
 pub async fn add_business_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_local: &str,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -1766,9 +1840,9 @@ pub async fn add_business_email_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -1797,14 +1871,14 @@ pub async fn delete_user_to_be_signed_up(
 
 pub async fn create_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	username: &str,
 	password: &str,
 	(first_name, last_name): (&str, &str),
 	created: u64,
 
 	backup_email_local: Option<&str>,
-	backup_email_domain_id: Option<&[u8]>,
+	backup_email_domain_id: Option<&Uuid>,
 
 	backup_phone_country_code: Option<&str>,
 	backup_phone_number: Option<&str>,
@@ -1832,14 +1906,14 @@ pub async fn create_user(
 				$10
 			);
 		"#,
-		user_id,
+		user_id as _,
 		username,
 		password,
 		first_name,
 		last_name,
 		created as i64,
 		backup_email_local,
-		backup_email_domain_id,
+		backup_email_domain_id as _,
 		backup_phone_country_code,
 		backup_phone_number
 	)
@@ -1851,10 +1925,10 @@ pub async fn create_user(
 
 pub async fn add_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	refresh_token: &str,
 	token_expiry: u64,
-	user_id: &[u8],
+	user_id: &Uuid,
 	last_login: u64,
 	last_activity: u64,
 ) -> Result<(), sqlx::Error> {
@@ -1865,10 +1939,10 @@ pub async fn add_user_login(
 		VALUES
 			($1, $2, $3, $4, $5, $6);
 		"#,
-		login_id,
+		login_id as _,
 		refresh_token,
 		token_expiry as i64,
-		user_id,
+		user_id as _,
 		last_login as i64,
 		last_activity as i64
 	)
@@ -1880,18 +1954,23 @@ pub async fn add_user_login(
 
 pub async fn get_user_login(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let login = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			login_id = $1;
 		"#,
-		login_id
+		login_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1909,21 +1988,26 @@ pub async fn get_user_login(
 
 pub async fn get_user_login_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
-	user_id: &[u8],
+	login_id: &Uuid,
+	user_id: &Uuid,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let row = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
 		"#,
-		login_id,
-		user_id,
+		login_id as _,
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -1954,7 +2038,7 @@ pub async fn generate_new_login_id(
 			WHERE
 				login_id = $1;
 			"#,
-			uuid.as_bytes().as_ref()
+			uuid as _
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -1968,18 +2052,23 @@ pub async fn generate_new_login_id(
 
 pub async fn get_all_logins_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Vec<UserLogin>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			user_id = $1;
 		"#,
-		user_id
+		user_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -1999,20 +2088,25 @@ pub async fn get_all_logins_for_user(
 
 pub async fn get_login_for_user_with_refresh_token(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	refresh_token: &str,
 ) -> Result<Option<UserLogin>, sqlx::Error> {
 	let login = query!(
 		r#"
 		SELECT
-			*
+			login_id as "login_id: Uuid",
+			refresh_token,
+			token_expiry,
+			user_id as "user_id: Uuid",
+			last_login,
+			last_activity
 		FROM
 			user_login
 		WHERE
 			user_id = $1 AND
 			refresh_token = $2;
 		"#,
-		user_id,
+		user_id as _,
 		refresh_token,
 	)
 	.fetch_optional(&mut *connection)
@@ -2031,8 +2125,8 @@ pub async fn get_login_for_user_with_refresh_token(
 
 pub async fn delete_user_login_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
-	user_id: &[u8],
+	login_id: &Uuid,
+	user_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2042,8 +2136,8 @@ pub async fn delete_user_login_by_id(
 			login_id = $1 AND
 			user_id = $2;
 		"#,
-		login_id,
-		user_id,
+		login_id as _,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -2052,7 +2146,7 @@ pub async fn delete_user_login_by_id(
 
 pub async fn set_login_expiry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	login_id: &[u8],
+	login_id: &Uuid,
 	last_activity: u64,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -2068,7 +2162,7 @@ pub async fn set_login_expiry(
 		"#,
 		token_expiry as i64,
 		last_activity as i64,
-		login_id
+		login_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2078,7 +2172,7 @@ pub async fn set_login_expiry(
 
 pub async fn update_user_data(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	first_name: Option<&str>,
 	last_name: Option<&str>,
 	dob: Option<u64>,
@@ -2096,7 +2190,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			first_name,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2112,7 +2206,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			last_name,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2128,7 +2222,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			dob as i64,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2144,7 +2238,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			bio,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2160,7 +2254,7 @@ pub async fn update_user_data(
 				id = $2;
 			"#,
 			location,
-			user_id,
+			user_id as _,
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -2171,7 +2265,7 @@ pub async fn update_user_data(
 
 pub async fn update_user_password(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	password: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -2184,7 +2278,7 @@ pub async fn update_user_password(
 			id = $2;
 		"#,
 		password,
-		user_id,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2194,9 +2288,9 @@ pub async fn update_user_password(
 
 pub async fn update_backup_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_local: &str,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2209,8 +2303,8 @@ pub async fn update_backup_email_for_user(
 			id = $3;
 		"#,
 		email_local,
-		domain_id,
-		user_id
+		domain_id as _,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2220,7 +2314,7 @@ pub async fn update_backup_email_for_user(
 
 pub async fn update_backup_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
@@ -2236,7 +2330,7 @@ pub async fn update_backup_phone_number_for_user(
 		"#,
 		country_code,
 		phone_number,
-		user_id
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2246,7 +2340,7 @@ pub async fn update_backup_phone_number_for_user(
 
 pub async fn add_password_reset_request(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	token_hash: &str,
 	token_expiry: u64,
 ) -> Result<(), sqlx::Error> {
@@ -2260,7 +2354,7 @@ pub async fn add_password_reset_request(
 			token = EXCLUDED.token,
 			token_expiry = EXCLUDED.token_expiry;
 		"#,
-		user_id,
+		user_id as _,
 		token_hash,
 		token_expiry as i64
 	)
@@ -2272,18 +2366,20 @@ pub async fn add_password_reset_request(
 
 pub async fn get_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Option<PasswordResetRequest>, sqlx::Error> {
 	let reset = query!(
 		r#"
 		SELECT
-			*
+			user_id as "user_id: Uuid",
+			token,
+			token_expiry
 		FROM
 			password_reset_request
 		WHERE
 			user_id = $1;
 		"#,
-		user_id,
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await?
@@ -2298,7 +2394,7 @@ pub async fn get_password_reset_request_for_user(
 
 pub async fn delete_password_reset_request_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2307,7 +2403,7 @@ pub async fn delete_password_reset_request_for_user(
 		WHERE
 			user_id = $1;
 		"#,
-		user_id,
+		user_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2317,15 +2413,15 @@ pub async fn delete_password_reset_request_for_user(
 
 pub async fn get_all_workspaces_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Vec<Workspace>, sqlx::Error> {
 	query_as!(
 		Workspace,
 		r#"
 		SELECT DISTINCT
-			workspace.id,
-			workspace.name as "name: _",
-			workspace.super_admin_id,
+			workspace.id as "id: _",
+			workspace.name::TEXT as "name!: _",
+			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active
 		FROM
 			workspace
@@ -2337,7 +2433,7 @@ pub async fn get_all_workspaces_for_user(
 			workspace.super_admin_id = $1 OR
 			workspace_user.user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -2365,7 +2461,7 @@ pub async fn get_phone_country_by_country_code(
 
 pub async fn add_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	phone_country_code: &str,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
@@ -2376,7 +2472,7 @@ pub async fn add_phone_number_for_user(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_id,
+		user_id as _,
 		phone_country_code,
 		phone_number
 	)
@@ -2387,7 +2483,7 @@ pub async fn add_phone_number_for_user(
 
 pub async fn get_personal_emails_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Vec<String>, sqlx::Error> {
 	let rows = query!(
 		r#"
@@ -2402,7 +2498,7 @@ pub async fn get_personal_emails_for_user(
 		WHERE
 			personal_email.user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -2415,7 +2511,7 @@ pub async fn get_personal_emails_for_user(
 
 pub async fn get_personal_email_count_for_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<u64, sqlx::Error> {
 	query!(
 		r#"
@@ -2426,7 +2522,7 @@ pub async fn get_personal_email_count_for_domain_id(
 		WHERE
 			personal_email.domain_id = $1;
 		"#,
-		domain_id
+		domain_id as _,
 	)
 	.fetch_one(&mut *connection)
 	.await
@@ -2435,7 +2531,7 @@ pub async fn get_personal_email_count_for_domain_id(
 
 pub async fn get_phone_numbers_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Vec<UserPhoneNumber>, sqlx::Error> {
 	query_as!(
 		UserPhoneNumber,
@@ -2448,7 +2544,7 @@ pub async fn get_phone_numbers_for_user(
 		WHERE
 			user_id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -2456,7 +2552,7 @@ pub async fn get_phone_numbers_for_user(
 
 pub async fn get_backup_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
 	query!(
 		r#"
@@ -2470,7 +2566,7 @@ pub async fn get_backup_phone_number_for_user(
 			"user".backup_phone_number IS NOT NULL AND
 			"user".backup_phone_country_code IS NOT NULL;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -2484,7 +2580,7 @@ pub async fn get_backup_phone_number_for_user(
 
 pub async fn get_backup_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
 	query!(
 		r#"
@@ -2499,7 +2595,7 @@ pub async fn get_backup_email_for_user(
 		WHERE
 			"user".id = $1;
 		"#,
-		user_id
+		user_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -2508,9 +2604,9 @@ pub async fn get_backup_email_for_user(
 
 pub async fn delete_personal_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_local: &str,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2521,9 +2617,9 @@ pub async fn delete_personal_email_for_user(
 			local = $2 AND
 			domain_id = $3;
 		"#,
-		user_id,
+		user_id as _,
 		email_local,
-		domain_id
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2533,7 +2629,7 @@ pub async fn delete_personal_email_for_user(
 
 pub async fn delete_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), sqlx::Error> {
@@ -2546,7 +2642,7 @@ pub async fn delete_phone_number_for_user(
 			country_code = $2 AND
 			number = $3;
 		"#,
-		user_id,
+		user_id as _,
 		country_code,
 		phone_number
 	)

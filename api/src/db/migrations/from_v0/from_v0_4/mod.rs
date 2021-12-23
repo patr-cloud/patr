@@ -2,6 +2,8 @@ use semver::Version;
 
 use crate::{migrate_query as query, Database};
 
+mod bytea_to_uuid;
+mod docker_registry;
 mod organisation_to_workspace;
 mod permission_names;
 
@@ -528,7 +530,41 @@ async fn migrate_from_v0_4_9(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	organisation_to_workspace::migrate(&mut *connection).await?;
+	bytea_to_uuid::migrate(&mut *connection).await?;
+	docker_registry::migrate(&mut *connection).await?;
 	permission_names::migrate(&mut *connection).await?;
+	add_trim_check_for_username(&mut *connection).await?;
+	make_permission_name_unique(&mut *connection).await?;
 
 	Ok(())
+}
+
+async fn add_trim_check_for_username(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD CONSTRAINT user_chk_username_is_trimmed
+		CHECK(username = TRIM(username));
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+async fn make_permission_name_unique(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE permission
+		ADD CONSTRAINT permission_uq_name
+		UNIQUE(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
