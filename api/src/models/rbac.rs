@@ -36,52 +36,66 @@ pub mod permissions {
 
 		pub mod infrastructure {
 			pub mod deployment {
-				pub const LIST: &str = "workspace::deployment::list";
-				pub const CREATE: &str = "workspace::deployment::create";
-				pub const INFO: &str = "workspace::deployment::info";
-				pub const DELETE: &str = "workspace::deployment::delete";
-				pub const EDIT: &str = "workspace::deployment::edit";
+				pub const LIST: &str =
+					"workspace::infrastructure::deployment::list";
+				pub const CREATE: &str =
+					"workspace::infrastructure::deployment::create";
+				pub const INFO: &str =
+					"workspace::infrastructure::deployment::info";
+				pub const DELETE: &str =
+					"workspace::infrastructure::deployment::delete";
+				pub const EDIT: &str =
+					"workspace::infrastructure::deployment::edit";
 			}
 
 			#[allow(dead_code)]
 			pub mod upgrade_path {
 				pub const LIST: &str =
-					"workspace::deployment::upgradePath::list";
+					"workspace::infrastructure::deployment::upgradePath::list";
 				pub const CREATE: &str =
-					"workspace::deployment::upgradePath::create";
+					"workspace::infrastructure::deployment::upgradePath::create";
 				pub const INFO: &str =
-					"workspace::deployment::upgradePath::info";
+					"workspace::infrastructure::deployment::upgradePath::info";
 				pub const DELETE: &str =
-					"workspace::deployment::upgradePath::delete";
+					"workspace::infrastructure::deployment::upgradePath::delete";
 				pub const EDIT: &str =
-					"workspace::deployment::upgradePath::edit";
+					"workspace::infrastructure::deployment::upgradePath::edit";
 			}
 
 			#[allow(dead_code)]
 			pub mod entry_point {
 				pub const LIST: &str =
-					"workspace::deployment::entryPoint::list";
+					"workspace::infrastructure::deployment::entryPoint::list";
 				pub const CREATE: &str =
-					"workspace::deployment::entryPoint::create";
+					"workspace::infrastructure::deployment::entryPoint::create";
 				pub const EDIT: &str =
-					"workspace::deployment::entryPoint::edit";
+					"workspace::infrastructure::deployment::entryPoint::edit";
 				pub const DELETE: &str =
-					"workspace::deployment::entryPoint::delete";
+					"workspace::infrastructure::deployment::entryPoint::delete";
 			}
 
 			pub mod managed_database {
-				pub const CREATE: &str = "workspace::managedDatabase::create";
-				pub const LIST: &str = "workspace::managedDatabase::list";
-				pub const DELETE: &str = "workspace::managedDatabase::delete";
-				pub const INFO: &str = "workspace::managedDatabase::info";
+				pub const CREATE: &str =
+					"workspace::infrastructure::managedDatabase::create";
+				pub const LIST: &str =
+					"workspace::infrastructure::managedDatabase::list";
+				pub const DELETE: &str =
+					"workspace::infrastructure::managedDatabase::delete";
+				pub const INFO: &str =
+					"workspace::infrastructure::managedDatabase::info";
 			}
 
 			pub mod static_site {
-				pub const LIST: &str = "workspace::staticSite::list";
-				pub const CREATE: &str = "workspace::staticSite::create";
-				pub const INFO: &str = "workspace::staticSite::info";
-				pub const DELETE: &str = "workspace::staticSite::delete";
-				pub const EDIT: &str = "workspace::staticSite::edit";
+				pub const LIST: &str =
+					"workspace::infrastructure::staticSite::list";
+				pub const CREATE: &str =
+					"workspace::infrastructure::staticSite::create";
+				pub const INFO: &str =
+					"workspace::infrastructure::staticSite::info";
+				pub const DELETE: &str =
+					"workspace::infrastructure::staticSite::delete";
+				pub const EDIT: &str =
+					"workspace::infrastructure::staticSite::edit";
 			}
 		}
 
