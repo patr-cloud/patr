@@ -408,6 +408,8 @@ pub async fn add_patr_dns_aaaa_record(
 
 	let zond_id = zone_identifier.encode_hex::<String>();
 	let ipv6 = Ipv6Addr::from_str(aaaa_record);
+
+	// todo: add a better method of error handling
 	if let Err(_) = ipv6 {
 		return Error::as_result()
 			.status(400)

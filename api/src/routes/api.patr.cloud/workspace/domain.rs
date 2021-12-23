@@ -686,6 +686,7 @@ async fn get_domain_dns_record(
 	Ok(context)
 }
 
+// NOTE: this function can be used for both adding and updating dns records
 async fn add_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
