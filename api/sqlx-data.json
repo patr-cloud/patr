@@ -214,6 +214,22 @@
       "nullable": []
     }
   },
+  "0b58f4724fac904813df4704431151bbf58d1d31efa070b67e6618a63452d429": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, default, default, default, default, $4, default, $5) ON CONFLICT (domain_id, name) DO UPDATE SET a_record = $3 || EXCLUDED.a_record;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "TextArray",
+          "Int4",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "0ba65499ecae8902b5e35d4c272af2c09970683633d0cb1822835ebaade7d41b": {
     "query": "CREATE TABLE role_permissions_resource( role_id BYTEA CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id BYTEA CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id BYTEA CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
     "describe": {
@@ -2162,14 +2178,14 @@
       ]
     }
   },
-  "555b28e06044079d461d9d79c0bbee7d94757af93220cc3b4b096b7a2e3607d1": {
-    "query": "INSERT INTO entry_point VALUES ($1, $2, default);",
+  "5632503b9a9a7a83d0518ff98b8065264f88635407edc747e105ce0fe44a1b8b": {
+    "query": "DELETE FROM dns_record WHERE domain_id = $1 AND name = $2;",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
           "Bytea",
-          "Varchar"
+          "Text"
         ]
       },
       "nullable": []
@@ -2649,6 +2665,22 @@
         false,
         true
       ]
+    }
+  },
+  "602b502e65023376675ebb2fedc8a141a575aac135456196ccdc19e73cffe3a6": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, default, $3, default, default, default, $4, default, $5) ON CONFLICT (domain_id, name) DO UPDATE SET aaaa_record = $3 || EXCLUDED.aaaa_record;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "TextArray",
+          "Int4",
+          "Bool"
+        ]
+      },
+      "nullable": []
     }
   },
   "60ded43e4f51239958e87e35036ca9f048e2e21f33ef38db720f3edc9c1be38d": {
@@ -3403,6 +3435,21 @@
       "nullable": []
     }
   },
+  "7c9c4df9741ddfc6418cdb5a13b284ee5f121defb0b984a3a341f2c51a07f475": {
+    "query": "INSERT INTO entry_point VALUES ($1, $2, $3, $4);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Varchar",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "7d4f82ad1a647d0bcb90321774d7e4261578091c7822d00cef3ec66a8a4f0174": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id_resource_type_id ON role_permissions_resource_type (role_id, resource_type_id);",
     "describe": {
@@ -3928,6 +3975,22 @@
       "nullable": []
     }
   },
+  "9496d69b5de565db5d01a705336eea6251c7ac237fd75503bf2aa05b9d740947": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, default, default, default, $3, default, $4, default, $5) ON CONFLICT (domain_id, name) DO UPDATE SET cname_record = $3;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "Text",
+          "Int4",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
     "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
     "describe": {
@@ -4099,6 +4162,23 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "9bcfa97854ced178f47c8c40cdafa1dcabeea5b746cd680617889d27363a4c4d": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, default, default, $3, default, default, $4, $5, $6) ON CONFLICT (domain_id, name) DO UPDATE SET mx_record = $3 || EXCLUDED.mx_record;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "TextArray",
+          "Int4",
+          "Int4",
+          "Bool"
+        ]
       },
       "nullable": []
     }
@@ -4769,6 +4849,44 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "ace27ff9c95119a95ecf552de95310bae9e7bee833336587185f7f7cceef9d0d": {
+    "query": "SELECT * FROM entry_point WHERE deployment_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "sub_domain",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "path",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "deployment_id",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "ad30e9730afeef0abc70df130392faa83d081a0ec35c52cf724a6e8700811443": {
@@ -5748,6 +5866,22 @@
       ]
     }
   },
+  "d1e96298b199bbc9d71d4e846b75a8468424fab353c15165c42fcc54fc9e1ee1": {
+    "query": "INSERT INTO dns_record VALUES ($1, $2, default, default, $3, default, default, $4, default, $5) ON CONFLICT (domain_id, name) DO UPDATE SET text_record = $3 || EXCLUDED.text_record;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea",
+          "Varchar",
+          "TextArray",
+          "Int4",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "d24f3405713812e5f3a56f723fbeba72c6898abf46b150e1f3b7bf3e424a1d87": {
     "query": "CREATE TABLE resource_type( id BYTEA CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
@@ -5990,16 +6124,6 @@
       "nullable": []
     }
   },
-  "dcb82581d97dce6d63c44eb15858a0bbd71bdc6b6c79d09b938083ed3cc192e5": {
-    "query": "CREATE TABLE entry_point ( domain_id BYTEA NOT NULL REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL DEFAULT '/', is_verified BOOLEAN NOT NULL DEFAULT TRUE, path VARCHAR(255) NOT NULL, deployment_id BYTEA NOT NULL, CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain), CONSTRAINT entry_point_chk_verified CHECK(is_verified = TRUE) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "dcf5652abc4e53233d42ab139f2e3e3847b57af9ead655be2471f51c8e1f780e": {
     "query": "INSERT INTO managed_database VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, 'creating', $9, $10, $11, $12, $13, NULL );",
     "describe": {
@@ -6175,6 +6299,16 @@
         false,
         false
       ]
+    }
+  },
+  "e1c56b679ec3b9faa91add689918fe6f289c3740bf97d78454722a0fd70601fc": {
+    "query": "CREATE TABLE entry_point ( domain_id BYTEA NOT NULL REFERENCES domain(id), sub_domain VARCHAR(255) NOT NULL DEFAULT '/', path VARCHAR(255) NOT NULL, deployment_id BYTEA NOT NULL, CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {

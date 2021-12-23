@@ -1,6 +1,7 @@
 use crate::{
 	models::db_mapping::{
 		Deployment,
+		DeploymentEntryPoint,
 		DeploymentMachineType,
 		DeploymentRequestMethod,
 		DeploymentRequestProtocol,
@@ -1118,4 +1119,24 @@ pub async fn add_entry_point(
 	.execute(&mut *connection)
 	.await?;
 	Ok(())
+}
+
+pub async fn get_entry_point_by_deployment_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &[u8],
+) -> Result<Option<DeploymentEntryPoint>, sqlx::Error> {
+	query_as!(
+		DeploymentEntryPoint,
+		r#"
+		SELECT
+			*
+		FROM
+			entry_point
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id,
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }

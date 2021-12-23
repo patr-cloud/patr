@@ -327,3 +327,11 @@ pub struct IpResponse {
 	pub lat: f64,
 	pub lon: f64,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DeploymentEntryPoint {
+	pub domain_id: Vec<u8>,
+	pub sub_domain: String,
+	pub path: String,
+	pub deployment_id: Vec<u8>,
+}
