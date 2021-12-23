@@ -51,27 +51,27 @@ pub mod permissions {
 			#[allow(dead_code)]
 			pub mod upgrade_path {
 				pub const LIST: &str =
-					"workspace::infrastructure::deployment::upgradePath::list";
+					"workspace::infrastructure::upgradePath::list";
 				pub const CREATE: &str =
-					"workspace::infrastructure::deployment::upgradePath::create";
+					"workspace::infrastructure::upgradePath::create";
 				pub const INFO: &str =
-					"workspace::infrastructure::deployment::upgradePath::info";
+					"workspace::infrastructure::upgradePath::info";
 				pub const DELETE: &str =
-					"workspace::infrastructure::deployment::upgradePath::delete";
+					"workspace::infrastructure::upgradePath::delete";
 				pub const EDIT: &str =
-					"workspace::infrastructure::deployment::upgradePath::edit";
+					"workspace::infrastructure::upgradePath::edit";
 			}
 
 			#[allow(dead_code)]
 			pub mod entry_point {
 				pub const LIST: &str =
-					"workspace::infrastructure::deployment::entryPoint::list";
+					"workspace::infrastructure::entryPoint::list";
 				pub const CREATE: &str =
-					"workspace::infrastructure::deployment::entryPoint::create";
+					"workspace::infrastructure::entryPoint::create";
 				pub const EDIT: &str =
-					"workspace::infrastructure::deployment::entryPoint::edit";
+					"workspace::infrastructure::entryPoint::edit";
 				pub const DELETE: &str =
-					"workspace::infrastructure::deployment::entryPoint::delete";
+					"workspace::infrastructure::entryPoint::delete";
 			}
 
 			pub mod managed_database {
