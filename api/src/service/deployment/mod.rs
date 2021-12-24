@@ -2,6 +2,7 @@ mod aws;
 #[allow(clippy::module_inception)]
 mod deployment;
 mod digitalocean;
+mod kubernetes;
 mod managed_database;
 mod static_site;
 
@@ -416,19 +417,4 @@ async fn get_location_from_ip_address(
 			.body(error!(SERVER_ERROR).to_string()));
 	}
 	Ok((response.lat, response.lon))
-}
-
-async fn update_static_site_status(
-	static_site_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), Error> {
-	let app = service::get_app();
-	db::update_static_site_status(
-		app.database.acquire().await?.deref_mut(),
-		static_site_id,
-		status,
-	)
-	.await?;
-
-	Ok(())
 }
