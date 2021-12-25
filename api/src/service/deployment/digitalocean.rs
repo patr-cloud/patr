@@ -1,4 +1,4 @@
-use std::{ops::DerefMut, process::Stdio, str, time::Duration};
+use std::{process::Stdio, str, time::Duration};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
@@ -18,7 +18,6 @@ use crate::{
 			ManagedDatabaseStatus,
 		},
 		deployment::cloud_providers::digitalocean::{
-			AppHolder,
 			Auth,
 			DatabaseConfig,
 			DatabaseResponse,
@@ -185,7 +184,7 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 
 pub async fn push_to_docr(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	full_image_name: &str,
 	client: Client,
 	config: &Settings,
