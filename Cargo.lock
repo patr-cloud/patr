@@ -89,6 +89,7 @@ dependencies = [
  "futures",
  "handlebars 4.1.6",
  "hex",
+ "http",
  "jsonwebtoken",
  "k8s-openapi",
  "kube",

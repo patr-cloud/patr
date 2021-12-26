@@ -71,7 +71,11 @@ pub async fn update_static_site(
 		},
 		spec: Some(ServiceSpec {
 			type_: Some("ExternalName".to_string()),
-			external_name: Some(config.s3.endpoint.to_string()),
+			external_name: Some(format!(
+				"{}.{}",
+				config.s3.bucket,
+				config.s3.endpoint.to_string()
+			)),
 			ports: Some(vec![ServicePort {
 				port: 80,
 				target_port: Some(IntOrString::Int(80)),
@@ -104,22 +108,15 @@ pub async fn update_static_site(
 	);
 	annotations.insert(
 		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-		config.s3.endpoint.to_string(),
+		format!("{}.{}", config.s3.bucket, config.s3.endpoint.to_string()),
 	);
 	annotations.insert(
 		"cert-manager.io/issuer".to_string(),
 		"letsencrypt-prod".to_string(),
 	);
 	annotations.insert(
-		"nginx.kubernetes.io/proxy-set-header".to_string(),
-		format!("Authorization: AWS {}:{}", config.s3.key, config.s3.secret),
-	);
-	annotations.insert(
 		"nginx.ingress.kubernetes.io/rewrite-target".to_string(),
-		format!(
-			"{}/{}/index.html",
-			config.s3.bucket, static_site_id_string
-		),
+		format!("{}/index.html", static_site_id_string),
 	);
 	annotations.insert(
 		"nginx.ingress.kubernetes.io/use-regex".to_string(),
@@ -155,10 +152,7 @@ pub async fn update_static_site(
 							}),
 							..IngressBackend::default()
 						},
-						path: Some(format!(
-							"{}/{}/index.html",
-							config.s3.bucket, static_site_id_string
-						)),
+						path: Some("/".to_string()),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -180,10 +174,7 @@ pub async fn update_static_site(
 							}),
 							..IngressBackend::default()
 						},
-						path: Some(format!(
-							"{}/{}/index.html",
-							config.s3.bucket, static_site_id_string
-						)),
+						path: Some("/".to_string()),
 						path_type: Some("Prefix".to_string()),
 					}],
 				}),
@@ -204,10 +195,7 @@ pub async fn update_static_site(
 						}),
 						..IngressBackend::default()
 					},
-					path: Some(format!(
-						"{}/{}/index.html",
-						config.s3.bucket, static_site_id_string
-					)),
+					path: Some("/".to_string()),
 					path_type: Some("Prefix".to_string()),
 				}],
 			}),

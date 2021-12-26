@@ -1,39 +1,34 @@
-use std::{
-	io::{Cursor, Read},
-	ops::DerefMut,
-	time::Duration,
-};
+use std::{io::Cursor, net::Ipv4Addr, time::Duration};
 
 use async_zip::read::seek::ZipFileReader;
+use aws_config::RetryConfig;
+use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
+use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
 use cloudflare::{
 	endpoints::{
 		dns::{
-			DeleteDnsRecord,
-			DnsContent,
-			ListDnsRecords,
-			ListDnsRecordsParams,
+			CreateDnsRecord, CreateDnsRecordParams, DeleteDnsRecord,
+			DnsContent, ListDnsRecords, ListDnsRecordsParams, UpdateDnsRecord,
+			UpdateDnsRecordParams,
 		},
 		zone::{ListZones, ListZonesParams},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
 		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
+		Environment, HttpApiClientConfig,
 	},
 };
 use eve_rs::AsError;
+use http::Uri;
 use openssh::{KnownHosts, SessionBuilder};
-use s3::creds;
-use tokio::{io::AsyncWriteExt, task, time};
+use tokio::{io::AsyncWriteExt, time};
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::{CNameRecord, DeploymentStatus},
-		deployment::cloud_providers::digitalocean::Storage,
 		rbac,
 	},
 	service::{
@@ -63,8 +58,8 @@ pub async fn create_static_site_deployment_in_workspace(
 			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
 		// If the entry point is not valid, OR if (the domain is special and the
 		// user is not god user)
-		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			(validator::is_domain_special(domain_name) && !is_god_user)
+		if !validator::is_deployment_entry_point_valid(domain_name)
+			|| (validator::is_domain_special(domain_name) && !is_god_user)
 		{
 			return Err(Error::empty()
 				.status(400)
@@ -119,12 +114,26 @@ pub async fn start_static_site_deployment(
 	config: &Settings,
 	file: Option<&str>,
 ) -> Result<(), Error> {
+	let _ = db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
 		hex::encode(&static_site_id),
 		request_id
 	);
+
+	log::trace!("Updating DNS records");
+	add_a_record(
+		&hex::encode(static_site_id),
+		Ipv4Addr::new(139, 59, 49, 156),
+		config,
+		false,
+	)
+	.await?;
+	log::trace!("DNS records updated");
 
 	if let Some(file) = file {
 		log::trace!(
@@ -135,7 +144,7 @@ pub async fn start_static_site_deployment(
 			file,
 			&hex::encode(&static_site_id),
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 	}
@@ -145,28 +154,28 @@ pub async fn start_static_site_deployment(
 		"request_id: {} - getting static site data from db",
 		request_id
 	);
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let config = config.clone();
 
-	deploy_static_site(
-		connection,
-		&static_site_id,
-		static_site.domain_name.as_deref(),
-		&config,
-		request_id,
-	)
-	.await?;
+	let result =
+		deploy_static_site(connection, static_site_id, &config, request_id)
+			.await;
 
-	db::update_static_site_status(
-		connection,
-		static_site_id,
-		&DeploymentStatus::Errored,
-	)
-	.await?;
+	match result {
+		Ok(()) => {}
+		Err(e) => {
+			db::update_static_site_status(
+				connection,
+				static_site_id,
+				&DeploymentStatus::Errored,
+			)
+			.await?;
+			log::error!(
+				"Error occured during deployment of static site: {}",
+				e.get_error()
+			);
+		}
+	}
 	Ok(())
 }
 
@@ -753,7 +762,7 @@ pub async fn upload_files_for_static_site(
 		file,
 		&hex::encode(&static_site_id),
 		config,
-		request_id,
+		&request_id,
 	)
 	.await?;
 
@@ -903,29 +912,15 @@ async fn upload_static_site_files_to_s3(
 	file: &str,
 	static_site_id_string: &str,
 	config: &Settings,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let file_data = base64::decode(file)?;
 	log::trace!(
 		"request_id: {} - logging into the s3 for uploading static site files",
 		request_id
 	);
-	// let session = SessionBuilder::default()
-	// 	.user(config.ssh.username.clone())
-	// 	.port(config.ssh.port)
-	// 	.keyfile(&config.ssh.key_file)
-	// 	.known_hosts_check(KnownHosts::Add)
-	// 	.connect(&config.ssh.host)
-	// 	.await?;
-	// log::trace!(
-	// 	"request_id: {} - successfully logged into the server",
-	// 	request_id
-	// );
-
-	// let aws_s3_client =
-	// 	get_s3_client(&config.digitalocean.region, config.clone())
-	// 		.await?;
-	// log::trace!("request_id: {} - got the s3 client", request_id);
+	let aws_s3_client = get_s3_client(config.clone()).await?;
+	log::trace!("request_id: {} - got the s3 client", request_id);
 
 	let mut file_data = Cursor::new(file_data);
 
@@ -948,71 +943,7 @@ async fn upload_static_site_files_to_s3(
 		request_id
 	);
 
-	let region: s3::Region = match config.s3.region.parse() {
-		Ok(region) => region,
-		Err(e) => {
-			log::error!(
-				"request_id: {} - error while parsing the region: {:#?}",
-				request_id,
-				e
-			);
-			return Err(Error::empty());
-		}
-	};
-
-	let credentials = match creds::Credentials::new(
-		Some(&config.s3.key),
-		Some(&config.s3.secret),
-		None,
-		None,
-		None,
-	) {
-		Ok(credentials) => credentials,
-		Err(e) => {
-			log::error!(
-				"request_id: {} - error while creating the credentials: {:#?}",
-				request_id,
-				e
-			);
-			return Err(Error::empty());
-		}
-	};
-
-	let storage_config = Storage {
-		name: "digitalocean".to_string(),
-		region,
-		credentials,
-		bucket: "patr-staging-storage".to_string(),
-		location_supported: true,
-	};
-
 	for i in 0..archive.entries().len() {
-		// let mut cloned_archive = archive.clone();
-		// let cloned_archive = cloned_archive.by_index(i)?;
-
-		// let file = archive.by_index(i)?;
-
-		// // Ensure the file path is safe to use as a Path.
-		// // It can't contain NULL bytes
-		// // It can't resolve to a path outside the current directory
-		// // foo/../bar is fine, foo/../../bar is not.
-		// // It can't be an absolute path
-		// // This will read well-formed ZIP files correctly, and is resistant
-		// to // path-based exploits. It is recommended over
-		// ZipFile::mangled_name let file_name = cloned_archive
-		// 	.enclosed_name()
-		// 	.status(500)
-		// 	.body(error!(SERVER_ERROR).to_string())?
-		// 	.to_str()
-		// 	.status(500)
-		// 	.body(error!(SERVER_ERROR).to_string())?;
-		// let mut file_bytes = file.bytes();
-		// let mut file_vec = Vec::new();
-
-		// while let Some(file_bytes) = file_bytes.next() {
-		// 	file_vec.push(file_bytes?);
-		// }
-
 		let file_info = match archive.entry_reader(i).await {
 			Ok(file_info) => file_info,
 			Err(e) => {
@@ -1038,139 +969,300 @@ async fn upload_static_site_files_to_s3(
 				return Err(Error::empty());
 			}
 		};
-		log::trace!("request_id: {} - file_name: {}", request_id, file_name);
+		log::trace!(
+			"request_id: {} - file_name: {}/{}",
+			request_id,
+			static_site_id_string,
+			file_name
+		);
 		// TODO: change file_name to file.enclosed_name()
-		// let upload = aws_s3_client
-		// 	.put_object()
-		// 	.set_key(Some(format!("{}/{}", static_site_id_string, &file_name)))
-		// 	.set_body(Some(file_info.into()))
-		// 	.set_acl(input)
-		// 	.send()
-		// 	.await?;
-		let bucket = match s3::Bucket::new(
-			&storage_config.bucket,
-			storage_config.region.clone(),
-			storage_config.credentials.clone(),
-		) {
-			Ok(bucket) => bucket,
-			Err(e) => {
-				log::error!(
-					"request_id: {} - error while creating the bucket: {:#?}",
-					request_id,
-					e
-				);
-				return Err(Error::empty());
-			}
-		};
-
-		let (_, code) = match bucket
-			.put_object(
-				&format!("{}/{}", static_site_id_string, &file_name),
-				&file_info,
-			)
-			.await
-		{
-			Ok(upload) => upload,
-			Err(e) => {
-				log::error!(
-					"request_id: {} - error while uploading the file: {:#?}",
-					request_id,
-					e
-				);
-				return Err(Error::empty());
-			}
-		};
-		if code == 200 {
-			log::trace!(
-				"request_id: {} - file successfully uploaded",
-				request_id
-			);
-		} else {
-			log::error!(
-				"request_id: {} - error while uploading the file",
-				request_id
-			);
-			return Err(Error::empty());
-		}
+		let _ = aws_s3_client
+			.put_object()
+			.bucket(config.s3.bucket.clone())
+			.key(format!("{}/{}", static_site_id_string, file_name))
+			.body(file_info.into())
+			.acl(ObjectCannedAcl::PublicRead)
+			.send()
+			.await?;
 	}
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
-	// let mut sftp = session.sftp();
-	// let mut zip_file = sftp
-	// 	.write_to(format!(
-	// 		"/home/web/static-sites/{}.zip",
-	// 		static_site_id_string
-	// 	))
-	// 	.await?;
-
-	// zip_file.write_all(&file_data).await?;
-	// zip_file.close().await?;
-	// drop(sftp);
-	// log::trace!(
-	// 	"request_id: {} - creating directory for static sites",
-	// 	request_id
-	// );
-
-	// //delete existing directory if present
-	// let delete_existing_directory_result = session
-	// 	.command("rm")
-	// 	.arg("-r")
-	// 	.arg("-f")
-	// 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
-	// 	.spawn()?
-	// 	.wait()
-	// 	.await?;
-
-	// if !delete_existing_directory_result.success() {
-	// 	return Err(Error::empty());
-	// }
-	// let create_directory_result = session
-	// 	.command("mkdir")
-	// 	.arg("-p")
-	// 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
-	// 	.spawn()?
-	// 	.wait()
-	// 	.await?;
-
-	// if !create_directory_result.success() {
-	// 	return Err(Error::empty());
-	// }
-	// log::trace!("request_id: {} - unzipping the file", request_id);
-	// let unzip_result = session
-	// 	.command("unzip")
-	// 	.arg("-o")
-	// 	.arg(format!(
-	// 		"/home/web/static-sites/{}.zip",
-	// 		static_site_id_string
-	// 	))
-	// 	.arg("-d")
-	// 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
-	// 	.status()
-	// 	.await?;
-
-	// if !unzip_result.success() {
-	// 	return Err(Error::empty());
-	// }
-	// log::trace!("request_id: {} - unzipping successful", request_id);
-	// log::trace!("request_id: {} - deleting the zip file", request_id);
-	// let delete_zip_file_result = session
-	// 	.command("rm")
-	// 	.arg("-r")
-	// 	.arg(format!(
-	// 		"/home/web/static-sites/{}.zip",
-	// 		static_site_id_string
-	// 	))
-	// 	.spawn()?
-	// 	.wait()
-	// 	.await?;
-
-	// if !delete_zip_file_result.success() {
-	// 	return Err(Error::empty());
-	// }
-	// session.close().await?;
-	// log::trace!("request_id: {} - session closed successfully", request_id);
 	Ok(())
 }
+
+// async fn upload_static_site_files_to_s3(
+// 	file: &str,
+// 	static_site_id_string: &str,
+// 	config: &Settings,
+// 	request_id: Uuid,
+// ) -> Result<(), Error> {
+// let file_data = base64::decode(file)?;
+// log::trace!(
+// 	"request_id: {} - logging into the s3 for uploading static site files",
+// 	request_id
+// );
+// let session = SessionBuilder::default()
+// 	.user(config.ssh.username.clone())
+// 	.port(config.ssh.port)
+// 	.keyfile(&config.ssh.key_file)
+// 	.known_hosts_check(KnownHosts::Add)
+// 	.connect(&config.ssh.host)
+// 	.await?;
+// log::trace!(
+// 	"request_id: {} - successfully logged into the server",
+// 	request_id
+// );
+
+// let aws_s3_client =
+// 	get_s3_client(&config.s3.region, config.clone())
+// 		.await?;
+// log::trace!("request_id: {} - got the s3 client", request_id);
+
+// 	let mut file_data = Cursor::new(file_data);
+
+// 	let archive = ZipFileReader::new(&mut file_data).await;
+
+// 	let mut archive = match archive {
+// 		Ok(archive) => archive,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while reading the archive: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+
+// 	log::trace!(
+// 		"request_id: {} - archive file successfully read",
+// 		request_id
+// 	);
+
+// 	let region: s3::Region = match config.s3.region.parse() {
+// 		Ok(region) => region,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while parsing the region: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+
+// 	let credentials = match creds::Credentials::new(
+// 		Some(&config.s3.key),
+// 		Some(&config.s3.secret),
+// 		None,
+// 		None,
+// 		None,
+// 	) {
+// 		Ok(credentials) => credentials,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while creating the credentials: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+
+// 	let storage_config = Storage {
+// 		name: "digitalocean".to_string(),
+// 		region,
+// 		credentials,
+// 		bucket: "patr-staging-storage".to_string(),
+// 		location_supported: true,
+// 	};
+
+// for i in 0..archive.entries().len() {
+// 	// let mut cloned_archive = archive.clone();
+// 	// let cloned_archive = cloned_archive.by_index(i)?;
+
+// 	// let file = archive.by_index(i)?;
+
+// 	// // Ensure the file path is safe to use as a Path.
+// 	// // It can't contain NULL bytes
+// 	// // It can't resolve to a path outside the current directory
+// 	// // foo/../bar is fine, foo/../../bar is not.
+// 	// // It can't be an absolute path
+// 	// // This will read well-formed ZIP files correctly, and is resistant
+// 	// to // path-based exploits. It is recommended over
+// 	// ZipFile::mangled_name let file_name = cloned_archive
+// 	// 	.enclosed_name()
+// 	// 	.status(500)
+// 	// 	.body(error!(SERVER_ERROR).to_string())?
+// 	// 	.to_str()
+// 	// 	.status(500)
+// 	// 	.body(error!(SERVER_ERROR).to_string())?;
+// 	// let mut file_bytes = file.bytes();
+// 	// let mut file_vec = Vec::new();
+
+// 	// while let Some(file_bytes) = file_bytes.next() {
+// 	// 	file_vec.push(file_bytes?);
+// 	// }
+
+// 	let file_info = match archive.entry_reader(i).await {
+// 		Ok(file_info) => file_info,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while reading the archive: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+
+// 	let file_name = file_info.entry().name().to_string();
+
+// 	let file_info = match file_info.read_to_end_crc().await {
+// 		Ok(file_info) => file_info,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while reading the archive: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+// 	log::trace!("request_id: {} - file_name: {}", request_id, file_name);
+// 	// TODO: change file_name to file.enclosed_name()
+// 	// let upload = aws_s3_client
+// 	// 	.put_object()
+// 	// 	.set_key(Some(format!("{}/{}", static_site_id_string, &file_name)))
+// 	// 	.set_body(Some(file_info.into()))
+// 	// 	.set_acl(input)
+// 	// 	.send()
+// 	// 	.await?;
+// 	let bucket = match s3::Bucket::new(
+// 		&storage_config.bucket,
+// 		storage_config.region.clone(),
+// 		storage_config.credentials.clone(),
+// 	) {
+// 		Ok(bucket) => bucket,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while creating the bucket: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+
+// 	let (_, code) = match bucket
+
+// 		.put_object(
+// 			&format!("{}/{}", static_site_id_string, &file_name),
+// 			&file_info,
+// 		)
+// 		.await
+// 	{
+// 		Ok(upload) => upload,
+// 		Err(e) => {
+// 			log::error!(
+// 				"request_id: {} - error while uploading the file: {:#?}",
+// 				request_id,
+// 				e
+// 			);
+// 			return Err(Error::empty());
+// 		}
+// 	};
+// 	if code == 200 {
+// 		log::trace!(
+// 			"request_id: {} - file successfully uploaded",
+// 			request_id
+// 		);
+// 	} else {
+// 		log::error!(
+// 			"request_id: {} - error while uploading the file",
+// 			request_id
+// 		);
+// 		return Err(Error::empty());
+// 	}
+// }
+// log::trace!("request_id: {} - uploaded the files to s3", request_id);
+
+// // let mut sftp = session.sftp();
+// // let mut zip_file = sftp
+// // 	.write_to(format!(
+// // 		"/home/web/static-sites/{}.zip",
+// // 		static_site_id_string
+// // 	))
+// // 	.await?;
+
+// // zip_file.write_all(&file_data).await?;
+// // zip_file.close().await?;
+// // drop(sftp);
+// // log::trace!(
+// // 	"request_id: {} - creating directory for static sites",
+// // 	request_id
+// // );
+
+// // //delete existing directory if present
+// // let delete_existing_directory_result = session
+// // 	.command("rm")
+// // 	.arg("-r")
+// // 	.arg("-f")
+// // 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
+// // 	.spawn()?
+// // 	.wait()
+// // 	.await?;
+
+// // if !delete_existing_directory_result.success() {
+// // 	return Err(Error::empty());
+// // }
+// // let create_directory_result = session
+// // 	.command("mkdir")
+// // 	.arg("-p")
+// // 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
+// // 	.spawn()?
+// // 	.wait()
+// // 	.await?;
+
+// // if !create_directory_result.success() {
+// // 	return Err(Error::empty());
+// // }
+// // log::trace!("request_id: {} - unzipping the file", request_id);
+// // let unzip_result = session
+// // 	.command("unzip")
+// // 	.arg("-o")
+// // 	.arg(format!(
+// // 		"/home/web/static-sites/{}.zip",
+// // 		static_site_id_string
+// // 	))
+// // 	.arg("-d")
+// // 	.arg(format!("/home/web/static-sites/{}/", static_site_id_string))
+// // 	.status()
+// // 	.await?;
+
+// // if !unzip_result.success() {
+// // 	return Err(Error::empty());
+// // }
+// // log::trace!("request_id: {} - unzipping successful", request_id);
+// // log::trace!("request_id: {} - deleting the zip file", request_id);
+// // let delete_zip_file_result = session
+// // 	.command("rm")
+// // 	.arg("-r")
+// // 	.arg(format!(
+// // 		"/home/web/static-sites/{}.zip",
+// // 		static_site_id_string
+// // 	))
+// // 	.spawn()?
+// // 	.wait()
+// // 	.await?;
+
+// // if !delete_zip_file_result.success() {
+// // 	return Err(Error::empty());
+// // }
+// // session.close().await?;
+// // log::trace!("request_id: {} - session closed successfully", request_id);
+// 	Ok(())
+// }
 
 async fn update_nginx_for_static_site_with_http(
 	domain: &str,
@@ -1246,28 +1338,9 @@ server {{
 async fn deploy_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &[u8],
-	custom_domain: Option<&str>,
 	config: &Settings,
 	request_id: Uuid,
 ) -> Result<(), Error> {
-	// update DNS
-	log::trace!("request_id: {} - updating DNS", request_id);
-	// super::add_cname_record(
-	// 	&hex::encode(static_site_id),
-	// 	&config.ssh.host_name,
-	// 	config,
-	// 	false,
-	// )
-	// .await?;
-	// log::trace!("request_id: {} - DNS Updated", request_id);
-
-	// update_nginx_with_all_domains_for_static_site(
-	// 	&hex::encode(static_site_id),
-	// 	custom_domain,
-	// 	config,
-	// 	request_id,
-	// )
-	// .await?;
 	kubernetes::update_static_site(connection, static_site_id, config).await?;
 	log::trace!("request_id: {} - updating database status", request_id);
 	db::update_static_site_status(
@@ -1368,7 +1441,7 @@ server {{
 	Ok(())
 }
 
-async fn update_nginx_with_all_domains_for_static_site(
+async fn _update_nginx_with_all_domains_for_static_site(
 	static_id_string: &str,
 	custom_domain: Option<&str>,
 	config: &Settings,
@@ -1468,44 +1541,38 @@ async fn update_nginx_with_all_domains_for_static_site(
 	Ok(())
 }
 
-async fn update_static_site_status(
-	static_site_id: &[u8],
-	status: &DeploymentStatus,
-) -> Result<(), sqlx::Error> {
-	let app = service::get_app();
-
-	db::update_static_site_status(
-		app.database.acquire().await?.deref_mut(),
-		static_site_id,
-		status,
+async fn get_s3_client(config: Settings) -> Result<aws_sdk_s3::Client, Error> {
+	let s3_region = Region::new(config.s3.region.to_string());
+	let s3_creds = aws_types::Credentials::from_keys(
+		config.s3.key.to_string(),
+		config.s3.secret.to_string(),
+		None,
 	)
+	.provide_credentials()
 	.await?;
 
-	Ok(())
+	let s3_creds = SharedCredentialsProvider::new(s3_creds);
+
+	// let s3_config = aws_types::config::Config::builder()
+	// 	.credentials_provider(s3_creds)
+	// 	.region(s3_region)
+	// 	.build();
+	let shared_config = aws_config::Config::builder()
+		.credentials_provider(s3_creds)
+		.region(s3_region)
+		.retry_config(RetryConfig::disabled())
+		.build();
+
+	let s3_endpoint =
+		format!("https://{}", config.s3.endpoint).parse::<Uri>()?;
+
+	let s3_config = aws_sdk_s3::config::Builder::from(&shared_config)
+		.retry_config(RetryConfig::disabled())
+		.endpoint_resolver(Endpoint::immutable(s3_endpoint))
+		.build();
+
+	Ok(aws_sdk_s3::Client::from_conf(s3_config))
 }
-
-// async fn get_s3_client(
-// 	region: &str,
-// 	config: Settings,
-// ) -> Result<aws_sdk_s3::Client, Error> {
-// 	let s3_region = Region::new(config.digitalocean.spaces_region);
-// 	let s3_creds = aws_types::Credentials::from_keys(
-// 		&config.digitalocean.spaces_access_key,
-// 		&config.digitalocean.spaces_secret_key,
-// 		None,
-// 	)
-// 	.provide_credentials()
-// 	.await?;
-
-// 	let s3_creds = SharedCredentialsProvider::new(s3_creds);
-
-// 	let s3_config = aws_types::config::Config::builder()
-// 		.credentials_provider(s3_creds)
-// 		.region(s3_region)
-// 		.build();
-
-// 	Ok(aws_sdk_s3::Client::new(&s3_config))
-// }
 
 // fn create_my_credential_provider() -> CredentialsProvider {
 // 	let mut provider = StaticProvider::new();
@@ -1517,3 +1584,92 @@ async fn update_static_site_status(
 // 	);
 // 	provider
 // }
+
+async fn add_a_record(
+	sub_domain: &str,
+	target: Ipv4Addr,
+	config: &Settings,
+	proxied: bool,
+) -> Result<(), Error> {
+	let full_domain = if sub_domain.ends_with(".patr.cloud") {
+		sub_domain.to_string()
+	} else {
+		format!("{}.patr.cloud", sub_domain)
+	};
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	let zone_identifier = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				name: Some(String::from("patr.cloud")),
+				..Default::default()
+			},
+		})
+		.await?
+		.result
+		.into_iter()
+		.next()
+		.status(500)?
+		.id;
+	let zone_identifier = zone_identifier.as_str();
+	let expected_dns_record = DnsContent::A { content: target };
+	let response = client
+		.request(&ListDnsRecords {
+			zone_identifier,
+			params: ListDnsRecordsParams {
+				name: Some(full_domain.clone()),
+				..Default::default()
+			},
+		})
+		.await?;
+	let dns_record = response.result.into_iter().find(|record| {
+		if let DnsContent::A { .. } = record.content {
+			record.name == full_domain
+		} else {
+			false
+		}
+	});
+	if let Some(record) = dns_record {
+		if let DnsContent::A { content } = record.content {
+			if content != target {
+				client
+					.request(&UpdateDnsRecord {
+						zone_identifier,
+						identifier: record.id.as_str(),
+						params: UpdateDnsRecordParams {
+							content: expected_dns_record,
+							name: &full_domain,
+							proxied: Some(proxied),
+							ttl: Some(1),
+						},
+					})
+					.await?;
+			}
+		}
+	} else {
+		// Create
+		client
+			.request(&CreateDnsRecord {
+				zone_identifier,
+				params: CreateDnsRecordParams {
+					content: expected_dns_record,
+					name: sub_domain,
+					ttl: Some(1),
+					priority: None,
+					proxied: Some(proxied),
+				},
+			})
+			.await?;
+	}
+	Ok(())
+}
