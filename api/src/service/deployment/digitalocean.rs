@@ -193,16 +193,8 @@ pub async fn push_to_docr(
 	// upload the image to DOCR
 	// Update kubernetes
 
-	// log::trace!(
-	// 	"request_id: {} - Deploying deployment: {}",
-	// 	request_id,
-	// 	hex::encode(&deployment.id),
-	// );
-
-	// log::trace!(
-	// 	"request_id: {} - Pulling image from registry",
-	// 	request_id
-	// );
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Pulling image from registry", request_id);
 	service::pull_image_from_registry(full_image_name, config).await?;
 	// log::trace!("request_id: {} - Image pulled", request_id);
 
@@ -211,29 +203,21 @@ pub async fn push_to_docr(
 		"registry.digitalocean.com/{}/{}",
 		config.digitalocean.registry, deployment_id,
 	);
-	// log::trace!(
-	// 	"request_id: {} - Pushing to {}",
-	// 	request_id,
-	// 	new_repo_name
-	// );
+	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
 
 	// rename the docker image with the digital ocean registry url
 	service::tag_docker_image(full_image_name, &new_repo_name).await?;
-	// log::trace!("request_id: {} - Image tagged", request_id);
+	log::trace!("request_id: {} - Image tagged", request_id);
 
 	// Get login details from digital ocean registry and decode from
 	// base 64 to binary
 	let auth_token =
 		base64::decode(get_registry_auth_token(config, &client).await?)?;
-	// log::trace!("request_id: {} - Got auth token", request_id);
+	log::trace!("request_id: {} - Got auth token", request_id);
 
 	// Convert auth token from binary to utf8
 	let auth_token = str::from_utf8(&auth_token)?;
-	// log::trace!(
-	// 	"request_id: {} - Decoded auth token as {}",
-	// 	auth_token,
-	// 	request_id
-	// );
+	log::trace!("request_id: {} - Decoded auth token", request_id);
 
 	// get username and password from the auth token
 	let (username, password) = auth_token
@@ -254,15 +238,14 @@ pub async fn push_to_docr(
 		.spawn()?
 		.wait()
 		.await?;
-	// log::trace!("request_id: {} - Logged into DO registry",
-	// request_id);
+	log::trace!("request_id: {} - Logged into DO registry", request_id);
 
 	if !output.success() {
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
-	// log::trace!("request_id: {} - Login was success", request_id);
+	log::trace!("request_id: {} - Login was success", request_id);
 
 	// if the loggin in is successful the push the docker image to
 	// registry
@@ -274,11 +257,11 @@ pub async fn push_to_docr(
 		.spawn()?
 		.wait()
 		.await?;
-	// log::trace!(
-	// 	"request_id: {} - Pushing to DO to {}",
-	// 	request_id,
-	// 	new_repo_name,
-	// );
+	log::trace!(
+		"request_id: {} - Pushing to DO to {}",
+		request_id,
+		new_repo_name,
+	);
 
 	if !push_status.success() {
 		return Err(Error::empty()
@@ -293,7 +276,7 @@ pub async fn push_to_docr(
 	)
 	.await?;
 
-	// log::trace!("request_id: {} - Pushed to DO", request_id);
+	log::trace!("request_id: {} - Pushed to DO", request_id);
 	log::trace!("Deleting image tagged with registry.digitalocean.com");
 	let delete_result = super::delete_docker_image(&new_repo_name).await;
 	if let Err(delete_result) = delete_result {
@@ -305,7 +288,6 @@ pub async fn push_to_docr(
 	}
 
 	log::trace!("deleting the pulled image");
-
 	let delete_result = super::delete_docker_image(full_image_name).await;
 	if let Err(delete_result) = delete_result {
 		log::error!(

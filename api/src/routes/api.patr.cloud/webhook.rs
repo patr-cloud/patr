@@ -207,6 +207,7 @@ pub async fn notification_handler(
 			);
 
 			let _ = service::push_to_docr(
+				context.get_database_connection(),
 				&deployment.id,
 				&full_image_name,
 				Client::new(),
@@ -214,9 +215,18 @@ pub async fn notification_handler(
 			)
 			.await?;
 
+			let (deployment, workspace_id, full_image, running_details) =
+				service::get_full_deployment_config(
+					context.get_database_connection(),
+					&deployment.id,
+				)
+				.await?;
+
 			service::update_kubernetes_deployment(
-				context.get_database_connection(),
-				&deployment.id,
+				&workspace_id,
+				&deployment,
+				&full_image,
+				&running_details,
 				&config,
 			)
 			.await?;
