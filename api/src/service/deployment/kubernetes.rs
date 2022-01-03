@@ -32,6 +32,7 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 	Config,
+	Error as KubeError,
 };
 use uuid::Uuid;
 
@@ -110,10 +111,9 @@ pub async fn update_static_site(
 		format!("{}.patr.cloud", static_site_id_string),
 	);
 
-	// TODO convert this into config
 	annotations.insert(
 		"cert-manager.io/issuer".to_string(),
-		config.cert_issuer.clone(),
+		config.kubernetes.cert_issuer.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
 		host: Some(format!("{}.patr.cloud", static_site_id_string)),
@@ -226,20 +226,18 @@ pub async fn delete_static_site(
 			static_site_id_string
 		);
 
-		let _service_api =
-			Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
-				.delete(
-					&format!("service-{}", &static_site_id_string),
-					&DeleteParams::default(),
-				)
-				.await?;
-		let _ingress_api =
-			Api::<Ingress>::namespaced(kubernetes_client, namespace)
-				.delete(
-					&format!("ingress-{}", &static_site_id_string),
-					&DeleteParams::default(),
-				)
-				.await?;
+		Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
+			.delete(
+				&format!("service-{}", &static_site_id_string),
+				&DeleteParams::default(),
+			)
+			.await?;
+		Api::<Ingress>::namespaced(kubernetes_client, namespace)
+			.delete(
+				&format!("ingress-{}", &static_site_id_string),
+				&DeleteParams::default(),
+			)
+			.await?;
 		log::trace!(
 			"request_id: {} - deployment deleted successfully!",
 			request_id
@@ -385,15 +383,19 @@ async fn service_exists(
 	static_site_id: &[u8],
 	kubernetes_client: kube::Client,
 	namespace: &str,
-) -> Result<bool, Error> {
+) -> Result<bool, KubeError> {
 	let deployment_app =
 		Api::<Service>::namespaced(kubernetes_client, namespace)
 			.get(&format!("service-{}", &hex::encode(&static_site_id)))
 			.await;
-	if deployment_app.is_err() {
-		// TODO: catch the not found error here
-		return Ok(false);
+	if let Err(KubeError::Api(error)) = deployment_app {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
 	}
+
 	Ok(true)
 }
 
@@ -401,13 +403,16 @@ async fn secret_exists(
 	secret_name: &str,
 	kubernetes_client: kube::Client,
 	namespace: &str,
-) -> Result<bool, Error> {
+) -> Result<bool, KubeError> {
 	let secret_app = Api::<Secret>::namespaced(kubernetes_client, namespace)
 		.get(secret_name)
 		.await;
-	if secret_app.is_err() {
-		// TODO: catch the not found error here
-		return Ok(false);
+	if let Err(KubeError::Api(error)) = secret_app {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
 	}
 	Ok(true)
 }

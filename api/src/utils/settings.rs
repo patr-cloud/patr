@@ -53,7 +53,6 @@ pub struct Settings {
 	pub base_path: String,
 	pub password_pepper: String,
 	pub jwt_secret: String,
-	pub cert_issuer: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,
@@ -199,6 +198,7 @@ pub struct KubernetesSettings {
 	pub auth_username: String,
 	pub auth_token: String,
 	pub context_name: String,
+	pub cert_issuer: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>

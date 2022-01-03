@@ -4,7 +4,6 @@
 	"basePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
-	"certIssuer": "letsencrypt-staging",
 	"s3": {
 		"endpoint": "s3.localhost",
 		"region": "sample-region",
@@ -74,5 +73,15 @@
 	"digitalocean": {
 		"apiKey": "key",
 		"registry": "test"
+	},
+	"kubernetes": {
+		"certificateAuthorityData": "",
+		"clusterName": "",
+		"clusterUrl": "",
+		"authName": "",
+		"authUsername": "",
+		"authToken": "",
+		"contextName": "",
+		"certIssuer": "letsencrypt-staging"
 	}
 }

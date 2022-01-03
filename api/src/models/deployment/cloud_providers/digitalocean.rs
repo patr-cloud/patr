@@ -1,4 +1,3 @@
-use s3::{creds::Credentials, Region};
 use serde::{Deserialize, Serialize};
 
 // TODO: create a enum or struct for
@@ -313,13 +312,4 @@ pub struct DatabaseNamewrapper {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Db {
 	pub name: String,
-}
-
-#[derive(Debug)]
-pub struct Storage {
-	pub name: String,
-	pub region: Region,
-	pub credentials: Credentials,
-	pub bucket: String,
-	pub location_supported: bool,
 }
