@@ -4,6 +4,7 @@
 	"basePath": "/",
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
+	"certIssuer": "letsencrypt-staging",
 	"s3": {
 		"endpoint": "s3.localhost",
 		"region": "sample-region",

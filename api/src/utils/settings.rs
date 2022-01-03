@@ -53,6 +53,7 @@ pub struct Settings {
 	pub base_path: String,
 	pub password_pepper: String,
 	pub jwt_secret: String,
+	pub cert_issuer: String,
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,
