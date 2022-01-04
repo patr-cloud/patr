@@ -7,22 +7,6 @@ pub async fn migrate(
 	// TODO migrate away all the data in the old tables before dropping them.
 	query!(
 		r#"
-		DROP TYPE DEPLOYMENT_REQUEST_METHOD;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TYPE DEPLOYMENT_REQUEST_PROTOCOL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		DROP TABLE data_center_locations;
 		"#
 	)
@@ -40,6 +24,22 @@ pub async fn migrate(
 	query!(
 		r#"
 		DROP TABLE deployment_request_logs;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_METHOD;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_PROTOCOL;
 		"#
 	)
 	.execute(&mut *connection)
