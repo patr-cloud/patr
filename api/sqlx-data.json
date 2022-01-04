@@ -2015,6 +2015,16 @@
       "nullable": []
     }
   },
+  "56fde19ad748a4ba11f9a82408acefdaa015d8b7aa0147a6e8fb92e81a4cf630": {
+    "query": "CREATE TABLE deployment_static_sites( id UUID CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -5640,16 +5650,6 @@
   },
   "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
     "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "e8807ef99f0b0473197235c2ddedb634ce4e97a65d2312dc905125e917ef4a92": {
-    "query": "CREATE TABLE deployment_static_sites( id UUID CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_sites_uq_id_domain_name UNIQUE(id, domain_name) );",
     "describe": {
       "columns": [],
       "parameters": {
