@@ -136,31 +136,6 @@ pub(super) async fn delete_database(
 	Ok(())
 }
 
-pub(super) async fn get_app_default_url(
-	deployment_id: &str,
-	region: &str,
-) -> Result<Option<String>, Error> {
-	let client = get_lightsail_client(region);
-	let default_url = client
-		.get_container_services()
-		.service_name(deployment_id)
-		.send()
-		.await
-		.ok()
-		.map(|services| {
-			services
-				.container_services
-				.map(|services| services.into_iter().next())
-				.flatten()
-		})
-		.flatten()
-		.map(|service| service.url)
-		.flatten()
-		.map(|url| url.replace("https://", "").replace("/", ""));
-
-	Ok(default_url)
-}
-
 async fn update_database_cluster_credentials(
 	database_id: Uuid,
 	region: String,

@@ -198,6 +198,7 @@ pub struct KubernetesSettings {
 	pub auth_username: String,
 	pub auth_token: String,
 	pub context_name: String,
+	pub cert_issuer: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>

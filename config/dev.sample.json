@@ -81,6 +81,7 @@
 		"authName": "",
 		"authUsername": "",
 		"authToken": "",
-		"contextName": ""
+		"contextName": "",
+		"certIssuer": "letsencrypt-staging"
 	}
 }

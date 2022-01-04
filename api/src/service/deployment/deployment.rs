@@ -57,7 +57,7 @@ pub async fn create_deployment_in_workspace(
 	max_horizontal_scale: u16,
 	ports: &BTreeMap<u16, ExposedPortType>,
 	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
-	urls: &[EntryPointMapping],
+	_urls: &[EntryPointMapping],
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -304,7 +304,7 @@ pub async fn update_deployment(
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	_urls: Option<&[EntryPointMapping]>,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), Error> {
 	db::update_deployment_details(
 		connection,
@@ -405,7 +405,7 @@ pub async fn get_full_deployment_config(
 
 	let full_image = match &deployment.registry {
 		DeploymentRegistry::PatrRegistry {
-			registry,
+			registry: _,
 			repository_id,
 		} => {
 			let repository =

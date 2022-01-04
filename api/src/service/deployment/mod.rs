@@ -8,10 +8,7 @@ mod static_site;
 
 use std::ops::DerefMut;
 
-use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
-};
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use futures::StreamExt;
 use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
@@ -152,21 +149,6 @@ async fn update_managed_database_credentials_for_database(
 		port,
 		username,
 		password,
-	)
-	.await?;
-
-	Ok(())
-}
-
-async fn update_static_site_status(
-	static_site_id: &Uuid,
-	status: &DeploymentStatus,
-) -> Result<(), Error> {
-	let app = service::get_app();
-	db::update_static_site_status(
-		app.database.acquire().await?.deref_mut(),
-		static_site_id,
-		status,
 	)
 	.await?;
 
