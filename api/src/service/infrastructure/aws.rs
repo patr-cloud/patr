@@ -12,7 +12,7 @@ use crate::{
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 	},
-	service::deployment::managed_database,
+	service::infrastructure::managed_database,
 	utils::{settings::Settings, Error},
 	Database,
 };

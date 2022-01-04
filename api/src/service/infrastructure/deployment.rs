@@ -19,7 +19,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	service::{self, deployment::kubernetes},
+	service::{self, infrastructure::kubernetes},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };

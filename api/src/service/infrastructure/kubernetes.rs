@@ -65,7 +65,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	service::{self, deployment::digitalocean},
+	service::{self, infrastructure::digitalocean},
 	utils::{
 		constants::{request_keys, ResourceOwnerType},
 		settings::Settings,

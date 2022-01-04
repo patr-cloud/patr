@@ -16,7 +16,7 @@ use crate::{
 	},
 	service::{
 		self,
-		deployment::{aws, digitalocean},
+		infrastructure::{aws, digitalocean},
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
