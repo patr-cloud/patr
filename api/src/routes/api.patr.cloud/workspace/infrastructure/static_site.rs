@@ -1,7 +1,21 @@
 use api_macros::closure_as_pinned_box;
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::static_site::{
+		CreateStaticSiteRequest,
+		CreateStaticSiteResponse,
+		DeleteStaticSiteResponse,
+		GetStaticSiteInfoResponse,
+		ListStaticSitesResponse,
+		StartStaticSiteResponse,
+		StaticSite,
+		StaticSiteDetails,
+		StopStaticSiteResponse,
+		UpdateStaticSiteRequest,
+		UpdateStaticSiteResponse,
+	},
+	utils::Uuid,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use serde_json::{json, Map, Value};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -320,24 +334,14 @@ async fn get_static_site_info(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let mut response = Map::new();
-
-	response.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
-
-	response.insert(
-		request_keys::STATIC_SITE_ID.to_string(),
-		Value::String(static_site.id.to_string()),
-	);
-	response.insert(
-		request_keys::NAME.to_string(),
-		Value::String(static_site.name),
-	);
-	response.insert(
-		request_keys::STATUS.to_string(),
-		Value::String(static_site.status.to_string()),
-	);
-
-	context.json(Value::Object(response));
+	context.success(GetStaticSiteInfoResponse {
+		static_site: StaticSite {
+			id: static_site.id,
+			name: static_site.name,
+			status: static_site.status,
+		},
+		static_site_details: StaticSiteDetails { urls: vec![] },
+	});
 	Ok(context)
 }
 
@@ -378,30 +382,14 @@ async fn list_static_sites(
 	)
 	.await?
 	.into_iter()
-	.map(|static_site| {
-		let mut map = Map::new();
-
-		map.insert(request_keys::SUCCESS.to_string(), Value::Bool(true));
-		map.insert(
-			request_keys::NAME.to_string(),
-			Value::String(static_site.name),
-		);
-		map.insert(
-			request_keys::STATIC_SITE_ID.to_string(),
-			Value::String(static_site.id.to_string()),
-		);
-		map.insert(
-			request_keys::STATUS.to_string(),
-			Value::String(static_site.status.to_string()),
-		);
-		Some(Value::Object(map))
+	.map(|static_site| StaticSite {
+		id: static_site.id,
+		name: static_site.name,
+		status: static_site.status,
 	})
 	.collect::<Vec<_>>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::STATIC_SITES: static_sites
-	}));
+	context.success(ListStaticSitesResponse { static_sites });
 	Ok(context)
 }
 
@@ -444,29 +432,20 @@ async fn create_static_site_deployment(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let body = context.get_body_object().clone();
-
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
+	let CreateStaticSiteRequest {
+		workspace_id: _,
+		name,
+		file,
+		static_site_details: StaticSiteDetails { urls },
+	} = context
+		.get_body_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.trim();
-
-	let file = body
-		.get(request_keys::STATIC_SITE_FILE)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let name = name.trim();
 
 	let config = context.get_state().config.clone();
 
-	let static_site_id = service::create_static_site_deployment_in_workspace(
+	let id = service::create_static_site_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
@@ -478,9 +457,9 @@ async fn create_static_site_deployment(
 
 	service::start_static_site_deployment(
 		context.get_database_connection(),
-		&static_site_id,
+		&id,
 		&config,
-		file,
+		file.as_deref(),
 		&request_id,
 	)
 	.await?;
@@ -491,11 +470,7 @@ async fn create_static_site_deployment(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::STATIC_SITE_ID: hex::encode(static_site_id.as_bytes())
-	}));
-
+	context.success(CreateStaticSiteResponse { id });
 	Ok(context)
 }
 
@@ -548,9 +523,7 @@ async fn start_static_site(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(StartStaticSiteResponse {});
 	Ok(context)
 }
 
@@ -596,29 +569,30 @@ async fn upload_files_for_static_site(
 		static_site_id,
 		request_id
 	);
-	let body = context.get_body_object().clone();
-
-	let file = body
-		.get(request_keys::STATIC_SITE_FILE)
-		.map(|value| value.as_str())
-		.flatten()
+	let UpdateStaticSiteRequest {
+		workspace_id: _,
+		static_site_id: _,
+		name,
+		file,
+		urls,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let name = name.map(|name| name.trim());
 
 	let config = context.get_state().config.clone();
 
 	service::upload_static_site_files_to_s3(
 		context.get_database_connection(),
-		file,
+		file.as_deref(),
 		&static_site_id,
 		&config,
 		&request_id,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(UpdateStaticSiteResponse {});
 	Ok(context)
 }
 
@@ -671,9 +645,7 @@ async fn stop_static_site(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(StopStaticSiteResponse {});
 	Ok(context)
 }
 
@@ -733,8 +705,6 @@ async fn delete_static_site(
 	)
 	.await;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.json(DeleteStaticSiteResponse {});
 	Ok(context)
 }
