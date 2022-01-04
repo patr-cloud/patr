@@ -3,6 +3,48 @@ use crate::{migrate_query as query, Database};
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
+	// Remove old tables.
+	// TODO migrate away all the data in the old tables before dropping them.
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_METHOD;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_PROTOCOL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TABLE data_center_locations;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TABLE deployed_domain;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TABLE deployment_request_logs;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
