@@ -1,19 +1,21 @@
 use api_macros::closure_as_pinned_box;
-use api_models::models::workspace::docker_registry::{
-	CreateDockerRepositoryRequest,
-	CreateDockerRepositoryResponse,
-	DeleteDockerRepositoryImageResponse,
-	DeleteDockerRepositoryResponse,
-	DockerRepository,
-	DockerRepositoryTagAndDigestInfo,
-	GetDockerRepositoryImageDetailsResponse,
-	GetDockerRepositoryInfoResponse,
-	GetDockerRepositoryTagDetailsResponse,
-	ListDockerRepositoriesResponse,
-	ListDockerRepositoryTagsResponse,
+use api_models::{
+	models::workspace::docker_registry::{
+		CreateDockerRepositoryRequest,
+		CreateDockerRepositoryResponse,
+		DeleteDockerRepositoryImageResponse,
+		DeleteDockerRepositoryResponse,
+		DockerRepository,
+		DockerRepositoryTagAndDigestInfo,
+		GetDockerRepositoryImageDetailsResponse,
+		GetDockerRepositoryInfoResponse,
+		GetDockerRepositoryTagDetailsResponse,
+		ListDockerRepositoriesResponse,
+		ListDockerRepositoryTagsResponse,
+	},
+	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -61,7 +63,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -93,7 +95,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -125,7 +127,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repository_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repository_id_string)
+					let repository_id = Uuid::parse_str(repository_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -157,7 +159,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -191,7 +193,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -223,7 +225,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -255,7 +257,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -289,7 +291,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let repo_id_string =
 						context.get_param(request_keys::REPOSITORY_ID).unwrap();
-					let repository_id = hex::decode(&repo_id_string)
+					let repository_id = Uuid::parse_str(repo_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -366,7 +368,7 @@ async fn create_docker_repository(
 
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
 	// check if repo name is valid
 	let is_repo_name_valid = validator::is_docker_repo_name_valid(&repository);
@@ -392,13 +394,12 @@ async fn create_docker_repository(
 	// split the repo name in 2 halves, and validate workspace, and repo name
 	let resource_id =
 		db::generate_new_resource_id(context.get_database_connection()).await?;
-	let resource_id = resource_id.as_bytes();
 
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
 	db::create_resource(
 		context.get_database_connection(),
-		resource_id,
+		&resource_id,
 		&repository,
 		rbac::RESOURCE_TYPES
 			.get()
@@ -411,15 +412,13 @@ async fn create_docker_repository(
 	.await?;
 	db::create_docker_repository(
 		context.get_database_connection(),
-		resource_id,
+		&resource_id,
 		&repository,
 		&workspace_id,
 	)
 	.await?;
 
-	context.success(CreateDockerRepositoryResponse {
-		id: Uuid::from_slice(&*resource_id)?,
-	});
+	context.success(CreateDockerRepositoryResponse { id: resource_id });
 	Ok(context)
 }
 
@@ -461,7 +460,7 @@ async fn list_docker_repositories(
 ) -> Result<EveContext, Error> {
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id_string).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
 	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
@@ -469,12 +468,10 @@ async fn list_docker_repositories(
 	)
 	.await?
 	.into_iter()
-	.filter_map(|(repository, size)| {
-		Some(DockerRepository {
-			id: Uuid::from_slice(&repository.id).ok()?,
-			name: repository.name,
-			size,
-		})
+	.map(|(repository, size)| DockerRepository {
+		id: repository.id,
+		name: repository.name,
+		size,
 	})
 	.collect::<Vec<_>>();
 
@@ -509,7 +506,7 @@ async fn get_docker_repository_info(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let repository = db::get_docker_repository_by_id(
 		context.get_database_connection(),
@@ -537,7 +534,7 @@ async fn get_docker_repository_info(
 
 	context.success(GetDockerRepositoryInfoResponse {
 		repository: DockerRepository {
-			id: Uuid::from_slice(&repository_id)?,
+			id: repository_id,
 			name: repository.name,
 			size,
 		},
@@ -575,7 +572,7 @@ async fn get_repository_image_details(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let digest = context.get_param(request_keys::DIGEST).unwrap().clone();
 
@@ -627,7 +624,7 @@ async fn get_list_of_repository_tags(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let tags = db::get_list_of_tags_for_docker_repository(
 		context.get_database_connection(),
@@ -673,7 +670,7 @@ async fn get_repository_tag_details(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let tag = context.get_param(request_keys::TAG).unwrap().clone();
 
@@ -728,7 +725,7 @@ async fn delete_docker_repository_image(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 	let digest = context.get_param(request_keys::DIGEST).unwrap().clone();
 	let config = context.get_state().config.clone();
 
@@ -780,7 +777,7 @@ async fn delete_docker_repository(
 ) -> Result<EveContext, Error> {
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
-	let repository_id = hex::decode(&repo_id_string).unwrap();
+	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
 	let config = context.get_state().config.clone();
 
 	let running_deployments = db::get_deployments_by_repository_id(

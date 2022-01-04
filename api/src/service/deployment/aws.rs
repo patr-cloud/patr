@@ -1,9 +1,9 @@
 use std::time::Duration;
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use tokio::{task, time};
-use uuid::Uuid;
 
 use crate::{
 	error,
@@ -19,7 +19,7 @@ use crate::{
 
 pub(super) async fn create_managed_database_cluster(
 	_connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	db_name: &str,
 	engine: &ManagedDatabaseEngine,
 	version: &str,
@@ -30,7 +30,7 @@ pub(super) async fn create_managed_database_cluster(
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} with request_id: {}",
-		hex::encode(&database_id),
+		database_id,
 		db_name,
 		request_id
 	);
@@ -62,12 +62,12 @@ pub(super) async fn create_managed_database_cluster(
 			}
 		))
 		.relational_database_bundle_id(database_plan.as_aws_plan()?)
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await?;
 	log::trace!("request_id: {} - database created", request_id);
 
-	let database_id = database_id.to_vec();
+	let database_id = database_id.clone();
 	let region = region.to_string();
 
 	task::spawn(async move {
@@ -97,12 +97,12 @@ pub(super) async fn create_managed_database_cluster(
 }
 
 pub(super) async fn delete_database(
-	database_id: &[u8],
+	database_id: &Uuid,
 	region: &str,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("Deleting managed database on Awl lightsail with digital_ocean_id: {} and request_id: {}",
-		hex::encode(database_id),
+		database_id,
 		request_id,
 	);
 
@@ -115,7 +115,7 @@ pub(super) async fn delete_database(
 	);
 	let database_cluster = client
 		.get_relational_database()
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await;
 
@@ -129,40 +129,15 @@ pub(super) async fn delete_database(
 	);
 	client
 		.delete_relational_database()
-		.relational_database_name(hex::encode(database_id))
+		.relational_database_name(database_id.as_str())
 		.send()
 		.await?;
 
 	Ok(())
 }
 
-pub(super) async fn get_app_default_url(
-	deployment_id: &str,
-	region: &str,
-) -> Result<Option<String>, Error> {
-	let client = get_lightsail_client(region);
-	let default_url = client
-		.get_container_services()
-		.service_name(deployment_id)
-		.send()
-		.await
-		.ok()
-		.map(|services| {
-			services
-				.container_services
-				.map(|services| services.into_iter().next())
-				.flatten()
-		})
-		.flatten()
-		.map(|service| service.url)
-		.flatten()
-		.map(|url| url.replace("https://", "").replace("/", ""));
-
-	Ok(default_url)
-}
-
 async fn update_database_cluster_credentials(
-	database_id: Vec<u8>,
+	database_id: Uuid,
 	region: String,
 	username: String,
 	password: String,
@@ -177,7 +152,7 @@ async fn update_database_cluster_credentials(
 	let (host, port) = loop {
 		let database = client
 			.get_relational_database()
-			.relational_database_name(hex::encode(&database_id))
+			.relational_database_name(database_id.as_str())
 			.send()
 			.await?
 			.relational_database
