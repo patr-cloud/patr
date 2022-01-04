@@ -1,12 +1,15 @@
 use std::{collections::BTreeMap, ops::DerefMut};
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		EnvironmentVariableValue,
-		ExposedPortType,
+	models::workspace::infrastructure::{
+		deployment::{
+			Deployment,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+			EnvironmentVariableValue,
+			ExposedPortType,
+		},
+		static_site::{StaticSite, StaticSiteDetails},
 	},
 	utils::Uuid,
 };
@@ -74,23 +77,17 @@ use crate::{
 	Database,
 };
 
-pub(super) async fn update_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	// TODO add workspace_id as namespace
-	static_site_id: &Uuid,
+pub(super) async fn update_kubernetes_static_site(
+	workspace_id: &Uuid,
+	static_site: &StaticSite,
+	static_site_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client = get_kubernetes_config(config).await?;
-	// TODO: remove this once DTO part is complete
-	let _ = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
 	// new name for the docker image
 
-	let namespace = "default";
+	let namespace = workspace_id.as_str();
 	log::trace!(
 		"request_id: {} - generating deployment configuration",
 		request_id
@@ -101,7 +98,7 @@ pub(super) async fn update_static_site(
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
-			name: Some(format!("service-{}", static_site_id)),
+			name: Some(format!("service-{}", static_site.id)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
@@ -123,8 +120,8 @@ pub(super) async fn update_static_site(
 		Api::namespaced(kubernetes_client.clone(), namespace);
 	service_api
 		.patch(
-			&format!("service-{}", static_site_id),
-			&PatchParams::apply(&format!("service-{}", static_site_id)),
+			&format!("service-{}", static_site.id),
+			&PatchParams::apply(&format!("service-{}", static_site.id)),
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?
@@ -139,7 +136,7 @@ pub(super) async fn update_static_site(
 	);
 	annotations.insert(
 		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-		format!("{}.patr.cloud", static_site_id),
+		format!("{}.patr.cloud", static_site.id),
 	);
 
 	annotations.insert(
@@ -147,12 +144,12 @@ pub(super) async fn update_static_site(
 		config.kubernetes.cert_issuer.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
-		host: Some(format!("{}.patr.cloud", static_site_id)),
+		host: Some(format!("{}.patr.cloud", static_site.id)),
 		http: Some(HTTPIngressRuleValue {
 			paths: vec![HTTPIngressPath {
 				backend: IngressBackend {
 					service: Some(IngressServiceBackend {
-						name: format!("service-{}", static_site_id),
+						name: format!("service-{}", static_site.id),
 						port: Some(ServiceBackendPort {
 							number: Some(80),
 							..ServiceBackendPort::default()
@@ -171,16 +168,16 @@ pub(super) async fn update_static_site(
 		request_id
 	);
 	let patr_domain_tls = vec![IngressTLS {
-		hosts: Some(vec![format!("{}.patr.cloud", static_site_id)]),
+		hosts: Some(vec![format!("{}.patr.cloud", static_site.id)]),
 		secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
 	}];
 	log::trace!(
 		"request_id: {} - creating https certificates for domain",
 		request_id
 	);
-	let kubernetes_ingress: Ingress = Ingress {
+	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
-			name: Some(format!("ingress-{}", static_site_id)),
+			name: Some(format!("ingress-{}", static_site.id)),
 			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
@@ -197,8 +194,8 @@ pub(super) async fn update_static_site(
 		Api::namespaced(kubernetes_client, namespace);
 	ingress_api
 		.patch(
-			&format!("ingress-{}", static_site_id),
-			&PatchParams::apply(&format!("ingress-{}", static_site_id)),
+			&format!("ingress-{}", static_site.id),
+			&PatchParams::apply(&format!("ingress-{}", static_site.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?
@@ -209,28 +206,20 @@ pub(super) async fn update_static_site(
 	log::trace!(
 		"request_id: {} - App ingress is at {}.patr.cloud",
 		request_id,
-		static_site_id
+		static_site.id
 	);
 	Ok(())
 }
 
 pub(super) async fn delete_static_site_from_k8s(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	// TODO add workspace_id as namespace
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client = get_kubernetes_config(config).await?;
 
-	let _ = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	// new name for the docker image
-
-	let namespace = "default";
+	let namespace = workspace_id.as_str();
 	log::trace!(
 		"request_id: {} - deleting service: service-{}",
 		request_id,

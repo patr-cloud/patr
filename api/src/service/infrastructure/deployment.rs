@@ -304,7 +304,6 @@ pub async fn update_deployment(
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	_urls: Option<&[EntryPointMapping]>,
-	_config: &Settings,
 ) -> Result<(), Error> {
 	db::update_deployment_details(
 		connection,
@@ -459,15 +458,4 @@ pub async fn get_full_deployment_config(
 			urls,
 		},
 	))
-}
-
-#[allow(dead_code)]
-async fn check_if_image_exists_in_registry(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-	_image_id: &str,
-) -> Result<bool, Error> {
-	// TODO: fill this function for checking if the user has pushed the image
-	// before making the deployment if the user has pushed the image then return
-	// true
-	Ok(false)
 }

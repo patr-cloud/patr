@@ -1,7 +1,10 @@
 use std::io::Cursor;
 
 use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
+	models::workspace::infrastructure::{
+		deployment::DeploymentStatus,
+		static_site::{StaticSite, StaticSiteDetails},
+	},
 	utils::Uuid,
 };
 use async_zip::read::seek::ZipFileReader;
@@ -85,10 +88,12 @@ pub async fn start_static_site_deployment(
 	file: Option<&str>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let _ = db::get_static_site_by_id(connection, static_site_id)
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let urls = vec![]; // TODO entry points
 
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
@@ -113,9 +118,14 @@ pub async fn start_static_site_deployment(
 
 	log::trace!("request_id: {} - starting the static site", request_id);
 
-	let result = kubernetes::update_static_site(
-		connection,
-		static_site_id,
+	let result = kubernetes::update_kubernetes_static_site(
+		&static_site.workspace_id,
+		&StaticSite {
+			id: static_site.id,
+			name: static_site.name,
+			status: DeploymentStatus::Deploying,
+		},
+		&StaticSiteDetails { urls },
 		config,
 		request_id,
 	)
@@ -158,13 +168,13 @@ pub async fn stop_static_site(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let _ = db::get_static_site_by_id(connection, static_site_id)
+	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	kubernetes::delete_static_site_from_k8s(
-		connection,
+		&static_site.workspace_id,
 		static_site_id,
 		config,
 		request_id,
@@ -198,7 +208,7 @@ pub async fn delete_static_site(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	kubernetes::delete_static_site_from_k8s(
-		connection,
+		&static_site.workspace_id,
 		static_site_id,
 		config,
 		request_id,

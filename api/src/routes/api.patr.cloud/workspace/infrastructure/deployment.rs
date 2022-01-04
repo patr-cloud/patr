@@ -909,7 +909,6 @@ async fn update_deployment(
 		ports.as_ref(),
 		environment_variables.as_ref(),
 		urls.as_deref(),
-		&config,
 	)
 	.await?;
 

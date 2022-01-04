@@ -1,5 +1,4 @@
 mod aws;
-#[allow(clippy::module_inception)]
 mod deployment;
 mod digitalocean;
 mod kubernetes;

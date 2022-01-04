@@ -687,14 +687,10 @@ pub async fn reset_password(
 	user_id: &Uuid,
 ) -> Result<(), Error> {
 	let reset_request =
-		db::get_password_reset_request_for_user(connection, user_id).await?;
-
-	if reset_request.is_none() {
-		Error::as_result()
+		db::get_password_reset_request_for_user(connection, user_id)
+			.await?
 			.status(400)
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
-	}
-	let reset_request = reset_request.unwrap();
 
 	// check password strength
 	if !validator::is_password_valid(new_password) {
