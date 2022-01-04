@@ -1,7 +1,7 @@
 use api_macros::closure_as_pinned_box;
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
-use uuid::Uuid;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -48,7 +48,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -81,7 +81,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -114,7 +114,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -147,7 +147,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -182,7 +182,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -214,7 +214,7 @@ pub fn create_sub_app(
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -249,7 +249,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -282,7 +282,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -317,7 +317,7 @@ pub fn create_sub_app(
 					let static_site_id_string = context
 						.get_param(request_keys::STATIC_SITE_ID)
 						.unwrap();
-					let static_site_id = hex::decode(&static_site_id_string)
+					let static_site_id = Uuid::parse_str(static_site_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -379,9 +379,10 @@ async fn get_static_site_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 	let static_site = db::get_static_site_by_id(
 		context.get_database_connection(),
 		&static_site_id,
@@ -396,7 +397,7 @@ async fn get_static_site_info(
 
 	response.insert(
 		request_keys::STATIC_SITE_ID.to_string(),
-		Value::String(hex::encode(static_site.id)),
+		Value::String(static_site.id.to_string()),
 	);
 	response.insert(
 		request_keys::NAME.to_string(),
@@ -446,7 +447,7 @@ async fn list_static_sites(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let static_sites = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
@@ -464,7 +465,7 @@ async fn list_static_sites(
 		);
 		map.insert(
 			request_keys::STATIC_SITE_ID.to_string(),
-			Value::String(hex::encode(static_site.id)),
+			Value::String(static_site.id.to_string()),
 		);
 		map.insert(
 			request_keys::STATUS.to_string(),
@@ -524,7 +525,7 @@ async fn create_static_site_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Creating a static site", request_id);
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 
@@ -575,7 +576,7 @@ async fn create_static_site_deployment(
 
 	service::start_static_site_deployment(
 		context.get_database_connection(),
-		static_site_id.as_bytes(),
+		&static_site_id,
 		&config,
 		file,
 		&request_id,
@@ -623,15 +624,16 @@ async fn start_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - Starting a static site with id: {}",
 		request_id,
-		hex::encode(&static_site_id)
+		static_site_id
 	);
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
@@ -682,13 +684,14 @@ async fn upload_files_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id,
 		request_id
 	);
 	let body = context.get_body_object().clone();
@@ -744,15 +747,16 @@ async fn stop_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - Stopping a static site with id: {}",
 		request_id,
-		hex::encode(&static_site_id)
+		static_site_id
 	);
 
 	// stop the running site, if it exists
@@ -800,14 +804,15 @@ async fn delete_static_site(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	log::trace!(
 		"request_id: {} - Deleting the static site with id: {}",
 		request_id,
-		hex::encode(&static_site_id)
+		static_site_id
 	);
 
 	// stop and delete the container running the image, if it exists
@@ -870,9 +875,10 @@ async fn get_domain_dns_records_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let config = context.get_state().config.clone();
 
@@ -883,10 +889,10 @@ async fn get_domain_dns_records_for_static_site(
 	)
 	.await?
 	.into_iter()
-	.map(|record| {
+	.map(|(cname, value)| {
 		json!({
-			request_keys::CNAME: record.cname,
-			request_keys::VALUE: record.value
+			request_keys::CNAME: cname,
+			request_keys::VALUE: value
 		})
 	})
 	.collect::<Vec<_>>();
@@ -936,9 +942,10 @@ async fn set_domain_name_for_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let static_site_id =
-		hex::decode(context.get_param(request_keys::STATIC_SITE_ID).unwrap())
-			.unwrap();
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
 
 	let body = context.get_body_object().clone();
 	let domain_name = body
@@ -953,7 +960,7 @@ async fn set_domain_name_for_static_site(
 		.filter(|domain_name| !domain_name.is_empty());
 
 	let user_id = &context.get_token_data().unwrap().user.id;
-	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+	let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
 
 	if let Some(domain_name) = domain_name {
 		if !validator::is_deployment_entry_point_valid(domain_name) ||

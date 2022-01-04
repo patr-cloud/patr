@@ -14,7 +14,7 @@ pub const APP_VERSION: &str = crate_version!();
 pub const APP_AUTHORS: &str = crate_authors!();
 pub const APP_ABOUT: &str = crate_description!();
 
-#[derive(sqlx::Type, Debug)]
+#[derive(sqlx::Type, Debug, PartialEq)]
 #[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
 pub enum ResourceOwnerType {
 	Personal,

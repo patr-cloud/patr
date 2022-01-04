@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
 
 pub async fn delete_docker_repository_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	digest: &str,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -47,12 +48,10 @@ pub async fn delete_docker_repository_image(
 	db::delete_docker_repository_image(connection, repository_id, digest)
 		.await?;
 
-	let god_user = db::get_user_by_user_id(
-		connection,
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
-	)
-	.await?
-	.unwrap();
+	let god_user =
+		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
+			.await?
+			.unwrap();
 
 	let iat = get_current_time().as_secs();
 
@@ -110,7 +109,7 @@ pub async fn delete_docker_repository_image(
 
 pub async fn delete_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let repository = db::get_docker_repository_by_id(connection, repository_id)
@@ -144,19 +143,17 @@ pub async fn delete_docker_repository(
 		&format!(
 			"patr-deleted: {}-{}",
 			repository.name,
-			hex::encode(&repository_id)
+			repository_id.as_str()
 		),
 	)
 	.await?;
 
 	let client = reqwest::Client::new();
 
-	let god_user = db::get_user_by_user_id(
-		connection,
-		rbac::GOD_USER_ID.get().unwrap().as_bytes(),
-	)
-	.await?
-	.unwrap();
+	let god_user =
+		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
+			.await?
+			.unwrap();
 
 	let iat = get_current_time().as_secs();
 

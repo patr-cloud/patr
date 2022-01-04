@@ -1,5 +1,9 @@
 use std::{io::Cursor, net::Ipv4Addr};
 
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 use async_zip::read::seek::ZipFileReader;
 use aws_config::RetryConfig;
 use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
@@ -27,26 +31,24 @@ use cloudflare::{
 };
 use eve_rs::AsError;
 use http::Uri;
-use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
-	models::{
-		db_mapping::{CNameRecord, DeploymentStatus},
-		rbac,
+	models::rbac,
+	service::{
+		deployment::{kubernetes},
 	},
-	service::deployment::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
 pub async fn create_static_site_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 	domain_name: Option<&str>,
-	user_id: &[u8],
+	user_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate static site name
@@ -62,8 +64,7 @@ pub async fn create_static_site_deployment_in_workspace(
 		request_id
 	);
 	if let Some(domain_name) = domain_name {
-		let is_god_user =
-			user_id == rbac::GOD_USER_ID.get().unwrap().as_bytes();
+		let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
 		// If the entry point is not valid, OR if (the domain is special and the
 		// user is not god user)
 		if !validator::is_deployment_entry_point_valid(domain_name) ||
@@ -87,13 +88,11 @@ pub async fn create_static_site_deployment_in_workspace(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
-	let static_uuid = db::generate_new_resource_id(connection).await?;
-	let static_site_id = static_uuid.as_bytes();
-
+	let static_site_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("request_id: {} - creating static site resource", request_id);
 	db::create_resource(
 		connection,
-		static_site_id,
+		&static_site_id,
 		&format!("Static_site: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -108,7 +107,7 @@ pub async fn create_static_site_deployment_in_workspace(
 	log::trace!("request_id: {} - Adding entry to database", request_id);
 	db::create_static_site(
 		connection,
-		static_site_id,
+		&static_site_id,
 		name,
 		domain_name,
 		workspace_id,
@@ -119,12 +118,12 @@ pub async fn create_static_site_deployment_in_workspace(
 		"request_id: {} - static site created successfully",
 		request_id
 	);
-	Ok(static_uuid)
+	Ok(static_site_id)
 }
 
 pub async fn start_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 	file: Option<&str>,
 	request_id: &Uuid,
@@ -136,13 +135,13 @@ pub async fn start_static_site_deployment(
 
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id,
 		request_id
 	);
 
 	log::trace!("Updating DNS records");
 	add_a_record(
-		&hex::encode(static_site_id),
+		static_site_id.as_str(),
 		config.ssh.host.parse::<Ipv4Addr>()?,
 		config,
 		false,
@@ -160,7 +159,7 @@ pub async fn start_static_site_deployment(
 			file,
 			static_site_id,
 			config,
-			request_id,
+			&request_id,
 		)
 		.await?;
 	}
@@ -207,7 +206,7 @@ pub async fn start_static_site_deployment(
 
 pub async fn stop_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -217,7 +216,7 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_static_site(
+	kubernetes::delete_static_site_from_k8s(
 		connection,
 		static_site_id,
 		config,
@@ -242,7 +241,7 @@ pub async fn stop_static_site(
 
 pub async fn delete_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -251,9 +250,9 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let patr_domain = format!("{}.patr.cloud", hex::encode(static_site_id));
+	let patr_domain = format!("{}.patr.cloud", static_site_id);
 
-	kubernetes::delete_static_site(
+	kubernetes::delete_static_site_from_k8s(
 		connection,
 		static_site_id,
 		config,
@@ -264,11 +263,7 @@ pub async fn delete_static_site(
 	db::update_static_site_name(
 		connection,
 		static_site_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			static_site.name,
-			hex::encode(static_site_id)
-		),
+		&format!("patr-deleted: {}-{}", static_site.name, static_site_id),
 	)
 	.await?;
 
@@ -349,13 +344,13 @@ pub async fn delete_static_site(
 pub async fn set_domain_for_static_site_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	new_domain_name: Option<&str>,
 ) -> Result<(), Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Set domain for static site with id: {} and request_id: {}",
-		hex::encode(&static_site_id),
+		static_site_id,
 		request_id
 	);
 	log::trace!(
@@ -396,9 +391,9 @@ pub async fn set_domain_for_static_site_deployment(
 
 pub async fn get_dns_records_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: Settings,
-) -> Result<Vec<CNameRecord>, Error> {
+) -> Result<Vec<(String, String)>, Error> {
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
@@ -409,20 +404,16 @@ pub async fn get_dns_records_for_static_site(
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 
-	Ok(vec![CNameRecord {
-		cname: domain_name,
-		value: config.ssh.host_name,
-	}])
+	Ok(vec![(domain_name, config.ssh.host_name)])
 }
 
 pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	file: &str,
-	static_site_id: &[u8],
+	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let static_site_id_string = hex::encode(static_site_id);
 	log::trace!(
 		"request_id: {} - getting static site details from db",
 		request_id
@@ -489,7 +480,7 @@ pub async fn upload_static_site_files_to_s3(
 		log::trace!(
 			"request_id: {} - file_name: {}/{}",
 			request_id,
-			static_site_id_string,
+			static_site_id,
 			file_name
 		);
 		// TODO: change file_name to file.enclosed_name()
@@ -498,12 +489,12 @@ pub async fn upload_static_site_files_to_s3(
 			.last()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
-		let mime_string = get_mime_type_from_file_name(file_extension)?;
+		let mime_string = get_mime_type_from_file_name(file_extension);
 
 		let _ = aws_s3_client
 			.put_object()
 			.bucket(config.s3.bucket.clone())
-			.key(format!("{}/{}", static_site_id_string, file_name))
+			.key(format!("{}/{}", static_site_id, file_name))
 			.body(file_info.into())
 			.acl(ObjectCannedAcl::PublicRead)
 			.content_type(mime_string)
@@ -633,219 +624,121 @@ async fn add_a_record(
 	Ok(())
 }
 
-fn get_mime_type_from_file_name(file_extension: &str) -> Result<String, Error> {
+fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 	match file_extension {
-		"html" => Ok("text/html".to_string()),
-		"htm" => Ok("text/html".to_string()),
-		"shtml" => Ok("text/html".to_string()),
-		"xhtml" => Ok("application/xhtml+xml".to_string()),
-		"css" => Ok("text/css".to_string()),
-		"xml" => Ok("text/xml".to_string()),
-		"atom" => Ok("application/atom+xml".to_string()),
-		"rss" => Ok("application/rss+xml".to_string()),
-		"js" => Ok("application/javascript".to_string()),
-		"mml" => Ok("text/mathml".to_string()),
-		"png" => Ok("image/png".to_string()),
-		"jpg" => Ok("image/jpeg".to_string()),
-		"jpeg" => Ok("image/jpeg".to_string()),
-		"gif" => Ok("image/gif".to_string()),
-		"ico" => Ok("image/x-icon".to_string()),
-		"svg" => Ok("image/svg+xml".to_string()),
-		"svgz" => Ok("image/svg+xml".to_string()),
-		"tif" => Ok("image/tiff".to_string()),
-		"tiff" => Ok("image/tiff".to_string()),
-		"json" => Ok("application/json".to_string()),
-		"pdf" => Ok("application/pdf".to_string()),
-		"txt" => Ok("text/plain".to_string()),
-		"mp4" => Ok("video/mp4".to_string()),
-		"webm" => Ok("video/webm".to_string()),
-		"mp3" => Ok("audio/mpeg".to_string()),
-		"ogg" => Ok("audio/ogg".to_string()),
-		"wav" => Ok("audio/wav".to_string()),
-		"woff" => Ok("application/font-woff".to_string()),
-		"woff2" => Ok("application/font-woff2".to_string()),
-		"ttf" => Ok("application/font-truetype".to_string()),
-		"otf" => Ok("application/font-opentype".to_string()),
-		"eot" => Ok("application/vnd.ms-fontobject".to_string()),
-		"mpg" => Ok("video/mpeg".to_string()),
-		"mpeg" => Ok("video/mpeg".to_string()),
-		"mov" => Ok("video/quicktime".to_string()),
-		"avi" => Ok("video/x-msvideo".to_string()),
-		"flv" => Ok("video/x-flv".to_string()),
-		"m4v" => Ok("video/x-m4v".to_string()),
-		"jad" => Ok("text/vnd.sun.j2me.app-descriptor".to_string()),
-		"wml" => Ok("text/vnd.wap.wml".to_string()),
-		"htc" => Ok("text/x-component".to_string()),
-		"avif" => Ok("image/avif".to_string()),
-		"webp" => Ok("image/webp".to_string()),
-		"wbmp" => Ok("image/vnd.wap.wbmp".to_string()),
-		"jng" => Ok("image/x-jng".to_string()),
-		"bmp" => Ok("image/x-ms-bmp".to_string()),
-		"jar" => Ok("application/java-archive".to_string()),
-		"war" => Ok("application/java-archive".to_string()),
-		"ear" => Ok("application/java-archive".to_string()),
-		"hqx" => Ok("application/mac-binhex40".to_string()),
-		"doc" => Ok("application/msword".to_string()),
-		"ps" => Ok("application/postscript".to_string()),
-		"eps" => Ok("application/postscript".to_string()),
-		"ai" => Ok("application/postscript".to_string()),
-		"rtf" => Ok("application/rtf".to_string()),
-		"m3u8" => Ok("application/vnd.apple.mpegurl".to_string()),
-		"kml" => Ok("application/vnd.google-earth.kml+xml".to_string()),
-		"kmz" => Ok("application/vnd.google-earth.kmz".to_string()),
-		"xls" => Ok("application/vnd.ms-excel".to_string()),
-		"ppt" => Ok("application/vnd.ms-powerpoint".to_string()),
-		"odg" => Ok("application/vnd.oasis.opendocument.graphics".to_string()),
-		"odp" => Ok("application/vnd.oasis.opendocument.presentation".to_string()),
-		"ods" => Ok("application/vnd.oasis.opendocument.spreadsheet".to_string()),
-		"odt" => Ok("application/vnd.oasis.opendocument.text".to_string()),
-		"pptx" => Ok("application/vnd.openxmlformats-officedocument.presentationml.presentation".to_string()),
-		"xlsx" => Ok("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string()),
-		"docx" => Ok("application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string()),
-		"wmlc" => Ok("application/vnd.wap.wmlc".to_string()),
-		"wasm" => Ok("application/wasm".to_string()),
-		"7z" => Ok("application/x-7z-compressed".to_string()),
-		"cco" => Ok("application/x-cocoa".to_string()),
-		"jardiff" => Ok("application/x-java-archive-diff".to_string()),
-		"jnlp" => Ok("application/x-java-jnlp-file".to_string()),
-		"run" => Ok("application/x-makeself".to_string()),
-		"pl" => Ok("application/x-perl".to_string()),
-		"pm" => Ok("application/x-perl".to_string()),
-		"prc" => Ok("application/x-pilot".to_string()),
-		"pdb" => Ok("application/x-pilot".to_string()),
-		"rar" => Ok("application/x-rar-compressed".to_string()),
-		"rpm" => Ok("application/x-redhat-package-manager".to_string()),
-		"sea" => Ok("application/x-sea".to_string()),
-		"swf" => Ok("application/x-shockwave-flash".to_string()),
-		"sit" => Ok("application/x-stuffit".to_string()),
-		"tcl" => Ok("application/x-tcl".to_string()),
-		"tk" => Ok("application/x-tcl".to_string()),
-		"der" => Ok("application/x-x509-ca-cert".to_string()),
-		"pem" => Ok("application/x-x509-ca-cert".to_string()),
-		"crt" => Ok("application/x-x509-ca-cert".to_string()),
-		"xpi" => Ok("application/x-xpinstall".to_string()),
-		"xspf" => Ok("application/xspf+xml".to_string()),
-		"zip" => Ok("application/zip".to_string()),
-		"bin" => Ok("application/octet-stream".to_string()),
-		"exe" => Ok("application/octet-stream".to_string()),
-		"dll" => Ok("application/octet-stream".to_string()),
-		"deb" => Ok("application/octet-stream".to_string()),
-		"dmg" => Ok("application/octet-stream".to_string()),
-		"iso" => Ok("application/octet-stream".to_string()),
-		"img" => Ok("application/octet-stream".to_string()),
-		"msi" => Ok("application/octet-stream".to_string()),
-		"msp" => Ok("application/octet-stream".to_string()),
-		"msm" => Ok("application/octet-stream".to_string()),
-		"mid" => Ok("audio/midi".to_string()),
-		"midi" => Ok("audio/midi".to_string()),
-		"kar" => Ok("audio/midi".to_string()),
-		"m4a" => Ok("audio/x-m4a".to_string()),
-		"ra" => Ok("audio/x-realaudio".to_string()),
-		"3gpp" => Ok("video/3gpp".to_string()),
-		"3gp" => Ok("video/3gpp".to_string()),
-		"ts" => Ok("video/mp2t".to_string()),
-		"mng" => Ok("video/x-mng".to_string()),
-		"asx" => Ok("video/x-ms-asf".to_string()),
-		"asf" => Ok("video/x-ms-asf".to_string()),
-		"wmv" => Ok("video/x-ms-wmv".to_string()),
-		_ => Ok("application/octet-stream".to_string()),
+		"html" => "text/html",
+		"htm" => "text/html",
+		"shtml" => "text/html",
+		"xhtml" => "application/xhtml+xml",
+		"css" => "text/css",
+		"xml" => "text/xml",
+		"atom" => "application/atom+xml",
+		"rss" => "application/rss+xml",
+		"js" => "application/javascript",
+		"mml" => "text/mathml",
+		"png" => "image/png",
+		"jpg" => "image/jpeg",
+		"jpeg" => "image/jpeg",
+		"gif" => "image/gif",
+		"ico" => "image/x-icon",
+		"svg" => "image/svg+xml",
+		"svgz" => "image/svg+xml",
+		"tif" => "image/tiff",
+		"tiff" => "image/tiff",
+		"json" => "application/json",
+		"pdf" => "application/pdf",
+		"txt" => "text/plain",
+		"mp4" => "video/mp4",
+		"webm" => "video/webm",
+		"mp3" => "audio/mpeg",
+		"ogg" => "audio/ogg",
+		"wav" => "audio/wav",
+		"woff" => "application/font-woff",
+		"woff2" => "application/font-woff2",
+		"ttf" => "application/font-truetype",
+		"otf" => "application/font-opentype",
+		"eot" => "application/vnd.ms-fontobject",
+		"mpg" => "video/mpeg",
+		"mpeg" => "video/mpeg",
+		"mov" => "video/quicktime",
+		"avi" => "video/x-msvideo",
+		"flv" => "video/x-flv",
+		"m4v" => "video/x-m4v",
+		"jad" => "text/vnd.sun.j2me.app-descriptor",
+		"wml" => "text/vnd.wap.wml",
+		"htc" => "text/x-component",
+		"avif" => "image/avif",
+		"webp" => "image/webp",
+		"wbmp" => "image/vnd.wap.wbmp",
+		"jng" => "image/x-jng",
+		"bmp" => "image/x-ms-bmp",
+		"jar" => "application/java-archive",
+		"war" => "application/java-archive",
+		"ear" => "application/java-archive",
+		"hqx" => "application/mac-binhex40",
+		"doc" => "application/msword",
+		"ps" => "application/postscript",
+		"eps" => "application/postscript",
+		"ai" => "application/postscript",
+		"rtf" => "application/rtf",
+		"m3u8" => "application/vnd.apple.mpegurl",
+		"kml" => "application/vnd.google-earth.kml+xml",
+		"kmz" => "application/vnd.google-earth.kmz",
+		"xls" => "application/vnd.ms-excel",
+		"ppt" => "application/vnd.ms-powerpoint",
+		"odg" => "application/vnd.oasis.opendocument.graphics",
+		"odp" => "application/vnd.oasis.opendocument.presentation",
+		"ods" => "application/vnd.oasis.opendocument.spreadsheet",
+		"odt" => "application/vnd.oasis.opendocument.text",
+		"pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		"xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"wmlc" => "application/vnd.wap.wmlc",
+		"wasm" => "application/wasm",
+		"7z" => "application/x-7z-compressed",
+		"cco" => "application/x-cocoa",
+		"jardiff" => "application/x-java-archive-diff",
+		"jnlp" => "application/x-java-jnlp-file",
+		"run" => "application/x-makeself",
+		"pl" => "application/x-perl",
+		"pm" => "application/x-perl",
+		"prc" => "application/x-pilot",
+		"pdb" => "application/x-pilot",
+		"rar" => "application/x-rar-compressed",
+		"rpm" => "application/x-redhat-package-manager",
+		"sea" => "application/x-sea",
+		"swf" => "application/x-shockwave-flash",
+		"sit" => "application/x-stuffit",
+		"tcl" => "application/x-tcl",
+		"tk" => "application/x-tcl",
+		"der" => "application/x-x509-ca-cert",
+		"pem" => "application/x-x509-ca-cert",
+		"crt" => "application/x-x509-ca-cert",
+		"xpi" => "application/x-xpinstall",
+		"xspf" => "application/xspf+xml",
+		"zip" => "application/zip",
+		"bin" => "application/octet-stream",
+		"exe" => "application/octet-stream",
+		"dll" => "application/octet-stream",
+		"deb" => "application/octet-stream",
+		"dmg" => "application/octet-stream",
+		"iso" => "application/octet-stream",
+		"img" => "application/octet-stream",
+		"msi" => "application/octet-stream",
+		"msp" => "application/octet-stream",
+		"msm" => "application/octet-stream",
+		"mid" => "audio/midi",
+		"midi" => "audio/midi",
+		"kar" => "audio/midi",
+		"m4a" => "audio/x-m4a",
+		"ra" => "audio/x-realaudio",
+		"3gpp" => "video/3gpp",
+		"3gp" => "video/3gpp",
+		"ts" => "video/mp2t",
+		"mng" => "video/x-mng",
+		"asx" => "video/x-ms-asf",
+		"asf" => "video/x-ms-asf",
+		"wmv" => "video/x-ms-wmv",
+		_ => "application/octet-stream",
 	}
-	/*
-	text/html                                        html htm shtml;
-	text/css                                         css;
-	text/xml                                         xml;
-	image/gif                                        gif;
-	image/jpeg                                       jpeg jpg;
-	application/javascript                           js;
-	application/atom+xml                             atom;
-	application/rss+xml                              rss;
-
-	text/mathml                                      mml;
-	text/plain                                       txt;
-	text/vnd.sun.j2me.app-descriptor                 jad;
-	text/vnd.wap.wml                                 wml;
-	text/x-component                                 htc;
-
-	image/avif                                       avif;
-	image/png                                        png;
-	image/svg+xml                                    svg svgz;
-	image/tiff                                       tif tiff;
-	image/vnd.wap.wbmp                               wbmp;
-	image/webp                                       webp;
-	image/x-icon                                     ico;
-	image/x-jng                                      jng;
-	image/x-ms-bmp                                   bmp;
-
-	font/woff                                        woff;
-	font/woff2                                       woff2;
-
-	application/java-archive                         jar war ear;
-	application/json                                 json;
-	application/mac-binhex40                         hqx;
-	application/msword                               doc;
-	application/pdf                                  pdf;
-	application/postscript                           ps eps ai;
-	application/rtf                                  rtf;
-	application/vnd.apple.mpegurl                    m3u8;
-	application/vnd.google-earth.kml+xml             kml;
-	application/vnd.google-earth.kmz                 kmz;
-	application/vnd.ms-excel                         xls;
-	application/vnd.ms-fontobject                    eot;
-	application/vnd.ms-powerpoint                    ppt;
-	application/vnd.oasis.opendocument.graphics      odg;
-	application/vnd.oasis.opendocument.presentation  odp;
-	application/vnd.oasis.opendocument.spreadsheet   ods;
-	application/vnd.oasis.opendocument.text          odt;
-	application/vnd.openxmlformats-officedocument.presentationml.presentation
-													 pptx;
-	application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-													 xlsx;
-	application/vnd.openxmlformats-officedocument.wordprocessingml.document
-													 docx;
-	application/vnd.wap.wmlc                         wmlc;
-	application/wasm                                 wasm;
-	application/x-7z-compressed                      7z;
-	application/x-cocoa                              cco;
-	application/x-java-archive-diff                  jardiff;
-	application/x-java-jnlp-file                     jnlp;
-	application/x-makeself                           run;
-	application/x-perl                               pl pm;
-	application/x-pilot                              prc pdb;
-	application/x-rar-compressed                     rar;
-	application/x-redhat-package-manager             rpm;
-	application/x-sea                                sea;
-	application/x-shockwave-flash                    swf;
-	application/x-stuffit                            sit;
-	application/x-tcl                                tcl tk;
-	application/x-x509-ca-cert                       der pem crt;
-	application/x-xpinstall                          xpi;
-	application/xhtml+xml                            xhtml;
-	application/xspf+xml                             xspf;
-	application/zip                                  zip;
-
-	application/octet-stream                         bin exe dll;
-	application/octet-stream                         deb;
-	application/octet-stream                         dmg;
-	application/octet-stream                         iso img;
-	application/octet-stream                         msi msp msm;
-
-	audio/midi                                       mid midi kar;
-	audio/mpeg                                       mp3;
-	audio/ogg                                        ogg;
-	audio/x-m4a                                      m4a;
-	audio/x-realaudio                                ra;
-
-	video/3gpp                                       3gpp 3gp;
-	video/mp2t                                       ts;
-	video/mp4                                        mp4;
-	video/mpeg                                       mpeg mpg;
-	video/quicktime                                  mov;
-	video/webm                                       webm;
-	video/x-flv                                      flv;
-	video/x-m4v                                      m4v;
-	video/x-mng                                      mng;
-	video/x-ms-asf                                   asx asf;
-	video/x-ms-wmv                                   wmv;
-	video/x-msvideo                                  avi;
-	*/
 }

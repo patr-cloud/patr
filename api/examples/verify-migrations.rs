@@ -2,11 +2,12 @@ use std::{env, process::Stdio};
 
 use clap::crate_version;
 use futures::StreamExt;
+use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::{
 	fs::{self, OpenOptions},
-	io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+	io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
 	process::Command,
 };
 
@@ -87,6 +88,9 @@ async fn main() {
 		"existing.sql",
 	)
 	.await;
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("existing.sql").await;
+	println!("UUIDS rewritten.");
 	println!("Database dump completed");
 
 	println!("Clearing database...");
@@ -123,6 +127,9 @@ async fn main() {
 		"fresh.sql",
 	)
 	.await;
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("fresh.sql").await;
+	println!("UUIDS rewritten.");
 	println!("Database dump completed");
 	println!();
 
@@ -188,7 +195,7 @@ async fn main() {
 }
 
 fn get_env_var(env_name: &str) -> String {
-	env::var(env_name).expect(&format!("{} is not set", env_name))
+	env::var(env_name).unwrap_or_else(|_| panic!("{} is not set", env_name))
 }
 
 async fn get_total_number_of_releases(
@@ -300,36 +307,34 @@ async fn handle_release(
 	println!("Database dump downloaded");
 
 	println!("Clearing database...");
-	clear_database(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
-	)
-	.await;
+	clear_database(db_host, db_port, db_username, db_password, db_database)
+		.await;
 	println!("Database cleared");
 
 	println!("Restoring database dump...");
 	restore_database_dump(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		"database.sql",
 	)
 	.await;
 	println!("Database dump restored");
 
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("database.sql").await;
+	println!("UUIDs rewritten");
+
 	println!("Testing migrations against version {}...", release.tag_name);
 	println!("Running api to run migrations...");
 	run_api_with_only_db(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		redis_host,
 	)
 	.await;
@@ -337,14 +342,19 @@ async fn handle_release(
 
 	println!("Dumping migrated database to migrated.sql");
 	dump_database(
-		&db_host,
-		&db_port,
-		&db_username,
-		&db_password,
-		&db_database,
+		db_host,
+		db_port,
+		db_username,
+		db_password,
+		db_database,
 		"migrated.sql",
 	)
 	.await;
+
+	println!("Rewriting UUIDs in the dump...");
+	rewrite_uuids("migrated.sql").await;
+	println!("UUIDs rewritten");
+
 	println!("Migrated database dumped to migrated.sql");
 
 	println!("Checking if migrated.sql is the same as fresh.sql...");
@@ -365,7 +375,7 @@ async fn dump_database(
 	if fs::metadata(file_name).await.is_ok() {
 		fs::remove_file(file_name)
 			.await
-			.expect(&format!("unable to delete {}", file_name));
+			.unwrap_or_else(|_| panic!("unable to delete {}", file_name));
 	}
 
 	let pg_dump = Command::new("pg_dump")
@@ -386,13 +396,17 @@ async fn dump_database(
 		.create(true)
 		.open(file_name)
 		.await
-		.expect(&format!("unable to open {} file for writing", file_name));
+		.unwrap_or_else(|_| {
+			panic!("unable to open {} file for writing", file_name)
+		});
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
 		output_file
 			.write_all(format!("{}\n", line).as_bytes())
 			.await
-			.expect(&format!("Unable to write to file {}", file_name));
+			.unwrap_or_else(|_| {
+				panic!("Unable to write to file {}", file_name)
+			});
 	}
 }
 
@@ -479,8 +493,6 @@ async fn check_if_files_are_equal(first_file: &str, second_file: &str) {
 	let success = Command::new("diff")
 		.arg("-s")
 		.arg("-y")
-		.arg("--ignore-matching-lines")
-		.arg("\\\\x[a-f0-9]*")
 		.arg("--suppress-common-lines")
 		.arg(first_file)
 		.arg(second_file)
@@ -521,7 +533,9 @@ async fn restore_database_dump(
 		.read(true)
 		.open(file_name)
 		.await
-		.expect(&format!("unable to open {} file for reading", file_name));
+		.unwrap_or_else(|_| {
+			panic!("unable to open {} file for reading", file_name)
+		});
 	let mut line_iterator = BufReader::new(input_file).lines();
 
 	while let Ok(Some(line)) = line_iterator.next_line().await {
@@ -545,4 +559,24 @@ async fn restore_database_dump(
 	if !success {
 		panic!("psql command exited with a non-success exit code");
 	}
+}
+
+async fn rewrite_uuids(file_name: &str) {
+	let uuid_regex =
+		Regex::new("(\\\\\\\\x[a-f0-9]{32})|([a-f0-9\\-]{36})").unwrap();
+
+	let mut contents = String::new();
+	OpenOptions::new()
+		.read(true)
+		.open(file_name)
+		.await
+		.expect("Unable to open file")
+		.read_to_string(&mut contents)
+		.await
+		.expect("Unable to read file");
+
+	let replaced = uuid_regex.replace_all(&contents, "<<uuid>>");
+	fs::write(file_name, replaced.to_string())
+		.await
+		.expect("Unable to write back to the file");
 }

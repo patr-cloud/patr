@@ -1,3 +1,5 @@
+use api_models::utils::Uuid;
+
 use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
 mod docker_registry;
@@ -14,12 +16,12 @@ pub async fn initialize_workspaces_pre(
 	query!(
 		r#"
 		CREATE TABLE workspace(
-			id BYTEA
+			id UUID
 				CONSTRAINT workspace_pk PRIMARY KEY,
 			name CITEXT NOT NULL
 				CONSTRAINT workspace_uq_name UNIQUE,
-			super_admin_id BYTEA NOT NULL
-				CONSTRAINT workspace_super_admin_id_fk_user_id
+			super_admin_id UUID NOT NULL
+				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE
 		);
@@ -66,7 +68,7 @@ pub async fn initialize_workspaces_pre(
 
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
-	infrastructure::initialize_deployment_pre(connection).await?;
+	infrastructure::initialize_infrastructure_pre(connection).await?;
 
 	Ok(())
 }
@@ -88,16 +90,16 @@ pub async fn initialize_workspaces_post(
 
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
-	infrastructure::initialize_deployment_post(connection).await?;
+	infrastructure::initialize_infrastructure_post(connection).await?;
 
 	Ok(())
 }
 
 pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
-	super_admin_id: &[u8],
+	super_admin_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -106,9 +108,9 @@ pub async fn create_workspace(
 		VALUES
 			($1, $2, $3, $4);
 		"#,
-		workspace_id,
+		workspace_id as _,
 		name as _,
-		super_admin_id,
+		super_admin_id as _,
 		true,
 	)
 	.execute(&mut *connection)
@@ -119,22 +121,22 @@ pub async fn create_workspace(
 
 pub async fn get_workspace_info(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<Workspace>, sqlx::Error> {
 	query_as!(
 		Workspace,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
-			super_admin_id,
+			super_admin_id as "super_admin_id: _",
 			active
 		FROM
 			workspace
 		WHERE
 			id = $1;
 		"#,
-		workspace_id
+		workspace_id as _,
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -148,9 +150,9 @@ pub async fn get_workspace_by_name(
 		Workspace,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
-			super_admin_id,
+			super_admin_id as "super_admin_id: _",
 			active
 		FROM
 			workspace
@@ -165,7 +167,7 @@ pub async fn get_workspace_by_name(
 
 pub async fn update_workspace_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -178,7 +180,7 @@ pub async fn update_workspace_name(
 			id = $2;
 		"#,
 		name as _,
-		workspace_id,
+		workspace_id as _,
 	)
 	.execute(&mut *connection)
 	.await?;
