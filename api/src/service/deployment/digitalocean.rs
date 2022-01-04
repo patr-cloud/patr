@@ -186,9 +186,8 @@ pub async fn push_to_docr(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	full_image_name: &str,
-	client: Client,
 	config: &Settings,
-) -> Result<String, Error> {
+) -> Result<(), Error> {
 	// Fetch the image from patr registry
 	// upload the image to DOCR
 	// Update kubernetes
@@ -196,7 +195,7 @@ pub async fn push_to_docr(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Pulling image from registry", request_id);
 	service::pull_image_from_registry(full_image_name, config).await?;
-	// log::trace!("request_id: {} - Image pulled", request_id);
+	log::trace!("request_id: {} - Image pulled", request_id);
 
 	// new name for the docker image
 	let new_repo_name = format!(
@@ -211,8 +210,7 @@ pub async fn push_to_docr(
 
 	// Get login details from digital ocean registry and decode from
 	// base 64 to binary
-	let auth_token =
-		base64::decode(get_registry_auth_token(config, &client).await?)?;
+	let auth_token = base64::decode(get_registry_auth_token(config).await?)?;
 	log::trace!("request_id: {} - Got auth token", request_id);
 
 	// Convert auth token from binary to utf8
@@ -278,26 +276,29 @@ pub async fn push_to_docr(
 
 	log::trace!("request_id: {} - Pushed to DO", request_id);
 	log::trace!("Deleting image tagged with registry.digitalocean.com");
-	let delete_result = super::delete_docker_image(&new_repo_name).await;
-	if let Err(delete_result) = delete_result {
-		log::error!(
-			"Failed to delete the image: {}, Error: {}",
-			new_repo_name,
-			delete_result.get_error()
-		);
-	}
+	let _ = super::delete_docker_image(&new_repo_name)
+		.await
+		.map_err(|error| {
+			log::error!(
+				"Failed to delete the image: {}, Error: {}",
+				new_repo_name,
+				error.get_error()
+			);
+		});
 
 	log::trace!("deleting the pulled image");
-	let delete_result = super::delete_docker_image(full_image_name).await;
-	if let Err(delete_result) = delete_result {
-		log::error!(
-			"Failed to delete the image: {}, Error: {}",
-			full_image_name,
-			delete_result.get_error()
-		);
-	}
+	let _ =
+		super::delete_docker_image(full_image_name)
+			.await
+			.map_err(|error| {
+				log::error!(
+					"Failed to delete the image: {}, Error: {}",
+					full_image_name,
+					error.get_error()
+				);
+			});
 	log::trace!("Docker image deleted");
-	Ok(new_repo_name)
+	Ok(())
 }
 
 async fn update_database_cluster_credentials(
@@ -383,11 +384,8 @@ async fn update_database_cluster_credentials(
 	Ok(())
 }
 
-async fn get_registry_auth_token(
-	config: &Settings,
-	client: &Client,
-) -> Result<String, Error> {
-	let registry = client
+async fn get_registry_auth_token(config: &Settings) -> Result<String, Error> {
+	let registry = Client::new()
 		.get("https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true?expiry_seconds=86400")
 		.bearer_auth(&config.digitalocean.api_key)
 		.send()

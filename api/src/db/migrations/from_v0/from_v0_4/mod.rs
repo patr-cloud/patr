@@ -4,6 +4,7 @@ use crate::{migrate_query as query, Database};
 
 mod bytea_to_uuid;
 mod docker_registry;
+mod kubernetes_migration;
 mod organisation_to_workspace;
 
 /// # Description
@@ -533,6 +534,7 @@ async fn migrate_from_v0_4_9(
 	docker_registry::migrate(&mut *connection).await?;
 	add_trim_check_for_username(&mut *connection).await?;
 	make_permission_name_unique(&mut *connection).await?;
+	kubernetes_migration::migrate(&mut *connection).await?;
 
 	Ok(())
 }

@@ -1,4 +1,4 @@
-use std::{io::Cursor, net::Ipv4Addr};
+use std::io::Cursor;
 
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
@@ -8,27 +8,6 @@ use async_zip::read::seek::ZipFileReader;
 use aws_config::RetryConfig;
 use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
 use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
-use cloudflare::{
-	endpoints::{
-		dns::{
-			CreateDnsRecord,
-			CreateDnsRecordParams,
-			DeleteDnsRecord,
-			DnsContent,
-			ListDnsRecords,
-			ListDnsRecordsParams,
-			UpdateDnsRecord,
-			UpdateDnsRecordParams,
-		},
-		zone::{ListZones, ListZonesParams},
-	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
-};
 use eve_rs::AsError;
 use http::Uri;
 
@@ -36,9 +15,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	service::{
-		deployment::{kubernetes},
-	},
+	service::deployment::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -47,8 +24,6 @@ pub async fn create_static_site_deployment_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
-	domain_name: Option<&str>,
-	user_id: &Uuid,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// validate static site name
@@ -63,18 +38,6 @@ pub async fn create_static_site_deployment_in_workspace(
 		"request_id: {} - validating static site domain name",
 		request_id
 	);
-	if let Some(domain_name) = domain_name {
-		let is_god_user = user_id == rbac::GOD_USER_ID.get().unwrap();
-		// If the entry point is not valid, OR if (the domain is special and the
-		// user is not god user)
-		if !validator::is_deployment_entry_point_valid(domain_name) ||
-			(validator::is_domain_special(domain_name) && !is_god_user)
-		{
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(INVALID_DOMAIN_NAME).to_string()));
-		}
-	}
 
 	let existing_static_site = db::get_static_site_by_name_in_workspace(
 		connection,
@@ -105,14 +68,8 @@ pub async fn create_static_site_deployment_in_workspace(
 	.await?;
 
 	log::trace!("request_id: {} - Adding entry to database", request_id);
-	db::create_static_site(
-		connection,
-		&static_site_id,
-		name,
-		domain_name,
-		workspace_id,
-	)
-	.await?;
+	db::create_static_site(connection, &static_site_id, name, workspace_id)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - static site created successfully",
@@ -139,16 +96,6 @@ pub async fn start_static_site_deployment(
 		request_id
 	);
 
-	log::trace!("Updating DNS records");
-	add_a_record(
-		static_site_id.as_str(),
-		config.ssh.host.parse::<Ipv4Addr>()?,
-		config,
-		false,
-	)
-	.await?;
-	log::trace!("DNS records updated");
-
 	if let Some(file) = file {
 		log::trace!(
 			"request_id: {} - Uploading files to s3 server",
@@ -159,7 +106,7 @@ pub async fn start_static_site_deployment(
 			file,
 			static_site_id,
 			config,
-			&request_id,
+			request_id,
 		)
 		.await?;
 	}
@@ -250,8 +197,6 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let patr_domain = format!("{}.patr.cloud", static_site_id);
-
 	kubernetes::delete_static_site_from_k8s(
 		connection,
 		static_site_id,
@@ -267,14 +212,6 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	kubernetes::delete_tls_certificate(
-		connection,
-		static_site_id,
-		config,
-		request_id,
-	)
-	.await?;
-
 	db::update_static_site_status(
 		connection,
 		static_site_id,
@@ -282,129 +219,7 @@ pub async fn delete_static_site(
 	)
 	.await?;
 
-	// Delete DNS Record
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-	let zone_identifier = client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some("patr.cloud".to_string()),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.status(500)?
-		.id;
-	let zone_identifier = zone_identifier.as_str();
-
-	let dns_record = client
-		.request(&ListDnsRecords {
-			zone_identifier,
-			params: ListDnsRecordsParams {
-				name: Some(patr_domain.clone()),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.find(|record| {
-			if let DnsContent::A { .. } = record.content {
-				record.name == patr_domain
-			} else {
-				false
-			}
-		});
-
-	if let Some(dns_record) = dns_record {
-		client
-			.request(&DeleteDnsRecord {
-				zone_identifier,
-				identifier: &dns_record.id,
-			})
-			.await?;
-	}
-
 	Ok(())
-}
-
-pub async fn set_domain_for_static_site_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-	static_site_id: &Uuid,
-	new_domain_name: Option<&str>,
-) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
-	log::trace!(
-		"Set domain for static site with id: {} and request_id: {}",
-		static_site_id,
-		request_id
-	);
-	log::trace!(
-		"request_id: {} - getting static site info from database",
-		request_id
-	);
-	let _ = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} - updating database with new domain",
-		request_id
-	);
-	db::begin_deferred_constraints(connection).await?;
-
-	db::set_domain_name_for_static_site(
-		connection,
-		static_site_id,
-		new_domain_name,
-	)
-	.await?;
-
-	db::end_deferred_constraints(connection).await?;
-
-	kubernetes::update_static_site(
-		connection,
-		static_site_id,
-		config,
-		&request_id,
-	)
-	.await?;
-	log::trace!("request_id: {} - domains updated successfully", request_id);
-
-	Ok(())
-}
-
-pub async fn get_dns_records_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &Uuid,
-	config: Settings,
-) -> Result<Vec<(String, String)>, Error> {
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let domain_name = static_site
-		.domain_name
-		.status(400)
-		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-
-	Ok(vec![(domain_name, config.ssh.host_name)])
 }
 
 pub async fn upload_static_site_files_to_s3(
@@ -533,95 +348,6 @@ async fn get_s3_client(config: Settings) -> Result<aws_sdk_s3::Client, Error> {
 		.build();
 
 	Ok(aws_sdk_s3::Client::from_conf(s3_config))
-}
-
-async fn add_a_record(
-	sub_domain: &str,
-	target: Ipv4Addr,
-	config: &Settings,
-	proxied: bool,
-) -> Result<(), Error> {
-	let full_domain = if sub_domain.ends_with(".patr.cloud") {
-		sub_domain.to_string()
-	} else {
-		format!("{}.patr.cloud", sub_domain)
-	};
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-	let zone_identifier = client
-		.request(&ListZones {
-			params: ListZonesParams {
-				name: Some("patr.cloud".to_string()),
-				..Default::default()
-			},
-		})
-		.await?
-		.result
-		.into_iter()
-		.next()
-		.status(500)?
-		.id;
-	let zone_identifier = zone_identifier.as_str();
-	let expected_dns_record = DnsContent::A { content: target };
-	let response = client
-		.request(&ListDnsRecords {
-			zone_identifier,
-			params: ListDnsRecordsParams {
-				name: Some(full_domain.clone()),
-				..Default::default()
-			},
-		})
-		.await?;
-	let dns_record = response.result.into_iter().find(|record| {
-		if let DnsContent::A { .. } = record.content {
-			record.name == full_domain
-		} else {
-			false
-		}
-	});
-	if let Some(record) = dns_record {
-		if let DnsContent::A { content } = record.content {
-			if content != target {
-				client
-					.request(&UpdateDnsRecord {
-						zone_identifier,
-						identifier: record.id.as_str(),
-						params: UpdateDnsRecordParams {
-							content: expected_dns_record,
-							name: &full_domain,
-							proxied: Some(proxied),
-							ttl: Some(1),
-						},
-					})
-					.await?;
-			}
-		}
-	} else {
-		// Create
-		client
-			.request(&CreateDnsRecord {
-				zone_identifier,
-				params: CreateDnsRecordParams {
-					content: expected_dns_record,
-					name: sub_domain,
-					ttl: Some(1),
-					priority: None,
-					proxied: Some(proxied),
-				},
-			})
-			.await?;
-	}
-	Ok(())
 }
 
 fn get_mime_type_from_file_name(file_extension: &str) -> &str {

@@ -113,8 +113,6 @@ pub async fn initialize_deployment_pre(
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
-			CONSTRAINT deployment_uq_id_domain_name
-				UNIQUE(id, domain_name),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -292,28 +290,6 @@ pub async fn initialize_deployment_post(
 			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
 			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
 			"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployed_domain
-		ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name
-		FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployed_domain
-		ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name
-		FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
 	)
 	.execute(&mut *connection)
 	.await?;

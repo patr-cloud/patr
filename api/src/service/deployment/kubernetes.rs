@@ -23,7 +23,6 @@ use k8s_openapi::{
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
-			Secret,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -77,6 +76,7 @@ use crate::{
 
 pub(super) async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	// TODO add workspace_id as namespace
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
@@ -123,7 +123,7 @@ pub(super) async fn update_static_site(
 		Api::namespaced(kubernetes_client.clone(), namespace);
 	service_api
 		.patch(
-			&format!("service-{}", &static_site_id),
+			&format!("service-{}", static_site_id),
 			&PatchParams::apply(&format!("service-{}", static_site_id)),
 			&Patch::Apply(kubernetes_service),
 		)
@@ -172,7 +172,7 @@ pub(super) async fn update_static_site(
 	);
 	let patr_domain_tls = vec![IngressTLS {
 		hosts: Some(vec![format!("{}.patr.cloud", static_site_id)]),
-		secret_name: Some(format!("tls-{}", static_site_id)),
+		secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
 	}];
 	log::trace!(
 		"request_id: {} - creating https certificates for domain",
@@ -216,6 +216,7 @@ pub(super) async fn update_static_site(
 
 pub(super) async fn delete_static_site_from_k8s(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	// TODO add workspace_id as namespace
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
@@ -274,91 +275,6 @@ pub(super) async fn delete_static_site_from_k8s(
 		);
 		Ok(())
 	}
-}
-
-pub async fn delete_tls_certificate(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let kubernetes_client = get_kubernetes_config(config).await?;
-
-	// TODO: replace this with static site object
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	log::trace!("request_id: {} - deleting tls certificate", request_id);
-
-	log::trace!("request_id: {} - checking if secret exists", request_id);
-	if !secret_exists(
-		&format!("tls-{}", static_site_id),
-		kubernetes_client.clone(),
-		"default",
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - tls certificate doesn't exist",
-			request_id
-		);
-		log::trace!(
-			"request_id: {} - tls certificate deleted successfully!",
-			request_id
-		);
-		return Ok(());
-	}
-
-	let _secret_api =
-		Api::<Secret>::namespaced(kubernetes_client.clone(), "default")
-			.delete(
-				&format!("tls-{}", static_site_id),
-				&DeleteParams::default(),
-			)
-			.await?;
-
-	log::trace!(
-		"request_id: {} - tls certificate deleted successfully!",
-		request_id
-	);
-
-	if let Some(custom_domain) = static_site.domain_name {
-		log::trace!("request_id: {} - checking if secret exists", request_id);
-		if !secret_exists(
-			&format!("tls-{}", static_site_id),
-			kubernetes_client.clone(),
-			"default",
-		)
-		.await?
-		{
-			log::trace!(
-				"request_id: {} - tls certificate doesn't exist",
-				request_id
-			);
-			log::trace!(
-				"request_id: {} - custom tls certificate deleted successfully!",
-				request_id
-			);
-
-			return Ok(());
-		}
-		let _secret_api =
-			Api::<Secret>::namespaced(kubernetes_client, "default")
-				.delete(
-					&format!("Custom-tls-{}", &custom_domain),
-					&DeleteParams::default(),
-				)
-				.await?;
-
-		log::trace!(
-			"request_id: {} - custom tls certificate deleted successfully!",
-			request_id
-		);
-	}
-
-	Ok(())
 }
 
 pub async fn update_kubernetes_deployment(
@@ -428,7 +344,7 @@ pub async fn update_kubernetes_deployment(
 
 	let kubernetes_deployment = K8sDeployment {
 		metadata: ObjectMeta {
-			name: Some(format!("deployment/{}", deployment.id)),
+			name: Some(format!("deployment-{}", deployment.id)),
 			namespace: Some(namespace.to_string()),
 			labels: Some(labels.clone()),
 			..ObjectMeta::default()
@@ -442,7 +358,7 @@ pub async fn update_kubernetes_deployment(
 			template: PodTemplateSpec {
 				spec: Some(PodSpec {
 					containers: vec![Container {
-						name: format!("deployment/{}", deployment.id),
+						name: format!("deployment-{}", deployment.id),
 						image: Some(image_name),
 						ports: Some(
 							running_details
@@ -523,8 +439,8 @@ pub async fn update_kubernetes_deployment(
 
 	deployment_api
 		.patch(
-			&format!("deployment/{}", deployment.id),
-			&PatchParams::apply(&format!("deployment/{}", deployment.id)),
+			&format!("deployment-{}", deployment.id),
+			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
 			&Patch::Apply(kubernetes_deployment),
 		)
 		.await?
@@ -534,7 +450,7 @@ pub async fn update_kubernetes_deployment(
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
-			name: Some(format!("service/{}", deployment.id)),
+			name: Some(format!("service-{}", deployment.id)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
@@ -563,8 +479,8 @@ pub async fn update_kubernetes_deployment(
 
 	service_api
 		.patch(
-			&format!("service/{}", deployment.id),
-			&PatchParams::apply(&format!("service/{}", deployment.id)),
+			&format!("service-{}", deployment.id),
+			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?
@@ -585,7 +501,7 @@ pub async fn update_kubernetes_deployment(
 
 	annotations.insert(
 		"cert-manager.io/issuer".to_string(),
-		"letsencrypt-prod".to_string(),
+		config.kubernetes.cert_issuer.clone(),
 	);
 
 	// Get all domain names for domain IDs
@@ -613,7 +529,7 @@ pub async fn update_kubernetes_deployment(
 				paths: vec![HTTPIngressPath {
 					backend: IngressBackend {
 						service: Some(IngressServiceBackend {
-							name: format!("service/{}", deployment.id),
+							name: format!("service-{}", deployment.id),
 							port: Some(ServiceBackendPort {
 								number: Some(*port as i32),
 								..ServiceBackendPort::default()
@@ -630,9 +546,7 @@ pub async fn update_kubernetes_deployment(
 			running_details
 				.ports
 				.iter()
-				.filter(|(_, port_type)| {
-					*port_type == &ExposedPortType::Http
-				})
+				.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
 				.map(|(port, _)| IngressRule {
 					host: Some(format!(
 						"{}-{}.patr.cloud",
@@ -642,7 +556,7 @@ pub async fn update_kubernetes_deployment(
 						paths: vec![HTTPIngressPath {
 							backend: IngressBackend {
 								service: Some(IngressServiceBackend {
-									name: format!("service/{}", deployment.id),
+									name: format!("service-{}", deployment.id),
 									port: Some(ServiceBackendPort {
 										number: Some(*port as i32),
 										name: Some(format!("port-{}", port)),
@@ -665,7 +579,8 @@ pub async fn update_kubernetes_deployment(
 		}
 		domain_tls.push(IngressTLS {
 			hosts: Some(vec![format!("{}-{}.patr.cloud", port, deployment.id)]),
-			secret_name: Some("tls/domain/*.patr.cloud".to_string()),
+			// TODO rename patr-domain to {patr-domain.id} below
+			secret_name: Some("tls-domain-wildcard-patr-domain".to_string()),
 		});
 	}
 	for (sub_domain, domain, ..) in &entry_points {
@@ -675,9 +590,9 @@ pub async fn update_kubernetes_deployment(
 				// Change this to check if the domain is patr-controlled or
 				// user controlled
 				if domain.domain_type == ResourceOwnerType::Business {
-					format!("tls/domain/{}.{}", sub_domain, domain.name)
+					format!("tls-domain-{}-{}", sub_domain, domain.id)
 				} else {
-					format!("tls/domain/*.{}", domain.name)
+					format!("tls-domain-wildcard-{}", domain.id)
 				},
 			),
 		});
@@ -685,7 +600,7 @@ pub async fn update_kubernetes_deployment(
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
-			name: Some(format!("ingress/{}", deployment.id)),
+			name: Some(format!("ingress-{}", deployment.id)),
 			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
@@ -704,8 +619,8 @@ pub async fn update_kubernetes_deployment(
 
 	ingress_api
 		.patch(
-			&format!("ingress/{}", deployment.id),
-			&PatchParams::apply(&format!("ingress/{}", deployment.id)),
+			&format!("ingress-{}", deployment.id),
+			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?
@@ -736,7 +651,7 @@ pub(super) async fn delete_kubernetes_deployment(
 	);
 	let kubernetes_client = get_kubernetes_config(config).await?;
 
-	if !app_exists(
+	if !deployment_exists(
 		deployment_id,
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -767,7 +682,7 @@ pub(super) async fn delete_kubernetes_deployment(
 	.await?;
 
 	log::trace!("request_id: {} - deleting the deployment", request_id);
-	// TODO: add code for catching errors
+
 	Api::<K8sDeployment>::namespaced(
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
@@ -779,13 +694,13 @@ pub(super) async fn delete_kubernetes_deployment(
 		workspace_id.as_str(),
 	)
 	.delete(
-		&format!("service/{}", deployment_id),
+		&format!("service-{}", deployment_id),
 		&DeleteParams::default(),
 	)
 	.await?;
 	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
 		.delete(
-			&format!("ingress/{}", deployment_id),
+			&format!("ingress-{}", deployment_id),
 			&DeleteParams::default(),
 		)
 		.await?;
@@ -895,19 +810,22 @@ async fn get_kubernetes_config(
 	Ok(client)
 }
 
-async fn app_exists(
+async fn deployment_exists(
 	deployment_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
-) -> Result<bool, Error> {
+) -> Result<bool, KubeError> {
 	let deployment_app =
 		Api::<K8sDeployment>::namespaced(kubernetes_client, namespace)
-			.get(&format!("deployment/{}", deployment_id))
+			.get(&format!("deployment-{}", deployment_id))
 			.await;
 
-	if deployment_app.is_err() {
-		// TODO: catch the not found error here
-		return Ok(false);
+	if let Err(KubeError::Api(error)) = deployment_app {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
 	}
 
 	Ok(true)
@@ -917,6 +835,7 @@ async fn app_exists(
 pub async fn get_kubernetes_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	namespace: &str,
 	config: &Settings,
 ) -> Result<DeploymentStatus, Error> {
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
@@ -926,8 +845,8 @@ pub async fn get_kubernetes_deployment_status(
 
 	let kubernetes_client = get_kubernetes_config(config).await?;
 	let deployment_status =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), "default")
-			.get(&deployment.id.as_str())
+		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
+			.get(deployment.id.as_str())
 			.await?
 			.status
 			.status(500)
@@ -963,23 +882,5 @@ async fn service_exists(
 		}
 	}
 
-	Ok(true)
-}
-
-async fn secret_exists(
-	secret_name: &str,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let secret_app = Api::<Secret>::namespaced(kubernetes_client, namespace)
-		.get(secret_name)
-		.await;
-	if let Err(KubeError::Api(error)) = secret_app {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
-	}
 	Ok(true)
 }

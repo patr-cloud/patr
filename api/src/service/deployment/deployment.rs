@@ -156,7 +156,7 @@ pub async fn create_deployment_in_workspace(
 			connection,
 			&deployment_id,
 			key,
-			&if let EnvironmentVariableValue::String(value) = value {
+			if let EnvironmentVariableValue::String(value) = value {
 				value
 			} else {
 				return Err(Error::empty()
@@ -409,7 +409,7 @@ pub async fn get_full_deployment_config(
 			repository_id,
 		} => {
 			let repository =
-				db::get_docker_repository_by_id(connection, &repository_id)
+				db::get_docker_repository_by_id(connection, repository_id)
 					.await?
 					.status(404)
 					.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -432,20 +432,17 @@ pub async fn get_full_deployment_config(
 		}
 	};
 
-	let ports =
-		db::get_exposed_ports_for_deployment(connection, &deployment_id)
+	let ports = db::get_exposed_ports_for_deployment(connection, deployment_id)
+		.await?
+		.into_iter()
+		.collect();
+
+	let environment_variables =
+		db::get_environment_variables_for_deployment(connection, deployment_id)
 			.await?
 			.into_iter()
+			.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
 			.collect();
-
-	let environment_variables = db::get_environment_variables_for_deployment(
-		connection,
-		&deployment_id,
-	)
-	.await?
-	.into_iter()
-	.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
-	.collect();
 
 	let urls = vec![]; // TODO entry points
 

@@ -20,6 +20,7 @@ use api_models::{
 	utils::{constants, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -447,6 +448,8 @@ async fn create_deployment(
 	let name = name.trim();
 	let image_tag = image_tag.trim();
 
+	let config = context.get_state().config.clone();
+
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -464,33 +467,110 @@ async fn create_deployment(
 	)
 	.await?;
 
-	// TODO:
 	// Check if image exists
-	// If it does, push to docr:
-	/*
-	let _ = digitalocean::push_to_docr(
-		deployment_id,
-		&image_id,
-		Client::new(),
-		config,
-	)
-	.await?;
-	 */
-	// If deploy_on_create is true, then deploy
+	// If it does, push to docr.
+	// Can't check for image existence for non-patr registry
+	if let DeploymentRegistry::PatrRegistry {
+		registry: _,
+		repository_id,
+	} = &registry
+	{
+		let tag_details = db::get_docker_repository_tag_details(
+			context.get_database_connection(),
+			repository_id,
+			image_tag,
+		)
+		.await?;
 
-	if deploy_on_create {
-		// if service::deployment::deployment::
-		// check_if_image_exists_in_registry( 	connection,
-		// 	registry,
-		// 	repository_id,
-		// 	image_name,
-		// 	image_tag,
-		// )
-		// .await?
-		// {
-		// 	service::update_deployment(connection, deployment_id, &config)
-		// 		.await?;
-		// }
+		let repository_details = db::get_docker_repository_by_id(
+			context.get_database_connection(),
+			repository_id,
+		)
+		.await?
+		.status(500)?;
+
+		let workspace_details = db::get_workspace_info(
+			context.get_database_connection(),
+			&repository_details.workspace_id,
+		)
+		.await?
+		.status(500)?;
+
+		if let Some((_, digest)) = tag_details {
+			// Push to docr
+			let id = id.clone();
+			let workspace_id = workspace_details.id.clone();
+			let name = name.to_string();
+			let image_tag = image_tag.to_string();
+			let full_image = format!(
+				"{}/{}/{}@{}",
+				config.docker_registry.registry_url,
+				workspace_details.name,
+				repository_details.name,
+				digest
+			);
+
+			task::spawn(async move {
+				let mut connection = if let Ok(connection) =
+					service::get_app().database.acquire().await
+				{
+					connection
+				} else {
+					log::error!("Unable to acquire a database connection");
+					return;
+				};
+				let result = service::push_to_docr(
+					&mut connection,
+					&id,
+					&full_image,
+					&config,
+				)
+				.await;
+
+				if let Err(e) = result {
+					log::error!(
+						"Error pushing image to docr: {}",
+						e.get_error()
+					);
+					return;
+				}
+
+				// If deploy_on_create is false, then return
+				if !deploy_on_create {
+					return;
+				}
+
+				let _ = service::update_kubernetes_deployment(
+					&workspace_id,
+					&Deployment {
+						id,
+						name,
+						registry,
+						image_tag,
+						status: DeploymentStatus::Deploying,
+						region,
+						machine_type,
+					},
+					&full_image,
+					&DeploymentRunningDetails {
+						min_horizontal_scale,
+						max_horizontal_scale,
+						deploy_on_push,
+						ports,
+						environment_variables,
+						urls,
+					},
+					&config,
+				)
+				.await
+				.map_err(|e| {
+					log::error!(
+						"Error deploying deployment: {}",
+						e.get_error()
+					);
+				});
+			});
+		}
 	}
 
 	let _ = service::get_deployment_metrics(
@@ -546,7 +626,7 @@ async fn get_deployment_info(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
-	let (mut deployment, _, _, running_details) =
+	let (mut deployment, workspace_id, _, running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
@@ -561,6 +641,7 @@ async fn get_deployment_info(
 			let status = service::get_kubernetes_deployment_status(
 				context.get_database_connection(),
 				&deployment_id,
+				workspace_id.as_str(),
 				&config,
 			)
 			.await?;

@@ -300,7 +300,7 @@ pub async fn set_docker_repository_tag_details(
 
 pub async fn get_list_of_tags_for_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 ) -> Result<Vec<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
 	let rows = query!(
 		r#"
@@ -416,7 +416,7 @@ pub async fn get_docker_repository_image_by_digest(
 
 pub async fn get_docker_repository_tag_details(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	tag: &str,
 ) -> Result<Option<(DockerRepositoryTagInfo, String)>, sqlx::Error> {
 	query!(

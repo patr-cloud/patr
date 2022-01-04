@@ -624,7 +624,7 @@ async fn get_list_of_repository_tags(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let tags = db::get_list_of_tags_for_docker_repository(
 		context.get_database_connection(),
@@ -670,7 +670,7 @@ async fn get_repository_tag_details(
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
 		.clone();
-	let repository_id = hex::decode(&repository_id_string).unwrap();
+	let repository_id = Uuid::parse_str(&repository_id_string).unwrap();
 
 	let tag = context.get_param(request_keys::TAG).unwrap().clone();
 

@@ -1,6 +1,5 @@
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use reqwest::Client;
 use serde_json::json;
 
 use crate::{
@@ -206,11 +205,10 @@ pub async fn notification_handler(
 				target.digest
 			);
 
-			let _ = service::push_to_docr(
+			service::push_to_docr(
 				context.get_database_connection(),
 				&deployment.id,
 				&full_image_name,
-				Client::new(),
 				&config,
 			)
 			.await?;

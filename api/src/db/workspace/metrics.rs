@@ -180,13 +180,7 @@ pub async fn get_static_site_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT
-			COUNT(*) "count!"
-		FROM 
-			deployment_static_sites
-		WHERE 
-			domain_name IS NOT NULL AND
-			status != 'deleted';
+		SELECT 0 as "count!";
 		"#
 	)
 	.fetch_all(&mut *connection)
