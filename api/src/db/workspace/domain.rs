@@ -124,22 +124,6 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// query!(
-	// 	r#"
-	// 	CREATE TABLE personal_domain (
-	// 		id BYTEA
-	// 			CONSTRAINT personal_domain_pk PRIMARY KEY,
-	// 		domain_type RESOURCE_OWNER_TYPE NOT NULL
-	// 			CONSTRAINT personal_domain_chk_dmn_typ
-	// 				CHECK(domain_type = 'personal'),
-	// 		CONSTRAINT personal_domain_fk_id_domain_type
-	// 			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
-	// 	);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
 	// todo: check if MX record exists for domain, then other records should be
 	// null and vice versa
 	// todo: remove path and rename sub_domain to name

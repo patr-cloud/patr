@@ -282,54 +282,6 @@
       ]
     }
   },
-  "0e6e17bdb4e83d7126d179a97db5f66ee5e51337d86ea34b338742f410d86b1e": {
-    "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "1073a864f20d4a248c0ae85ede1fc4b605b340d879f0bf0328d3a78e36c4a160": {
     "query": "CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM ( 'patr', 'user' );",
     "describe": {
@@ -660,6 +612,58 @@
       "nullable": []
     }
   },
+  "1fc5bb9b7f6ee48b0974ee4e20aa2a105e02f56cfd3516cb42cad19fbb920561": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.is_patr_controlled as \"is_patr_controlled!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "is_patr_controlled!",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "21fa37911614a4e908cfbb135f6f3fb123e022dee9606bdabafcc3ac7421464e": {
     "query": "ALTER TABLE deployment_static_sites ADD CONSTRAINT deployment_static_sites_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
     "describe": {
@@ -870,16 +874,6 @@
         "Left": [
           "Bytea"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "267cda1e5050dca6e8a3352b3ba5058efb79ec634733852a559df21880908120": {
-    "query": "CREATE TABLE personal_domain ( id BYTEA CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -1649,16 +1643,6 @@
       "nullable": []
     }
   },
-  "378fa30a89394bb42cad2674f58d35f721ae2639044c0a1e39ebc24913bb6bf4": {
-    "query": "CREATE TABLE dns_record ( domain_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, a_record TEXT [] NOT NULL DEFAULT '{{}}', aaaa_record TEXT [] NOT NULL DEFAULT '{{}}', text_record TEXT [] NOT NULL DEFAULT '{{}}', cname_record TEXT NOT NULL DEFAULT '', mx_record TEXT [] NOT NULL DEFAULT '{{}}', ttl INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 0, proxied BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
     "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
     "describe": {
@@ -1815,6 +1799,60 @@
       "nullable": []
     }
   },
+  "3eed94b873e6a440dfc480ba4388ee4c74f87a5490d5b1a4cfc05b41ab8503d8": {
+    "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.is_patr_controlled FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "is_patr_controlled",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "3f3db5bf71dab7a287aa95fe76ec466e2fd65cb836c3c04dde424d244fc21cd4": {
     "query": "UPDATE deployment SET status = $1 WHERE id = $2;",
     "describe": {
@@ -1965,52 +2003,6 @@
       "nullable": []
     }
   },
-  "4eb5c0a68aa7dfcda1189b43f6f4738d20579e03524d2e76e497c0b71d4a83e5": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
     "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;",
     "describe": {
@@ -2088,38 +2080,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "50b94695f3ecf5d44383ba039e9638e2ca9afe3ce1e30324aff487e95ba2e986": {
-    "query": "SELECT * FROM patr_controlled_domain WHERE domain_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "domain_id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 1,
-          "name": "zone_identifier",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "is_verified",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
     }
   },
   "512fc797aa6f75bb91a2241ed9d71a3329d080cf467e205854324f1b409af3af": {
@@ -4056,6 +4016,54 @@
       "nullable": []
     }
   },
+  "9a398564dd8f8702356ae16dadadafbcc4d5f9e47bacd83ce90cc2988b791123": {
+    "query": "SELECT domain_id, zone_identifier, is_verified, control_status as \"control_status: _\" FROM patr_controlled_domain WHERE domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "zone_identifier",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "is_verified",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 3,
+          "name": "control_status: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_control_status",
+              "kind": {
+                "Enum": [
+                  "patr",
+                  "user"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -4502,6 +4510,58 @@
       ]
     }
   },
+  "a36b88a2dd7d07ab633c968fcd433c45e89ae5ea22555bda04e8b8551034eb8a": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.is_patr_controlled as \"is_patr_controlled!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "is_patr_controlled!",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "a3abf15ceb610eac63cbccf25ff04116545f97f57c3c36a7fe9e75a139e74bd8": {
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number FOREIGN KEY ( id, backup_phone_country_code, backup_phone_number ) REFERENCES user_phone_number ( user_id, country_code, number ) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -4540,52 +4600,6 @@
       "nullable": [
         false,
         false,
-        true
-      ]
-    }
-  },
-  "a55bfa7a8814e6b2cad13200b1f817245677f4d6c4d316ad8a36755301956807": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = TRUE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
         true
       ]
     }
@@ -4670,6 +4684,60 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "a9d2baf71f125af5da2bad43db21be9b39619656fa7ff550dd54b13ac322071f": {
+    "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.is_patr_controlled FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "is_patr_controlled",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "aa4b13b2a2cb91848830cb553eb0520dd9d8d97cb1675bef90abd3c56a47dbbe": {
@@ -5417,6 +5485,16 @@
           },
           "Bytea"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "bf4c0f47af92d273a0c6e7c294709c5a39af11ad82f6fd4a4397322a90b1f7d9": {
+    "query": "CREATE TABLE dns_record ( domain_id BYTEA NOT NULL, name VARCHAR(255) NOT NULL, a_record TEXT [] NOT NULL DEFAULT '{{}}', aaaa_record TEXT [] NOT NULL DEFAULT '{{}}', text_record TEXT [] NOT NULL DEFAULT '{{}}', cname_record TEXT NOT NULL DEFAULT '', mx_record TEXT [] NOT NULL DEFAULT '{{}}', ttl INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 0, proxied BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT dns_record_uq_domain_id_sub_doma41001in_path UNIQUE (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -6642,54 +6720,6 @@
       },
       "nullable": [
         null
-      ]
-    }
-  },
-  "f573945b87b888f9207a9672804ad53589783632fc74e6215b737bcd1a55f889": {
-    "query": "SELECT domain.name, workspace_domain.id, workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id",
-          "type_info": "Bytea"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Bytea"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false
       ]
     }
   },
