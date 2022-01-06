@@ -436,7 +436,7 @@ async fn create_static_site_deployment(
 		workspace_id: _,
 		name,
 		file,
-		static_site_details: StaticSiteDetails { urls },
+		static_site_details: StaticSiteDetails { urls: _ },
 	} = context
 		.get_body_as()
 		.status(400)
@@ -579,13 +579,15 @@ async fn upload_files_for_static_site(
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let name = name.map(|name| name.trim());
+	let name = name.as_deref().map(|name| name.trim());
 
 	let config = context.get_state().config.clone();
 
-	service::upload_static_site_files_to_s3(
+	service::update_static_site(
 		context.get_database_connection(),
+		name,
 		file.as_deref(),
+		urls.as_deref(),
 		&static_site_id,
 		&config,
 		&request_id,

@@ -80,7 +80,7 @@ use crate::{
 pub(super) async fn update_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site: &StaticSite,
-	static_site_details: &StaticSiteDetails,
+	_static_site_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {

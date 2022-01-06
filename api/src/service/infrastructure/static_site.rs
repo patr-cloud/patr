@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use api_models::{
 	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
+		deployment::{DeploymentStatus, EntryPointMapping},
 		static_site::{StaticSite, StaticSiteDetails},
 	},
 	utils::Uuid,
@@ -327,6 +327,40 @@ pub async fn upload_static_site_files_to_s3(
 			.await?;
 	}
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
+
+	Ok(())
+}
+
+pub async fn update_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: Option<&str>,
+	file: Option<&str>,
+	_urls: Option<&[EntryPointMapping]>,
+	static_site_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	db::get_static_site_by_id(connection, static_site_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	if let Some(name) = name {
+		db::update_static_site_name(connection, static_site_id, name).await?;
+	}
+
+	if let Some(file) = file {
+		upload_static_site_files_to_s3(
+			connection,
+			file,
+			static_site_id,
+			config,
+			request_id,
+		)
+		.await?;
+	}
+
+	// TODO Do something about entry points
 
 	Ok(())
 }
