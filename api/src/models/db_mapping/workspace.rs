@@ -1,6 +1,12 @@
+use std::{fmt::Display, str::FromStr};
+
+use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::constants::ResourceOwnerType;
+use crate::{
+	error,
+	utils::{constants::ResourceOwnerType, Error},
+};
 
 pub struct Workspace {
 	pub id: Vec<u8>,
@@ -26,6 +32,7 @@ pub struct WorkspaceDomain {
 	pub name: String,
 	pub domain_type: ResourceOwnerType,
 	pub is_verified: bool,
+	pub is_patr_controlled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -57,6 +64,37 @@ pub struct EntryPoint {
 #[serde(rename_all = "camelCase")]
 pub struct PatrControlledDomain {
 	pub domain_id: Vec<u8>,
+	pub control_status: DomainControlStatus,
 	pub zone_identifier: Vec<u8>,
 	pub is_verified: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
+#[sqlx(type_name = "DOMAIN_CONTROL_STATUS", rename_all = "lowercase")]
+pub enum DomainControlStatus {
+	Patr,
+	User,
+}
+
+impl Display for DomainControlStatus {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Patr => write!(f, "patr"),
+			Self::User => write!(f, "user"),
+		}
+	}
+}
+
+impl FromStr for DomainControlStatus {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"patr" => Ok(Self::Patr),
+			"user" => Ok(Self::User),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
 }

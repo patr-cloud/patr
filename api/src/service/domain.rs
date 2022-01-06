@@ -5,20 +5,17 @@ use std::{
 
 use cloudflare::{
 	endpoints::{
-		dns::{CreateDnsRecord, CreateDnsRecordParams, DnsContent},
+		dns::{
+			CreateDnsRecord, CreateDnsRecordParams, DnsContent,
+		},
 		zone::{
-			CreateZone,
-			CreateZoneParams,
-			ListZones,
-			ListZonesParams,
-			Type,
+			CreateZone, CreateZoneParams, ListZones, ListZonesParams, Type, self, Status,
 		},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
 		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
+		Environment, HttpApiClientConfig,
 	},
 };
 use eve_rs::AsError;
@@ -26,21 +23,17 @@ use hex::ToHex;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
-	rr::{DNSClass, Name, RData, RecordType},
+	rr::{DNSClass, Name, RecordType},
 	udp::UdpClientStream,
 };
 use uuid::Uuid;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::rbac,
 	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
+		constants::ResourceOwnerType, get_current_time_millis,
+		settings::Settings, validator, Error,
 	},
 	Database,
 };
@@ -124,7 +117,7 @@ pub async fn add_domain_to_workspace(
 	config: &Settings,
 	domain_name: &str,
 	workspace_id: &[u8],
-	is_patr_controled: bool,
+	is_patr_controlled: bool,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -171,9 +164,9 @@ pub async fn add_domain_to_workspace(
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id, is_patr_controled)
+	db::add_to_workspace_domain(connection, domain_id, is_patr_controlled)
 		.await?;
-	if is_patr_controled {
+	if is_patr_controlled {
 		// create zone
 
 		// login to cloudflare and create zone in cloudflare
@@ -248,38 +241,71 @@ pub async fn add_domain_to_workspace(
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
+	config: &Settings,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
-		.status(200)
+		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (mut client, bg) = AsyncClient::connect(
-		UdpClientStream::<UdpSocket>::new("1.1.1.1:53".parse().unwrap()),
-	)
-	.await?;
-	let handle = task::spawn(bg);
-	let mut response = client
-		.query(
-			Name::from_utf8(format!("patrVerify.{}", domain.name)).unwrap(),
-			DNSClass::IN,
-			RecordType::CNAME,
+	if domain.is_patr_controlled {
+		let credentials = Credentials::UserAuthToken {
+			token: config.cloudflare.api_token.clone(),
+		};
+
+		let client = if let Ok(client) = CloudflareClient::new(
+			credentials,
+			HttpApiClientConfig::default(),
+			Environment::Production,
+		) {
+			client
+		} else {
+			return Err(Error::empty());
+		};
+
+		let zone_identifier = db::get_patr_controlled_domain_by_domain_id(
+			connection,
+			domain_id,
+		)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.zone_identifier;
+
+		let dns_record = client
+			.request(&zone::ZoneDetails {
+				identifier: &hex::encode(zone_identifier),
+			})
+			.await?;
+
+		if let Status::Active = dns_record.result.status {
+			return Ok(true);
+		} 
+
+		Ok(false)
+	} else {
+		// TODO: make domain name server a config instead of string
+		let (mut client, bg) = AsyncClient::connect(
+			UdpClientStream::<UdpSocket>::new("1.1.1.1:53".parse()?),
 		)
 		.await?;
-	let response = response.take_answers().into_iter().find(|record| {
-		let expected_cname = RData::CNAME(
-			Name::from_utf8(format!(
-				"{}.patr.cloud",
-				domain_id.encode_hex::<String>()
-			))
-			.unwrap(),
-		);
-		record.rdata() == &expected_cname
-	});
+		let custom_domain = Name::from_utf8(domain.name)?;
+		let handle = task::spawn(bg);
+		let mut response = client
+			.query(custom_domain, DNSClass::IN, RecordType::TXT)
+			.await?;
+		let response = response.take_answers().into_iter().find(|record| {
+			let txt_string = if let Some(record) = record.rdata().as_txt() {
+				record.to_string()
+			} else {
+				"None".to_string()
+			};
+			txt_string == "PATR-TEST-CONTENT".to_string()
+		});
+		drop(handle);
 
-	handle.abort();
-
-	Ok(response.is_some())
+		Ok(response.is_some())
+	}
 }
 
 /// # Description

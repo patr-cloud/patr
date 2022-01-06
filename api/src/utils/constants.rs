@@ -204,4 +204,6 @@ pub mod request_keys {
 	pub const PRIORITY: &str = "priority";
 	pub const TYPE: &str = "type";
 	pub const POINTS_TO: &str = "pointsTo";
+	pub const TARGET: &str = "target";
+	pub const TXT_RECORD: &str = "txtRecord";
 }

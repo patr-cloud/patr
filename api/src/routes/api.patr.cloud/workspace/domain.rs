@@ -406,7 +406,6 @@ async fn add_domain_to_workspace(
 		.to_lowercase();
 
 	// will determine if we control the DNS records or the user
-	// todo: store this in the database
 	let is_patr_controlled = body
 		.get(request_keys::IS_PATR_CONTROLLED)
 		.map(|value| value.as_bool())
@@ -425,15 +424,27 @@ async fn add_domain_to_workspace(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
-	}));
+	if is_patr_controlled {
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+		}));
+	} else {
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+			request_keys::TXT_RECORD: {
+				request_keys::TARGET: domain_name.to_string(),
+				request_keys::CONTENT: "PATR-TEST-CONTENT".to_string(),
+			}
+		}));
+	}
+
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under an
+/// This function is used to verify a domain which is to be registered under a
 /// workspace
 /// required inputs:
 /// auth token in the authorization headers
@@ -490,9 +501,12 @@ async fn verify_domain_in_workspace(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	let config = context.get_state().config.clone();
+
 	let verified = service::is_domain_verified(
 		context.get_database_connection(),
 		&domain.id,
+		&config,
 	)
 	.await?;
 

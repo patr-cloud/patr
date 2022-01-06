@@ -124,21 +124,21 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE personal_domain (
-			id BYTEA
-				CONSTRAINT personal_domain_pk PRIMARY KEY,
-			domain_type RESOURCE_OWNER_TYPE NOT NULL
-				CONSTRAINT personal_domain_chk_dmn_typ
-					CHECK(domain_type = 'personal'),
-			CONSTRAINT personal_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+	// query!(
+	// 	r#"
+	// 	CREATE TABLE personal_domain (
+	// 		id BYTEA
+	// 			CONSTRAINT personal_domain_pk PRIMARY KEY,
+	// 		domain_type RESOURCE_OWNER_TYPE NOT NULL
+	// 			CONSTRAINT personal_domain_chk_dmn_typ
+	// 				CHECK(domain_type = 'personal'),
+	// 		CONSTRAINT personal_domain_fk_id_domain_type
+	// 			FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+	// 	);
+	// 	"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
 
 	// todo: check if MX record exists for domain, then other records should be
 	// null and vice versa
@@ -156,7 +156,7 @@ pub async fn initialize_domain_pre(
 			ttl INTEGER NOT NULL,
 			priority INTEGER NOT NULL DEFAULT 0,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
-			CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name),
+			CONSTRAINT dns_record_uq_domain_id_sub_doma41001in_path UNIQUE (domain_id, name),
 			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
@@ -259,7 +259,7 @@ pub async fn create_generic_domain(
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	is_patr_controled: bool,
+	is_patr_controlled: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -269,7 +269,7 @@ pub async fn add_to_workspace_domain(
 			($1, 'business', FALSE, $2);
 		"#,
 		domain_id,
-		is_patr_controled
+		is_patr_controlled
 	)
 	.execute(&mut *connection)
 	.await
@@ -305,7 +305,8 @@ pub async fn get_domains_for_workspace(
 			domain.name,
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.is_patr_controlled
 		FROM
 			domain
 		INNER JOIN
@@ -335,7 +336,8 @@ pub async fn get_all_unverified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.is_patr_controlled as "is_patr_controlled!"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -380,7 +382,8 @@ pub async fn get_all_verified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.is_patr_controlled as "is_patr_controlled!"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -530,7 +533,8 @@ pub async fn get_workspace_domain_by_id(
 			domain.name,
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.is_patr_controlled
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -642,7 +646,10 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 		PatrControlledDomain,
 		r#"
 		SELECT
-			*
+			domain_id,
+			zone_identifier,
+			is_verified,
+			control_status as "control_status: _"
 		FROM
 			patr_controlled_domain
 		WHERE
