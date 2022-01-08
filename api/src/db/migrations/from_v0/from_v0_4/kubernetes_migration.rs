@@ -15,7 +15,7 @@ pub async fn migrate(
 
 	query!(
 		r#"
-		DROP TABLE deployed_domain;
+		DROP TABLE deployed_domain CASCADE;
 		"#
 	)
 	.execute(&mut *connection)
