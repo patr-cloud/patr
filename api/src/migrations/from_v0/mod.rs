@@ -1,6 +1,6 @@
 use semver::Version;
 
-use crate::Database;
+use crate::{utils::settings::Settings, Database};
 
 mod from_v0_3;
 mod from_v0_4;
@@ -22,16 +22,19 @@ mod from_v0_4;
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	version: Version,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 3, _) => from_v0_3::migrate(&mut *connection, version).await?,
-		(0, 4, _) => from_v0_4::migrate(&mut *connection, version).await?,
+		(0, 3, _) => {
+			from_v0_3::migrate(&mut *connection, version, config).await
+		}
+		(0, 4, _) => {
+			from_v0_4::migrate(&mut *connection, version, config).await
+		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
 	}
-
-	Ok(())
 }
 
 /// # Description

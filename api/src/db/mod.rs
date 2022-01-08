@@ -1,6 +1,5 @@
 mod initializer;
 mod meta_data;
-mod migrations;
 mod rbac;
 mod user;
 mod workspace;
@@ -12,7 +11,6 @@ use tokio::task;
 pub use self::{
 	initializer::*,
 	meta_data::*,
-	migrations::*,
 	rbac::*,
 	user::*,
 	workspace::*,

@@ -1,4 +1,4 @@
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 /**
  * (
@@ -357,18 +357,20 @@ const ALL_FOREIGN_KEY_CONSTRAINTS: [ConstraintType; 45] = [
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	remove_all_foreign_key_constraints(&mut *connection).await?;
-	alter_user_tables(&mut *connection).await?;
-	alter_workspace_tables(&mut *connection).await?;
-	alter_rbac_tables(&mut *connection).await?;
-	add_all_foreign_key_constraints(&mut *connection).await?;
+	remove_all_foreign_key_constraints(&mut *connection, config).await?;
+	alter_user_tables(&mut *connection, config).await?;
+	alter_workspace_tables(&mut *connection, config).await?;
+	alter_rbac_tables(&mut *connection, config).await?;
+	add_all_foreign_key_constraints(&mut *connection, config).await?;
 
 	Ok(())
 }
 
 async fn remove_all_foreign_key_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	for (constraint_name, _, (table_name, ..)) in ALL_FOREIGN_KEY_CONSTRAINTS {
 		let query = format!(
@@ -384,6 +386,7 @@ async fn remove_all_foreign_key_constraints(
 
 async fn alter_rbac_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -550,6 +553,7 @@ async fn alter_rbac_tables(
 
 async fn alter_user_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -696,6 +700,7 @@ async fn alter_user_tables(
 
 async fn alter_workspace_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -717,15 +722,16 @@ async fn alter_workspace_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	alter_domain_tables(&mut *connection).await?;
-	alter_docker_registry_tables(&mut *connection).await?;
-	alter_infrastructure_tables(&mut *connection).await?;
+	alter_domain_tables(&mut *connection, config).await?;
+	alter_docker_registry_tables(&mut *connection, config).await?;
+	alter_infrastructure_tables(&mut *connection, config).await?;
 
 	Ok(())
 }
 
 async fn alter_domain_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -762,6 +768,7 @@ async fn alter_domain_tables(
 
 async fn alter_docker_registry_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -788,16 +795,18 @@ async fn alter_docker_registry_tables(
 
 async fn alter_infrastructure_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	alter_deployment_tables(&mut *connection).await?;
-	alter_managed_database_tables(&mut *connection).await?;
-	alter_static_site_tables(&mut *connection).await?;
+	alter_deployment_tables(&mut *connection, config).await?;
+	alter_managed_database_tables(&mut *connection, config).await?;
+	alter_static_site_tables(&mut *connection, config).await?;
 
 	Ok(())
 }
 
 async fn alter_deployment_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -874,6 +883,7 @@ async fn alter_deployment_tables(
 
 async fn alter_managed_database_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -900,6 +910,7 @@ async fn alter_managed_database_tables(
 
 async fn alter_static_site_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -926,6 +937,7 @@ async fn alter_static_site_tables(
 
 async fn add_all_foreign_key_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	for (
 		constraint_name,

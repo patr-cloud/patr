@@ -1,10 +1,10 @@
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	// Remove old tables.
-	// TODO migrate away all the data in the old tables before dropping them.
 	query!(
 		r#"
 		DROP TABLE data_center_locations;
@@ -12,6 +12,11 @@ pub async fn migrate(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// TODO Move deployed_domain to managed_urls:
+	// Find the domains in deployed_domain.
+	// Create those domains as user-controlled domains, but unverified.
+	// Add them all as proxy_deployment or proxy_static_site to managed_urls.
 
 	query!(
 		r#"
