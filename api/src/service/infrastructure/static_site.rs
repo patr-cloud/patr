@@ -94,8 +94,6 @@ pub async fn start_static_site_deployment(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let urls = vec![]; // TODO entry points
-
 	log::trace!(
 		"Deploying the static site with id: {} and request_id: {}",
 		static_site_id,
@@ -126,7 +124,7 @@ pub async fn start_static_site_deployment(
 			name: static_site.name,
 			status: DeploymentStatus::Deploying,
 		},
-		&StaticSiteDetails { urls },
+		&StaticSiteDetails {},
 		config,
 		request_id,
 	)

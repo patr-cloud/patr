@@ -340,7 +340,7 @@ async fn get_static_site_info(
 			name: static_site.name,
 			status: static_site.status,
 		},
-		static_site_details: StaticSiteDetails { urls: vec![] },
+		static_site_details: StaticSiteDetails {},
 	});
 	Ok(context)
 }
@@ -436,7 +436,7 @@ async fn create_static_site_deployment(
 		workspace_id: _,
 		name,
 		file,
-		static_site_details: StaticSiteDetails { urls: _ },
+		static_site_details: _,
 	} = context
 		.get_body_as()
 		.status(400)

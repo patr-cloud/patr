@@ -147,7 +147,7 @@ pub async fn update_managed_url(
 		} => {
 			db::update_managed_url(
 				connection,
-				&managed_url_id,
+				managed_url_id,
 				path,
 				&DbManagedUrlType::ProxyToDeployment,
 				Some(deployment_id),
@@ -160,7 +160,7 @@ pub async fn update_managed_url(
 		ManagedUrlType::ProxyStaticSite { static_site_id } => {
 			db::update_managed_url(
 				connection,
-				&managed_url_id,
+				managed_url_id,
 				path,
 				&DbManagedUrlType::ProxyToStaticSite,
 				None,
@@ -173,7 +173,7 @@ pub async fn update_managed_url(
 		ManagedUrlType::ProxyUrl { url } => {
 			db::update_managed_url(
 				connection,
-				&managed_url_id,
+				managed_url_id,
 				path,
 				&DbManagedUrlType::ProxyUrl,
 				None,
@@ -186,7 +186,7 @@ pub async fn update_managed_url(
 		ManagedUrlType::Redirect { url } => {
 			db::update_managed_url(
 				connection,
-				&managed_url_id,
+				managed_url_id,
 				path,
 				&DbManagedUrlType::Redirect,
 				None,

@@ -3,8 +3,8 @@ mod deployment;
 mod digitalocean;
 mod kubernetes;
 mod managed_database;
-mod static_site;
 mod managed_url;
+mod static_site;
 
 use std::ops::DerefMut;
 
