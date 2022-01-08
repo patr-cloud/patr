@@ -55,16 +55,15 @@ pub mod permissions {
 					"workspace::deployment::upgradePath::edit";
 			}
 
-			#[allow(dead_code)]
-			pub mod entry_point {
+			pub mod managed_url {
 				pub const LIST: &str =
-					"workspace::deployment::entryPoint::list";
+					"workspace::deployment::managedUrl::list";
 				pub const CREATE: &str =
-					"workspace::deployment::entryPoint::create";
+					"workspace::deployment::managedUrl::create";
 				pub const EDIT: &str =
-					"workspace::deployment::entryPoint::edit";
+					"workspace::deployment::managedUrl::edit";
 				pub const DELETE: &str =
-					"workspace::deployment::entryPoint::delete";
+					"workspace::deployment::managedUrl::delete";
 			}
 		}
 
@@ -111,5 +110,5 @@ pub mod resource_types {
 	pub const DEPLOYMENT: &str = "deployment";
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
-	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";
+	pub const MANAGED_URL: &str = "managedUrl";
 }

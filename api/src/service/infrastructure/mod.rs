@@ -4,6 +4,7 @@ mod digitalocean;
 mod kubernetes;
 mod managed_database;
 mod static_site;
+mod managed_url;
 
 use std::ops::DerefMut;
 
@@ -17,6 +18,7 @@ pub use self::{
 	digitalocean::*,
 	kubernetes::*,
 	managed_database::*,
+	managed_url::*,
 	static_site::*,
 };
 use crate::{

@@ -2,7 +2,8 @@ use std::io::Cursor;
 
 use api_models::{
 	models::workspace::infrastructure::{
-		deployment::{DeploymentStatus, EntryPointMapping},
+		deployment::DeploymentStatus,
+		managed_urls::ManagedUrl,
 		static_site::{StaticSite, StaticSiteDetails},
 	},
 	utils::Uuid,
@@ -173,7 +174,7 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_static_site_from_k8s(
+	kubernetes::delete_kubernetes_static_site(
 		&static_site.workspace_id,
 		static_site_id,
 		config,
@@ -207,7 +208,7 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_static_site_from_k8s(
+	kubernetes::delete_kubernetes_static_site(
 		&static_site.workspace_id,
 		static_site_id,
 		config,
@@ -335,7 +336,7 @@ pub async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: Option<&str>,
 	file: Option<&str>,
-	_urls: Option<&[EntryPointMapping]>,
+	_urls: Option<&[ManagedUrl]>,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,

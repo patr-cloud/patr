@@ -200,7 +200,7 @@ pub async fn initialize_deployment_pre(
 			deployment_id UUID
 				CONSTRAINT deployment_exposed_port_fk_deployment_id
 					REFERENCES deployment(id),
-			port SMALLINT NOT NULL CONSTRAINT
+			port INTEGER NOT NULL CONSTRAINT
 				deployment_exposed_port_chk_port_u16 CHECK(
 					port > 0 AND port <= 65535
 				),
@@ -735,7 +735,7 @@ pub async fn add_exposed_port_for_deployment(
 			($1, $2, $3);
 		"#,
 		deployment_id as _,
-		port as i16,
+		port as i32,
 		exposed_port_type as _
 	)
 	.execute(&mut *connection)

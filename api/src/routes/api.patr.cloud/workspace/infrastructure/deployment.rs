@@ -438,7 +438,6 @@ async fn create_deployment(
 				min_horizontal_scale,
 				ports,
 				environment_variables,
-				urls,
 			},
 		deploy_on_create,
 	} = context
@@ -463,7 +462,6 @@ async fn create_deployment(
 		max_horizontal_scale,
 		&ports,
 		&environment_variables,
-		&urls,
 	)
 	.await?;
 
@@ -558,7 +556,6 @@ async fn create_deployment(
 						deploy_on_push,
 						ports,
 						environment_variables,
-						urls,
 					},
 					&config,
 				)
@@ -872,7 +869,6 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports,
 		environment_variables,
-		urls,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -887,8 +883,7 @@ async fn update_deployment(
 		min_horizontal_scale.is_none() &&
 		max_horizontal_scale.is_none() &&
 		ports.is_none() &&
-		environment_variables.is_none() &&
-		urls.is_none()
+		environment_variables.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -908,7 +903,6 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports.as_ref(),
 		environment_variables.as_ref(),
-		urls.as_deref(),
 	)
 	.await?;
 

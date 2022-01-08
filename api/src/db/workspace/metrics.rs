@@ -160,7 +160,7 @@ pub async fn get_created_static_site_count(
 		SELECT
 			COUNT(*) "count!"
 		FROM
-			deployment_static_sites
+			deployment_static_site
 		WHERE
 			status != 'deleted';
 		"#
@@ -201,7 +201,7 @@ pub async fn get_deleted_static_site_count(
 		SELECT
 			COUNT(*) "count!"
 		FROM 
-			deployment_static_sites
+			deployment_static_site
 		WHERE 
 			status = 'deleted';
 		"#

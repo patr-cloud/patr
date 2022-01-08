@@ -9,6 +9,7 @@ use api_models::{
 			EnvironmentVariableValue,
 			ExposedPortType,
 		},
+		managed_urls::{ManagedUrl, ManagedUrlType},
 		static_site::{StaticSite, StaticSiteDetails},
 	},
 	utils::Uuid,
@@ -69,15 +70,11 @@ use crate::{
 	db,
 	error,
 	service::{self, infrastructure::digitalocean},
-	utils::{
-		constants::{request_keys, ResourceOwnerType},
-		settings::Settings,
-		Error,
-	},
+	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
 
-pub(super) async fn update_kubernetes_static_site(
+pub async fn update_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site: &StaticSite,
 	_static_site_details: &StaticSiteDetails,
@@ -155,7 +152,7 @@ pub(super) async fn update_kubernetes_static_site(
 							..ServiceBackendPort::default()
 						}),
 					}),
-					..IngressBackend::default()
+					..Default::default()
 				},
 				path: Some("/".to_string()),
 				path_type: Some("Prefix".to_string()),
@@ -211,7 +208,7 @@ pub(super) async fn update_kubernetes_static_site(
 	Ok(())
 }
 
-pub(super) async fn delete_static_site_from_k8s(
+pub async fn delete_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	config: &Settings,
@@ -226,20 +223,9 @@ pub(super) async fn delete_static_site_from_k8s(
 		static_site_id
 	);
 
-	if !service_exists(static_site_id, kubernetes_client.clone(), namespace)
+	if service_exists(static_site_id, kubernetes_client.clone(), namespace)
 		.await?
 	{
-		log::trace!(
-			"request_id: {} - App doesn't exist as {}",
-			request_id,
-			static_site_id
-		);
-		log::trace!(
-			"request_id: {} - deployment deleted successfully!",
-			request_id
-		);
-		Ok(())
-	} else {
 		log::trace!(
 			"request_id: {} - site exists as {}",
 			request_id,
@@ -258,12 +244,19 @@ pub(super) async fn delete_static_site_from_k8s(
 				&DeleteParams::default(),
 			)
 			.await?;
+	} else {
 		log::trace!(
-			"request_id: {} - deployment deleted successfully!",
-			request_id
+			"request_id: {} - App doesn't exist as {}",
+			request_id,
+			static_site_id
 		);
-		Ok(())
 	}
+
+	log::trace!(
+		"request_id: {} - static site deleted successfully!",
+		request_id
+	);
+	Ok(())
 }
 
 pub async fn update_kubernetes_deployment(
@@ -477,66 +470,26 @@ pub async fn update_kubernetes_deployment(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let mut annotations: BTreeMap<String, String> = BTreeMap::new();
-	annotations.insert(
-		"kubernetes.io/ingress.class".to_string(),
-		"nginx".to_string(),
-	);
+	let annotations = [
+		(
+			"kubernetes.io/ingress.class".to_string(),
+			"nginx".to_string(),
+		),
+		(
+			"cert-manager.io/issuer".to_string(),
+			config.kubernetes.cert_issuer.clone(),
+		),
+	]
+	.into_iter()
+	.collect();
 
-	log::trace!(
-		"request_id: {} - creating https certificates for domain",
-		request_id
-	);
-
-	annotations.insert(
-		"cert-manager.io/issuer".to_string(),
-		config.kubernetes.cert_issuer.clone(),
-	);
-
-	// Get all domain names for domain IDs
-	let mut entry_points = Vec::with_capacity(running_details.urls.len());
-	for url in &running_details.urls {
-		let domain = db::get_workspace_domain_by_id(
-			service::get_app().database.acquire().await?.deref_mut(),
-			&url.domain_id,
-		)
-		.await?
-		.status(500)?;
-		entry_points.push((
-			url.sub_domain.clone(),
-			domain,
-			url.path.clone(),
-			url.port,
-		));
-	}
-
-	let domain_ingress_rules = entry_points
+	let (default_ingress_rules, default_tls_rules) = running_details
+		.ports
 		.iter()
-		.map(|(sub_domain, domain, path, port)| IngressRule {
-			host: Some(format!("{}.{}", sub_domain, domain.name)),
-			http: Some(HTTPIngressRuleValue {
-				paths: vec![HTTPIngressPath {
-					backend: IngressBackend {
-						service: Some(IngressServiceBackend {
-							name: format!("service-{}", deployment.id),
-							port: Some(ServiceBackendPort {
-								number: Some(*port as i32),
-								..ServiceBackendPort::default()
-							}),
-						}),
-						..IngressBackend::default()
-					},
-					path: Some(path.clone()),
-					path_type: Some("Prefix".to_string()),
-				}],
-			}),
-		})
-		.chain(
-			running_details
-				.ports
-				.iter()
-				.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-				.map(|(port, _)| IngressRule {
+		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+		.map(|(port, _)| {
+			(
+				IngressRule {
 					host: Some(format!(
 						"{}-{}.patr.cloud",
 						port, deployment.id
@@ -551,41 +504,24 @@ pub async fn update_kubernetes_deployment(
 										name: Some(format!("port-{}", port)),
 									}),
 								}),
-								..IngressBackend::default()
+								..Default::default()
 							},
 							..HTTPIngressPath::default()
 						}],
 					}),
-				}),
-		)
-		.collect::<Vec<_>>();
-
-	let mut domain_tls =
-		Vec::with_capacity(entry_points.len() + running_details.ports.len());
-	for (port, port_type) in &running_details.ports {
-		if port_type != &ExposedPortType::Http {
-			continue;
-		}
-		domain_tls.push(IngressTLS {
-			hosts: Some(vec![format!("{}-{}.patr.cloud", port, deployment.id)]),
-			// TODO rename patr-domain to {patr-domain.id} below
-			secret_name: Some("tls-domain-wildcard-patr-domain".to_string()),
-		});
-	}
-	for (sub_domain, domain, ..) in &entry_points {
-		domain_tls.push(IngressTLS {
-			hosts: Some(vec![format!("{}.{}", sub_domain, domain.name)]),
-			secret_name: Some(
-				// Change this to check if the domain is patr-controlled or
-				// user controlled
-				if domain.domain_type == ResourceOwnerType::Business {
-					format!("tls-domain-{}-{}", sub_domain, domain.id)
-				} else {
-					format!("tls-domain-wildcard-{}", domain.id)
 				},
-			),
-		});
-	}
+				IngressTLS {
+					hosts: Some(vec![format!(
+						"{}-{}.patr.cloud",
+						port, deployment.id
+					)]),
+					secret_name: Some(
+						"tls-domain-wildcard-patr-cloud".to_string(),
+					),
+				},
+			)
+		})
+		.unzip::<_, _, Vec<_>, Vec<_>>();
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
@@ -594,8 +530,8 @@ pub async fn update_kubernetes_deployment(
 			..ObjectMeta::default()
 		},
 		spec: Some(IngressSpec {
-			rules: Some(domain_ingress_rules),
-			tls: Some(domain_tls),
+			rules: Some(default_ingress_rules),
+			tls: Some(default_tls_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
@@ -628,7 +564,7 @@ pub async fn update_kubernetes_deployment(
 	Ok(())
 }
 
-pub(super) async fn delete_kubernetes_deployment(
+pub async fn delete_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	config: &Settings,
@@ -700,7 +636,361 @@ pub(super) async fn delete_kubernetes_deployment(
 	Ok(())
 }
 
-pub(super) async fn get_container_logs(
+pub async fn update_kubernetes_managed_url(
+	workspace_id: &Uuid,
+	managed_url: &ManagedUrl,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = get_kubernetes_config(config).await?;
+
+	let namespace = workspace_id.as_str();
+	log::trace!(
+		"request_id: {} - generating deployment configuration",
+		request_id
+	);
+	let domain = db::get_workspace_domain_by_id(
+		service::get_app().database.acquire().await?.deref_mut(),
+		&managed_url.domain_id,
+	)
+	.await?
+	.status(500)?;
+
+	let (ingress, annotations) = match &managed_url.url_type {
+		ManagedUrlType::ProxyDeployment {
+			deployment_id,
+			port,
+		} => (
+			IngressRule {
+				host: Some(format!(
+					"{}.{}",
+					managed_url.sub_domain, domain.name
+				)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service: Some(IngressServiceBackend {
+								name: format!("service-{}", deployment_id),
+								port: Some(ServiceBackendPort {
+									number: Some(*port as i32),
+									..ServiceBackendPort::default()
+								}),
+							}),
+							..Default::default()
+						},
+						path: Some(managed_url.path.to_string()),
+						path_type: Some("Prefix".to_string()),
+					}],
+				}),
+			},
+			[
+				(
+					"kubernetes.io/ingress.class".to_string(),
+					"nginx".to_string(),
+				),
+				(
+					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+					format!("{}.{}", managed_url.sub_domain, domain.name),
+				),
+				(
+					"cert-manager.io/issuer".to_string(),
+					config.kubernetes.cert_issuer.clone(),
+				),
+			]
+			.into_iter()
+			.collect(),
+		),
+		ManagedUrlType::ProxyStaticSite { static_site_id } => (
+			IngressRule {
+				host: Some(format!(
+					"{}.{}",
+					managed_url.sub_domain, domain.name
+				)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							service: Some(IngressServiceBackend {
+								name: format!("service-{}", static_site_id),
+								port: Some(ServiceBackendPort {
+									number: Some(80),
+									..ServiceBackendPort::default()
+								}),
+							}),
+							..Default::default()
+						},
+						path: Some(managed_url.path.to_string()),
+						path_type: Some("Prefix".to_string()),
+					}],
+				}),
+			},
+			[
+				(
+					"kubernetes.io/ingress.class".to_string(),
+					"nginx".to_string(),
+				),
+				(
+					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+					format!("{}.{}", managed_url.sub_domain, domain.name),
+				),
+				(
+					"cert-manager.io/issuer".to_string(),
+					config.kubernetes.cert_issuer.clone(),
+				),
+			]
+			.into_iter()
+			.collect(),
+		),
+		ManagedUrlType::ProxyUrl { url } => {
+			let kubernetes_service = Service {
+				metadata: ObjectMeta {
+					name: Some(format!("service-{}", managed_url.id)),
+					..ObjectMeta::default()
+				},
+				spec: Some(ServiceSpec {
+					type_: Some("ExternalName".to_string()),
+					external_name: Some(url.clone()),
+					ports: Some(vec![ServicePort {
+						name: Some("https".to_string()),
+						port: 443,
+						protocol: Some("TCP".to_string()),
+						target_port: Some(IntOrString::Int(443)),
+						..ServicePort::default()
+					}]),
+					..ServiceSpec::default()
+				}),
+				..Service::default()
+			};
+			// Create the service defined above
+			log::trace!(
+				"request_id: {} - creating ExternalName service",
+				request_id
+			);
+			let service_api: Api<Service> =
+				Api::namespaced(kubernetes_client.clone(), namespace);
+			service_api
+				.patch(
+					&format!("service-{}", managed_url.id),
+					&PatchParams::apply(&format!("service-{}", managed_url.id)),
+					&Patch::Apply(kubernetes_service),
+				)
+				.await?
+				.status
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+			(
+				IngressRule {
+					host: Some(format!(
+						"{}.{}",
+						managed_url.sub_domain, domain.name
+					)),
+					http: Some(HTTPIngressRuleValue {
+						paths: vec![HTTPIngressPath {
+							backend: IngressBackend {
+								service: Some(IngressServiceBackend {
+									name: format!("service-{}", managed_url.id),
+									port: Some(ServiceBackendPort {
+										number: Some(443),
+										..ServiceBackendPort::default()
+									}),
+								}),
+								..Default::default()
+							},
+							path: Some(managed_url.path.to_string()),
+							path_type: Some("Prefix".to_string()),
+						}],
+					}),
+				},
+				[
+					(
+						"kubernetes.io/ingress.class".to_string(),
+						"nginx".to_string(),
+					),
+					(
+						"nginx.ingress.kubernetes.io/upstream-vhost"
+							.to_string(),
+						url.clone(),
+					),
+					(
+						"nginx.ingress.kubernetes.io/backend-protocol"
+							.to_string(),
+						"HTTPS".to_string(),
+					),
+					(
+						"cert-manager.io/issuer".to_string(),
+						config.kubernetes.cert_issuer.clone(),
+					),
+				]
+				.into_iter()
+				.collect(),
+			)
+		}
+		ManagedUrlType::Redirect { url } => (
+			IngressRule {
+				host: Some(format!(
+					"{}.{}",
+					managed_url.sub_domain, domain.name
+				)),
+				http: Some(HTTPIngressRuleValue {
+					paths: vec![HTTPIngressPath {
+						backend: IngressBackend {
+							..Default::default()
+						},
+						path: Some(managed_url.path.to_string()),
+						path_type: Some("Prefix".to_string()),
+					}],
+				}),
+			},
+			[
+				(
+					"kubernetes.io/ingress.class".to_string(),
+					"nginx".to_string(),
+				),
+				(
+					"nginx.ingress.kubernetes.io/temporal-redirect".to_string(),
+					url.clone(),
+				),
+				(
+					"cert-manager.io/issuer".to_string(),
+					config.kubernetes.cert_issuer.clone(),
+				),
+			]
+			.into_iter()
+			.collect(),
+		),
+	};
+
+	let kubernetes_ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", managed_url.id)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(vec![ingress]),
+			tls: Some(vec![
+				if
+				/* domain.is_patr_controlled */
+				false {
+					IngressTLS {
+						hosts: Some(vec![format!(
+							"{}.{}",
+							managed_url.sub_domain, domain.name
+						)]),
+						secret_name: Some(format!(
+							"tls-domain-wildcard-{}",
+							domain.name.replace(".", "-")
+						)),
+					}
+				} else {
+					IngressTLS {
+						hosts: Some(vec![format!(
+							"{}.{}",
+							managed_url.sub_domain, domain.name
+						)]),
+						secret_name: Some(format!(
+							"tls-url-{}-{}",
+							managed_url.sub_domain.replace(".", "-"),
+							domain.name.replace(".", "-")
+						)),
+					}
+				},
+			]),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+	// Create the ingress defined above
+	log::trace!("request_id: {} - creating ingress", request_id);
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+	ingress_api
+		.patch(
+			&format!("ingress-{}", managed_url.id),
+			&PatchParams::apply(&format!("ingress-{}", managed_url.id)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	log::trace!("request_id: {} - managed URL created", request_id);
+	Ok(())
+}
+
+pub async fn delete_kubernetes_managed_url(
+	workspace_id: &Uuid,
+	managed_url_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = get_kubernetes_config(config).await?;
+
+	let namespace = workspace_id.as_str();
+	log::trace!(
+		"request_id: {} - deleting service: service-{}",
+		request_id,
+		managed_url_id
+	);
+
+	if service_exists(managed_url_id, kubernetes_client.clone(), namespace)
+		.await?
+	{
+		log::trace!(
+			"request_id: {} - service exists as {}",
+			request_id,
+			managed_url_id
+		);
+
+		Api::<Service>::namespaced(kubernetes_client.clone(), namespace)
+			.delete(
+				&format!("service-{}", managed_url_id),
+				&DeleteParams::default(),
+			)
+			.await?;
+		log::trace!(
+			"request_id: {} - deployment deleted successfully!",
+			request_id
+		);
+	} else {
+		log::trace!(
+			"request_id: {} - managed URL doesn't exist as {}",
+			request_id,
+			managed_url_id
+		);
+	}
+
+	if ingress_exists(managed_url_id, kubernetes_client.clone(), namespace)
+		.await?
+	{
+		log::trace!(
+			"request_id: {} - ingress exists as {}",
+			request_id,
+			managed_url_id
+		);
+
+		Api::<Ingress>::namespaced(kubernetes_client, namespace)
+			.delete(
+				&format!("ingress-{}", managed_url_id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - ingress doesn't exist as {}",
+			request_id,
+			managed_url_id
+		);
+	}
+
+	log::trace!(
+		"request_id: {} - managed URL deleted successfully!",
+		request_id
+	);
+	Ok(())
+}
+
+pub async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	request_id: Uuid,
@@ -747,6 +1037,40 @@ pub(super) async fn get_container_logs(
 
 	log::trace!("request_id: {} - logs retreived successfully!", request_id);
 	Ok(deployment_logs)
+}
+
+// TODO: add the logic of errored deployment
+pub async fn get_kubernetes_deployment_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	namespace: &str,
+	config: &Settings,
+) -> Result<DeploymentStatus, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let kubernetes_client = get_kubernetes_config(config).await?;
+	let deployment_status =
+		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
+			.get(deployment.id.as_str())
+			.await?
+			.status
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	if deployment_status.available_replicas ==
+		Some(deployment.min_horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Running)
+	} else if deployment_status.available_replicas <=
+		Some(deployment.min_horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Deploying)
+	} else {
+		Ok(DeploymentStatus::Errored)
+	}
 }
 
 async fn get_kubernetes_config(
@@ -820,50 +1144,34 @@ async fn deployment_exists(
 	Ok(true)
 }
 
-// TODO: add the logic of errored deployment
-pub async fn get_kubernetes_deployment_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	namespace: &str,
-	config: &Settings,
-) -> Result<DeploymentStatus, Error> {
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let kubernetes_client = get_kubernetes_config(config).await?;
-	let deployment_status =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
-			.get(deployment.id.as_str())
-			.await?
-			.status
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-	if deployment_status.available_replicas ==
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Running)
-	} else if deployment_status.available_replicas <=
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Deploying)
-	} else {
-		Ok(DeploymentStatus::Errored)
-	}
-}
-
 async fn service_exists(
-	static_site_id: &Uuid,
+	service_id: &Uuid,
 	kubernetes_client: kube::Client,
 	namespace: &str,
 ) -> Result<bool, KubeError> {
-	let deployment_app =
-		Api::<Service>::namespaced(kubernetes_client, namespace)
-			.get(&format!("service-{}", static_site_id))
-			.await;
-	if let Err(KubeError::Api(error)) = deployment_app {
+	let service = Api::<Service>::namespaced(kubernetes_client, namespace)
+		.get(&format!("service-{}", service_id))
+		.await;
+	if let Err(KubeError::Api(error)) = service {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
+	}
+
+	Ok(true)
+}
+
+async fn ingress_exists(
+	managed_url_id: &Uuid,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let ingress = Api::<Ingress>::namespaced(kubernetes_client, namespace)
+		.get(&format!("ingress-{}", managed_url_id))
+		.await;
+	if let Err(KubeError::Api(error)) = ingress {
 		if error.code == 404 {
 			return Ok(false);
 		} else {
