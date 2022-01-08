@@ -103,6 +103,15 @@ pub async fn migrate(
 
 	query!(
 		r#"
+		ALTER TABLE deployment_static_sites
+		DROP COLUMN domain_name CASCADE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		DROP TYPE DEPLOYMENT_MACHINE_TYPE;
 		"#
 	)
