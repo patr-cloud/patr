@@ -6,17 +6,21 @@ pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	rename_organisation_account_type_to_business(&mut *connection, config).await?;
-	rename_organisation_email_to_business_email(&mut *connection, config).await?;
+	rename_organisation_account_type_to_business(&mut *connection, config)
+		.await?;
+	rename_organisation_email_to_business_email(&mut *connection, config)
+		.await?;
 	rename_user_to_sign_up_columns(&mut *connection, config).await?;
 	rename_organisation_to_workspace(&mut *connection, config).await?;
-	rename_organisation_domain_to_workspace_domain(&mut *connection, config).await?;
+	rename_organisation_domain_to_workspace_domain(&mut *connection, config)
+		.await?;
 	rename_docker_registry_repository_columns(&mut *connection, config).await?;
 	rename_deployment_columns(&mut *connection, config).await?;
 	rename_managed_database_columns(&mut *connection, config).await?;
 	rename_static_sites_columns(&mut *connection, config).await?;
 	rename_resource_columns(&mut *connection, config).await?;
-	rename_organisation_user_to_workspace_user(&mut *connection, config).await?;
+	rename_organisation_user_to_workspace_user(&mut *connection, config)
+		.await?;
 	remove_application_tables(&mut *connection, config).await?;
 	remove_application_permissions(&mut *connection, config).await?;
 	remove_application_resource_type(&mut *connection, config).await?;
@@ -25,8 +29,10 @@ pub(super) async fn migrate(
 	remove_portus_permissions(&mut *connection, config).await?;
 	remove_portus_resource_type(&mut *connection, config).await?;
 	rename_all_permissions(&mut *connection, config).await?;
-	rename_organisation_resource_type_to_workspace(&mut *connection, config).await?;
-	rename_organisation_resource_names_to_workspace(&mut *connection, config).await?;
+	rename_organisation_resource_type_to_workspace(&mut *connection, config)
+		.await?;
+	rename_organisation_resource_names_to_workspace(&mut *connection, config)
+		.await?;
 	rename_personal_workspace_names(&mut *connection, config).await?;
 	reset_resource_types_order(&mut *connection, config).await?;
 
