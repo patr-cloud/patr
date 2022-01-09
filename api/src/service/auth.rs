@@ -1,5 +1,7 @@
 use api_models::models::auth::{
-	PreferredRecoveryOption, RecoveryMethod, SignUpAccountType,
+	PreferredRecoveryOption,
+	RecoveryMethod,
+	SignUpAccountType,
 };
 use eve_rs::AsError;
 use uuid::Uuid;
@@ -10,15 +12,27 @@ use uuid::Uuid;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
-		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
-		rbac, AccessTokenData, ExposedUserData,
+		db_mapping::{
+			DomainControlStatus,
+			JoinUser,
+			User,
+			UserLogin,
+			UserToSignUp,
+		},
+		rbac,
+		AccessTokenData,
+		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
 	utils::{
-		constants::ResourceOwnerType, get_current_time_millis,
-		settings::Settings, validator, Error,
+		constants::ResourceOwnerType,
+		get_current_time_millis,
+		settings::Settings,
+		validator,
+		Error,
 	},
 	Database,
 };
@@ -751,50 +765,49 @@ pub async fn join_user(
 	otp: &str,
 	username: &str,
 ) -> Result<JoinUser, Error> {
-	println!("TEST1");
 	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
 		.status(200)
 		.body(error!(OTP_EXPIRED).to_string())?;
-	println!("TEST2");
+
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
-	println!("TEST3");
+
 	if !success {
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_OTP).to_string())?;
 	}
-	println!("TEST4");
+
 	if user_data.otp_expiry < get_current_time_millis() {
 		Error::as_result()
 			.status(200)
 			.body(error!(OTP_EXPIRED).to_string())?;
 	}
-	println!("TEST5");
+
 	// First create user,
 	// Then create an workspace if a business account,
 	// Then add the domain if business account,
 	// Then create personal workspace regardless,
 	// Then set email to backup email if personal account,
 	// And finally send the token, along with the email to the user
-	println!("TEST6");
+
 	let user_uuid = db::generate_new_user_id(connection).await?;
 	let user_id = user_uuid.as_bytes();
 	let created = get_current_time_millis();
-	println!("TEST7");
+
 	if rbac::GOD_USER_ID.get().is_none() {
 		rbac::GOD_USER_ID
 			.set(user_uuid)
 			.expect("GOD_USER_ID was already set");
 	}
-	println!("TEST8");
+
 	let backup_email_local = user_data.backup_email_local.as_deref();
 	let backup_email_domain_id = user_data.backup_email_domain_id.as_deref();
 	let backup_phone_country_code =
 		user_data.backup_phone_country_code.as_deref();
 	let backup_phone_number = user_data.backup_phone_number.as_deref();
 	db::begin_deferred_constraints(connection).await?;
-	println!("TEST9");
+
 	if let Some((email_local, domain_id)) = user_data
 		.backup_email_local
 		.as_ref()
@@ -807,7 +820,6 @@ pub async fn join_user(
 			domain_id,
 		)
 		.await?;
-		println!("TEST10");
 	} else if let Some((phone_country_code, phone_number)) = user_data
 		.backup_phone_country_code
 		.as_ref()
@@ -820,19 +832,17 @@ pub async fn join_user(
 			phone_number,
 		)
 		.await?;
-		println!("TEST11");
 	} else {
 		log::error!(
 			"Got neither backup email, nor backup phone number while signing up user: {}",
 			user_data.username
 		);
-		println!("TEST12");
+
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
 	}
 
-	println!("TEST13");
 	db::create_user(
 		connection,
 		user_id,
@@ -847,7 +857,7 @@ pub async fn join_user(
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
-	println!("TEST14");
+
 	let welcome_email_to; // Send the "welcome to patr" email here
 	let backup_email_to; // Send "this email is a backup email for ..." here
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
@@ -867,7 +877,7 @@ pub async fn join_user(
 			config,
 			user_data.business_domain_name.as_ref().unwrap(),
 			workspace_id,
-			false,
+			&DomainControlStatus::User,
 		)
 		.await?
 		.as_bytes()

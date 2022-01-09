@@ -32,12 +32,13 @@ pub struct WorkspaceDomain {
 	pub name: String,
 	pub domain_type: ResourceOwnerType,
 	pub is_verified: bool,
-	pub is_patr_controlled: bool,
+	pub control_status: DomainControlStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
+	pub id: Vec<u8>,
 	pub domain_id: Vec<u8>,
 	pub name: String,
 	pub a_record: Vec<String>,

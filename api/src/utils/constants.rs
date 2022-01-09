@@ -191,8 +191,9 @@ pub mod request_keys {
 	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
-	pub const IS_PATR_CONTROLLED: &str = "isPatrControlled";
+	pub const CONTROL_STATUS: &str = "controlStatus";
 	pub const DNS_RECORD: &str = "dns_record";
+	pub const DNS_ID: &str = "dnsId";
 	pub const A_RECORD: &str = "a_record";
 	pub const AAAA_RECORD: &str = "aaaa_record";
 	pub const CNAME_RECORD: &str = "cname_record";

@@ -4,6 +4,7 @@ use crate::{
 	models::db_mapping::{
 		DnsRecord,
 		Domain,
+		DomainControlStatus,
 		PatrControlledDomain,
 		PersonalDomain,
 		WorkspaceDomain,
@@ -39,13 +40,24 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM (
+			'patr',
+			'user'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE workspace_domain (
 			id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
 				CONSTRAINT workspace_domain_chk_dmn_typ
 					CHECK(domain_type = 'business'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user'::DOMAIN_CONTROL_STATUS,
 			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
@@ -62,20 +74,9 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT personal_domain_chk_dmn_typ
 					CHECK(domain_type = 'personal'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user'::DOMAIN_CONTROL_STATUS,
 			CONSTRAINT personal_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM (
-			'patr',
-			'user'
 		);
 		"#
 	)
@@ -130,6 +131,7 @@ pub async fn initialize_domain_pre(
 	query!(
 		r#"
 		CREATE TABLE dns_record (
+			id BYTEA CONSTRAINT dns_record_pk PRIMARY KEY,
 			domain_id BYTEA NOT NULL,
 			name VARCHAR(255) NOT NULL,
 			a_record TEXT [] NOT NULL DEFAULT '{{}}',
@@ -243,7 +245,7 @@ pub async fn create_generic_domain(
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	is_patr_controlled: bool,
+	control_status: &DomainControlStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -253,7 +255,7 @@ pub async fn add_to_workspace_domain(
 			($1, 'business', FALSE, $2);
 		"#,
 		domain_id,
-		is_patr_controlled
+		control_status as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -290,7 +292,7 @@ pub async fn get_domains_for_workspace(
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.is_patr_controlled
+			workspace_domain.control_status as "control_status: _"
 		FROM
 			domain
 		INNER JOIN
@@ -321,7 +323,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
 			workspace_domain.is_verified as "is_verified!",
-			workspace_domain.is_patr_controlled as "is_patr_controlled!"
+			workspace_domain.control_status as "control_status!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -367,7 +369,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
 			workspace_domain.is_verified as "is_verified!",
-			workspace_domain.is_patr_controlled as "is_patr_controlled!"
+			workspace_domain.control_status as "control_status!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -518,7 +520,7 @@ pub async fn get_workspace_domain_by_id(
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
-			workspace_domain.is_patr_controlled
+			workspace_domain.control_status as "control_status: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -648,6 +650,7 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 // ON CONFLICT reference: https://www.postgresqltutorial.com/postgresql-upsert/
 pub async fn add_patr_dns_a_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -659,12 +662,13 @@ pub async fn add_patr_dns_a_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, $3, default, default, default, default, $4, default, $5)
+				($1, $2, $3, $4, default, default, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				a_record = $3 || EXCLUDED.a_record;
+				a_record = $4 || EXCLUDED.a_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -678,6 +682,7 @@ pub async fn add_patr_dns_a_record(
 
 pub async fn add_patr_dns_aaaa_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -689,12 +694,13 @@ pub async fn add_patr_dns_aaaa_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, $3, default, default, default, $4, default, $5)
+				($1, $2, $3, default, $4, default, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				aaaa_record = $3 || EXCLUDED.aaaa_record;
+				aaaa_record = $4 || EXCLUDED.aaaa_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -708,6 +714,7 @@ pub async fn add_patr_dns_aaaa_record(
 
 pub async fn add_patr_dns_mx_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -720,12 +727,13 @@ pub async fn add_patr_dns_mx_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, $3, default, default, $4, $5, $6)
+				($1, $2, $3, default, default, $4, default, default, $5, $6, $7)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				mx_record = $3 || EXCLUDED.mx_record;
+				mx_record = $4 || EXCLUDED.mx_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -740,6 +748,7 @@ pub async fn add_patr_dns_mx_record(
 
 pub async fn add_patr_dns_cname_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &str,
@@ -751,12 +760,13 @@ pub async fn add_patr_dns_cname_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, default, $3, default, $4, default, $5)
+				($1, $2, $3, default, default, default, $4, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				cname_record = $3;
+				cname_record = $4;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -770,6 +780,7 @@ pub async fn add_patr_dns_cname_record(
 
 pub async fn add_patr_dns_txt_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -781,12 +792,13 @@ pub async fn add_patr_dns_txt_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, $3, default, default, $4, default, $5)
+				($1, $2, $3, default, default, $4, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				text_record = $3 || EXCLUDED.text_record;
+				text_record = $4 || EXCLUDED.text_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,

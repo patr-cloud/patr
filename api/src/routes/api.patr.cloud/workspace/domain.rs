@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{db_mapping::DomainControlStatus, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -406,9 +406,11 @@ async fn add_domain_to_workspace(
 		.to_lowercase();
 
 	// will determine if we control the DNS records or the user
-	let is_patr_controlled = body
-		.get(request_keys::IS_PATR_CONTROLLED)
-		.map(|value| value.as_bool())
+	let control_status = body
+		.get(request_keys::CONTROL_STATUS)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|value| value.parse::<DomainControlStatus>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -420,11 +422,11 @@ async fn add_domain_to_workspace(
 		&config,
 		&domain_name,
 		&workspace_id,
-		is_patr_controlled,
+		&control_status,
 	)
 	.await?;
 
-	if is_patr_controlled {
+	if let DomainControlStatus::Patr = control_status {
 		context.json(json!({
 			request_keys::SUCCESS: true,
 			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
@@ -608,7 +610,6 @@ async fn get_domain_info_in_workspace(
 				request_keys::DOMAIN_ID: domain_id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: false,
-				request_keys::VERIFICATION_TOKEN: domain_id
 			})
 		},
 	);
@@ -705,21 +706,23 @@ async fn add_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	let domain_id = hex::decode(domain_id).unwrap();
+	// TODO: convert the second unwrap to ?
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())?;
+
+	let domain_id =
+		hex::decode(context.get_param(request_keys::DOMAIN_ID).unwrap())?;
 
 	// check if domain is patr controlled
+	// TODO: maybe change the error code to something more appropriate
 	let domain = db::get_patr_controlled_domain_by_domain_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
+	.await?
+	.status(400)
+	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	if domain.is_none() {
-		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
-		return Ok(context);
-	}
-	let domain = domain.unwrap();
 	let body = context.get_body_object().clone();
 
 	// type determines what kind of record is being added
@@ -753,7 +756,7 @@ async fn add_dns_record(
 
 	let config = context.get_state().config.clone();
 
-	match r#type {
+	let dns_id = match r#type {
 		"A" => {
 			// content basically stores the ipv4 address. same goes with AAAA
 			// record
@@ -767,15 +770,16 @@ async fn add_dns_record(
 			// add a record to cloudflare
 			service::add_patr_dns_a_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				a_record,
 				ttl.try_into().unwrap(),
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"AAAA" => {
 			let aaaa_record = body
@@ -787,15 +791,16 @@ async fn add_dns_record(
 
 			service::add_patr_dns_aaaa_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				aaaa_record,
 				ttl.try_into().unwrap(),
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"MX" => {
 			let points_to = body
@@ -831,7 +836,7 @@ async fn add_dns_record(
 
 			service::add_patr_dns_mx_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
@@ -839,8 +844,9 @@ async fn add_dns_record(
 				ttl.try_into().unwrap(),
 				proxied,
 				priority.try_into().unwrap(),
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"CNAME" => {
 			let points_to = body
@@ -860,15 +866,16 @@ async fn add_dns_record(
 
 			service::add_patr_dns_cname_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				points_to,
 				ttl.try_into().unwrap(),
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"TXT" => {
 			let content = body
@@ -880,23 +887,25 @@ async fn add_dns_record(
 
 			service::add_patr_dns_txt_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				content,
 				ttl.try_into().unwrap(),
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
-		_ => {
-			// todo: send error here.
-		}
-	}
+		_ => Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+	};
 
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		request_keys::DNS_ID: dns_id,
 	}));
 	Ok(context)
 }
