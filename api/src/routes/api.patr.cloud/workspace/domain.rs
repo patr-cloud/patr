@@ -415,6 +415,8 @@ async fn add_domain_to_workspace(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let domain_name = domain_name.replace("www.", "");
+
 	// move this to service layer
 	let config = context.get_state().config.clone();
 	let domain_id = service::add_domain_to_workspace(
@@ -436,7 +438,7 @@ async fn add_domain_to_workspace(
 			request_keys::SUCCESS: true,
 			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
 			request_keys::TXT_RECORD: {
-				request_keys::TARGET: domain_name.to_string(),
+				request_keys::TARGET: format!("PatrVerify.{}",domain_name),
 				request_keys::CONTENT: "PATR-TEST-CONTENT".to_string(),
 			}
 		}));

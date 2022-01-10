@@ -117,7 +117,7 @@ pub async fn get_static_site_by_id(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			status as "status: _",
 			domain_name,
 			workspace_id
@@ -143,7 +143,7 @@ pub async fn get_static_site_by_name_in_workspace(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			status as "status: _",
 			domain_name,
 			workspace_id
@@ -214,7 +214,7 @@ pub async fn get_static_sites_for_workspace(
 		r#"
 		SELECT
 			id,
-			name as "name: _",
+			name::TEXT as "name!: _",
 			status as "status: _",
 			domain_name,
 			workspace_id

@@ -28,7 +28,7 @@ use hex::ToHex;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
-	rr::{DNSClass, Name, RecordType},
+	rr::{rdata::TXT, DNSClass, Name, RData, RecordType},
 	udp::UdpClientStream,
 };
 use uuid::Uuid;
@@ -173,7 +173,7 @@ pub async fn add_domain_to_workspace(
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id, &control_status).await?;
+	db::add_to_workspace_domain(connection, domain_id, control_status).await?;
 	if let DomainControlStatus::Patr = control_status {
 		// create zone
 
@@ -196,7 +196,7 @@ pub async fn add_domain_to_workspace(
 		client
 			.request(&CreateZone {
 				params: CreateZoneParams {
-					name: &domain_name,
+					name: domain_name,
 					jump_start: Some(false),
 					account: &config.cloudflare.account_id,
 					// Full because the DNS record
@@ -285,6 +285,8 @@ pub async fn is_domain_verified(
 			.await?;
 
 		if let Status::Active = dns_record.result.status {
+			db::update_workspace_domain_status(connection, domain_id, true)
+				.await?;
 			return Ok(true);
 		}
 
@@ -295,22 +297,34 @@ pub async fn is_domain_verified(
 			UdpClientStream::<UdpSocket>::new("1.1.1.1:53".parse()?),
 		)
 		.await?;
-		let custom_domain = Name::from_utf8(domain.name)?;
+
 		let handle = task::spawn(bg);
 		let mut response = client
-			.query(custom_domain, DNSClass::IN, RecordType::TXT)
+			.query(
+				Name::from_utf8(format!("PatrVerify.{}", domain.name))?,
+				DNSClass::IN,
+				RecordType::TXT,
+			)
 			.await?;
+
+		//TODO: change PATR-TEST-CONTENT to domain id
 		let response = response.take_answers().into_iter().find(|record| {
-			let txt_string = if let Some(record) = record.rdata().as_txt() {
-				record.to_string()
-			} else {
-				"None".to_string()
-			};
-			txt_string == "PATR-TEST-CONTENT".to_string()
+			let expected_txt =
+				RData::TXT(TXT::new(vec!["PATR-TEST-CONTENT".to_string()]));
+			record.rdata() == &expected_txt
 		});
+
+		handle.abort();
 		drop(handle);
 
-		Ok(response.is_some())
+		if response.is_some() {
+			db::update_workspace_domain_status(connection, domain_id, true)
+				.await?;
+
+			return Ok(true);
+		}
+
+		Ok(false)
 	}
 }
 
@@ -386,7 +400,7 @@ pub async fn add_patr_dns_a_record(
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::A {
 					content: a_record_ipv4,
 				},
@@ -457,7 +471,7 @@ pub async fn add_patr_dns_aaaa_record(
 	let ipv6 = Ipv6Addr::from_str(aaaa_record);
 
 	// todo: add a better method of error handling
-	if let Err(_) = ipv6 {
+	if ipv6.is_err() {
 		return Error::as_result()
 			.status(400)
 			.body(error!(INVALID_IP_ADDRESS).to_string())?;
@@ -472,7 +486,7 @@ pub async fn add_patr_dns_aaaa_record(
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::AAAA { content: ipv6 },
 			},
 		})
@@ -548,7 +562,7 @@ pub async fn add_patr_dns_mx_record(
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::MX {
 					priority,
 					content: content.to_string(),
@@ -627,7 +641,7 @@ pub async fn add_patr_dns_cname_record(
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::CNAME {
 					content: content.to_string(),
 				},
@@ -698,7 +712,7 @@ pub async fn add_patr_dns_txt_record(
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::TXT {
 					content: content.to_string(),
 				},

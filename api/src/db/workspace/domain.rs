@@ -134,11 +134,11 @@ pub async fn initialize_domain_pre(
 			id BYTEA CONSTRAINT dns_record_pk PRIMARY KEY,
 			domain_id BYTEA NOT NULL,
 			name VARCHAR(255) NOT NULL,
-			a_record TEXT [] NOT NULL DEFAULT '{{}}',
-			aaaa_record TEXT [] NOT NULL DEFAULT '{{}}',
-			text_record TEXT [] NOT NULL DEFAULT '{{}}',
+			a_record TEXT [] NOT NULL DEFAULT '{}',
+			aaaa_record TEXT [] NOT NULL DEFAULT '{}',
+			text_record TEXT [] NOT NULL DEFAULT '{}',
 			cname_record TEXT NOT NULL DEFAULT '',
-			mx_record TEXT [] NOT NULL DEFAULT '{{}}',
+			mx_record TEXT [] NOT NULL DEFAULT '{}',
 			ttl INTEGER NOT NULL,
 			priority INTEGER NOT NULL DEFAULT 0,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
@@ -148,9 +148,8 @@ pub async fn initialize_domain_pre(
 		"#
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+.map(|_| ())
 }
 
 pub async fn initialize_domain_post(
@@ -165,9 +164,8 @@ pub async fn initialize_domain_post(
 		"#
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn generate_new_domain_id(
@@ -465,9 +463,8 @@ pub async fn delete_personal_domain(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_domain_from_workspace(
@@ -484,9 +481,8 @@ pub async fn delete_domain_from_workspace(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_generic_domain(
@@ -503,9 +499,8 @@ pub async fn delete_generic_domain(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_workspace_domain_by_id(
@@ -600,8 +595,8 @@ pub async fn add_patr_controlled_domain(
 		zone_identifier,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_dns_record_by_domain_id(
@@ -676,8 +671,8 @@ pub async fn add_patr_dns_a_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_aaaa_record(
@@ -708,8 +703,8 @@ pub async fn add_patr_dns_aaaa_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_mx_record(
@@ -742,8 +737,8 @@ pub async fn add_patr_dns_mx_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_cname_record(
@@ -774,8 +769,8 @@ pub async fn add_patr_dns_cname_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_txt_record(
@@ -806,8 +801,8 @@ pub async fn add_patr_dns_txt_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_patr_controlled_dns_record(
@@ -828,6 +823,28 @@ pub async fn delete_patr_controlled_dns_record(
 		name,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_domain_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	is_verified: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			UPDATE
+				workspace_domain
+			SET
+				is_verified = $2
+			WHERE
+				id = $1;
+		"#,
+		domain_id,
+		is_verified,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

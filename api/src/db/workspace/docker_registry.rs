@@ -74,7 +74,7 @@ pub async fn get_repository_by_name(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
@@ -100,7 +100,7 @@ pub async fn get_docker_repositories_for_workspace(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
@@ -123,7 +123,7 @@ pub async fn get_docker_repository_by_id(
 		SELECT
 			id,
 			workspace_id,
-			name as "name: _"
+			name::TEXT as "name!: _"
 		FROM
 			docker_registry_repository
 		WHERE
