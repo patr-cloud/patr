@@ -574,7 +574,6 @@ async fn upload_files_for_static_site(
 		static_site_id: _,
 		name,
 		file,
-		urls,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -587,7 +586,6 @@ async fn upload_files_for_static_site(
 		context.get_database_connection(),
 		name,
 		file.as_deref(),
-		urls.as_deref(),
 		&static_site_id,
 		&config,
 		&request_id,

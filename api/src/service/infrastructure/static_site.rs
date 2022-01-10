@@ -3,7 +3,6 @@ use std::io::Cursor;
 use api_models::{
 	models::workspace::infrastructure::{
 		deployment::DeploymentStatus,
-		managed_urls::ManagedUrl,
 		static_site::{StaticSite, StaticSiteDetails},
 	},
 	utils::Uuid,
@@ -334,7 +333,6 @@ pub async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: Option<&str>,
 	file: Option<&str>,
-	_urls: Option<&[ManagedUrl]>,
 	static_site_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
