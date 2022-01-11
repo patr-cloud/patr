@@ -1,7 +1,12 @@
+use api_models::utils::Uuid;
 use semver::Version;
-use uuid::Uuid;
 
-use crate::{migrate_query as query, models::rbac, Database};
+use crate::{
+	migrate_query as query,
+	models::rbac,
+	utils::settings::Settings,
+	Database,
+};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -20,9 +25,10 @@ use crate::{migrate_query as query, models::rbac, Database};
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	version: Version,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 3, 0) => migrate_from_v0_3_0(&mut *connection).await?,
+		(0, 3, 0) => migrate_from_v0_3_0(&mut *connection, config).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -44,6 +50,7 @@ pub fn get_migrations() -> Vec<&'static str> {
 
 async fn migrate_from_v0_3_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	// Rename the unqiue constraint from uk to uq
 	query!(

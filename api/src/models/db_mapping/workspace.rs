@@ -1,5 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -9,26 +10,26 @@ use crate::{
 };
 
 pub struct Workspace {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
-	pub super_admin_id: Vec<u8>,
+	pub super_admin_id: Uuid,
 	pub active: bool,
 }
 
 pub struct Domain {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub r#type: ResourceOwnerType,
 }
 
 pub struct PersonalDomain {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub domain_type: ResourceOwnerType,
 }
 
 pub struct WorkspaceDomain {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub name: String,
 	pub domain_type: ResourceOwnerType,
 	pub is_verified: bool,
@@ -38,8 +39,8 @@ pub struct WorkspaceDomain {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
-	pub id: Vec<u8>,
-	pub domain_id: Vec<u8>,
+	pub id: Uuid,
+	pub domain_id: Uuid,
 	pub name: String,
 	pub a_record: Vec<String>,
 	pub aaaa_record: Vec<String>,
@@ -53,21 +54,10 @@ pub struct DnsRecord {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct EntryPoint {
-	pub domain_id: Vec<u8>,
-	pub is_verified: bool,
-	pub sub_domains: String,
-	pub path: String,
-	pub deployment_id: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct PatrControlledDomain {
-	pub domain_id: Vec<u8>,
+	pub domain_id: Uuid,
 	pub control_status: DomainControlStatus,
 	pub zone_identifier: String,
-	pub is_verified: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]

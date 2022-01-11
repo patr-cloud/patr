@@ -3,7 +3,11 @@ use semver::Version;
 mod from_v0;
 
 /// This module is used to migrate the database to updated version
-use crate::{db, utils::constants, Database};
+use crate::{
+	db,
+	utils::{constants, settings::Settings},
+	Database,
+};
 
 /// # Description
 /// The function is used to migrate the database from the current version to a
@@ -20,9 +24,10 @@ use crate::{db, utils::constants, Database};
 ///
 /// [`Constants`]: api/src/utils/constants.rs
 /// [`Transaction`]: Transaction
-pub async fn migrate_database(
+pub async fn run_migrations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	current_db_version: Version,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	// Take a list of migrations available in the code.
 	// Skip elements on the list until your current version is the same as the
@@ -37,7 +42,9 @@ pub async fn migrate_database(
 
 	for version in migrations_from {
 		match (version.major, version.minor, version.patch) {
-			(0, ..) => from_v0::migrate(&mut *connection, version).await?,
+			(0, ..) => {
+				from_v0::migrate(&mut *connection, version, config).await?
+			}
 			_ => panic!(
 				"Migration from version {} is not implemented yet!",
 				version

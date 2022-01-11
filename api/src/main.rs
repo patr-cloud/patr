@@ -13,6 +13,7 @@
 mod app;
 mod db;
 mod macros;
+mod migrations;
 mod models;
 mod routes;
 mod scheduler;

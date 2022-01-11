@@ -1,6 +1,17 @@
+use api_models::{
+	models::workspace::{
+		CreateNewWorkspaceRequest,
+		CreateNewWorkspaceResponse,
+		GetWorkspaceInfoResponse,
+		IsWorkspaceNameAvailableRequest,
+		IsWorkspaceNameAvailableResponse,
+		UpdateWorkspaceInfoRequest,
+		UpdateWorkspaceInfoResponse,
+		Workspace,
+	},
+	utils::Uuid,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
-use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -60,7 +71,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -95,10 +106,7 @@ pub fn create_sub_app(
 
 	sub_app.get(
 		"/is-name-available",
-		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(is_name_available)),
-		],
+		[EveMiddleware::CustomFunction(pin_fn!(is_name_available))],
 	);
 	sub_app.post(
 		"/",
@@ -146,16 +154,14 @@ async fn get_workspace_info(
 		.get_param(request_keys::WORKSPACE_ID)
 		.unwrap()
 		.clone();
-	let workspace_id = hex::decode(&workspace_id_string)
+	let workspace_id = Uuid::parse_str(&workspace_id_string)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let access_token_data = context.get_token_data().unwrap();
-	let god_user_id = rbac::GOD_USER_ID.get().unwrap().as_bytes();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
 
-	if !access_token_data
-		.workspaces
-		.contains_key(&workspace_id_string) &&
-		access_token_data.user.id != god_user_id
+	if !access_token_data.workspaces.contains_key(&workspace_id) &&
+		&access_token_data.user.id != god_user_id
 	{
 		Error::as_result()
 			.status(404)
@@ -167,15 +173,15 @@ async fn get_workspace_info(
 		&workspace_id,
 	)
 	.await?
+	.map(|workspace| Workspace {
+		id: workspace.id,
+		name: workspace.name,
+		active: workspace.active,
+	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::WORKSPACE_ID: workspace_id_string,
-		request_keys::NAME: workspace.name,
-		request_keys::ACTIVE: workspace.active
-	}));
+	context.success(GetWorkspaceInfoResponse { workspace });
 	Ok(context)
 }
 
@@ -212,24 +218,19 @@ async fn is_name_available(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let workspace_name = context
-		.get_request()
-		.get_query()
-		.get(request_keys::NAME)
+	let IsWorkspaceNameAvailableRequest { name } = context
+		.get_query_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_name = name.trim().to_lowercase();
 
-	let allowed = service::is_workspace_name_allowed(
+	let available = service::is_workspace_name_allowed(
 		context.get_database_connection(),
 		&workspace_name,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::AVAILABLE: allowed
-	}));
+	context.success(IsWorkspaceNameAvailableResponse { available });
 	Ok(context)
 }
 
@@ -266,30 +267,21 @@ async fn create_new_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
-
-	let workspace_name = body
-		.get(request_keys::WORKSPACE_NAME)
-		.map(|value| value.as_str())
-		.flatten()
+	let CreateNewWorkspaceRequest { workspace_name } = context
+		.get_body_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_name = workspace_name.trim().to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
-
 	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
 		&workspace_name,
 		&user_id,
 	)
 	.await?;
-	let workspace_id_string = workspace_id.as_bytes().encode_hex::<String>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::WORKSPACE_ID: workspace_id_string
-	}));
+	context.success(CreateNewWorkspaceResponse { workspace_id });
 	Ok(context)
 }
 
@@ -326,29 +318,21 @@ async fn update_workspace_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let body = context.get_body_object().clone();
+	let UpdateWorkspaceInfoRequest { name, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let name = name.trim().to_lowercase();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = hex::decode(&workspace_id).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?
-		.map(|val| val.to_lowercase());
-
-	if name.is_none() {
+	if name.is_empty() {
 		// No parameters to update
 		Error::as_result()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string())?;
 	}
-	let name = name.unwrap();
 
 	let allowed = service::is_workspace_name_allowed(
 		context.get_database_connection(),
@@ -368,8 +352,6 @@ async fn update_workspace_info(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(UpdateWorkspaceInfoResponse {});
 	Ok(context)
 }

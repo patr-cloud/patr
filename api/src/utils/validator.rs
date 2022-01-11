@@ -21,10 +21,6 @@ lazy_static! {
 	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
 	static ref DEPLOYMENT_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
-
-	// Regex for deployment entry point validation
-	// TODO remove after domains get handled through NS
-	static ref DEPLOYMENT_ENTRY_POINT_REGEX: Regex = Regex::new("^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$").unwrap();
 }
 
 pub fn is_username_valid(username: &str) -> bool {
@@ -99,34 +95,6 @@ pub async fn is_domain_name_valid(domain: &str) -> bool {
 	false
 }
 
-/// Returns true or false if a deployment.domain name is valid
-/// A deployment.domain name is a TLD + subdomains, comprising of the entire
-/// domain entry point
-pub fn is_deployment_entry_point_valid(domain: &str) -> bool {
-	DEPLOYMENT_ENTRY_POINT_REGEX.is_match(domain)
-}
-
-/// Checks if the domain name is one of the special domain names
-pub fn is_domain_special(domain: &str) -> bool {
-	let special_domains = [
-		"araciv.com",
-		"getkai.co",
-		"patr.cloud",
-		"vicara.co",
-		"vicara.in",
-		"vicara.tech",
-		"vicaratech.com",
-		"vcr.to",
-		"vicandara.com",
-	];
-
-	for d in special_domains {
-		if domain.ends_with(d) {
-			return true;
-		}
-	}
-	false
-}
 pub async fn update_domain_tld_list(mut new_tld_list: Vec<String>) {
 	new_tld_list
 		.iter_mut()

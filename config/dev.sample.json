@@ -63,15 +63,18 @@
 		"publicKeyDer": "",
 		"authorizationHeader": "auth key"
 	},
-	"ssh": {
-		"hostName": "nginx.patr.cloud",
-		"host": "127.0.0.1",
-		"port": 22,
-		"username": "root",
-		"keyFile": "~/.ssh/id_rsa"
-	},
 	"digitalocean": {
 		"apiKey": "key",
 		"registry": "test"
+	},
+	"kubernetes": {
+		"certificateAuthorityData": "",
+		"clusterName": "",
+		"clusterUrl": "",
+		"authName": "",
+		"authUsername": "",
+		"authToken": "",
+		"contextName": "",
+		"certIssuer": "letsencrypt-staging"
 	}
 }

@@ -1,5 +1,5 @@
+use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
 use serde_json::json;
 
 use crate::{
@@ -46,7 +46,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -78,7 +78,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = hex::decode(&workspace_id_string)
+					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -109,7 +109,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -141,7 +141,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -174,7 +174,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -205,7 +205,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -236,7 +236,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -265,7 +265,7 @@ pub fn create_sub_app(
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
-					let domain_id = hex::decode(&domain_id_string)
+					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 					let resource = db::get_resource_by_id(
@@ -330,7 +330,7 @@ async fn get_domains_for_workspace(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
 	let domains = db::get_domains_for_workspace(
@@ -340,9 +340,8 @@ async fn get_domains_for_workspace(
 	.await?
 	.into_iter()
 	.map(|domain| {
-		let id = domain.id.encode_hex::<String>();
 		json!({
-			request_keys::ID: id,
+			request_keys::ID: domain.id,
 			request_keys::NAME: domain.name,
 			request_keys::VERIFIED: domain.is_verified,
 		})
@@ -392,7 +391,7 @@ async fn add_domain_to_workspace(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let workspace_id =
-		hex::decode(&context.get_param(request_keys::WORKSPACE_ID).unwrap())
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
 	let body = context.get_body_object().clone();
@@ -431,15 +430,15 @@ async fn add_domain_to_workspace(
 	if let DomainControlStatus::Patr = control_status {
 		context.json(json!({
 			request_keys::SUCCESS: true,
-			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+			request_keys::DOMAIN_ID: domain_id,
 		}));
 	} else {
 		context.json(json!({
 			request_keys::SUCCESS: true,
-			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+			request_keys::DOMAIN_ID: domain_id,
 			request_keys::TXT_RECORD: {
 				request_keys::TARGET: format!("PatrVerify.{}",domain_name),
-				request_keys::CONTENT: hex::encode(domain_id.to_simple().to_string()),
+				request_keys::CONTENT: domain_id,
 			}
 		}));
 	}
@@ -485,11 +484,11 @@ async fn verify_domain_in_workspace(
 	let domain_id_string =
 		context.get_param(request_keys::DOMAIN_ID).unwrap().clone();
 
-	// hex::decode throws an error for a wrong string
+	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless hex::decode(domain_id) returns Ok
-	let domain_id = hex::decode(&domain_id_string).unwrap();
+	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
+	let domain_id = Uuid::parse_str(&domain_id_string).unwrap();
 
 	let domain = db::get_workspace_domain_by_id(
 		context.get_database_connection(),
@@ -573,11 +572,11 @@ async fn get_domain_info_in_workspace(
 ) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
-	// hex::decode throws an error for a wrong string
+	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless hex::decode(domain_id) returns Ok
-	let domain_id = hex::decode(domain_id).unwrap();
+	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
+	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	let domain = db::get_workspace_domain_by_id(
 		context.get_database_connection(),
@@ -596,20 +595,19 @@ async fn get_domain_info_in_workspace(
 		return Ok(context);
 	}
 	let domain = domain.unwrap();
-	let domain_id = domain.id.encode_hex::<String>();
 
 	context.json(
 		if domain.is_verified {
 			json!({
 				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain_id,
+				request_keys::DOMAIN_ID: domain.id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: true
 			})
 		} else {
 			json!({
 				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain_id,
+				request_keys::DOMAIN_ID: domain.id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: false,
 			})
@@ -654,11 +652,11 @@ async fn delete_domain_in_workspace(
 ) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
-	// hex::decode throws an error for a wrong string
+	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless hex::decode(domain_id) returns Ok
-	let domain_id = hex::decode(domain_id).unwrap();
+	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
+	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	// TODO make sure all associated resources to this domain are removed first
 
@@ -683,11 +681,11 @@ async fn get_domain_dns_record(
 ) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
-	// hex::decode throws an error for a wrong string
+	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
-	// This won't be executed unless hex::decode(domain_id) returns Ok
-	let domain_id = hex::decode(domain_id).unwrap();
+	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
+	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	// get dns records from database
 	let dns_record = db::get_dns_record_by_domain_id(
@@ -709,11 +707,12 @@ async fn add_dns_record(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	// TODO: convert the second unwrap to ?
-	let workspace_id =
-		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())?;
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	)?;
 
 	let domain_id =
-		hex::decode(context.get_param(request_keys::DOMAIN_ID).unwrap())?;
+		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())?;
 
 	// check if domain is patr controlled
 	// TODO: maybe change the error code to something more appropriate
@@ -909,10 +908,10 @@ pub async fn delete_dns_record(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	let domain_id = hex::decode(domain_id).unwrap();
+	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	let dns_id = context.get_param(request_keys::DNS_ID).unwrap();
-	let dns_id = hex::decode(dns_id).unwrap();
+	let dns_id = Uuid::parse_str(dns_id).unwrap();
 
 	// check if domain is patr controlled
 	db::get_patr_controlled_domain_by_domain_id(
