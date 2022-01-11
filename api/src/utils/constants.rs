@@ -191,14 +191,9 @@ pub mod request_keys {
 	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
-	pub const CONTROL_STATUS: &str = "controlStatus";
-	pub const DNS_RECORD: &str = "dns_record";
-	pub const DNS_ID: &str = "dnsId";
-	pub const A_RECORD: &str = "a_record";
-	pub const AAAA_RECORD: &str = "aaaa_record";
-	pub const CNAME_RECORD: &str = "cname_record";
-	pub const TEXT_RECORD: &str = "text_record";
-	pub const MX_RECORD: &str = "mx_record";
+	pub const DOMAIN_NAMESERVER_TYPE: &str = "domainNameserverType";
+	pub const DNS_RECORD: &str = "dnsRecord";
+	pub const RECORD_ID: &str = "recordId";
 	pub const CONTENT: &str = "content";
 	pub const PROXIED: &str = "proxied";
 	pub const TTL: &str = "ttl";

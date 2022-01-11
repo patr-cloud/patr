@@ -204,7 +204,7 @@ pub fn create_sub_app(
 		"/:domainId/dns-record",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::LIST,
+				permissions::workspace::dns_record::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -235,7 +235,7 @@ pub fn create_sub_app(
 		"/:domainId/dns-record",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::ADD,
+				permissions::workspace::dns_record::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
@@ -262,13 +262,13 @@ pub fn create_sub_app(
 
 	// update dns record
 	app.patch(
-		"/:domainId/dns-record/:dnsId",
+		"/:domainId/dns-record/:recordId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::ADD,
+				permissions::workspace::dns_record::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
+						context.get_param(request_keys::RECORD_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -291,13 +291,13 @@ pub fn create_sub_app(
 	);
 
 	app.delete(
-		"/:domainId/dns-record/:dnsId",
+		"/:domainId/dns-record/:recordId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::domain::ADD,
+				permissions::workspace::dns_record::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let domain_id_string =
-						context.get_param(request_keys::DOMAIN_ID).unwrap();
+						context.get_param(request_keys::RECORD_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -438,16 +438,14 @@ async fn add_domain_to_workspace(
 		.to_lowercase();
 
 	// will determine if we control the DNS records or the user
-	let control_status = body
-		.get(request_keys::CONTROL_STATUS)
+	let nameserver_type = body
+		.get(request_keys::DOMAIN_NAMESERVER_TYPE)
 		.map(|value| value.as_str())
 		.flatten()
 		.map(|value| value.parse::<DomainNameserverType>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let domain_name = domain_name.replace("www.", "");
 
 	// move this to service layer
 	let config = context.get_state().config.clone();
@@ -456,11 +454,11 @@ async fn add_domain_to_workspace(
 		&config,
 		&domain_name,
 		&workspace_id,
-		&control_status,
+		&nameserver_type,
 	)
 	.await?;
 
-	if let DomainNameserverType::Internal = control_status {
+	if let DomainNameserverType::Internal = nameserver_type {
 		context.json(json!({
 			request_keys::SUCCESS: true,
 			request_keys::DOMAIN_ID: domain_id,
@@ -470,7 +468,7 @@ async fn add_domain_to_workspace(
 			request_keys::SUCCESS: true,
 			request_keys::DOMAIN_ID: domain_id,
 			request_keys::TXT_RECORD: {
-				request_keys::TARGET: format!("PatrVerify.{}",domain_name),
+				request_keys::TARGET: format!("patrVerify.{}",domain_name),
 				request_keys::CONTENT: domain_id,
 			}
 		}));
@@ -721,7 +719,7 @@ async fn get_domain_dns_record(
 	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	// get dns records from database
-	let dns_record = db::get_dns_record_by_domain_id(
+	let dns_record = db::get_dns_records_by_domain_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -750,7 +748,7 @@ async fn add_dns_record(
 
 	// check if domain is patr controlled
 	// TODO: maybe change the error code to something more appropriate
-	let domain = db::get_patr_controlled_domain_by_domain_id(
+	let domain = db::get_patr_controlled_domain_by_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -793,141 +791,42 @@ async fn add_dns_record(
 
 	let config = context.get_state().config.clone();
 
-	let dns_id = match r#type {
-		DnsRecordType::A => {
-			// content basically stores the ipv4 address. same goes with AAAA
-			// record
-			let a_record = body
-				.get(request_keys::CONTENT)
-				.map(|value| value.as_str())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
+	let record = body
+		.get(request_keys::CONTENT)
+		.map(|value| value.as_str())
+		.flatten()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-			// add a record to cloudflare
-			service::add_patr_dns_record(
-				context.get_database_connection(),
-				&workspace_id,
-				&domain_id,
-				&domain.zone_identifier,
-				name,
-				a_record,
-				ttl as u32,
-				proxied,
-				None,
-				&DnsRecordType::A,
-				&config,
+	// add a record to cloudflare
+	let record_id = service::add_patr_dns_record(
+		context.get_database_connection(),
+		&workspace_id,
+		&domain_id,
+		&domain.zone_identifier,
+		name,
+		record,
+		ttl as u32,
+		proxied,
+		if let DnsRecordType::Mx = &r#type {
+			Some(
+				body.get(request_keys::PRIORITY)
+					.map(|value| value.as_u64())
+					.flatten()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?,
 			)
-			.await?
-		}
-		DnsRecordType::Aaaa => {
-			let aaaa_record = body
-				.get(request_keys::CONTENT)
-				.map(|value| value.as_str())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			service::add_patr_dns_record(
-				context.get_database_connection(),
-				&workspace_id,
-				&domain_id,
-				&domain.zone_identifier,
-				name,
-				aaaa_record,
-				ttl as u32,
-				proxied,
-				None,
-				&DnsRecordType::Aaaa,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Mx => {
-			let points_to = body
-				.get(request_keys::CONTENT)
-				.map(|value| value.as_str())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			// only be used my MX record
-			let priority = body
-				.get(request_keys::PRIORITY)
-				.map(|value| {
-					value
-						.as_u64()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())
-				})
-				.transpose()?;
-
-			service::add_patr_dns_record(
-				context.get_database_connection(),
-				&workspace_id,
-				&domain_id,
-				&domain.zone_identifier,
-				name,
-				points_to,
-				ttl as u32,
-				proxied,
-				priority,
-				&DnsRecordType::Mx,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Cname => {
-			let points_to = body
-				.get(request_keys::CONTENT)
-				.map(|value| value.as_str())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			service::add_patr_dns_record(
-				context.get_database_connection(),
-				&workspace_id,
-				&domain_id,
-				&domain.zone_identifier,
-				name,
-				points_to,
-				ttl as u32,
-				proxied,
-				None,
-				&DnsRecordType::Cname,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Txt => {
-			let content = body
-				.get(request_keys::CONTENT)
-				.map(|value| value.as_str())
-				.flatten()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-
-			service::add_patr_dns_record(
-				context.get_database_connection(),
-				&workspace_id,
-				&domain_id,
-				&domain.zone_identifier,
-				name,
-				content,
-				ttl as u32,
-				proxied,
-				None,
-				&DnsRecordType::Txt,
-				&config,
-			)
-			.await?
-		}
-	};
+		} else {
+			None
+		},
+		&r#type,
+		&config,
+	)
+	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DNS_ID: hex::encode(dns_id.as_bytes()),
+		request_keys::RECORD_ID: hex::encode(record_id.as_bytes()),
 	}));
 	Ok(context)
 }
@@ -939,16 +838,15 @@ async fn update_dns_record(
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
-	let dns_id = context.get_param(request_keys::DNS_ID).unwrap();
-	let dns_id = Uuid::parse_str(dns_id).unwrap();
+	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
+	let record_id = Uuid::parse_str(record_id).unwrap();
 
-	let _ =
-		db::get_dns_record_by_id(context.get_database_connection(), &dns_id)
-			.await?
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	db::get_dns_record_by_id(context.get_database_connection(), &record_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let domain = db::get_patr_controlled_domain_by_domain_id(
+	let domain = db::get_patr_controlled_domain_by_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -1009,79 +907,18 @@ async fn update_dns_record(
 
 	let config = context.get_state().config.clone();
 
-	match r#type {
-		DnsRecordType::A => {
-			// add a record to cloudflare
-			service::update_patr_dns_record(
-				context.get_database_connection(),
-				&dns_id,
-				&domain.zone_identifier,
-				record,
-				ttl.map(|value| value as u32),
-				proxied,
-				priority.map(|value| value as u16),
-				&DnsRecordType::A,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Aaaa => {
-			service::update_patr_dns_record(
-				context.get_database_connection(),
-				&dns_id,
-				&domain.zone_identifier,
-				record,
-				ttl.map(|value| value as u32),
-				proxied,
-				priority.map(|value| value as u16),
-				&DnsRecordType::Aaaa,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Mx => {
-			service::update_patr_dns_record(
-				context.get_database_connection(),
-				&dns_id,
-				&domain.zone_identifier,
-				record,
-				ttl.map(|value| value as u32),
-				proxied,
-				priority.map(|value| value as u16),
-				&DnsRecordType::Mx,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Cname => {
-			service::update_patr_dns_record(
-				context.get_database_connection(),
-				&dns_id,
-				&domain.zone_identifier,
-				record,
-				ttl.map(|value| value as u32),
-				proxied,
-				priority.map(|value| value as u16),
-				&DnsRecordType::Cname,
-				&config,
-			)
-			.await?
-		}
-		DnsRecordType::Txt => {
-			service::update_patr_dns_record(
-				context.get_database_connection(),
-				&dns_id,
-				&domain.zone_identifier,
-				record,
-				ttl.map(|value| value as u32),
-				proxied,
-				priority.map(|value| value as u16),
-				&DnsRecordType::Txt,
-				&config,
-			)
-			.await?
-		}
-	};
+	service::update_patr_dns_record(
+		context.get_database_connection(),
+		&record_id,
+		&domain.zone_identifier,
+		record,
+		ttl.map(|value| value as u32),
+		proxied,
+		priority.map(|value| value as u16),
+		&r#type,
+		&config,
+	)
+	.await?;
 
 	Ok(context)
 }
@@ -1093,11 +930,11 @@ async fn delete_dns_record(
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
-	let dns_id = context.get_param(request_keys::DNS_ID).unwrap();
-	let dns_id = Uuid::parse_str(dns_id).unwrap();
+	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
+	let record_id = Uuid::parse_str(record_id).unwrap();
 
 	// check if domain is patr controlled
-	db::get_patr_controlled_domain_by_domain_id(
+	db::get_patr_controlled_domain_by_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
@@ -1105,20 +942,19 @@ async fn delete_dns_record(
 	.status(400)
 	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	db::get_dns_record_by_id(context.get_database_connection(), &dns_id)
+	db::get_dns_record_by_id(context.get_database_connection(), &record_id)
 		.await?
 		.status(400)
 		.body(error!(DNS_RECORD_NOT_FOUND).to_string())?;
 
 	db::delete_patr_controlled_dns_record(
 		context.get_database_connection(),
-		&dns_id,
+		&record_id,
 	)
 	.await?;
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
 	}));
-
 	Ok(context)
 }

@@ -122,7 +122,7 @@ pub async fn add_domain_to_workspace(
 	config: &Settings,
 	domain_name: &str,
 	workspace_id: &Uuid,
-	control_status: &DomainNameserverType,
+	nameserver_type: &DomainNameserverType,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -168,10 +168,11 @@ pub async fn add_domain_to_workspace(
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, &domain_id, control_status).await?;
-	if let DomainNameserverType::Internal = control_status {
-		// create zone
+	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
+		.await?;
 
+	if let DomainNameserverType::Internal = nameserver_type {
+		// create zone
 		let client = get_cloudflare_client(config).await?;
 		log::trace!("Creating zone for domain: {}", domain_name);
 		// create zone
@@ -232,24 +233,30 @@ pub async fn is_domain_verified(
 		let client = get_cloudflare_client(config).await?;
 
 		let zone_identifier =
-			db::get_patr_controlled_domain_by_domain_id(connection, domain_id)
+			db::get_patr_controlled_domain_by_id(connection, domain_id)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?
 				.zone_identifier;
 
-		let dns_record = client
+		let zone = client
 			.request(&zone::ZoneDetails {
-				identifier: &hex::encode(zone_identifier),
+				identifier: &zone_identifier,
 			})
 			.await?;
 
-		if let Status::Active = dns_record.result.status {
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
+		if let Status::Active = zone.result.status {
+			if !domain.is_verified {
+				db::update_workspace_domain_status(connection, domain_id, true)
+					.await?;
+			}
 			return Ok(true);
 		}
 
+		if domain.is_verified {
+			db::update_workspace_domain_status(connection, domain_id, false)
+				.await?;
+		}
 		Ok(false)
 	} else {
 		// TODO: make domain name server a config instead of string
@@ -262,7 +269,7 @@ pub async fn is_domain_verified(
 		let handle = task::spawn(bg);
 		let mut response = client
 			.query(
-				Name::from_utf8(format!("PatrVerify.{}", domain.name))?,
+				Name::from_utf8(format!("patrVerify.{}", domain.name))?,
 				DNSClass::IN,
 				RecordType::TXT,
 			)
@@ -278,12 +285,18 @@ pub async fn is_domain_verified(
 		drop(handle);
 
 		if response.is_some() {
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
+			if !domain.is_verified {
+				db::update_workspace_domain_status(connection, domain_id, true)
+					.await?;
+			}
 
 			return Ok(true);
 		}
 
+		if domain.is_verified {
+			db::update_workspace_domain_status(connection, domain_id, false)
+				.await?;
+		}
 		Ok(false)
 	}
 }
@@ -368,110 +381,47 @@ pub async fn add_patr_dns_record(
 	)
 	.await?;
 
-	match dns_record_type {
-		DnsRecordType::A => {
-			// Cloudflare api takes content as Ipv4 object.
-			let a_record_ipv4 = record.parse::<Ipv4Addr>()?;
+	let content = match dns_record_type {
+		DnsRecordType::A => DnsContent::A {
+			content: record.parse::<Ipv4Addr>()?,
+		},
+		DnsRecordType::Aaaa => DnsContent::AAAA {
+			content: record.parse::<Ipv6Addr>()?,
+		},
+		DnsRecordType::Mx => DnsContent::MX {
+			priority: priority
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
+			content: record.to_string(),
+		},
+		DnsRecordType::Cname => DnsContent::CNAME {
+			content: record.to_string(),
+		},
+		DnsRecordType::Txt => DnsContent::TXT {
+			content: record.to_string(),
+		},
+	};
 
-			// send request to Cloudflare
-			client
-				.request(&CreateDnsRecord {
-					zone_identifier,
-					params: CreateDnsRecordParams {
-						ttl: Some(ttl),
-						priority: None,
-						proxied: Some(proxied),
-						name,
-						content: DnsContent::A {
-							content: a_record_ipv4,
-						},
-					},
-				})
-				.await?;
-		}
-		DnsRecordType::Aaaa => {
-			let ipv6 = record.parse::<Ipv6Addr>()?;
-
-			// send request to Cloudflare
-			client
-				.request(&CreateDnsRecord {
-					zone_identifier,
-					params: CreateDnsRecordParams {
-						ttl: Some(ttl),
-						priority: None,
-						proxied: Some(proxied),
-						name,
-						content: DnsContent::AAAA { content: ipv6 },
-					},
-				})
-				.await?;
-		}
-		DnsRecordType::Mx => {
-			// send request to Cloudflare
-			if let Some(priority) = priority {
-				client
-					.request(&CreateDnsRecord {
-						zone_identifier,
-						params: CreateDnsRecordParams {
-							ttl: Some(ttl),
-							priority: None,
-							proxied: Some(proxied),
-							name,
-							content: DnsContent::MX {
-								priority: priority as u16,
-								content: record.to_string(),
-							},
-						},
-					})
-					.await?;
-			} else {
-				return Error::as_result()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?;
-			}
-		}
-		DnsRecordType::Cname => {
-			// send request to Cloudflare
-			client
-				.request(&CreateDnsRecord {
-					zone_identifier,
-					params: CreateDnsRecordParams {
-						ttl: Some(ttl),
-						priority: None,
-						proxied: Some(proxied),
-						name,
-						content: DnsContent::CNAME {
-							content: record.to_string(),
-						},
-					},
-				})
-				.await?;
-		}
-		DnsRecordType::Txt => {
-			// send request to Cloudflare
-			client
-				.request(&CreateDnsRecord {
-					zone_identifier,
-					params: CreateDnsRecordParams {
-						ttl: Some(ttl),
-						priority: None,
-						proxied: Some(proxied),
-						name,
-						content: DnsContent::TXT {
-							content: record.to_string(),
-						},
-					},
-				})
-				.await?;
-		}
-	}
+	// send request to Cloudflare
+	client
+		.request(&CreateDnsRecord {
+			zone_identifier,
+			params: CreateDnsRecordParams {
+				ttl: Some(ttl),
+				priority: None,
+				proxied: Some(proxied),
+				name,
+				content,
+			},
+		})
+		.await?;
 
 	Ok(dns_id)
 }
 
 pub async fn update_patr_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	dns_id: &Uuid,
+	record_id: &Uuid,
 	zone_identifier: &str,
 	record: Option<&str>,
 	ttl: Option<u32>,
@@ -483,14 +433,14 @@ pub async fn update_patr_dns_record(
 	// login to cloudflare to create new DNS record cloudflare
 	let client = get_cloudflare_client(config).await?;
 
-	let dns_record = db::get_dns_record_by_id(connection, dns_id)
+	let dns_record = db::get_dns_record_by_id(connection, record_id)
 		.await?
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
 	db::update_patr_domain_dns_record(
 		connection,
-		dns_id,
+		record_id,
 		record,
 		priority.map(|p| p as i32),
 		ttl.map(|ttl| ttl as i32),
@@ -504,100 +454,40 @@ pub async fn update_patr_dns_record(
 		&dns_record.value
 	};
 
-	match dns_record_type {
-		DnsRecordType::A => {
-			let record = record.parse::<Ipv4Addr>()?;
+	let content = match dns_record_type {
+		DnsRecordType::A => DnsContent::A {
+			content: record.parse::<Ipv4Addr>()?,
+		},
+		DnsRecordType::Aaaa => DnsContent::AAAA {
+			content: record.parse::<Ipv6Addr>()?,
+		},
+		DnsRecordType::Mx => DnsContent::MX {
+			priority: priority
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
+			content: record.to_string(),
+		},
+		DnsRecordType::Cname => DnsContent::CNAME {
+			content: record.to_string(),
+		},
+		DnsRecordType::Txt => DnsContent::TXT {
+			content: record.to_string(),
+		},
+	};
 
-			// send request to Cloudflare
-			client
-				.request(&UpdateDnsRecord {
-					zone_identifier,
-					params: UpdateDnsRecordParams {
-						ttl,
-						proxied,
-						name: &dns_record.name,
-						content: DnsContent::A { content: record },
-					},
-					identifier: zone_identifier,
-				})
-				.await?;
-		}
-		DnsRecordType::Aaaa => {
-			let record = record.parse::<Ipv6Addr>()?;
-
-			// send request to Cloudflare
-			client
-				.request(&UpdateDnsRecord {
-					zone_identifier,
-					params: UpdateDnsRecordParams {
-						ttl,
-						proxied,
-						name: &dns_record.name,
-						content: DnsContent::AAAA { content: record },
-					},
-					identifier: zone_identifier,
-				})
-				.await?;
-		}
-		DnsRecordType::Mx => {
-			let priority = if let Some(priority) = priority {
-				priority
-			} else {
-				dns_record.priority.map(|p| p as u16).status(500)?
-			};
-
-			// send request to Cloudflare
-			client
-				.request(&UpdateDnsRecord {
-					zone_identifier,
-					params: UpdateDnsRecordParams {
-						ttl,
-						proxied,
-						name: &dns_record.name,
-						content: DnsContent::MX {
-							content: record.to_string(),
-							priority,
-						},
-					},
-					identifier: zone_identifier,
-				})
-				.await?;
-		}
-		DnsRecordType::Cname => {
-			// send request to Cloudflare
-			client
-				.request(&UpdateDnsRecord {
-					zone_identifier,
-					params: UpdateDnsRecordParams {
-						ttl,
-						proxied,
-						name: &dns_record.name,
-						content: DnsContent::CNAME {
-							content: record.to_string(),
-						},
-					},
-					identifier: zone_identifier,
-				})
-				.await?;
-		}
-		DnsRecordType::Txt => {
-			// send request to Cloudflare
-			client
-				.request(&UpdateDnsRecord {
-					zone_identifier,
-					params: UpdateDnsRecordParams {
-						ttl,
-						proxied,
-						name: &dns_record.name,
-						content: DnsContent::TXT {
-							content: record.to_string(),
-						},
-					},
-					identifier: zone_identifier,
-				})
-				.await?;
-		}
-	}
+	// send request to Cloudflare
+	client
+		.request(&UpdateDnsRecord {
+			zone_identifier,
+			params: UpdateDnsRecordParams {
+				ttl,
+				proxied,
+				name: &dns_record.name,
+				content,
+			},
+			identifier: zone_identifier,
+		})
+		.await?;
 	Ok(())
 }
 

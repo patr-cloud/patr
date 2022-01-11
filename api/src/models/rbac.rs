@@ -34,6 +34,13 @@ pub mod permissions {
 			pub const DELETE: &str = "workspace::domain::delete";
 		}
 
+		pub mod dns_record {
+			pub const LIST: &str = "workspace::dnsRecord::list";
+			pub const ADD: &str = "workspace::dnsRecord::add";
+			pub const EDIT: &str = "workspace::dnsRecord::edit";
+			pub const DELETE: &str = "workspace::dnsRecord::delete";
+		}
+
 		pub mod deployment {
 			pub const LIST: &str = "workspace::deployment::list";
 			pub const CREATE: &str = "workspace::deployment::create";

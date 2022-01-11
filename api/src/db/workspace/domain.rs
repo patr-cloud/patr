@@ -632,7 +632,7 @@ pub async fn add_patr_controlled_domain(
 		INSERT INTO
 			patr_controlled_domain
 		VALUES
-			($1, $2, 'false');
+			($1, $2, 'internal');
 		"#,
 		domain_id as _,
 		zone_identifier,
@@ -642,7 +642,7 @@ pub async fn add_patr_controlled_domain(
 	.map(|_| ())
 }
 
-pub async fn get_dns_record_by_domain_id(
+pub async fn get_dns_records_by_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 ) -> Result<Vec<DnsRecord>, sqlx::Error> {
@@ -669,7 +669,7 @@ pub async fn get_dns_record_by_domain_id(
 	.await
 }
 
-pub async fn get_patr_controlled_domain_by_domain_id(
+pub async fn get_patr_controlled_domain_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 ) -> Result<Option<PatrControlledDomain>, sqlx::Error> {
@@ -693,7 +693,7 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 
 pub async fn get_dns_record_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	dns_id: &Uuid,
+	record_id: &Uuid,
 ) -> Result<Option<DnsRecord>, sqlx::Error> {
 	query_as!(
 		DnsRecord,
@@ -712,7 +712,7 @@ pub async fn get_dns_record_by_id(
 		WHERE
 			id = $1;
 		"#,
-		dns_id as _
+		record_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await

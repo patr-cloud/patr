@@ -101,70 +101,6 @@
       ]
     }
   },
-  "08af6b65e52e88a56416e4924edd5c2c0f19a61ff7f0e193a4ffb97e6232aaa4": {
-    "query": "SELECT domain.name, workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.control_status as \"control_status: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "control_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_control_status",
-              "kind": {
-                "Enum": [
-                  "patr",
-                  "user"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "query": "SELECT id as \"id: Uuid\", name, resource_type_id as \"resource_type_id: Uuid\", owner_id as \"owner_id: Uuid\", created FROM resource WHERE id = $1;",
     "describe": {
@@ -413,16 +349,6 @@
       ]
     }
   },
-  "1073a864f20d4a248c0ae85ede1fc4b605b340d879f0bf0328d3a78e36c4a160": {
-    "query": "CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM ( 'patr', 'user' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "117cf2f33ceb30129812a98389512975c4e4be5a736a0b28e7ee38c77330eae1": {
     "query": "SELECT id FROM domain WHERE id = $1;",
     "describe": {
@@ -522,68 +448,6 @@
         null,
         false,
         false
-      ]
-    }
-  },
-  "1574302122182e8b444de75698587a3de3dc637c90f2b42261cfa75866cd5892": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.control_status as \"control_status!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "control_status!: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_control_status",
-              "kind": {
-                "Enum": [
-                  "patr",
-                  "user"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true
       ]
     }
   },
@@ -781,19 +645,6 @@
       "nullable": []
     }
   },
-  "188c0016230319764212f12f60f0f5125fb63dfed32551b2c71e5e18ec88c5b9": {
-    "query": "INSERT INTO patr_controlled_domain VALUES ($1, $2, 'false');",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "1a22653fa91b8253b6ac6440aef2826bcb839954b73ee66f202f3682d8f6b6ef": {
     "query": "SELECT user_unverified_phone_number.country_code, user_unverified_phone_number.phone_number, user_unverified_phone_number.user_id as \"user_id: Uuid\", user_unverified_phone_number.verification_token_hash, user_unverified_phone_number.verification_token_expiry FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3;",
     "describe": {
@@ -922,6 +773,68 @@
       ]
     }
   },
+  "1b15d7baa9e29ae6a424d70e12552a19a5881001b0c28dbd723f8ba819bb0e35": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
     "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;",
     "describe": {
@@ -975,6 +888,16 @@
       ]
     }
   },
+  "1d060e8f1c3d2ddbc982c7006b489a10007b4e6dd2eed4ff01c2200912301c2f": {
+    "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK( domain_type = 'personal' ), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "1de59097b9fe16c191902d40f6e1aa7c48834c86988b7e4510771391cc369afa": {
     "query": "INSERT INTO user_login VALUES ($1, $2, $3, $4, $5, $6);",
     "describe": {
@@ -988,16 +911,6 @@
           "Int8",
           "Int8"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "1def49838a0fdff29f94e2bcace6336c3a86684ac8554a4fc878eb6d4ca80285": {
-    "query": "CREATE TABLE personal_domain ( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_domain_type CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -1056,6 +969,70 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "2037e6fa3ebd23df050d9c0aa2eae6225099ebc145f14024f2d47cfa2df2c766": {
+    "query": "SELECT domain.name, workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "21fa37911614a4e908cfbb135f6f3fb123e022dee9606bdabafcc3ac7421464e": {
@@ -1131,6 +1108,16 @@
           "Uuid",
           "Int8"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "245418717057bfa66558065924ff98b68ec31ac95754482415e9896211e519cb": {
+    "query": "CREATE TABLE patr_controlled_domain( domain_id UUID NOT NULL CONSTRAINT patr_controlled_domain_pk PRIMARY KEY, zone_identifier TEXT NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT patr_controlled_domain_chk_nameserver_type CHECK( nameserver_type = 'internal' ), CONSTRAINT patr_controlled_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id, nameserver_type) REFERENCES workspace_domain(id, nameserver_type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -1215,18 +1202,6 @@
         false,
         false
       ]
-    }
-  },
-  "26a2bc223625f4b5fce1242a9715f724da08660031122615aa83f48dc8fcfd1b": {
-    "query": "DELETE FROM dns_record WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
     }
   },
   "27c549c54b3d00c771f2f3aba6aca180ae35d5f6b89c25471bdf798369673a4e": {
@@ -1422,6 +1397,16 @@
   },
   "31fa3365a18b7cdbb3532ea5559f8a6fafda313ec59e82c3d790c31ac45fb452": {
     "query": "CREATE TABLE business_email( user_id UUID NOT NULL CONSTRAINT business_email_fk_user_id REFERENCES \"user\"(id), local VARCHAR(64) NOT NULL CONSTRAINT business_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT business_email_fk_domain_id REFERENCES workspace_domain(id), CONSTRAINT business_email_pk PRIMARY KEY(local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "33846eaf8014085364f0ee8032337df4c4d8c4c7fe4df6df74c76049dd3a43f8": {
+    "query": "ALTER TABLE patr_domain_dns_record ADD CONSTRAINT patr_domain_dns_record_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1658,16 +1643,6 @@
         false,
         false
       ]
-    }
-  },
-  "3ddc75a75d0aa558941faf8ff6871768b449f3522429e44d1da232c24b4164d9": {
-    "query": "CREATE TABLE workspace_domain ( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_dmn_typ CHECK(domain_type = 'business'), is_verified BOOLEAN NOT NULL DEFAULT FALSE, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user'::DOMAIN_CONTROL_STATUS, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "3f3db5bf71dab7a287aa95fe76ec466e2fd65cb836c3c04dde424d244fc21cd4": {
@@ -1971,6 +1946,16 @@
       "nullable": []
     }
   },
+  "4a5a68c97c5ca2cb9ec0155654d49074b63521bee0db502e8e479dbe6dbf40b9": {
+    "query": "CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM( 'internal', 'external' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;",
     "describe": {
@@ -2058,6 +2043,70 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "507bdd84bc1776eec552a57263ec12e1f61897b9c0fa8cb3fb8b61f793b902e4": {
+    "query": "SELECT domain.name, workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE domain.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "51e6f9c43ba3f7a6e75421aee62a007526052edb231f8b12812fc510b9870d0d": {
@@ -2185,16 +2234,6 @@
       "nullable": [
         null
       ]
-    }
-  },
-  "5e3878649dd462377d4b5fe4107d9d95a63ee5d8681b7a95d357d7c19801497f": {
-    "query": "CREATE TABLE user_controlled_domain ( domain_id UUID NOT NULL REFERENCES domain(id), control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user', CONSTRAINT user_controlled_domain_chk_control_status CHECK( control_status = 'user' ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "5f148eb2cfd81e700bc78ededf4dfd92702fcf36992957a1ae5ad82aaecb57a1": {
@@ -2485,6 +2524,16 @@
       "nullable": []
     }
   },
+  "6558b96a4bbc33428ff4bc1d1b879779b3b0e4cc4ca7b800c2ea36d01e5fe253": {
+    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_lower_case CHECK( name = LOWER(name) ) CONSTRAINT patr_domain_dns_record_chk_name_is_trimmed CHECK( name = TRIM(name) ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "69511f3caefa1932954750f0e2e3e4ce23462a41d4fd6fa636a3373ca1cde309": {
     "query": "INSERT INTO docker_registry_repository_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;",
     "describe": {
@@ -2513,6 +2562,81 @@
       "nullable": []
     }
   },
+  "6b5bedfc7f5f6dfc0c257fe02815abf7011c62de1db67ca696a984be4983243d": {
+    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "value",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "priority",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 6,
+          "name": "ttl",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "proxied",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
+    }
+  },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -2534,23 +2658,6 @@
           "Text",
           "Int8",
           "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "709deb1e2552a5083d3275b8d167d6c6b5015cb145397cc53281b9a9af3886a7": {
-    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, default, default, $4, default, default, $5, default, $6) ON CONFLICT (domain_id, name) DO UPDATE SET text_record = $4 || EXCLUDED.text_record;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "TextArray",
-          "Int4",
-          "Bool"
         ]
       },
       "nullable": []
@@ -2738,48 +2845,6 @@
       "nullable": []
     }
   },
-  "7957bf0e61ac6cb107efacf0d29e0d939e49308cceb8baaad286a715772c7416": {
-    "query": "SELECT domain_id as \"domain_id: _\", zone_identifier, control_status as \"control_status: _\" FROM patr_controlled_domain WHERE domain_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "domain_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "zone_identifier",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "control_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_control_status",
-              "kind": {
-                "Enum": [
-                  "patr",
-                  "user"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
     "query": "DELETE FROM user_unverified_personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
     "describe": {
@@ -2790,6 +2855,16 @@
           "Text",
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "7c12c62d520185114a50c88bd24427620000aa0bb713fef6de0b737ce527ed37": {
+    "query": "CREATE TYPE DNS_RECORD_TYPE AS ENUM( 'A', 'AAAA', 'CNAME', 'MX', 'TXT' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -2959,86 +3034,6 @@
       "nullable": []
     }
   },
-  "80d581ac835b9c1290baaa43b56d1fe2755dd44059f7127458071d3ce5839421": {
-    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name::TEXT as \"name!: _\", a_record, aaaa_record, text_record, cname_record, mx_record, ttl, priority, proxied FROM dns_record WHERE domain_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "a_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 4,
-          "name": "aaaa_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 5,
-          "name": "text_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 6,
-          "name": "cname_record",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 7,
-          "name": "mx_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 8,
-          "name": "ttl",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 9,
-          "name": "priority",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 10,
-          "name": "proxied",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "80fa0cff43932600e815f32385f983ff6c643e04f261fd5df7ff43b8ca98a9cf": {
     "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_fk_id FOREIGN KEY(id) REFERENCES resource(id);",
     "describe": {
@@ -3137,24 +3132,6 @@
       ]
     }
   },
-  "872801b07c4a3d722bb2e1ac8eaf3d7e2d23ef23d6057204f0d94a8b26757c28": {
-    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, default, default, $4, default, default, $5, $6, $7) ON CONFLICT (domain_id, name) DO UPDATE SET mx_record = $4 || EXCLUDED.mx_record;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "TextArray",
-          "Int4",
-          "Int4",
-          "Bool"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "873d6d3789fe5ca0d11c2b14280e2e6e7dad6162dd2c74c5108e77916face3ad": {
     "query": "INSERT INTO phone_number_country_code VALUES ($$AF$$, $$93$$, $$Afghanistan$$), ($$AX$$, $$358$$, $$Aland Islands$$), ($$AL$$, $$355$$, $$Albania$$), ($$DZ$$, $$213$$, $$Algeria$$), ($$AS$$, $$1684$$, $$American Samoa$$), ($$AD$$, $$376$$, $$Andorra$$), ($$AO$$, $$244$$, $$Angola$$), ($$AI$$, $$1264$$, $$Anguilla$$), ($$AQ$$, $$672$$, $$Antarctica$$), ($$AG$$, $$1268$$, $$Antigua and Barbuda$$), ($$AR$$, $$54$$, $$Argentina$$), ($$AM$$, $$374$$, $$Armenia$$), ($$AW$$, $$297$$, $$Aruba$$), ($$AU$$, $$61$$, $$Australia$$), ($$AT$$, $$43$$, $$Austria$$), ($$AZ$$, $$994$$, $$Azerbaijan$$), ($$BS$$, $$1242$$, $$Bahamas$$), ($$BH$$, $$973$$, $$Bahrain$$), ($$BD$$, $$880$$, $$Bangladesh$$), ($$BB$$, $$1246$$, $$Barbados$$), ($$BY$$, $$375$$, $$Belarus$$), ($$BE$$, $$32$$, $$Belgium$$), ($$BZ$$, $$501$$, $$Belize$$), ($$BJ$$, $$229$$, $$Benin$$), ($$BM$$, $$1441$$, $$Bermuda$$), ($$BT$$, $$975$$, $$Bhutan$$), ($$BO$$, $$591$$, $$Bolivia$$), ($$BQ$$, $$599$$, $$Bonaire, Sint Eustatius and Saba$$), ($$BA$$, $$387$$, $$Bosnia and Herzegovina$$), ($$BW$$, $$267$$, $$Botswana$$), ($$BV$$, $$55$$, $$Bouvet Island$$), ($$BR$$, $$55$$, $$Brazil$$), ($$IO$$, $$246$$, $$British Indian Ocean Territory$$), ($$BN$$, $$673$$, $$Brunei Darussalam$$), ($$BG$$, $$359$$, $$Bulgaria$$), ($$BF$$, $$226$$, $$Burkina Faso$$), ($$BI$$, $$257$$, $$Burundi$$), ($$KH$$, $$855$$, $$Cambodia$$), ($$CM$$, $$237$$, $$Cameroon$$), ($$CA$$, $$1$$, $$Canada$$), ($$CV$$, $$238$$, $$Cape Verde$$), ($$KY$$, $$1345$$, $$Cayman Islands$$), ($$CF$$, $$236$$, $$Central African Republic$$), ($$TD$$, $$235$$, $$Chad$$), ($$CL$$, $$56$$, $$Chile$$), ($$CN$$, $$86$$, $$China$$), ($$CX$$, $$61$$, $$Christmas Island$$), ($$CC$$, $$672$$, $$Cocos (Keeling) Islands$$), ($$CO$$, $$57$$, $$Colombia$$), ($$KM$$, $$269$$, $$Comoros$$), ($$CG$$, $$242$$, $$Congo$$), ($$CD$$, $$242$$, $$Congo, Democratic Republic of the Congo$$), ($$CK$$, $$682$$, $$Cook Islands$$), ($$CR$$, $$506$$, $$Costa Rica$$), ($$CI$$, $$225$$, $$Cote D'Ivoire$$), ($$HR$$, $$385$$, $$Croatia$$), ($$CU$$, $$53$$, $$Cuba$$), ($$CW$$, $$599$$, $$Curacao$$), ($$CY$$, $$357$$, $$Cyprus$$), ($$CZ$$, $$420$$, $$Czech Republic$$), ($$DK$$, $$45$$, $$Denmark$$), ($$DJ$$, $$253$$, $$Djibouti$$), ($$DM$$, $$1767$$, $$Dominica$$), ($$DO$$, $$1809$$, $$Dominican Republic$$), ($$EC$$, $$593$$, $$Ecuador$$), ($$EG$$, $$20$$, $$Egypt$$), ($$SV$$, $$503$$, $$El Salvador$$), ($$GQ$$, $$240$$, $$Equatorial Guinea$$), ($$ER$$, $$291$$, $$Eritrea$$), ($$EE$$, $$372$$, $$Estonia$$), ($$ET$$, $$251$$, $$Ethiopia$$), ($$FK$$, $$500$$, $$Falkland Islands (Malvinas)$$), ($$FO$$, $$298$$, $$Faroe Islands$$), ($$FJ$$, $$679$$, $$Fiji$$), ($$FI$$, $$358$$, $$Finland$$), ($$FR$$, $$33$$, $$France$$), ($$GF$$, $$594$$, $$French Guiana$$), ($$PF$$, $$689$$, $$French Polynesia$$), ($$TF$$, $$262$$, $$French Southern Territories$$), ($$GA$$, $$241$$, $$Gabon$$), ($$GM$$, $$220$$, $$Gambia$$), ($$GE$$, $$995$$, $$Georgia$$), ($$DE$$, $$49$$, $$Germany$$), ($$GH$$, $$233$$, $$Ghana$$), ($$GI$$, $$350$$, $$Gibraltar$$), ($$GR$$, $$30$$, $$Greece$$), ($$GL$$, $$299$$, $$Greenland$$), ($$GD$$, $$1473$$, $$Grenada$$), ($$GP$$, $$590$$, $$Guadeloupe$$), ($$GU$$, $$1671$$, $$Guam$$), ($$GT$$, $$502$$, $$Guatemala$$), ($$GG$$, $$44$$, $$Guernsey$$), ($$GN$$, $$224$$, $$Guinea$$), ($$GW$$, $$245$$, $$Guinea-Bissau$$), ($$GY$$, $$592$$, $$Guyana$$), ($$HT$$, $$509$$, $$Haiti$$), ($$HM$$, $$0$$, $$Heard Island and Mcdonald Islands$$), ($$VA$$, $$39$$, $$Holy See (Vatican City State)$$), ($$HN$$, $$504$$, $$Honduras$$), ($$HK$$, $$852$$, $$Hong Kong$$), ($$HU$$, $$36$$, $$Hungary$$), ($$IS$$, $$354$$, $$Iceland$$), ($$IN$$, $$91$$, $$India$$), ($$ID$$, $$62$$, $$Indonesia$$), ($$IR$$, $$98$$, $$Iran, Islamic Republic of$$), ($$IQ$$, $$964$$, $$Iraq$$), ($$IE$$, $$353$$, $$Ireland$$), ($$IM$$, $$44$$, $$Isle of Man$$), ($$IL$$, $$972$$, $$Israel$$), ($$IT$$, $$39$$, $$Italy$$), ($$JM$$, $$1876$$, $$Jamaica$$), ($$JP$$, $$81$$, $$Japan$$), ($$JE$$, $$44$$, $$Jersey$$), ($$JO$$, $$962$$, $$Jordan$$), ($$KZ$$, $$7$$, $$Kazakhstan$$), ($$KE$$, $$254$$, $$Kenya$$), ($$KI$$, $$686$$, $$Kiribati$$), ($$KP$$, $$850$$, $$Korea, Democratic People's Republic of$$), ($$KR$$, $$82$$, $$Korea, Republic of$$), ($$XK$$, $$381$$, $$Kosovo$$), ($$KW$$, $$965$$, $$Kuwait$$), ($$KG$$, $$996$$, $$Kyrgyzstan$$), ($$LA$$, $$856$$, $$Lao People's Democratic Republic$$), ($$LV$$, $$371$$, $$Latvia$$), ($$LB$$, $$961$$, $$Lebanon$$), ($$LS$$, $$266$$, $$Lesotho$$), ($$LR$$, $$231$$, $$Liberia$$), ($$LY$$, $$218$$, $$Libyan Arab Jamahiriya$$), ($$LI$$, $$423$$, $$Liechtenstein$$), ($$LT$$, $$370$$, $$Lithuania$$), ($$LU$$, $$352$$, $$Luxembourg$$), ($$MO$$, $$853$$, $$Macao$$), ($$MK$$, $$389$$, $$Macedonia, the Former Yugoslav Republic of$$), ($$MG$$, $$261$$, $$Madagascar$$), ($$MW$$, $$265$$, $$Malawi$$), ($$MY$$, $$60$$, $$Malaysia$$), ($$MV$$, $$960$$, $$Maldives$$), ($$ML$$, $$223$$, $$Mali$$), ($$MT$$, $$356$$, $$Malta$$), ($$MH$$, $$692$$, $$Marshall Islands$$), ($$MQ$$, $$596$$, $$Martinique$$), ($$MR$$, $$222$$, $$Mauritania$$), ($$MU$$, $$230$$, $$Mauritius$$), ($$YT$$, $$269$$, $$Mayotte$$), ($$MX$$, $$52$$, $$Mexico$$), ($$FM$$, $$691$$, $$Micronesia, Federated States of$$), ($$MD$$, $$373$$, $$Moldova, Republic of$$), ($$MC$$, $$377$$, $$Monaco$$), ($$MN$$, $$976$$, $$Mongolia$$), ($$ME$$, $$382$$, $$Montenegro$$), ($$MS$$, $$1664$$, $$Montserrat$$), ($$MA$$, $$212$$, $$Morocco$$), ($$MZ$$, $$258$$, $$Mozambique$$), ($$MM$$, $$95$$, $$Myanmar$$), ($$NA$$, $$264$$, $$Namibia$$), ($$NR$$, $$674$$, $$Nauru$$), ($$NP$$, $$977$$, $$Nepal$$), ($$NL$$, $$31$$, $$Netherlands$$), ($$AN$$, $$599$$, $$Netherlands Antilles$$), ($$NC$$, $$687$$, $$New Caledonia$$), ($$NZ$$, $$64$$, $$New Zealand$$), ($$NI$$, $$505$$, $$Nicaragua$$), ($$NE$$, $$227$$, $$Niger$$), ($$NG$$, $$234$$, $$Nigeria$$), ($$NU$$, $$683$$, $$Niue$$), ($$NF$$, $$672$$, $$Norfolk Island$$), ($$MP$$, $$1670$$, $$Northern Mariana Islands$$), ($$NO$$, $$47$$, $$Norway$$), ($$OM$$, $$968$$, $$Oman$$), ($$PK$$, $$92$$, $$Pakistan$$), ($$PW$$, $$680$$, $$Palau$$), ($$PS$$, $$970$$, $$Palestinian Territory, Occupied$$), ($$PA$$, $$507$$, $$Panama$$), ($$PG$$, $$675$$, $$Papua New Guinea$$), ($$PY$$, $$595$$, $$Paraguay$$), ($$PE$$, $$51$$, $$Peru$$), ($$PH$$, $$63$$, $$Philippines$$), ($$PN$$, $$64$$, $$Pitcairn$$), ($$PL$$, $$48$$, $$Poland$$), ($$PT$$, $$351$$, $$Portugal$$), ($$PR$$, $$1787$$, $$Puerto Rico$$), ($$QA$$, $$974$$, $$Qatar$$), ($$RE$$, $$262$$, $$Reunion$$), ($$RO$$, $$40$$, $$Romania$$), ($$RU$$, $$70$$, $$Russian Federation$$), ($$RW$$, $$250$$, $$Rwanda$$), ($$BL$$, $$590$$, $$Saint Barthelemy$$), ($$SH$$, $$290$$, $$Saint Helena$$), ($$KN$$, $$1869$$, $$Saint Kitts and Nevis$$), ($$LC$$, $$1758$$, $$Saint Lucia$$), ($$MF$$, $$590$$, $$Saint Martin$$), ($$PM$$, $$508$$, $$Saint Pierre and Miquelon$$), ($$VC$$, $$1784$$, $$Saint Vincent and the Grenadines$$), ($$WS$$, $$684$$, $$Samoa$$), ($$SM$$, $$378$$, $$San Marino$$), ($$ST$$, $$239$$, $$Sao Tome and Principe$$), ($$SA$$, $$966$$, $$Saudi Arabia$$), ($$SN$$, $$221$$, $$Senegal$$), ($$RS$$, $$381$$, $$Serbia$$), ($$CS$$, $$381$$, $$Serbia and Montenegro$$), ($$SC$$, $$248$$, $$Seychelles$$), ($$SL$$, $$232$$, $$Sierra Leone$$), ($$SG$$, $$65$$, $$Singapore$$), ($$SX$$, $$1$$, $$Sint Maarten$$), ($$SK$$, $$421$$, $$Slovakia$$), ($$SI$$, $$386$$, $$Slovenia$$), ($$SB$$, $$677$$, $$Solomon Islands$$), ($$SO$$, $$252$$, $$Somalia$$), ($$ZA$$, $$27$$, $$South Africa$$), ($$GS$$, $$500$$, $$South Georgia and the South Sandwich Islands$$), ($$SS$$, $$211$$, $$South Sudan$$), ($$ES$$, $$34$$, $$Spain$$), ($$LK$$, $$94$$, $$Sri Lanka$$), ($$SD$$, $$249$$, $$Sudan$$), ($$SR$$, $$597$$, $$Suriname$$), ($$SJ$$, $$47$$, $$Svalbard and Jan Mayen$$), ($$SZ$$, $$268$$, $$Swaziland$$), ($$SE$$, $$46$$, $$Sweden$$), ($$CH$$, $$41$$, $$Switzerland$$), ($$SY$$, $$963$$, $$Syrian Arab Republic$$), ($$TW$$, $$886$$, $$Taiwan, Province of China$$), ($$TJ$$, $$992$$, $$Tajikistan$$), ($$TZ$$, $$255$$, $$Tanzania, United Republic of$$), ($$TH$$, $$66$$, $$Thailand$$), ($$TL$$, $$670$$, $$Timor-Leste$$), ($$TG$$, $$228$$, $$Togo$$), ($$TK$$, $$690$$, $$Tokelau$$), ($$TO$$, $$676$$, $$Tonga$$), ($$TT$$, $$1868$$, $$Trinidad and Tobago$$), ($$TN$$, $$216$$, $$Tunisia$$), ($$TR$$, $$90$$, $$Turkey$$), ($$TM$$, $$7370$$, $$Turkmenistan$$), ($$TC$$, $$1649$$, $$Turks and Caicos Islands$$), ($$TV$$, $$688$$, $$Tuvalu$$), ($$UG$$, $$256$$, $$Uganda$$), ($$UA$$, $$380$$, $$Ukraine$$), ($$AE$$, $$971$$, $$United Arab Emirates$$), ($$GB$$, $$44$$, $$United Kingdom$$), ($$US$$, $$1$$, $$United States$$), ($$UM$$, $$1$$, $$United States Minor Outlying Islands$$), ($$UY$$, $$598$$, $$Uruguay$$), ($$UZ$$, $$998$$, $$Uzbekistan$$), ($$VU$$, $$678$$, $$Vanuatu$$), ($$VE$$, $$58$$, $$Venezuela$$), ($$VN$$, $$84$$, $$Viet Nam$$), ($$VG$$, $$1284$$, $$Virgin Islands, British$$), ($$VI$$, $$1340$$, $$Virgin Islands, U.s.$$), ($$WF$$, $$681$$, $$Wallis and Futuna$$), ($$EH$$, $$212$$, $$Western Sahara$$), ($$YE$$, $$967$$, $$Yemen$$), ($$ZM$$, $$260$$, $$Zambia$$), ($$ZW$$, $$263$$, $$Zimbabwe$$);",
     "describe": {
@@ -3215,16 +3192,6 @@
       ]
     }
   },
-  "8af59da9f9c750533292d1c812cceff5bcb3dcb772ba608073d43342112c0e36": {
-    "query": "CREATE TABLE patr_controlled_domain ( domain_id UUID NOT NULL REFERENCES domain(id), zone_identifier TEXT NOT NULL, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr', CONSTRAINT patr_controlled_domain_chk_control_status CHECK( control_status = 'patr' ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
     "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;",
     "describe": {
@@ -3258,87 +3225,6 @@
         false,
         false
       ]
-    }
-  },
-  "8cd89db8e31f5b3ff9652dddef915bea70e3d0cce9aa2235cee1955f7095845c": {
-    "query": "SELECT domain.name, workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.control_status as \"control_status: _\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "control_status: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_control_status",
-              "kind": {
-                "Enum": [
-                  "patr",
-                  "user"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
-  "8d06812047c6a30a6f356e0039bce84013c8900ddbb19e73987dbaaca16e552b": {
-    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, $4, default, default, default, default, $5, default, $6) ON CONFLICT (domain_id, name) DO UPDATE SET a_record = $4 || EXCLUDED.a_record;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "TextArray",
-          "Int4",
-          "Bool"
-        ]
-      },
-      "nullable": []
     }
   },
   "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e": {
@@ -3617,6 +3503,16 @@
       ]
     }
   },
+  "9b6936c677387b8cca1f640ae12278bfbbff598d4198b1d3666b0a42d5fd6a9e": {
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "query": "CREATE INDEX workspace_idx_active ON workspace (active);",
     "describe": {
@@ -3683,16 +3579,6 @@
       "nullable": [
         false
       ]
-    }
-  },
-  "9d28a11ebc936d187575958ce50fba9efdafd43b31d8f0690bd224b904e0801d": {
-    "query": "CREATE TABLE dns_record ( id UUID CONSTRAINT dns_record_pk PRIMARY KEY, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT dns_record_chk_name_is_lower_case CHECK( name = LOWER(name) ) CONSTRAINT dns_record_chk_name_is_trimmed CHECK( name = TRIM(name) ), a_record TEXT [] NOT NULL DEFAULT '{}', aaaa_record TEXT [] NOT NULL DEFAULT '{}', text_record TEXT [] NOT NULL DEFAULT '{}', cname_record TEXT NOT NULL DEFAULT '', mx_record TEXT [] NOT NULL DEFAULT '{}', ttl INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 0, proxied BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name), CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "9e3736b6e5d9a9db4281d8ce42a2fa507275cbb428769ab441069341dc304212": {
@@ -3815,23 +3701,6 @@
       ]
     }
   },
-  "a18a6a90cd0851487c016b794ea734f9bc51520317911d50b244bc694c1b8e40": {
-    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, default, default, default, $4, default, $5, default, $6) ON CONFLICT (domain_id, name) DO UPDATE SET cname_record = $4;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "Text",
-          "Int4",
-          "Bool"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "a1bf8a497d7d6b8762434743b2da880011018fc4bff4f94fffe1e9b41ba6d567": {
     "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
     "describe": {
@@ -3918,6 +3787,19 @@
         false,
         true
       ]
+    }
+  },
+  "a61e196d9bd8efd440324ee59e02ceab6f8e96e6d48fb20de565c0dfc8563057": {
+    "query": "INSERT INTO patr_controlled_domain VALUES ($1, $2, 'internal');",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "a69106420eb20523380486866b32d9b4d3c45c39b139274c4aeb9442bb823300": {
@@ -4440,6 +4322,16 @@
       "nullable": []
     }
   },
+  "b2570af8ca7311aff26e71673f7b4a7e10881cc888e41a64b8b8dac482d0e992": {
+    "query": "CREATE TABLE user_controlled_domain( domain_id UUID NOT NULL CONSTRAINT user_controlled_domain_pk PRIMARY KEY, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK( nameserver_type = 'external' ), CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type FOREIGN KEY(domain_id, nameserver_type) REFERENCES workspace_domain(id, nameserver_type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "b27e78f8804b797ac37d45e828f0070405b23e9018b59ad40534b6fe8b853527": {
     "query": "UPDATE \"user\" SET password = $1 WHERE id = $2;",
     "describe": {
@@ -4461,6 +4353,81 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "b2f96fc77695ebc53692b43840f68f04e63a970b6be447d1769114b4107b330a": {
+    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "value",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "priority",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 6,
+          "name": "ttl",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "proxied",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
     }
   },
   "b2fdf60a7346c285cacdc083afb3a525d7de1d09a3835bcb046d1eb32e5700e0": {
@@ -4486,11 +4453,11 @@
           "Uuid",
           {
             "Custom": {
-              "name": "domain_control_status",
+              "name": "domain_nameserver_type",
               "kind": {
                 "Enum": [
-                  "patr",
-                  "user"
+                  "internal",
+                  "external"
                 ]
               }
             }
@@ -4622,86 +4589,6 @@
         ]
       },
       "nullable": [
-        false,
-        false
-      ]
-    }
-  },
-  "b6985d2fc47ab5632872b0059d5912ae1f7aef16db21bba7df108b9a4208f401": {
-    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name::TEXT as \"name!: _\", a_record, aaaa_record, text_record, cname_record, mx_record, ttl, priority, proxied FROM dns_record WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "a_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 4,
-          "name": "aaaa_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 5,
-          "name": "text_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 6,
-          "name": "cname_record",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 7,
-          "name": "mx_record",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 8,
-          "name": "ttl",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 9,
-          "name": "priority",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 10,
-          "name": "proxied",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
         false,
         false
       ]
@@ -4992,68 +4879,6 @@
       "nullable": []
     }
   },
-  "c5b6e852cdbc5e3bfbb4fa8fd67a475ded6335b17bba38fa27c39669cfd9f094": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.control_status as \"control_status!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = TRUE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "control_status!: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_control_status",
-              "kind": {
-                "Enum": [
-                  "patr",
-                  "user"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "c7266afd5fc274fcd6c5dd97631ce514cbdbcbe541c6f29c797e64cea66ddc09": {
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;",
     "describe": {
@@ -5090,6 +4915,22 @@
         true,
         false
       ]
+    }
+  },
+  "c7726ad0cf307f6f0f8e321f914f7caeafbed517d7c3968ed3f17ee82803a720": {
+    "query": "UPDATE patr_domain_dns_record SET value = $1, priority = $2, ttl = $3, proxied = $4 WHERE id = $5;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4",
+          "Bool",
+          "Uuid"
+        ]
+      },
+      "nullable": []
     }
   },
   "c85fb45f8bd815e198234a2fc743832c9a5ead7666c1150819dd06acff100df0": {
@@ -5236,6 +5077,18 @@
       "nullable": []
     }
   },
+  "cfe90f397141fe6f605a54f2036a466cb0b5bc000b7ad716e6d271980d91dfe8": {
+    "query": "DELETE FROM patr_domain_dns_record WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "d053057cd4d2bef5776a82a37cdf49a8147fff23182d6d1254c9fc30f1def33b": {
     "query": "ALTER TABLE \"user\" ADD CONSTRAINT user_fk_id_backup_email_local_backup_email_domain_id FOREIGN KEY ( id, backup_email_local, backup_email_domain_id ) REFERENCES personal_email ( user_id, local, domain_id ) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -5276,6 +5129,68 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "d4fb6dbc53b25a21eb8164258a65f2d7707992f7c6174e6d58fd3b88bfccda9a": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true
       ]
     }
   },
@@ -5657,6 +5572,48 @@
       ]
     }
   },
+  "dd7882d7a050b27d0474f90e0b4335e7b604155c424347a65123b56a2379284d": {
+    "query": "SELECT domain_id as \"domain_id: _\", zone_identifier, nameserver_type as \"nameserver_type: _\" FROM patr_controlled_domain WHERE domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "zone_identifier",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "nameserver_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "ddf2963936615eb58225ace43d720c4c708e1abced58c94dc7a8d9b83c0f6321": {
     "query": "DELETE FROM workspace_user WHERE role_id = $1;",
     "describe": {
@@ -5675,23 +5632,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "de90f42fcd953c22c548c79cf66acc3078e7ec4e130ce96e6965ed2756043550": {
-    "query": "INSERT INTO dns_record VALUES ($1, $2, $3, default, $4, default, default, default, $5, default, $6) ON CONFLICT (domain_id, name) DO UPDATE SET aaaa_record = $4 || EXCLUDED.aaaa_record;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          "TextArray",
-          "Int4",
-          "Bool"
-        ]
       },
       "nullable": []
     }
@@ -5911,6 +5851,38 @@
       "parameters": {
         "Left": [
           "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e349bcf029d73d87d7fc8d83b321f19945ada68eb54b02edbc75954ad3dce72f": {
+    "query": "INSERT INTO patr_domain_dns_record VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Int4",
+          "Int4",
+          "Bool"
         ]
       },
       "nullable": []
