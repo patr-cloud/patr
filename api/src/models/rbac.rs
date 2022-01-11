@@ -102,6 +102,7 @@ pub mod permissions {
 pub mod resource_types {
 	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
+	pub const DNS_RECORD: &str = "dnsRecord";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";

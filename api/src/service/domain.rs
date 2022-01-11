@@ -6,13 +6,7 @@ use std::{
 use cloudflare::{
 	endpoints::{
 		dns::{CreateDnsRecord, CreateDnsRecordParams, DnsContent},
-		zone::{
-			CreateZone,
-			CreateZoneParams,
-			ListZones,
-			ListZonesParams,
-			Type,
-		},
+		zone::{self, AccountId, CreateZone, CreateZoneParams, Status, Type},
 	},
 	framework::{
 		async_api::{ApiClient, Client as CloudflareClient},
@@ -22,11 +16,10 @@ use cloudflare::{
 	},
 };
 use eve_rs::AsError;
-use hex::ToHex;
 use tokio::{net::UdpSocket, task};
 use trust_dns_client::{
 	client::{AsyncClient, ClientHandle},
-	rr::{DNSClass, Name, RData, RecordType},
+	rr::{rdata::TXT, DNSClass, Name, RData, RecordType},
 	udp::UdpClientStream,
 };
 use uuid::Uuid;
@@ -34,9 +27,9 @@ use uuid::Uuid;
 use crate::{
 	db,
 	error,
-	models::rbac,
+	models::{db_mapping::DomainControlStatus, rbac},
 	utils::{
-		constants::ResourceOwnerType,
+		constants::{request_keys, ResourceOwnerType},
 		get_current_time_millis,
 		settings::Settings,
 		validator,
@@ -124,7 +117,7 @@ pub async fn add_domain_to_workspace(
 	config: &Settings,
 	domain_name: &str,
 	workspace_id: &[u8],
-	is_patr_controled: bool,
+	control_status: &DomainControlStatus,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -171,60 +164,33 @@ pub async fn add_domain_to_workspace(
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id, is_patr_controled)
-		.await?;
-	if is_patr_controled {
+	db::add_to_workspace_domain(connection, domain_id, control_status).await?;
+	if let DomainControlStatus::Patr = control_status {
 		// create zone
 
-		// login to cloudflare and create zone in cloudflare
-		let credentials = Credentials::UserAuthToken {
-			token: config.cloudflare.api_token.clone(),
-		};
-
-		let client = if let Ok(client) = CloudflareClient::new(
-			credentials,
-			HttpApiClientConfig::default(),
-			Environment::Production,
-		) {
-			client
-		} else {
-			return Err(Error::empty());
-		};
-
+		let client = get_cloudflare_client(config).await?;
+		log::trace!("Creating zone for domain: {}", domain_name);
 		// create zone
-		client
+		let zone_identifier = client
 			.request(&CreateZone {
 				params: CreateZoneParams {
-					name: &domain_name,
+					name: domain_name,
 					jump_start: Some(false),
-					account: &config.cloudflare.account_id,
+					account: AccountId {
+						id: &config.cloudflare.account_id,
+					},
 					// Full because the DNS record
 					zone_type: Some(Type::Full),
 				},
 			})
-			.await?;
-
-		let zone_identifier = client
-			.request(&ListZones {
-				params: ListZonesParams {
-					name: Some(domain_name.to_string()),
-					..Default::default()
-				},
-			})
 			.await?
 			.result
-			.into_iter()
-			.next()
-			.status(500)?
 			.id;
-
+		log::trace!("Zone created for domain: {}", domain_name);
 		// create a new function to store zone related data
-		db::add_patr_controlled_domain(
-			connection,
-			domain_id,
-			zone_identifier.as_bytes(),
-		)
-		.await?;
+		// TODO: change zone_id to string
+		db::add_patr_controlled_domain(connection, domain_id, &zone_identifier)
+			.await?;
 	}
 
 	Ok(domain_uuid)
@@ -248,38 +214,71 @@ pub async fn add_domain_to_workspace(
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
+	config: &Settings,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
-		.status(200)
+		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let (mut client, bg) = AsyncClient::connect(
-		UdpClientStream::<UdpSocket>::new("1.1.1.1:53".parse().unwrap()),
-	)
-	.await?;
-	let handle = task::spawn(bg);
-	let mut response = client
-		.query(
-			Name::from_utf8(format!("patrVerify.{}", domain.name)).unwrap(),
-			DNSClass::IN,
-			RecordType::CNAME,
-		)
-		.await?;
-	let response = response.take_answers().into_iter().find(|record| {
-		let expected_cname = RData::CNAME(
-			Name::from_utf8(format!(
-				"{}.patr.cloud",
-				domain_id.encode_hex::<String>()
+	if let DomainControlStatus::Patr = domain.control_status {
+		let client = get_cloudflare_client(config).await?;
+
+		let zone_identifier =
+			db::get_patr_controlled_domain_by_domain_id(connection, domain_id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.zone_identifier;
+
+		let dns_record = client
+			.request(&zone::ZoneDetails {
+				identifier: &hex::encode(zone_identifier),
+			})
+			.await?;
+
+		if let Status::Active = dns_record.result.status {
+			db::update_workspace_domain_status(connection, domain_id, true)
+				.await?;
+			return Ok(true);
+		}
+
+		Ok(false)
+	} else {
+		// TODO: make domain name server a config instead of string
+		let (mut client, bg) =
+			AsyncClient::connect(UdpClientStream::<UdpSocket>::new(
+				request_keys::DNS_RESOLVER.parse()?,
 			))
-			.unwrap(),
-		);
-		record.rdata() == &expected_cname
-	});
+			.await?;
 
-	handle.abort();
+		let handle = task::spawn(bg);
+		let mut response = client
+			.query(
+				Name::from_utf8(format!("PatrVerify.{}", domain.name))?,
+				DNSClass::IN,
+				RecordType::TXT,
+			)
+			.await?;
 
-	Ok(response.is_some())
+		let response = response.take_answers().into_iter().find(|record| {
+			let expected_txt =
+				RData::TXT(TXT::new(vec![hex::encode(domain.id.clone())]));
+			record.rdata() == &expected_txt
+		});
+
+		handle.abort();
+		drop(handle);
+
+		if response.is_some() {
+			db::update_workspace_domain_status(connection, domain_id, true)
+				.await?;
+
+			return Ok(true);
+		}
+
+		Ok(false)
+	}
 }
 
 /// # Description
@@ -317,49 +316,30 @@ async fn is_domain_used_for_sign_up(
 
 pub async fn add_patr_dns_a_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	workspace_id: &[u8],
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 	name: &str,
 	a_record: &str,
 	ttl: u32,
 	proxied: bool,
-) -> Result<(), Error> {
+	config: &Settings,
+) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zond_id = zone_identifier.encode_hex::<String>();
+	let client = get_cloudflare_client(config).await?;
 
 	// Cloudflare api takes content as Ipv4 object.
-	let a_record_ipv4 = Ipv4Addr::from_str(a_record);
-	if let Err(_) = a_record_ipv4 {
-		return Error::as_result()
-			.status(400)
-			.body(error!(INVALID_IP_ADDRESS).to_string())?;
-	}
-	let a_record_ipv4 = a_record_ipv4.unwrap();
+	let a_record_ipv4 = a_record.parse::<Ipv4Addr>()?;
 
 	// send request to Cloudflare
 	client
 		.request(&CreateDnsRecord {
-			zone_identifier: &zond_id,
+			zone_identifier,
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::A {
 					content: a_record_ipv4,
 				},
@@ -367,9 +347,28 @@ pub async fn add_patr_dns_a_record(
 		})
 		.await?;
 
+	let dns_uuid = db::generate_new_resource_id(connection).await?;
+	let dns_id = dns_uuid.as_bytes();
+	log::trace!("creating resource");
+
+	db::create_resource(
+		connection,
+		dns_id,
+		&format!("Dns_a_record: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DNS_RECORD)
+			.unwrap(),
+		workspace_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
 	// add to db
 	db::add_patr_dns_a_record(
 		connection,
+		dns_id,
 		domain_id,
 		name,
 		&[a_record.to_string()],
@@ -378,39 +377,27 @@ pub async fn add_patr_dns_a_record(
 	)
 	.await?;
 
-	Ok(())
+	Ok(dns_uuid)
 }
 
 pub async fn add_patr_dns_aaaa_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	workspace_id: &[u8],
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 	name: &str,
 	aaaa_record: &str,
 	ttl: u32,
 	proxied: bool,
-) -> Result<(), Error> {
+	config: &Settings,
+) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
+	let client = get_cloudflare_client(config).await?;
 
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zond_id = zone_identifier.encode_hex::<String>();
 	let ipv6 = Ipv6Addr::from_str(aaaa_record);
 
 	// todo: add a better method of error handling
-	if let Err(_) = ipv6 {
+	if ipv6.is_err() {
 		return Error::as_result()
 			.status(400)
 			.body(error!(INVALID_IP_ADDRESS).to_string())?;
@@ -420,20 +407,39 @@ pub async fn add_patr_dns_aaaa_record(
 	// send request to Cloudflare
 	client
 		.request(&CreateDnsRecord {
-			zone_identifier: &zond_id,
+			zone_identifier,
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::AAAA { content: ipv6 },
 			},
 		})
 		.await?;
 
+	let dns_uuid = db::generate_new_resource_id(connection).await?;
+	let dns_id = dns_uuid.as_bytes();
+	log::trace!("creating resource");
+
+	db::create_resource(
+		connection,
+		dns_id,
+		&format!("Dns_aaaa_record: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DNS_RECORD)
+			.unwrap(),
+		workspace_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
 	// add to db
 	db::add_patr_dns_aaaa_record(
 		connection,
+		dns_id,
 		domain_id,
 		name,
 		&[aaaa_record.to_string()],
@@ -442,46 +448,33 @@ pub async fn add_patr_dns_aaaa_record(
 	)
 	.await?;
 
-	Ok(())
+	Ok(dns_uuid)
 }
 
 pub async fn add_patr_dns_mx_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	workspace_id: &[u8],
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 	name: &str,
 	content: &str,
 	ttl: u32,
 	proxied: bool,
 	priority: u16,
-) -> Result<(), Error> {
+	config: &Settings,
+) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zond_id = zone_identifier.encode_hex::<String>();
+	let client = get_cloudflare_client(config).await?;
 
 	// send request to Cloudflare
 	client
 		.request(&CreateDnsRecord {
-			zone_identifier: &zond_id,
+			zone_identifier,
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::MX {
 					priority,
 					content: content.to_string(),
@@ -490,9 +483,28 @@ pub async fn add_patr_dns_mx_record(
 		})
 		.await?;
 
+	let dns_uuid = db::generate_new_resource_id(connection).await?;
+	let dns_id = dns_uuid.as_bytes();
+	log::trace!("creating resource");
+
+	db::create_resource(
+		connection,
+		dns_id,
+		&format!("Dns_mx_record: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DNS_RECORD)
+			.unwrap(),
+		workspace_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
 	// add to db
 	db::add_patr_dns_mx_record(
 		connection,
+		dns_id,
 		domain_id,
 		name,
 		&[content.to_string()],
@@ -502,45 +514,32 @@ pub async fn add_patr_dns_mx_record(
 	)
 	.await?;
 
-	Ok(())
+	Ok(dns_uuid)
 }
 
 pub async fn add_patr_dns_cname_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	workspace_id: &[u8],
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 	name: &str,
 	content: &str,
 	ttl: u32,
 	proxied: bool,
-) -> Result<(), Error> {
+	config: &Settings,
+) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zond_id = zone_identifier.encode_hex::<String>();
+	let client = get_cloudflare_client(config).await?;
 
 	// send request to Cloudflare
 	client
 		.request(&CreateDnsRecord {
-			zone_identifier: &zond_id,
+			zone_identifier,
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::CNAME {
 					content: content.to_string(),
 				},
@@ -548,51 +547,56 @@ pub async fn add_patr_dns_cname_record(
 		})
 		.await?;
 
-	// add to db
-	db::add_patr_dns_cname_record(
-		connection, domain_id, name, content, ttl as i32, proxied,
+	let dns_uuid = db::generate_new_resource_id(connection).await?;
+	let dns_id = dns_uuid.as_bytes();
+	log::trace!("creating resource");
+
+	db::create_resource(
+		connection,
+		dns_id,
+		&format!("Dns_cname_record: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DNS_RECORD)
+			.unwrap(),
+		workspace_id,
+		get_current_time_millis(),
 	)
 	.await?;
 
-	Ok(())
+	// add to db
+	db::add_patr_dns_cname_record(
+		connection, dns_id, domain_id, name, content, ttl as i32, proxied,
+	)
+	.await?;
+
+	Ok(dns_uuid)
 }
 
 pub async fn add_patr_dns_txt_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	workspace_id: &[u8],
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 	name: &str,
 	content: &str,
 	ttl: u32,
 	proxied: bool,
-) -> Result<(), Error> {
+	config: &Settings,
+) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
-
-	let zond_id = zone_identifier.encode_hex::<String>();
+	let client = get_cloudflare_client(config).await?;
 
 	// send request to Cloudflare
 	client
 		.request(&CreateDnsRecord {
-			zone_identifier: &zond_id,
+			zone_identifier,
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
 				proxied: Some(proxied),
-				name: &name,
+				name,
 				content: DnsContent::TXT {
 					content: content.to_string(),
 				},
@@ -600,9 +604,28 @@ pub async fn add_patr_dns_txt_record(
 		})
 		.await?;
 
+	let dns_uuid = db::generate_new_resource_id(connection).await?;
+	let dns_id = dns_uuid.as_bytes();
+	log::trace!("creating resource");
+
+	db::create_resource(
+		connection,
+		dns_id,
+		&format!("Dns_txt_record: {}", name),
+		rbac::RESOURCE_TYPES
+			.get()
+			.unwrap()
+			.get(rbac::resource_types::DNS_RECORD)
+			.unwrap(),
+		workspace_id,
+		get_current_time_millis(),
+	)
+	.await?;
+
 	// add to db
 	db::add_patr_dns_txt_record(
 		connection,
+		dns_id,
 		domain_id,
 		name,
 		&[content.to_string()],
@@ -611,5 +634,25 @@ pub async fn add_patr_dns_txt_record(
 	)
 	.await?;
 
-	Ok(())
+	Ok(dns_uuid)
+}
+
+pub async fn get_cloudflare_client(
+	config: &Settings,
+) -> Result<CloudflareClient, Error> {
+	// login to cloudflare and create zone in cloudflare
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = if let Ok(client) = CloudflareClient::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	) {
+		client
+	} else {
+		return Err(Error::empty());
+	};
+	Ok(client)
 }

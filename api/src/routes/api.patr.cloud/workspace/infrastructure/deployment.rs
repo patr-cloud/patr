@@ -1731,7 +1731,7 @@ async fn add_entry_point(
 	db::add_entry_point(
 		context.get_database_connection(),
 		&domain_id,
-		&sub_domain,
+		sub_domain,
 		path,
 		&deployment_id,
 	)

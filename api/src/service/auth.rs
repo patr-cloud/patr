@@ -15,7 +15,13 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
+		db_mapping::{
+			DomainControlStatus,
+			JoinUser,
+			User,
+			UserLogin,
+			UserToSignUp,
+		},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,
@@ -831,6 +837,7 @@ pub async fn join_user(
 			"Got neither backup email, nor backup phone number while signing up user: {}",
 			user_data.username
 		);
+
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
@@ -870,7 +877,7 @@ pub async fn join_user(
 			config,
 			user_data.business_domain_name.as_ref().unwrap(),
 			workspace_id,
-			false,
+			&DomainControlStatus::User,
 		)
 		.await?
 		.as_bytes()

@@ -141,7 +141,7 @@
 			"password": "Rentbaaz@123"
 		}
 	],
-	"organisations": [
+	"workspaces": [
 		{
 			"name": "Vicara",
 			"domains": [
@@ -238,26 +238,26 @@
 			"superUser": "rakshith-ravi",
 			"roles": {
 				"employee": [
-					"organisation::portus::view",
-					"organisation::portus::list",
-					"organisation::application::list",
-					"organisation::application::viewDetails",
-					"organisation::application::listVersions",
-					"organisation::domain::list",
-					"organisation::domain::viewDetails",
-					"organisation::viewRoles"
+					"workspace::portus::view",
+					"workspace::portus::list",
+					"workspace::application::list",
+					"workspace::application::viewDetails",
+					"workspace::application::listVersions",
+					"workspace::domain::list",
+					"workspace::domain::viewDetails",
+					"workspace::viewRoles"
 				],
 				"developer": [
-					"organisation::portus::view",
-					"organisation::portus::list",
-					"organisation::portus::add",
-					"organisation::application::list",
-					"organisation::application::add",
-					"organisation::application::viewDetails",
-					"organisation::application::listVersions",
-					"organisation::domain::list",
-					"organisation::domain::viewDetails",
-					"organisation::viewRoles"
+					"workspace::portus::view",
+					"workspace::portus::list",
+					"workspace::portus::add",
+					"workspace::application::list",
+					"workspace::application::add",
+					"workspace::application::viewDetails",
+					"workspace::application::listVersions",
+					"workspace::domain::list",
+					"workspace::domain::viewDetails",
+					"workspace::viewRoles"
 				]
 			},
 			"users": {

@@ -50,6 +50,7 @@ pub mod id {
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
+	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 }
 
 #[allow(dead_code)]
@@ -108,8 +109,9 @@ pub mod message {
 	pub const PROFILE_NOT_FOUND: &str = "The profile doesn't seem to exist";
 	pub const DUPLICATE_USER: &str =
 		"Sorry, the email address/username is taken";
-	pub const DOMAIN_UNVERIFIED: &str =
-		"That domain is unverified. Check your verification settings";
+	pub const DOMAIN_UNVERIFIED: &str = r#"That domain is unverified. Check your verification settings. 
+		Or you might have to wait for the TTL to expire before you can verify it again. 
+		Note the TTL is usually set to 3600 seconds"#;
 	pub const REPOSITORY_ALREADY_EXISTS: &str =
 		"The given repository already exists";
 	pub const REPOSITORY_NOT_FOUND: &str = "The repository does not exist";
@@ -154,4 +156,5 @@ pub mod message {
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain is not controlled by PATR";
 	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
+	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 }

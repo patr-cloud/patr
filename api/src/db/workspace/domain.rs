@@ -4,6 +4,7 @@ use crate::{
 	models::db_mapping::{
 		DnsRecord,
 		Domain,
+		DomainControlStatus,
 		PatrControlledDomain,
 		PersonalDomain,
 		WorkspaceDomain,
@@ -39,13 +40,24 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM (
+			'patr',
+			'user'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE workspace_domain (
 			id BYTEA CONSTRAINT workspace_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
 				CONSTRAINT workspace_domain_chk_dmn_typ
 					CHECK(domain_type = 'business'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user'::DOMAIN_CONTROL_STATUS,
 			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
@@ -62,20 +74,9 @@ pub async fn initialize_domain_pre(
 				CONSTRAINT personal_domain_chk_dmn_typ
 					CHECK(domain_type = 'personal'),
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-			is_patr_controlled BOOLEAN NOT NULL DEFAULT FALSE,
+			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'user'::DOMAIN_CONTROL_STATUS,
 			CONSTRAINT personal_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TYPE DOMAIN_CONTROL_STATUS AS ENUM (
-			'patr',
-			'user'
 		);
 		"#
 	)
@@ -87,7 +88,7 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE patr_controlled_domain (
 			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			zone_identifier BYTEA NOT NULL,
+			zone_identifier TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
 			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr',
 			CONSTRAINT patr_controlled_domain_chk_control_status
@@ -124,47 +125,31 @@ pub async fn initialize_domain_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE personal_domain (
-			id BYTEA
-				CONSTRAINT personal_domain_pk PRIMARY KEY,
-			domain_type RESOURCE_OWNER_TYPE NOT NULL
-				CONSTRAINT personal_domain_chk_dmn_typ
-					CHECK(domain_type = 'personal'),
-			CONSTRAINT personal_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	// todo: check if MX record exists for domain, then other records should be
 	// null and vice versa
 	// todo: remove path and rename sub_domain to name
 	query!(
 		r#"
 		CREATE TABLE dns_record (
+			id BYTEA CONSTRAINT dns_record_pk PRIMARY KEY,
 			domain_id BYTEA NOT NULL,
 			name VARCHAR(255) NOT NULL,
-			a_record TEXT [] NOT NULL DEFAULT '{{}}',
-			aaaa_record TEXT [] NOT NULL DEFAULT '{{}}',
-			text_record TEXT [] NOT NULL DEFAULT '{{}}',
+			a_record TEXT [] NOT NULL DEFAULT '{}',
+			aaaa_record TEXT [] NOT NULL DEFAULT '{}',
+			text_record TEXT [] NOT NULL DEFAULT '{}',
 			cname_record TEXT NOT NULL DEFAULT '',
-			mx_record TEXT [] NOT NULL DEFAULT '{{}}',
+			mx_record TEXT [] NOT NULL DEFAULT '{}',
 			ttl INTEGER NOT NULL,
 			priority INTEGER NOT NULL DEFAULT 0,
 			proxied BOOLEAN NOT NULL DEFAULT TRUE,
-			CONSTRAINT dns_record_uq_domain_id_sub_domain_path UNIQUE (domain_id, name),
+			CONSTRAINT dns_record_uq_domain_id_sub_doma41001in_path UNIQUE (domain_id, name),
 			CONSTRAINT dns_record_fk_domain_id FOREIGN KEY (domain_id) REFERENCES domain(id)
 		);
 		"#
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+.map(|_| ())
 }
 
 pub async fn initialize_domain_post(
@@ -179,9 +164,8 @@ pub async fn initialize_domain_post(
 		"#
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn generate_new_domain_id(
@@ -259,7 +243,7 @@ pub async fn create_generic_domain(
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	is_patr_controled: bool,
+	control_status: &DomainControlStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -269,7 +253,7 @@ pub async fn add_to_workspace_domain(
 			($1, 'business', FALSE, $2);
 		"#,
 		domain_id,
-		is_patr_controled
+		control_status as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -305,7 +289,8 @@ pub async fn get_domains_for_workspace(
 			domain.name,
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.control_status as "control_status: _"
 		FROM
 			domain
 		INNER JOIN
@@ -335,7 +320,8 @@ pub async fn get_all_unverified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.control_status as "control_status!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -380,7 +366,8 @@ pub async fn get_all_verified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.control_status as "control_status!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -476,9 +463,8 @@ pub async fn delete_personal_domain(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_domain_from_workspace(
@@ -495,9 +481,8 @@ pub async fn delete_domain_from_workspace(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_generic_domain(
@@ -514,9 +499,8 @@ pub async fn delete_generic_domain(
 		domain_id
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_workspace_domain_by_id(
@@ -530,7 +514,8 @@ pub async fn get_workspace_domain_by_id(
 			domain.name,
 			workspace_domain.id,
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.control_status as "control_status: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -597,7 +582,7 @@ pub async fn get_domain_by_name(
 pub async fn add_patr_controlled_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -610,8 +595,8 @@ pub async fn add_patr_controlled_domain(
 		zone_identifier,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_dns_record_by_domain_id(
@@ -642,7 +627,10 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 		PatrControlledDomain,
 		r#"
 		SELECT
-			*
+			domain_id,
+			zone_identifier,
+			is_verified,
+			control_status as "control_status: _"
 		FROM
 			patr_controlled_domain
 		WHERE
@@ -654,9 +642,30 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 	.await
 }
 
+pub async fn get_dns_record_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	dns_id: &[u8],
+) -> Result<Option<DnsRecord>, sqlx::Error> {
+	query_as!(
+		DnsRecord,
+		r#"
+		SELECT
+			*
+		FROM
+			dns_record
+		WHERE
+			id = $1;
+		"#,
+		dns_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
 // ON CONFLICT reference: https://www.postgresqltutorial.com/postgresql-upsert/
 pub async fn add_patr_dns_a_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -668,12 +677,13 @@ pub async fn add_patr_dns_a_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, $3, default, default, default, default, $4, default, $5)
+				($1, $2, $3, $4, default, default, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				a_record = $3 || EXCLUDED.a_record;
+				a_record = $4 || EXCLUDED.a_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -681,12 +691,13 @@ pub async fn add_patr_dns_a_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_aaaa_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -698,12 +709,13 @@ pub async fn add_patr_dns_aaaa_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, $3, default, default, default, $4, default, $5)
+				($1, $2, $3, default, $4, default, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				aaaa_record = $3 || EXCLUDED.aaaa_record;
+				aaaa_record = $4 || EXCLUDED.aaaa_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -711,12 +723,13 @@ pub async fn add_patr_dns_aaaa_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_mx_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -729,12 +742,13 @@ pub async fn add_patr_dns_mx_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, $3, default, default, $4, $5, $6)
+				($1, $2, $3, default, default, $4, default, default, $5, $6, $7)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				mx_record = $3 || EXCLUDED.mx_record;
+				mx_record = $4 || EXCLUDED.mx_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -743,12 +757,13 @@ pub async fn add_patr_dns_mx_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_cname_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &str,
@@ -760,12 +775,13 @@ pub async fn add_patr_dns_cname_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, default, $3, default, $4, default, $5)
+				($1, $2, $3, default, default, default, $4, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				cname_record = $3;
+				cname_record = $4;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -773,12 +789,13 @@ pub async fn add_patr_dns_cname_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn add_patr_dns_txt_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &[u8],
 	domain_id: &[u8],
 	name: &str,
 	content: &[String],
@@ -790,12 +807,13 @@ pub async fn add_patr_dns_txt_record(
 			INSERT INTO
 				dns_record
 			VALUES
-				($1, $2, default, default, $3, default, default, $4, default, $5)
+				($1, $2, $3, default, default, $4, default, default, $5, default, $6)
 			ON CONFLICT
 				(domain_id, name)
 			DO UPDATE SET
-				text_record = $3 || EXCLUDED.text_record;
+				text_record = $4 || EXCLUDED.text_record;
 		"#,
+		id,
 		domain_id,
 		name,
 		content,
@@ -803,28 +821,46 @@ pub async fn add_patr_dns_txt_record(
 		proxied,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_patr_controlled_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
-	name: &str,
+	dns_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 			DELETE FROM
 				dns_record
 			WHERE
-				domain_id = $1
-			AND 
-				name = $2;
+				id = $1;
 		"#,
-		domain_id,
-		name,
+		dns_id,
 	)
 	.execute(&mut *connection)
-	.await?;
-	Ok(())
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_domain_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &[u8],
+	is_verified: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+			UPDATE
+				workspace_domain
+			SET
+				is_verified = $2
+			WHERE
+				id = $1;
+		"#,
+		domain_id,
+		is_verified,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

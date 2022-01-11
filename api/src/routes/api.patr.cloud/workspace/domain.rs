@@ -6,7 +6,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{db_mapping::DomainControlStatus, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -258,7 +258,7 @@ pub fn create_sub_app(
 	);
 
 	app.delete(
-		"/:domainId/dns-record",
+		"/:domainId/dns-record/:dnsId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::ADD,
@@ -406,13 +406,16 @@ async fn add_domain_to_workspace(
 		.to_lowercase();
 
 	// will determine if we control the DNS records or the user
-	// todo: store this in the database
-	let is_patr_controlled = body
-		.get(request_keys::IS_PATR_CONTROLLED)
-		.map(|value| value.as_bool())
+	let control_status = body
+		.get(request_keys::CONTROL_STATUS)
+		.map(|value| value.as_str())
+		.flatten()
+		.map(|value| value.parse::<DomainControlStatus>().ok())
 		.flatten()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let domain_name = domain_name.replace("www.", "");
 
 	// move this to service layer
 	let config = context.get_state().config.clone();
@@ -421,19 +424,31 @@ async fn add_domain_to_workspace(
 		&config,
 		&domain_name,
 		&workspace_id,
-		is_patr_controlled,
+		&control_status,
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
-	}));
+	if let DomainControlStatus::Patr = control_status {
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+		}));
+	} else {
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
+			request_keys::TXT_RECORD: {
+				request_keys::TARGET: format!("PatrVerify.{}",domain_name),
+				request_keys::CONTENT: hex::encode(domain_id.to_simple().to_string()),
+			}
+		}));
+	}
+
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under an
+/// This function is used to verify a domain which is to be registered under a
 /// workspace
 /// required inputs:
 /// auth token in the authorization headers
@@ -490,9 +505,12 @@ async fn verify_domain_in_workspace(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	let config = context.get_state().config.clone();
+
 	let verified = service::is_domain_verified(
 		context.get_database_connection(),
 		&domain.id,
+		&config,
 	)
 	.await?;
 
@@ -594,7 +612,6 @@ async fn get_domain_info_in_workspace(
 				request_keys::DOMAIN_ID: domain_id,
 				request_keys::NAME: domain.name,
 				request_keys::VERIFIED: false,
-				request_keys::VERIFICATION_TOKEN: domain_id
 			})
 		},
 	);
@@ -691,21 +708,23 @@ async fn add_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
-	let domain_id = hex::decode(domain_id).unwrap();
+	// TODO: convert the second unwrap to ?
+	let workspace_id =
+		hex::decode(context.get_param(request_keys::WORKSPACE_ID).unwrap())?;
+
+	let domain_id =
+		hex::decode(context.get_param(request_keys::DOMAIN_ID).unwrap())?;
 
 	// check if domain is patr controlled
+	// TODO: maybe change the error code to something more appropriate
 	let domain = db::get_patr_controlled_domain_by_domain_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
+	.await?
+	.status(400)
+	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	if domain.is_none() {
-		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
-		return Ok(context);
-	}
-	let domain = domain.unwrap();
 	let body = context.get_body_object().clone();
 
 	// type determines what kind of record is being added
@@ -739,7 +758,7 @@ async fn add_dns_record(
 
 	let config = context.get_state().config.clone();
 
-	match r#type {
+	let dns_id = match r#type {
 		"A" => {
 			// content basically stores the ipv4 address. same goes with AAAA
 			// record
@@ -753,15 +772,16 @@ async fn add_dns_record(
 			// add a record to cloudflare
 			service::add_patr_dns_a_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				a_record,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"AAAA" => {
 			let aaaa_record = body
@@ -773,15 +793,16 @@ async fn add_dns_record(
 
 			service::add_patr_dns_aaaa_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				aaaa_record,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"MX" => {
 			let points_to = body
@@ -817,44 +838,38 @@ async fn add_dns_record(
 
 			service::add_patr_dns_mx_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				points_to,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				priority.try_into().unwrap(),
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"CNAME" => {
 			let points_to = body
 				.get(request_keys::CONTENT)
-				.map(|value| {
-					value
-						.as_str()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())
-				})
-				.transpose()?;
-			if points_to.is_none() {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-			let points_to = points_to.unwrap();
+				.map(|value| value.as_str())
+				.flatten()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
 
 			service::add_patr_dns_cname_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				points_to,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
 		"TXT" => {
 			let content = body
@@ -866,23 +881,25 @@ async fn add_dns_record(
 
 			service::add_patr_dns_txt_record(
 				context.get_database_connection(),
-				&config,
+				&workspace_id,
 				&domain_id,
 				&domain.zone_identifier,
 				name,
 				content,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
+				&config,
 			)
-			.await?;
+			.await?
 		}
-		_ => {
-			// todo: send error here.
-		}
-	}
+		_ => Error::as_result()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+	};
 
 	context.json(json!({
-		request_keys::SUCCESS: true
+		request_keys::SUCCESS: true,
+		request_keys::DNS_ID: hex::encode(dns_id.as_bytes()),
 	}));
 	Ok(context)
 }
@@ -894,31 +911,32 @@ pub async fn delete_dns_record(
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = hex::decode(domain_id).unwrap();
 
+	let dns_id = context.get_param(request_keys::DNS_ID).unwrap();
+	let dns_id = hex::decode(dns_id).unwrap();
+
 	// check if domain is patr controlled
-	let domain = db::get_patr_controlled_domain_by_domain_id(
+	db::get_patr_controlled_domain_by_domain_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
-	if domain.is_none() {
-		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
-		return Ok(context);
-	}
-	let body = context.get_body_object().clone();
+	.await?
+	.status(400)
+	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
+	db::get_dns_record_by_id(context.get_database_connection(), &dns_id)
+		.await?
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(DNS_RECORD_NOT_FOUND).to_string())?;
 
 	db::delete_patr_controlled_dns_record(
 		context.get_database_connection(),
-		&domain_id,
-		name,
+		&dns_id,
 	)
 	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+	}));
 
 	Ok(context)
 }

@@ -10,12 +10,7 @@ use cloudflare::{
 		},
 		zone::{ListZones, ListZonesParams},
 	},
-	framework::{
-		async_api::{ApiClient, Client as CloudflareClient},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
+	framework::async_api::ApiClient,
 };
 use eve_rs::AsError;
 use openssh::{KnownHosts, SessionBuilder};
@@ -659,18 +654,7 @@ pub async fn delete_deployment(
 	}
 
 	// Delete DNS Record
-	let credentials = Credentials::UserAuthToken {
-		token: config.cloudflare.api_token.clone(),
-	};
-	let client = if let Ok(client) = CloudflareClient::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	) {
-		client
-	} else {
-		return Err(Error::empty());
-	};
+	let client = service::get_cloudflare_client(config).await?;
 	let zone_identifier = client
 		.request(&ListZones {
 			params: ListZonesParams {
