@@ -88,7 +88,7 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE patr_controlled_domain (
 			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			zone_identifier BYTEA NOT NULL,
+			zone_identifier TEXT NOT NULL,
 			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
 			control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr',
 			CONSTRAINT patr_controlled_domain_chk_control_status
@@ -582,7 +582,7 @@ pub async fn get_domain_by_name(
 pub async fn add_patr_controlled_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &[u8],
-	zone_identifier: &[u8],
+	zone_identifier: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -637,6 +637,26 @@ pub async fn get_patr_controlled_domain_by_domain_id(
 			domain_id = $1;
 		"#,
 		domain_id
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_dns_record_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	dns_id: &[u8],
+) -> Result<Option<DnsRecord>, sqlx::Error> {
+	query_as!(
+		DnsRecord,
+		r#"
+		SELECT
+			*
+		FROM
+			dns_record
+		WHERE
+			id = $1;
+		"#,
+		dns_id
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -807,20 +827,16 @@ pub async fn add_patr_dns_txt_record(
 
 pub async fn delete_patr_controlled_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
-	name: &str,
+	dns_id: &[u8],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 			DELETE FROM
 				dns_record
 			WHERE
-				domain_id = $1
-			AND 
-				name = $2;
+				id = $1;
 		"#,
-		domain_id,
-		name,
+		dns_id,
 	)
 	.execute(&mut *connection)
 	.await

@@ -207,4 +207,5 @@ pub mod request_keys {
 	pub const POINTS_TO: &str = "pointsTo";
 	pub const TARGET: &str = "target";
 	pub const TXT_RECORD: &str = "txtRecord";
+	pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 }

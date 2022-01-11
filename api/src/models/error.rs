@@ -50,6 +50,7 @@ pub mod id {
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
+	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 }
 
 #[allow(dead_code)]
@@ -155,4 +156,5 @@ pub mod message {
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain is not controlled by PATR";
 	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
+	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 }

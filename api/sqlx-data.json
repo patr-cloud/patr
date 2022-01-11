@@ -192,6 +192,16 @@
       ]
     }
   },
+  "05f63ee3f29e26cb3bebfa261909b92645b9cc812ce67c5c88941f39b25f8093": {
+    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier TEXT NOT NULL, is_verified BOOLEAN NOT NULL DEFAULT FALSE, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr', CONSTRAINT patr_controlled_domain_chk_control_status CHECK(control_status ='patr') );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "06789272443fac56afa6ba6b9593f6a708b86f8a69743d1c6485c68c8177bc91": {
     "query": "UPDATE deployment_static_sites SET domain_name = NULL WHERE id = $1;",
     "describe": {
@@ -724,7 +734,7 @@
       "parameters": {
         "Left": [
           "Bytea",
-          "Bytea"
+          "Text"
         ]
       },
       "nullable": []
@@ -1116,6 +1126,18 @@
   },
   "25a74d79e5822e2afec092e8b8a9d0bf67839fde9a61235bdab5923102de08cc": {
     "query": "DELETE FROM deployed_domain WHERE static_site_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "26a2bc223625f4b5fce1242a9715f724da08660031122615aa83f48dc8fcfd1b": {
+    "query": "DELETE FROM dns_record WHERE id = $1;",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2246,19 +2268,6 @@
         false,
         false
       ]
-    }
-  },
-  "5632503b9a9a7a83d0518ff98b8065264f88635407edc747e105ce0fe44a1b8b": {
-    "query": "DELETE FROM dns_record WHERE domain_id = $1 AND name = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Bytea",
-          "Text"
-        ]
-      },
-      "nullable": []
     }
   },
   "590ff578a9c44722785786cad76db74663d69b9ed9a2ae1ec072eff2fbe20f5d": {
@@ -3516,16 +3525,6 @@
       "nullable": []
     }
   },
-  "82a24c71e27d7d8647232dcdde569deb25e2a487cd4d1441cffc307d32da69df": {
-    "query": "CREATE TABLE patr_controlled_domain ( domain_id BYTEA NOT NULL REFERENCES domain(id), zone_identifier BYTEA NOT NULL, is_verified BOOLEAN NOT NULL DEFAULT FALSE, control_status DOMAIN_CONTROL_STATUS NOT NULL DEFAULT 'patr', CONSTRAINT patr_controlled_domain_chk_control_status CHECK(control_status ='patr') );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "83a586b096ea87c7e5eb14460466a8af8c8ae61e37bef3f740026f4cf331dafb": {
     "query": "INSERT INTO data_center_locations VALUES ('aws-us-east-1', ST_SetSRID(POINT(-77.4524237, 38.9940541)::GEOMETRY, 4326)), ('aws-us-east-2', ST_SetSRID(POINT(-82.7541337, 40.0946354)::GEOMETRY, 4326)), ('aws-us-west-2', ST_SetSRID(POINT(-119.2684488, 45.9174667)::GEOMETRY, 4326)), ('aws-eu-west-1', ST_SetSRID(POINT(-6.224503, 53.4056545)::GEOMETRY, 4326)), ('aws-eu-west-2', ST_SetSRID(POINT(-0.0609266, 51.5085036)::GEOMETRY, 4326)), ('aws-eu-west-3', ST_SetSRID(POINT(2.2976644, 48.6009709)::GEOMETRY, 4326)), ('aws-eu-central-1', ST_SetSRID(POINT(8.6303932, 50.0992094)::GEOMETRY, 4326)), ('aws-ap-southeast-1', ST_SetSRID(POINT(103.6930643, 1.3218269)::GEOMETRY, 4326)), ('aws-ap-southeast-2', ST_SetSRID(POINT(151.1907535, -33.9117717)::GEOMETRY, 4326)), ('aws-ap-northeast-1', ST_SetSRID(POINT(139.7459176, 35.617436)::GEOMETRY, 4326)), ('aws-ap-northeast-2', ST_SetSRID(POINT(126.8736237, 37.5616592)::GEOMETRY, 4326)), ('aws-ap-south-1', ST_SetSRID(POINT(72.9667878, 19.2425503)::GEOMETRY, 4326)), ('aws-ca-central-1', ST_SetSRID(POINT(-73.6, 45.5)::GEOMETRY, 4326)), ('aws-eu-north-1', ST_SetSRID(POINT(17.8419717, 59.326242)::GEOMETRY, 4326)), ('do-tor', ST_SetSRID(POINT(-79.3623, 43.6547)::GEOMETRY, 4326)), ('do-sfo', ST_SetSRID(POINT(-121.9753, 37.3417)::GEOMETRY, 4326)), ('do-nyc', ST_SetSRID(POINT(-73.981, 40.7597)::GEOMETRY, 4326)), ('do-lon', ST_SetSRID(POINT(-0.6289, 51.5225)::GEOMETRY, 4326)), ('do-ams', ST_SetSRID(POINT(4.9479, 52.3006)::GEOMETRY, 4326)), ('do-sgp', ST_SetSRID(POINT(103.695, 1.32123)::GEOMETRY, 4326)), ('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)), ('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));",
     "describe": {
@@ -4130,6 +4129,86 @@
       "nullable": []
     }
   },
+  "95d21f97ab2ed6e462d80195434fa5f8199a123998fd8df447e29f28ba068ba0": {
+    "query": "SELECT * FROM dns_record WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "a_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 4,
+          "name": "aaaa_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 5,
+          "name": "text_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 6,
+          "name": "cname_record",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "mx_record",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "ttl",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 9,
+          "name": "priority",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 10,
+          "name": "proxied",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bytea"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "9619d6b989536b51299ed94b0c88316ac91290cd6bfcee615f9f252699f77add": {
     "query": "DELETE FROM user_unverified_phone_number WHERE user_id = $1 AND country_code = $2 AND phone_number = $3;",
     "describe": {
@@ -4179,7 +4258,7 @@
         {
           "ordinal": 1,
           "name": "zone_identifier",
-          "type_info": "Bytea"
+          "type_info": "Text"
         },
         {
           "ordinal": 2,

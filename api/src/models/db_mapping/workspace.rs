@@ -66,7 +66,7 @@ pub struct EntryPoint {
 pub struct PatrControlledDomain {
 	pub domain_id: Vec<u8>,
 	pub control_status: DomainControlStatus,
-	pub zone_identifier: Vec<u8>,
+	pub zone_identifier: String,
 	pub is_verified: bool,
 }
 

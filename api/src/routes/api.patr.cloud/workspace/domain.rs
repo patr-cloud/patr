@@ -258,7 +258,7 @@ pub fn create_sub_app(
 	);
 
 	app.delete(
-		"/:domainId/dns-record",
+		"/:domainId/dns-record/:dnsId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::ADD,
@@ -439,7 +439,7 @@ async fn add_domain_to_workspace(
 			request_keys::DOMAIN_ID: domain_id.to_simple().to_string(),
 			request_keys::TXT_RECORD: {
 				request_keys::TARGET: format!("PatrVerify.{}",domain_name),
-				request_keys::CONTENT: "PATR-TEST-CONTENT".to_string(),
+				request_keys::CONTENT: hex::encode(domain_id.to_simple().to_string()),
 			}
 		}));
 	}
@@ -777,7 +777,7 @@ async fn add_dns_record(
 				&domain.zone_identifier,
 				name,
 				a_record,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				&config,
 			)
@@ -798,7 +798,7 @@ async fn add_dns_record(
 				&domain.zone_identifier,
 				name,
 				aaaa_record,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				&config,
 			)
@@ -843,7 +843,7 @@ async fn add_dns_record(
 				&domain.zone_identifier,
 				name,
 				points_to,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				priority.try_into().unwrap(),
 				&config,
@@ -853,18 +853,10 @@ async fn add_dns_record(
 		"CNAME" => {
 			let points_to = body
 				.get(request_keys::CONTENT)
-				.map(|value| {
-					value
-						.as_str()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())
-				})
-				.transpose()?;
-			if points_to.is_none() {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-			let points_to = points_to.unwrap();
+				.map(|value| value.as_str())
+				.flatten()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
 
 			service::add_patr_dns_cname_record(
 				context.get_database_connection(),
@@ -873,7 +865,7 @@ async fn add_dns_record(
 				&domain.zone_identifier,
 				name,
 				points_to,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				&config,
 			)
@@ -894,7 +886,7 @@ async fn add_dns_record(
 				&domain.zone_identifier,
 				name,
 				content,
-				ttl.try_into().unwrap(),
+				ttl as u32,
 				proxied,
 				&config,
 			)
@@ -907,7 +899,7 @@ async fn add_dns_record(
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
-		request_keys::DNS_ID: dns_id,
+		request_keys::DNS_ID: hex::encode(dns_id.as_bytes()),
 	}));
 	Ok(context)
 }
@@ -919,31 +911,32 @@ pub async fn delete_dns_record(
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = hex::decode(domain_id).unwrap();
 
+	let dns_id = context.get_param(request_keys::DNS_ID).unwrap();
+	let dns_id = hex::decode(dns_id).unwrap();
+
 	// check if domain is patr controlled
-	let domain = db::get_patr_controlled_domain_by_domain_id(
+	db::get_patr_controlled_domain_by_domain_id(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
-	if domain.is_none() {
-		context.status(500).json(error!(DOMAIN_NOT_PATR_CONTROLLED));
-		return Ok(context);
-	}
-	let body = context.get_body_object().clone();
+	.await?
+	.status(400)
+	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
+	db::get_dns_record_by_id(context.get_database_connection(), &dns_id)
+		.await?
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+		.body(error!(DNS_RECORD_NOT_FOUND).to_string())?;
 
 	db::delete_patr_controlled_dns_record(
 		context.get_database_connection(),
-		&domain_id,
-		name,
+		&dns_id,
 	)
 	.await?;
+
+	context.json(json!({
+		request_keys::SUCCESS: true,
+	}));
 
 	Ok(context)
 }
