@@ -76,6 +76,8 @@ pub async fn initialize_domain_pre(
 				),
 			is_verified BOOLEAN NOT NULL,
 			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			CONSTRAINT workspace_domain_uq_id_nameserver_type
+				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);

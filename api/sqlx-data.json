@@ -3010,6 +3010,16 @@
       ]
     }
   },
+  "7e07dd285ab55985a65de09b3873044801b3cfad26520fb218e055ec47512932": {
+    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, CONSTRAINT workspace_domain_uq_id_nameserver_type UNIQUE(id, nameserver_type), CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "800be378aa534e253f75a64c956799e120102f6b9ae464053f8a38d493f46877": {
     "query": "CREATE TABLE user_unverified_phone_number( country_code CHAR(2) NOT NULL CONSTRAINT user_unverified_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_unverified_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_number VARCHAR(15) NOT NULL, user_id UUID NOT NULL CONSTRAINT user_unverified_phone_number_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_phone_number_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_univerified_phone_number_pk PRIMARY KEY(country_code, phone_number), CONSTRAINT user_univerified_phone_number_uq_country_code_phone_number UNIQUE(user_id, country_code, phone_number) );",
     "describe": {
@@ -3501,16 +3511,6 @@
         false,
         false
       ]
-    }
-  },
-  "9b6936c677387b8cca1f640ae12278bfbbff598d4198b1d3666b0a42d5fd6a9e": {
-    "query": "CREATE TABLE workspace_domain( id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT workspace_domain_chk_domain_type CHECK( domain_type = 'business' ), is_verified BOOLEAN NOT NULL, nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL, CONSTRAINT workspace_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
