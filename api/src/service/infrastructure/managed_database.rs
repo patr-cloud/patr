@@ -1,14 +1,13 @@
 use std::ops::DerefMut;
 
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{
 	db,
 	error,
 	models::{
 		db_mapping::{
-			CloudPlatform,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
@@ -17,7 +16,7 @@ use crate::{
 	},
 	service::{
 		self,
-		deployment::{aws, digitalocean},
+		infrastructure::{aws, digitalocean},
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -32,7 +31,7 @@ pub async fn create_managed_database_in_workspace(
 	num_nodes: Option<u64>,
 	database_plan: &ManagedDatabasePlan,
 	region: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	if !validator::is_database_name_valid(db_name) {
@@ -48,8 +47,7 @@ pub async fn create_managed_database_in_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	log::trace!("generating new resource");
-	let database_uuid = db::generate_new_resource_id(connection).await?;
-	let database_id = database_uuid.as_bytes();
+	let database_id = db::generate_new_resource_id(connection).await?;
 
 	let version = match engine {
 		ManagedDatabaseEngine::Postgres => version.unwrap_or("12"),
@@ -59,8 +57,8 @@ pub async fn create_managed_database_in_workspace(
 
 	db::create_resource(
 		connection,
-		database_id,
-		&format!("{}-database-{}", provider, hex::encode(database_id)),
+		&database_id,
+		&format!("{}-database-{}", provider, database_id),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -74,7 +72,7 @@ pub async fn create_managed_database_in_workspace(
 	log::trace!("creating entry for newly created managed database");
 	db::create_managed_database(
 		connection,
-		database_id,
+		&database_id,
 		name,
 		db_name,
 		engine,
@@ -92,11 +90,11 @@ pub async fn create_managed_database_in_workspace(
 	.await?;
 	log::trace!("resource generation complete");
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
+	match provider {
+		"do" => {
 			digitalocean::create_managed_database_cluster(
 				connection,
-				database_id,
+				&database_id,
 				db_name,
 				engine,
 				version,
@@ -107,10 +105,10 @@ pub async fn create_managed_database_in_workspace(
 			)
 			.await?;
 		}
-		Ok(CloudPlatform::Aws) => {
+		"aws" => {
 			aws::create_managed_database_cluster(
 				connection,
-				database_id,
+				&database_id,
 				db_name,
 				engine,
 				version,
@@ -128,12 +126,12 @@ pub async fn create_managed_database_in_workspace(
 		}
 	}
 
-	Ok(database_uuid)
+	Ok(database_id)
 }
 
 pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	database_id: &[u8],
+	database_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
 	let database = db::get_managed_database_by_id(connection, database_id)
@@ -147,15 +145,15 @@ pub async fn delete_managed_database(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
+	match provider {
+		"do" => {
 			log::trace!("Deleting the database from digitalocean");
 			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
 				digitalocean::delete_database(&digitalocean_db_id, config)
 					.await?;
 			}
 		}
-		Ok(CloudPlatform::Aws) => {
+		"aws" => {
 			log::trace!("deleting the deployment from aws");
 			aws::delete_database(database_id, region).await?;
 		}
@@ -169,11 +167,7 @@ pub async fn delete_managed_database(
 	db::update_managed_database_name(
 		connection,
 		database_id,
-		&format!(
-			"patr-deleted: {}-{}",
-			database.name,
-			hex::encode(database.id)
-		),
+		&format!("patr-deleted: {}-{}", database.name, database.id),
 	)
 	.await?;
 
@@ -187,7 +181,7 @@ pub async fn delete_managed_database(
 }
 
 pub(super) async fn update_managed_database_status(
-	database_id: &[u8],
+	database_id: &Uuid,
 	status: &ManagedDatabaseStatus,
 ) -> Result<(), sqlx::Error> {
 	let app = service::get_app();
@@ -203,7 +197,7 @@ pub(super) async fn update_managed_database_status(
 }
 
 pub(super) async fn update_managed_database_credentials_for_database(
-	database_id: &[u8],
+	database_id: &Uuid,
 	host: &str,
 	port: i32,
 	username: &str,

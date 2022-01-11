@@ -3,6 +3,7 @@ use std::{
 	str::FromStr,
 };
 
+use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::{
 		dns::{CreateDnsRecord, CreateDnsRecordParams, DnsContent},
@@ -22,7 +23,6 @@ use trust_dns_client::{
 	rr::{rdata::TXT, DNSClass, Name, RData, RecordType},
 	udp::UdpClientStream,
 };
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -70,7 +70,7 @@ pub async fn ensure_personal_domain_exists(
 				.status(500)
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())
 		} else {
-			Ok(Uuid::from_slice(domain.id.as_ref())?)
+			Ok(domain.id)
 		}
 	} else {
 		// check if personal domain given by the user is registerd as a
@@ -81,19 +81,18 @@ pub async fn ensure_personal_domain_exists(
 				.body(error!(DOMAIN_BELONGS_TO_WORKSPACE).to_string())?;
 		}
 
-		let domain_uuid = db::generate_new_domain_id(connection).await?;
-		let domain_id = domain_uuid.as_bytes();
+		let domain_id = db::generate_new_domain_id(connection).await?;
 		db::create_generic_domain(
 			connection,
-			domain_id,
+			&domain_id,
 			domain_name,
 			&ResourceOwnerType::Personal,
 		)
 		.await?;
 
-		db::add_to_personal_domain(connection, domain_id).await?;
+		db::add_to_personal_domain(connection, &domain_id).await?;
 
-		Ok(domain_uuid)
+		Ok(domain_id)
 	}
 }
 
@@ -116,7 +115,7 @@ pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 	domain_name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 	control_status: &DomainControlStatus,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
@@ -142,11 +141,10 @@ pub async fn add_domain_to_workspace(
 		}
 	}
 
-	let domain_uuid = db::generate_new_domain_id(connection).await?;
-	let domain_id = domain_uuid.as_bytes();
+	let domain_id = db::generate_new_domain_id(connection).await?;
 	db::create_resource(
 		connection,
-		domain_id,
+		&domain_id,
 		&format!("Domain: {}", domain_name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -159,12 +157,12 @@ pub async fn add_domain_to_workspace(
 	.await?;
 	db::create_generic_domain(
 		connection,
-		domain_id,
+		&domain_id,
 		domain_name,
 		&ResourceOwnerType::Business,
 	)
 	.await?;
-	db::add_to_workspace_domain(connection, domain_id, control_status).await?;
+	db::add_to_workspace_domain(connection, &domain_id, control_status).await?;
 	if let DomainControlStatus::Patr = control_status {
 		// create zone
 
@@ -188,12 +186,15 @@ pub async fn add_domain_to_workspace(
 			.id;
 		log::trace!("Zone created for domain: {}", domain_name);
 		// create a new function to store zone related data
-		// TODO: change zone_id to string
-		db::add_patr_controlled_domain(connection, domain_id, &zone_identifier)
-			.await?;
+		db::add_patr_controlled_domain(
+			connection,
+			&domain_id,
+			&zone_identifier,
+		)
+		.await?;
 	}
 
-	Ok(domain_uuid)
+	Ok(domain_id)
 }
 
 /// # Description
@@ -213,7 +214,7 @@ pub async fn add_domain_to_workspace(
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
@@ -263,7 +264,7 @@ pub async fn is_domain_verified(
 
 		let response = response.take_answers().into_iter().find(|record| {
 			let expected_txt =
-				RData::TXT(TXT::new(vec![hex::encode(domain.id.clone())]));
+				RData::TXT(TXT::new(vec![domain.id.to_string()]));
 			record.rdata() == &expected_txt
 		});
 
@@ -316,8 +317,8 @@ async fn is_domain_used_for_sign_up(
 
 pub async fn add_patr_dns_a_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-	domain_id: &[u8],
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
 	a_record: &str,
@@ -347,13 +348,12 @@ pub async fn add_patr_dns_a_record(
 		})
 		.await?;
 
-	let dns_uuid = db::generate_new_resource_id(connection).await?;
-	let dns_id = dns_uuid.as_bytes();
+	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
 	db::create_resource(
 		connection,
-		dns_id,
+		&dns_id,
 		&format!("Dns_a_record: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -368,7 +368,7 @@ pub async fn add_patr_dns_a_record(
 	// add to db
 	db::add_patr_dns_a_record(
 		connection,
-		dns_id,
+		&dns_id,
 		domain_id,
 		name,
 		&[a_record.to_string()],
@@ -377,13 +377,13 @@ pub async fn add_patr_dns_a_record(
 	)
 	.await?;
 
-	Ok(dns_uuid)
+	Ok(dns_id)
 }
 
 pub async fn add_patr_dns_aaaa_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-	domain_id: &[u8],
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
 	aaaa_record: &str,
@@ -418,13 +418,12 @@ pub async fn add_patr_dns_aaaa_record(
 		})
 		.await?;
 
-	let dns_uuid = db::generate_new_resource_id(connection).await?;
-	let dns_id = dns_uuid.as_bytes();
+	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
 	db::create_resource(
 		connection,
-		dns_id,
+		&dns_id,
 		&format!("Dns_aaaa_record: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -439,7 +438,7 @@ pub async fn add_patr_dns_aaaa_record(
 	// add to db
 	db::add_patr_dns_aaaa_record(
 		connection,
-		dns_id,
+		&dns_id,
 		domain_id,
 		name,
 		&[aaaa_record.to_string()],
@@ -448,13 +447,13 @@ pub async fn add_patr_dns_aaaa_record(
 	)
 	.await?;
 
-	Ok(dns_uuid)
+	Ok(dns_id)
 }
 
 pub async fn add_patr_dns_mx_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-	domain_id: &[u8],
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
 	content: &str,
@@ -483,13 +482,12 @@ pub async fn add_patr_dns_mx_record(
 		})
 		.await?;
 
-	let dns_uuid = db::generate_new_resource_id(connection).await?;
-	let dns_id = dns_uuid.as_bytes();
+	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
 	db::create_resource(
 		connection,
-		dns_id,
+		&dns_id,
 		&format!("Dns_mx_record: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -504,7 +502,7 @@ pub async fn add_patr_dns_mx_record(
 	// add to db
 	db::add_patr_dns_mx_record(
 		connection,
-		dns_id,
+		&dns_id,
 		domain_id,
 		name,
 		&[content.to_string()],
@@ -514,13 +512,13 @@ pub async fn add_patr_dns_mx_record(
 	)
 	.await?;
 
-	Ok(dns_uuid)
+	Ok(dns_id)
 }
 
 pub async fn add_patr_dns_cname_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-	domain_id: &[u8],
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
 	content: &str,
@@ -547,13 +545,12 @@ pub async fn add_patr_dns_cname_record(
 		})
 		.await?;
 
-	let dns_uuid = db::generate_new_resource_id(connection).await?;
-	let dns_id = dns_uuid.as_bytes();
+	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
 	db::create_resource(
 		connection,
-		dns_id,
+		&dns_id,
 		&format!("Dns_cname_record: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -567,17 +564,17 @@ pub async fn add_patr_dns_cname_record(
 
 	// add to db
 	db::add_patr_dns_cname_record(
-		connection, dns_id, domain_id, name, content, ttl as i32, proxied,
+		connection, &dns_id, domain_id, name, content, ttl as i32, proxied,
 	)
 	.await?;
 
-	Ok(dns_uuid)
+	Ok(dns_id)
 }
 
 pub async fn add_patr_dns_txt_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
-	domain_id: &[u8],
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
 	content: &str,
@@ -604,13 +601,12 @@ pub async fn add_patr_dns_txt_record(
 		})
 		.await?;
 
-	let dns_uuid = db::generate_new_resource_id(connection).await?;
-	let dns_id = dns_uuid.as_bytes();
+	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
 	db::create_resource(
 		connection,
-		dns_id,
+		&dns_id,
 		&format!("Dns_txt_record: {}", name),
 		rbac::RESOURCE_TYPES
 			.get()
@@ -625,7 +621,7 @@ pub async fn add_patr_dns_txt_record(
 	// add to db
 	db::add_patr_dns_txt_record(
 		connection,
-		dns_id,
+		&dns_id,
 		domain_id,
 		name,
 		&[content.to_string()],
@@ -634,7 +630,7 @@ pub async fn add_patr_dns_txt_record(
 	)
 	.await?;
 
-	Ok(dns_uuid)
+	Ok(dns_id)
 }
 
 pub async fn get_cloudflare_client(

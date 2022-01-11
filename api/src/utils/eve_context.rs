@@ -125,6 +125,14 @@ impl EveContext {
 	pub fn get_param(&self, param_id: &str) -> Option<&String> {
 		self.get_request().get_params().get(param_id)
 	}
+
+	pub fn get_query_as<TBody>(&self) -> Result<TBody, Error>
+	where
+		TBody: DeserializeOwned,
+	{
+		serde_qs::from_str(&self.get_query_string())
+			.map_err(|err| Error::new(Box::new(err)))
+	}
 }
 
 impl RenderEngine for EveContext {

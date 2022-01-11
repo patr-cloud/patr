@@ -1,7 +1,10 @@
 use semver::Version;
 
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
+mod bytea_to_uuid;
+mod docker_registry;
+mod kubernetes_migration;
 mod organisation_to_workspace;
 
 /// # Description
@@ -21,18 +24,19 @@ mod organisation_to_workspace;
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	version: Version,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 4, 0) => migrate_from_v0_4_0(&mut *connection).await?,
-		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection).await?,
-		(0, 4, 2) => migrate_from_v0_4_2(&mut *connection).await?,
-		(0, 4, 3) => migrate_from_v0_4_3(&mut *connection).await?,
-		(0, 4, 4) => migrate_from_v0_4_4(&mut *connection).await?,
-		(0, 4, 5) => migrate_from_v0_4_5(&mut *connection).await?,
-		(0, 4, 6) => migrate_from_v0_4_6(&mut *connection).await?,
-		(0, 4, 7) => migrate_from_v0_4_7(&mut *connection).await?,
-		(0, 4, 8) => migrate_from_v0_4_8(&mut *connection).await?,
-		(0, 4, 9) => migrate_from_v0_4_9(&mut *connection).await?,
+		(0, 4, 0) => migrate_from_v0_4_0(&mut *connection, config).await?,
+		(0, 4, 1) => migrate_from_v0_4_1(&mut *connection, config).await?,
+		(0, 4, 2) => migrate_from_v0_4_2(&mut *connection, config).await?,
+		(0, 4, 3) => migrate_from_v0_4_3(&mut *connection, config).await?,
+		(0, 4, 4) => migrate_from_v0_4_4(&mut *connection, config).await?,
+		(0, 4, 5) => migrate_from_v0_4_5(&mut *connection, config).await?,
+		(0, 4, 6) => migrate_from_v0_4_6(&mut *connection, config).await?,
+		(0, 4, 7) => migrate_from_v0_4_7(&mut *connection, config).await?,
+		(0, 4, 8) => migrate_from_v0_4_8(&mut *connection, config).await?,
+		(0, 4, 9) => migrate_from_v0_4_9(&mut *connection, config).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -57,12 +61,14 @@ pub fn get_migrations() -> Vec<&'static str> {
 
 async fn migrate_from_v0_4_0(
 	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 async fn migrate_from_v0_4_1(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -111,12 +117,14 @@ async fn migrate_from_v0_4_1(
 
 async fn migrate_from_v0_4_2(
 	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 async fn migrate_from_v0_4_3(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -297,6 +305,7 @@ async fn migrate_from_v0_4_3(
 
 async fn migrate_from_v0_4_4(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -439,12 +448,14 @@ async fn migrate_from_v0_4_4(
 
 async fn migrate_from_v0_4_5(
 	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 async fn migrate_from_v0_4_6(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -513,18 +524,60 @@ async fn migrate_from_v0_4_6(
 
 async fn migrate_from_v0_4_7(
 	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 async fn migrate_from_v0_4_8(
 	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	Ok(())
 }
 
 async fn migrate_from_v0_4_9(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	organisation_to_workspace::migrate(connection).await
+	organisation_to_workspace::migrate(&mut *connection, config).await?;
+	bytea_to_uuid::migrate(&mut *connection, config).await?;
+	docker_registry::migrate(&mut *connection, config).await?;
+	add_trim_check_for_username(&mut *connection, config).await?;
+	make_permission_name_unique(&mut *connection, config).await?;
+	kubernetes_migration::migrate(&mut *connection, config).await?;
+
+	Ok(())
+}
+
+async fn add_trim_check_for_username(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD CONSTRAINT user_chk_username_is_trimmed
+		CHECK(username = TRIM(username));
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+async fn make_permission_name_unique(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE permission
+		ADD CONSTRAINT permission_uq_name
+		UNIQUE(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

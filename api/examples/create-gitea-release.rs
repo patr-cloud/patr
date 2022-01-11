@@ -81,12 +81,9 @@ async fn main() {
 			.multipart(
 				Form::new().text("name", name).part(
 					"attachment",
-					Part::bytes(
-						fs::read(asset).await.expect(&format!(
-							"unable to read file `{}`",
-							asset
-						)),
-					)
+					Part::bytes(fs::read(asset).await.unwrap_or_else(|_| {
+						panic!("unable to read file `{}`", asset)
+					}))
 					.file_name(name),
 				),
 			)

@@ -1,8 +1,10 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 
 use crate::{
 	db,
 	error,
+	models::db_mapping::User,
 	service,
 	utils::{get_current_time_millis, validator, Error},
 	Database,
@@ -25,7 +27,7 @@ use crate::{
 pub async fn add_personal_email_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
-	user_id: &[u8],
+	user_id: &Uuid,
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(email_address) {
 		Error::as_result()
@@ -84,7 +86,7 @@ pub async fn add_personal_email_to_be_verified_for_user(
 /// [`Transaction`]: Transaction
 pub async fn verify_personal_email_address_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_address: &str,
 	otp: &str,
 ) -> Result<(), Error> {
@@ -150,16 +152,16 @@ pub async fn verify_personal_email_address_for_user(
 /// [`Transaction`]: Transaction
 pub async fn change_password_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-	old_password: &str,
+	user_id: &Uuid,
+	current_password: &str,
 	new_password: &str,
-) -> Result<(), Error> {
+) -> Result<User, Error> {
 	let user = db::get_user_by_user_id(connection, user_id)
 		.await?
 		.status(500)
 		.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let success = service::validate_hash(old_password, &user.password)?;
+	let success = service::validate_hash(current_password, &user.password)?;
 
 	if !success {
 		Error::as_result()
@@ -171,12 +173,12 @@ pub async fn change_password_for_user(
 
 	db::update_user_password(connection, user_id, &new_password).await?;
 
-	Ok(())
+	Ok(user)
 }
 
 pub async fn update_user_backup_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_address: &str,
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(email_address) {
@@ -204,7 +206,7 @@ pub async fn update_user_backup_email(
 
 pub async fn update_user_backup_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
@@ -235,7 +237,7 @@ pub async fn update_user_backup_phone_number(
 
 pub async fn delete_personal_email_address(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	email_address: &str,
 ) -> Result<(), Error> {
 	let (email_local, domain_id) =
@@ -287,7 +289,7 @@ pub async fn delete_personal_email_address(
 
 pub async fn delete_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<(), Error> {
@@ -327,7 +329,7 @@ pub async fn delete_phone_number(
 
 pub async fn add_phone_number_to_be_verified_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 ) -> Result<String, Error> {
@@ -360,7 +362,7 @@ pub async fn add_phone_number_to_be_verified_for_user(
 
 pub async fn verify_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
+	user_id: &Uuid,
 	country_code: &str,
 	phone_number: &str,
 	otp: &str,

@@ -6,7 +6,7 @@ mod static_site;
 pub use self::{deployment::*, managed_database::*, static_site::*};
 use crate::Database;
 
-pub async fn initialize_deployment_pre(
+pub async fn initialize_infrastructure_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Initializing deployment tables");
@@ -17,7 +17,7 @@ pub async fn initialize_deployment_pre(
 	Ok(())
 }
 
-pub async fn initialize_deployment_post(
+pub async fn initialize_infrastructure_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up deployment tables initialization");

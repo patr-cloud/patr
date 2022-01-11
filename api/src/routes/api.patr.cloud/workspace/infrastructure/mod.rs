@@ -5,7 +5,6 @@ use crate::{
 	utils::{ErrorData, EveContext, EveMiddleware},
 };
 
-#[allow(clippy::module_inception)]
 mod deployment;
 mod managed_database;
 mod static_site;

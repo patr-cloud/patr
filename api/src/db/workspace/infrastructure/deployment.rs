@@ -1,16 +1,12 @@
-use crate::{
-	models::db_mapping::{
-		Deployment,
-		DeploymentEntryPoint,
-		DeploymentMachineType,
-		DeploymentRequestMethod,
-		DeploymentRequestProtocol,
+use api_models::{
+	models::workspace::infrastructure::deployment::{
 		DeploymentStatus,
+		ExposedPortType,
 	},
-	query,
-	query_as,
-	Database,
+	utils::Uuid,
 };
+
+use crate::{models::db_mapping::Deployment, query, query_as, Database};
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -35,11 +31,50 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM(
-			'micro',
-			'small',
-			'medium',
-			'large'
+		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
+			'digitalocean'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// TODO FIX REGION STORAGE
+	query!(
+		r#"
+		CREATE TABLE deployment_region(
+			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			provider DEPLOYMENT_CLOUD_PROVIDER,
+			location GEOMETRY,
+			parent_region_id UUID
+				CONSTRAINT deployment_region_fk_parent_region_id
+					REFERENCES deployment_region(id),
+			CONSTRAINT
+				deployment_region_chk_provider_location_parent_region_is_valid
+				CHECK(
+					(
+						location IS NULL AND
+						provider IS NULL
+					) OR
+					(
+						provider IS NOT NULL AND
+						location IS NOT NULL AND
+						parent_region_id IS NOT NULL
+					)
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_machine_type(
+			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
+			cpu_count SMALLINT NOT NULL,
+			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
 		);
 		"#
 	)
@@ -49,37 +84,35 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment(
-			id BYTEA CONSTRAINT deployment_pk PRIMARY KEY,
+			id UUID CONSTRAINT deployment_pk PRIMARY KEY,
 			name CITEXT NOT NULL
 				CONSTRAINT deployment_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
-			repository_id BYTEA CONSTRAINT deployment_fk_repository_id
+			repository_id UUID CONSTRAINT deployment_fk_repository_id
 				REFERENCES docker_registry_repository(id),
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
-			deployed_image TEXT,
-			digitalocean_app_id TEXT
-				CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE,
-			region TEXT NOT NULL DEFAULT 'do-blr',
-			domain_name VARCHAR(255)
-				CONSTRAINT deployment_uq_domain_name UNIQUE
-				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
-				),
-			horizontal_scale SMALLINT NOT NULL
-				CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK(
-					horizontal_scale >= 0 AND horizontal_scale <= 256
+			workspace_id UUID NOT NULL,
+			region UUID NOT NULL CONSTRAINT deployment_fk_region
+				REFERENCES deployment_region(id),
+			min_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
+					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
 				)
 				DEFAULT 1,
-			machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small',
-			workspace_id BYTEA NOT NULL,
+			max_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
+					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
+				REFERENCES deployment_machine_type(id),
+			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
-			CONSTRAINT deployment_uq_id_domain_name
-				UNIQUE(id, domain_name),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -152,7 +185,7 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_environment_variable(
-			deployment_id BYTEA
+			deployment_id UUID
 				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
@@ -167,9 +200,8 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM(
-			'http',
-			'https'
+		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
+			'http'
 		);
 		"#
 	)
@@ -178,86 +210,54 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM(
-			'get',
-			'post',
-			'put',
-			'delete',
-			'head',
-			'options',
-			'connect',
-			'patch'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_request_logs(
-			id BIGSERIAL PRIMARY KEY,
-			deployment_id BYTEA NOT NULL
-				CONSTRAINT deployment_request_logs_fk_deployment_id
+		CREATE TABLE deployment_exposed_port(
+			deployment_id UUID
+				CONSTRAINT deployment_exposed_port_fk_deployment_id
 					REFERENCES deployment(id),
-			timestamp BIGINT NOT NULL
-				CONSTRAINT deployment_request_logs_chk_unsigned
-						CHECK(timestamp >= 0),
-			ip_address VARCHAR(255) NOT NULL,
-			ip_address_location GEOMETRY NOT NULL,
-			method DEPLOYMENT_REQUEST_METHOD NOT NULL,
-			host VARCHAR(255) NOT NULL
-				CONSTRAINT deployment_request_logs_chk_host_is_lower_case
-					CHECK(host = LOWER(host)),
-			protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL,
-			path TEXT NOT NULL,
-			response_time REAL NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE data_center_locations(
-			region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY,
-			location GEOMETRY NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployed_domain(
-			deployment_id BYTEA 
-				CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
-			static_site_id BYTEA 
-				CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
-			domain_name VARCHAR(255) NOT NULL
-				CONSTRAINT deployed_domain_uq_domain_name UNIQUE
-				CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-					domain_name = LOWER(domain_name)
+			port SMALLINT NOT NULL CONSTRAINT
+				deployment_exposed_port_chk_port_u16 CHECK(
+					port > 0 AND port <= 65535
 				),
-			CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name),
-			CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name),
-			CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
-				(
-					deployment_id IS NULL AND
-					static_site_id IS NOT NULL
-				) OR
-				(
-					deployment_id IS NOT NULL AND
-					static_site_id IS NULL
-				)
-			)
+			port_type EXPOSED_PORT_TYPE NOT NULL,
+			CONSTRAINT deployment_exposed_port_pk
+				PRIMARY KEY(deployment_id, port)
 		);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// TODO handle this using entry points
+	// query!(
+	// 	r#"
+	// 	CREATE TABLE deployed_domain(
+	// 		deployment_id UUID
+	// 			CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
+	// 		static_site_id UUID
+	// 			CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
+	// 		domain_name VARCHAR(255) NOT NULL
+	// 			CONSTRAINT deployed_domain_uq_domain_name UNIQUE
+	// 			CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
+	// 				domain_name = LOWER(domain_name)
+	// 			),
+	// 		CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE
+	// (deployment_id, domain_name), 		CONSTRAINT
+	// deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id,
+	// domain_name), 		CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
+	// 			(
+	// 				deployment_id IS NULL AND
+	// 				static_site_id IS NOT NULL
+	// 			) OR
+	// 			(
+	// 				deployment_id IS NOT NULL AND
+	// 				static_site_id IS NULL
+	// 			)
+	// 		)
+	// 	);
+	// 	"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
 
 	Ok(())
 }
@@ -276,273 +276,166 @@ pub async fn initialize_deployment_post(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		INSERT INTO
-			data_center_locations
-		VALUES
-			('aws-us-east-1', ST_SetSRID(POINT(-77.4524237, 38.9940541)::GEOMETRY, 4326)),
-			('aws-us-east-2', ST_SetSRID(POINT(-82.7541337, 40.0946354)::GEOMETRY, 4326)),
-			('aws-us-west-2', ST_SetSRID(POINT(-119.2684488, 45.9174667)::GEOMETRY, 4326)),
-			('aws-eu-west-1', ST_SetSRID(POINT(-6.224503, 53.4056545)::GEOMETRY, 4326)),
-			('aws-eu-west-2', ST_SetSRID(POINT(-0.0609266, 51.5085036)::GEOMETRY, 4326)),
-			('aws-eu-west-3', ST_SetSRID(POINT(2.2976644, 48.6009709)::GEOMETRY, 4326)),
-			('aws-eu-central-1', ST_SetSRID(POINT(8.6303932, 50.0992094)::GEOMETRY, 4326)),
-			('aws-ap-southeast-1', ST_SetSRID(POINT(103.6930643, 1.3218269)::GEOMETRY, 4326)),
-			('aws-ap-southeast-2', ST_SetSRID(POINT(151.1907535, -33.9117717)::GEOMETRY, 4326)),
-			('aws-ap-northeast-1', ST_SetSRID(POINT(139.7459176, 35.617436)::GEOMETRY, 4326)),
-			('aws-ap-northeast-2', ST_SetSRID(POINT(126.8736237, 37.5616592)::GEOMETRY, 4326)),
-			('aws-ap-south-1', ST_SetSRID(POINT(72.9667878, 19.2425503)::GEOMETRY, 4326)),
-			('aws-ca-central-1', ST_SetSRID(POINT(-73.6, 45.5)::GEOMETRY, 4326)),
-			('aws-eu-north-1', ST_SetSRID(POINT(17.8419717, 59.326242)::GEOMETRY, 4326)),
-			('do-tor', ST_SetSRID(POINT(-79.3623, 43.6547)::GEOMETRY, 4326)),
-			('do-sfo', ST_SetSRID(POINT(-121.9753, 37.3417)::GEOMETRY, 4326)),
-			('do-nyc', ST_SetSRID(POINT(-73.981, 40.7597)::GEOMETRY, 4326)),
-			('do-lon', ST_SetSRID(POINT(-0.6289, 51.5225)::GEOMETRY, 4326)),
-			('do-ams', ST_SetSRID(POINT(4.9479, 52.3006)::GEOMETRY, 4326)),
-			('do-sgp', ST_SetSRID(POINT(103.695, 1.32123)::GEOMETRY, 4326)),
-			('do-fra', ST_SetSRID(POINT(8.6843, 50.1188)::GEOMETRY, 4326)),
-			('do-blr', ST_SetSRID(POINT(77.5855, 12.9634)::GEOMETRY, 4326));
-			"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_id_domain_name
-		FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(deployment_id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployed_domain
-		ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name
-		FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployed_domain
-		ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name
-		FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
+	// query!(
+	// 	r#"
+	// 	INSERT INTO
+	// 		data_center_locations
+	// 	VALUES
+	// 		('aws-us-east-1', (-77.4524237, 38.9940541)::GEOMETRY, 4326)),
+	// 		('aws-us-east-2', (-82.7541337, 40.0946354)::GEOMETRY, 4326)),
+	// 		('aws-us-west-2', (-119.2684488, 45.9174667)::GEOMETRY, 4326)),
+	// 		('aws-eu-west-1', (-6.224503, 53.4056545)::GEOMETRY, 4326)),
+	// 		('aws-eu-west-2', (-0.0609266, 51.5085036)::GEOMETRY, 4326)),
+	// 		('aws-eu-west-3', (2.2976644, 48.6009709)::GEOMETRY, 4326)),
+	// 		('aws-eu-central-1', (8.6303932, 50.0992094)::GEOMETRY, 4326)),
+	// 		('aws-ap-southeast-1', (103.6930643, 1.3218269)::GEOMETRY, 4326)),
+	// 		('aws-ap-southeast-2', (151.1907535, -33.9117717)::GEOMETRY, 4326)),
+	// 		('aws-ap-northeast-1', (139.7459176, 35.617436)::GEOMETRY, 4326)),
+	// 		('aws-ap-northeast-2', (126.8736237, 37.5616592)::GEOMETRY, 4326)),
+	// 		('aws-ap-south-1', (72.9667878, 19.2425503)::GEOMETRY, 4326)),
+	// 		('aws-ca-central-1', (-73.6, 45.5)::GEOMETRY, 4326)),
+	// 		('aws-eu-north-1', (17.8419717, 59.326242)::GEOMETRY, 4326)),
+	// 		('do-tor', (-79.3623, 43.6547)::GEOMETRY, 4326)),
+	// 		('do-sfo', (-121.9753, 37.3417)::GEOMETRY, 4326)),
+	// 		('do-nyc', (-73.981, 40.7597)::GEOMETRY, 4326)),
+	// 		('do-lon', (-0.6289, 51.5225)::GEOMETRY, 4326)),
+	// 		('do-ams', (4.9479, 52.3006)::GEOMETRY, 4326)),
+	// 		('do-sgp', (103.695, 1.32123)::GEOMETRY, 4326)),
+	// 		('do-fra', (8.6843, 50.1188)::GEOMETRY, 4326)),
+	// 		('do-blr', (77.5855, 12.9634)::GEOMETRY, 4326));
+	// 		"#
+	// )
+	// .execute(&mut *connection)
+	// .await?;
 
 	Ok(())
 }
 
 pub async fn create_deployment_with_internal_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	id: &Uuid,
 	name: &str,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 	image_tag: &str,
-	region: &str,
-	domain_name: Option<&str>,
-	horizontal_scale: u64,
-	machine_type: &DeploymentMachineType,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deploy_on_push: bool,
+	min_horizontal_scale: u16,
+	max_horizontal_scale: u16,
 ) -> Result<(), sqlx::Error> {
-	if let Some(domain) = domain_name {
-		query!(
-			r#"
-			INSERT INTO
-				deployment
-			VALUES
-				(
-					$1,
-					$2,
-					'registry.patr.cloud',
-					$3,
-					NULL,
-					$4,
-					'created',
-					NULL,
-					NULL,
-					$5,
-					$6,
-					$7,
-					$8,
-					$9
-				);
-			"#,
-			deployment_id,
-			name as _,
-			repository_id,
-			image_tag,
-			region,
-			domain,
-			horizontal_scale as i16,
-			machine_type as _,
-			workspace_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				deployment
-			VALUES
-				(
-					$1,
-					$2,
-					'registry.patr.cloud',
-					$3,
-					NULL,
-					$4,
-					'created',
-					NULL,
-					NULL,
-					$5,
-					NULL,
-					$6,
-					$7,
-					$8
-				);
-			"#,
-			deployment_id,
-			name as _,
-			repository_id,
-			image_tag,
-			region,
-			horizontal_scale as i16,
-			machine_type as _,
-			workspace_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment
+		VALUES
+			(
+				$1,
+				$2,
+				'registry.patr.cloud',
+				$3,
+				NULL,
+				$4,
+				'created',
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				$10
+			);
+		"#,
+		id as _,
+		name as _,
+		repository_id as _,
+		image_tag,
+		workspace_id as _,
+		region as _,
+		min_horizontal_scale as i32,
+		max_horizontal_scale as i32,
+		machine_type as _,
+		deploy_on_push
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn create_deployment_with_external_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	id: &Uuid,
 	name: &str,
 	registry: &str,
 	image_name: &str,
 	image_tag: &str,
-	region: &str,
-	domain_name: Option<&str>,
-	horizontal_scale: u64,
-	machine_type: &DeploymentMachineType,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deploy_on_push: bool,
+	min_horizontal_scale: u16,
+	max_horizontal_scale: u16,
 ) -> Result<(), sqlx::Error> {
-	if let Some(domain) = domain_name {
-		query!(
-			r#"
-			INSERT INTO
-				deployment
-			VALUES
-				(
-					$1,
-					$2,
-					$3,
-					NULL,
-					$4,
-					$5,
-					'created',
-					NULL,
-					NULL,
-					$6,
-					$7,
-					$8,
-					$9,
-					$10
-				);
-			"#,
-			deployment_id,
-			name as _,
-			registry,
-			image_name,
-			image_tag,
-			region,
-			domain,
-			horizontal_scale as i16,
-			machine_type as _,
-			workspace_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				deployment
-			VALUES
-				(
-					$1,
-					$2,
-					$3,
-					NULL,
-					$4,
-					$5,
-					'created',
-					NULL,
-					NULL,
-					$6,
-					NULL,
-					$7,
-					$8,
-					$9
-				);
-			"#,
-			deployment_id,
-			name as _,
-			registry,
-			image_name,
-			image_tag,
-			region,
-			horizontal_scale as i16,
-			machine_type as _,
-			workspace_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				NULL,
+				$4,
+				$5,
+				'created',
+				$6,
+				$7,
+				$8,
+				$9,
+				$10,
+				$11
+			);
+		"#,
+		id as _,
+		name as _,
+		registry,
+		image_name,
+		image_tag,
+		workspace_id as _,
+		region as _,
+		min_horizontal_scale as i32,
+		max_horizontal_scale as i32,
+		machine_type as _,
+		deploy_on_push
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	image_name: &str,
 	image_tag: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			deployment.id,
+			deployment.id as "id: _",
 			deployment.name::TEXT as "name!: _",
 			deployment.registry,
-			deployment.repository_id,
+			deployment.repository_id as "repository_id: _",
 			deployment.image_name,
 			deployment.image_tag,
 			deployment.status as "status: _",
-			deployment.deployed_image,
-			deployment.digitalocean_app_id,
-			deployment.region,
-			deployment.domain_name,
-			deployment.horizontal_scale,
+			deployment.workspace_id as "workspace_id: _",
+			deployment.region as "region: _",
+			deployment.min_horizontal_scale,
+			deployment.max_horizontal_scale,
 			deployment.machine_type as "machine_type: _",
-			deployment.workspace_id
+			deployment.deploy_on_push
 		FROM
 			deployment
 		LEFT JOIN
@@ -566,7 +459,7 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 		"#,
 		image_name as _,
 		image_tag,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -574,33 +467,32 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 
 pub async fn get_deployments_by_repository_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	repository_id: &[u8],
+	repository_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	let rows = query_as!(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
-			deployed_image,
-			digitalocean_app_id,
-			region,
-			domain_name,
-			horizontal_scale,
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			deploy_on_push
 		FROM
 			deployment
 		WHERE
 			repository_id = $1 AND
 			status != 'deleted';
 		"#,
-		repository_id
+		repository_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?;
@@ -609,33 +501,32 @@ pub async fn get_deployments_by_repository_id(
 
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
-			deployed_image,
-			digitalocean_app_id,
-			region,
-			domain_name,
-			horizontal_scale,
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			deploy_on_push
 		FROM
 			deployment
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
@@ -643,33 +534,32 @@ pub async fn get_deployments_for_workspace(
 
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
-			deployed_image,
-			digitalocean_app_id,
-			region,
-			domain_name,
-			horizontal_scale,
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			deploy_on_push
 		FROM
 			deployment
 		WHERE
 			id = $1 AND
 			status != 'deleted';
 		"#,
-		deployment_id
+		deployment_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
@@ -678,26 +568,25 @@ pub async fn get_deployment_by_id(
 pub async fn get_deployment_by_name_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	name: &str,
-	workspace_id: &[u8],
+	workspace_id: &Uuid,
 ) -> Result<Option<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			id,
+			id as "id: _",
 			name::TEXT as "name!: _",
 			registry,
-			repository_id,
+			repository_id as "repository_id: _",
 			image_name,
 			image_tag,
 			status as "status: _",
-			deployed_image,
-			digitalocean_app_id,
-			region,
-			domain_name,
-			horizontal_scale,
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
 			machine_type as "machine_type: _",
-			workspace_id
+			deploy_on_push
 		FROM
 			deployment
 		WHERE
@@ -706,76 +595,15 @@ pub async fn get_deployment_by_name_in_workspace(
 			status != 'deleted';
 		"#,
 		name as _,
-		workspace_id
+		workspace_id as _
 	)
 	.fetch_optional(&mut *connection)
 	.await
 }
 
-pub async fn update_deployment_deployed_image(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	deployed_image: Option<&str>,
-) -> Result<(), sqlx::Error> {
-	if let Some(deployed_image) = deployed_image {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				deployed_image = $1
-			WHERE
-				id = $2;
-			"#,
-			deployed_image,
-			deployment_id
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				deployed_image = NULL
-			WHERE
-				id = $1;
-			"#,
-			deployment_id
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
-}
-
-pub async fn update_digitalocean_app_id_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	app_deployment_id: &str,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			digitalocean_app_id = $1
-		WHERE
-			id = $2;
-		"#,
-		app_deployment_id,
-		deployment_id
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn update_deployment_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	status: &DeploymentStatus,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -788,7 +616,7 @@ pub async fn update_deployment_status(
 			id = $2;
 		"#,
 		status as _,
-		deployment_id
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -797,7 +625,7 @@ pub async fn update_deployment_status(
 
 pub async fn update_deployment_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -810,7 +638,7 @@ pub async fn update_deployment_name(
 			id = $2;
 		"#,
 		name as _,
-		deployment_id
+		deployment_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -819,18 +647,19 @@ pub async fn update_deployment_name(
 
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<Vec<(String, String)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			*
+			name,
+			value
 		FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id
+		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await?
@@ -843,7 +672,7 @@ pub async fn get_environment_variables_for_deployment(
 
 pub async fn add_environment_variable_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 	key: &str,
 	value: &str,
 ) -> Result<(), sqlx::Error> {
@@ -854,7 +683,7 @@ pub async fn add_environment_variable_for_deployment(
 		VALUES
 			($1, $2, $3);
 		"#,
-		deployment_id,
+		deployment_id as _,
 		key,
 		value
 	)
@@ -865,7 +694,7 @@ pub async fn add_environment_variable_for_deployment(
 
 pub async fn remove_all_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
+	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -874,269 +703,189 @@ pub async fn remove_all_environment_variables_for_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id,
+		deployment_id as _,
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
-pub async fn set_domain_name_for_deployment(
+pub async fn get_exposed_ports_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	domain_name: Option<&str>,
-) -> Result<(), sqlx::Error> {
-	if let Some(domain_name) = domain_name {
-		query!(
-			r#"
-			INSERT INTO
-				deployed_domain
-			VALUES
-				($1, NULL, $2)
-			ON CONFLICT(deployment_id) DO UPDATE SET
-				domain_name = EXCLUDED.domain_name;
-			"#,
-			deployment_id,
-			domain_name,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				domain_name = $1
-			WHERE
-				id = $2;
-			"#,
-			domain_name,
-			deployment_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			DELETE FROM
-				deployed_domain
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				domain_name = NULL
-			WHERE
-				id = $1;
-			"#,
-			deployment_id,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
-}
-
-pub async fn set_horizontal_scale_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	horizontal_scale: u64,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			horizontal_scale = $1
-		WHERE
-			id = $2;
-		"#,
-		horizontal_scale as i16,
-		deployment_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn set_machine_type_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	machine_type: &DeploymentMachineType,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type = $1
-		WHERE
-			id = $2;
-		"#,
-		machine_type as _,
-		deployment_id,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn create_log_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-	timestamp: u64,
-	ip_address: &str,
-	ip_address_latitude: f64,
-	ip_address_longitude: f64,
-	method: &DeploymentRequestMethod,
-	host: &str,
-	protocol: &DeploymentRequestProtocol,
-	path: &str,
-	response_time: f64,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			deployment_request_logs
-		VALUES
-			(DEFAULT, $1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6, $7, $8, $9, $10);
-		"#,
-		deployment_id,
-		timestamp as i64,
-		ip_address,
-		ip_address_longitude,
-		ip_address_latitude,
-		method as _,
-		host,
-		protocol as _,
-		path,
-		response_time as f32
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
-pub async fn get_recommended_data_center(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<Option<String>, sqlx::Error> {
-	let row = query!(
+	deployment_id: &Uuid,
+) -> Result<Vec<(u16, ExposedPortType)>, sqlx::Error> {
+	let rows = query!(
 		r#"
 		SELECT
-			data_center_locations.region
+			port,
+			port_type as "port_type: ExposedPortType"
 		FROM
-			data_center_locations,
-			deployment_request_logs
-		INNER JOIN 
-			deployment 
-		ON 
-			deployment.id = deployment_request_logs.deployment_id
-		WHERE
-			deployment_id = $1
-		GROUP BY
-			data_center_locations.region
-		ORDER BY
-			AVG(
-				st_distancespheroid(
-					deployment_request_logs.ip_address_location,
-					data_center_locations.location,
-					'SPHEROID["WGS84",6378137,298.257223563]'
-				)
-			);
-		"#,
-		deployment_id
-	)
-	.fetch_optional(&mut *connection)
-	.await?
-	.map(|row| row.region);
-
-	Ok(row)
-}
-
-pub async fn get_deployment_by_domain_name(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_name: &str,
-) -> Result<Option<Deployment>, sqlx::Error> {
-	query_as!(
-		Deployment,
-		r#"
-		SELECT
-			id,
-			name::TEXT as "name!: _",
-			registry,
-			repository_id,
-			image_name,
-			image_tag,
-			status as "status: _",
-			deployed_image,
-			digitalocean_app_id,
-			region,
-			domain_name,
-			horizontal_scale,
-			machine_type as "machine_type: _",
-			workspace_id
-		FROM
-			deployment
-		WHERE
-			domain_name = $1;
-		"#,
-		domain_name,
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn add_entry_point(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
-	sub_domain: &str,
-	path: &str,
-	deployment_id: &[u8],
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			entry_point
-		VALUES
-		($1, $2, $3, $4);
-		"#,
-		domain_id,
-		sub_domain,
-		path,
-		deployment_id,
-	)
-	.execute(&mut *connection)
-	.await?;
-	Ok(())
-}
-
-pub async fn get_entry_point_by_deployment_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &[u8],
-) -> Result<Option<DeploymentEntryPoint>, sqlx::Error> {
-	query_as!(
-		DeploymentEntryPoint,
-		r#"
-		SELECT
-			*
-		FROM
-			entry_point
+			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id,
+		deployment_id as _
 	)
-	.fetch_optional(&mut *connection)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.port as u16, row.port_type))
+	.collect();
+
+	Ok(rows)
+}
+
+pub async fn add_exposed_port_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	port: u16,
+	exposed_port_type: &ExposedPortType,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			deployment_exposed_port
+		VALUES
+			($1, $2, $3);
+		"#,
+		deployment_id as _,
+		port as i16,
+		exposed_port_type as _
+	)
+	.execute(&mut *connection)
 	.await
+	.map(|_| ())
+}
+
+pub async fn remove_all_exposed_ports_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_deployment_details(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	name: Option<&str>,
+	region: Option<&Uuid>,
+	machine_type: Option<&Uuid>,
+	deploy_on_push: Option<bool>,
+	min_horizontal_scale: Option<u16>,
+	max_horizontal_scale: Option<u16>,
+) -> Result<(), sqlx::Error> {
+	if let Some(name) = name {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				name = $1
+			WHERE
+				id = $2;
+			"#,
+			name as _,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(region) = region {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				region = $1
+			WHERE
+				id = $2;
+			"#,
+			region as _,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(machine_type) = machine_type {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				machine_type = $1
+			WHERE
+				id = $2;
+			"#,
+			machine_type as _,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(deploy_on_push) = deploy_on_push {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				deploy_on_push = $1
+			WHERE
+				id = $2;
+			"#,
+			deploy_on_push as _,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(min_horizontal_scale) = min_horizontal_scale {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				min_horizontal_scale = $1
+			WHERE
+				id = $2;
+			"#,
+			min_horizontal_scale as i32,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(max_horizontal_scale) = max_horizontal_scale {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				max_horizontal_scale = $1
+			WHERE
+				id = $2;
+			"#,
+			max_horizontal_scale as i32,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }

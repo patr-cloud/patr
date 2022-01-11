@@ -1,5 +1,5 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use uuid::Uuid;
 
 use crate::{
 	db,
@@ -69,7 +69,7 @@ pub async fn is_workspace_name_allowed(
 pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_name: &str,
-	super_admin_id: &[u8],
+	super_admin_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	if !is_workspace_name_allowed(connection, workspace_name).await? {
 		Error::as_result()
@@ -77,33 +77,32 @@ pub async fn create_workspace(
 			.body(error!(WORKSPACE_EXISTS).to_string())?;
 	}
 
-	let workspace_id = db::generate_new_resource_id(connection).await?;
-	let resource_id = workspace_id.as_bytes();
+	let resource_id = db::generate_new_resource_id(connection).await?;
 
 	db::begin_deferred_constraints(connection).await?;
 	db::create_resource(
 		connection,
-		resource_id,
+		&resource_id,
 		&format!("Workspace: {}", workspace_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
 			.get(rbac::resource_types::WORKSPACE)
 			.unwrap(),
-		resource_id,
+		&resource_id,
 		get_current_time_millis(),
 	)
 	.await?;
 	db::create_workspace(
 		connection,
-		resource_id,
+		&resource_id,
 		workspace_name,
 		super_admin_id,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
-	Ok(workspace_id)
+	Ok(resource_id)
 }
 
 /// # Description
@@ -115,6 +114,6 @@ pub async fn create_workspace(
 /// # Returns
 /// This function returns a string containing the name of the personal
 /// workspace
-pub fn get_personal_workspace_name(username: &str) -> String {
-	format!("personal-workspace-{}", username)
+pub fn get_personal_workspace_name(user_id: &str) -> String {
+	format!("personal-workspace-{}", user_id)
 }

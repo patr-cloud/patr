@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
+	migrations,
 	models::rbac,
 	query,
 	utils::constants,
@@ -86,7 +87,12 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				db::migrate_database(&mut transaction, version).await?;
+				migrations::run_migrations(
+					&mut transaction,
+					version,
+					&app.config,
+				)
+				.await?;
 
 				transaction.commit().await?;
 				log::info!(
@@ -112,15 +118,23 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 				.expect("GOD_USER_ID was already set");
 		}
 
-		let resource_types =
-			db::get_all_resource_types(&mut transaction).await?;
-		let resource_types = resource_types
+		let resource_types = db::get_all_resource_types(&mut transaction)
+			.await?
 			.into_iter()
 			.map(|resource_type| (resource_type.name, resource_type.id))
 			.collect();
 		rbac::RESOURCE_TYPES
 			.set(resource_types)
 			.expect("RESOURCE_TYPES is already set");
+
+		let permissions = db::get_all_permissions(&mut transaction)
+			.await?
+			.into_iter()
+			.map(|permission| (permission.name, permission.id))
+			.collect();
+		rbac::PERMISSIONS
+			.set(permissions)
+			.expect("PERMISSIONS is already set");
 
 		drop(transaction);
 

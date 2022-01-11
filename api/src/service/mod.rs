@@ -5,23 +5,26 @@
 //!
 //! [`App`]: App
 mod auth;
-mod deployment;
+mod docker_registry;
 mod domain;
+mod infrastructure;
 mod metrics;
 mod notifier;
 mod user;
 mod utils;
 mod workspace;
 
-pub use auth::*;
-pub use deployment::*;
-pub use domain::*;
-pub use metrics::*;
-pub use notifier::*;
-pub use user::*;
-pub use utils::*;
-pub use workspace::*;
-
+pub use self::{
+	auth::*,
+	docker_registry::*,
+	domain::*,
+	infrastructure::*,
+	metrics::*,
+	notifier::*,
+	user::*,
+	utils::*,
+	workspace::*,
+};
 use crate::{app::App, utils::settings::Settings};
 
 /// stores the configuration and database of the whole API
