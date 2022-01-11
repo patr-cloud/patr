@@ -36,6 +36,17 @@ pub struct WorkspaceDomain {
 	pub nameserver_type: DomainNameserverType,
 }
 
+#[allow(dead_code)]
+impl WorkspaceDomain {
+	pub fn is_ns_external(&self) -> bool {
+		self.nameserver_type.is_external()
+	}
+
+	pub fn is_ns_internal(&self) -> bool {
+		self.nameserver_type.is_internal()
+	}
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
@@ -64,11 +75,22 @@ pub enum DomainNameserverType {
 	External,
 }
 
+#[allow(dead_code)]
+impl DomainNameserverType {
+	pub fn is_internal(&self) -> bool {
+		matches!(self, Self::Internal)
+	}
+
+	pub fn is_external(&self) -> bool {
+		matches!(self, Self::External)
+	}
+}
+
 impl Display for DomainNameserverType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::Internal => write!(f, "patr"),
-			Self::External => write!(f, "user"),
+			Self::Internal => write!(f, "internal"),
+			Self::External => write!(f, "external"),
 		}
 	}
 }
@@ -78,10 +100,10 @@ impl FromStr for DomainNameserverType {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
-			"patr" => Ok(Self::Internal),
-			"user" => Ok(Self::External),
+			"internal" => Ok(Self::Internal),
+			"external" => Ok(Self::External),
 			_ => Error::as_result()
-				.status(500)
+				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
@@ -89,22 +111,23 @@ impl FromStr for DomainNameserverType {
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
 #[sqlx(type_name = "DNS_RECORD_TYPE", rename_all = "UPPERCASE")]
+#[allow(clippy::upper_case_acronyms)]
 pub enum DnsRecordType {
 	A,
-	Aaaa,
-	Cname,
-	Mx,
-	Txt,
+	AAAA,
+	CNAME,
+	MX,
+	TXT,
 }
 
 impl Display for DnsRecordType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::A => write!(f, "A"),
-			Self::Aaaa => write!(f, "AAAA"),
-			Self::Cname => write!(f, "CNAME"),
-			Self::Mx => write!(f, "MX"),
-			Self::Txt => write!(f, "TXT"),
+			Self::AAAA => write!(f, "AAAA"),
+			Self::CNAME => write!(f, "CNAME"),
+			Self::MX => write!(f, "MX"),
+			Self::TXT => write!(f, "TXT"),
 		}
 	}
 }
@@ -115,10 +138,10 @@ impl FromStr for DnsRecordType {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_uppercase().as_str() {
 			"A" => Ok(Self::A),
-			"AAAA" => Ok(Self::Aaaa),
-			"CNAME" => Ok(Self::Cname),
-			"MX" => Ok(Self::Mx),
-			"TXT" => Ok(Self::Txt),
+			"AAAA" => Ok(Self::AAAA),
+			"CNAME" => Ok(Self::CNAME),
+			"MX" => Ok(Self::MX),
+			"TXT" => Ok(Self::TXT),
 			_ => Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),

@@ -808,7 +808,7 @@ async fn add_dns_record(
 		record,
 		ttl as u32,
 		proxied,
-		if let DnsRecordType::Mx = &r#type {
+		if let DnsRecordType::MX = &r#type {
 			Some(
 				body.get(request_keys::PRIORITY)
 					.map(|value| value.as_u64())

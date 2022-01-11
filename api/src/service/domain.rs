@@ -385,19 +385,19 @@ pub async fn add_patr_dns_record(
 		DnsRecordType::A => DnsContent::A {
 			content: record.parse::<Ipv4Addr>()?,
 		},
-		DnsRecordType::Aaaa => DnsContent::AAAA {
+		DnsRecordType::AAAA => DnsContent::AAAA {
 			content: record.parse::<Ipv6Addr>()?,
 		},
-		DnsRecordType::Mx => DnsContent::MX {
+		DnsRecordType::MX => DnsContent::MX {
 			priority: priority
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
 			content: record.to_string(),
 		},
-		DnsRecordType::Cname => DnsContent::CNAME {
+		DnsRecordType::CNAME => DnsContent::CNAME {
 			content: record.to_string(),
 		},
-		DnsRecordType::Txt => DnsContent::TXT {
+		DnsRecordType::TXT => DnsContent::TXT {
 			content: record.to_string(),
 		},
 	};
@@ -458,19 +458,19 @@ pub async fn update_patr_dns_record(
 		DnsRecordType::A => DnsContent::A {
 			content: record.parse::<Ipv4Addr>()?,
 		},
-		DnsRecordType::Aaaa => DnsContent::AAAA {
+		DnsRecordType::AAAA => DnsContent::AAAA {
 			content: record.parse::<Ipv6Addr>()?,
 		},
-		DnsRecordType::Mx => DnsContent::MX {
+		DnsRecordType::MX => DnsContent::MX {
 			priority: priority
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
 			content: record.to_string(),
 		},
-		DnsRecordType::Cname => DnsContent::CNAME {
+		DnsRecordType::CNAME => DnsContent::CNAME {
 			content: record.to_string(),
 		},
-		DnsRecordType::Txt => DnsContent::TXT {
+		DnsRecordType::TXT => DnsContent::TXT {
 			content: record.to_string(),
 		},
 	};
