@@ -10,28 +10,6 @@
       "nullable": []
     }
   },
-  "02cf8beffafabae130645732176997ebda9c3d99e4817d52447457feaedf590d": {
-    "query": "ALTER TABLE deployment_static_sites ADD CONSTRAINT deployment_static_sites_fk_id_domain_name FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(static_site_id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "046c6b19462914789d8ae29cf351948c95aeaa858d959a7b22af0937f54ace8d": {
-    "query": "UPDATE deployment SET deployed_image = NULL WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "05452f7e8ed0ec4322863866b4604e496c5004b7dce28dd96928cc8b7e8ca699": {
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';",
     "describe": {
@@ -68,18 +46,6 @@
         false,
         null
       ]
-    }
-  },
-  "06789272443fac56afa6ba6b9593f6a708b86f8a69743d1c6485c68c8177bc91": {
-    "query": "UPDATE deployment_static_sites SET domain_name = NULL WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
     }
   },
   "06996105bdcc06ade90e67db371aa915dc31e8e8d1a4aa8a778a78909a585f74": {
@@ -291,131 +257,6 @@
       "nullable": []
     }
   },
-  "0d713bdec8ba07f955529f5cff1afca1e1fdf7c5630915f9638fd70a89249f0f": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id as \"workspace_id: _\" FROM deployment WHERE workspace_id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "0f173a2ae7e9c68cfb8d86191b16740c01ad3febde1b1429e083153b9ad21cb4": {
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(business_email.local, '@', domain.name) = $1;",
     "describe": {
@@ -526,19 +367,6 @@
       "nullable": [
         false
       ]
-    }
-  },
-  "124c4789134d31861ed5682f3769ca275c6ead752b6681258b087ee7c85c8eb3": {
-    "query": "UPDATE deployment SET deployed_image = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Uuid"
-        ]
-      },
-      "nullable": []
     }
   },
   "12ec65904ba0d3fc836a99a97125cc5d43442d0cc6d5c24a2d79a824a0d128fc": {
@@ -697,6 +525,113 @@
         false,
         false,
         true
+      ]
+    }
+  },
+  "17c67912f71130b8cf2eecb66af9f86d8e03b0c829f807066cace584360dee71": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push FROM deployment WHERE workspace_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "region: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 9,
+          "name": "min_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 10,
+          "name": "max_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 11,
+          "name": "machine_type: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 12,
+          "name": "deploy_on_push",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
       ]
     }
   },
@@ -1018,19 +953,7 @@
       "columns": [],
       "parameters": {
         "Left": [
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          },
+          "Uuid",
           "Uuid"
         ]
       },
@@ -1083,56 +1006,6 @@
         false,
         false
       ]
-    }
-  },
-  "24e16edd8088313c2a05603a117142c7b44712a2d17eec9df49175d005b424c1": {
-    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, $7, $8, $9, $10 );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          },
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "25a74d79e5822e2afec092e8b8a9d0bf67839fde9a61235bdab5923102de08cc": {
-    "query": "DELETE FROM deployed_domain WHERE static_site_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
     }
   },
   "25eafab4c0a9b0440ac9cdf11910ccd6be067d8ef4ed4132d555dd9e0d57f949": {
@@ -1203,18 +1076,6 @@
       "nullable": []
     }
   },
-  "2863c3de7f335fc67ebe731d7b25a0a38224f12146059dc432b52bf9c0da3ca7": {
-    "query": "UPDATE deployment SET domain_name = NULL WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
     "query": "CREATE EXTENSION IF NOT EXISTS postgis;",
     "describe": {
@@ -1223,26 +1084,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "2babea13ca72e7fcb354b2acb11e2b630677a5d4b29176390f839bc93a4a5f60": {
-    "query": "SELECT data_center_locations.region FROM data_center_locations, deployment_request_logs INNER JOIN deployment ON deployment.id = deployment_request_logs.deployment_id WHERE deployment_id = $1 GROUP BY data_center_locations.region ORDER BY AVG( st_distancespheroid( deployment_request_logs.ip_address_location, data_center_locations.location, 'SPHEROID[\"WGS84\",6378137,298.257223563]' ) );",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "region",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false
-      ]
     }
   },
   "2baedbc34f90a3ba0d33d65c13578e6d199de703cab413ebaba22dbb7ffb9055": {
@@ -1418,8 +1259,8 @@
       "nullable": []
     }
   },
-  "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
-    "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
+  "33b487de7c39eb343675c2213545e8c83566f565f3a4f0f2379170a9bad047fe": {
+    "query": "CREATE TYPE EXPOSED_PORT_TYPE AS ENUM( 'http' );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1428,15 +1269,12 @@
       "nullable": []
     }
   },
-  "34f46d1a8c399e4f56afcb2a4659f6f43236e395ff16bcffe4e80f7d5e3f7e28": {
-    "query": "INSERT INTO deployed_domain VALUES (NULL, $1, $2) ON CONFLICT(static_site_id) DO UPDATE SET domain_name = EXCLUDED.domain_name;",
+  "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
+    "query": "CREATE INDEX resource_idx_owner_id ON resource (owner_id);",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
+        "Left": []
       },
       "nullable": []
     }
@@ -1512,6 +1350,16 @@
       "nullable": []
     }
   },
+  "36a07994042c7ad6bc93e25b0d951c244168fb2df7c6ce76101d979d956f1641": {
+    "query": "CREATE TABLE deployment_machine_type( id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY, cpu_count SMALLINT NOT NULL, memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
     "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
     "describe": {
@@ -1536,19 +1384,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "3735ed21a5154da535799d8cda3eadbb9b5758d93ff35ee0318330fed1b67858": {
-    "query": "UPDATE deployment SET domain_name = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
       },
       "nullable": []
     }
@@ -1583,16 +1418,6 @@
   },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "3ade10eaf870649d5cd14fc56f4b6fea3d71001f70887eacc9804c02e9e507d3": {
-    "query": "CREATE TABLE deployment_static_sites( id UUID CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', domain_name VARCHAR(255) CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE CONSTRAINT deployment_static_sites_chk_domain_name_is_lower_case CHECK(domain_name = LOWER(domain_name)), workspace_id UUID NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_sites_uq_id_domain_name UNIQUE(id, domain_name) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1712,16 +1537,6 @@
       ]
     }
   },
-  "3ea2adaf170e36688f0cacf60a3cd278db7ec604cbb48deb6d6a234085dec21c": {
-    "query": "CREATE TYPE DEPLOYMENT_MACHINE_TYPE AS ENUM( 'micro', 'small', 'medium', 'large' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "3f3db5bf71dab7a287aa95fe76ec466e2fd65cb836c3c04dde424d244fc21cd4": {
     "query": "UPDATE deployment SET status = $1 WHERE id = $2;",
     "describe": {
@@ -1746,16 +1561,6 @@
           },
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "40b666a060e7b5f8d931025a326aa1468c93620b6184f795570911834a9b7604": {
-    "query": "CREATE TYPE DEPLOYMENT_REQUEST_METHOD AS ENUM( 'get', 'post', 'put', 'delete', 'head', 'options', 'connect', 'patch' );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -1973,8 +1778,8 @@
       "nullable": []
     }
   },
-  "46f648355b67521fcaf33dbed17366e270057a1989ceb86dc2448bc71260f8bc": {
-    "query": "INSERT INTO deployment VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, NULL, $6, $7, $8 );",
+  "46822c2d5d25b3f6a1fcb17223181e6d06c698237c78de649e1fbaca7b110a89": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10 );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1988,82 +1793,19 @@
           },
           "Uuid",
           "Varchar",
-          "Text",
+          "Uuid",
+          "Uuid",
           "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          },
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
-    "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid",
-          "Uuid",
-          "Text",
-          "Int8"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "4ab12a1f7aa25a5a9587ec546ef78b6d618792ab7304cd4800fe8d4b775311b9": {
-    "query": "INSERT INTO deployment VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', NULL, NULL, $5, $6, $7, $8, $9 );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Uuid",
-          "Varchar",
-          "Text",
-          "Varchar",
           "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          },
-          "Uuid"
+          "Uuid",
+          "Bool"
         ]
       },
       "nullable": []
     }
   },
-  "4c394cdff532c0561ad201eb0780e9eeff37950b8a24e982a6f0ad964cbeb9d1": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id as \"workspace_id: _\" FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+  "47e8cfb0ce6a6136a50d760373a76a0017fc3ffd967b219809a92f87a4e6b14e": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE workspace_id = $1 AND status != 'deleted';",
     "describe": {
       "columns": [
         {
@@ -2078,26 +1820,6 @@
         },
         {
           "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
           "name": "status: _",
           "type_info": {
             "Custom": {
@@ -2117,61 +1839,13 @@
           }
         },
         {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
+          "ordinal": 3,
           "name": "workspace_id: _",
           "type_info": "Uuid"
         }
       ],
       "parameters": {
         "Left": [
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
           "Uuid"
         ]
       },
@@ -2179,18 +1853,24 @@
         false,
         null,
         false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
         false
       ]
+    }
+  },
+  "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
+    "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
     }
   },
   "4d4d3f0596fa4cb76250545fe274ac8edb6d56fd4a60d7f5b3085280ea880105": {
@@ -2310,6 +1990,39 @@
         false,
         true
       ]
+    }
+  },
+  "55810e16b8d10dbbf42a7c1c69bc4c045ca77574cd76020a72a25583137887e4": {
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "561a68357a791929a142bab054437c0984b9d36ab55569146d65999052234837": {
+    "query": "UPDATE deployment SET region = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "56fde19ad748a4ba11f9a82408acefdaa015d8b7aa0147a6e8fb92e81a4cf630": {
+    "query": "CREATE TABLE deployment_static_sites( id UUID CONSTRAINT deployment_static_sites_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_sites_uq_name_workspace_id UNIQUE(name, workspace_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
@@ -2692,65 +2405,6 @@
       "nullable": []
     }
   },
-  "6b4938eeacd07631057e37bedd72f862e0b9278f5a4a877a7aefe64970c23a76": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", domain_name, workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        false
-      ]
-    }
-  },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -2773,16 +2427,6 @@
           "Int8",
           "Text"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "6dbc380fc8baeb5fda2d60b842604897d273bbbd6ce217de66ee7789904c6255": {
-    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id_domain_name FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(deployment_id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -2846,12 +2490,35 @@
       "nullable": []
     }
   },
+  "7401f9df0e6e0b99c923aed5a8e8be4ed52aa49dc8780e4ded18882872b8b95d": {
+    "query": "CREATE TABLE deployment_region( id UUID CONSTRAINT deployment_region_pk PRIMARY KEY, name TEXT NOT NULL, provider DEPLOYMENT_CLOUD_PROVIDER, location GEOMETRY, parent_region_id UUID CONSTRAINT deployment_region_fk_parent_region_id REFERENCES deployment_region(id), CONSTRAINT deployment_region_chk_provider_location_parent_region_is_valid CHECK( ( location IS NULL AND provider IS NULL ) OR ( provider IS NOT NULL AND location IS NOT NULL AND parent_region_id IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "747247315594e0e78b8f516a7b738135ea0c9fafc62d758f37d8bf281a54d7e7": {
     "query": "CREATE TABLE personal_domain( id UUID CONSTRAINT personal_domain_pk PRIMARY KEY, domain_type RESOURCE_OWNER_TYPE NOT NULL CONSTRAINT personal_domain_chk_dmn_typ CHECK(domain_type = 'personal'), CONSTRAINT personal_domain_fk_id_domain_type FOREIGN KEY(id, domain_type) REFERENCES domain(id, type) );",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "751f7ae4b4c1d76c43283ccb88c5247004ed8b1db984dd9aa92903eca6cfe56a": {
+    "query": "UPDATE deployment SET deploy_on_push = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Uuid"
+        ]
       },
       "nullable": []
     }
@@ -2975,8 +2642,8 @@
       "nullable": []
     }
   },
-  "78ee352900e2f83d97240e8cdacc8e68c4a678b2f8a7d5adf20252b15356632e": {
-    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, NULL, $4, $5, 'created', NULL, NULL, $6, NULL, $7, $8, $9 );",
+  "78a741e31a177c259879d83197910cde15c610c3384f08368361690f3198f552": {
+    "query": "INSERT INTO deployment VALUES ( $1, $2, $3, NULL, $4, $5, 'created', $6, $7, $8, $9, $10, $11 );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2991,22 +2658,12 @@
           "Varchar",
           "Varchar",
           "Varchar",
-          "Text",
+          "Uuid",
+          "Uuid",
           "Int2",
-          {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          },
-          "Uuid"
+          "Int2",
+          "Uuid",
+          "Bool"
         ]
       },
       "nullable": []
@@ -3020,25 +2677,6 @@
         "Left": [
           "Uuid",
           "Text",
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "7c5a4a0c3e45414231965992272912e05a6dfc88247f92f17cc9a389b08af83d": {
-    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', NULL, $3);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
           "Uuid"
         ]
       },
@@ -3220,8 +2858,8 @@
       "nullable": []
     }
   },
-  "81b89a964e176af57c481f109c4e5d1fe334a498ef49639f2aaab01aedef6d0e": {
-    "query": "CREATE TYPE DEPLOYMENT_REQUEST_PROTOCOL AS ENUM( 'http', 'https' );",
+  "81965ef394bc59d4f39a9f8009fc9d33bc1c6b01ef324f8b5d0f5c57b7d54a58": {
+    "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port SMALLINT NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3365,6 +3003,41 @@
           "ordinal": 1,
           "name": "resource_id: Uuid",
           "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "8ba7e810211002c1b6033836493c2f48f72dbf7718a0ee8571cf200f07bbeb4d": {
+    "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "port",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 1,
+          "name": "port_type: ExposedPortType",
+          "type_info": {
+            "Custom": {
+              "name": "exposed_port_type",
+              "kind": {
+                "Enum": [
+                  "http"
+                ]
+              }
+            }
+          }
         }
       ],
       "parameters": {
@@ -3526,6 +3199,59 @@
       ]
     }
   },
+  "92c358a37605581101d23b94de0d66244e6f3ac6ce13a19fbbd47400b7b5e73a": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+  },
   "9354bef44024be196abb0a45c596031609b49d3f39ebaba9d2986f0e0763b7c1": {
     "query": "INSERT INTO role_permissions_resource VALUES ($1, $2, $3);",
     "describe": {
@@ -3538,24 +3264,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "94ec4c2baf875ad1b8bbd9f008758b9b674e447800af72a68abe4fa3c0885a36": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_sites WHERE domain_name IS NOT NULL AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
@@ -3582,71 +3290,6 @@
       "nullable": []
     }
   },
-  "9675d7f04c64ef057aabb80aa9ca7d635f634f0e360bc9faa61540583c556f0e": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", domain_name, workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        false
-      ]
-    }
-  },
   "96b3517ef88f76e14a7f25c2ee6c94502f52a8e72314b6ba8e5e2010e9c06965": {
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );",
     "describe": {
@@ -3665,138 +3308,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "9836e75e54e7203e6db5f86f8716dadc01950ea2f9e2fd4516bdc09c488c7414": {
-    "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.deployed_image, deployment.digitalocean_app_id, deployment.region, deployment.domain_name, deployment.horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.workspace_id as \"workspace_id: _\" FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Text",
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
     }
   },
   "985017bf290c3b482b9ecf7c939085b9f344b97e9ef6f57696fe91e7affb5e91": {
@@ -3959,53 +3470,6 @@
       "parameters": {
         "Left": [
           "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "9ed3fb949ea0c48e5e329a02835f0a6ad14352e434792d73cb0f5fc54f61a58c": {
-    "query": "INSERT INTO deployment_request_logs VALUES (DEFAULT, $1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6, $7, $8, $9, $10);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Int8",
-          "Varchar",
-          "Float8",
-          "Float8",
-          {
-            "Custom": {
-              "name": "deployment_request_method",
-              "kind": {
-                "Enum": [
-                  "get",
-                  "post",
-                  "put",
-                  "delete",
-                  "head",
-                  "options",
-                  "connect",
-                  "patch"
-                ]
-              }
-            }
-          },
-          "Varchar",
-          {
-            "Custom": {
-              "name": "deployment_request_protocol",
-              "kind": {
-                "Enum": [
-                  "http",
-                  "https"
-                ]
-              }
-            }
-          },
-          "Text",
-          "Float4"
         ]
       },
       "nullable": []
@@ -4217,6 +3681,126 @@
       "nullable": []
     }
   },
+  "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
+    "query": "UPDATE deployment SET max_horizontal_scale = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int2",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "a989868983bf253bdd13f74c908e93274257d2fb39458d402bceb522fa2e63ca": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "region: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 9,
+          "name": "min_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 10,
+          "name": "max_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 11,
+          "name": "machine_type: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 12,
+          "name": "deploy_on_push",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "a98cea2a8f8fc45db9251140e9bdedf0f23cfb31386c6a9ff0b4496068407532": {
     "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;",
     "describe": {
@@ -4285,144 +3869,6 @@
       "nullable": []
     }
   },
-  "ab9db8b1e715c6e16f1b0d2a21ed137fda79520fda7cfe66a6d57147fc3de526": {
-    "query": "INSERT INTO deployed_domain VALUES ($1, NULL, $2) ON CONFLICT(deployment_id) DO UPDATE SET domain_name = EXCLUDED.domain_name;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "abf706a3e8db514c361ae02bd4691a8ea4748db13ac9aa8dcb24401bcbdd6ec7": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id as \"workspace_id: _\" FROM deployment WHERE id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "abfe8ca19a172c6f4f5f2525f94ca20434872d25c327f511a4fa3d5dfaa5b3e0": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -4453,39 +3899,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "ad30e9730afeef0abc70df130392faa83d081a0ec35c52cf724a6e8700811443": {
-    "query": "UPDATE deployment SET horizontal_scale = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Int2",
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "adc5e3b1194b1b1d9856eaeb8d82e93afc38873152243b36e153220dce5cdca2": {
-    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', $3, $4);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Varchar",
-          "Uuid"
-        ]
       },
       "nullable": []
     }
@@ -4633,6 +4046,119 @@
       ]
     }
   },
+  "af57b6e2b163068221fc77de6a45fffa44527b93a8a1232a795ef76db6474cbe": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push FROM deployment WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "region: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 9,
+          "name": "min_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 10,
+          "name": "max_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 11,
+          "name": "machine_type: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 12,
+          "name": "deploy_on_push",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "af58419038b2d4b4e66cc7589d6c0d065b04c7ed230ba38f6574742fbc11ca8f": {
     "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_id FOREIGN KEY(id) REFERENCES resource(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -4649,19 +4175,6 @@
       "columns": [],
       "parameters": {
         "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "afca68f12ec6c952445155c410f17886b7582c32a7a12f743c3975dfc89ba30e": {
-    "query": "UPDATE deployment SET digitalocean_app_id = $1 WHERE id = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Text",
           "Uuid"
         ]
       },
@@ -4701,16 +4214,6 @@
           "Int8",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "b3fda8617a66b9b4334ebc116d71f157235a2ae8ecffc1cf4a154a181545ee23": {
-    "query": "CREATE TABLE deployed_domain( deployment_id UUID CONSTRAINT deployed_domain_uq_deployment_id UNIQUE, static_site_id UUID CONSTRAINT deployed_domain_uq_static_site_id UNIQUE, domain_name VARCHAR(255) NOT NULL CONSTRAINT deployed_domain_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE (deployment_id, domain_name), CONSTRAINT deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id, domain_name), CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK( ( deployment_id IS NULL AND static_site_id IS NOT NULL ) OR ( deployment_id IS NOT NULL AND static_site_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -4842,18 +4345,6 @@
       ]
     }
   },
-  "b77e59ea76065896eb214074058090e1d6da014c10d7dccefeac002907dc2093": {
-    "query": "DELETE FROM deployed_domain WHERE deployment_id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "b79c1ad5a898a5fb9d24f0782c9f1990888899670a40f6d6bca7abc7161b4f67": {
     "query": "UPDATE workspace SET name = $1 WHERE id = $2;",
     "describe": {
@@ -4872,51 +4363,8 @@
       "nullable": []
     }
   },
-  "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
-    "query": "SET CONSTRAINTS ALL DEFERRED;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
-    "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
-    "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "ba06b0883acb619408607baf49ebc888fcfab7f912c5360db611fce1a255a69e": {
-    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "ba9b43643c841bd0dd13d0a65f55a4857631448b78833d6c7ac4d5c3001fabdd": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id as \"workspace_id: _\" FROM deployment WHERE domain_name = $1;",
+  "b7a2dc7d7d0fc0381be680ae1610ebee3aab01b7bf6a4a2365cd7a3f7c994a0e": {
+    "query": "SELECT deployment.id as \"id: _\", deployment.name::TEXT as \"name!: _\", deployment.registry, deployment.repository_id as \"repository_id: _\", deployment.image_name, deployment.image_tag, deployment.status as \"status: _\", deployment.workspace_id as \"workspace_id: _\", deployment.region as \"region: _\", deployment.min_horizontal_scale, deployment.max_horizontal_scale, deployment.machine_type as \"machine_type: _\", deployment.deploy_on_push FROM deployment LEFT JOIN docker_registry_repository ON docker_registry_repository.id = deployment.repository_id WHERE ( ( deployment.registry = 'registry.patr.cloud' AND docker_registry_repository.name = $1 ) OR ( deployment.registry != 'registry.patr.cloud' AND deployment.image_name = $1 ) ) AND deployment.image_tag = $2 AND deployment.workspace_id = $3 AND deployment.status != 'deleted';",
     "describe": {
       "columns": [
         {
@@ -4971,55 +4419,45 @@
         },
         {
           "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
         },
         {
           "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
+          "name": "region: _",
+          "type_info": "Uuid"
         },
         {
           "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
+          "name": "min_horizontal_scale",
           "type_info": "Int2"
         },
         {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
+          "ordinal": 10,
+          "name": "max_horizontal_scale",
+          "type_info": "Int2"
         },
         {
-          "ordinal": 13,
-          "name": "workspace_id: _",
+          "ordinal": 11,
+          "name": "machine_type: _",
           "type_info": "Uuid"
+        },
+        {
+          "ordinal": 12,
+          "name": "deploy_on_push",
+          "type_info": "Bool"
         }
       ],
       "parameters": {
         "Left": [
-          "Text"
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Text",
+          "Uuid"
         ]
       },
       "nullable": [
@@ -5030,14 +4468,66 @@
         true,
         false,
         false,
-        true,
-        true,
         false,
-        true,
+        false,
+        false,
         false,
         false,
         false
       ]
+    }
+  },
+  "b80c3e5c6e1620ccee068d08214bc0c787967400a6a10f45c6065ba22bea4369": {
+    "query": "SET CONSTRAINTS ALL DEFERRED;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b9152ca043c03160c4d78ea054b408b083e9b10d0617b67443a71180265b3e79": {
+    "query": "CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM( 'digitalocean' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
+    "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
+    "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ba06b0883acb619408607baf49ebc888fcfab7f912c5360db611fce1a255a69e": {
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "ba9bd7a1dc576127a8132d0fbada1e9242c2b2b8441f29a131eed0537bbbdfc8": {
@@ -5056,6 +4546,25 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "bd37d69806db919625303a45ccbcd3132d36f67b3ae6886a2743b6246f02553e": {
+    "query": "INSERT INTO deployment_static_sites VALUES ($1, $2, 'created', $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Uuid"
+        ]
       },
       "nullable": []
     }
@@ -5113,16 +4622,6 @@
   },
   "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "c692728e765f85d4e44af15fa84216f733d62f8d810a5a598f8f7c4d746a12d3": {
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID CONSTRAINT deployment_fk_repository_id REFERENCES docker_registry_repository(id), image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', deployed_image TEXT, digitalocean_app_id TEXT CONSTRAINT deployment_uq_digitalocean_app_id UNIQUE, region TEXT NOT NULL DEFAULT 'do-blr', domain_name VARCHAR(255) CONSTRAINT deployment_uq_domain_name UNIQUE CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK( domain_name = LOWER(domain_name) ), horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_horizontal_scale_u8 CHECK( horizontal_scale >= 0 AND horizontal_scale <= 256 ) DEFAULT 1, machine_type DEPLOYMENT_MACHINE_TYPE NOT NULL DEFAULT 'small', workspace_id UUID NOT NULL, CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_domain_name UNIQUE(id, domain_name), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5276,65 +4775,6 @@
       "nullable": []
     }
   },
-  "ca561a22aefea56258d8c0004870c7e9a8846a0bef2c6801d6ffa7ab78542bdc": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", domain_name, workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE workspace_id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        false
-      ]
-    }
-  },
   "ca60cc0ae9e218485ef43ac8e8dd496780f22f180cc579029c623628421fd26e": {
     "query": "CREATE INDEX workspace_user_idx_user_id ON workspace_user (user_id);",
     "describe": {
@@ -5368,131 +4808,6 @@
       "nullable": []
     }
   },
-  "cf61416e17e9e6deb25abfc953491fd2021501e032e3361e11f404fe6b667268": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", deployed_image, digitalocean_app_id, region, domain_name, horizontal_scale, machine_type as \"machine_type: _\", workspace_id as \"workspace_id: _\" FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "registry",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "repository_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 4,
-          "name": "image_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "image_tag",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "status: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_status",
-              "kind": {
-                "Enum": [
-                  "created",
-                  "pushed",
-                  "deploying",
-                  "running",
-                  "stopped",
-                  "errored",
-                  "deleted"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 7,
-          "name": "deployed_image",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 8,
-          "name": "digitalocean_app_id",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "region",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 10,
-          "name": "domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "horizontal_scale",
-          "type_info": "Int2"
-        },
-        {
-          "ordinal": 12,
-          "name": "machine_type: _",
-          "type_info": {
-            "Custom": {
-              "name": "deployment_machine_type",
-              "kind": {
-                "Enum": [
-                  "micro",
-                  "small",
-                  "medium",
-                  "large"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 13,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        true,
-        true,
-        false,
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "cfa94513c732ecea44c806b4463d826427db9b5bcf1b4ea508933de463f6329e": {
     "query": "INSERT INTO user_phone_number VALUES ($1, $2, $3);",
     "describe": {
@@ -5515,24 +4830,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "d1345ac4986e1103b9cb35fc05f4a558184314ddb1e0d560461b4c3c2576b974": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE domain_name IS NOT NULL AND status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
@@ -5610,14 +4907,24 @@
       ]
     }
   },
-  "d831d6a4dd187a0661e87130aaff2191a7b9279b7a56b2b107071557032c0eeb": {
-    "query": "UPDATE deployment_static_sites SET domain_name = $1 WHERE id = $2;",
+  "d81835183e541ae33686b2b7253fc23557215c3aa163d97c633f5c61f00af249": {
+    "query": "INSERT INTO deployment_exposed_port VALUES ($1, $2, $3);",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar",
-          "Uuid"
+          "Uuid",
+          "Int2",
+          {
+            "Custom": {
+              "name": "exposed_port_type",
+              "kind": {
+                "Enum": [
+                  "http"
+                ]
+              }
+            }
+          }
         ]
       },
       "nullable": []
@@ -5974,6 +5281,18 @@
       "nullable": []
     }
   },
+  "df168dc51dc8a4cdaa40d09b1efb644e0c3637bfb0eb4072a1cf9895b5cbea56": {
+    "query": "DELETE FROM deployment_exposed_port WHERE deployment_id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "df36e2ceaf21f2d013406c873646c95c106b64e49665f309738b14201df9ec56": {
     "query": "CREATE INDEX user_login_idx_user_id ON user_login (user_id);",
     "describe": {
@@ -6130,16 +5449,6 @@
       ]
     }
   },
-  "e277dc72e9c5ef737973c2594091a48eac8fdcd808f77e4fa475f9c6c7420eb4": {
-    "query": "CREATE TABLE deployment_request_logs( id BIGSERIAL PRIMARY KEY, deployment_id UUID NOT NULL CONSTRAINT deployment_request_logs_fk_deployment_id REFERENCES deployment(id), timestamp BIGINT NOT NULL CONSTRAINT deployment_request_logs_chk_unsigned CHECK(timestamp >= 0), ip_address VARCHAR(255) NOT NULL, ip_address_location GEOMETRY NOT NULL, method DEPLOYMENT_REQUEST_METHOD NOT NULL, host VARCHAR(255) NOT NULL CONSTRAINT deployment_request_logs_chk_host_is_lower_case CHECK(host = LOWER(host)), protocol DEPLOYMENT_REQUEST_PROTOCOL NOT NULL, path TEXT NOT NULL, response_time REAL NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {
     "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3;",
     "describe": {
@@ -6289,16 +5598,6 @@
       "nullable": []
     }
   },
-  "e593e6fd09eb0a41ec83abb3e16fcfb23210b5871a01556af86a50d98f07ccf4": {
-    "query": "CREATE TABLE data_center_locations( region TEXT CONSTRAINT data_center_locations_pk PRIMARY KEY, location GEOMETRY NOT NULL );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "e5d15755b015b3c4f87308a59c8c625ad75a29974645d8e24875d8daa1919901": {
     "query": "DELETE FROM docker_registry_repository_tag WHERE repository_id = $1;",
     "describe": {
@@ -6351,16 +5650,6 @@
   },
   "e838972a49d95650b469757b993bedfd88a875d6ea455abb1d3e97ded2bb492c": {
     "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "e8fc5c9cf1321c4b222e0bc263662c19e54a0b11d3efd9a52fcda05750195aef": {
-    "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_deployment_id_domain_name FOREIGN KEY(deployment_id, domain_name) REFERENCES deployment(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
       "columns": [],
       "parameters": {
@@ -6515,6 +5804,24 @@
       ]
     }
   },
+  "f57302152f72326de54d8f2076d3dbea4bd959c318c83d25cab8e6e5f3f08b0b": {
+    "query": "SELECT 0 as \"count!\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
     "describe": {
@@ -6573,16 +5880,6 @@
         false,
         true
       ]
-    }
-  },
-  "f91a0a4bb5c15b244e6f328b1f67a63bb3edcc017a41ea5195cef21a96b95b11": {
-    "query": "ALTER TABLE deployed_domain ADD CONSTRAINT deployed_domain_fk_static_site_id_domain_name FOREIGN KEY(static_site_id, domain_name) REFERENCES deployment_static_sites(id, domain_name) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
@@ -6766,6 +6063,65 @@
       ]
     }
   },
+  "fac2f6b53864d38dcdc5538ec0d4fe5ba99677ad907965f9757b4fad8f8d1caa": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_sites WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+  },
   "fae57054668bd320a2e513fb937f06e40324b1393ffd6da90e070c4cbd2cdd25": {
     "query": "INSERT INTO docker_registry_repository VALUES ($1, $2, $3);",
     "describe": {
@@ -6780,6 +6136,19 @@
               "kind": "Simple"
             }
           }
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fb098c06747fe3fd6d3eca864e64909152465ef3782b280e2c19655c4b1db506": {
+    "query": "UPDATE deployment SET min_horizontal_scale = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int2",
+          "Uuid"
         ]
       },
       "nullable": []
@@ -6918,6 +6287,113 @@
       },
       "nullable": [
         null
+      ]
+    }
+  },
+  "fe8c22df6cd21020bbbb9d77bffbc3d1df0940c2b50b7868682f802781c0ea61": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push FROM deployment WHERE id = $1 AND status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "registry",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "repository_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 4,
+          "name": "image_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "image_tag",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "status: _",
+          "type_info": {
+            "Custom": {
+              "name": "deployment_status",
+              "kind": {
+                "Enum": [
+                  "created",
+                  "pushed",
+                  "deploying",
+                  "running",
+                  "stopped",
+                  "errored",
+                  "deleted"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 7,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "region: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 9,
+          "name": "min_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 10,
+          "name": "max_horizontal_scale",
+          "type_info": "Int2"
+        },
+        {
+          "ordinal": 11,
+          "name": "machine_type: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 12,
+          "name": "deploy_on_push",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
       ]
     }
   },

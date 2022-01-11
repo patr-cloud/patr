@@ -1,7 +1,10 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 
 use crate::{
-	models::db_mapping::{DeploymentStaticSite, DeploymentStatus},
+	models::db_mapping::DeploymentStaticSite,
 	query,
 	query_as,
 	Database,
@@ -20,16 +23,9 @@ pub async fn initialize_static_sites_pre(
 					name = TRIM(name)
 				),
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
-			domain_name VARCHAR(255)
-				CONSTRAINT deployment_static_sites_uq_domain_name UNIQUE
-				CONSTRAINT
-					deployment_static_sites_chk_domain_name_is_lower_case
-						CHECK(domain_name = LOWER(domain_name)),
 			workspace_id UUID NOT NULL,
 			CONSTRAINT deployment_static_sites_uq_name_workspace_id
-				UNIQUE(name, workspace_id),
-			CONSTRAINT deployment_static_sites_uq_id_domain_name
-				UNIQUE(id, domain_name)
+				UNIQUE(name, workspace_id)
 		);
 		"#
 	)
@@ -54,17 +50,6 @@ pub async fn initialize_static_sites_post(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		ALTER TABLE deployment_static_sites
-		ADD CONSTRAINT deployment_static_sites_fk_id_domain_name
-		FOREIGN KEY(id, domain_name) REFERENCES deployed_domain(static_site_id, domain_name)
-		DEFERRABLE INITIALLY IMMEDIATE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -72,41 +57,22 @@ pub async fn create_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
 	name: &str,
-	domain_name: Option<&str>,
 	workspace_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
-	if let Some(domain) = domain_name {
-		query!(
-			r#"
-			INSERT INTO
-				deployment_static_sites
-			VALUES
-				($1, $2, 'created', $3, $4);
-			"#,
-			static_site_id as _,
-			name as _,
-			domain,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			INSERT INTO
-				deployment_static_sites
-			VALUES
-				($1, $2, 'created', NULL, $3);
-			"#,
-			static_site_id as _,
-			name as _,
-			workspace_id as _,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment_static_sites
+		VALUES
+			($1, $2, 'created', $3);
+		"#,
+		static_site_id as _,
+		name as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_static_site_by_id(
@@ -120,7 +86,6 @@ pub async fn get_static_site_by_id(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			domain_name,
 			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
@@ -146,7 +111,6 @@ pub async fn get_static_site_by_name_in_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			domain_name,
 			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
@@ -217,7 +181,6 @@ pub async fn get_static_sites_for_workspace(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			status as "status: _",
-			domain_name,
 			workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_sites
@@ -229,70 +192,4 @@ pub async fn get_static_sites_for_workspace(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn set_domain_name_for_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &Uuid,
-	domain_name: Option<&str>,
-) -> Result<(), sqlx::Error> {
-	if let Some(domain_name) = domain_name {
-		query!(
-			r#"
-			INSERT INTO
-				deployed_domain
-			VALUES
-				(NULL, $1, $2)
-			ON CONFLICT(static_site_id) DO UPDATE SET
-				domain_name = EXCLUDED.domain_name;
-			"#,
-			static_site_id as _,
-			domain_name,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				deployment_static_sites
-			SET
-				domain_name = $1
-			WHERE
-				id = $2;
-			"#,
-			domain_name,
-			static_site_id as _,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	} else {
-		query!(
-			r#"
-			DELETE FROM
-				deployed_domain
-			WHERE
-				static_site_id = $1;
-			"#,
-			static_site_id as _,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				deployment_static_sites
-			SET
-				domain_name = NULL
-			WHERE
-				id = $1;
-			"#,
-			static_site_id as _,
-		)
-		.execute(&mut *connection)
-		.await
-		.map(|_| ())
-	}
 }

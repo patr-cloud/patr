@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
+	migrations,
 	models::rbac,
 	query,
 	utils::constants,
@@ -86,7 +87,12 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				db::migrate_database(&mut transaction, version).await?;
+				migrations::run_migrations(
+					&mut transaction,
+					version,
+					&app.config,
+				)
+				.await?;
 
 				transaction.commit().await?;
 				log::info!(

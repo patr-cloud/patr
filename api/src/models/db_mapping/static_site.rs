@@ -1,11 +1,11 @@
-use api_models::utils::Uuid;
-
-use super::DeploymentStatus;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 
 pub struct DeploymentStaticSite {
 	pub id: Uuid,
 	pub name: String,
 	pub status: DeploymentStatus,
-	pub domain_name: Option<String>,
 	pub workspace_id: Uuid,
 }

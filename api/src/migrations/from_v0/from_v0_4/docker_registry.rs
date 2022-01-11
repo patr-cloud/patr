@@ -1,9 +1,10 @@
 use api_models::utils::Uuid;
 
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -56,14 +57,15 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
-	add_docker_registry_info_permission(&mut *connection).await?;
-	reset_permission_order(&mut *connection).await?;
+	add_docker_registry_info_permission(&mut *connection, config).await?;
+	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
 }
 
 async fn add_docker_registry_info_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	let permission_id = loop {
 		let uuid = Uuid::new_v4();
@@ -105,6 +107,7 @@ async fn add_docker_registry_info_permission(
 
 async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	for permission in [
 		// Domain permissions

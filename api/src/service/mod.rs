@@ -5,9 +5,9 @@
 //!
 //! [`App`]: App
 mod auth;
-mod deployment;
 mod docker_registry;
 mod domain;
+mod infrastructure;
 mod metrics;
 mod notifier;
 mod user;
@@ -16,9 +16,9 @@ mod workspace;
 
 pub use self::{
 	auth::*,
-	deployment::*,
 	docker_registry::*,
 	domain::*,
+	infrastructure::*,
 	metrics::*,
 	notifier::*,
 	user::*,
