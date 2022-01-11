@@ -134,20 +134,6 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TABLE entry_point (
-			domain_id BYTEA NOT NULL REFERENCES domain(id),
-			sub_domain VARCHAR(255) NOT NULL DEFAULT '/',
-			path VARCHAR(255) NOT NULL,
-			deployment_id BYTEA NOT NULL,
-			CONSTRAINT entry_point_pk PRIMARY KEY (domain_id, sub_domain)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE INDEX
 			deployment_idx_name
 		ON
