@@ -18,7 +18,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
-			DomainControlStatus,
+			DomainNameserverType,
 			JoinUser,
 			User,
 			UserLogin,
@@ -864,7 +864,7 @@ pub async fn join_user(
 			config,
 			user_data.business_domain_name.as_ref().unwrap(),
 			&workspace_id,
-			&DomainControlStatus::User,
+			&DomainNameserverType::External,
 		)
 		.await?;
 
