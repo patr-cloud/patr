@@ -1,8 +1,7 @@
 use api_models::{
-	models::auth::{
-		PreferredRecoveryOption,
-		RecoveryMethod,
-		SignUpAccountType,
+	models::{
+		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
+		workspace::domain::DomainNameserverType,
 	},
 	utils::Uuid,
 };
@@ -17,13 +16,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::{
-			DomainNameserverType,
-			JoinUser,
-			User,
-			UserLogin,
-			UserToSignUp,
-		},
+		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
 		rbac,
 		AccessTokenData,
 		ExposedUserData,

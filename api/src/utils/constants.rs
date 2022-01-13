@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use api_macros::version;
+use api_models::utils::ResourceType;
 use clap::{crate_authors, crate_description, crate_name, crate_version};
 use eve_rs::AsError;
 use semver::Version;
@@ -40,6 +41,15 @@ impl FromStr for ResourceOwnerType {
 			_ => Error::as_result()
 				.status(500)
 				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+impl From<ResourceType> for ResourceOwnerType {
+	fn from(resource_type: ResourceType) -> Self {
+		match resource_type {
+			ResourceType::Personal => Self::Personal,
+			ResourceType::Business => Self::Business,
 		}
 	}
 }

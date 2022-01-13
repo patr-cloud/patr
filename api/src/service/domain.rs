@@ -1,6 +1,9 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::domain::{self, DnsRecordValue},
+	utils::Uuid,
+};
 use cloudflare::{
 	endpoints::{
 		dns::{
@@ -122,7 +125,7 @@ pub async fn add_domain_to_workspace(
 	config: &Settings,
 	domain_name: &str,
 	workspace_id: &Uuid,
-	nameserver_type: &DomainNameserverType,
+	nameserver_type: &domain::DomainNameserverType,
 ) -> Result<Uuid, Error> {
 	if !validator::is_domain_name_valid(domain_name).await {
 		Error::as_result()
@@ -171,7 +174,7 @@ pub async fn add_domain_to_workspace(
 	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
 		.await?;
 
-	if let DomainNameserverType::Internal = nameserver_type {
+	if let domain::DomainNameserverType::Internal = nameserver_type {
 		// create zone
 		let client = get_cloudflare_client(config).await?;
 		log::trace!("Creating zone for domain: {}", domain_name);
@@ -340,11 +343,9 @@ pub async fn add_patr_dns_record(
 	domain_id: &Uuid,
 	zone_identifier: &str,
 	name: &str,
-	record: &str,
 	ttl: u32,
 	proxied: bool,
-	priority: Option<u64>,
-	dns_record_type: &DnsRecordType,
+	dns_record_type: &DnsRecordValue,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	// login to cloudflare to create new DNS record cloudflare
@@ -353,6 +354,44 @@ pub async fn add_patr_dns_record(
 	let dns_id = db::generate_new_resource_id(connection).await?;
 	log::trace!("creating resource");
 
+	let (Some(record), Some(priority), dns_record_type) = match dns_record_type
+	{
+		DnsRecordValue::A { .. } => (
+			dns_record_type.as_a_record(),
+			None,
+			DnsRecordType::from(dns_record_type),
+		),
+		DnsRecordValue::AAAA { .. } => (
+			dns_record_type.as_aaaa_record(),
+			None,
+			DnsRecordType::from(dns_record_type),
+		),
+		DnsRecordValue::CNAME { .. } => (
+			dns_record_type.as_cname_record(),
+			None,
+			DnsRecordType::from(dns_record_type),
+		),
+		DnsRecordValue::MX { .. } => {
+			if let Some((mx_priority, mx_target)) =
+				dns_record_type.as_mx_record()
+			{
+				(
+					Some(mx_target),
+					Some(mx_priority),
+					DnsRecordType::from(dns_record_type),
+				)
+			} else {
+				return Error::as_result()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+			}
+		}
+		DnsRecordValue::TXT { .. } => (
+			dns_record_type.as_txt_record(),
+			None,
+			DnsRecordType::from(dns_record_type),
+		),
+	};
 	db::create_resource(
 		connection,
 		&dns_id,
@@ -373,7 +412,7 @@ pub async fn add_patr_dns_record(
 		&dns_id,
 		domain_id,
 		name,
-		dns_record_type,
+		&dns_record_type,
 		record,
 		None,
 		ttl as i32,
@@ -389,9 +428,7 @@ pub async fn add_patr_dns_record(
 			content: record.parse::<Ipv6Addr>()?,
 		},
 		DnsRecordType::MX => DnsContent::MX {
-			priority: priority
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())? as u16,
+			priority: priority as u16,
 			content: record.to_string(),
 		},
 		DnsRecordType::CNAME => DnsContent::CNAME {
@@ -423,11 +460,10 @@ pub async fn update_patr_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	record_id: &Uuid,
 	zone_identifier: &str,
-	record: Option<&str>,
+	content: Option<&str>,
 	ttl: Option<u32>,
 	proxied: Option<bool>,
 	priority: Option<u16>,
-	dns_record_type: &DnsRecordType,
 	config: &Settings,
 ) -> Result<(), Error> {
 	// login to cloudflare to create new DNS record cloudflare
@@ -441,20 +477,20 @@ pub async fn update_patr_dns_record(
 	db::update_patr_domain_dns_record(
 		connection,
 		record_id,
-		record,
+		content,
 		priority.map(|p| p as i32),
 		ttl.map(|ttl| ttl as i32),
 		proxied,
 	)
 	.await?;
 
-	let record = if let Some(record) = record {
+	let record = if let Some(record) = content {
 		record
 	} else {
 		&dns_record.value
 	};
 
-	let content = match dns_record_type {
+	let content = match dns_record.r#type {
 		DnsRecordType::A => DnsContent::A {
 			content: record.parse::<Ipv4Addr>()?,
 		},

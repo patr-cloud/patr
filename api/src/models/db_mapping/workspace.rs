@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use api_models::utils::Uuid;
+use api_models::{models::workspace::domain::DnsRecordValue, utils::Uuid};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -145,6 +145,18 @@ impl FromStr for DnsRecordType {
 			_ => Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+impl From<&DnsRecordValue> for DnsRecordType {
+	fn from(dns_record_value: &DnsRecordValue) -> Self {
+		match dns_record_value {
+			&DnsRecordValue::A { .. } => Self::A,
+			&DnsRecordValue::AAAA { .. } => Self::AAAA,
+			&DnsRecordValue::CNAME { .. } => Self::CNAME,
+			&DnsRecordValue::MX { .. } => Self::MX,
+			&DnsRecordValue::TXT { .. } => Self::TXT,
 		}
 	}
 }

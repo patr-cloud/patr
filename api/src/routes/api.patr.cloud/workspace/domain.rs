@@ -1,4 +1,23 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::domain::{
+		AddDnsRecordRequest,
+		AddDomainRequest,
+		AddDomainResponse,
+		DeleteDnsRecordResponse,
+		DeleteDomainResponse,
+		DnsRecordValue,
+		Domain,
+		DomainNameserverType,
+		GetDomainDnsRecordsResponse,
+		GetDomainInfoResponse,
+		GetDomainsForWorkspaceResponse,
+		PatrDomainDnsRecord,
+		UpdateDomainDnsRecordRequest,
+		VerifyDomainResponse,
+		WorkspaceDomain,
+	},
+	utils::{ResourceType, Uuid},
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -6,10 +25,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{
-		db_mapping::{DnsRecordType, DomainNameserverType},
-		rbac::permissions,
-	},
+	models::{db_mapping::DnsRecordType, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -372,19 +388,30 @@ async fn get_domains_for_workspace(
 	)
 	.await?
 	.into_iter()
-	.map(|domain| {
-		json!({
-			request_keys::ID: domain.id,
-			request_keys::NAME: domain.name,
-			request_keys::VERIFIED: domain.is_verified,
+	.filter_map(|domain| {
+		let domain_type = domain
+			.domain_type
+			.to_string()
+			.parse::<ResourceType>()
+			.ok()?;
+		let nameserver_type = domain
+			.nameserver_type
+			.to_string()
+			.parse::<DomainNameserverType>()
+			.ok()?;
+		Some(WorkspaceDomain {
+			domain: Domain {
+				id: domain.id,
+				name: domain.name,
+				domain_type,
+			},
+			is_verified: domain.is_verified,
+			nameserver_type,
 		})
 	})
-	.collect::<Vec<_>>();
+	.collect();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAINS: domains,
-	}));
+	context.success(GetDomainsForWorkspaceResponse { domains });
 	Ok(context)
 }
 
@@ -429,21 +456,12 @@ async fn add_domain_to_workspace(
 
 	let body = context.get_body_object().clone();
 
-	let domain_name = body
-		.get(request_keys::DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
-
-	// will determine if we control the DNS records or the user
-	let nameserver_type = body
-		.get(request_keys::DOMAIN_NAMESERVER_TYPE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|value| value.parse::<DomainNameserverType>().ok())
-		.flatten()
+	let AddDomainRequest {
+		workspace_id: _,
+		domain,
+		nameserver_type,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -452,27 +470,13 @@ async fn add_domain_to_workspace(
 	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
 		&config,
-		&domain_name,
+		&domain,
 		&workspace_id,
 		&nameserver_type,
 	)
 	.await?;
 
-	if let DomainNameserverType::Internal = nameserver_type {
-		context.json(json!({
-			request_keys::SUCCESS: true,
-			request_keys::DOMAIN_ID: domain_id,
-		}));
-	} else {
-		context.json(json!({
-			request_keys::SUCCESS: true,
-			request_keys::DOMAIN_ID: domain_id,
-			request_keys::TXT_RECORD: {
-				request_keys::TARGET: format!("patrVerify.{}",domain_name),
-				request_keys::CONTENT: domain_id,
-			}
-		}));
-	}
+	context.success(AddDomainResponse { id: domain_id });
 
 	Ok(context)
 }
@@ -545,9 +549,7 @@ async fn verify_domain_in_workspace(
 	.await?;
 
 	if verified {
-		context.json(json!({
-			request_keys::SUCCESS: true
-		}));
+		context.success(VerifyDomainResponse {});
 	} else {
 		// NOPE
 		context.json(error!(DOMAIN_UNVERIFIED));
@@ -613,37 +615,27 @@ async fn get_domain_info_in_workspace(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if domain.is_none() {
-		// Domain cannot be null.
-		// This function wouldn't run unless the resource middleware executes
-		// successfully The resource middleware checks if a resource with that
-		// name exists. If the domain is null but the resource exists, then you
-		// have a dangling resource. This is a big problem. Make sure it's
-		// logged and investigated into
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let domain = domain.unwrap();
+	let domain_type = domain
+		.domain_type
+		.to_string()
+		.parse::<ResourceType>()
+		.ok()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
 
-	context.json(
-		if domain.is_verified {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain.id,
-				request_keys::NAME: domain.name,
-				request_keys::VERIFIED: true
-			})
-		} else {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain.id,
-				request_keys::NAME: domain.name,
-				request_keys::VERIFIED: false,
-			})
+	context.success(GetDomainInfoResponse {
+		domain: Domain {
+			id: domain.id,
+			name: domain.name,
+			domain_type,
 		},
-	);
+		is_verified: true,
+	});
+
 	Ok(context)
 }
 
@@ -700,9 +692,7 @@ async fn delete_domain_in_workspace(
 		.await?;
 	db::delete_resource(context.get_database_connection(), &domain_id).await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(DeleteDomainResponse {});
 	Ok(context)
 }
 
@@ -723,12 +713,42 @@ async fn get_domain_dns_record(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.filter_map(|dns| {
+		let dns_type = match dns.r#type {
+			DnsRecordType::A => DnsRecordValue::A { target: dns.value },
+			DnsRecordType::AAAA => DnsRecordValue::AAAA { target: dns.value },
+			DnsRecordType::CNAME => DnsRecordValue::CNAME { target: dns.value },
+			DnsRecordType::MX => {
+				if let Some(priority) = dns.priority {
+					DnsRecordValue::MX {
+						target: dns.value,
+						priority: priority as u64,
+					}
+				} else {
+					// TODO: if priority is not present, return error
+					DnsRecordValue::MX {
+						target: dns.value,
+						priority: 10,
+					}
+				}
+			}
+			DnsRecordType::TXT => DnsRecordValue::TXT { target: dns.value },
+		};
+		Some(PatrDomainDnsRecord {
+			id: dns.id,
+			domain_id: dns.domain_id,
+			name: dns.name,
+			r#type: dns_type,
+			ttl: dns.ttl as u64,
+			proxied: dns.proxied,
+		})
+	})
+	.collect();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DNS_RECORD: dns_record
-	}));
+	context.success(GetDomainDnsRecordsResponse { dns_record });
+
 	Ok(context)
 }
 
@@ -746,6 +766,8 @@ async fn add_dns_record(
 		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())
 			.unwrap();
 
+	let body = context.get_body_object().clone();
+
 	// check if domain is patr controlled
 	// TODO: maybe change the error code to something more appropriate
 	let domain = db::get_patr_controlled_domain_by_id(
@@ -756,47 +778,19 @@ async fn add_dns_record(
 	.status(400)
 	.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
-	let body = context.get_body_object().clone();
-
-	// type determines what kind of record is being added
-	let r#type = body
-		.get(request_keys::TYPE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|value| value.parse::<DnsRecordType>().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let name = body
-		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let ttl = body
-		.get(request_keys::TTL)
-		.map(|value| value.as_u64())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let proxied = body
-		.get(request_keys::PROXIED)
-		.map(|value| value.as_bool())
-		.flatten()
+	let AddDnsRecordRequest {
+		workspace_id: _,
+		domain_id: _,
+		name,
+		r#type,
+		proxied,
+		ttl,
+	} = context
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let config = context.get_state().config.clone();
-
-	let record = body
-		.get(request_keys::CONTENT)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// add a record to cloudflare
 	let record_id = service::add_patr_dns_record(
@@ -804,21 +798,9 @@ async fn add_dns_record(
 		&workspace_id,
 		&domain_id,
 		&domain.zone_identifier,
-		name,
-		record,
+		&name,
 		ttl as u32,
 		proxied,
-		if let DnsRecordType::MX = &r#type {
-			Some(
-				body.get(request_keys::PRIORITY)
-					.map(|value| value.as_u64())
-					.flatten()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string())?,
-			)
-		} else {
-			None
-		},
 		&r#type,
 		&config,
 	)
@@ -856,66 +838,78 @@ async fn update_dns_record(
 
 	let body = context.get_body_object().clone();
 
-	let ttl = body
-		.get(request_keys::TTL)
-		.map(|value| {
-			value
-				.as_u64()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
+	// let ttl = body
+	// 	.get(request_keys::TTL)
+	// 	.map(|value| {
+	// 		value
+	// 			.as_u64()
+	// 			.status(400)
+	// 			.body(error!(WRONG_PARAMETERS).to_string())
+	// 	})
+	// 	.transpose()?;
 
-	let r#type = body
-		.get(request_keys::TYPE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|value| value.parse::<DnsRecordType>().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	// let r#type = body
+	// 	.get(request_keys::TYPE)
+	// 	.map(|value| value.as_str())
+	// 	.flatten()
+	// 	.map(|value| value.parse::<DnsRecordValue>().ok())
+	// 	.flatten()
+	// 	.status(400)
+	// 	.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let proxied = body
-		.get(request_keys::PROXIED)
-		.map(|value| {
-			value
-				.as_bool()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
+	// let proxied = body
+	// 	.get(request_keys::PROXIED)
+	// 	.map(|value| {
+	// 		value
+	// 			.as_bool()
+	// 			.status(400)
+	// 			.body(error!(WRONG_PARAMETERS).to_string())
+	// 	})
+	// 	.transpose()?;
 
-	let record = body
-		.get(request_keys::CONTENT)
-		.map(|value| {
-			value
-				.as_str()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
+	// let record = body
+	// 	.get(request_keys::CONTENT)
+	// 	.map(|value| {
+	// 		value
+	// 			.as_str()
+	// 			.status(400)
+	// 			.body(error!(WRONG_PARAMETERS).to_string())
+	// 	})
+	// 	.transpose()?;
 
-	let priority = body
-		.get(request_keys::PRIORITY)
-		.map(|value| {
-			value
-				.as_u64()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())
-		})
-		.transpose()?;
+	// let priority = body
+	// 	.get(request_keys::PRIORITY)
+	// 	.map(|value| {
+	// 		value
+	// 			.as_u64()
+	// 			.status(400)
+	// 			.body(error!(WRONG_PARAMETERS).to_string())
+	// 	})
+	// 	.transpose()?;
 
 	let config = context.get_state().config.clone();
+
+	let UpdateDomainDnsRecordRequest {
+		workspace_id: _,
+		domain_id: _,
+		record_id: _,
+		ttl,
+		proxied,
+		content,
+		priority,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	service::update_patr_dns_record(
 		context.get_database_connection(),
 		&record_id,
 		&domain.zone_identifier,
-		record,
+		content.as_deref(),
 		ttl.map(|value| value as u32),
 		proxied,
 		priority.map(|value| value as u16),
-		&r#type,
 		&config,
 	)
 	.await?;
@@ -953,8 +947,6 @@ async fn delete_dns_record(
 	)
 	.await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-	}));
+	context.success(DeleteDnsRecordResponse {});
 	Ok(context)
 }

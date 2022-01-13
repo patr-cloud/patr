@@ -1,11 +1,13 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::domain::DomainNameserverType,
+	utils::Uuid,
+};
 
 use crate::{
 	models::db_mapping::{
 		DnsRecord,
 		DnsRecordType,
 		Domain,
-		DomainNameserverType,
 		PatrControlledDomain,
 		PersonalDomain,
 		WorkspaceDomain,
