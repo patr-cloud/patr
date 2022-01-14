@@ -869,9 +869,7 @@ pub async fn update_kubernetes_managed_url(
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
 			tls: Some(vec![
-				if
-				/* domain.is_patr_controlled */
-				false {
+				if domain.is_ns_internal() {
 					IngressTLS {
 						hosts: Some(vec![format!(
 							"{}.{}",

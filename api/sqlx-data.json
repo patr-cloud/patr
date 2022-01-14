@@ -10,6 +10,114 @@
       "nullable": []
     }
   },
+  "01b820e7f92056807a5368193d7894b2680350dcf7333919f276cdc8a8d4d6a1": {
+    "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_domain_name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
   "05452f7e8ed0ec4322863866b4604e496c5004b7dce28dd96928cc8b7e8ca699": {
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';",
     "describe": {
@@ -1331,8 +1439,8 @@
       "nullable": []
     }
   },
-  "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
-    "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );",
+  "2a826747e647fe4ad78331b038153280f6137519608bb71dd26a280d86e05799": {
+    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_lower_case CHECK( name = LOWER(name) ) CONSTRAINT patr_domain_dns_record_chk_name_is_trimmed CHECK( name = TRIM(name) ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN NOT NULL, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -1341,113 +1449,14 @@
       "nullable": []
     }
   },
-  "2baedbc34f90a3ba0d33d65c13578e6d199de703cab413ebaba22dbb7ffb9055": {
-    "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE backup_phone_country_code = $1 AND backup_phone_number = $2;",
+  "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
+    "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );",
     "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceOwnerType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
+      "columns": [],
       "parameters": {
-        "Left": [
-          "Bpchar",
-          "Text"
-        ]
+        "Left": []
       },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false
-      ]
+      "nullable": []
     }
   },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
@@ -2504,6 +2513,114 @@
       "nullable": []
     }
   },
+  "6147b646c6cfa0bdb0bc4535bf48ef1240ba0f1a5c41edff337bcd625b34d852": {
+    "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
   "61bdcb9809592f89df56f4ed78a2dbd4ef4b2883c47710198af0ffe9c38b2a8c": {
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" WHERE id = $1;",
     "describe": {
@@ -2608,16 +2725,6 @@
   },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
     "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "6558b96a4bbc33428ff4bc1d1b879779b3b0e4cc4ca7b800c2ea36d01e5fe253": {
-    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_lower_case CHECK( name = LOWER(name) ) CONSTRAINT patr_domain_dns_record_chk_name_is_trimmed CHECK( name = TRIM(name) ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl INTEGER NOT NULL, proxied BOOLEAN NOT NULL, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2738,81 +2845,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "6b5bedfc7f5f6dfc0c257fe02815abf7011c62de1db67ca696a984be4983243d": {
-    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE domain_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "type: _",
-          "type_info": {
-            "Custom": {
-              "name": "dns_record_type",
-              "kind": {
-                "Enum": [
-                  "A",
-                  "AAAA",
-                  "CNAME",
-                  "MX",
-                  "TXT"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "value",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 5,
-          "name": "priority",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "ttl",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "proxied",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ]
     }
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
@@ -3743,6 +3775,114 @@
       ]
     }
   },
+  "9b37e191dff5ec8e126657fe400b6837178888c09882a6508952aa2b45c3ce7c": {
+    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id as \"backup_email_domain_id: Uuid\", user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, user_to_sign_up.business_domain_name, user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
+    }
+  },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "query": "CREATE INDEX workspace_idx_active ON workspace (active);",
     "describe": {
@@ -3807,6 +3947,87 @@
         "Left": []
       },
       "nullable": [
+        false
+      ]
+    }
+  },
+  "9dc3ba2102eb99e4c4fb01b5fc806758d1226e2b9ebff86d2d11f70c922d1527": {
+    "query": "SELECT id as \"id: _\", record_identifier, domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "record_identifier",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "value",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "priority",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "ttl",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 8,
+          "name": "proxied",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
         false
       ]
     }
@@ -4095,6 +4316,87 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "a840160e710b9c5e305e0978d2f8c6cb1d2dece3bb5c98593e5a622a85a11f49": {
+    "query": "SELECT id as \"id: _\", record_identifier, domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE domain_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "record_identifier",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "value",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 6,
+          "name": "priority",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "ttl",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 8,
+          "name": "proxied",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
     }
   },
   "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
@@ -4590,81 +4892,6 @@
       "nullable": []
     }
   },
-  "b2f96fc77695ebc53692b43840f68f04e63a970b6be447d1769114b4107b330a": {
-    "query": "SELECT id as \"id: _\", domain_id as \"domain_id: _\", name, type as \"type: _\", value, priority, ttl, proxied FROM patr_domain_dns_record WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "type: _",
-          "type_info": {
-            "Custom": {
-              "name": "dns_record_type",
-              "kind": {
-                "Enum": [
-                  "A",
-                  "AAAA",
-                  "CNAME",
-                  "MX",
-                  "TXT"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 4,
-          "name": "value",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 5,
-          "name": "priority",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 6,
-          "name": "ttl",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "proxied",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        false,
-        false
-      ]
-    }
-  },
   "b2fdf60a7346c285cacdc083afb3a525d7de1d09a3835bcb046d1eb32e5700e0": {
     "query": "UPDATE user_login SET token_expiry = $1, last_activity = $2 WHERE login_id = $3;",
     "describe": {
@@ -5151,7 +5378,7 @@
         "Left": [
           "Text",
           "Int4",
-          "Int4",
+          "Int8",
           "Bool",
           "Uuid"
         ]
@@ -5409,6 +5636,115 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "d22cec09ceb87f6bec53cfa638568db0f0576c6295c146bf655e47fc48e7e8df": {
+    "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE backup_phone_country_code = $1 AND backup_phone_number = $2;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Bpchar",
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
+      ]
     }
   },
   "d281ec88c77a2da5f1e9711a9c332d20afbca4755b1b3b4d67ee42557fe26db3": {
@@ -5678,114 +6014,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "db4dd4db14efea22e4d896830b746679f69f6729e9dcafb446b058b9f86acac0": {
-    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceOwnerType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id as \"backup_email_domain_id: Uuid\", user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, user_to_sign_up.business_domain_name, user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceOwnerType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false
-      ]
     }
   },
   "dca6992cc85f4d617680b1e89577f622f75a94f85adbe7e5142eb8b056e115b2": {
@@ -6182,114 +6410,6 @@
       ]
     }
   },
-  "e24dd25632fa82dbe7d5dccef98bf9c137f76f90024dbc03567ca37896d09a49": {
-    "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_domain_name = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceOwnerType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false
-      ]
-    }
-  },
   "e2db0a9168e8b5a614acb541de96cefe751c666b9a8380e039c6be6523e0dfc4": {
     "query": "UPDATE \"user\" SET backup_phone_country_code = $1, backup_phone_number = $2 WHERE id = $3;",
     "describe": {
@@ -6314,146 +6434,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "e349bcf029d73d87d7fc8d83b321f19945ada68eb54b02edbc75954ad3dce72f": {
-    "query": "INSERT INTO patr_domain_dns_record VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Text",
-          {
-            "Custom": {
-              "name": "dns_record_type",
-              "kind": {
-                "Enum": [
-                  "A",
-                  "AAAA",
-                  "CNAME",
-                  "MX",
-                  "TXT"
-                ]
-              }
-            }
-          },
-          "Text",
-          "Int4",
-          "Int4",
-          "Bool"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "e540d07633144a982d28fb28e40ec6a2b111800de91f77be1817fb9836b47c1e": {
-    "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE username = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceOwnerType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false
-      ]
     }
   },
   "e575aca4066a7ed6cd69ba52e9b48168e8c7f0e22b62988182fa29d434b2158f": {
@@ -6684,6 +6664,147 @@
       },
       "nullable": [
         null
+      ]
+    }
+  },
+  "f4b7a3825a9efcb38495b868c76fddc84104816c7d7519a19b6af1185e2e3930": {
+    "query": "INSERT INTO patr_domain_dns_record VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid",
+          "Text",
+          {
+            "Custom": {
+              "name": "dns_record_type",
+              "kind": {
+                "Enum": [
+                  "A",
+                  "AAAA",
+                  "CNAME",
+                  "MX",
+                  "TXT"
+                ]
+              }
+            }
+          },
+          "Text",
+          "Int4",
+          "Int8",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "f5241593a63e0b55069a716f3b0a77416cabc16d4df4876a6258cd002728c58f": {
+    "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE username = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false
       ]
     }
   },
@@ -6986,114 +7107,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "fc9753753be1e76910a258860893f9e3100afade68d16b84c59faf27b80c8589": {
-    "query": "SELECT username, account_type as \"account_type: ResourceOwnerType\", password, first_name, last_name, backup_email_local, backup_email_domain_id as \"backup_email_domain_id: Uuid\", backup_phone_country_code, backup_phone_number, business_email_local, business_domain_name, business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_name = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceOwnerType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        false,
-        false
-      ]
     }
   },
   "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
