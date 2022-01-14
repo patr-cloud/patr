@@ -1,7 +1,7 @@
 use api_models::utils::Uuid;
 
 use crate::{
-	models::db_mapping::{ManagedUrl, ManagedUrlType, ManagedUrlsList},
+	models::db_mapping::{ManagedUrl, ManagedUrlType},
 	query,
 	query_as,
 	Database,
@@ -270,57 +270,58 @@ pub async fn delete_managed_url(
 pub async fn get_all_managed_urls_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<ManagedUrlsList>, sqlx::Error> {
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
-		ManagedUrlsList,
+		ManagedUrl,
 		r#"
 		WITH RECURSIVE managed_url_list AS (
-			SELECT 
-				managed_url.id as "id!: _",
-				CONCAT(
+			SELECT
+				managed_url.*
+			FROM
+				managed_url
+			INNER JOIN
+				domain
+			ON
+				managed_url.domain_id = domain.id
+			WHERE
+				managed_url.deployment_id = $1 AND
+				managed_url.url_type = 'proxy_to_deployment'
+			UNION ALL
+			SELECT
+				managed_url.*
+			FROM
+				managed_url
+			INNER JOIN
+				domain
+			ON
+				managed_url.domain_id = domain.id
+			JOIN
+				managed_url_list
+			ON
+				managed_url.url LIKE CONCAT(
 					managed_url.sub_domain,
 					'.',
 					domain.name,
-					managed_url.path
-				) AS "complete_url",
-				managed_url.url_type as "url_type!: _",
-				managed_url.deployment_id as "deployment_id: _",
-				managed_url.port,
-				managed_url.static_site_id as "static_site_id: _",
-				managed_url.url,
-				managed_url.workspace_id as "workspace_id!: _"
-			FROM 
-				managed_url
-			INNER JOIN 
-				domain 
-			ON 
-				managed_url.domain_id = domain.id
-			WHERE 
-				managed_url.deployment_id = $1 AND 
-				managed_url.url_type = 'proxy_to_deployment'
-			UNION ALL
-			SELECT 
-				managed_url.id as "id!: _",
-				managed_url_list.complete_url,
-				managed_url.url_type as "url_type!: _",
-				managed_url.deployment_id as "deployment_id: _",
-				managed_url.port,
-				managed_url.static_site_id as "static_site_id: _",
-				managed_url.url,
-				managed_url.workspace_id as "workspace_id!: _"
-			FROM 
-				managed_url
-			JOIN 
-				managed_url_list
-			ON 
-				managed_url_list.complete_url = managed_url.url
-			WHERE 
-				managed_url.url_type = 'redirect' OR 
+					CASE managed_url.path
+						WHEN '/' THEN '%'
+						ELSE CONCAT(managed_url.path, '%')
+					END
+				)
+			WHERE
+				managed_url.url_type = 'redirect' OR
 				managed_url.url_type = 'proxy_url'
-		)
-		SELECT 
-			*
-		FROM 
+		) SELECT
+			id as "id!: _",
+			sub_domain as "sub_domain!: _",
+			domain_id as "domain_id!: _",
+			path as "path!: _",
+			url_type as "url_type!: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id!: _"
+		FROM
 			managed_url_list;
 		"#,
 		deployment_id as _,
@@ -332,57 +333,58 @@ pub async fn get_all_managed_urls_for_deployment(
 pub async fn get_all_managed_urls_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
-) -> Result<Vec<ManagedUrlsList>, sqlx::Error> {
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
-		ManagedUrlsList,
+		ManagedUrl,
 		r#"
 		WITH RECURSIVE managed_url_list AS (
-			SELECT 
-				managed_url.id as "id!: _",
-				CONCAT(
+			SELECT
+				managed_url.*
+			FROM
+				managed_url
+			INNER JOIN
+				domain
+			ON
+				managed_url.domain_id = domain.id
+			WHERE
+				managed_url.static_site_id = $1 AND
+				managed_url.url_type = 'proxy_to_static_site'
+			UNION ALL
+			SELECT
+				managed_url.*
+			FROM
+				managed_url
+			INNER JOIN
+				domain
+			ON
+				managed_url.domain_id = domain.id
+			JOIN
+				managed_url_list
+			ON
+				managed_url.url LIKE CONCAT(
 					managed_url.sub_domain,
 					'.',
 					domain.name,
-					managed_url.path
-				) AS "complete_url",
-				managed_url.url_type as "url_type!: _",
-				managed_url.deployment_id as "deployment_id: _",
-				managed_url.port,
-				managed_url.static_site_id as "static_site_id: _",
-				managed_url.url,
-				managed_url.workspace_id as "workspace_id!: _"
-			FROM 
-				managed_url
-			INNER JOIN 
-				domain 
-			ON 
-				managed_url.domain_id = domain.id
-			WHERE 
-				managed_url.static_site_id = $1 AND 
-				managed_url.url_type = 'proxy_to_static_site'
-			UNION ALL
-			SELECT 
-				managed_url.id as "id!: _",
-				managed_url_list.complete_url,
-				managed_url.url_type as "url_type!: _",
-				managed_url.deployment_id as "deployment_id: _",
-				managed_url.port,
-				managed_url.static_site_id as "static_site_id: _",
-				managed_url.url,
-				managed_url.workspace_id as "workspace_id!: _"
-			FROM 
-				managed_url
-			JOIN 
-				managed_url_list
-			ON 
-				managed_url_list.complete_url = managed_url.url
-			WHERE 
-				managed_url.url_type = 'redirect' OR 
+					CASE managed_url.path
+						WHEN '/' THEN '%'
+						ELSE CONCAT(managed_url.path, '%')
+					END
+				)
+			WHERE
+				managed_url.url_type = 'redirect' OR
 				managed_url.url_type = 'proxy_url'
-		)
-		SELECT 
-			*
-		FROM 
+		) SELECT
+			id as "id!: _",
+			sub_domain as "sub_domain!: _",
+			domain_id as "domain_id!: _",
+			path as "path!: _",
+			url_type as "url_type!: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id!: _"
+		FROM
 			managed_url_list;
 		"#,
 		static_site_id as _,

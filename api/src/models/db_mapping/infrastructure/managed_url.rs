@@ -21,15 +21,3 @@ pub struct ManagedUrl {
 	pub url: Option<String>,
 	pub workspace_id: Uuid,
 }
-
-// TODO: refactor this
-pub struct ManagedUrlsList {
-	pub id: Uuid,
-	pub complete_url: Option<String>,
-	pub url_type: ManagedUrlType,
-	pub deployment_id: Option<Uuid>,
-	pub port: Option<i32>,
-	pub static_site_id: Option<Uuid>,
-	pub url: Option<String>,
-	pub workspace_id: Uuid,
-}
