@@ -49,7 +49,14 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
+	api::{
+		DeleteParams,
+		ListParams,
+		LogParams,
+		Patch,
+		PatchParams,
+		PostParams,
+	},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -777,8 +784,7 @@ pub async fn create_certificates(
 				"dnsNames": domain_list,
 				"issuerRef": {
 					"name": config.kubernetes.cert_issuer,
-					// TODO: change this to cluster-issuer
-					"kind": "Issuer",
+					"kind": "ClusterIssuer",
 					"group": "cert-manager.io"
 				},
 			}
@@ -811,10 +817,12 @@ pub async fn create_certificates(
 		data: certificate_data,
 	};
 
-	let certificate_api = Api::<DynamicObject>::namespaced(
+	let namespace = workspace_id.as_str();
+
+	let certificate_api = Api::<DynamicObject>::namespaced_with(
 		kubernetes_client,
-		workspace_id,
-		certificate_resource,
+		namespace,
+		&certificate_resource,
 	)
 	.create(&PostParams::default(), &certificate)
 	.await?;
