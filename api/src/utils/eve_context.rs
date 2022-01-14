@@ -151,7 +151,7 @@ impl Debug for EveContext {
 		write!(
 			f,
 			"Context: {} - {}",
-			self.get_method().to_string(),
+			self.get_method(),
 			self.get_path()
 		)
 	}
