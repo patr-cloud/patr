@@ -1,21 +1,25 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		CreateDeploymentRequest,
-		CreateDeploymentResponse,
-		DeleteDeploymentResponse,
-		Deployment,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		GetDeploymentInfoResponse,
-		GetDeploymentLogsResponse,
-		ListDeploymentsResponse,
-		PatrRegistry,
-		StartDeploymentResponse,
-		StopDeploymentResponse,
-		UpdateDeploymentRequest,
-		UpdateDeploymentResponse,
+	models::workspace::infrastructure::{
+		deployment::{
+			CreateDeploymentRequest,
+			CreateDeploymentResponse,
+			DeleteDeploymentResponse,
+			Deployment,
+			DeploymentRegistry,
+			DeploymentRunningDetails,
+			DeploymentStatus,
+			GetDeploymentInfoResponse,
+			GetDeploymentLogsResponse,
+			ListDeploymentsResponse,
+			ListLinkedURLsResponse,
+			PatrRegistry,
+			StartDeploymentResponse,
+			StopDeploymentResponse,
+			UpdateDeploymentRequest,
+			UpdateDeploymentResponse,
+		},
+		managed_urls::{ManagedUrl, ManagedUrlType},
 	},
 	utils::{constants, Uuid},
 };
@@ -26,7 +30,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{
+		db_mapping::ManagedUrlType as DbManagedUrlType,
+		rbac::permissions,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -313,6 +320,38 @@ pub fn create_sub_app(
 		],
 	);
 
+	// List all linked URLs of a deployment
+	app.get(
+		"/:deploymentId/managed-urls",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
+		],
+	);
+
 	app
 }
 
@@ -438,7 +477,6 @@ async fn create_deployment(
 				min_horizontal_scale,
 				ports,
 				environment_variables,
-				urls,
 			},
 		deploy_on_create,
 	} = context
@@ -463,7 +501,6 @@ async fn create_deployment(
 		max_horizontal_scale,
 		&ports,
 		&environment_variables,
-		&urls,
 	)
 	.await?;
 
@@ -558,7 +595,6 @@ async fn create_deployment(
 						deploy_on_push,
 						ports,
 						environment_variables,
-						urls,
 					},
 					&config,
 				)
@@ -872,7 +908,6 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports,
 		environment_variables,
-		urls,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -887,8 +922,7 @@ async fn update_deployment(
 		min_horizontal_scale.is_none() &&
 		max_horizontal_scale.is_none() &&
 		ports.is_none() &&
-		environment_variables.is_none() &&
-		urls.is_none()
+		environment_variables.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -908,7 +942,6 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports.as_ref(),
 		environment_variables.as_ref(),
-		urls.as_deref(),
 	)
 	.await?;
 
@@ -938,5 +971,53 @@ async fn update_deployment(
 	}
 
 	context.success(UpdateDeploymentResponse {});
+	Ok(context)
+}
+
+async fn list_linked_urls(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	let urls = db::get_all_managed_urls_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.filter_map(|url| {
+		Some(ManagedUrl {
+			id: url.id,
+			sub_domain: url.sub_domain,
+			domain_id: url.domain_id,
+			path: url.path,
+			url_type: match url.url_type {
+				DbManagedUrlType::ProxyToDeployment => {
+					ManagedUrlType::ProxyDeployment {
+						deployment_id: url.deployment_id?,
+						port: url.port? as u16,
+					}
+				}
+				DbManagedUrlType::ProxyToStaticSite => {
+					ManagedUrlType::ProxyStaticSite {
+						static_site_id: url.static_site_id?,
+					}
+				}
+				DbManagedUrlType::ProxyUrl => {
+					ManagedUrlType::ProxyUrl { url: url.url? }
+				}
+				DbManagedUrlType::Redirect => {
+					ManagedUrlType::Redirect { url: url.url? }
+				}
+			},
+		})
+	})
+	.collect();
+
+	context.success(ListLinkedURLsResponse { urls });
 	Ok(context)
 }

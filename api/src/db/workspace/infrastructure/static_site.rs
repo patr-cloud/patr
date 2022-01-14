@@ -10,21 +10,21 @@ use crate::{
 	Database,
 };
 
-pub async fn initialize_static_sites_pre(
+pub async fn initialize_static_site_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Initializing static sites tables");
+	log::info!("Initializing static site tables");
 	query!(
 		r#"
-		CREATE TABLE deployment_static_sites(
-			id UUID CONSTRAINT deployment_static_sites_pk PRIMARY KEY,
+		CREATE TABLE deployment_static_site(
+			id UUID CONSTRAINT deployment_static_site_pk PRIMARY KEY,
 			name CITEXT NOT NULL
-				CONSTRAINT deployment_static_sites_chk_name_is_trimmed CHECK(
+				CONSTRAINT deployment_static_site_chk_name_is_trimmed CHECK(
 					name = TRIM(name)
 				),
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
-			CONSTRAINT deployment_static_sites_uq_name_workspace_id
+			CONSTRAINT deployment_static_site_uq_name_workspace_id
 				UNIQUE(name, workspace_id)
 		);
 		"#
@@ -35,15 +35,15 @@ pub async fn initialize_static_sites_pre(
 	Ok(())
 }
 
-pub async fn initialize_static_sites_post(
+pub async fn initialize_static_site_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::info!("Finishing up static sites tables initialization");
+	log::info!("Finishing up static site tables initialization");
 
 	query!(
 		r#"
-		ALTER TABLE deployment_static_sites
-		ADD CONSTRAINT deployment_static_sites_fk_id_workspace_id
+		ALTER TABLE deployment_static_site
+		ADD CONSTRAINT deployment_static_site_fk_id_workspace_id
 		FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
 		"#
 	)
@@ -62,7 +62,7 @@ pub async fn create_static_site(
 	query!(
 		r#"
 		INSERT INTO
-			deployment_static_sites
+			deployment_static_site
 		VALUES
 			($1, $2, 'created', $3);
 		"#,
@@ -88,7 +88,7 @@ pub async fn get_static_site_by_id(
 			status as "status: _",
 			workspace_id as "workspace_id: _"
 		FROM
-			deployment_static_sites
+			deployment_static_site
 		WHERE
 			id = $1 AND
 			status != 'deleted';
@@ -113,7 +113,7 @@ pub async fn get_static_site_by_name_in_workspace(
 			status as "status: _",
 			workspace_id as "workspace_id: _"
 		FROM
-			deployment_static_sites
+			deployment_static_site
 		WHERE
 			name = $1 AND
 			workspace_id = $2 AND
@@ -134,7 +134,7 @@ pub async fn update_static_site_status(
 	query!(
 		r#"
 		UPDATE
-			deployment_static_sites
+			deployment_static_site
 		SET
 			status = $1
 		WHERE
@@ -156,7 +156,7 @@ pub async fn update_static_site_name(
 	query!(
 		r#"
 		UPDATE
-			deployment_static_sites
+			deployment_static_site
 		SET
 			name = $1
 		WHERE
@@ -183,7 +183,7 @@ pub async fn get_static_sites_for_workspace(
 			status as "status: _",
 			workspace_id as "workspace_id: _"
 		FROM
-			deployment_static_sites
+			deployment_static_site
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';

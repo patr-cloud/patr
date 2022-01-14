@@ -6,7 +6,6 @@ use api_models::{
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
-		EntryPointMapping,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		PatrRegistry,
@@ -57,7 +56,6 @@ pub async fn create_deployment_in_workspace(
 	max_horizontal_scale: u16,
 	ports: &BTreeMap<u16, ExposedPortType>,
 	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
-	_urls: &[EntryPointMapping],
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -303,7 +301,6 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
-	_urls: Option<&[EntryPointMapping]>,
 ) -> Result<(), Error> {
 	db::update_deployment_details(
 		connection,
@@ -353,8 +350,6 @@ pub async fn update_deployment(
 			.await?;
 		}
 	}
-
-	// TODO entry points
 
 	Ok(())
 }
@@ -443,8 +438,6 @@ pub async fn get_full_deployment_config(
 			.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
 			.collect();
 
-	let urls = vec![]; // TODO entry points
-
 	Ok((
 		deployment,
 		workspace_id,
@@ -455,7 +448,6 @@ pub async fn get_full_deployment_config(
 			max_horizontal_scale,
 			ports,
 			environment_variables,
-			urls,
 		},
 	))
 }
