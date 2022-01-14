@@ -1,13 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
-use api_models::{models::workspace::domain::DnsRecordValue, utils::Uuid};
+use api_models::{
+	models::workspace::domain::DomainNameserverType,
+	utils::{ResourceType, Uuid},
+};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-	error,
-	utils::{constants::ResourceOwnerType, Error},
-};
+use crate::{error, utils::Error};
 
 pub struct Workspace {
 	pub id: Uuid,
@@ -19,19 +19,19 @@ pub struct Workspace {
 pub struct Domain {
 	pub id: Uuid,
 	pub name: String,
-	pub r#type: ResourceOwnerType,
+	pub r#type: ResourceType,
 }
 
 pub struct PersonalDomain {
 	pub id: Uuid,
 	pub name: String,
-	pub domain_type: ResourceOwnerType,
+	pub domain_type: ResourceType,
 }
 
 pub struct WorkspaceDomain {
 	pub id: Uuid,
 	pub name: String,
-	pub domain_type: ResourceOwnerType,
+	pub domain_type: ResourceType,
 	pub is_verified: bool,
 	pub nameserver_type: DomainNameserverType,
 }
@@ -51,12 +51,13 @@ impl WorkspaceDomain {
 #[serde(rename_all = "camelCase")]
 pub struct DnsRecord {
 	pub id: Uuid,
+	pub record_identifier: String,
 	pub domain_id: Uuid,
 	pub name: String,
 	pub r#type: DnsRecordType,
 	pub value: String,
 	pub priority: Option<i32>,
-	pub ttl: i32,
+	pub ttl: i64,
 	pub proxied: bool,
 }
 
@@ -66,47 +67,6 @@ pub struct PatrControlledDomain {
 	pub domain_id: Uuid,
 	pub nameserver_type: DomainNameserverType,
 	pub zone_identifier: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
-#[sqlx(type_name = "DOMAIN_NAMESERVER_TYPE", rename_all = "lowercase")]
-pub enum DomainNameserverType {
-	Internal,
-	External,
-}
-
-#[allow(dead_code)]
-impl DomainNameserverType {
-	pub fn is_internal(&self) -> bool {
-		matches!(self, Self::Internal)
-	}
-
-	pub fn is_external(&self) -> bool {
-		matches!(self, Self::External)
-	}
-}
-
-impl Display for DomainNameserverType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Internal => write!(f, "internal"),
-			Self::External => write!(f, "external"),
-		}
-	}
-}
-
-impl FromStr for DomainNameserverType {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"internal" => Ok(Self::Internal),
-			"external" => Ok(Self::External),
-			_ => Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
 }
 
 #[derive(Serialize, Deserialize, Clone, sqlx::Type, Debug, PartialEq)]
@@ -145,18 +105,6 @@ impl FromStr for DnsRecordType {
 			_ => Error::as_result()
 				.status(400)
 				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
-}
-
-impl From<&DnsRecordValue> for DnsRecordType {
-	fn from(dns_record_value: &DnsRecordValue) -> Self {
-		match dns_record_value {
-			&DnsRecordValue::A { .. } => Self::A,
-			&DnsRecordValue::AAAA { .. } => Self::AAAA,
-			&DnsRecordValue::CNAME { .. } => Self::CNAME,
-			&DnsRecordValue::MX { .. } => Self::MX,
-			&DnsRecordValue::TXT { .. } => Self::TXT,
 		}
 	}
 }

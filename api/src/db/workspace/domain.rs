@@ -1,6 +1,6 @@
 use api_models::{
 	models::workspace::domain::DomainNameserverType,
-	utils::Uuid,
+	utils::{ResourceType, Uuid},
 };
 
 use crate::{
@@ -14,7 +14,6 @@ use crate::{
 	},
 	query,
 	query_as,
-	utils::constants::ResourceOwnerType,
 	Database,
 };
 
@@ -155,6 +154,7 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE patr_domain_dns_record(
 			id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY,
+			record_identifier TEXT NOT NULL,
 			domain_id UUID NOT NULL,
 			name TEXT NOT NULL
 				CONSTRAINT patr_domain_dns_record_chk_name_is_lower_case CHECK(
@@ -166,7 +166,7 @@ pub async fn initialize_domain_pre(
 			type DNS_RECORD_TYPE NOT NULL,
 			value TEXT NOT NULL,
 			priority INTEGER,
-			ttl INTEGER NOT NULL,
+			ttl BIGINT NOT NULL,
 			proxied BOOLEAN NOT NULL,
 			CONSTRAINT patr_domain_dns_record_fk_domain_id
 				FOREIGN KEY(domain_id)
@@ -269,7 +269,7 @@ pub async fn create_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	domain_name: &str,
-	domain_type: &ResourceOwnerType,
+	domain_type: &ResourceType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -655,6 +655,7 @@ pub async fn get_dns_records_by_domain_id(
 		r#"
 		SELECT
 			id as "id: _",
+			record_identifier,
 			domain_id as "domain_id: _",
 			name,
 			type as "type: _",
@@ -704,6 +705,7 @@ pub async fn get_dns_record_by_id(
 		r#"
 		SELECT
 			id as "id: _",
+			record_identifier,
 			domain_id as "domain_id: _",
 			name,
 			type as "type: _",
@@ -726,12 +728,13 @@ pub async fn get_dns_record_by_id(
 pub async fn create_patr_domain_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
+	record_identifier: &str,
 	domain_id: &Uuid,
 	name: &str,
 	r#type: &DnsRecordType,
 	value: &str,
 	priority: Option<i32>,
-	ttl: i32,
+	ttl: i64,
 	proxied: bool,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -739,9 +742,10 @@ pub async fn create_patr_domain_dns_record(
 		INSERT INTO
 			patr_domain_dns_record
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8);
+			($1, $2, $3, $4, $5, $6, $7, $8, $9);
 		"#,
 		id as _,
+		record_identifier,
 		domain_id as _,
 		name,
 		r#type as _,
@@ -760,7 +764,7 @@ pub async fn update_patr_domain_dns_record(
 	id: &Uuid,
 	value: Option<&str>,
 	priority: Option<i32>,
-	ttl: Option<i32>,
+	ttl: Option<i64>,
 	proxied: Option<bool>,
 ) -> Result<(), sqlx::Error> {
 	query!(

@@ -154,7 +154,7 @@ pub mod message {
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
-		"The domain is not controlled by PATR";
+		"The domain has nameservers outside of Patr";
 	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 }

@@ -1,7 +1,9 @@
-use api_models::{models::user::UserPhoneNumber, utils::Uuid};
+use api_models::{
+	models::user::UserPhoneNumber,
+	utils::{ResourceType, Uuid},
+};
 
 use crate::{
-	constants::ResourceOwnerType,
 	models::db_mapping::{
 		PasswordResetRequest,
 		PersonalEmailToBeVerified,
@@ -1266,7 +1268,7 @@ pub async fn get_user_to_sign_up_by_username(
 		r#"
 		SELECT
 			username,
-			account_type as "account_type: ResourceOwnerType",
+			account_type as "account_type: ResourceType",
 			password,
 			first_name,
 			last_name,
@@ -1317,7 +1319,7 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		r#"
 		SELECT
 			username,
-			account_type as "account_type: ResourceOwnerType",
+			account_type as "account_type: ResourceType",
 			password,
 			first_name,
 			last_name,
@@ -1369,7 +1371,7 @@ pub async fn get_user_to_sign_up_by_email(
 		r#"
 		SELECT
 			user_to_sign_up.username,
-			user_to_sign_up.account_type as "account_type: ResourceOwnerType",
+			user_to_sign_up.account_type as "account_type: ResourceType",
 			user_to_sign_up.password,
 			user_to_sign_up.first_name,
 			user_to_sign_up.last_name,
@@ -1423,7 +1425,7 @@ pub async fn get_user_to_sign_up_by_business_name(
 		r#"
 		SELECT
 			username,
-			account_type as "account_type: ResourceOwnerType",
+			account_type as "account_type: ResourceType",
 			password,
 			first_name,
 			last_name,
@@ -1473,7 +1475,7 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		r#"
 		SELECT
 			username,
-			account_type as "account_type: ResourceOwnerType",
+			account_type as "account_type: ResourceType",
 			password,
 			first_name,
 			last_name,
