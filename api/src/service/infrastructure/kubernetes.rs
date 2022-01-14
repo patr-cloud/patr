@@ -59,11 +59,12 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::ObjectMeta,
+	core::{ApiResource, DynamicObject, ObjectMeta, TypeMeta},
 	Api,
 	Config,
 	Error as KubeError,
 };
+use serde_json::json;
 
 use crate::{
 	db,
@@ -749,6 +750,132 @@ pub(super) async fn get_container_logs(
 	Ok(deployment_logs)
 }
 
+// TODO: add logs
+pub async fn create_certificates(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	static_site_id: &Uuid,
+	domain_list: Vec<String>,
+	config: &Settings,
+) -> Result<(), Error> {
+	let kubernetes_client = get_kubernetes_config(config).await?;
+
+	let certificate_resource = ApiResource {
+		group: "cert-manager.io".to_string(),
+		version: "v1".to_string(),
+		api_version: "cert-manager.io/v1".to_string(),
+		kind: "certificate".to_string(),
+		plural: "certificates".to_string(),
+	};
+
+	// TODO: use yaml raw string to be converted in to value
+	let certificate_data = json!(
+		{
+			"spec": {
+				// TODO: change this name
+				"secretName": format!("tls-domain-{}", deployment_id),
+				"dnsNames": domain_list,
+				"issuerRef": {
+					"name": config.kubernetes.cert_issuer,
+					// TODO: change this to cluster-issuer
+					"kind": "Issuer",
+					"group": "cert-manager.io"
+				},
+			}
+		}
+	);
+
+	let certificate = DynamicObject {
+		types: Some(TypeMeta {
+			api_version: "cert-manager.io/v1".to_string(),
+			kind: "certificate".to_string(),
+		}),
+		metadata: ObjectMeta {
+			annotations: None,
+			cluster_name: None,
+			creation_timestamp: None,
+			deletion_grace_period_seconds: None,
+			deletion_timestamp: None,
+			finalizers: None,
+			generate_name: None,
+			generation: None,
+			labels: None,
+			managed_fields: None,
+			name: Some(format!("cert-domain-{}", deployment_id)),
+			namespace: None,
+			owner_references: None,
+			resource_version: None,
+			self_link: None,
+			uid: None,
+		},
+		data: certificate_data,
+	};
+
+	let certificate_api = Api::<DynamicObject>::namespaced(
+		kubernetes_client,
+		workspace_id,
+		certificate_resource,
+	)
+	.create(&PostParams::default(), &certificate)
+	.await?;
+
+	Ok(())
+}
+
+// TODO: add the logic of errored deployment
+pub async fn get_kubernetes_deployment_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	namespace: &str,
+	config: &Settings,
+) -> Result<DeploymentStatus, Error> {
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let kubernetes_client = get_kubernetes_config(config).await?;
+	let deployment_status =
+		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
+			.get(deployment.id.as_str())
+			.await?
+			.status
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
+	if deployment_status.available_replicas ==
+		Some(deployment.min_horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Running)
+	} else if deployment_status.available_replicas <=
+		Some(deployment.min_horizontal_scale.into())
+	{
+		Ok(DeploymentStatus::Deploying)
+	} else {
+		Ok(DeploymentStatus::Errored)
+	}
+}
+
+async fn service_exists(
+	static_site_id: &Uuid,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let deployment_app =
+		Api::<Service>::namespaced(kubernetes_client, namespace)
+			.get(&format!("service-{}", static_site_id))
+			.await;
+	if let Err(KubeError::Api(error)) = deployment_app {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
+	}
+
+	Ok(true)
+}
+
 async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
@@ -809,60 +936,6 @@ async fn deployment_exists(
 			.get(&format!("deployment-{}", deployment_id))
 			.await;
 
-	if let Err(KubeError::Api(error)) = deployment_app {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
-	}
-
-	Ok(true)
-}
-
-// TODO: add the logic of errored deployment
-pub async fn get_kubernetes_deployment_status(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	namespace: &str,
-	config: &Settings,
-) -> Result<DeploymentStatus, Error> {
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	let kubernetes_client = get_kubernetes_config(config).await?;
-	let deployment_status =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
-			.get(deployment.id.as_str())
-			.await?
-			.status
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-	if deployment_status.available_replicas ==
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Running)
-	} else if deployment_status.available_replicas <=
-		Some(deployment.min_horizontal_scale.into())
-	{
-		Ok(DeploymentStatus::Deploying)
-	} else {
-		Ok(DeploymentStatus::Errored)
-	}
-}
-
-async fn service_exists(
-	static_site_id: &Uuid,
-	kubernetes_client: kube::Client,
-	namespace: &str,
-) -> Result<bool, KubeError> {
-	let deployment_app =
-		Api::<Service>::namespaced(kubernetes_client, namespace)
-			.get(&format!("service-{}", static_site_id))
-			.await;
 	if let Err(KubeError::Api(error)) = deployment_app {
 		if error.code == 404 {
 			return Ok(false);
