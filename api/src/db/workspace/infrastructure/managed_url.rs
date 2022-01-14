@@ -107,7 +107,7 @@ pub async fn initialize_managed_url_post(
 	Ok(())
 }
 
-pub async fn get_all_managed_urls_for_workspace(
+pub async fn get_all_managed_urls_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {

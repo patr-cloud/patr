@@ -1,17 +1,21 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::infrastructure::static_site::{
-		CreateStaticSiteRequest,
-		CreateStaticSiteResponse,
-		DeleteStaticSiteResponse,
-		GetStaticSiteInfoResponse,
-		ListStaticSitesResponse,
-		StartStaticSiteResponse,
-		StaticSite,
-		StaticSiteDetails,
-		StopStaticSiteResponse,
-		UpdateStaticSiteRequest,
-		UpdateStaticSiteResponse,
+	models::workspace::infrastructure::{
+		managed_urls::{ManagedUrl, ManagedUrlType},
+		static_site::{
+			CreateStaticSiteRequest,
+			CreateStaticSiteResponse,
+			DeleteStaticSiteResponse,
+			GetStaticSiteInfoResponse,
+			ListLinkedURLsResponse,
+			ListStaticSitesResponse,
+			StartStaticSiteResponse,
+			StaticSite,
+			StaticSiteDetails,
+			StopStaticSiteResponse,
+			UpdateStaticSiteRequest,
+			UpdateStaticSiteResponse,
+		},
 	},
 	utils::Uuid,
 };
@@ -21,7 +25,10 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{
+		db_mapping::ManagedUrlType as DbManagedUrlType,
+		rbac::permissions,
+	},
 	pin_fn,
 	service,
 	utils::{
@@ -150,9 +157,9 @@ pub fn create_sub_app(
 		],
 	);
 
-	// Upload a new site to the static site
-	app.put(
-		"/:staticSiteId/upload",
+	// Update static site
+	app.patch(
+		"/:staticSiteId/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::static_site::EDIT,
@@ -179,9 +186,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				upload_files_for_static_site
-			)),
+			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
 		],
 	);
 
@@ -282,6 +287,39 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
+		],
+	);
+
+	// List all linked URLs of a static site
+	app.get(
+		"/:staticSiteId/managed-urls",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::static_site::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let static_site_id_string = context
+						.get_param(request_keys::STATIC_SITE_ID)
+						.unwrap();
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&static_site_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
 		],
 	);
 
@@ -555,7 +593,7 @@ async fn start_static_site(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn upload_files_for_static_site(
+async fn update_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -706,5 +744,53 @@ async fn delete_static_site(
 	.await;
 
 	context.json(DeleteStaticSiteResponse {});
+	Ok(context)
+}
+
+async fn list_linked_urls(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
+
+	let urls = db::get_all_managed_urls_for_static_site(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.into_iter()
+	.filter_map(|url| {
+		Some(ManagedUrl {
+			id: url.id,
+			sub_domain: url.sub_domain,
+			domain_id: url.domain_id,
+			path: url.path,
+			url_type: match url.url_type {
+				DbManagedUrlType::ProxyToDeployment => {
+					ManagedUrlType::ProxyDeployment {
+						deployment_id: url.deployment_id?,
+						port: url.port? as u16,
+					}
+				}
+				DbManagedUrlType::ProxyToStaticSite => {
+					ManagedUrlType::ProxyStaticSite {
+						static_site_id: url.static_site_id?,
+					}
+				}
+				DbManagedUrlType::ProxyUrl => {
+					ManagedUrlType::ProxyUrl { url: url.url? }
+				}
+				DbManagedUrlType::Redirect => {
+					ManagedUrlType::Redirect { url: url.url? }
+				}
+			},
+		})
+	})
+	.collect();
+
+	context.success(ListLinkedURLsResponse { urls });
 	Ok(context)
 }

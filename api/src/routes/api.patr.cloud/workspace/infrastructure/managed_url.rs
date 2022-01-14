@@ -178,7 +178,7 @@ async fn list_all_managed_urls(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let urls = db::get_all_managed_urls_for_workspace(
+	let urls = db::get_all_managed_urls_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
