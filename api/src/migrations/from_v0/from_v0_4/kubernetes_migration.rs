@@ -402,7 +402,63 @@ async fn migrate_regions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	todo!()
+	let asia_id = Uuid::new_v4();
+	let _africa_id = Uuid::new_v4();
+	let _europe_id = Uuid::new_v4();
+	let _north_america_id = Uuid::new_v4();
+	let _south_america_id = Uuid::new_v4();
+	let _australia_and_oceania_id = Uuid::new_v4();
+
+	let india_id = Uuid::new_v4();
+	let bangalore_id = Uuid::new_v4();
+
+	query!(
+		r#"
+		INSERT INTO
+			deployment_region
+		VALUES
+			($1, 'Asia', NULL, NULL, NULL);
+		"#,
+		&asia_id,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Asian region
+	query!(
+		r#"
+		INSERT INTO
+			deployment_region
+		VALUES
+			($1, 'India', NULL, NULL, $2);
+		"#,
+		&india_id,
+		&asia_id,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Bangalore region
+	query!(
+		r#"
+		INSERT INTO
+			deployment_region
+		VALUES
+			(
+				$1, 
+				'Bangalore', 
+				'digitalocean', 
+				ST_SetSRID(POINT(12.9716, 77.5946)::GEOMETRY,4326), 
+				$2
+			);
+		"#,
+		&bangalore_id,
+		&india_id,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 async fn stop_all_running_deployments(
