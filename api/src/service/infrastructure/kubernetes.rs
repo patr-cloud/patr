@@ -1050,8 +1050,8 @@ pub async fn get_container_logs(
 // TODO: add logs
 pub async fn create_certificates(
 	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	static_site_id: &Uuid,
+	certificate_name: &str,
+	secret_name: &str,
 	domain_list: Vec<String>,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -1069,8 +1069,7 @@ pub async fn create_certificates(
 	let certificate_data = json!(
 		{
 			"spec": {
-				// TODO: change this name
-				"secretName": format!("tls-domain-{}", deployment_id),
+				"secretName": secret_name,
 				"dnsNames": domain_list,
 				"issuerRef": {
 					"name": config.kubernetes.cert_issuer,
@@ -1097,7 +1096,7 @@ pub async fn create_certificates(
 			generation: None,
 			labels: None,
 			managed_fields: None,
-			name: Some(format!("cert-domain-{}", deployment_id)),
+			name: Some(certificate_name.to_string()),
 			namespace: None,
 			owner_references: None,
 			resource_version: None,
@@ -1109,7 +1108,7 @@ pub async fn create_certificates(
 
 	let namespace = workspace_id.as_str();
 
-	let certificate_api = Api::<DynamicObject>::namespaced_with(
+	let _ = Api::<DynamicObject>::namespaced_with(
 		kubernetes_client,
 		namespace,
 		&certificate_resource,
