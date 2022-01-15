@@ -71,3 +71,9 @@ impl Deployment {
 		}
 	}
 }
+
+pub struct DeploymentMachineType {
+	pub id: Uuid,
+	pub cpu_count: i16,
+	pub memory_count: i32,
+}

@@ -1,6 +1,29 @@
+use api_models::utils::Uuid;
+use sqlx::Row;
+
 use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 pub async fn migrate(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	remove_outdated_tables(&mut *connection, config).await?;
+	create_new_tables(&mut *connection, config).await?;
+
+	migrate_machine_types(&mut *connection, config).await?;
+	migrate_regions(&mut *connection, config).await?;
+	stop_all_running_deployments(&mut *connection, config).await?;
+	delete_all_do_apps(&mut *connection, config).await?;
+	// Make sure this is done for both static sites AND deployments
+	migrate_all_managed_urls(&mut *connection, config).await?;
+
+	remove_old_columns(&mut *connection, config).await?;
+	rename_new_columns_to_old_names(&mut *connection, config).await?;
+
+	Ok(())
+}
+
+async fn remove_outdated_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -50,6 +73,13 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn create_new_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
@@ -89,43 +119,9 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO migrate all DO apps to k8s before doing this
-	// TODO migrate all regions to UUIDs before doing this
-	// TODO migrate all machine types to UUIDs before doing this
 	query!(
 		r#"
-		ALTER TABLE deployment
-			DROP COLUMN deployed_image,
-			DROP COLUMN digitalocean_app_id,
-			DROP COLUMN region,
-			DROP COLUMN domain_name CASCADE,
-			DROP COLUMN horizontal_scale,
-			DROP COLUMN machine_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_static_sites
-		DROP COLUMN domain_name CASCADE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TYPE DEPLOYMENT_MACHINE_TYPE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_machine_type(
+		CREATE TABLE deployment_machine_type_new(
 			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
 			cpu_count SMALLINT NOT NULL,
 			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
@@ -150,9 +146,9 @@ pub async fn migrate(
 					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
 				)
 				DEFAULT 1,
-			ADD COLUMN machine_type UUID NOT NULL
+			ADD COLUMN machine_type_new UUID NOT NULL
 				CONSTRAINT deployment_fk_machine_type
-					REFERENCES deployment_machine_type(id),
+					REFERENCES deployment_machine_type_new(id),
 			ADD COLUMN deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE;
 		"#
 	)
@@ -189,4 +185,284 @@ pub async fn migrate(
 	.await?;
 
 	Ok(())
+}
+
+async fn migrate_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	// Create machine types
+	for (cpu_count, memory_count) in [
+		(1, 2),  // 1 vCPU, 0.5 GB RAM
+		(1, 4),  // 1 vCPU, 1 GB RAM
+		(1, 8),  // 1 vCPU, 2 GB RAM
+		(2, 8),  // 2 vCPU, 4 GB RAM
+		(4, 32), // 4 vCPU, 8 GB RAM
+	] {
+		let machine_type_id = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					resource
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+		query!(
+			r#"
+			INSERT INTO
+				deployment_machine_type
+			VALUES
+				($1, $2, $3);
+			"#,
+			machine_type_id,
+			cpu_count as i32,
+			memory_count as i32
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 2
+			)
+		WHERE
+			machine_type = 'micro';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 2
+			)
+		WHERE
+			machine_type = 'micro';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 4
+			)
+		WHERE
+			machine_type = 'small';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 8
+			)
+		WHERE
+			machine_type = 'medium';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type
+				WHERE
+					cpu_count = 2 AND
+					memory_count = 16
+			)
+		WHERE
+			machine_type = 'large';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn remove_old_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+			DROP COLUMN deployed_image,
+			DROP COLUMN digitalocean_app_id,
+			DROP COLUMN region,
+			DROP COLUMN domain_name CASCADE,
+			DROP COLUMN horizontal_scale,
+			DROP COLUMN machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		DROP COLUMN domain_name CASCADE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_MACHINE_TYPE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn rename_new_columns_to_old_names(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_machine_type_new
+		RENAME TO deployment_machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn migrate_regions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	todo!()
+}
+
+async fn stop_all_running_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			status = 'stopped'
+		WHERE
+			status = 'running' OR
+			digitalocean_app_id IS NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn delete_all_do_apps(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let app_ids = query!(
+		r#"
+		SELECT
+			digitalocean_app_id
+		FROM
+			deployment
+		WHERE
+			digitalocean_app_id IS NOT NULL;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<String, _>("digitalocean_app_id"));
+
+	let client = reqwest::Client::new();
+	for app_id in app_ids {
+		// delete DO app
+		client
+			.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
+			.bearer_auth(&config.digitalocean.api_key)
+			.send()
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
+			.status();
+	}
+
+	Ok(())
+}
+
+async fn migrate_all_managed_urls(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	todo!()
 }

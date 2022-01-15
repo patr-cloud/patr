@@ -6,7 +6,16 @@ use api_models::{
 	utils::Uuid,
 };
 
-use crate::{models::db_mapping::Deployment, query, query_as, Database};
+use crate::{
+	db,
+	models::{
+		db_mapping::{Deployment, DeploymentMachineType},
+		deployment::DEFAULT_MACHINE_TYPES,
+	},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -90,8 +99,7 @@ pub async fn initialize_deployment_pre(
 					name = TRIM(name)
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
-			repository_id UUID CONSTRAINT deployment_fk_repository_id
-				REFERENCES docker_registry_repository(id),
+			repository_id UUID,
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
@@ -111,6 +119,9 @@ pub async fn initialize_deployment_pre(
 			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
 				REFERENCES deployment_machine_type(id),
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
+			CONSTRAINT deployment_fk_repository_id_workspace_id
+				FOREIGN KEY(repository_id, workspace_id)
+					REFERENCES docker_registry_repository(id, workspace_id),
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
@@ -293,6 +304,24 @@ pub async fn initialize_deployment_post(
 	// )
 	// .execute(&mut *connection)
 	// .await?;
+
+	for (cpu_count, memory_count) in DEFAULT_MACHINE_TYPES {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO
+				deployment_machine_type
+			VALUES
+				($1, $2, $3);
+			"#,
+			machine_type_id as _,
+			cpu_count,
+			memory_count
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
@@ -874,4 +903,22 @@ pub async fn update_deployment_details(
 	}
 
 	Ok(())
+}
+
+pub async fn get_all_deployment_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<DeploymentMachineType>, sqlx::Error> {
+	query_as!(
+		DeploymentMachineType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu_count,
+			memory_count
+		FROM
+			deployment_machine_type;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
 }

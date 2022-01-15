@@ -69,6 +69,7 @@ use kube::{
 use crate::{
 	db,
 	error,
+	models::deployment,
 	service::{self, infrastructure::digitalocean},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
@@ -285,10 +286,21 @@ pub async fn update_kubernetes_deployment(
 		full_image.to_string()
 	};
 
-	// TODO get this from machine type
+	// get this from machine type
+	let (cpu_count, memory_count) = deployment::MACHINE_TYPES
+		.get()
+		.unwrap()
+		.get(&deployment.machine_type)
+		.unwrap_or(&(1, 2));
 	let machine_type = [
-		("memory".to_string(), Quantity("1G".to_string())),
-		("cpu".to_string(), Quantity("1.0".to_string())),
+		(
+			"memory".to_string(),
+			Quantity(format!("{:.1}G", (*memory_count as f64) / 4f64)),
+		),
+		(
+			"cpu".to_string(),
+			Quantity(format!("{:.1}", *cpu_count as f64)),
+		),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();

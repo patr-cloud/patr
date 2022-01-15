@@ -4,7 +4,7 @@ use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
 	migrations,
-	models::rbac,
+	models::{deployment, rbac},
 	query,
 	utils::constants,
 };
@@ -135,6 +135,21 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		rbac::PERMISSIONS
 			.set(permissions)
 			.expect("PERMISSIONS is already set");
+
+		let machine_types =
+			db::get_all_deployment_machine_types(&mut *transaction)
+				.await?
+				.into_iter()
+				.map(|machine_type| {
+					(
+						machine_type.id,
+						(machine_type.cpu_count, machine_type.memory_count),
+					)
+				})
+				.collect();
+		deployment::MACHINE_TYPES
+			.set(machine_types)
+			.expect("MACHINE_TYPES is already set");
 
 		drop(transaction);
 
