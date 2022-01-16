@@ -448,13 +448,18 @@ async fn delete_all_do_apps(
 	let client = reqwest::Client::new();
 	for app_id in app_ids {
 		// delete DO app
-		client
+		let response = client
 			.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 			.bearer_auth(&config.digitalocean.api_key)
 			.send()
 			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
-			.status();
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		if !response.status().is_success() {
+			return Err(sqlx::Error::Protocol(format!(
+				"failed to delete DO app: `{:#?}`",
+				response.text().await
+			)));
+		}
 	}
 
 	Ok(())
