@@ -24,8 +24,8 @@ pub enum ResourceOwnerType {
 impl Display for ResourceOwnerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ResourceOwnerType::Personal => write!(f, "personal"),
-			ResourceOwnerType::Business => write!(f, "business"),
+			Self::Personal => write!(f, "personal"),
+			Self::Business => write!(f, "business"),
 		}
 	}
 }
@@ -111,51 +111,4 @@ pub mod request_keys {
 	pub const DIGEST: &str = "digest";
 	pub const TAG: &str = "tag";
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
-	pub const DEPLOYMENT_REGIONS: [(&str, &str, (f64, f64)); 21] = [
-		("Asia", "", (0.0, 0.0)),
-		("Europe", "", (0.0, 0.0)),
-		("North-America", "", (0.0, 0.0)),
-		("South-America", "", (0.0, 0.0)),
-		("Australia", "", (0.0, 0.0)),
-		("Africa", "", (0.0, 0.0)),
-		("Asia::India", "", (0.0, 0.0)),
-		("Asia::Singapore", "digitalocean", (1.3521, 103.8198)),
-		("Europe::England", "", (0.0, 0.0)),
-		("Europe::Netherlands", "", (0.0, 0.0)),
-		("Europe::Germany", "", (0.0, 0.0)),
-		("North-America::Canada", "", (0.0, 0.0)),
-		("North-America::USA", "", (0.0, 0.0)),
-		("Asia::India::Bangalore", "digitalocean", (2.9716, 77.5946)),
-		("Europe::England::London", "digtalocean", (51.5072, 0.1276)),
-		(
-			"Europe::Netherlands::Amsterdam",
-			"digitalocean",
-			(52.3676, 4.9041),
-		),
-		(
-			"Europe::Germany::Frankfurt",
-			"digitalocean",
-			(50.1109, 8.6821),
-		),
-		(
-			"North-America::Canada::Toronto",
-			"digitalocean",
-			(43.6532, 79.3832),
-		),
-		(
-			"North-America::USA::New-York-1",
-			"digitalocean",
-			(40.7128, 74.0060),
-		),
-		(
-			"North-America::USA::New-York-2",
-			"digitalocean",
-			(40.7128, 74.0060),
-		),
-		(
-			"North-America::USA::San-Francisco",
-			"digitalocean",
-			(37.7749, 122.4194),
-		),
-	];
 }

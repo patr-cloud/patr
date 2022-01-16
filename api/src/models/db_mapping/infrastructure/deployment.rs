@@ -80,7 +80,7 @@ pub struct DeploymentMachineType {
 	pub memory_count: i32,
 }
 
-#[derive(sqlx::Type, Debug, PartialEq)]
+#[derive(sqlx::Type, Debug, Clone, PartialEq)]
 #[sqlx(type_name = "DEPLOYMENT_CLOUD_PROVIDER", rename_all = "lowercase")]
 pub enum DeploymentCloudProvider {
 	Digitalocean,

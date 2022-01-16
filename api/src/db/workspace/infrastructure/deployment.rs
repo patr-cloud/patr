@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		DeploymentStatus,
@@ -5,21 +7,20 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use futures::Future;
 
 use crate::{
 	db,
 	models::{
-		db_mapping::{
-			Deployment,
-			DeploymentCloudProvider,
-			DeploymentMachineType,
-			DeploymentRegion,
+		db_mapping::{Deployment, DeploymentMachineType},
+		deployment::{
+			DefaultDeploymentRegion,
+			DEFAULT_DEPLOYMENT_REGIONS,
+			DEFAULT_MACHINE_TYPES,
 		},
-		deployment::DEFAULT_MACHINE_TYPES,
 	},
 	query,
 	query_as,
-	utils::constants::request_keys,
 	Database,
 };
 
@@ -230,38 +231,6 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO handle this using entry points
-	// query!(
-	// 	r#"
-	// 	CREATE TABLE deployed_domain(
-	// 		deployment_id UUID
-	// 			CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
-	// 		static_site_id UUID
-	// 			CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
-	// 		domain_name VARCHAR(255) NOT NULL
-	// 			CONSTRAINT deployed_domain_uq_domain_name UNIQUE
-	// 			CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-	// 				domain_name = LOWER(domain_name)
-	// 			),
-	// 		CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE
-	// (deployment_id, domain_name), 		CONSTRAINT
-	// deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id,
-	// domain_name), 		CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
-	// 			(
-	// 				deployment_id IS NULL AND
-	// 				static_site_id IS NOT NULL
-	// 			) OR
-	// 			(
-	// 				deployment_id IS NOT NULL AND
-	// 				static_site_id IS NULL
-	// 			)
-	// 		)
-	// 	);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
 	Ok(())
 }
 
@@ -278,38 +247,6 @@ pub async fn initialize_deployment_post(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	// query!(
-	// 	r#"
-	// 	INSERT INTO
-	// 		data_center_locations
-	// 	VALUES
-	// 		('aws-us-east-1', (-77.4524237, 38.9940541)::GEOMETRY, 4326)),
-	// 		('aws-us-east-2', (-82.7541337, 40.0946354)::GEOMETRY, 4326)),
-	// 		('aws-us-west-2', (-119.2684488, 45.9174667)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-1', (-6.224503, 53.4056545)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-2', (-0.0609266, 51.5085036)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-3', (2.2976644, 48.6009709)::GEOMETRY, 4326)),
-	// 		('aws-eu-central-1', (8.6303932, 50.0992094)::GEOMETRY, 4326)),
-	// 		('aws-ap-southeast-1', (103.6930643, 1.3218269)::GEOMETRY, 4326)),
-	// 		('aws-ap-southeast-2', (151.1907535, -33.9117717)::GEOMETRY, 4326)),
-	// 		('aws-ap-northeast-1', (139.7459176, 35.617436)::GEOMETRY, 4326)),
-	// 		('aws-ap-northeast-2', (126.8736237, 37.5616592)::GEOMETRY, 4326)),
-	// 		('aws-ap-south-1', (72.9667878, 19.2425503)::GEOMETRY, 4326)),
-	// 		('aws-ca-central-1', (-73.6, 45.5)::GEOMETRY, 4326)),
-	// 		('aws-eu-north-1', (17.8419717, 59.326242)::GEOMETRY, 4326)),
-	// 		('do-tor', (-79.3623, 43.6547)::GEOMETRY, 4326)),
-	// 		('do-sfo', (-121.9753, 37.3417)::GEOMETRY, 4326)),
-	// 		('do-nyc', (-73.981, 40.7597)::GEOMETRY, 4326)),
-	// 		('do-lon', (-0.6289, 51.5225)::GEOMETRY, 4326)),
-	// 		('do-ams', (4.9479, 52.3006)::GEOMETRY, 4326)),
-	// 		('do-sgp', (103.695, 1.32123)::GEOMETRY, 4326)),
-	// 		('do-fra', (8.6843, 50.1188)::GEOMETRY, 4326)),
-	// 		('do-blr', (77.5855, 12.9634)::GEOMETRY, 4326));
-	// 		"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
 
 	for (cpu_count, memory_count) in DEFAULT_MACHINE_TYPES {
 		let machine_type_id =
@@ -329,74 +266,8 @@ pub async fn initialize_deployment_post(
 		.await?;
 	}
 
-	for (region, cloud_provider, coordinates) in
-		request_keys::DEPLOYMENT_REGIONS
-	{
-		let region: Vec<&str> = region.rsplit("::").collect();
-
-		let region_id = Uuid::new_v4();
-
-		match region.len() {
-			1 => {
-				query!(
-					r#"
-					INSERT INTO
-						deployment_region
-					VALUES
-						($1, $2, NULL, NULL, NULL);
-					"#,
-					region_id as _,
-					region[0],
-				)
-				.execute(&mut *connection)
-				.await?;
-			}
-			2 => {
-				let parent_region =
-					get_id_by_region_name(connection, region[0]).await?;
-				query!(
-					r#"
-					INSERT INTO
-						deployment_region
-					VALUES
-						($1, $2, NULL, NULL, $3);
-					"#,
-					region_id as _,
-					region[1],
-					parent_region.id as _,
-				)
-				.execute(&mut *connection)
-				.await?;
-			}
-			3 => {
-				let parent_region =
-					get_id_by_region_name(connection, region[1]).await?;
-
-				let cloud_provider = cloud_provider
-					.parse::<DeploymentCloudProvider>()
-					.unwrap_or(DeploymentCloudProvider::Digitalocean);
-
-				query!(
-					r#"
-					INSERT INTO
-						deployment_region
-					VALUES
-						($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
-					"#,
-					region_id as _,
-					region[2],
-					cloud_provider as _,
-					coordinates.0,
-					coordinates.1,
-					parent_region.id as _,
-				)
-				.execute(&mut *connection)
-				.await?;
-			}
-			_ => {
-				//TODO: return sqlx error here
-			}
-		}
+	for region in DEFAULT_DEPLOYMENT_REGIONS.iter() {
+		populate_region(&mut *connection, None, region.clone()).await?;
 	}
 
 	Ok(())
@@ -999,28 +870,67 @@ pub async fn get_all_deployment_machine_types(
 	.await
 }
 
-async fn get_id_by_region_name(
+async fn populate_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	region_name: &str,
-) -> Result<DeploymentRegion, sqlx::Error> {
-	let region = query_as!(
-		DeploymentRegion,
-		r#"
-		SELECT
-			id as "id!: _",
-			name as "name!: String",
-			provider as "provider: _",
-			location as "location: _",
-			parent_region_id as "parent_region_id: _"
-		FROM
-			deployment_region
-		WHERE
-			name = $1;
-		"#,
-		region_name
-	)
-	.fetch_one(&mut *connection)
-	.await?;
+	parent_region_id: Option<Uuid>,
+	region: DefaultDeploymentRegion,
+) -> Result<(), sqlx::Error> {
+	let region_id = loop {
+		let region_id = Uuid::new_v4();
 
-	Ok(region)
+		let row = query!(
+			r#"
+				SELECT
+					id as "id: Uuid"
+				FROM
+					deployment_region
+				WHERE
+					id = $1;
+				"#,
+			region_id as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+
+		if row.is_none() {
+			break region_id;
+		}
+	};
+
+	if region.child_regions.is_empty() {
+		// Populate leaf node
+		query!(
+			r#"
+				INSERT INTO
+					deployment_region
+				VALUES
+					($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
+				"#,
+			region_id as _,
+			region.name,
+			region.cloud_provider.unwrap() as _,
+			region.coordinates.unwrap().0,
+			region.coordinates.unwrap().1,
+			parent_region_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	} else {
+		// Populate parent node
+		query!(
+			r#"
+				INSERT INTO
+					deployment_region
+				VALUES
+					($1, $2, NULL, NULL, $3);
+				"#,
+			region_id as _,
+			region.name,
+			parent_region_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
