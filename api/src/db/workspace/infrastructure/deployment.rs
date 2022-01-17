@@ -128,6 +128,8 @@ pub async fn initialize_deployment_pre(
 					REFERENCES docker_registry_repository(id, workspace_id),
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
+			CONSTRAINT deployment_uq_id_workspace_id
+				UNIQUE(id, workspace_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND

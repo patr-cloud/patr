@@ -446,16 +446,6 @@
       ]
     }
   },
-  "126d1abaca96704ab0efc025ccb141c20ef24d7b12fcf1fb767ce80ff54415c2": {
-    "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port), ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment_exposed_port( deployment_id, workspace_id ), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "12ec65904ba0d3fc836a99a97125cc5d43442d0cc6d5c24a2d79a824a0d128fc": {
     "query": "UPDATE \"user\" SET backup_email_local = $1, backup_email_domain_id = $2 WHERE id = $3;",
     "describe": {
@@ -1173,6 +1163,16 @@
         false,
         false
       ]
+    }
+  },
+  "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
+    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
@@ -2064,6 +2064,16 @@
         "Left": [
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "5198716586d0f372c693b04629cc2b35cde145293878884d3ab56f0991d7df17": {
+    "query": "CREATE TABLE deployment_static_site( id UUID CONSTRAINT deployment_static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -4667,16 +4677,6 @@
       "nullable": []
     }
   },
-  "b722523127207795e00e5a075b280476a2fbd9c75e1587bd145601fb08d87ba4": {
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "b79c1ad5a898a5fb9d24f0782c9f1990888899670a40f6d6bca7abc7161b4f67": {
     "query": "UPDATE workspace SET name = $1 WHERE id = $2;",
     "describe": {
@@ -4945,16 +4945,6 @@
           },
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "bf39b2c52d977617be224ffd905e8a34c828a87c271b437a89393378ca7761e9": {
-    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -5307,6 +5297,16 @@
         false,
         false
       ]
+    }
+  },
+  "d2d8468280def3ef5920cbe67665fd046e4a50a408454c78442fa6015fbf03af": {
+    "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port), ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "d5212ef2129b24442086273d3b7e68a6b9038eb9e3708dd0d72a5c7aa53c0b87": {
@@ -6254,8 +6254,8 @@
       "nullable": []
     }
   },
-  "ea333d5a190238e153365940334b371ef9ddcf6b0c682a359ec205af84dccded": {
-    "query": "CREATE TABLE deployment_static_site( id UUID CONSTRAINT deployment_static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_site_uq_name_workspace_id UNIQUE(name, workspace_id) );",
+  "ea6dfc14493175d975a95da55d24d8da3232f3eb8e199a7505a1ea890fe86f38": {
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
       "columns": [],
       "parameters": {
