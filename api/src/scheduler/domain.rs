@@ -55,6 +55,8 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.begin().await?;
 
+	let settings = config.config.clone();
+
 	let unverified_domains =
 		db::get_all_unverified_domains(&mut connection).await?;
 
@@ -71,7 +73,7 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 	for unverified_domain in unverified_domains {
 		let zone = get_zone_for_domain(&client, &unverified_domain.name).await;
 
-		if let Some(zone) = zone {
+		if let Some(zone) = &zone {
 			let response = client
 				.request(&zone::ZoneDetails {
 					identifier: &zone.id,
@@ -150,6 +152,112 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 				);
 				continue;
 			}
+		}
+		let zone = zone.unwrap();
+
+		let response = client
+			.request(&zone::ZoneDetails {
+				identifier: &zone.id,
+			})
+			.await?;
+
+		if let Status::Active = response.result.status {
+			let workspace_id =
+				db::get_resource_by_id(&mut connection, &unverified_domain.id)
+					.await?
+					.unwrap()
+					.owner_id;
+			if unverified_domain.is_ns_internal() {
+				// TODO: handle this unwrap
+				let certificate_status = service::create_certificates(
+					&workspace_id,
+					&format!("certificate-{}", unverified_domain.id),
+					&format!("tls-{}", unverified_domain.id),
+					vec![unverified_domain.name.clone()],
+					&settings,
+				)
+				.await;
+
+				if let Err(error) = certificate_status {
+					log::error!(
+						"Domain `{}` errored while creating certificates: {}",
+						unverified_domain.name,
+						error.get_error()
+					);
+					continue;
+				}
+			} else {
+				let managed_urls = db::get_all_managed_urls_for_domain(
+					&mut connection,
+					&unverified_domain.id,
+				)
+				.await?;
+
+				for managed_url in managed_urls {
+					let certificate_status = service::create_certificates(
+						&workspace_id,
+						&format!("certificate-{}", managed_url.id),
+						&format!("tls-{}", managed_url.id),
+						vec![format!(
+							"{}.{}",
+							managed_url.sub_domain, unverified_domain.name
+						)],
+						&settings,
+					)
+					.await;
+
+					if let Err(error) = certificate_status {
+						log::error!(
+							"Domain `{}` errored while creating certificates: {}",
+							unverified_domain.name,
+							error.get_error()
+						);
+						continue;
+					}
+				}
+			}
+
+			// Domain is now verified
+			db::set_domain_as_verified(&mut connection, &unverified_domain.id)
+				.await?;
+			let notification_email = db::get_notification_email_for_domain(
+				&mut connection,
+				&unverified_domain.id,
+			)
+			.await?;
+			if notification_email.is_none() {
+				log::error!(
+					"Notification email for domain `{}` is None. {}",
+					unverified_domain.name,
+					"You might have a dangling resource for the domain"
+				);
+			} else {
+				// TODO change this to notifier
+				// mailer::send_domain_verified_mail(
+				// 	config.config.clone(),
+				// 	notification_email.unwrap(),
+				// 	unverified_domain.name,
+				// );
+			}
+			continue;
+		}
+		// else
+
+		// Domain is still not verified. Initiate zone activation check
+		let reqwest_client = reqwest::Client::new();
+		let response = reqwest_client
+			.put(format!(
+				"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
+				response.result.id
+			))
+			.header(
+				"Authorization",
+				format!("Bearer {}", config.config.cloudflare.api_token),
+			)
+			.send()
+			.await;
+		if let Err(err) = response {
+			log::error!("Cannot initiate zone activation check: {}", err);
 		}
 	}
 

@@ -50,14 +50,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{
-		DeleteParams,
-		ListParams,
-		LogParams,
-		Patch,
-		PatchParams,
-		PostParams,
-	},
+	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -1111,7 +1104,11 @@ pub async fn create_certificates(
 		namespace,
 		&certificate_resource,
 	)
-	.create(&PostParams::default(), &certificate)
+	.patch(
+		certificate_name,
+		&PatchParams::default(),
+		&Patch::Apply(&certificate),
+	)
 	.await?;
 
 	Ok(())

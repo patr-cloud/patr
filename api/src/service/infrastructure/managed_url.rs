@@ -27,6 +27,10 @@ pub async fn create_new_managed_url_in_workspace(
 ) -> Result<Uuid, Error> {
 	let managed_url_id = db::generate_new_resource_id(connection).await?;
 
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(500)?;
+
 	db::create_resource(
 		connection,
 		&managed_url_id,
@@ -122,6 +126,15 @@ pub async fn create_new_managed_url_in_workspace(
 		},
 		config,
 		&Uuid::new_v4(),
+	)
+	.await?;
+
+	kubernetes::create_certificates(
+		workspace_id,
+		&format!("certificate-{}", managed_url_id),
+		&format!("tls-{}", managed_url_id),
+		vec![format!("{}.{}", sub_domain, domain.name)],
+		config,
 	)
 	.await?;
 

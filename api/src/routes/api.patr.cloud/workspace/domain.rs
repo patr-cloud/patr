@@ -505,11 +505,18 @@ async fn verify_domain_in_workspace(
 	let domain_id_string =
 		context.get_param(request_keys::DOMAIN_ID).unwrap().clone();
 
+	let workspace_id = context
+		.get_param(request_keys::WORKSPACE_ID)
+		.unwrap()
+		.clone();
+
 	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
 	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
 	let domain_id = Uuid::parse_str(&domain_id_string).unwrap();
+
+	let workspace_id = Uuid::parse_str(&workspace_id).unwrap();
 
 	let domain = db::get_workspace_domain_by_id(
 		context.get_database_connection(),
@@ -530,6 +537,7 @@ async fn verify_domain_in_workspace(
 	let verified = service::is_domain_verified(
 		context.get_database_connection(),
 		&domain.id,
+		&workspace_id,
 		&config,
 	)
 	.await?;
