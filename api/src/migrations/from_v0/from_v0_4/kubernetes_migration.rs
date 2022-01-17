@@ -3,6 +3,138 @@ use sqlx::Row;
 
 use crate::{migrate_query as query, utils::settings::Settings, Database};
 
+#[derive(sqlx::Type, Debug, Clone, PartialEq)]
+#[sqlx(type_name = "DEPLOYMENT_CLOUD_PROVIDER", rename_all = "lowercase")]
+enum DeploymentCloudProvider {
+	Digitalocean,
+}
+
+lazy_static::lazy_static! {
+	static ref DEFAULT_DEPLOYMENT_REGIONS: Vec<DefaultDeploymentRegion> = vec![
+		DefaultDeploymentRegion {
+			name: "Asia",
+			cloud_provider: None,
+			coordinates: None,
+			child_regions: vec![
+				DefaultDeploymentRegion {
+					name: "Singapore",
+					cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+					coordinates: Some((1.3521, 103.8198)),
+					child_regions: vec![],
+				},
+				DefaultDeploymentRegion {
+					name: "India",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![DefaultDeploymentRegion {
+						name: "Bangalore",
+						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+						coordinates: Some((2.9716, 77.5946)),
+						child_regions: vec![],
+					}],
+				},
+			],
+		},
+		DefaultDeploymentRegion {
+			name: "Europe",
+			cloud_provider: None,
+			coordinates: None,
+			child_regions: vec![
+				DefaultDeploymentRegion {
+					name: "England",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![DefaultDeploymentRegion {
+						name: "London",
+						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+						coordinates: Some((51.5072, 0.1276)),
+						child_regions: vec![],
+					}],
+				},
+				DefaultDeploymentRegion {
+					name: "Netherlands",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![DefaultDeploymentRegion {
+						name: "Amsterdam",
+						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+						coordinates: Some((52.3676, 4.9041)),
+						child_regions: vec![],
+					}],
+				},
+				DefaultDeploymentRegion {
+					name: "Germany",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![DefaultDeploymentRegion {
+						name: "Frankfurt",
+						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+						coordinates: Some((50.1109, 8.6821)),
+						child_regions: vec![],
+					}],
+				},
+			],
+		},
+		DefaultDeploymentRegion {
+			name: "North-America",
+			cloud_provider: None,
+			coordinates: None,
+			child_regions: vec![
+				DefaultDeploymentRegion {
+					name: "Canada",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![DefaultDeploymentRegion {
+						name: "Toronto",
+						cloud_provider: Some(DeploymentCloudProvider::Digitalocean),
+						coordinates: Some((43.6532, 79.3832)),
+						child_regions: vec![],
+					}],
+				},
+				DefaultDeploymentRegion {
+					name: "USA",
+					cloud_provider: None,
+					coordinates: None,
+					child_regions: vec![
+						DefaultDeploymentRegion {
+							name: "New-York 1",
+							cloud_provider: Some(
+								DeploymentCloudProvider::Digitalocean,
+							),
+							coordinates: Some((40.7128, 74.0060)),
+							child_regions: vec![],
+						},
+						DefaultDeploymentRegion {
+							name: "New-York 2",
+							cloud_provider: Some(
+								DeploymentCloudProvider::Digitalocean,
+							),
+							coordinates: Some((40.7128, 74.0060)),
+							child_regions: vec![],
+						},
+						DefaultDeploymentRegion {
+							name: "San Francisco",
+							cloud_provider: Some(
+								DeploymentCloudProvider::Digitalocean,
+							),
+							coordinates: Some((37.7749, 122.4194)),
+							child_regions: vec![],
+						},
+					],
+				},
+			],
+		},
+	];
+}
+
+#[derive(Debug, Clone)]
+struct DefaultDeploymentRegion {
+	pub name: &'static str,
+	pub cloud_provider: Option<DeploymentCloudProvider>,
+	pub coordinates: Option<(f64, f64)>,
+	pub child_regions: Vec<DefaultDeploymentRegion>,
+}
+
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
@@ -402,7 +534,86 @@ async fn migrate_regions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	todo!()
+	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
+		let region_id =
+			populate_region(&mut *connection, None, continent).await?;
+		for country in continent.child_regions.iter() {
+			let region_id =
+				populate_region(&mut *connection, Some(&region_id), country)
+					.await?;
+			for city in country.child_regions.iter() {
+				populate_region(&mut *connection, Some(&region_id), city)
+					.await?;
+			}
+		}
+	}
+
+	Ok(())
+}
+
+async fn populate_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	parent_region_id: Option<&Uuid>,
+	region: &DefaultDeploymentRegion,
+) -> Result<Uuid, sqlx::Error> {
+	let region_id = loop {
+		let region_id = Uuid::new_v4();
+
+		let row = query!(
+			r#"
+			SELECT
+				id as "id: Uuid"
+			FROM
+				deployment_region
+			WHERE
+				id = $1;
+			"#,
+			&region_id
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+
+		if row.is_none() {
+			break region_id;
+		}
+	};
+
+	if region.child_regions.is_empty() {
+		// Populate leaf node
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
+			"#,
+			&region_id,
+			&region.name,
+			region.cloud_provider.as_ref().unwrap(),
+			region.coordinates.unwrap().0,
+			region.coordinates.unwrap().1,
+			parent_region_id,
+		)
+		.execute(&mut *connection)
+		.await?;
+	} else {
+		// Populate parent node
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, NULL, NULL, $3);
+			"#,
+			&region_id,
+			&region.name,
+			parent_region_id,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(region_id)
 }
 
 async fn stop_all_running_deployments(

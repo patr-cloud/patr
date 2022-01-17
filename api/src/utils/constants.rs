@@ -24,8 +24,8 @@ pub enum ResourceOwnerType {
 impl Display for ResourceOwnerType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			ResourceOwnerType::Personal => write!(f, "personal"),
-			ResourceOwnerType::Business => write!(f, "business"),
+			Self::Personal => write!(f, "personal"),
+			Self::Business => write!(f, "business"),
 		}
 	}
 }

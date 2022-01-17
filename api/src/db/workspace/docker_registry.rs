@@ -21,7 +21,10 @@ pub async fn initialize_docker_registry_pre(
 					REFERENCES workspace(id),
 			name CITEXT NOT NULL,
 			CONSTRAINT docker_registry_repository_uq_workspace_id_name
-				UNIQUE(workspace_id, name)
+				UNIQUE(workspace_id, name),
+			CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE(
+				id, workspace_id
+			)
 		);
 		"#
 	)
