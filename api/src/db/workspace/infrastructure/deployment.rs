@@ -887,13 +887,13 @@ async fn populate_region(
 
 		let row = query!(
 			r#"
-				SELECT
-					id as "id: Uuid"
-				FROM
-					deployment_region
-				WHERE
-					id = $1;
-				"#,
+			SELECT
+				id as "id: Uuid"
+			FROM
+				deployment_region
+			WHERE
+				id = $1;
+			"#,
 			region_id as _
 		)
 		.fetch_optional(&mut *connection)
@@ -908,11 +908,11 @@ async fn populate_region(
 		// Populate leaf node
 		query!(
 			r#"
-				INSERT INTO
-					deployment_region
-				VALUES
-					($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
-				"#,
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
+			"#,
 			region_id as _,
 			region.name,
 			region.cloud_provider.as_ref().unwrap() as _,
@@ -926,11 +926,11 @@ async fn populate_region(
 		// Populate parent node
 		query!(
 			r#"
-				INSERT INTO
-					deployment_region
-				VALUES
-					($1, $2, NULL, NULL, $3);
-				"#,
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, NULL, NULL, $3);
+			"#,
 			region_id as _,
 			region.name,
 			parent_region_id as _,
