@@ -110,7 +110,5 @@ impl FromStr for DeploymentCloudProvider {
 pub struct DeploymentRegion {
 	pub id: Uuid,
 	pub name: String,
-	pub provider: Option<DeploymentCloudProvider>,
-	pub location: Option<(f64, f64)>,
-	pub parent_region_id: Option<Uuid>,
+	pub cloud_provider: Option<DeploymentCloudProvider>,
 }

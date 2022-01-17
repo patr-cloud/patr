@@ -134,7 +134,9 @@ lazy_static::lazy_static! {
 }
 
 pub static MACHINE_TYPES: OnceCell<HashMap<Uuid, (i16, i32)>> = OnceCell::new();
-pub static REGIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
+pub static REGIONS: OnceCell<
+	HashMap<Uuid, (String, Option<DeploymentCloudProvider>)>,
+> = OnceCell::new();
 
 #[derive(Debug, Clone)]
 pub struct DefaultDeploymentRegion {

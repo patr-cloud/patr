@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		DeploymentStatus,
@@ -7,12 +5,11 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use futures::Future;
 
 use crate::{
 	db,
 	models::{
-		db_mapping::{Deployment, DeploymentMachineType},
+		db_mapping::{Deployment, DeploymentMachineType, DeploymentRegion},
 		deployment::{
 			DefaultDeploymentRegion,
 			DEFAULT_DEPLOYMENT_REGIONS,
@@ -266,8 +263,18 @@ pub async fn initialize_deployment_post(
 		.await?;
 	}
 
-	for region in DEFAULT_DEPLOYMENT_REGIONS.iter() {
-		populate_region(&mut *connection, None, region.clone()).await?;
+	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
+		let region_id =
+			populate_region(&mut *connection, None, continent).await?;
+		for country in continent.child_regions.iter() {
+			let region_id =
+				populate_region(&mut *connection, Some(&region_id), country)
+					.await?;
+			for city in country.child_regions.iter() {
+				populate_region(&mut *connection, Some(&region_id), city)
+					.await?;
+			}
+		}
 	}
 
 	Ok(())
@@ -872,9 +879,9 @@ pub async fn get_all_deployment_machine_types(
 
 async fn populate_region(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	parent_region_id: Option<Uuid>,
-	region: DefaultDeploymentRegion,
-) -> Result<(), sqlx::Error> {
+	parent_region_id: Option<&Uuid>,
+	region: &DefaultDeploymentRegion,
+) -> Result<Uuid, sqlx::Error> {
 	let region_id = loop {
 		let region_id = Uuid::new_v4();
 
@@ -908,7 +915,7 @@ async fn populate_region(
 				"#,
 			region_id as _,
 			region.name,
-			region.cloud_provider.unwrap() as _,
+			region.cloud_provider.as_ref().unwrap() as _,
 			region.coordinates.unwrap().0,
 			region.coordinates.unwrap().1,
 			parent_region_id as _,
@@ -932,5 +939,23 @@ async fn populate_region(
 		.await?;
 	}
 
-	Ok(())
+	Ok(region_id)
+}
+
+pub async fn get_all_deployment_regions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<DeploymentRegion>, sqlx::Error> {
+	query_as!(
+		DeploymentRegion,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _"
+		FROM
+			deployment_region;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
 }
