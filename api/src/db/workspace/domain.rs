@@ -1,10 +1,19 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::domain::DomainNameserverType,
+	utils::{ResourceType, Uuid},
+};
 
 use crate::{
-	models::db_mapping::{Domain, PersonalDomain, WorkspaceDomain},
+	models::db_mapping::{
+		DnsRecord,
+		DnsRecordType,
+		Domain,
+		PatrControlledDomain,
+		PersonalDomain,
+		WorkspaceDomain,
+	},
 	query,
 	query_as,
-	utils::constants::ResourceOwnerType,
 	Database,
 };
 
@@ -33,12 +42,43 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
+		CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM(
+			'internal',
+			'external'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE personal_domain(
+			id UUID CONSTRAINT personal_domain_pk PRIMARY KEY,
+			domain_type RESOURCE_OWNER_TYPE NOT NULL
+				CONSTRAINT personal_domain_chk_domain_type CHECK(
+					domain_type = 'personal'
+				),
+			CONSTRAINT personal_domain_fk_id_domain_type
+				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE workspace_domain(
 			id UUID CONSTRAINT workspace_domain_pk PRIMARY KEY,
 			domain_type RESOURCE_OWNER_TYPE NOT NULL
-				CONSTRAINT workspace_domain_chk_dmn_typ
-					CHECK(domain_type = 'business'),
-			is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+				CONSTRAINT workspace_domain_chk_domain_type CHECK(
+					domain_type = 'business'
+				),
+			is_verified BOOLEAN NOT NULL,
+			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL,
+			CONSTRAINT workspace_domain_uq_id_nameserver_type
+				UNIQUE(id, nameserver_type),
 			CONSTRAINT workspace_domain_fk_id_domain_type
 				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
 		);
@@ -61,14 +101,86 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE TABLE personal_domain(
-			id UUID
-				CONSTRAINT personal_domain_pk PRIMARY KEY,
-			domain_type RESOURCE_OWNER_TYPE NOT NULL
-				CONSTRAINT personal_domain_chk_dmn_typ
-					CHECK(domain_type = 'personal'),
-			CONSTRAINT personal_domain_fk_id_domain_type
-				FOREIGN KEY(id, domain_type) REFERENCES domain(id, type)
+		CREATE TABLE patr_controlled_domain(
+			domain_id UUID NOT NULL
+				CONSTRAINT patr_controlled_domain_pk PRIMARY KEY,
+			zone_identifier TEXT NOT NULL,
+			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
+				CONSTRAINT patr_controlled_domain_chk_nameserver_type CHECK(
+					nameserver_type = 'internal'
+				),
+			CONSTRAINT patr_controlled_domain_fk_domain_id_nameserver_type
+				FOREIGN KEY(domain_id, nameserver_type)	REFERENCES
+					workspace_domain(id, nameserver_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE user_controlled_domain(
+			domain_id UUID NOT NULL
+				CONSTRAINT user_controlled_domain_pk PRIMARY KEY,
+			nameserver_type DOMAIN_NAMESERVER_TYPE NOT NULL
+				CONSTRAINT user_controlled_domain_chk_nameserver_type CHECK(
+					nameserver_type = 'external'
+				),
+			CONSTRAINT user_controlled_domain_fk_domain_id_nameserver_type
+				FOREIGN KEY(domain_id, nameserver_type)	REFERENCES
+					workspace_domain(id, nameserver_type)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE DNS_RECORD_TYPE AS ENUM(
+			'A',
+			'AAAA',
+			'CNAME',
+			'MX',
+			'TXT'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE patr_domain_dns_record(
+			id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY,
+			record_identifier TEXT NOT NULL,
+			domain_id UUID NOT NULL,
+			name TEXT NOT NULL
+				CONSTRAINT patr_domain_dns_record_chk_name_is_lower_case CHECK(
+					name = LOWER(name)
+				)
+				CONSTRAINT patr_domain_dns_record_chk_name_is_trimmed CHECK(
+					name = TRIM(name)
+				),
+			type DNS_RECORD_TYPE NOT NULL,
+			value TEXT NOT NULL,
+			priority INTEGER,
+			ttl BIGINT NOT NULL,
+			proxied BOOLEAN NOT NULL,
+			CONSTRAINT patr_domain_dns_record_fk_domain_id
+				FOREIGN KEY(domain_id)
+					REFERENCES patr_controlled_domain(domain_id),
+			CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK(
+				(
+					type = 'MX' AND priority IS NOT NULL
+				) OR (
+					type != 'MX' AND priority IS NULL
+				)
+			),
+			CONSTRAINT
+				patr_domain_dns_record_uq_domain_id_name_type_value_priority
+					UNIQUE(domain_id, name, type, value, priority)
 		);
 		"#
 	)
@@ -86,6 +198,16 @@ pub async fn initialize_domain_post(
 		r#"
 		ALTER TABLE workspace_domain
 		ADD CONSTRAINT workspace_domain_fk_id
+		FOREIGN KEY(id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE patr_domain_dns_record
+		ADD CONSTRAINT patr_domain_dns_record_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id);
 		"#
 	)
@@ -147,7 +269,7 @@ pub async fn create_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	domain_name: &str,
-	domain_type: &ResourceOwnerType,
+	domain_type: &ResourceType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -168,15 +290,17 @@ pub async fn create_generic_domain(
 pub async fn add_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
+	nameserver_type: &DomainNameserverType,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO
 			workspace_domain
 		VALUES
-			($1, 'business', FALSE);
+			($1, 'business', FALSE, $2);
 		"#,
-		domain_id as _
+		domain_id as _,
+		nameserver_type as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -212,7 +336,8 @@ pub async fn get_domains_for_workspace(
 			domain.name,
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.nameserver_type as "nameserver_type: _"
 		FROM
 			domain
 		INNER JOIN
@@ -242,7 +367,8 @@ pub async fn get_all_unverified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!: _",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.nameserver_type as "nameserver_type!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -287,7 +413,8 @@ pub async fn get_all_verified_domains(
 			domain.name as "name!",
 			workspace_domain.id as "id!: _",
 			workspace_domain.domain_type as "domain_type!: _",
-			workspace_domain.is_verified as "is_verified!"
+			workspace_domain.is_verified as "is_verified!",
+			workspace_domain.nameserver_type as "nameserver_type!: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -383,9 +510,8 @@ pub async fn delete_personal_domain(
 		domain_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_domain_from_workspace(
@@ -402,9 +528,8 @@ pub async fn delete_domain_from_workspace(
 		domain_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn delete_generic_domain(
@@ -421,9 +546,8 @@ pub async fn delete_generic_domain(
 		domain_id as _
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_workspace_domain_by_id(
@@ -437,7 +561,8 @@ pub async fn get_workspace_domain_by_id(
 			domain.name,
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
-			workspace_domain.is_verified
+			workspace_domain.is_verified,
+			workspace_domain.nameserver_type as "nameserver_type: _"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -499,4 +624,208 @@ pub async fn get_domain_by_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
+}
+
+pub async fn add_patr_controlled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	zone_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			patr_controlled_domain
+		VALUES
+			($1, $2, 'internal');
+		"#,
+		domain_id as _,
+		zone_identifier,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_dns_records_by_domain_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Vec<DnsRecord>, sqlx::Error> {
+	query_as!(
+		DnsRecord,
+		r#"
+		SELECT
+			id as "id: _",
+			record_identifier,
+			domain_id as "domain_id: _",
+			name,
+			type as "type: _",
+			value,
+			priority,
+			ttl,
+			proxied
+		FROM
+			patr_domain_dns_record
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_patr_controlled_domain_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Option<PatrControlledDomain>, sqlx::Error> {
+	query_as!(
+		PatrControlledDomain,
+		r#"
+		SELECT
+			domain_id as "domain_id: _",
+			zone_identifier,
+			nameserver_type as "nameserver_type: _"
+		FROM
+			patr_controlled_domain
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_dns_record_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	record_id: &Uuid,
+) -> Result<Option<DnsRecord>, sqlx::Error> {
+	query_as!(
+		DnsRecord,
+		r#"
+		SELECT
+			id as "id: _",
+			record_identifier,
+			domain_id as "domain_id: _",
+			name,
+			type as "type: _",
+			value,
+			priority,
+			ttl,
+			proxied
+		FROM
+			patr_domain_dns_record
+		WHERE
+			id = $1;
+		"#,
+		record_id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+// ON CONFLICT reference: https://www.postgresqltutorial.com/postgresql-upsert/
+pub async fn create_patr_domain_dns_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	record_identifier: &str,
+	domain_id: &Uuid,
+	name: &str,
+	r#type: &DnsRecordType,
+	value: &str,
+	priority: Option<i32>,
+	ttl: i64,
+	proxied: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			patr_domain_dns_record
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8, $9);
+		"#,
+		id as _,
+		record_identifier,
+		domain_id as _,
+		name,
+		r#type as _,
+		value,
+		priority,
+		ttl,
+		proxied,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_patr_domain_dns_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	value: Option<&str>,
+	priority: Option<i32>,
+	ttl: Option<i64>,
+	proxied: Option<bool>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_domain_dns_record
+		SET
+			value = $1,
+			priority = $2,
+			ttl = $3,
+			proxied = $4
+		WHERE
+			id = $5;
+		"#,
+		value,
+		priority,
+		ttl,
+		proxied,
+		id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_patr_controlled_dns_record(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	record_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			patr_domain_dns_record
+		WHERE
+			id = $1;
+		"#,
+		record_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_workspace_domain_status(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	is_verified: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			is_verified = $2
+		WHERE
+			id = $1;
+		"#,
+		domain_id as _,
+		is_verified,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

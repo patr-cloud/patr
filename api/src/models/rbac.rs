@@ -34,6 +34,13 @@ pub mod permissions {
 			pub const DELETE: &str = "workspace::domain::delete";
 		}
 
+		pub mod dns_record {
+			pub const LIST: &str = "workspace::dnsRecord::list";
+			pub const ADD: &str = "workspace::dnsRecord::add";
+			pub const EDIT: &str = "workspace::dnsRecord::edit";
+			pub const DELETE: &str = "workspace::dnsRecord::delete";
+		}
+
 		pub mod deployment {
 			pub const LIST: &str = "workspace::deployment::list";
 			pub const CREATE: &str = "workspace::deployment::create";
@@ -105,6 +112,7 @@ pub mod permissions {
 pub mod resource_types {
 	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
+	pub const DNS_RECORD: &str = "dnsRecord";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";

@@ -1,13 +1,31 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::domain::{
+		AddDnsRecordRequest,
+		AddDnsRecordResponse,
+		AddDomainRequest,
+		AddDomainResponse,
+		DeleteDnsRecordResponse,
+		DeleteDomainResponse,
+		DnsRecordValue,
+		Domain,
+		GetDomainDnsRecordsResponse,
+		GetDomainInfoResponse,
+		GetDomainsForWorkspaceResponse,
+		PatrDomainDnsRecord,
+		UpdateDomainDnsRecordRequest,
+		UpdateDomainDnsRecordResponse,
+		VerifyDomainResponse,
+		WorkspaceDomain,
+	},
+	utils::Uuid,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use hex::ToHex;
-use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{db_mapping::DnsRecordType, rbac::permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -197,6 +215,126 @@ pub fn create_sub_app(
 		],
 	);
 
+	// Get list of records for a domain
+	app.get(
+		"/:domainId/dns-record",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::dns_record::LIST,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = Uuid::parse_str(domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_domain_dns_record)),
+		],
+	);
+
+	//  add dns record
+	app.post(
+		"/:domainId/dns-record",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::dns_record::ADD,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::DOMAIN_ID).unwrap();
+					let domain_id = Uuid::parse_str(domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
+		],
+	);
+
+	// update dns record
+	app.patch(
+		"/:domainId/dns-record/:recordId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::dns_record::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::RECORD_ID).unwrap();
+					let domain_id = Uuid::parse_str(domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(update_dns_record)),
+		],
+	);
+
+	app.delete(
+		"/:domainId/dns-record/:recordId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::dns_record::DELETE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let domain_id_string =
+						context.get_param(request_keys::RECORD_ID).unwrap();
+					let domain_id = Uuid::parse_str(domain_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&domain_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
+		],
+	);
+
 	// Do something with the domains, etc, maybe?
 
 	app
@@ -250,19 +388,18 @@ async fn get_domains_for_workspace(
 	)
 	.await?
 	.into_iter()
-	.map(|domain| {
-		json!({
-			request_keys::ID: domain.id,
-			request_keys::NAME: domain.name,
-			request_keys::VERIFIED: domain.is_verified,
-		})
+	.map(|domain| WorkspaceDomain {
+		domain: Domain {
+			id: domain.id,
+			name: domain.name,
+			domain_type: domain.domain_type,
+		},
+		is_verified: domain.is_verified,
+		nameserver_type: domain.nameserver_type,
 	})
-	.collect::<Vec<_>>();
+	.collect();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAINS: domains,
-	}));
+	context.success(GetDomainsForWorkspaceResponse { domains });
 	Ok(context)
 }
 
@@ -305,33 +442,33 @@ async fn add_domain_to_workspace(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let body = context.get_body_object().clone();
-
-	let domain_name = body
-		.get(request_keys::DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
+	let AddDomainRequest {
+		workspace_id: _,
+		domain,
+		nameserver_type,
+	} = context
+		.get_body_as()
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	// move this to service layer
+	let config = context.get_state().config.clone();
 	let domain_id = service::add_domain_to_workspace(
 		context.get_database_connection(),
-		&domain_name,
+		&domain,
+		&nameserver_type,
 		&workspace_id,
+		&config,
 	)
 	.await?;
-	let domain_id = domain_id.as_bytes().encode_hex::<String>();
 
-	context.json(json!({
-		request_keys::SUCCESS: true,
-		request_keys::DOMAIN_ID: domain_id,
-	}));
+	context.success(AddDomainResponse { id: domain_id });
+
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to verify a domain which is to be registered under an
+/// This function is used to verify a domain which is to be registered under a
 /// workspace
 /// required inputs:
 /// auth token in the authorization headers
@@ -388,20 +525,16 @@ async fn verify_domain_in_workspace(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
+	let config = context.get_state().config.clone();
+
 	let verified = service::is_domain_verified(
 		context.get_database_connection(),
 		&domain.id,
+		&config,
 	)
 	.await?;
 
-	if verified {
-		context.json(json!({
-			request_keys::SUCCESS: true
-		}));
-	} else {
-		// NOPE
-		context.json(error!(DOMAIN_UNVERIFIED));
-	}
+	context.success(VerifyDomainResponse { verified });
 	Ok(context)
 }
 
@@ -463,38 +596,18 @@ async fn get_domain_info_in_workspace(
 		context.get_database_connection(),
 		&domain_id,
 	)
-	.await?;
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	if domain.is_none() {
-		// Domain cannot be null.
-		// This function wouldn't run unless the resource middleware executes
-		// successfully The resource middleware checks if a resource with that
-		// name exists. If the domain is null but the resource exists, then you
-		// have a dangling resource. This is a big problem. Make sure it's
-		// logged and investigated into
-		context.status(500).json(error!(SERVER_ERROR));
-		return Ok(context);
-	}
-	let domain = domain.unwrap();
-
-	context.json(
-		if domain.is_verified {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain.id,
-				request_keys::NAME: domain.name,
-				request_keys::VERIFIED: true
-			})
-		} else {
-			json!({
-				request_keys::SUCCESS: true,
-				request_keys::DOMAIN_ID: domain.id,
-				request_keys::NAME: domain.name,
-				request_keys::VERIFIED: false,
-				request_keys::VERIFICATION_TOKEN: domain_id
-			})
+	context.success(GetDomainInfoResponse {
+		domain: Domain {
+			id: domain.id,
+			name: domain.name,
+			domain_type: domain.domain_type,
 		},
-	);
+		is_verified: domain.is_verified,
+	});
 	Ok(context)
 }
 
@@ -551,8 +664,167 @@ async fn delete_domain_in_workspace(
 		.await?;
 	db::delete_resource(context.get_database_connection(), &domain_id).await?;
 
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
+	context.success(DeleteDomainResponse {});
+	Ok(context)
+}
+
+async fn get_domain_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+
+	// Uuid::parse_str throws an error for a wrong string
+	// This error is handled by the resource authenticator middleware
+	// So it's safe to call unwrap() here without crashing the system
+	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
+	let domain_id = Uuid::parse_str(domain_id).unwrap();
+
+	// get dns records from database
+	let records = db::get_dns_records_by_domain_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?
+	.into_iter()
+	.filter_map(|record| {
+		let record_value = match record.r#type {
+			DnsRecordType::A => DnsRecordValue::A {
+				target: record.value,
+			},
+			DnsRecordType::AAAA => DnsRecordValue::AAAA {
+				target: record.value,
+			},
+			DnsRecordType::CNAME => DnsRecordValue::CNAME {
+				target: record.value,
+			},
+			DnsRecordType::MX => DnsRecordValue::MX {
+				target: record.value,
+				priority: record.priority.map(|p| p as u16)?,
+			},
+			DnsRecordType::TXT => DnsRecordValue::TXT {
+				target: record.value,
+			},
+		};
+		Some(PatrDomainDnsRecord {
+			id: record.id,
+			domain_id: record.domain_id,
+			name: record.name,
+			r#type: record_value,
+			ttl: record.ttl as u32,
+			proxied: record.proxied,
+		})
+	})
+	.collect();
+
+	context.success(GetDomainDnsRecordsResponse { records });
+	Ok(context)
+}
+
+async fn add_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let domain_id =
+		Uuid::parse_str(context.get_param(request_keys::DOMAIN_ID).unwrap())
+			.status(400)?;
+
+	let AddDnsRecordRequest {
+		workspace_id: _,
+		domain_id: _,
+		name,
+		r#type,
+		proxied,
+		ttl,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	// add a record to cloudflare
+	let record_id = service::create_patr_domain_dns_record(
+		context.get_database_connection(),
+		&workspace_id,
+		&domain_id,
+		&name,
+		ttl,
+		proxied,
+		&r#type,
+		&config,
+	)
+	.await?;
+
+	context.success(AddDnsRecordResponse { id: record_id });
+	Ok(context)
+}
+
+async fn update_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let domain_id = Uuid::parse_str(domain_id)?;
+
+	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
+	let record_id = Uuid::parse_str(record_id)?;
+
+	let UpdateDomainDnsRecordRequest {
+		workspace_id: _,
+		domain_id: _,
+		record_id: _,
+		ttl,
+		proxied,
+		content,
+		priority,
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	service::update_patr_domain_dns_record(
+		context.get_database_connection(),
+		&domain_id,
+		&record_id,
+		content.as_deref(),
+		ttl,
+		proxied,
+		priority,
+		&config,
+	)
+	.await?;
+
+	context.success(UpdateDomainDnsRecordResponse {});
+	Ok(context)
+}
+
+async fn delete_dns_record(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let domain_id = Uuid::parse_str(domain_id)?;
+
+	let record_id = context.get_param(request_keys::RECORD_ID).unwrap();
+	let record_id = Uuid::parse_str(record_id)?;
+
+	let config = context.get_state().config.clone();
+
+	service::delete_patr_domain_dns_record(
+		context.get_database_connection(),
+		&domain_id,
+		&record_id,
+		&config,
+	)
+	.await?;
+
+	context.success(DeleteDnsRecordResponse {});
 	Ok(context)
 }

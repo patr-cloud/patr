@@ -1,11 +1,6 @@
-use std::{fmt::Display, str::FromStr};
-
 use api_macros::version;
 use clap::{crate_authors, crate_description, crate_name, crate_version};
-use eve_rs::AsError;
 use semver::Version;
-
-use crate::{error, utils::Error};
 
 pub const DATABASE_VERSION: Version = version!();
 
@@ -14,36 +9,9 @@ pub const APP_VERSION: &str = crate_version!();
 pub const APP_AUTHORS: &str = crate_authors!();
 pub const APP_ABOUT: &str = crate_description!();
 
-#[derive(sqlx::Type, Debug, PartialEq)]
-#[sqlx(type_name = "RESOURCE_OWNER_TYPE", rename_all = "lowercase")]
-pub enum ResourceOwnerType {
-	Personal,
-	Business,
-}
+pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
-impl Display for ResourceOwnerType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			ResourceOwnerType::Personal => write!(f, "personal"),
-			ResourceOwnerType::Business => write!(f, "business"),
-		}
-	}
-}
-
-impl FromStr for ResourceOwnerType {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"personal" => Ok(Self::Personal),
-			"business" => Ok(Self::Business),
-			_ => Error::as_result()
-				.status(500)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
-}
-
+#[allow(dead_code)]
 pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const PASSWORD: &str = "password";
@@ -108,6 +76,17 @@ pub mod request_keys {
 	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
+	pub const DOMAIN_NAMESERVER_TYPE: &str = "domainNameserverType";
+	pub const DNS_RECORD: &str = "dnsRecord";
+	pub const RECORD_ID: &str = "recordId";
+	pub const CONTENT: &str = "content";
+	pub const PROXIED: &str = "proxied";
+	pub const TTL: &str = "ttl";
+	pub const PRIORITY: &str = "priority";
+	pub const TYPE: &str = "type";
+	pub const POINTS_TO: &str = "pointsTo";
+	pub const TARGET: &str = "target";
+	pub const TXT_RECORD: &str = "txtRecord";
 	pub const DIGEST: &str = "digest";
 	pub const TAG: &str = "tag";
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
