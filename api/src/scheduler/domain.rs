@@ -8,11 +8,9 @@ use sqlx::Connection;
 use crate::{
 	db,
 	error,
-	models::db_mapping::WorkspaceDomain,
 	scheduler::Job,
 	service,
-	utils::{settings::Settings, validator, Error},
-	Database,
+	utils::{validator, Error},
 };
 
 // Every two hours
@@ -86,12 +84,33 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			} else {
 				continue;
 			}
-			create_certificate_for_domain(
-				&mut connection,
-				&unverified_domain,
-				&settings,
-			)
-			.await?;
+			let workspace_id =
+				db::get_resource_by_id(&mut connection, &unverified_domain.id)
+					.await?
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?
+					.owner_id;
+
+			if unverified_domain.is_ns_internal() {
+				service::create_certificates(
+					&workspace_id,
+					&format!("certificate-{}", unverified_domain.id),
+					&format!("tls-{}", unverified_domain.id),
+					vec![unverified_domain.name.clone()],
+					&settings,
+				)
+				.await?;
+			} else {
+				service::create_certificates_of_managed_urls_for_domain(
+					&mut connection,
+					&workspace_id,
+					&unverified_domain.id,
+					&unverified_domain.name,
+					&settings,
+				)
+				.await?;
+			}
+
 			// Domain is now verified
 			db::update_workspace_domain_status(
 				&mut connection,
@@ -184,50 +203,5 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 		}
 	}
 
-	Ok(())
-}
-
-async fn create_certificate_for_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	unverified_domain: &WorkspaceDomain,
-	settings: &Settings,
-) -> Result<(), Error> {
-	let workspace_id =
-		db::get_resource_by_id(connection, &unverified_domain.id)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?
-			.owner_id;
-
-	if unverified_domain.is_ns_internal() {
-		service::create_certificates(
-			&workspace_id,
-			&format!("certificate-{}", unverified_domain.id),
-			&format!("tls-{}", unverified_domain.id),
-			vec![unverified_domain.name.clone()],
-			settings,
-		)
-		.await?;
-	} else {
-		let managed_urls = db::get_all_managed_urls_for_domain(
-			connection,
-			&unverified_domain.id,
-		)
-		.await?;
-
-		for managed_url in managed_urls {
-			service::create_certificates(
-				&workspace_id,
-				&format!("certificate-{}", managed_url.id),
-				&format!("tls-{}", managed_url.id),
-				vec![format!(
-					"{}.{}",
-					managed_url.sub_domain, unverified_domain.name
-				)],
-				settings,
-			)
-			.await?;
-		}
-	}
 	Ok(())
 }

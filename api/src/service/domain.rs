@@ -267,7 +267,7 @@ pub async fn is_domain_verified(
 				workspace_id,
 				&format!("certificate-{}", domain_id),
 				&format!("tls-{}", domain_id),
-				vec![format!("*.{}", domain.name)],
+				vec![format!("*.{}", domain.name), domain.name],
 				config,
 			)
 			.await?;
@@ -302,7 +302,15 @@ pub async fn is_domain_verified(
 		drop(handle);
 
 		if response.is_some() {
-			// ??
+			create_certificates_of_managed_urls_for_domain(
+				connection,
+				workspace_id,
+				&domain.id,
+				&domain.name,
+				config,
+			)
+			.await?;
+
 			db::update_workspace_domain_status(connection, domain_id, true)
 				.await?;
 
@@ -555,6 +563,29 @@ pub async fn delete_patr_domain_dns_record(
 		})
 		.await?;
 
+	Ok(())
+}
+
+pub async fn create_certificates_of_managed_urls_for_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	domain_name: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let managed_urls =
+		db::get_all_managed_urls_for_domain(connection, domain_id).await?;
+
+	for managed_url in managed_urls {
+		infrastructure::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", managed_url.id),
+			&format!("tls-{}", managed_url.id),
+			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
+			config,
+		)
+		.await?;
+	}
 	Ok(())
 }
 
