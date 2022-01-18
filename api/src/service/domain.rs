@@ -38,6 +38,7 @@ use trust_dns_client::{
 	udp::UdpClientStream,
 };
 
+use super::infrastructure;
 use crate::{
 	db,
 	error,
@@ -233,6 +234,7 @@ pub async fn add_domain_to_workspace(
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
+	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
@@ -263,42 +265,28 @@ pub async fn is_domain_verified(
 		if let Status::Active = zone.result.status {
 			db::update_workspace_domain_status(connection, domain_id, true)
 				.await?;
+
+			infrastructure::create_certificates(
+				workspace_id,
+				&format!("certificate-{}", domain_id),
+				&format!("tls-{}", domain_id),
+				vec![format!("*.{}", domain.name), domain.name],
+				config,
+			)
+			.await?;
 			return Ok(true);
 		}
 
 		Ok(false)
 	} else {
-		let (mut client, bg) = AsyncClient::connect(
-			UdpClientStream::<UdpSocket>::new(constants::DNS_RESOLVER.parse()?),
+		Ok(verify_external_domain(
+			connection,
+			workspace_id,
+			&domain.name,
+			&domain.id,
+			config,
 		)
-		.await?;
-
-		let handle = task::spawn(bg);
-		let mut response = client
-			.query(
-				Name::from_utf8(format!("patrVerify.{}", domain.name))?,
-				DNSClass::IN,
-				RecordType::TXT,
-			)
-			.await?;
-
-		let response = response.take_answers().into_iter().find(|record| {
-			let expected_txt =
-				RData::TXT(TXT::new(vec![domain.id.to_string()]));
-			record.rdata() == &expected_txt
-		});
-
-		handle.abort();
-		drop(handle);
-
-		if response.is_some() {
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
-
-			return Ok(true);
-		}
-
-		Ok(false)
+		.await?)
 	}
 }
 
@@ -544,6 +532,76 @@ pub async fn delete_patr_domain_dns_record(
 		})
 		.await?;
 
+	Ok(())
+}
+
+pub async fn verify_external_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_name: &str,
+	domain_id: &Uuid,
+	config: &Settings,
+) -> Result<bool, Error> {
+	let (mut client, bg) = AsyncClient::connect(
+		UdpClientStream::<UdpSocket>::new(constants::DNS_RESOLVER.parse()?),
+	)
+	.await?;
+
+	let handle = task::spawn(bg);
+	let mut response = client
+		.query(
+			Name::from_utf8(format!("patrVerify.{}", domain_name))?,
+			DNSClass::IN,
+			RecordType::TXT,
+		)
+		.await?;
+
+	let response = response.take_answers().into_iter().find(|record| {
+		let expected_txt = RData::TXT(TXT::new(vec![domain_id.to_string()]));
+		record.rdata() == &expected_txt
+	});
+
+	handle.abort();
+	drop(handle);
+
+	if response.is_some() {
+		create_certificates_of_managed_urls_for_domain(
+			connection,
+			workspace_id,
+			domain_id,
+			domain_name,
+			config,
+		)
+		.await?;
+
+		db::update_workspace_domain_status(connection, domain_id, true).await?;
+
+		return Ok(true);
+	}
+
+	Ok(false)
+}
+
+pub async fn create_certificates_of_managed_urls_for_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	domain_name: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let managed_urls =
+		db::get_all_managed_urls_for_domain(connection, domain_id).await?;
+
+	for managed_url in managed_urls {
+		infrastructure::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", managed_url.id),
+			&format!("tls-{}", managed_url.id),
+			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
+			config,
+		)
+		.await?;
+	}
 	Ok(())
 }
 
