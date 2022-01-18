@@ -72,7 +72,17 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 
 	for (unverified_domain, zone_identifier) in unverified_domains {
 		let mut connection = connection.begin().await?;
-		if let Some(zone_identifier) = zone_identifier {
+
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &unverified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
+
+		if let (Some(zone_identifier), true) =
+			(zone_identifier, unverified_domain.is_ns_internal())
+		{
 			let response = client
 				.request(&zone::ZoneDetails {
 					identifier: &zone_identifier,
@@ -84,32 +94,18 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			} else {
 				continue;
 			}
-			let workspace_id =
-				db::get_resource_by_id(&mut connection, &unverified_domain.id)
-					.await?
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?
-					.owner_id;
 
-			if unverified_domain.is_ns_internal() {
-				service::create_certificates(
-					&workspace_id,
-					&format!("certificate-{}", unverified_domain.id),
-					&format!("tls-{}", unverified_domain.id),
-					vec![unverified_domain.name.clone()],
-					&settings,
-				)
-				.await?;
-			} else {
-				service::create_certificates_of_managed_urls_for_domain(
-					&mut connection,
-					&workspace_id,
-					&unverified_domain.id,
-					&unverified_domain.name,
-					&settings,
-				)
-				.await?;
-			}
+			service::create_certificates(
+				&workspace_id,
+				&format!("certificate-{}", unverified_domain.id),
+				&format!("tls-{}", unverified_domain.id),
+				vec![
+					format!("*.{}", unverified_domain.name),
+					unverified_domain.name.clone(),
+				],
+				&settings,
+			)
+			.await?;
 
 			// Domain is now verified
 			db::update_workspace_domain_status(
@@ -139,6 +135,22 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 			}
 
 			connection.commit().await?;
+		} else {
+			let response = service::verify_external_domain(
+				&mut connection,
+				&workspace_id,
+				&unverified_domain.name,
+				&unverified_domain.id,
+				&settings,
+			)
+			.await?;
+
+			if !response {
+				log::error!(
+					"Could not verify domain `{}`",
+					unverified_domain.name
+				);
+			}
 		}
 	}
 

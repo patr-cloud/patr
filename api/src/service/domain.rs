@@ -278,46 +278,14 @@ pub async fn is_domain_verified(
 
 		Ok(false)
 	} else {
-		let (mut client, bg) = AsyncClient::connect(
-			UdpClientStream::<UdpSocket>::new(constants::DNS_RESOLVER.parse()?),
+		Ok(verify_external_domain(
+			connection,
+			workspace_id,
+			&domain.name,
+			&domain.id,
+			config,
 		)
-		.await?;
-
-		let handle = task::spawn(bg);
-		let mut response = client
-			.query(
-				Name::from_utf8(format!("patrVerify.{}", domain.name))?,
-				DNSClass::IN,
-				RecordType::TXT,
-			)
-			.await?;
-
-		let response = response.take_answers().into_iter().find(|record| {
-			let expected_txt =
-				RData::TXT(TXT::new(vec![domain.id.to_string()]));
-			record.rdata() == &expected_txt
-		});
-
-		handle.abort();
-		drop(handle);
-
-		if response.is_some() {
-			create_certificates_of_managed_urls_for_domain(
-				connection,
-				workspace_id,
-				&domain.id,
-				&domain.name,
-				config,
-			)
-			.await?;
-
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
-
-			return Ok(true);
-		}
-
-		Ok(false)
+		.await?)
 	}
 }
 
@@ -564,6 +532,53 @@ pub async fn delete_patr_domain_dns_record(
 		.await?;
 
 	Ok(())
+}
+
+pub async fn verify_external_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_name: &str,
+	domain_id: &Uuid,
+	config: &Settings,
+) -> Result<bool, Error> {
+	let (mut client, bg) = AsyncClient::connect(
+		UdpClientStream::<UdpSocket>::new(constants::DNS_RESOLVER.parse()?),
+	)
+	.await?;
+
+	let handle = task::spawn(bg);
+	let mut response = client
+		.query(
+			Name::from_utf8(format!("patrVerify.{}", domain_name))?,
+			DNSClass::IN,
+			RecordType::TXT,
+		)
+		.await?;
+
+	let response = response.take_answers().into_iter().find(|record| {
+		let expected_txt = RData::TXT(TXT::new(vec![domain_id.to_string()]));
+		record.rdata() == &expected_txt
+	});
+
+	handle.abort();
+	drop(handle);
+
+	if response.is_some() {
+		create_certificates_of_managed_urls_for_domain(
+			connection,
+			workspace_id,
+			domain_id,
+			domain_name,
+			config,
+		)
+		.await?;
+
+		db::update_workspace_domain_status(connection, domain_id, true).await?;
+
+		return Ok(true);
+	}
+
+	Ok(false)
 }
 
 pub async fn create_certificates_of_managed_urls_for_domain(
