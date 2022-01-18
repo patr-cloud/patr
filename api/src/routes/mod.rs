@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 #[path = "api.patr.cloud/mod.rs"]
 mod api_patr_cloud;
 #[path = "assets.patr.cloud/mod.rs"]
