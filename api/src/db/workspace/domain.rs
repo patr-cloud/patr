@@ -359,28 +359,48 @@ pub async fn get_domains_for_workspace(
 
 pub async fn get_all_unverified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
-	query_as!(
-		WorkspaceDomain,
+) -> Result<Vec<(WorkspaceDomain, Option<String>)>, sqlx::Error> {
+	let rows = query!(
 		r#"
 		SELECT
 			domain.name as "name!",
-			workspace_domain.id as "id!: _",
-			workspace_domain.domain_type as "domain_type!: _",
+			workspace_domain.id as "id!: Uuid",
+			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
-			workspace_domain.nameserver_type as "nameserver_type!: _"
+			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
+			patr_controlled_domain.zone_identifier
 		FROM
 			workspace_domain
 		INNER JOIN
 			domain
 		ON
 			domain.id = workspace_domain.id
+		LEFT JOIN
+			patr_controlled_domain
+		ON
+			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
 			is_verified = FALSE;
 		"#
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			WorkspaceDomain {
+				id: row.id,
+				name: row.name,
+				domain_type: row.domain_type,
+				is_verified: row.is_verified,
+				nameserver_type: row.nameserver_type,
+			},
+			row.zone_identifier,
+		)
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn set_domain_as_verified(
@@ -405,28 +425,48 @@ pub async fn set_domain_as_verified(
 
 pub async fn get_all_verified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
-	query_as!(
-		WorkspaceDomain,
+) -> Result<Vec<(WorkspaceDomain, Option<String>)>, sqlx::Error> {
+	let rows = query!(
 		r#"
 		SELECT
 			domain.name as "name!",
-			workspace_domain.id as "id!: _",
-			workspace_domain.domain_type as "domain_type!: _",
+			workspace_domain.id as "id!: Uuid",
+			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
-			workspace_domain.nameserver_type as "nameserver_type!: _"
+			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
+			patr_controlled_domain.zone_identifier
 		FROM
 			workspace_domain
 		INNER JOIN
 			domain
 		ON
 			domain.id = workspace_domain.id
+		LEFT JOIN
+			patr_controlled_domain
+		ON
+			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
 			is_verified = TRUE;
 		"#
 	)
 	.fetch_all(&mut *connection)
-	.await
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			WorkspaceDomain {
+				id: row.id,
+				name: row.name,
+				domain_type: row.domain_type,
+				is_verified: row.is_verified,
+				nameserver_type: row.nameserver_type,
+			},
+			row.zone_identifier,
+		)
+	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn set_domain_as_unverified(

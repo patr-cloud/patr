@@ -5,7 +5,7 @@ use cron::Schedule;
 use once_cell::sync::OnceCell;
 use tokio::{task, time};
 
-use crate::app::App;
+use crate::{app::App, utils::Error};
 
 static CONFIG: OnceCell<App> = OnceCell::new();
 
@@ -39,7 +39,7 @@ async fn run_job(job: Job) {
 				log::error!(
 					"Error while trying to run job `{}`: {}",
 					job.name,
-					err
+					err.get_error()
 				);
 			}
 		}
@@ -55,7 +55,7 @@ fn get_scheduled_jobs() -> Vec<Job> {
 }
 
 type JobRunner =
-	fn() -> Pin<Box<dyn Future<Output = crate::Result<()>> + Send>>;
+	fn() -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
 struct Job {
 	name: String,

@@ -514,7 +514,7 @@ async fn verify_domain_in_workspace(
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
 	// This won't be executed unless Uuid::parse_str(domain_id) returns Ok
-	let domain_id = Uuid::parse_str(&domain_id_string)?;
+	let domain_id = Uuid::parse_str(&domain_id_string).unwrap();
 
 	let workspace_id = Uuid::parse_str(&workspace_id_string)?;
 

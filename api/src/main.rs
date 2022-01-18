@@ -85,7 +85,8 @@ async fn async_main() -> Result<()> {
 	service::initialize(&app);
 	log::debug!("Service initialized");
 
-	scheduler::domain::refresh_domain_tld_list().await?;
+	// TODO: add error handling here
+	scheduler::domain::refresh_domain_tld_list().await;
 	log::info!("Domain TLD list initialized");
 
 	scheduler::initialize_jobs(&app);
