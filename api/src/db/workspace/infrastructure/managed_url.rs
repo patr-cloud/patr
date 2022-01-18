@@ -144,6 +144,35 @@ pub async fn get_all_managed_urls_in_workspace(
 	.await
 }
 
+pub async fn get_all_managed_urls_for_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			id as "id: _",
+			sub_domain,
+			domain_id as "domain_id: _",
+			path,
+			url_type as "url_type: _",
+			deployment_id as "deployment_id: _",
+			port,
+			static_site_id as "static_site_id: _",
+			url,
+			workspace_id as "workspace_id: _"
+		FROM
+			managed_url
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _
+	)
+	.fetch_all(connection)
+	.await
+}
+
 pub async fn create_new_managed_url_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	managed_url_id: &Uuid,

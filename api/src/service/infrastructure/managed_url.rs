@@ -12,6 +12,7 @@ use crate::{
 	db,
 	error,
 	models::{db_mapping::ManagedUrlType as DbManagedUrlType, rbac},
+	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
@@ -26,6 +27,10 @@ pub async fn create_new_managed_url_in_workspace(
 	config: &Settings,
 ) -> Result<Uuid, Error> {
 	let managed_url_id = db::generate_new_resource_id(connection).await?;
+
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(500)?;
 
 	db::create_resource(
 		connection,
@@ -124,6 +129,17 @@ pub async fn create_new_managed_url_in_workspace(
 		&Uuid::new_v4(),
 	)
 	.await?;
+
+	if domain.is_ns_external() && domain.is_verified {
+		kubernetes::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", managed_url_id),
+			&format!("tls-{}", managed_url_id),
+			vec![format!("{}.{}", sub_domain, domain.name)],
+			config,
+		)
+		.await?;
+	}
 
 	Ok(managed_url_id)
 }
@@ -241,6 +257,17 @@ pub async fn delete_managed_url(
 	managed_url_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
+	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let domain =
+		db::get_workspace_domain_by_id(connection, &managed_url.domain_id)
+			.await?
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+
 	db::delete_managed_url(connection, managed_url_id).await?;
 
 	kubernetes::delete_kubernetes_managed_url(
@@ -250,6 +277,19 @@ pub async fn delete_managed_url(
 		&Uuid::new_v4(),
 	)
 	.await?;
+
+	if domain.is_ns_external() {
+		let secret_name = format!("tls-{}", managed_url.id);
+		let certificate_name = format!("certificate-{}", managed_url.id);
+
+		service::delete_certificates_for_domain(
+			workspace_id,
+			&certificate_name,
+			&secret_name,
+			config,
+		)
+		.await?;
+	}
 
 	Ok(())
 }
