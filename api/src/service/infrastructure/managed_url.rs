@@ -242,16 +242,6 @@ pub async fn delete_managed_url(
 	managed_url_id: &Uuid,
 	config: &Settings,
 ) -> Result<(), Error> {
-	db::delete_managed_url(connection, managed_url_id).await?;
-
-	kubernetes::delete_kubernetes_managed_url(
-		workspace_id,
-		managed_url_id,
-		config,
-		&Uuid::new_v4(),
-	)
-	.await?;
-
 	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
@@ -263,24 +253,28 @@ pub async fn delete_managed_url(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 
-	let secret_name = format!(
-		"{}-{}",
-		managed_url.sub_domain.replace(".", "-"),
-		domain.name.replace(".", "-")
-	);
-	let certificate_name = format!(
-		"certificate-{}-{}",
-		managed_url.sub_domain.replace(".", "-"),
-		domain.name.replace(".", "-")
-	);
+	db::delete_managed_url(connection, managed_url_id).await?;
 
-	service::delete_certificates_for_domain(
+	kubernetes::delete_kubernetes_managed_url(
 		workspace_id,
-		&certificate_name,
-		&secret_name,
+		managed_url_id,
 		config,
+		&Uuid::new_v4(),
 	)
 	.await?;
+
+	if domain.is_ns_external() {
+		let secret_name = format!("tls-{}", managed_url.id);
+		let certificate_name = format!("certificate-{}", managed_url.id);
+
+		service::delete_certificates_for_domain(
+			workspace_id,
+			&certificate_name,
+			&secret_name,
+			config,
+		)
+		.await?;
+	}
 
 	Ok(())
 }
