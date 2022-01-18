@@ -3,6 +3,7 @@ use cloudflare::{
 	framework::async_api::ApiClient,
 };
 use eve_rs::AsError;
+use sqlx::Connection;
 
 use crate::{
 	db,
@@ -72,6 +73,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 	let client = service::get_cloudflare_client(&config.config).await?;
 
 	for (unverified_domain, zone_identifier) in unverified_domains {
+		let mut connection = connection.begin().await?;
 		if let Some(zone_identifier) = zone_identifier {
 			let response = client
 				.request(&zone::ZoneDetails {
@@ -80,38 +82,44 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				.await?;
 
 			if let Status::Active = response.result.status {
-				create_certificate_for_domain(
-					&mut connection,
-					&unverified_domain,
-					&settings,
-				)
-				.await?;
-				// Domain is now verified
-				db::set_domain_as_verified(
-					&mut connection,
-					&unverified_domain.id,
-				)
-				.await?;
-				let notification_email = db::get_notification_email_for_domain(
-					&mut connection,
-					&unverified_domain.id,
-				)
-				.await?;
-				if notification_email.is_none() {
-					log::error!(
-						"Notification email for domain `{}` is None. {}",
-						unverified_domain.name,
-						"You might have a dangling resource for the domain"
-					);
-				} else {
-					// TODO change this to notifier
-					// mailer::send_domain_verified_mail(
-					// 	config.config.clone(),
-					// 	notification_email.unwrap(),
-					// 	unverified_domain.name,
-					// );
-				}
+				// Create certs below
+			} else {
+				continue;
 			}
+			create_certificate_for_domain(
+				&mut connection,
+				&unverified_domain,
+				&settings,
+			)
+			.await?;
+			// Domain is now verified
+			db::update_workspace_domain_status(
+				&mut connection,
+				&unverified_domain.id,
+				true,
+			)
+			.await?;
+			let notification_email = db::get_notification_email_for_domain(
+				&mut connection,
+				&unverified_domain.id,
+			)
+			.await?;
+			if notification_email.is_none() {
+				log::error!(
+					"Notification email for domain `{}` is None. {}",
+					unverified_domain.name,
+					"You might have a dangling resource for the domain"
+				);
+			} else {
+				// TODO change this to notifier
+				// mailer::send_domain_verified_mail(
+				// 	config.config.clone(),
+				// 	notification_email.unwrap(),
+				// 	unverified_domain.name,
+				// );
+			}
+
+			connection.commit().await?;
 		}
 	}
 
@@ -136,60 +144,43 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 	};
 
 	for (verified_domain, zone_identifier) in verified_domains {
-		if let Some(zone_identifier) = zone_identifier {
-			let response = client
-				.request(&zone::ZoneDetails {
-					identifier: &zone_identifier,
-				})
-				.await?;
-
-			if let Status::Active = response.result.status {
-				continue;
-			}
-			// Domain is now unverified
-			db::set_domain_as_unverified(&mut connection, &verified_domain.id)
-				.await?;
-			let notification_email = db::get_notification_email_for_domain(
-				&mut connection,
-				&verified_domain.id,
-			)
-			.await?;
-			if notification_email.is_none() {
-				log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
-				continue;
-			}
-		// TODO change this to notifier
-		// mailer::send_domain_unverified_mail(
-		// 	config.config.clone(),
-		// 	notification_email.unwrap(),
-		// 	verified_domain.name,
-		// );
+		let zone_identifier = if let Some(zone_identifier) = zone_identifier {
+			zone_identifier
 		} else {
-			// add to cflr
-			log::error!(
-				"Domain `{}` was not added to cloudflare. Adding again.",
-				verified_domain.name
-			);
-			let response = client
-				.request(&zone::CreateZone {
-					params: zone::CreateZoneParams {
-						account: zone::AccountId {
-							id: &config.config.cloudflare.account_id,
-						},
-						name: &verified_domain.name,
-						jump_start: Some(false),
-						zone_type: Some(zone::Type::Full),
-					},
-				})
-				.await?;
-			if !response.errors.is_empty() {
-				log::error!(
-					"Domain `{}` errored while adding to cloudflare: {:#?}",
-					verified_domain.name,
-					response.errors
-				);
-				continue;
-			}
+			// TODO delete the domain altogether or add to cloudflare?
+			continue;
+		};
+		let response = client
+			.request(&zone::ZoneDetails {
+				identifier: &zone_identifier,
+			})
+			.await?;
+
+		if let Status::Active = response.result.status {
+			continue;
+		}
+		// Domain is now verified
+		db::update_workspace_domain_status(
+			&mut connection,
+			&verified_domain.id,
+			false,
+		)
+		.await?;
+		let notification_email = db::get_notification_email_for_domain(
+			&mut connection,
+			&verified_domain.id,
+		)
+		.await?;
+		if notification_email.is_none() {
+			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
+			continue;
+		} else {
+			// TODO change this to notifier
+			// mailer::send_domain_unverified_mail(
+			// 	config.config.clone(),
+			// 	notification_email.unwrap(),
+			// 	verified_domain.name,
+			// );
 		}
 	}
 
@@ -214,7 +205,7 @@ async fn create_certificate_for_domain(
 			&format!("certificate-{}", unverified_domain.id),
 			&format!("tls-{}", unverified_domain.id),
 			vec![unverified_domain.name.clone()],
-			&settings,
+			settings,
 		)
 		.await?;
 	} else {
@@ -225,7 +216,7 @@ async fn create_certificate_for_domain(
 		.await?;
 
 		for managed_url in managed_urls {
-			let certificate_status = service::create_certificates(
+			service::create_certificates(
 				&workspace_id,
 				&format!("certificate-{}", managed_url.id),
 				&format!("tls-{}", managed_url.id),
@@ -233,18 +224,9 @@ async fn create_certificate_for_domain(
 					"{}.{}",
 					managed_url.sub_domain, unverified_domain.name
 				)],
-				&settings,
+				settings,
 			)
-			.await;
-
-			if let Err(error) = certificate_status {
-				log::error!(
-					"Domain `{}` errored while creating certificates: {}",
-					unverified_domain.name,
-					error.get_error()
-				);
-				continue;
-			}
+			.await?;
 		}
 	}
 	Ok(())

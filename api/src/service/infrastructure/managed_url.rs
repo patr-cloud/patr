@@ -129,7 +129,7 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	if domain.is_ns_external() {
+	if domain.is_ns_external() && domain.is_verified {
 		kubernetes::create_certificates(
 			workspace_id,
 			&format!("certificate-{}", managed_url_id),

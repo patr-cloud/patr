@@ -263,6 +263,14 @@ pub async fn is_domain_verified(
 			.await?;
 
 		if let Status::Active = zone.result.status {
+			infrastructure::create_certificates(
+				workspace_id,
+				&format!("certificate-{}", domain_id),
+				&format!("tls-{}", domain_id),
+				vec![format!("*.{}", domain.name)],
+				config,
+			)
+			.await?;
 			db::update_workspace_domain_status(connection, domain_id, true)
 				.await?;
 			return Ok(true);
@@ -294,14 +302,7 @@ pub async fn is_domain_verified(
 		drop(handle);
 
 		if response.is_some() {
-			infrastructure::create_certificates(
-				workspace_id,
-				&format!("certificate-{}", domain_id),
-				&format!("tls-{}", domain_id),
-				vec![format!("*.{}", domain.name)],
-				config,
-			)
-			.await?;
+			// ??
 			db::update_workspace_domain_status(connection, domain_id, true)
 				.await?;
 

@@ -403,26 +403,6 @@ pub async fn get_all_unverified_domains(
 	Ok(rows)
 }
 
-pub async fn set_domain_as_verified(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace_domain
-		SET
-			is_verified = TRUE
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
-
 pub async fn get_all_verified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<(WorkspaceDomain, Option<String>)>, sqlx::Error> {
@@ -467,26 +447,6 @@ pub async fn get_all_verified_domains(
 	.collect();
 
 	Ok(rows)
-}
-
-pub async fn set_domain_as_unverified(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			workspace_domain
-		SET
-			is_verified = FALSE
-		WHERE
-			id = $1;
-		"#,
-		domain_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 // TODO get the correct email based on permission

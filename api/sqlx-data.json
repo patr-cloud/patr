@@ -998,68 +998,6 @@
       ]
     }
   },
-  "1b15d7baa9e29ae6a424d70e12552a19a5881001b0c28dbd723f8ba819bb0e35": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "nameserver_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_nameserver_type",
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
     "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;",
     "describe": {
@@ -2220,6 +2158,74 @@
       "nullable": []
     }
   },
+  "4fb9730f7681b2a0672ece3375344715bde7dce7210c6161ac1e6bc30a53b1f2": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: DomainNameserverType",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "zone_identifier",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "50282dcc98562ef247ea4d4978153d7ea74dc9001b89ed36885a6446f8543fc8": {
     "query": "DELETE FROM workspace_domain WHERE id = $1;",
     "describe": {
@@ -3176,6 +3182,74 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "7760e4f485fd451261a3795322b709d22fccdc2794ff81c8ba4ec2eabe3c7e74": {
+    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: DomainNameserverType",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "zone_identifier",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
       ]
     }
   },
@@ -4633,18 +4707,6 @@
       "nullable": []
     }
   },
-  "aa4b13b2a2cb91848830cb553eb0520dd9d8d97cb1675bef90abd3c56a47dbbe": {
-    "query": "UPDATE workspace_domain SET is_verified = FALSE WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "abfe8ca19a172c6f4f5f2525f94ca20434872d25c327f511a4fa3d5dfaa5b3e0": {
     "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'business', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13 ) ON CONFLICT(username) DO UPDATE SET account_type = 'business', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = EXCLUDED.business_email_local, business_domain_name = EXCLUDED.business_domain_name, business_name = EXCLUDED.business_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -5885,68 +5947,6 @@
       ]
     }
   },
-  "d4fb6dbc53b25a21eb8164258a65f2d7707992f7c6174e6d58fd3b88bfccda9a": {
-    "query": "SELECT domain.name as \"name!\", workspace_domain.id as \"id!: _\", workspace_domain.domain_type as \"domain_type!: _\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: _\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id WHERE is_verified = TRUE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "nameserver_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "domain_nameserver_type",
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "d5212ef2129b24442086273d3b7e68a6b9038eb9e3708dd0d72a5c7aa53c0b87": {
     "query": "SELECT id as \"id: _\", name, type as \"type: _\" FROM domain WHERE name = $1;",
     "describe": {
@@ -6028,18 +6028,6 @@
       "columns": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "d945140262eb9c3996dc0fe5a2840de42fe52ce4d57c70759f7322e9c2f82042": {
-    "query": "UPDATE workspace_domain SET is_verified = TRUE WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
       },
       "nullable": []
     }
