@@ -129,14 +129,16 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
-	kubernetes::create_certificates(
-		workspace_id,
-		&format!("certificate-{}", managed_url_id),
-		&format!("tls-{}", managed_url_id),
-		vec![format!("{}.{}", sub_domain, domain.name)],
-		config,
-	)
-	.await?;
+	if domain.is_ns_external() {
+		kubernetes::create_certificates(
+			workspace_id,
+			&format!("certificate-{}", managed_url_id),
+			&format!("tls-{}", managed_url_id),
+			vec![format!("{}.{}", sub_domain, domain.name)],
+			config,
+		)
+		.await?;
+	}
 
 	Ok(managed_url_id)
 }
