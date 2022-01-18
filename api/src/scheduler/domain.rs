@@ -134,6 +134,26 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				// );
 			}
 
+			if unverified_domain.is_ns_internal() {
+				service::create_certificates(
+					&workspace_id,
+					&format!("certificate-{}", unverified_domain.id),
+					&format!("tls-{}", unverified_domain.id),
+					vec![unverified_domain.name.clone()],
+					&settings,
+				)
+				.await?;
+			} else {
+				service::create_certificates_of_managed_urls_for_domain(
+					&mut connection,
+					&workspace_id,
+					&unverified_domain.id,
+					&unverified_domain.name,
+					&settings,
+				)
+				.await?;
+			}
+
 			connection.commit().await?;
 		} else {
 			let response = service::verify_external_domain(
@@ -190,7 +210,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 		if let Status::Active = response.result.status {
 			continue;
 		}
-		// Domain is now verified
+		// Domain is now unverified
 		db::update_workspace_domain_status(
 			&mut connection,
 			&verified_domain.id,
@@ -213,6 +233,7 @@ async fn reverify_verified_domains() -> Result<(), Error> {
 			// 	verified_domain.name,
 			// );
 		}
+		// TODO delete certificates and managed urls after 3 days
 	}
 
 	Ok(())

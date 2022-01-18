@@ -27,6 +27,7 @@ use k8s_openapi::{
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
+			Secret,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -1146,6 +1147,41 @@ pub async fn get_kubernetes_deployment_status(
 	} else {
 		Ok(DeploymentStatus::Errored)
 	}
+}
+
+pub async fn delete_certificates_for_domain(
+	workspace_id: &Uuid,
+	certificate_name: &str,
+	secret_name: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let kubernetes_client = get_kubernetes_config(config).await?;
+
+	let namespace = workspace_id.as_str();
+
+	// delete secret and then certificate
+
+	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+		.delete(secret_name, &DeleteParams::default())
+		.await?;
+
+	let certificate_resource = ApiResource {
+		group: "cert-manager.io".to_string(),
+		version: "v1".to_string(),
+		api_version: "cert-manager.io/v1".to_string(),
+		kind: "certificate".to_string(),
+		plural: "certificates".to_string(),
+	};
+
+	Api::<DynamicObject>::namespaced_with(
+		kubernetes_client,
+		namespace,
+		&certificate_resource,
+	)
+	.delete(certificate_name, &DeleteParams::default())
+	.await?;
+
+	Ok(())
 }
 
 async fn get_kubernetes_config(

@@ -233,8 +233,8 @@ pub async fn add_domain_to_workspace(
 // NS servers and auto configure accordingly too
 pub async fn is_domain_verified(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	domain_id: &Uuid,
+	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<bool, Error> {
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
@@ -263,6 +263,9 @@ pub async fn is_domain_verified(
 			.await?;
 
 		if let Status::Active = zone.result.status {
+			db::update_workspace_domain_status(connection, domain_id, true)
+				.await?;
+
 			infrastructure::create_certificates(
 				workspace_id,
 				&format!("certificate-{}", domain_id),
@@ -271,8 +274,6 @@ pub async fn is_domain_verified(
 				config,
 			)
 			.await?;
-			db::update_workspace_domain_status(connection, domain_id, true)
-				.await?;
 			return Ok(true);
 		}
 
