@@ -653,8 +653,10 @@ async fn delete_domain_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id)?;
 
+	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	// Uuid::parse_str throws an error for a wrong string
 	// This error is handled by the resource authenticator middleware
 	// So it's safe to call unwrap() here without crashing the system
@@ -662,6 +664,16 @@ async fn delete_domain_in_workspace(
 	let domain_id = Uuid::parse_str(domain_id).unwrap();
 
 	// TODO make sure all associated resources to this domain are removed first
+
+	let config = context.get_state().config.clone();
+
+	let domain = db::get_workspace_domain_by_id(
+		context.get_database_connection(),
+		&domain_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	db::delete_domain_from_workspace(
 		context.get_database_connection(),
@@ -671,6 +683,18 @@ async fn delete_domain_in_workspace(
 	db::delete_generic_domain(context.get_database_connection(), &domain_id)
 		.await?;
 	db::delete_resource(context.get_database_connection(), &domain_id).await?;
+
+	if domain.is_ns_internal() {
+		let secret_name = format!("tls-{}", domain.id);
+		let certificate_name = format!("certificate-{}", domain.id);
+		service::delete_certificates_for_domain(
+			&workspace_id,
+			&certificate_name,
+			&secret_name,
+			&config,
+		)
+		.await?;
+	}
 
 	context.success(DeleteDomainResponse {});
 	Ok(context)
