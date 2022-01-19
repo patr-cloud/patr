@@ -951,6 +951,16 @@ async fn migrate_all_managed_urls(
 			.get::<Uuid, _>("workspace_id")
 		};
 
+		let deleted_marker = format!(
+			"deleted.patr.cloud.{}.",
+			if deployment_id.is_some() {
+				deployment_id.as_ref()
+			} else {
+				static_site_id.as_ref()
+			}
+			.unwrap()
+		);
+
 		let tld = tld_list
 			.iter()
 			.filter(|tld| raw_domain_name.ends_with(*tld))
@@ -970,19 +980,10 @@ async fn migrate_all_managed_urls(
 
 		let domain_name = raw_domain_name
 			.to_lowercase()
-			.replace(
-				&format!(
-					"deleted.patr.cloud.{}.",
-					deployment_id.as_ref().or(static_site_id.as_ref()).unwrap()
-				),
-				"",
-			)
+			.replace(&deleted_marker, "")
 			.replace(&format!(".{}", tld), "");
 
-		if raw_domain_name.starts_with(&format!(
-			"deleted.patr.cloud.{}.",
-			deployment_id.as_ref().or(static_site_id.as_ref()).unwrap()
-		)) {
+		if raw_domain_name.starts_with(&deleted_marker) {
 			// TODO Domain is deleted. Handle that separately
 			panic!("Domain is deleted");
 		}
@@ -1114,16 +1115,7 @@ async fn migrate_all_managed_urls(
 			"#,
 			&managed_url_id,
 			&raw_domain_name
-				.replace(
-					&format!(
-						"deleted.patr.cloud.{}.",
-						deployment_id
-							.as_ref()
-							.or(static_site_id.as_ref())
-							.unwrap()
-					),
-					""
-				)
+				.replace(&deleted_marker, "")
 				.replace(&format!(".{}.{}", domain_name, tld), ""),
 			&domain_id,
 			"/",
