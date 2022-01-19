@@ -84,7 +84,7 @@ pub async fn migrate(
 		CREATE TYPE DNS_RECORD_TYPE AS ENUM(
 			'A',
 			'MX',
-			'TXT'
+			'TXT',
 			'AAAA',
 			'CNAME'
 		);
