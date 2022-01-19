@@ -142,12 +142,14 @@ pub async fn migrate(
 	migrate_machine_types(&mut *connection, config).await?;
 	migrate_regions(&mut *connection, config).await?;
 	add_exposed_port(&mut *connection, config).await?;
-	add_horizontal_scale_and_deploy_on_push(&mut *connection, config).await?;
+	update_deployments_table(&mut *connection, config).await?;
 	stop_all_running_deployments(&mut *connection, config).await?;
 	delete_all_do_apps(&mut *connection, config).await?;
 	// Make sure this is done for both static sites AND deployments
 	migrate_all_managed_urls(&mut *connection, config).await?;
 	remove_outdated_tables(&mut *connection, config).await?;
+	rename_permissions_to_managed_url(&mut *connection, config).await?;
+	rename_resource_type_to_managed_url(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -619,7 +621,7 @@ async fn add_exposed_port(
 			deployment_id UUID
 				CONSTRAINT deployment_exposed_port_fk_deployment_id
 					REFERENCES deployment(id),
-			port SMALLINT NOT NULL CONSTRAINT
+			port INTEGER NOT NULL CONSTRAINT
 				deployment_exposed_port_chk_port_u16 CHECK(
 					port > 0 AND port <= 65535
 				),
@@ -654,7 +656,7 @@ async fn add_exposed_port(
 	Ok(())
 }
 
-async fn add_horizontal_scale_and_deploy_on_push(
+async fn update_deployments_table(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -693,6 +695,18 @@ async fn add_horizontal_scale_and_deploy_on_push(
 		r#"
 		ALTER TABLE deployment
 		DROP COLUMN horizontal_scale;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+			DROP CONSTRAINT deployment_fk_repository_id,
+			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
+				FOREIGN KEY (repository_id, workspace_id)
+					REFERENCES repository(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1201,4 +1215,42 @@ async fn remove_outdated_tables(
 	.await?;
 
 	Ok(())
+}
+
+async fn rename_permissions_to_managed_url(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = REPLACE(name, 'entryPoint', 'managedUrl')
+		WHERE
+			name LIKE 'workspace::deployment::entryPoint::%';
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+async fn rename_resource_type_to_managed_url(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			resource_type
+		SET
+			name = 'managedUrl'
+		WHERE
+			name = 'deploymentEntryPoint';
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

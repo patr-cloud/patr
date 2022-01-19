@@ -221,5 +221,15 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE personal_domain
+		RENAME CONSTRAINT personal_domain_chk_dmn_typ
+		TO personal_domain_chk_domain_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
