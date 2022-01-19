@@ -139,118 +139,23 @@ pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	remove_outdated_tables(&mut *connection, config).await?;
-	create_new_tables(&mut *connection, config).await?;
-
 	migrate_machine_types(&mut *connection, config).await?;
 	migrate_regions(&mut *connection, config).await?;
+	add_exposed_port(&mut *connection, config).await?;
+	add_horizontal_scale_and_deploy_on_push(&mut *connection, config).await?;
 	stop_all_running_deployments(&mut *connection, config).await?;
 	delete_all_do_apps(&mut *connection, config).await?;
 	// Make sure this is done for both static sites AND deployments
 	migrate_all_managed_urls(&mut *connection, config).await?;
-
-	remove_old_columns(&mut *connection, config).await?;
-	rename_new_columns_to_old_names(&mut *connection, config).await?;
+	remove_outdated_tables(&mut *connection, config).await?;
 
 	Ok(())
 }
 
-async fn remove_outdated_tables(
+async fn migrate_machine_types(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	// Remove old tables.
-	query!(
-		r#"
-		DROP TABLE data_center_locations;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// TODO Move deployed_domain to managed_urls:
-	// Find the domains in deployed_domain.
-	// Create those domains as user-controlled domains, but unverified.
-	// Add them all as proxy_deployment or proxy_static_site to managed_urls.
-
-	query!(
-		r#"
-		DROP TABLE deployed_domain CASCADE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TABLE deployment_request_logs;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TYPE DEPLOYMENT_REQUEST_METHOD;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TYPE DEPLOYMENT_REQUEST_PROTOCOL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-async fn create_new_tables(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
-			'digitalocean'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_region(
-			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
-			name TEXT NOT NULL,
-			provider DEPLOYMENT_CLOUD_PROVIDER,
-			location GEOMETRY,
-			parent_region_id UUID
-				CONSTRAINT deployment_region_fk_parent_region_id
-					REFERENCES deployment_region(id),
-			CONSTRAINT
-				deployment_region_chk_provider_location_parent_region_is_valid
-				CHECK(
-					(
-						location IS NULL AND
-						provider IS NULL
-					) OR
-					(
-						provider IS NOT NULL AND
-						location IS NOT NULL AND
-						parent_region_id IS NOT NULL
-					)
-				)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE deployment_machine_type_new(
@@ -265,64 +170,14 @@ async fn create_new_tables(
 
 	query!(
 		r#"
-		ALTER TABLE deployment
-			ADD COLUMN region UUID NOT NULL CONSTRAINT deployment_fk_region
-				REFERENCES deployment_region(id),
-			ADD COLUMN min_horizontal_scale SMALLINT NOT NULL
-				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
-					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
-				)
-				DEFAULT 1,
-			ADD COLUMN max_horizontal_scale SMALLINT NOT NULL
-				CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
-					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
-				)
-				DEFAULT 1,
-			ADD COLUMN machine_type_new UUID NOT NULL
-				CONSTRAINT deployment_fk_machine_type
-					REFERENCES deployment_machine_type_new(id),
-			ADD COLUMN deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE;
+		ALTER TABLE deployment ADD COLUMN machine_type_new UUID
+		CONSTRAINT deployment_fk_machine_type
+			REFERENCES deployment_machine_type_new(id);
 		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
-			'http'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE deployment_exposed_port(
-			deployment_id UUID
-				CONSTRAINT deployment_exposed_port_fk_deployment_id
-					REFERENCES deployment(id),
-			port SMALLINT NOT NULL CONSTRAINT
-				deployment_exposed_port_chk_port_u16 CHECK(
-					port > 0 AND port <= 65535
-				),
-			port_type EXPOSED_PORT_TYPE NOT NULL,
-			CONSTRAINT deployment_exposed_port_pk
-				PRIMARY KEY(deployment_id, port)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-async fn migrate_machine_types(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
 	// Create machine types
 	for (cpu_count, memory_count) in [
 		(1, 2),  // 1 vCPU, 0.5 GB RAM
@@ -356,13 +211,13 @@ async fn migrate_machine_types(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_machine_type
+				deployment_machine_type_new
 			VALUES
 				($1, $2, $3);
 			"#,
 			machine_type_id,
-			cpu_count as i32,
-			memory_count as i32
+			cpu_count,
+			memory_count
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -473,22 +328,10 @@ async fn migrate_machine_types(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-async fn remove_old_columns(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
-			DROP COLUMN deployed_image,
-			DROP COLUMN digitalocean_app_id,
-			DROP COLUMN region,
-			DROP COLUMN domain_name CASCADE,
-			DROP COLUMN horizontal_scale,
-			DROP COLUMN machine_type;
+		DROP COLUMN machine_type;
 		"#
 	)
 	.execute(&mut *connection)
@@ -496,8 +339,17 @@ async fn remove_old_columns(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_static_sites
-		DROP COLUMN domain_name CASCADE;
+		ALTER TABLE deployment
+		RENAME COLUMN machine_type_new TO machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ALTER COLUMN machine_type SET NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -511,13 +363,6 @@ async fn remove_old_columns(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-async fn rename_new_columns_to_old_names(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_machine_type_new
@@ -534,6 +379,55 @@ async fn migrate_regions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
+			'digitalocean'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_region(
+			id UUID CONSTRAINT deployment_region_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			provider DEPLOYMENT_CLOUD_PROVIDER,
+			location GEOMETRY,
+			parent_region_id UUID
+				CONSTRAINT deployment_region_fk_parent_region_id
+					REFERENCES deployment_region(id),
+			CONSTRAINT
+				deployment_region_chk_provider_location_parent_region_is_valid
+				CHECK(
+					(
+						location IS NULL AND
+						provider IS NULL
+					) OR
+					(
+						provider IS NOT NULL AND
+						location IS NOT NULL AND
+						parent_region_id IS NOT NULL
+					)
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment ADD COLUMN region_new UUID
+		CONSTRAINT deployment_fk_region
+			REFERENCES deployment_region(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
 		let region_id =
 			populate_region(&mut *connection, None, continent).await?;
@@ -547,6 +441,95 @@ async fn migrate_regions(
 			}
 		}
 	}
+
+	const TO_AND_FROM_REGIONS: [(&str, &str); 8] = [
+		("do-sgp", "Singapore"),
+		("do-blr", "Bangalore"),
+		("do-lon", "London"),
+		("do-ams", "Amsterdam"),
+		("do-fra", "Frankfurt"),
+		("do-tor", "Toronto"),
+		("do-nyc", "New-York 1"),
+		("do-sfo", "San Francisco"),
+	];
+	for (from, to) in TO_AND_FROM_REGIONS {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				region_new = (
+					SELECT
+						id
+					FROM
+						deployment_region
+					WHERE
+						name = $1
+				)
+			WHERE
+				region = $2;
+			"#,
+			to,
+			from
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	sqlx::query(&format!(
+		r#"
+			UPDATE
+				deployment
+			SET
+				region_new = (
+					SELECT
+						id
+					FROM
+						deployment_region
+					WHERE
+						name = $1
+				)
+			WHERE
+				region NOT IN (
+					{}
+				);
+			"#,
+		TO_AND_FROM_REGIONS
+			.iter()
+			.map(|(from, _)| format!("'{}'", from))
+			.collect::<Vec<_>>()
+			.join(", ")
+	))
+	.bind("Bangalore")
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		DROP COLUMN region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		RENAME COLUMN region_new TO region;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ALTER COLUMN region SET NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
@@ -616,6 +599,108 @@ async fn populate_region(
 	Ok(region_id)
 }
 
+async fn add_exposed_port(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
+			'http'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE deployment_exposed_port(
+			deployment_id UUID
+				CONSTRAINT deployment_exposed_port_fk_deployment_id
+					REFERENCES deployment(id),
+			port SMALLINT NOT NULL CONSTRAINT
+				deployment_exposed_port_chk_port_u16 CHECK(
+					port > 0 AND port <= 65535
+				),
+			port_type EXPOSED_PORT_TYPE NOT NULL,
+			CONSTRAINT deployment_exposed_port_pk
+				PRIMARY KEY(deployment_id, port)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			deployment_exposed_port
+			(
+				SELECT
+					deployment.id,
+					80 as "port",
+					'http' as "port_type"
+				FROM
+					deployment
+				WHERE
+					deployment.status != 'deleted'
+			);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_horizontal_scale_and_deploy_on_push(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+			ADD COLUMN min_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
+					min_horizontal_scale >= 0 AND min_horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			ADD COLUMN max_horizontal_scale SMALLINT NOT NULL
+				CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
+					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
+				)
+				DEFAULT 1,
+			ADD COLUMN deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			min_horizontal_scale = horizontal_scale,
+			max_horizontal_scale = horizontal_scale;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		DROP COLUMN horizontal_scale;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
 async fn stop_all_running_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -673,6 +758,16 @@ async fn delete_all_do_apps(
 		}
 	}
 
+	query!(
+		r#"
+		ALTER TABLE deployment
+			DROP COLUMN deployed_image,
+			DROP COLUMN digitalocean_app_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -680,5 +775,418 @@ async fn migrate_all_managed_urls(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	todo!()
+	query!(
+		r#"
+		ALTER TABLE deployment
+		DROP COLUMN domain_name CASCADE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		DROP COLUMN domain_name CASCADE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE MANAGED_URL_TYPE AS ENUM(
+			'proxy_to_deployment',
+			'proxy_to_static_site',
+			'proxy_url',
+			'redirect'
+		);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE managed_url(
+			id UUID CONSTRAINT managed_url_pk PRIMARY KEY,
+			sub_domain TEXT NOT NULL,
+			domain_id UUID NOT NULL,
+			path TEXT NOT NULL,
+			url_type MANAGED_URL_TYPE NOT NULL,
+			deployment_id UUID,
+			port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK(
+					port > 0 AND port <= 65535
+				),
+			static_site_id UUID,
+			url TEXT,
+			workspace_id UUID NOT NULL,
+			CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE(
+				sub_domain, domain_id, path
+			),
+			CONSTRAINT managed_url_chk_values_null_or_not_null CHECK(
+				(
+					url_type = 'proxy_to_deployment' AND
+					deployment_id IS NOT NULL AND
+					port IS NOT NULL AND
+					static_site_id IS NULL AND
+					url IS NULL
+				) OR
+				(
+					url_type = 'proxy_to_static_site' AND
+					deployment_id IS NULL AND
+					port IS NULL AND
+					static_site_id IS NOT NULL AND
+					url IS NULL
+				) OR
+				(
+					url_type = 'proxy_url' AND
+					deployment_id IS NULL AND
+					port IS NULL AND
+					static_site_id IS NULL AND
+					url IS NOT NULL
+				) OR
+				(
+					url_type = 'redirect' AND
+					deployment_id IS NULL AND
+					port IS NULL AND
+					static_site_id IS NULL AND
+					url IS NOT NULL
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE managed_url
+			ADD CONSTRAINT managed_url_fk_domain_id
+				FOREIGN KEY(domain_id) REFERENCES workspace_domain(id),
+			ADD CONSTRAINT managed_url_fk_domain_id_workspace_id
+				FOREIGN KEY(domain_id, workspace_id)
+					REFERENCES resource(id, owner_id),
+			ADD CONSTRAINT managed_url_fk_deployment_id_port
+				FOREIGN KEY(deployment_id, port)
+					REFERENCES deployment_exposed_port(deployment_id, port),
+			ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id
+				FOREIGN KEY(deployment_id, workspace_id)
+					REFERENCES deployment(id, workspace_id),
+			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
+				FOREIGN KEY(static_site_id, workspace_id)
+					REFERENCES deployment_static_site(id, workspace_id),
+			ADD CONSTRAINT managed_url_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id)
+					REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Add all deployed_domains as user-controlled, unverified domains
+	let deployed_domains = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			deployed_domain;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	let tld_list =
+		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+			.await
+			.map_err(|_| sqlx::Error::WorkerCrashed)?
+			.text()
+			.await
+			.map_err(|_| sqlx::Error::WorkerCrashed)?
+			.split('\n')
+			.map(String::from)
+			.filter(|tld| {
+				!tld.starts_with('#') &&
+					!tld.is_empty() && !tld.starts_with("XN--")
+			})
+			.collect::<Vec<String>>();
+
+	for deployed_domain in deployed_domains {
+		let raw_domain_name = deployed_domain.get::<String, _>("domain_name");
+		let (deployment_id, static_site_id) = (
+			deployed_domain.get::<Option<Uuid>, _>("deployment_id"),
+			deployed_domain.get::<Option<Uuid>, _>("static_site_id"),
+		);
+
+		let workspace_id = if let Some(deployment_id) = &deployment_id {
+			query!(
+				r#"
+				SELECT
+					workspace_id
+				FROM
+					deployment
+				WHERE
+					id = $1;
+				"#,
+				deployment_id
+			)
+			.fetch_one(&mut *connection)
+			.await?
+			.get::<Uuid, _>("workspace_id")
+		} else {
+			query!(
+				r#"
+				SELECT
+					workspace_id
+				FROM
+					deployment_static_site
+				WHERE
+					id = $1;
+				"#,
+				static_site_id.as_ref().unwrap()
+			)
+			.fetch_one(&mut *connection)
+			.await?
+			.get::<Uuid, _>("workspace_id")
+		};
+
+		let tld = tld_list
+			.iter()
+			.filter(|tld| raw_domain_name.ends_with(*tld))
+			.reduce(|accumulator, item| {
+				if accumulator.len() > item.len() {
+					accumulator
+				} else {
+					item
+				}
+			});
+		let tld = if let Some(tld) = tld {
+			tld
+		} else {
+			// TLD does not exist. Incompatible domain. Skip
+			continue;
+		};
+
+		let domain_name = raw_domain_name
+			.to_lowercase()
+			.replace(
+				&format!(
+					"deleted.patr.cloud.{}.",
+					deployment_id.as_ref().or(static_site_id.as_ref()).unwrap()
+				),
+				"",
+			)
+			.replace(&format!(".{}", tld), "");
+
+		if raw_domain_name.starts_with(&format!(
+			"deleted.patr.cloud.{}.",
+			deployment_id.as_ref().or(static_site_id.as_ref()).unwrap()
+		)) {
+			// TODO Domain is deleted. Handle that separately
+			panic!("Domain is deleted");
+		}
+
+		// Check if the domain already exists
+		let domain_id = query!(
+			r#"
+			SELECT
+				id
+			FROM
+				domain
+			WHERE
+				name = $1;
+			"#,
+			&format!("{}.{}", domain_name, tld)
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.map(|row| row.get::<Uuid, _>("id"));
+
+		let managed_url_id = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					managed_url
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		let domain_id = if let Some(domain_id) = domain_id {
+			// Domain already exists. Use this to add the managed_url
+			domain_id
+		} else {
+			// Domain does not exist. Create it
+			let domain_id = loop {
+				let uuid = Uuid::new_v4();
+
+				let exists = query!(
+					r#"
+					SELECT
+						*
+					FROM
+						workspace_domain
+					WHERE
+						id = $1;
+					"#,
+					&uuid
+				)
+				.fetch_optional(&mut *connection)
+				.await?
+				.is_some();
+
+				if !exists {
+					break uuid;
+				}
+			};
+
+			query!(
+				r#"
+				INSERT INTO
+					domain
+				VALUES
+					($1, $2, 'business');
+				"#,
+				&domain_id,
+				&format!("{}.{}", domain_name, tld)
+			)
+			.execute(&mut *connection)
+			.await?;
+
+			query!(
+				r#"
+				INSERT INTO
+					workspace_domain
+				VALUES
+					($1, 'business', FALSE, 'external');
+				"#,
+				&domain_id
+			)
+			.execute(&mut *connection)
+			.await?;
+
+			query!(
+				r#"
+				INSERT INTO
+					user_controlled_domain
+				VALUES
+					($1, 'external');
+				"#,
+				&domain_id
+			)
+			.execute(&mut *connection)
+			.await?;
+
+			domain_id
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				managed_url
+			VALUES
+				(
+					$1,
+					$2,
+					$3,
+					"/",
+					$4,
+					$5,
+					80,
+					$6,
+					NULL,
+					$7
+				);
+			"#,
+			&managed_url_id,
+			&raw_domain_name
+				.replace(
+					&format!(
+						"deleted.patr.cloud.{}.",
+						deployment_id
+							.as_ref()
+							.or(static_site_id.as_ref())
+							.unwrap()
+					),
+					""
+				)
+				.replace(&format!(".{}.{}", domain_name, tld), ""),
+			&domain_id,
+			"/",
+			if deployment_id.is_some() {
+				"proxy_to_deployment"
+			} else {
+				"proxy_to_static_site"
+			},
+			&deployment_id,
+			&static_site_id,
+			&workspace_id
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		DROP TABLE deployed_domain CASCADE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn remove_outdated_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	// Remove old tables.
+	query!(
+		r#"
+		DROP TABLE data_center_locations;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TABLE deployment_request_logs;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_METHOD;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_REQUEST_PROTOCOL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }

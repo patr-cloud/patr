@@ -6,6 +6,7 @@ mod bytea_to_uuid;
 mod docker_registry;
 mod kubernetes_migration;
 mod organisation_to_workspace;
+mod workspace_domain;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -545,6 +546,7 @@ async fn migrate_from_v0_4_9(
 	docker_registry::migrate(&mut *connection, config).await?;
 	add_trim_check_for_username(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
+	workspace_domain::migrate(&mut *connection, config).await?;
 	kubernetes_migration::migrate(&mut *connection, config).await?;
 
 	Ok(())

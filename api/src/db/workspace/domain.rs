@@ -140,10 +140,10 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TYPE DNS_RECORD_TYPE AS ENUM(
 			'A',
-			'AAAA',
-			'CNAME',
 			'MX',
-			'TXT'
+			'TXT',
+			'AAAA',
+			'CNAME'
 		);
 		"#
 	)
@@ -319,6 +319,44 @@ pub async fn add_to_personal_domain(
 			($1, 'personal');
 		"#,
 		domain_id as _
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_patr_controlled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	zone_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			patr_controlled_domain
+		VALUES
+			($1, $2, 'internal');
+		"#,
+		domain_id as _,
+		zone_identifier,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_user_controlled_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			user_controlled_domain
+		VALUES
+			($1, 'external');
+		"#,
+		domain_id as _,
 	)
 	.execute(&mut *connection)
 	.await
@@ -624,26 +662,6 @@ pub async fn get_domain_by_name(
 	)
 	.fetch_optional(&mut *connection)
 	.await
-}
-
-pub async fn add_patr_controlled_domain(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &Uuid,
-	zone_identifier: &str,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			patr_controlled_domain
-		VALUES
-			($1, $2, 'internal');
-		"#,
-		domain_id as _,
-		zone_identifier,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 pub async fn get_dns_records_by_domain_id(

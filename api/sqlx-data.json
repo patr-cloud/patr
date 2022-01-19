@@ -2583,6 +2583,16 @@
       ]
     }
   },
+  "60af027f2e663763fc387f893cb4fb3d82ad2cc31340f27df96cdffee8198f88": {
+    "query": "CREATE TYPE DNS_RECORD_TYPE AS ENUM( 'A', 'MX', 'TXT', 'AAAA', 'CNAME' );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "60ded43e4f51239958e87e35036ca9f048e2e21f33ef38db720f3edc9c1be38d": {
     "query": "INSERT INTO workspace VALUES ($1, $2, $3, $4);",
     "describe": {
@@ -3403,12 +3413,14 @@
       "nullable": []
     }
   },
-  "7c12c62d520185114a50c88bd24427620000aa0bb713fef6de0b737ce527ed37": {
-    "query": "CREATE TYPE DNS_RECORD_TYPE AS ENUM( 'A', 'AAAA', 'CNAME', 'MX', 'TXT' );",
+  "7c11e29c3bd30fef37357d08db295b013d10ebe4a09d0fb413d01bda9af35dd8": {
+    "query": "INSERT INTO user_controlled_domain VALUES ($1, 'external');",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       },
       "nullable": []
     }
