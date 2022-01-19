@@ -170,10 +170,10 @@ pub async fn migrate(
 
 	// Insert all new permissions
 	for permission in [
-		"workspace::dnsRecord::list",
-		"workspace::dnsRecord::add",
-		"workspace::dnsRecord::edit",
-		"workspace::dnsRecord::delete",
+		"workspace::domain::dnsRecord::list",
+		"workspace::domain::dnsRecord::add",
+		"workspace::domain::dnsRecord::edit",
+		"workspace::domain::dnsRecord::delete",
 	] {
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
