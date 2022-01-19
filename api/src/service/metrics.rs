@@ -11,6 +11,11 @@ pub async fn get_deployment_metrics(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	event: &str,
 ) -> Result<(), Error> {
+	// Do not send deployment metrics for debug builds
+	if cfg!(debug_assertions) {
+		return Ok(());
+	}
+
 	let sign_up_count = db::get_sign_up_count(connection).await?;
 	let join_count = db::get_join_count(connection).await?;
 	let create_deployment_count =
