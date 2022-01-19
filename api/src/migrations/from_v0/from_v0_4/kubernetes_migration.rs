@@ -139,10 +139,11 @@ pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	migrate_machine_types(&mut *connection, config).await?;
 	migrate_regions(&mut *connection, config).await?;
 	add_exposed_port(&mut *connection, config).await?;
 	update_deployments_table(&mut *connection, config).await?;
+	migrate_machine_types(&mut *connection, config).await?;
+	add_deploy_on_push(&mut *connection, config).await?;
 	stop_all_running_deployments(&mut *connection, config).await?;
 	delete_all_do_apps(&mut *connection, config).await?;
 	// Make sure this is done for both static sites AND deployments
@@ -150,229 +151,6 @@ pub async fn migrate(
 	remove_outdated_tables(&mut *connection, config).await?;
 	rename_permissions_to_managed_url(&mut *connection, config).await?;
 	rename_resource_type_to_managed_url(&mut *connection, config).await?;
-
-	Ok(())
-}
-
-async fn migrate_machine_types(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		CREATE TABLE deployment_machine_type_new(
-			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
-			cpu_count SMALLINT NOT NULL,
-			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment ADD COLUMN machine_type_new UUID
-		CONSTRAINT deployment_fk_machine_type
-			REFERENCES deployment_machine_type_new(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// Create machine types
-	for (cpu_count, memory_count) in [
-		(1, 2),  // 1 vCPU, 0.5 GB RAM
-		(1, 4),  // 1 vCPU, 1 GB RAM
-		(1, 8),  // 1 vCPU, 2 GB RAM
-		(2, 8),  // 2 vCPU, 4 GB RAM
-		(4, 32), // 4 vCPU, 8 GB RAM
-	] {
-		let machine_type_id = loop {
-			let uuid = Uuid::new_v4();
-
-			let exists = query!(
-				r#"
-				SELECT
-					*
-				FROM
-					resource
-				WHERE
-					id = $1;
-				"#,
-				&uuid
-			)
-			.fetch_optional(&mut *connection)
-			.await?
-			.is_some();
-
-			if !exists {
-				break uuid;
-			}
-		};
-		query!(
-			r#"
-			INSERT INTO
-				deployment_machine_type_new
-			VALUES
-				($1, $2, $3);
-			"#,
-			machine_type_id,
-			cpu_count,
-			memory_count
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type_new = (
-				SELECT
-					id
-				FROM
-					deployment_machine_type_new
-				WHERE
-					cpu_count = 1 AND
-					memory_count = 2
-			)
-		WHERE
-			machine_type = 'micro';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type_new = (
-				SELECT
-					id
-				FROM
-					deployment_machine_type_new
-				WHERE
-					cpu_count = 1 AND
-					memory_count = 2
-			)
-		WHERE
-			machine_type = 'micro';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type_new = (
-				SELECT
-					id
-				FROM
-					deployment_machine_type_new
-				WHERE
-					cpu_count = 1 AND
-					memory_count = 4
-			)
-		WHERE
-			machine_type = 'small';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type_new = (
-				SELECT
-					id
-				FROM
-					deployment_machine_type_new
-				WHERE
-					cpu_count = 1 AND
-					memory_count = 8
-			)
-		WHERE
-			machine_type = 'medium';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		UPDATE
-			deployment
-		SET
-			machine_type_new = (
-				SELECT
-					id
-				FROM
-					deployment_machine_type_new
-				WHERE
-					cpu_count = 2 AND
-					memory_count = 16
-			)
-		WHERE
-			machine_type = 'large';
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment
-		DROP COLUMN machine_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment
-		RENAME COLUMN machine_type_new TO machine_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment
-		ALTER COLUMN machine_type SET NOT NULL;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DROP TYPE DEPLOYMENT_MACHINE_TYPE;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_machine_type_new
-		RENAME TO deployment_machine_type;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
 
 	Ok(())
 }
@@ -672,8 +450,7 @@ async fn update_deployments_table(
 				CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK(
 					max_horizontal_scale >= 0 AND max_horizontal_scale <= 256
 				)
-				DEFAULT 1,
-			ADD COLUMN deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE;
+				DEFAULT 1;
 		"#
 	)
 	.execute(&mut *connection)
@@ -713,6 +490,244 @@ async fn update_deployments_table(
 	.await?;
 
 	Ok(())
+}
+
+async fn migrate_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE TABLE deployment_machine_type_new(
+			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
+			cpu_count SMALLINT NOT NULL,
+			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment ADD COLUMN machine_type_new UUID
+		CONSTRAINT deployment_fk_machine_type
+			REFERENCES deployment_machine_type_new(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Create machine types
+	for (cpu_count, memory_count) in [
+		(1, 2),  // 1 vCPU, 0.5 GB RAM
+		(1, 4),  // 1 vCPU, 1 GB RAM
+		(1, 8),  // 1 vCPU, 2 GB RAM
+		(2, 8),  // 2 vCPU, 4 GB RAM
+		(4, 32), // 4 vCPU, 8 GB RAM
+	] {
+		let machine_type_id = loop {
+			let uuid = Uuid::new_v4();
+
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					resource
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+		query!(
+			r#"
+			INSERT INTO
+				deployment_machine_type_new
+			VALUES
+				($1, $2, $3);
+			"#,
+			machine_type_id,
+			cpu_count,
+			memory_count
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type_new
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 2
+			)
+		WHERE
+			machine_type = 'micro';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type_new
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 2
+			)
+		WHERE
+			machine_type = 'micro';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type_new
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 4
+			)
+		WHERE
+			machine_type = 'small';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type_new
+				WHERE
+					cpu_count = 1 AND
+					memory_count = 8
+			)
+		WHERE
+			machine_type = 'medium';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			machine_type_new = (
+				SELECT
+					id
+				FROM
+					deployment_machine_type_new
+				WHERE
+					cpu_count = 2 AND
+					memory_count = 16
+			)
+		WHERE
+			machine_type = 'large';
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		DROP COLUMN machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		RENAME COLUMN machine_type_new TO machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ALTER COLUMN machine_type SET NOT NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP TYPE DEPLOYMENT_MACHINE_TYPE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_machine_type_new
+		RENAME TO deployment_machine_type;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_deploy_on_push(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 async fn stop_all_running_deployments(
