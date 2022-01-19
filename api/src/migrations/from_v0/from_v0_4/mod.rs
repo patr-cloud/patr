@@ -546,6 +546,7 @@ async fn migrate_from_v0_4_9(
 	docker_registry::migrate(&mut *connection, config).await?;
 	add_trim_check_for_username(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
+	rename_static_sites_to_static_site(&mut *connection, config).await?;
 	workspace_domain::migrate(&mut *connection, config).await?;
 	kubernetes_migration::migrate(&mut *connection, config).await?;
 
@@ -577,6 +578,21 @@ async fn make_permission_name_unique(
 		ALTER TABLE permission
 		ADD CONSTRAINT permission_uq_name
 		UNIQUE(name);
+		"#
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+async fn rename_static_sites_to_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		RENAME TO deployment_static_site;
 		"#
 	)
 	.execute(&mut *connection)
