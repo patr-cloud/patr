@@ -706,7 +706,7 @@ async fn update_deployments_table(
 			DROP CONSTRAINT deployment_fk_repository_id,
 			ADD CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY (repository_id, workspace_id)
-					REFERENCES repository(id, workspace_id);
+					REFERENCES docker_registry_repository(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
