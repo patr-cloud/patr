@@ -862,6 +862,26 @@ async fn migrate_all_managed_urls(
 
 	query!(
 		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_uq_id_workspace_id
+		UNIQUE(id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		ADD CONSTRAINT deployment_static_site_uq_id_workspace_id
+		UNIQUE(id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE managed_url
 			ADD CONSTRAINT managed_url_fk_domain_id
 				FOREIGN KEY(domain_id) REFERENCES workspace_domain(id),
