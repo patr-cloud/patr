@@ -232,7 +232,7 @@ async fn migrate_machine_types(
 				SELECT
 					id
 				FROM
-					deployment_machine_type
+					deployment_machine_type_new
 				WHERE
 					cpu_count = 1 AND
 					memory_count = 2
@@ -253,7 +253,7 @@ async fn migrate_machine_types(
 				SELECT
 					id
 				FROM
-					deployment_machine_type
+					deployment_machine_type_new
 				WHERE
 					cpu_count = 1 AND
 					memory_count = 2
@@ -274,7 +274,7 @@ async fn migrate_machine_types(
 				SELECT
 					id
 				FROM
-					deployment_machine_type
+					deployment_machine_type_new
 				WHERE
 					cpu_count = 1 AND
 					memory_count = 4
@@ -295,7 +295,7 @@ async fn migrate_machine_types(
 				SELECT
 					id
 				FROM
-					deployment_machine_type
+					deployment_machine_type_new
 				WHERE
 					cpu_count = 1 AND
 					memory_count = 8
@@ -316,7 +316,7 @@ async fn migrate_machine_types(
 				SELECT
 					id
 				FROM
-					deployment_machine_type
+					deployment_machine_type_new
 				WHERE
 					cpu_count = 2 AND
 					memory_count = 16
