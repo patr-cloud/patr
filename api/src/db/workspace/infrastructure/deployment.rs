@@ -6,7 +6,20 @@ use api_models::{
 	utils::Uuid,
 };
 
-use crate::{models::db_mapping::Deployment, query, query_as, Database};
+use crate::{
+	db,
+	models::{
+		db_mapping::{Deployment, DeploymentMachineType, DeploymentRegion},
+		deployment::{
+			DefaultDeploymentRegion,
+			DEFAULT_DEPLOYMENT_REGIONS,
+			DEFAULT_MACHINE_TYPES,
+		},
+	},
+	query,
+	query_as,
+	Database,
+};
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -90,8 +103,7 @@ pub async fn initialize_deployment_pre(
 					name = TRIM(name)
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
-			repository_id UUID CONSTRAINT deployment_fk_repository_id
-				REFERENCES docker_registry_repository(id),
+			repository_id UUID,
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
 			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
@@ -111,8 +123,13 @@ pub async fn initialize_deployment_pre(
 			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
 				REFERENCES deployment_machine_type(id),
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
+			CONSTRAINT deployment_fk_repository_id_workspace_id
+				FOREIGN KEY(repository_id, workspace_id)
+					REFERENCES docker_registry_repository(id, workspace_id),
 			CONSTRAINT deployment_uq_name_workspace_id
 				UNIQUE(name, workspace_id),
+			CONSTRAINT deployment_uq_id_workspace_id
+				UNIQUE(id, workspace_id),
 			CONSTRAINT deployment_chk_repository_id_is_valid CHECK(
 				(
 					registry = 'registry.patr.cloud' AND
@@ -213,38 +230,6 @@ pub async fn initialize_deployment_pre(
 	.execute(&mut *connection)
 	.await?;
 
-	// TODO handle this using entry points
-	// query!(
-	// 	r#"
-	// 	CREATE TABLE deployed_domain(
-	// 		deployment_id UUID
-	// 			CONSTRAINT deployed_domain_uq_deployment_id UNIQUE,
-	// 		static_site_id UUID
-	// 			CONSTRAINT deployed_domain_uq_static_site_id UNIQUE,
-	// 		domain_name VARCHAR(255) NOT NULL
-	// 			CONSTRAINT deployed_domain_uq_domain_name UNIQUE
-	// 			CONSTRAINT deployment_chk_domain_name_is_lower_case CHECK(
-	// 				domain_name = LOWER(domain_name)
-	// 			),
-	// 		CONSTRAINT deployed_domain_uq_deployment_id_domain_name UNIQUE
-	// (deployment_id, domain_name), 		CONSTRAINT
-	// deployed_domain_uq_static_site_id_domain_name UNIQUE (static_site_id,
-	// domain_name), 		CONSTRAINT deployed_domain_chk_id_domain_is_valid CHECK(
-	// 			(
-	// 				deployment_id IS NULL AND
-	// 				static_site_id IS NOT NULL
-	// 			) OR
-	// 			(
-	// 				deployment_id IS NOT NULL AND
-	// 				static_site_id IS NULL
-	// 			)
-	// 		)
-	// 	);
-	// 	"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
-
 	Ok(())
 }
 
@@ -262,37 +247,37 @@ pub async fn initialize_deployment_post(
 	.execute(&mut *connection)
 	.await?;
 
-	// query!(
-	// 	r#"
-	// 	INSERT INTO
-	// 		data_center_locations
-	// 	VALUES
-	// 		('aws-us-east-1', (-77.4524237, 38.9940541)::GEOMETRY, 4326)),
-	// 		('aws-us-east-2', (-82.7541337, 40.0946354)::GEOMETRY, 4326)),
-	// 		('aws-us-west-2', (-119.2684488, 45.9174667)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-1', (-6.224503, 53.4056545)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-2', (-0.0609266, 51.5085036)::GEOMETRY, 4326)),
-	// 		('aws-eu-west-3', (2.2976644, 48.6009709)::GEOMETRY, 4326)),
-	// 		('aws-eu-central-1', (8.6303932, 50.0992094)::GEOMETRY, 4326)),
-	// 		('aws-ap-southeast-1', (103.6930643, 1.3218269)::GEOMETRY, 4326)),
-	// 		('aws-ap-southeast-2', (151.1907535, -33.9117717)::GEOMETRY, 4326)),
-	// 		('aws-ap-northeast-1', (139.7459176, 35.617436)::GEOMETRY, 4326)),
-	// 		('aws-ap-northeast-2', (126.8736237, 37.5616592)::GEOMETRY, 4326)),
-	// 		('aws-ap-south-1', (72.9667878, 19.2425503)::GEOMETRY, 4326)),
-	// 		('aws-ca-central-1', (-73.6, 45.5)::GEOMETRY, 4326)),
-	// 		('aws-eu-north-1', (17.8419717, 59.326242)::GEOMETRY, 4326)),
-	// 		('do-tor', (-79.3623, 43.6547)::GEOMETRY, 4326)),
-	// 		('do-sfo', (-121.9753, 37.3417)::GEOMETRY, 4326)),
-	// 		('do-nyc', (-73.981, 40.7597)::GEOMETRY, 4326)),
-	// 		('do-lon', (-0.6289, 51.5225)::GEOMETRY, 4326)),
-	// 		('do-ams', (4.9479, 52.3006)::GEOMETRY, 4326)),
-	// 		('do-sgp', (103.695, 1.32123)::GEOMETRY, 4326)),
-	// 		('do-fra', (8.6843, 50.1188)::GEOMETRY, 4326)),
-	// 		('do-blr', (77.5855, 12.9634)::GEOMETRY, 4326));
-	// 		"#
-	// )
-	// .execute(&mut *connection)
-	// .await?;
+	for (cpu_count, memory_count) in DEFAULT_MACHINE_TYPES {
+		let machine_type_id =
+			db::generate_new_resource_id(&mut *connection).await?;
+		query!(
+			r#"
+			INSERT INTO
+				deployment_machine_type
+			VALUES
+				($1, $2, $3);
+			"#,
+			machine_type_id as _,
+			cpu_count,
+			memory_count
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
+		let region_id =
+			populate_region(&mut *connection, None, continent).await?;
+		for country in continent.child_regions.iter() {
+			let region_id =
+				populate_region(&mut *connection, Some(&region_id), country)
+					.await?;
+			for city in country.child_regions.iter() {
+				populate_region(&mut *connection, Some(&region_id), city)
+					.await?;
+			}
+		}
+	}
 
 	Ok(())
 }
@@ -874,4 +859,105 @@ pub async fn update_deployment_details(
 	}
 
 	Ok(())
+}
+
+pub async fn get_all_deployment_machine_types(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<DeploymentMachineType>, sqlx::Error> {
+	query_as!(
+		DeploymentMachineType,
+		r#"
+		SELECT
+			id as "id: _",
+			cpu_count,
+			memory_count
+		FROM
+			deployment_machine_type;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+async fn populate_region(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	parent_region_id: Option<&Uuid>,
+	region: &DefaultDeploymentRegion,
+) -> Result<Uuid, sqlx::Error> {
+	let region_id = loop {
+		let region_id = Uuid::new_v4();
+
+		let row = query!(
+			r#"
+			SELECT
+				id as "id: Uuid"
+			FROM
+				deployment_region
+			WHERE
+				id = $1;
+			"#,
+			region_id as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+
+		if row.is_none() {
+			break region_id;
+		}
+	};
+
+	if region.child_regions.is_empty() {
+		// Populate leaf node
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
+			"#,
+			region_id as _,
+			region.name,
+			region.cloud_provider.as_ref().unwrap() as _,
+			region.coordinates.unwrap().0,
+			region.coordinates.unwrap().1,
+			parent_region_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	} else {
+		// Populate parent node
+		query!(
+			r#"
+			INSERT INTO
+				deployment_region
+			VALUES
+				($1, $2, NULL, NULL, $3);
+			"#,
+			region_id as _,
+			region.name,
+			parent_region_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(region_id)
+}
+
+pub async fn get_all_deployment_regions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<DeploymentRegion>, sqlx::Error> {
+	query_as!(
+		DeploymentRegion,
+		r#"
+		SELECT
+			id as "id: _",
+			name,
+			provider as "cloud_provider: _"
+		FROM
+			deployment_region;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
 }

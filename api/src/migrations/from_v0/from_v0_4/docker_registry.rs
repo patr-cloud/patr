@@ -57,8 +57,17 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE docker_registry_repository
+		ADD CONSTRAINT docker_registry_repository_uq_id_workspace_id
+		UNIQUE(id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	add_docker_registry_info_permission(&mut *connection, config).await?;
-	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -103,89 +112,4 @@ async fn add_docker_registry_info_permission(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
-}
-
-async fn reset_permission_order(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	for permission in [
-		// Domain permissions
-		"workspace::domain::list",
-		"workspace::domain::add",
-		"workspace::domain::viewDetails",
-		"workspace::domain::verify",
-		"workspace::domain::delete",
-		// Deployment permissions
-		"workspace::deployment::list",
-		"workspace::deployment::create",
-		"workspace::deployment::info",
-		"workspace::deployment::delete",
-		"workspace::deployment::edit",
-		// Upgrade path permissions
-		"workspace::deployment::upgradePath::list",
-		"workspace::deployment::upgradePath::create",
-		"workspace::deployment::upgradePath::info",
-		"workspace::deployment::upgradePath::delete",
-		"workspace::deployment::upgradePath::edit",
-		// Entry point permissions
-		"workspace::deployment::entryPoint::list",
-		"workspace::deployment::entryPoint::create",
-		"workspace::deployment::entryPoint::edit",
-		"workspace::deployment::entryPoint::delete",
-		// Docker registry permissions
-		"workspace::dockerRegistry::create",
-		"workspace::dockerRegistry::list",
-		"workspace::dockerRegistry::delete",
-		"workspace::dockerRegistry::info",
-		"workspace::dockerRegistry::push",
-		"workspace::dockerRegistry::pull",
-		// Managed database permissions
-		"workspace::managedDatabase::create",
-		"workspace::managedDatabase::list",
-		"workspace::managedDatabase::delete",
-		"workspace::managedDatabase::info",
-		// Static site permissions
-		"workspace::staticSite::list",
-		"workspace::staticSite::create",
-		"workspace::staticSite::info",
-		"workspace::staticSite::delete",
-		"workspace::staticSite::edit",
-		// Workspace permissions
-		"workspace::viewRoles",
-		"workspace::createRole",
-		"workspace::editRole",
-		"workspace::deleteRole",
-		"workspace::editInfo",
-	] {
-		query!(
-			r#"
-			UPDATE
-				permission
-			SET
-				name = CONCAT('test::', name)
-			WHERE
-				name = $1;
-			"#,
-			permission,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				permission
-			SET
-				name = $1
-			WHERE
-				name = CONCAT('test::', $1);
-			"#,
-			&permission,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	Ok(())
 }

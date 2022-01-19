@@ -34,7 +34,6 @@ pub(super) async fn migrate(
 	rename_organisation_resource_names_to_workspace(&mut *connection, config)
 		.await?;
 	rename_personal_workspace_names(&mut *connection, config).await?;
-	reset_resource_types_order(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1051,52 +1050,6 @@ async fn rename_personal_workspace_names(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	Ok(())
-}
-
-async fn reset_resource_types_order(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	for resource_type in [
-		"workspace",
-		"domain",
-		"dockerRepository",
-		"managedDatabase",
-		"deployment",
-		"staticSite",
-		"deploymentUpgradePath",
-		"deploymentEntryPoint",
-	] {
-		query!(
-			r#"
-			UPDATE
-				resource_type
-			SET
-				name = CONCAT('test::', name)
-			WHERE
-				name = $1;
-			"#,
-			&resource_type,
-		)
-		.execute(&mut *connection)
-		.await?;
-
-		query!(
-			r#"
-			UPDATE
-				resource_type
-			SET
-				name = $1
-			WHERE
-				name = CONCAT('test::', $1);
-			"#,
-			&resource_type,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
 
 	Ok(())
 }

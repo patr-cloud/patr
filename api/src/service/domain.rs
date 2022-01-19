@@ -211,6 +211,8 @@ pub async fn add_domain_to_workspace(
 			&zone_identifier,
 		)
 		.await?;
+	} else {
+		db::add_user_controlled_domain(connection, &domain_id).await?;
 	}
 
 	Ok(domain_id)

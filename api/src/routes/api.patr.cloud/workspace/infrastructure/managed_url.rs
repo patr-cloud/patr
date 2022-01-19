@@ -43,7 +43,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::managed_url::LIST,
+				permissions::workspace::infrastructure::managed_url::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -75,7 +75,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::managed_url::CREATE,
+				permissions::workspace::infrastructure::managed_url::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -107,7 +107,7 @@ pub fn create_sub_app(
 		"/:managedUrlId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::managed_url::EDIT,
+				permissions::workspace::infrastructure::managed_url::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let managed_url_id = context
 						.get_param(request_keys::MANAGED_URL_ID)
@@ -140,7 +140,7 @@ pub fn create_sub_app(
 		"/:managedUrlId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::deployment::managed_url::DELETE,
+				permissions::workspace::infrastructure::managed_url::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let managed_url_id = context
 						.get_param(request_keys::MANAGED_URL_ID)

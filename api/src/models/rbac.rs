@@ -32,45 +32,76 @@ pub mod permissions {
 			pub const VIEW_DETAILS: &str = "workspace::domain::viewDetails";
 			pub const VERIFY: &str = "workspace::domain::verify";
 			pub const DELETE: &str = "workspace::domain::delete";
+
+			pub mod dns_record {
+				pub const LIST: &str = "workspace::domain::dnsRecord::list";
+				pub const ADD: &str = "workspace::domain::dnsRecord::add";
+				pub const EDIT: &str = "workspace::domain::dnsRecord::edit";
+				pub const DELETE: &str = "workspace::domain::dnsRecord::delete";
+			}
 		}
 
-		pub mod dns_record {
-			pub const LIST: &str = "workspace::dnsRecord::list";
-			pub const ADD: &str = "workspace::dnsRecord::add";
-			pub const EDIT: &str = "workspace::dnsRecord::edit";
-			pub const DELETE: &str = "workspace::dnsRecord::delete";
-		}
-
-		pub mod deployment {
-			pub const LIST: &str = "workspace::deployment::list";
-			pub const CREATE: &str = "workspace::deployment::create";
-			pub const INFO: &str = "workspace::deployment::info";
-			pub const DELETE: &str = "workspace::deployment::delete";
-			pub const EDIT: &str = "workspace::deployment::edit";
+		pub mod infrastructure {
+			pub mod deployment {
+				pub const LIST: &str =
+					"workspace::infrastructure::deployment::list";
+				pub const CREATE: &str =
+					"workspace::infrastructure::deployment::create";
+				pub const INFO: &str =
+					"workspace::infrastructure::deployment::info";
+				pub const DELETE: &str =
+					"workspace::infrastructure::deployment::delete";
+				pub const EDIT: &str =
+					"workspace::infrastructure::deployment::edit";
+			}
 
 			#[allow(dead_code)]
 			pub mod upgrade_path {
 				pub const LIST: &str =
-					"workspace::deployment::upgradePath::list";
+					"workspace::infrastructure::upgradePath::list";
 				pub const CREATE: &str =
-					"workspace::deployment::upgradePath::create";
+					"workspace::infrastructure::upgradePath::create";
 				pub const INFO: &str =
-					"workspace::deployment::upgradePath::info";
+					"workspace::infrastructure::upgradePath::info";
 				pub const DELETE: &str =
-					"workspace::deployment::upgradePath::delete";
+					"workspace::infrastructure::upgradePath::delete";
 				pub const EDIT: &str =
-					"workspace::deployment::upgradePath::edit";
+					"workspace::infrastructure::upgradePath::edit";
 			}
 
 			pub mod managed_url {
 				pub const LIST: &str =
-					"workspace::deployment::managedUrl::list";
+					"workspace::infrastructure::managedUrl::list";
 				pub const CREATE: &str =
-					"workspace::deployment::managedUrl::create";
+					"workspace::infrastructure::managedUrl::create";
 				pub const EDIT: &str =
-					"workspace::deployment::managedUrl::edit";
+					"workspace::infrastructure::managedUrl::edit";
 				pub const DELETE: &str =
-					"workspace::deployment::managedUrl::delete";
+					"workspace::infrastructure::managedUrl::delete";
+			}
+
+			pub mod managed_database {
+				pub const CREATE: &str =
+					"workspace::infrastructure::managedDatabase::create";
+				pub const LIST: &str =
+					"workspace::infrastructure::managedDatabase::list";
+				pub const DELETE: &str =
+					"workspace::infrastructure::managedDatabase::delete";
+				pub const INFO: &str =
+					"workspace::infrastructure::managedDatabase::info";
+			}
+
+			pub mod static_site {
+				pub const LIST: &str =
+					"workspace::infrastructure::staticSite::list";
+				pub const CREATE: &str =
+					"workspace::infrastructure::staticSite::create";
+				pub const INFO: &str =
+					"workspace::infrastructure::staticSite::info";
+				pub const DELETE: &str =
+					"workspace::infrastructure::staticSite::delete";
+				pub const EDIT: &str =
+					"workspace::infrastructure::staticSite::edit";
 			}
 		}
 
@@ -83,26 +114,10 @@ pub mod permissions {
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
 		}
 
-		pub mod managed_database {
-			pub const CREATE: &str = "workspace::managedDatabase::create";
-			pub const LIST: &str = "workspace::managedDatabase::list";
-			pub const DELETE: &str = "workspace::managedDatabase::delete";
-			pub const INFO: &str = "workspace::managedDatabase::info";
-		}
-
-		pub mod static_site {
-			pub const LIST: &str = "workspace::staticSite::list";
-			pub const CREATE: &str = "workspace::staticSite::create";
-			pub const INFO: &str = "workspace::staticSite::info";
-			pub const DELETE: &str = "workspace::staticSite::delete";
-			pub const EDIT: &str = "workspace::staticSite::edit";
-		}
-
 		pub const VIEW_ROLES: &str = "workspace::viewRoles";
 		pub const CREATE_ROLE: &str = "workspace::createRole";
 		pub const EDIT_ROLE: &str = "workspace::editRole";
 		pub const DELETE_ROLE: &str = "workspace::deleteRole";
-		#[allow(dead_code)]
 		pub const EDIT_INFO: &str = "workspace::editInfo";
 	}
 }
