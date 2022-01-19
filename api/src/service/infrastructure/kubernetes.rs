@@ -349,7 +349,7 @@ pub async fn update_kubernetes_deployment(
 								.ports
 								.iter()
 								.map(|(port, _)| ContainerPort {
-									container_port: *port as i32,
+									container_port: port.value() as i32,
 									..ContainerPort::default()
 								})
 								.collect::<Vec<_>>(),
@@ -443,9 +443,11 @@ pub async fn update_kubernetes_deployment(
 					.ports
 					.iter()
 					.map(|(port, _)| ServicePort {
-						port: *port as i32,
-						target_port: Some(IntOrString::Int(*port as i32)),
-						name: Some(format!("port-{}", port)),
+						port: port.value() as i32,
+						target_port: Some(
+							IntOrString::Int(port.value() as i32),
+						),
+						name: Some(format!("port-{}", port.to_string())),
 						..ServicePort::default()
 					})
 					.collect::<Vec<_>>(),
@@ -494,7 +496,8 @@ pub async fn update_kubernetes_deployment(
 				IngressRule {
 					host: Some(format!(
 						"{}-{}.patr.cloud",
-						port, deployment.id
+						port.to_string(),
+						deployment.id
 					)),
 					http: Some(HTTPIngressRuleValue {
 						paths: vec![HTTPIngressPath {
@@ -502,20 +505,22 @@ pub async fn update_kubernetes_deployment(
 								service: Some(IngressServiceBackend {
 									name: format!("service-{}", deployment.id),
 									port: Some(ServiceBackendPort {
-										number: Some(*port as i32),
-										name: Some(format!("port-{}", port)),
+										number: Some(port.value() as i32),
+										name: None,
 									}),
 								}),
 								..Default::default()
 							},
-							..HTTPIngressPath::default()
+							path: Some("/".to_string()),
+							path_type: Some("Prefix".to_string()),
 						}],
 					}),
 				},
 				IngressTLS {
 					hosts: Some(vec![format!(
 						"{}-{}.patr.cloud",
-						port, deployment.id
+						port.to_string(),
+						deployment.id
 					)]),
 					secret_name: Some(
 						"tls-domain-wildcard-patr-cloud".to_string(),

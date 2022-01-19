@@ -499,7 +499,11 @@ async fn create_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		&ports,
+		&ports
+			.clone()
+			.into_iter()
+			.map(|(port, port_type)| (port.value(), port_type))
+			.collect(),
 		&environment_variables,
 	)
 	.await?;

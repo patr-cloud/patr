@@ -46,7 +46,7 @@ lettre = { version = "=0.10.0-rc.3", features = [
 ] }
 lightsail = { git = "https://github.com/awslabs/aws-sdk-rust", tag = "v0.0.16-alpha", package = "aws-sdk-lightsail" }
 log = "0.4.8"
-kube = { version = "0.64.0", default-features = true, features = [
+kube = { version = "0.65.0", default-features = true, features = [
   "derive",
   "runtime",
 ] } # Library for talking to Kubernetes API

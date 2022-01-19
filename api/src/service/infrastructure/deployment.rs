@@ -429,6 +429,7 @@ pub async fn get_full_deployment_config(
 	let ports = db::get_exposed_ports_for_deployment(connection, deployment_id)
 		.await?
 		.into_iter()
+		.map(|(port, port_type)| (port.into(), port_type))
 		.collect();
 
 	let environment_variables =
