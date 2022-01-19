@@ -263,24 +263,6 @@
       "nullable": []
     }
   },
-  "0b678d7a0b6d44566c9506c0708d9fd90a5b181841b7ddfb417f0cf931bfd644": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_site WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "0cc3abb583408d10147188c34ec3716cb0093acfa377e84813194651e5e2d226": {
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(business_email.local, '@', domain.name) = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
     "describe": {
@@ -1676,24 +1658,6 @@
       "nullable": []
     }
   },
-  "36b355f8a289be04eee136c1d48bdc84ab6180a28728b3d346df89d8373cea15": {
-    "query": "SELECT COUNT(*) \"count!\" FROM \"user\";",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "36e2cd3a54f2c51567701855c0d88510ff581f4e7ee1278ac9134eaf2b289806": {
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
@@ -1714,24 +1678,6 @@
       "nullable": []
     }
   },
-  "38865f17e8602aa817a6226ad0255b3e6b2a7a924e0a7a3ecaf1e9b3688e434b": {
-    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status = 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
     "describe": {
@@ -1740,24 +1686,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "3b8e93c6744a077a2b8dd414c4b35fbf2c5426243187dbde1924d48014f8f30c": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment_static_site WHERE status = 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "3c9d1ea4466117373233fc7413eb1290e2c1cdfd276781a0ec5995133c34be4a": {
@@ -2316,6 +2244,24 @@
       ]
     }
   },
+  "511135ae50aaa0dd7c0062da3063203a09d234516bb68636f0542adc6fa1ecc4": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM managed_database WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "5198716586d0f372c693b04629cc2b35cde145293878884d3ab56f0991d7df17": {
     "query": "CREATE TABLE deployment_static_site( id UUID CONSTRAINT deployment_static_site_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_static_site_chk_name_is_trimmed CHECK( name = TRIM(name) ), status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, CONSTRAINT deployment_static_site_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_static_site_uq_id_workspace_id UNIQUE(id, workspace_id) );",
     "describe": {
@@ -2413,24 +2359,6 @@
         ]
       },
       "nullable": []
-    }
-  },
-  "5da0c27ce496203a39e2dbb482151947f0f0bed024a8737b7f9f064ad49ee82a": {
-    "query": "SELECT COUNT(*) \"count!\" FROM managed_database WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
     }
   },
   "5f148eb2cfd81e700bc78ededf4dfd92702fcf36992957a1ae5ad82aaecb57a1": {
@@ -3831,6 +3759,24 @@
       "nullable": []
     }
   },
+  "921f273464daa5ef484188bee12a11595787136e84881a14a1fb5c0fb8bde841": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM deployment_static_site WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "927bf61ea95f553c57c6baf13b645a0d62e1b3c61c082e9f424dae2d534d44b0": {
     "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
@@ -4665,6 +4611,24 @@
         true,
         false,
         false
+      ]
+    }
+  },
+  "a8a7007ee50997217cb6dc4b255d07ef808011b38de93e4da586ff7dc09d49d7": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM \"user\";",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
       ]
     }
   },
@@ -5605,6 +5569,24 @@
       "nullable": []
     }
   },
+  "c3f1c60ad17961d3b98545490b8940e3b772464c6123c57cf336f39b2a6cd95a": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM deployment_static_site WHERE status = 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "c7266afd5fc274fcd6c5dd97631ce514cbdbcbe541c6f29c797e64cea66ddc09": {
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;",
     "describe": {
@@ -5871,6 +5853,24 @@
         null,
         null,
         null,
+        null
+      ]
+    }
+  },
+  "cf89fc51ab1464b12fc7e5f4add548647aac5c811c10851239fa91bbb95ec319": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM managed_database WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
         null
       ]
     }
@@ -6533,6 +6533,24 @@
       ]
     }
   },
+  "e19ad7f33249639afbd94cfb3bdc1f2c3e4648afd5cd2722cb12154782bba49b": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM managed_url WHERE url_type = 'proxy_to_static_site';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "e218446e98d170dd4a2289a29c93ef560509254a2f7294de5c505752f8d4841d": {
     "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.deployment_id = $1 AND managed_url.url_type = 'proxy_to_deployment' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list;",
     "describe": {
@@ -6643,6 +6661,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "e4805f15b676574e2c451b7d51596f91e87e45562004e82e4e5a7cb17948cd55": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM managed_url WHERE url_type = 'proxy_to_deployment';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   },
   "e575aca4066a7ed6cd69ba52e9b48168e8c7f0e22b62988182fa29d434b2158f": {
@@ -7037,24 +7073,6 @@
       ]
     }
   },
-  "f57302152f72326de54d8f2076d3dbea4bd959c318c83d25cab8e6e5f3f08b0b": {
-    "query": "SELECT 0 as \"count!\";",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int4"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "f5b7bf00eb407d889619e638614750a5deab18378edd398c074adb012b209f75": {
     "query": "CREATE INDEX user_idx_created ON \"user\" (created);",
     "describe": {
@@ -7338,24 +7356,6 @@
       "nullable": []
     }
   },
-  "fcd33830edf91a145742d6940ded386da0ed420c9c527e59c8dd83bcac2a5bbd": {
-    "query": "SELECT COUNT(*) \"count!\" FROM deployment WHERE status != 'deleted';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "count!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null
-      ]
-    }
-  },
   "fe8c22df6cd21020bbbb9d77bffbc3d1df0940c2b50b7868682f802781c0ea61": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", registry, repository_id as \"repository_id: _\", image_name, image_tag, status as \"status: _\", workspace_id as \"workspace_id: _\", region as \"region: _\", min_horizontal_scale, max_horizontal_scale, machine_type as \"machine_type: _\", deploy_on_push FROM deployment WHERE id = $1 AND status != 'deleted';",
     "describe": {
@@ -7534,6 +7534,24 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "ffcddc533aeab290a8826a1bfe3be3ac2016dc9837430aa1ecc52cbad7957376": {
+    "query": "SELECT COUNT(*) as \"count!\" FROM deployment WHERE status != 'deleted';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "count!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
     }
   }
 }

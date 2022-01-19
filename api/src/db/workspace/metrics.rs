@@ -27,7 +27,7 @@ pub async fn get_join_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM
 			"user";
 		"#
@@ -48,7 +48,7 @@ pub async fn get_created_deployment_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM
 			deployment
 		WHERE
@@ -70,7 +70,12 @@ pub async fn get_deployment_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT 0 as "count!";
+		SELECT
+			COUNT(*) as "count!"
+		FROM
+			managed_url
+		WHERE
+			url_type = 'proxy_to_deployment';
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -112,7 +117,7 @@ pub async fn get_created_database_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM
 			managed_database
 		WHERE
@@ -135,7 +140,7 @@ pub async fn get_deleted_database_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM
 			managed_database
 		WHERE
@@ -158,7 +163,7 @@ pub async fn get_created_static_site_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM
 			deployment_static_site
 		WHERE
@@ -180,7 +185,12 @@ pub async fn get_static_site_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT 0 as "count!";
+		SELECT 
+			COUNT(*) as "count!"
+		FROM
+			managed_url
+		WHERE
+			url_type = 'proxy_to_static_site';
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -199,7 +209,7 @@ pub async fn get_deleted_static_site_count(
 	let count = query!(
 		r#"
 		SELECT
-			COUNT(*) "count!"
+			COUNT(*) as "count!"
 		FROM 
 			deployment_static_site
 		WHERE 
