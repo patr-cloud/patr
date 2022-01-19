@@ -786,7 +786,7 @@ async fn migrate_all_managed_urls(
 
 	query!(
 		r#"
-		ALTER TABLE deployment_static_sites
+		ALTER TABLE deployment_static_site
 		DROP COLUMN domain_name CASCADE;
 		"#
 	)
