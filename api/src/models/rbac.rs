@@ -32,6 +32,13 @@ pub mod permissions {
 			pub const VIEW_DETAILS: &str = "workspace::domain::viewDetails";
 			pub const VERIFY: &str = "workspace::domain::verify";
 			pub const DELETE: &str = "workspace::domain::delete";
+
+			pub mod dns_record {
+				pub const LIST: &str = "workspace::domain::dnsRecord::list";
+				pub const ADD: &str = "workspace::domain::dnsRecord::add";
+				pub const EDIT: &str = "workspace::domain::dnsRecord::edit";
+				pub const DELETE: &str = "workspace::domain::dnsRecord::delete";
+			}
 		}
 
 		pub mod infrastructure {
@@ -62,16 +69,15 @@ pub mod permissions {
 					"workspace::infrastructure::upgradePath::edit";
 			}
 
-			#[allow(dead_code)]
-			pub mod entry_point {
+			pub mod managed_url {
 				pub const LIST: &str =
-					"workspace::infrastructure::entryPoint::list";
+					"workspace::infrastructure::managedUrl::list";
 				pub const CREATE: &str =
-					"workspace::infrastructure::entryPoint::create";
+					"workspace::infrastructure::managedUrl::create";
 				pub const EDIT: &str =
-					"workspace::infrastructure::entryPoint::edit";
+					"workspace::infrastructure::managedUrl::edit";
 				pub const DELETE: &str =
-					"workspace::infrastructure::entryPoint::delete";
+					"workspace::infrastructure::managedUrl::delete";
 			}
 
 			pub mod managed_database {
@@ -112,7 +118,6 @@ pub mod permissions {
 		pub const CREATE_ROLE: &str = "workspace::createRole";
 		pub const EDIT_ROLE: &str = "workspace::editRole";
 		pub const DELETE_ROLE: &str = "workspace::deleteRole";
-		#[allow(dead_code)]
 		pub const EDIT_INFO: &str = "workspace::editInfo";
 	}
 }
@@ -122,10 +127,11 @@ pub mod permissions {
 pub mod resource_types {
 	pub const WORKSPACE: &str = "workspace";
 	pub const DOMAIN: &str = "domain";
+	pub const DNS_RECORD: &str = "dnsRecord";
 	pub const DOCKER_REPOSITORY: &str = "dockerRepository";
 	pub const MANAGED_DATABASE: &str = "managedDatabase";
 	pub const DEPLOYMENT: &str = "deployment";
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
-	pub const DEPLOYMENT_ENTRY_POINT: &str = "deploymentEntryPoint";
+	pub const MANAGED_URL: &str = "managedUrl";
 }

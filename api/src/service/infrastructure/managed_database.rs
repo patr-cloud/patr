@@ -8,7 +8,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::{
-			CloudPlatform,
 			ManagedDatabaseEngine,
 			ManagedDatabasePlan,
 			ManagedDatabaseStatus,
@@ -17,7 +16,7 @@ use crate::{
 	},
 	service::{
 		self,
-		deployment::{aws, digitalocean},
+		infrastructure::{aws, digitalocean},
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -91,8 +90,8 @@ pub async fn create_managed_database_in_workspace(
 	.await?;
 	log::trace!("resource generation complete");
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
+	match provider {
+		"do" => {
 			digitalocean::create_managed_database_cluster(
 				connection,
 				&database_id,
@@ -106,7 +105,7 @@ pub async fn create_managed_database_in_workspace(
 			)
 			.await?;
 		}
-		Ok(CloudPlatform::Aws) => {
+		"aws" => {
 			aws::create_managed_database_cluster(
 				connection,
 				&database_id,
@@ -146,15 +145,15 @@ pub async fn delete_managed_database(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	match provider.parse() {
-		Ok(CloudPlatform::DigitalOcean) => {
+	match provider {
+		"do" => {
 			log::trace!("Deleting the database from digitalocean");
 			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
 				digitalocean::delete_database(&digitalocean_db_id, config)
 					.await?;
 			}
 		}
-		Ok(CloudPlatform::Aws) => {
+		"aws" => {
 			log::trace!("deleting the deployment from aws");
 			aws::delete_database(database_id, region).await?;
 		}

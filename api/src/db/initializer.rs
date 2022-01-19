@@ -3,7 +3,8 @@ use std::cmp::Ordering;
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
-	models::rbac,
+	migrations,
+	models::{deployment, rbac},
 	query,
 	utils::constants,
 };
@@ -86,7 +87,12 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				db::migrate_database(&mut transaction, version).await?;
+				migrations::run_migrations(
+					&mut transaction,
+					version,
+					&app.config,
+				)
+				.await?;
 
 				transaction.commit().await?;
 				log::info!(
@@ -129,6 +135,30 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		rbac::PERMISSIONS
 			.set(permissions)
 			.expect("PERMISSIONS is already set");
+
+		let machine_types =
+			db::get_all_deployment_machine_types(&mut *transaction)
+				.await?
+				.into_iter()
+				.map(|machine_type| {
+					(
+						machine_type.id,
+						(machine_type.cpu_count, machine_type.memory_count),
+					)
+				})
+				.collect();
+		deployment::MACHINE_TYPES
+			.set(machine_types)
+			.expect("MACHINE_TYPES is already set");
+
+		let regions = db::get_all_deployment_regions(&mut *transaction)
+			.await?
+			.into_iter()
+			.map(|region| (region.id, (region.name, region.cloud_provider)))
+			.collect();
+		deployment::REGIONS
+			.set(regions)
+			.expect("REGIONS is already set");
 
 		drop(transaction);
 

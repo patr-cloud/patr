@@ -1,6 +1,5 @@
 mod initializer;
 mod meta_data;
-mod migrations;
 mod rbac;
 mod user;
 mod workspace;
@@ -9,14 +8,7 @@ use redis::{aio::MultiplexedConnection, Client, RedisError};
 use sqlx::{pool::PoolOptions, Connection, Database as Db, Pool};
 use tokio::task;
 
-pub use self::{
-	initializer::*,
-	meta_data::*,
-	migrations::*,
-	rbac::*,
-	user::*,
-	workspace::*,
-};
+pub use self::{initializer::*, meta_data::*, rbac::*, user::*, workspace::*};
 use crate::{query, utils::settings::Settings, Database};
 
 pub async fn create_database_connection(

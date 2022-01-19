@@ -1,10 +1,9 @@
 use api_models::{
-	models::auth::{
-		PreferredRecoveryOption,
-		RecoveryMethod,
-		SignUpAccountType,
+	models::{
+		auth::{PreferredRecoveryOption, RecoveryMethod, SignUpAccountType},
+		workspace::domain::DomainNameserverType,
 	},
-	utils::Uuid,
+	utils::{ResourceType, Uuid},
 };
 use eve_rs::AsError;
 
@@ -23,13 +22,7 @@ use crate::{
 		ExposedUserData,
 	},
 	service::{self, get_refresh_token_expiry},
-	utils::{
-		constants::ResourceOwnerType,
-		get_current_time_millis,
-		settings::Settings,
-		validator,
-		Error,
-	},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -373,7 +366,7 @@ pub async fn create_user_join_request(
 
 			response = UserToSignUp {
 				username: username.to_string(),
-				account_type: ResourceOwnerType::Business,
+				account_type: ResourceType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
@@ -405,7 +398,7 @@ pub async fn create_user_join_request(
 
 			response = UserToSignUp {
 				username: username.to_string(),
-				account_type: ResourceOwnerType::Business,
+				account_type: ResourceType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
@@ -687,14 +680,10 @@ pub async fn reset_password(
 	user_id: &Uuid,
 ) -> Result<(), Error> {
 	let reset_request =
-		db::get_password_reset_request_for_user(connection, user_id).await?;
-
-	if reset_request.is_none() {
-		Error::as_result()
+		db::get_password_reset_request_for_user(connection, user_id)
+			.await?
 			.status(400)
 			.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
-	}
-	let reset_request = reset_request.unwrap();
 
 	// check password strength
 	if !validator::is_password_valid(new_password) {
@@ -823,6 +812,7 @@ pub async fn join_user(
 			"Got neither backup email, nor backup phone number while signing up user: {}",
 			user_data.username
 		);
+
 		return Err(Error::empty()
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string()));
@@ -848,7 +838,7 @@ pub async fn join_user(
 	let backup_phone_number_to; // Notify this phone that it's a backup phone number
 
 	// For an business, create the workspace and domain
-	if let ResourceOwnerType::Business = user_data.account_type {
+	if user_data.account_type.is_business() {
 		let workspace_id = service::create_workspace(
 			connection,
 			&user_data.business_name.unwrap(),
@@ -859,7 +849,9 @@ pub async fn join_user(
 		let domain_id = service::add_domain_to_workspace(
 			connection,
 			user_data.business_domain_name.as_ref().unwrap(),
+			&DomainNameserverType::External,
 			&workspace_id,
+			config,
 		)
 		.await?;
 

@@ -70,13 +70,7 @@ pub async fn get_deployment_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT
-			COUNT(*) "count!"
-		FROM
-			deployment
-		WHERE
-			domain_name IS NOT NULL AND
-			status != 'deleted';
+		SELECT 0 as "count!";
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -166,7 +160,7 @@ pub async fn get_created_static_site_count(
 		SELECT
 			COUNT(*) "count!"
 		FROM
-			deployment_static_sites
+			deployment_static_site
 		WHERE
 			status != 'deleted';
 		"#
@@ -186,13 +180,7 @@ pub async fn get_static_site_domain_count(
 ) -> Result<u64, sqlx::Error> {
 	let count = query!(
 		r#"
-		SELECT
-			COUNT(*) "count!"
-		FROM 
-			deployment_static_sites
-		WHERE 
-			domain_name IS NOT NULL AND
-			status != 'deleted';
+		SELECT 0 as "count!";
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -213,7 +201,7 @@ pub async fn get_deleted_static_site_count(
 		SELECT
 			COUNT(*) "count!"
 		FROM 
-			deployment_static_sites
+			deployment_static_site
 		WHERE 
 			status = 'deleted';
 		"#

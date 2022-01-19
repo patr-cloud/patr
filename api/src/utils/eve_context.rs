@@ -148,12 +148,7 @@ impl RenderEngine for EveContext {
 #[cfg(debug_assertions)]
 impl Debug for EveContext {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"Context: {} - {}",
-			self.get_method().to_string(),
-			self.get_path()
-		)
+		write!(f, "Context: {} - {}", self.get_method(), self.get_path())
 	}
 }
 

@@ -63,7 +63,7 @@ pub struct Settings {
 	pub cloudflare: CloudflareSettings,
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
-	pub ssh: SshSettings,
+	pub kubernetes: KubernetesSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,12 +179,15 @@ impl Display for RunningEnvironment {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SshSettings {
-	pub host_name: String,
-	pub host: String,
-	pub port: u16,
-	pub username: String,
-	pub key_file: String,
+pub struct KubernetesSettings {
+	pub certificate_authority_data: String,
+	pub cluster_name: String,
+	pub cluster_url: String,
+	pub auth_name: String,
+	pub auth_username: String,
+	pub auth_token: String,
+	pub context_name: String,
+	pub cert_issuer: String,
 }
 
 fn base64_to_byte_array<'de, D>(value: D) -> Result<Vec<u8>, D::Error>

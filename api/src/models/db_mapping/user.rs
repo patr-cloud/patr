@@ -1,7 +1,5 @@
-use api_models::utils::Uuid;
+use api_models::utils::{ResourceType, Uuid};
 use serde::{Deserialize, Serialize};
-
-use crate::utils::constants::ResourceOwnerType;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -49,7 +47,7 @@ pub struct UserEmailAddress {
 
 pub struct UserToSignUp {
 	pub username: String,
-	pub account_type: ResourceOwnerType,
+	pub account_type: ResourceType,
 
 	pub password: String,
 	pub first_name: String,

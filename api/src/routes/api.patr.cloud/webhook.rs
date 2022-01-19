@@ -1,4 +1,4 @@
-use api_models::utils::Uuid;
+use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -7,7 +7,6 @@ use crate::{
 	db,
 	error,
 	models::{
-		db_mapping::DeploymentStatus,
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
 		EventData,
@@ -46,14 +45,6 @@ pub fn create_sub_app(
 	sub_app.post(
 		"/docker-registry/notification",
 		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
-	);
-
-	// add logs for requests made to deployment
-	sub_app.post(
-		"/deployment-request-log",
-		[EveMiddleware::CustomFunction(pin_fn!(
-			add_deployment_request_log
-		))],
 	);
 
 	sub_app
@@ -117,9 +108,6 @@ pub async fn notification_handler(
 	}
 
 	let body = context.get_body()?;
-	tokio::fs::write(format!("{}.json", get_current_time_millis()), &body)
-		.await
-		.unwrap();
 	let events: EventData = serde_json::from_str(&body)?;
 
 	// check if the event is a push event
@@ -217,167 +205,31 @@ pub async fn notification_handler(
 				target.digest
 			);
 
-			db::update_deployment_deployed_image(
+			service::push_to_docr(
 				context.get_database_connection(),
 				&deployment.id,
-				Some(&full_image_name),
+				&full_image_name,
+				&config,
 			)
 			.await?;
 
-			service::start_deployment(
-				context.get_database_connection(),
-				&deployment.id,
+			let (deployment, workspace_id, full_image, running_details) =
+				service::get_full_deployment_config(
+					context.get_database_connection(),
+					&deployment.id,
+				)
+				.await?;
+
+			service::update_kubernetes_deployment(
+				&workspace_id,
+				&deployment,
+				&full_image,
+				&running_details,
 				&config,
 			)
 			.await?;
 		}
 	}
 
-	Ok(context)
-}
-
-/// # Description
-/// This function is used to log the requests made for the deployment
-/// If a user makes a request to a deployment this function will log it and
-/// store it in the database
-///
-/// # Arguments
-/// * `context` - an object of [`EveContext`] containing the request, response,
-///   database connection, body,
-/// state and other things
-/// * ` _` -  an object of type [`NextHandler`] which is used to call the
-///   function
-///
-/// # Returns
-/// this function returns a `Result<EveContext, Error>` containing an object of
-/// [`EveContext`] or an error
-///
-/// [`EveContext`]: EveContext
-/// [`NextHandler`]: NextHandler
-/// [`Deployment`]: Deployment
-async fn add_deployment_request_log(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let custom_header = context.get_header("Authorization").status(400).body(
-		json!({
-			request_keys::ERRORS: [{
-				request_keys::CODE: ErrorId::UNAUTHORIZED,
-				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
-				request_keys::DETAIL: []
-			}]
-		})
-		.to_string(),
-	)?;
-
-	let config = context.get_state().config.clone();
-	if custom_header != config.docker_registry.registry_url {
-		Error::as_result().status(400).body(
-			json!({
-				request_keys::ERRORS: [{
-					request_keys::CODE: ErrorId::UNAUTHORIZED,
-					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
-					request_keys::DETAIL: []
-				}]
-			})
-			.to_string(),
-		)?;
-	}
-	let body = context.get_body_object().clone();
-
-	let ip_address = body
-		.get(request_keys::IP_ADDRESS)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let method = body
-		.get(request_keys::METHOD)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|method| method.parse().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let host = body
-		.get(request_keys::DOMAIN)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let protocol = body
-		.get(request_keys::PROTOCOL)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|protocol| protocol.parse().ok())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let path = body
-		.get(request_keys::PATH)
-		.map(|value| value.as_str())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let response_time = body
-		.get(request_keys::RESPONSE_TIME)
-		.map(|value| value.as_f64())
-		.flatten()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let deployment_id = if host.ends_with(".patr.cloud") {
-		let deployment_id_string = host.replace(".patr.cloud", "");
-		let deployment_id =
-			if let Ok(id) = Uuid::parse_str(&deployment_id_string) {
-				id
-			} else {
-				return Ok(context);
-			};
-		if db::get_deployment_by_id(
-			context.get_database_connection(),
-			&deployment_id,
-		)
-		.await?
-		.is_none()
-		{
-			return Ok(context);
-		}
-		deployment_id
-	} else {
-		// get deployment by domain_name
-		if let Some(deployment) = db::get_deployment_by_domain_name(
-			context.get_database_connection(),
-			host,
-		)
-		.await?
-		{
-			deployment.id
-		} else {
-			return Ok(context);
-		}
-	};
-
-	service::create_request_log_for_deployment(
-		context.get_database_connection(),
-		&deployment_id,
-		get_current_time_millis(),
-		ip_address,
-		&method,
-		host,
-		&protocol,
-		path,
-		response_time,
-	)
-	.await?;
-
-	context.json(json!({
-		request_keys::SUCCESS: true
-	}));
 	Ok(context)
 }
