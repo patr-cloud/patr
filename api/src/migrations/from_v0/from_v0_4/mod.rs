@@ -6,6 +6,7 @@ mod bytea_to_uuid;
 mod docker_registry;
 mod kubernetes_migration;
 mod organisation_to_workspace;
+mod permission_names;
 mod workspace_domain;
 
 /// # Description
@@ -543,6 +544,7 @@ async fn migrate_from_v0_4_9(
 ) -> Result<(), sqlx::Error> {
 	organisation_to_workspace::migrate(&mut *connection, config).await?;
 	bytea_to_uuid::migrate(&mut *connection, config).await?;
+	permission_names::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection, config).await?;
 	add_trim_check_for_username(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
@@ -655,27 +657,38 @@ async fn reset_permission_order(
 		"workspace::domain::verify",
 		"workspace::domain::delete",
 		// Dns record permissions
-		"workspace::dnsRecord::list",
-		"workspace::dnsRecord::add",
-		"workspace::dnsRecord::edit",
-		"workspace::dnsRecord::delete",
+		"workspace::domain::dnsRecord::list",
+		"workspace::domain::dnsRecord::add",
+		"workspace::domain::dnsRecord::edit",
+		"workspace::domain::dnsRecord::delete",
 		// Deployment permissions
-		"workspace::deployment::list",
-		"workspace::deployment::create",
-		"workspace::deployment::info",
-		"workspace::deployment::delete",
-		"workspace::deployment::edit",
+		"workspace::infrastructure::deployment::list",
+		"workspace::infrastructure::deployment::create",
+		"workspace::infrastructure::deployment::info",
+		"workspace::infrastructure::deployment::delete",
+		"workspace::infrastructure::deployment::edit",
 		// Upgrade path permissions
-		"workspace::deployment::upgradePath::list",
-		"workspace::deployment::upgradePath::create",
-		"workspace::deployment::upgradePath::info",
-		"workspace::deployment::upgradePath::delete",
-		"workspace::deployment::upgradePath::edit",
-		// Entry point permissions
-		"workspace::deployment::managedUrl::list",
-		"workspace::deployment::managedUrl::create",
-		"workspace::deployment::managedUrl::edit",
-		"workspace::deployment::managedUrl::delete",
+		"workspace::infrastructure::upgradePath::list",
+		"workspace::infrastructure::upgradePath::create",
+		"workspace::infrastructure::upgradePath::info",
+		"workspace::infrastructure::upgradePath::delete",
+		"workspace::infrastructure::upgradePath::edit",
+		// Managed URL permissions
+		"workspace::infrastructure::managedUrl::list",
+		"workspace::infrastructure::managedUrl::create",
+		"workspace::infrastructure::managedUrl::edit",
+		"workspace::infrastructure::managedUrl::delete",
+		// Managed database permissions
+		"workspace::infrastructure::managedDatabase::create",
+		"workspace::infrastructure::managedDatabase::list",
+		"workspace::infrastructure::managedDatabase::delete",
+		"workspace::infrastructure::managedDatabase::info",
+		// Static site permissions
+		"workspace::infrastructure::staticSite::list",
+		"workspace::infrastructure::staticSite::create",
+		"workspace::infrastructure::staticSite::info",
+		"workspace::infrastructure::staticSite::delete",
+		"workspace::infrastructure::staticSite::edit",
 		// Docker registry permissions
 		"workspace::dockerRegistry::create",
 		"workspace::dockerRegistry::list",
@@ -683,17 +696,6 @@ async fn reset_permission_order(
 		"workspace::dockerRegistry::info",
 		"workspace::dockerRegistry::push",
 		"workspace::dockerRegistry::pull",
-		// Managed database permissions
-		"workspace::managedDatabase::create",
-		"workspace::managedDatabase::list",
-		"workspace::managedDatabase::delete",
-		"workspace::managedDatabase::info",
-		// Static site permissions
-		"workspace::staticSite::list",
-		"workspace::staticSite::create",
-		"workspace::staticSite::info",
-		"workspace::staticSite::delete",
-		"workspace::staticSite::edit",
 		// Workspace permissions
 		"workspace::viewRoles",
 		"workspace::createRole",

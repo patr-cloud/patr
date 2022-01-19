@@ -1243,7 +1243,7 @@ async fn rename_permissions_to_managed_url(
 		SET
 			name = REPLACE(name, 'entryPoint', 'managedUrl')
 		WHERE
-			name LIKE 'workspace::deployment::entryPoint::%';
+			name LIKE 'workspace::infrastructure::entryPoint::%';
 		"#
 	)
 	.execute(&mut *connection)
