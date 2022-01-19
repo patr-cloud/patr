@@ -11,7 +11,6 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
-#[allow(dead_code)]
 pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const PASSWORD: &str = "password";
@@ -19,16 +18,12 @@ pub mod request_keys {
 	pub const ERROR: &str = "error";
 	pub const ERRORS: &str = "errors";
 	pub const MESSAGE: &str = "message";
-	pub const VERIFICATION_TOKEN: &str = "verificationToken";
 	pub const CODE: &str = "code";
 	pub const DETAIL: &str = "detail";
 	pub const TOKEN: &str = "token";
-	pub const DOMAIN: &str = "domain";
 	pub const DOMAIN_ID: &str = "domainId";
 	pub const WORKSPACE_ID: &str = "workspaceId";
 	pub const NAME: &str = "name";
-	pub const DOMAINS: &str = "domains";
-	pub const VERIFIED: &str = "verified";
 	pub const ID: &str = "id";
 	pub const VERSION: &str = "version";
 	pub const ROLE_ID: &str = "roleId";
@@ -76,17 +71,7 @@ pub mod request_keys {
 	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
 	pub const TOTAL_WEBSITES: &str = "totalWebsites";
 	pub const TOTAL_RESOURCES: &str = "totalResources";
-	pub const DOMAIN_NAMESERVER_TYPE: &str = "domainNameserverType";
-	pub const DNS_RECORD: &str = "dnsRecord";
 	pub const RECORD_ID: &str = "recordId";
-	pub const CONTENT: &str = "content";
-	pub const PROXIED: &str = "proxied";
-	pub const TTL: &str = "ttl";
-	pub const PRIORITY: &str = "priority";
-	pub const TYPE: &str = "type";
-	pub const POINTS_TO: &str = "pointsTo";
-	pub const TARGET: &str = "target";
-	pub const TXT_RECORD: &str = "txtRecord";
 	pub const DIGEST: &str = "digest";
 	pub const TAG: &str = "tag";
 	pub const MANAGED_URL_ID: &str = "managedUrlId";

@@ -6,6 +6,7 @@ mod bytea_to_uuid;
 mod docker_registry;
 mod kubernetes_migration;
 mod organisation_to_workspace;
+mod workspace_domain;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -545,7 +546,11 @@ async fn migrate_from_v0_4_9(
 	docker_registry::migrate(&mut *connection, config).await?;
 	add_trim_check_for_username(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
+	rename_static_sites_to_static_site(&mut *connection, config).await?;
+	workspace_domain::migrate(&mut *connection, config).await?;
 	kubernetes_migration::migrate(&mut *connection, config).await?;
+	reset_permission_order(&mut *connection, config).await?;
+	reset_resource_types_order(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -580,4 +585,197 @@ async fn make_permission_name_unique(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+async fn rename_static_sites_to_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment_static_sites
+		RENAME TO deployment_static_site;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		RENAME CONSTRAINT deployment_static_sites_chk_name_is_trimmed
+		TO deployment_static_site_chk_name_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		RENAME CONSTRAINT deployment_static_sites_pk
+		TO deployment_static_site_pk;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		RENAME CONSTRAINT deployment_static_sites_uq_name_workspace_id
+		TO deployment_static_site_uq_name_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_static_site
+		RENAME CONSTRAINT deployment_static_sites_fk_id_workspace_id
+		TO deployment_static_site_fk_id_workspace_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn reset_permission_order(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	for permission in [
+		// Domain permissions
+		"workspace::domain::list",
+		"workspace::domain::add",
+		"workspace::domain::viewDetails",
+		"workspace::domain::verify",
+		"workspace::domain::delete",
+		// Dns record permissions
+		"workspace::dnsRecord::list",
+		"workspace::dnsRecord::add",
+		"workspace::dnsRecord::edit",
+		"workspace::dnsRecord::delete",
+		// Deployment permissions
+		"workspace::deployment::list",
+		"workspace::deployment::create",
+		"workspace::deployment::info",
+		"workspace::deployment::delete",
+		"workspace::deployment::edit",
+		// Upgrade path permissions
+		"workspace::deployment::upgradePath::list",
+		"workspace::deployment::upgradePath::create",
+		"workspace::deployment::upgradePath::info",
+		"workspace::deployment::upgradePath::delete",
+		"workspace::deployment::upgradePath::edit",
+		// Entry point permissions
+		"workspace::deployment::managedUrl::list",
+		"workspace::deployment::managedUrl::create",
+		"workspace::deployment::managedUrl::edit",
+		"workspace::deployment::managedUrl::delete",
+		// Docker registry permissions
+		"workspace::dockerRegistry::create",
+		"workspace::dockerRegistry::list",
+		"workspace::dockerRegistry::delete",
+		"workspace::dockerRegistry::info",
+		"workspace::dockerRegistry::push",
+		"workspace::dockerRegistry::pull",
+		// Managed database permissions
+		"workspace::managedDatabase::create",
+		"workspace::managedDatabase::list",
+		"workspace::managedDatabase::delete",
+		"workspace::managedDatabase::info",
+		// Static site permissions
+		"workspace::staticSite::list",
+		"workspace::staticSite::create",
+		"workspace::staticSite::info",
+		"workspace::staticSite::delete",
+		"workspace::staticSite::edit",
+		// Workspace permissions
+		"workspace::viewRoles",
+		"workspace::createRole",
+		"workspace::editRole",
+		"workspace::deleteRole",
+		"workspace::editInfo",
+	] {
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = CONCAT('test::', name)
+			WHERE
+				name = $1;
+			"#,
+			permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				permission
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			&permission,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
+}
+
+async fn reset_resource_types_order(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	for resource_type in [
+		"workspace",
+		"domain",
+		"dnsRecord",
+		"dockerRepository",
+		"managedDatabase",
+		"deployment",
+		"staticSite",
+		"deploymentUpgradePath",
+		"managedUrl",
+	] {
+		query!(
+			r#"
+			UPDATE
+				resource_type
+			SET
+				name = CONCAT('test::', name)
+			WHERE
+				name = $1;
+			"#,
+			&resource_type,
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		query!(
+			r#"
+			UPDATE
+				resource_type
+			SET
+				name = $1
+			WHERE
+				name = CONCAT('test::', $1);
+			"#,
+			&resource_type,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
