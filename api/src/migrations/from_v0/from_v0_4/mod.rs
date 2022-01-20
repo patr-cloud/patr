@@ -618,6 +618,8 @@ async fn fix_user_constraints(
 		ALTER TABLE user_to_sign_up
 			ALTER COLUMN business_domain_name
 				SET DATA TYPE TEXT,
+			DROP CONSTRAINT
+				user_to_sign_up_chk_business_domain_name_is_lower_case,
 			ADD CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid
 				CHECK(
 					business_domain_name ~
@@ -695,7 +697,50 @@ async fn fix_user_constraints(
 			DROP COLUMN otp_hash,
 			DROP COLUMN otp_expiry,
 			ALTER COLUMN otp_hash_new DROP DEFAULT,
-			ALTER COLUMN otp_expiry_new DROP DEFAULT;
+			ALTER COLUMN otp_expiry_new DROP DEFAULT,
+			ADD CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(
+				otp_expiry_new >= 0
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP INDEX IF EXISTS user_to_sign_up_idx_username_otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP INDEX IF EXISTS user_to_sign_up_idx_otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_otp_expiry
+		ON
+			user_to_sign_up
+		(otp_expiry_new);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_username_otp_expiry
+		ON
+			user_to_sign_up
+		(username, otp_expiry_new);
 		"#
 	)
 	.execute(&mut *connection)
