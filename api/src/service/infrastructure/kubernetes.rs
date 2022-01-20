@@ -459,7 +459,7 @@ pub async fn update_kubernetes_deployment(
 						target_port: Some(
 							IntOrString::Int(port.value() as i32),
 						),
-						name: Some(format!("port-{}", port.to_string())),
+						name: Some(format!("port-{}", port)),
 						..ServicePort::default()
 					})
 					.collect::<Vec<_>>(),
@@ -508,8 +508,7 @@ pub async fn update_kubernetes_deployment(
 				IngressRule {
 					host: Some(format!(
 						"{}-{}.patr.cloud",
-						port.to_string(),
-						deployment.id
+						port, deployment.id
 					)),
 					http: Some(HTTPIngressRuleValue {
 						paths: vec![HTTPIngressPath {
@@ -518,7 +517,7 @@ pub async fn update_kubernetes_deployment(
 									name: format!("service-{}", deployment.id),
 									port: Some(ServiceBackendPort {
 										number: Some(port.value() as i32),
-										name: None,
+										..ServiceBackendPort::default()
 									}),
 								}),
 								..Default::default()
@@ -531,8 +530,7 @@ pub async fn update_kubernetes_deployment(
 				IngressTLS {
 					hosts: Some(vec![format!(
 						"{}-{}.patr.cloud",
-						port.to_string(),
-						deployment.id
+						port, deployment.id
 					)]),
 					secret_name: Some(
 						"tls-domain-wildcard-patr-cloud".to_string(),
