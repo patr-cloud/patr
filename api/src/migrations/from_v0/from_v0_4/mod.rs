@@ -672,6 +672,15 @@ async fn fix_user_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN business_name_new to business_name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
