@@ -9,10 +9,56 @@ pub async fn migrate(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
+		CREATE TABLE domain_tld(
+			tld TEXT
+				CONSTRAINT domain_tld_pk PRIMARY KEY
+				CONSTRAINT domain_tld_chk_is_lower_case CHECK(
+					tld = LOWER(tld)
+				)
+				CONSTRAINT domain_tld_chk_is_trimmed CHECK(
+					tld = TRIM(tld)
+				)
+				CONSTRAINT domain_tld_chk_is_length_valid CHECK(
+					LENGTH(tld) >= 2 AND LENGTH(tld) <= 6
+				)
+				CONSTRAINT domain_tld_chk_is_tld_valid CHECK(
+					tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$'
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM(
 			'internal',
 			'external'
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE domain
+			ALTER COLUMN name SET DATA TYPE TEXT,
+			ADD CONSTRAINT domain_chk_name_is_trimmed CHECK(
+				name = TRIM(name)
+			),
+			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
+				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+			),
+			ADD COLUMN tld TEXT NOT NULL,
+			ADD CONSTRAINT domain_fk_tld
+				FOREIGN KEY(tld) REFERENCES domain_tld(tld),
+			DROP CONSTRAINT domain_uq_name,
+			ADD CONSTRAINT domain_uq_name_tld UNIQUE(name, tld),
+			ADD CONSTRAINT domain_chk_max_domain_name_length CHECK(
+				(LENGTH(name) + LENGTH(tld)) < 255
+			);
 		"#
 	)
 	.execute(&mut *connection)

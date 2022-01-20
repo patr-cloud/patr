@@ -34,6 +34,9 @@ pub async fn initialize_users_pre(
 				)
 				CONSTRAINT user_chk_username_is_trimmed CHECK(
 					username = TRIM(username)
+				)
+				CONSTRAINT user_chk_username_is_valid CHECK(
+					username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\.-]*$'
 				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
@@ -348,6 +351,12 @@ pub async fn initialize_users_post(
 			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY
 				CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK(
 					username = LOWER(username)
+				)
+				CONSTRAINT user_to_sign_up_chk_username_is_trimmed CHECK(
+					username = TRIM(username)
+				)
+				CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK(
+					username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\.-]*$'
 				),
 			account_type RESOURCE_OWNER_TYPE NOT NULL,
 
@@ -384,12 +393,37 @@ pub async fn initialize_users_post(
 						CHECK(
 							business_email_local = LOWER(business_email_local)
 						),
-			business_domain_name VARCHAR(100)
+			business_domain_name TEXT
 				CONSTRAINT
 					user_to_sign_up_chk_business_domain_name_is_lower_case
 						CHECK(
 							business_domain_name = LOWER(business_domain_name)
-						),
+						)
+				CONSTRAINT user_to_sign_up_chk_business_domain_name_is_trimmed
+					CHECK(business_domain_name = TRIM(business_domain_name))
+				CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid
+					CHECK(
+						business_domain_name ~
+							'^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+					),
+			business_domain_tld TEXT
+				CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_lower_case
+					CHECK(business_domain_tld = LOWER(business_domain_tld))
+				CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_trimmed
+					CHECK(business_domain_tld = TRIM(business_domain_tld))
+				CONSTRAINT
+					user_to_sign_up_chk_business_domain_tld_is_length_valid
+						CHECK(
+							LENGTH(business_domain_tld) >= 2 AND
+							LENGTH(business_domain_tld) <= 6
+						)
+				CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid
+					CHECK(
+						business_domain_tld ~
+							'^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$'
+					)
+				CONSTRAINT user_to_sign_up_fk_business_domain_tld
+					REFERENCES domain_tld(tld),
 			business_name VARCHAR(100)
 				CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
 					CHECK(business_name = LOWER(business_name)),
@@ -398,6 +432,9 @@ pub async fn initialize_users_post(
 				CONSTRAINT user_to_sign_up_chk_expiry_unsigned
 					CHECK(otp_expiry >= 0),
 
+			CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
+				(LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255
+			),
 			CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
 				(
 					account_type = 'personal' AND
@@ -1189,6 +1226,7 @@ pub async fn set_business_user_to_be_signed_up(
 
 	business_email_local: &str,
 	business_domain_name: &str,
+	business_domain_tld: &str,
 	business_name: &str,
 
 	otp_hash: &str,
@@ -1216,9 +1254,10 @@ pub async fn set_business_user_to_be_signed_up(
 				$9,
 				$10,
 				$11,
-				
 				$12,
-				$13
+
+				$13,
+				$14
 			)
 		ON CONFLICT(username) DO UPDATE SET
 			account_type = 'business',
@@ -1235,6 +1274,7 @@ pub async fn set_business_user_to_be_signed_up(
 			
 			business_email_local = EXCLUDED.business_email_local,
 			business_domain_name = EXCLUDED.business_domain_name,
+			business_domain_tld = EXCLUDED.business_domain_tld,
 			business_name = EXCLUDED.business_name,
 			
 			otp_hash = EXCLUDED.otp_hash,
@@ -1250,6 +1290,7 @@ pub async fn set_business_user_to_be_signed_up(
 		backup_phone_number,
 		business_email_local,
 		business_domain_name,
+		business_domain_tld,
 		business_name,
 		otp_hash,
 		otp_expiry as i64
@@ -1277,7 +1318,12 @@ pub async fn get_user_to_sign_up_by_username(
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
-			business_domain_name,
+			CASE WHEN business_domain_name IS NULL
+			THEN
+				NULL
+			ELSE
+				CONCAT(business_domain_name, '.', business_domain_tld)
+			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
 			otp_expiry
@@ -1328,7 +1374,12 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
-			business_domain_name,
+			CASE WHEN business_domain_name IS NULL
+			THEN
+				NULL
+			ELSE
+				CONCAT(business_domain_name, '.', business_domain_tld)
+			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
 			otp_expiry
@@ -1380,7 +1431,16 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.backup_phone_country_code,
 			user_to_sign_up.backup_phone_number,
 			user_to_sign_up.business_email_local,
-			user_to_sign_up.business_domain_name,
+			CASE WHEN user_to_sign_up.business_domain_name IS NULL
+			THEN
+				NULL
+			ELSE
+				CONCAT(
+					user_to_sign_up.business_domain_name,
+					'.',
+					user_to_sign_up.business_domain_tld
+				)
+			END as "business_domain_name: String",
 			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
 			user_to_sign_up.otp_expiry
@@ -1434,7 +1494,12 @@ pub async fn get_user_to_sign_up_by_business_name(
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
-			business_domain_name,
+			CASE WHEN business_domain_name IS NULL
+			THEN
+				NULL
+			ELSE
+				CONCAT(business_domain_name, '.', business_domain_tld)
+			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
 			otp_expiry
@@ -1484,7 +1549,12 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			backup_phone_country_code,
 			backup_phone_number,
 			business_email_local,
-			business_domain_name,
+			CASE WHEN business_domain_name IS NULL
+			THEN
+				NULL
+			ELSE
+				CONCAT(business_domain_name, '.', business_domain_tld)
+			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
 			otp_expiry

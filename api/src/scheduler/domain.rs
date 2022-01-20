@@ -41,21 +41,31 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 }
 
 pub async fn refresh_domain_tld_list() -> Result<(), Error> {
+	let mut connection = super::CONFIG.get().unwrap().database.begin().await?;
 	let data =
 		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
 			.await?
 			.text()
 			.await?;
 
-	let tlds = data
+	let mut tlds = data
 		.split('\n')
 		.map(String::from)
 		.filter(|tld| {
 			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
 		})
+		.map(|item| item.to_lowercase())
 		.collect::<Vec<String>>();
 
-	validator::update_domain_tld_list(tlds).await;
+	db::update_domain_tld_list(&mut connection, &tlds).await?;
+
+	let mut tld_list = validator::DOMAIN_TLD_LIST.write().await;
+	tld_list.clear();
+	tld_list.append(&mut tlds);
+	drop(tld_list);
+
+	connection.commit().await?;
+
 	Ok(())
 }
 

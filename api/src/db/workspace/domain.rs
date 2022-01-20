@@ -24,15 +24,48 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
+		CREATE TABLE domain_tld(
+			tld TEXT
+				CONSTRAINT domain_tld_pk PRIMARY KEY
+				CONSTRAINT domain_tld_chk_is_lower_case CHECK(
+					tld = LOWER(tld)
+				)
+				CONSTRAINT domain_tld_chk_is_trimmed CHECK(
+					tld = TRIM(tld)
+				)
+				CONSTRAINT domain_tld_chk_is_length_valid CHECK(
+					LENGTH(tld) >= 2 AND LENGTH(tld) <= 63
+				)
+				CONSTRAINT domain_tld_chk_is_tld_valid CHECK(
+					tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$'
+				)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE domain(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
-			name VARCHAR(255) NOT NULL 
-				CONSTRAINT domain_uq_name UNIQUE
-				CONSTRAINT domain_chk_name_is_lower_case 
-					CHECK(
-						name = LOWER(name)
-					),
+			name TEXT NOT NULL
+				CONSTRAINT domain_chk_name_is_lower_case CHECK(
+					name = LOWER(name)
+				)
+				CONSTRAINT domain_chk_name_is_trimmed CHECK(
+					name = TRIM(name)
+				)
+				CONSTRAINT domain_chk_name_is_valid CHECK(
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+				),
 			type RESOURCE_OWNER_TYPE NOT NULL,
+			tld TEXT NOT NULL CONSTRAINT domain_fk_tld
+					REFERENCES domain_tld(tld),
+			CONSTRAINT domain_uq_name_tld UNIQUE(name, tld),
+			CONSTRAINT domain_chk_max_domain_name_length CHECK(
+				(LENGTH(name) + LENGTH(tld)) < 255
+			),
 			CONSTRAINT domain_uq_name_type UNIQUE(id, type)
 		);
 		"#
@@ -269,6 +302,7 @@ pub async fn create_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	domain_name: &str,
+	tld: &str,
 	domain_type: &ResourceType,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -276,11 +310,12 @@ pub async fn create_generic_domain(
 		INSERT INTO
 			domain
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		domain_id as _,
 		domain_name,
-		domain_type as _
+		domain_type as _,
+		tld,
 	)
 	.execute(&mut *connection)
 	.await
@@ -371,7 +406,7 @@ pub async fn get_domains_for_workspace(
 		WorkspaceDomain,
 		r#"
 		SELECT
-			domain.name,
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
@@ -401,7 +436,7 @@ pub async fn get_all_unverified_domains(
 	let rows = query!(
 		r#"
 		SELECT
-			domain.name as "name!",
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			workspace_domain.id as "id!: Uuid",
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
@@ -447,7 +482,7 @@ pub async fn get_all_verified_domains(
 	let rows = query!(
 		r#"
 		SELECT
-			domain.name as "name!",
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			workspace_domain.id as "id!: Uuid",
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
@@ -496,7 +531,7 @@ pub async fn get_notification_email_for_domain(
 		r#"
 		SELECT
 			"user".*,
-			domain.name
+			CONCAT(domain.name, '.', domain.tld) as "name!"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -596,7 +631,7 @@ pub async fn get_workspace_domain_by_id(
 		WorkspaceDomain,
 		r#"
 		SELECT
-			domain.name,
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			workspace_domain.id as "id: _",
 			workspace_domain.domain_type as "domain_type: _",
 			workspace_domain.is_verified,
@@ -624,7 +659,7 @@ pub async fn get_personal_domain_by_id(
 		PersonalDomain,
 		r#"
 		SELECT
-			domain.name,
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			personal_domain.id as "id: _",
 			personal_domain.domain_type as "domain_type: _"
 		FROM
@@ -651,7 +686,7 @@ pub async fn get_domain_by_name(
 		r#"
 		SELECT
 			id as "id: _",
-			name,
+			CONCAT(domain.name, '.', domain.tld) as "name!",
 			type as "type: _"
 		FROM
 			domain
@@ -846,4 +881,30 @@ pub async fn update_workspace_domain_status(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn update_domain_tld_list(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	tlds: &[String],
+) -> Result<(), sqlx::Error> {
+	for tld in tlds {
+		query!(
+			r#"
+			INSERT INTO
+				domain_tld
+			VALUES
+				($1)
+			ON CONFLICT DO NOTHING;
+			"#,
+			tld,
+		)
+		.execute(&mut *connection)
+		.await
+		.map_err(|err| {
+			log::error!("Error inserting TLD `{}`", tld);
+			err
+		})?;
+	}
+
+	Ok(())
 }

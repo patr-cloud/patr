@@ -10,7 +10,13 @@ use argon2::{
 };
 use eve_rs::AsError;
 
-use crate::{db, error, service, utils::Error, Database};
+use crate::{
+	db,
+	error,
+	service,
+	utils::{validator, Error},
+	Database,
+};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -258,4 +264,34 @@ pub fn mask_phone_number(phone_number: &str) -> String {
 		return String::from("******");
 	};
 	format!("{}******{}", first, last)
+}
+
+pub async fn split_domain_and_tld(
+	domain_name: &str,
+) -> Option<(String, String)> {
+	let tld_list = validator::DOMAIN_TLD_LIST.read().await;
+	let tld = tld_list
+		.iter()
+		.filter(|tld| domain_name.ends_with(*tld))
+		.reduce(|accumulator, item| {
+			if accumulator.len() > item.len() {
+				accumulator
+			} else {
+				item
+			}
+		})?;
+	let domain = domain_name.replace(tld, "");
+	// domain cannot begin or end with a -, and must be at least 1 character
+	if domain.contains('.') ||
+		domain.is_empty() ||
+		domain.starts_with('-') ||
+		domain.ends_with('-') ||
+		domain
+			.chars()
+			.any(|c| !c.is_ascii_alphanumeric() && c != '-')
+	{
+		return None;
+	}
+
+	Some((domain, tld.clone()))
 }
