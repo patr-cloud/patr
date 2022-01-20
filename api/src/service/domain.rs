@@ -50,7 +50,6 @@ use crate::{
 		constants::{self},
 		get_current_time_millis,
 		settings::Settings,
-		validator,
 		Error,
 	},
 	Database,
@@ -75,11 +74,11 @@ pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<Uuid, Error> {
-	if !validator::is_domain_name_valid(domain_name).await {
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-	}
+	let (domain_name, tld) = super::split_domain_and_tld(domain_name)
+		.await
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
@@ -104,6 +103,7 @@ pub async fn ensure_personal_domain_exists(
 			connection,
 			&domain_id,
 			domain_name,
+			tld,
 			&ResourceType::Personal,
 		)
 		.await?;
@@ -136,11 +136,11 @@ pub async fn add_domain_to_workspace(
 	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
-	if !validator::is_domain_name_valid(domain_name).await {
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-	}
+	let (domain_name, tld) = super::split_domain_and_tld(domain_name)
+		.await
+		.status(400)
+		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
 	let domain = db::get_domain_by_name(connection, domain_name).await?;
 	if let Some(domain) = domain {
@@ -177,6 +177,7 @@ pub async fn add_domain_to_workspace(
 		connection,
 		&domain_id,
 		domain_name,
+		tld,
 		&ResourceType::Business,
 	)
 	.await?;
@@ -305,7 +306,7 @@ pub async fn is_domain_verified(
 /// used for sign up or not or an error
 ///
 /// [`Transaction`]: Transaction
-async fn is_domain_used_for_sign_up(
+pub async fn is_domain_used_for_sign_up(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
 ) -> Result<bool, Error> {
