@@ -564,7 +564,7 @@ async fn fix_user_constraints(
 	query!(
 		r#"
 		ALTER TABLE "user"
-		DROP CONSTRAINT user_chk_username_is_lower;
+		DROP CONSTRAINT user_chk_username_is_lower_case;
 		"#
 	)
 	.execute(&mut *connection)
