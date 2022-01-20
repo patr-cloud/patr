@@ -29,14 +29,13 @@ pub async fn initialize_users_pre(
 			id UUID CONSTRAINT user_pk PRIMARY KEY,
 			username VARCHAR(100) NOT NULL
 				CONSTRAINT user_uq_username UNIQUE
-				CONSTRAINT user_chk_username_is_lower_case CHECK(
-					username = LOWER(username)
-				)
-				CONSTRAINT user_chk_username_is_trimmed CHECK(
-					username = TRIM(username)
-				)
 				CONSTRAINT user_chk_username_is_valid CHECK(
-					username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\.-]*$'
+					/* Username is a-z, 0-9, cannot begin or end with a . or - */
+					username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+					username NOT LIKE '%..%' AND
+					username NOT LIKE '%--%' AND
+					username NOT LIKE '%.-%' AND
+					username NOT LIKE '%-.%'
 				),
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
@@ -349,14 +348,13 @@ pub async fn initialize_users_post(
 		r#"
 		CREATE TABLE user_to_sign_up(
 			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY
-				CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK(
-					username = LOWER(username)
-				)
-				CONSTRAINT user_to_sign_up_chk_username_is_trimmed CHECK(
-					username = TRIM(username)
-				)
 				CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK(
-					username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\.-]*$'
+					/* Username is a-z, 0-9, cannot begin or end with a . or - */
+					username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+					username NOT LIKE '%..%' AND
+					username NOT LIKE '%--%' AND
+					username NOT LIKE '%.-%' AND
+					username NOT LIKE '%-.%'
 				),
 			account_type RESOURCE_OWNER_TYPE NOT NULL,
 
@@ -394,23 +392,12 @@ pub async fn initialize_users_post(
 							business_email_local = LOWER(business_email_local)
 						),
 			business_domain_name TEXT
-				CONSTRAINT
-					user_to_sign_up_chk_business_domain_name_is_lower_case
-						CHECK(
-							business_domain_name = LOWER(business_domain_name)
-						)
-				CONSTRAINT user_to_sign_up_chk_business_domain_name_is_trimmed
-					CHECK(business_domain_name = TRIM(business_domain_name))
 				CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid
 					CHECK(
 						business_domain_name ~
 							'^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
 					),
 			business_domain_tld TEXT
-				CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_lower_case
-					CHECK(business_domain_tld = LOWER(business_domain_tld))
-				CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_trimmed
-					CHECK(business_domain_tld = TRIM(business_domain_tld))
 				CONSTRAINT
 					user_to_sign_up_chk_business_domain_tld_is_length_valid
 						CHECK(

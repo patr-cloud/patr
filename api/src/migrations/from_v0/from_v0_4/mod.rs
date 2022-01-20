@@ -546,7 +546,7 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection, config).await?;
 	permission_names::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection, config).await?;
-	add_trim_check_for_username(&mut *connection, config).await?;
+	fix_user_constraints(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
 	rename_static_sites_to_static_site(&mut *connection, config).await?;
 	workspace_domain::migrate(&mut *connection, config).await?;
@@ -557,20 +557,131 @@ async fn migrate_from_v0_4_9(
 	Ok(())
 }
 
-async fn add_trim_check_for_username(
+async fn fix_user_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE "user"
-		ADD CONSTRAINT user_chk_username_is_trimmed
-		CHECK(username = TRIM(username));
+		DROP CONSTRAINT user_chk_username_is_lower;
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD CONSTRAINT user_chk_username_is_valid
+		CHECK(
+			/* Username is a-z, 0-9, cannot begin or end with a . or - */
+			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			username NOT LIKE '%..%' AND
+			username NOT LIKE '%--%' AND
+			username NOT LIKE '%.-%' AND
+			username NOT LIKE '%-.%'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		DROP CONSTRAINT user_to_sign_up_chk_username_is_lower_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		DROP CONSTRAINT user_to_sign_up_chk_username_is_trimmed;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		ADD CONSTRAINT user_to_sign_up_chk_username_is_valid
+		CHECK(
+			/* Username is a-z, 0-9, cannot begin or end with a . or - */
+			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			username NOT LIKE '%..%' AND
+			username NOT LIKE '%--%' AND
+			username NOT LIKE '%.-%' AND
+			username NOT LIKE '%-.%'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+			ALTER COLUMN business_domain_name
+				SET DATA TYPE TEXT,
+			ADD CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid
+				CHECK(
+					business_domain_name ~
+						'^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+				),
+			ADD COLUMN business_domain_tld TEXT,
+			ADD CONSTRAINT
+				user_to_sign_up_chk_business_domain_tld_is_length_valid
+					CHECK(
+						LENGTH(business_domain_tld) >= 2 AND
+						LENGTH(business_domain_tld) <= 6
+					),
+			ADD CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid
+				CHECK(
+					business_domain_tld ~
+						'^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$'
+				),
+			ADD CONSTRAINT user_to_sign_up_fk_business_domain_tld
+				FOREIGN KEY(business_domain_tld) REFERENCES domain_tld(tld),
+			ADD COLUMN business_name_new VARCHAR(100),
+			DROP CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case,
+			ADD CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
+				CHECK(business_name_new = LOWER(business_name_new)),
+			ADD CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
+					(
+						LENGTH(business_domain_name) +
+						LENGTH(business_domain_tld)
+					) < 255
+				);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			user_to_sign_up
+		SET
+			business_name_new = business_name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		DROP COLUMN business_name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 async fn make_permission_name_unique(

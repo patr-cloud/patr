@@ -27,12 +27,6 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE domain_tld(
 			tld TEXT
 				CONSTRAINT domain_tld_pk PRIMARY KEY
-				CONSTRAINT domain_tld_chk_is_lower_case CHECK(
-					tld = LOWER(tld)
-				)
-				CONSTRAINT domain_tld_chk_is_trimmed CHECK(
-					tld = TRIM(tld)
-				)
 				CONSTRAINT domain_tld_chk_is_length_valid CHECK(
 					LENGTH(tld) >= 2 AND LENGTH(tld) <= 63
 				)
@@ -50,12 +44,6 @@ pub async fn initialize_domain_pre(
 		CREATE TABLE domain(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL
-				CONSTRAINT domain_chk_name_is_lower_case CHECK(
-					name = LOWER(name)
-				)
-				CONSTRAINT domain_chk_name_is_trimmed CHECK(
-					name = TRIM(name)
-				)
 				CONSTRAINT domain_chk_name_is_valid CHECK(
 					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
 				),
@@ -441,7 +429,7 @@ pub async fn get_all_unverified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			patr_controlled_domain.zone_identifier
+			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -487,7 +475,7 @@ pub async fn get_all_verified_domains(
 			workspace_domain.domain_type as "domain_type!: ResourceType",
 			workspace_domain.is_verified as "is_verified!",
 			workspace_domain.nameserver_type as "nameserver_type!: DomainNameserverType",
-			patr_controlled_domain.zone_identifier
+			patr_controlled_domain.zone_identifier as "zone_identifier?"
 		FROM
 			workspace_domain
 		INNER JOIN
