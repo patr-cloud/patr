@@ -546,10 +546,10 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection, config).await?;
 	permission_names::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection, config).await?;
-	fix_user_constraints(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
 	rename_static_sites_to_static_site(&mut *connection, config).await?;
 	workspace_domain::migrate(&mut *connection, config).await?;
+	fix_user_constraints(&mut *connection, config).await?;
 	kubernetes_migration::migrate(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	reset_resource_types_order(&mut *connection, config).await?;
