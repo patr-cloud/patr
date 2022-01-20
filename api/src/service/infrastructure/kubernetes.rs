@@ -361,7 +361,7 @@ pub async fn update_kubernetes_deployment(
 								.ports
 								.iter()
 								.map(|(port, _)| ContainerPort {
-									container_port: *port as i32,
+									container_port: port.value() as i32,
 									..ContainerPort::default()
 								})
 								.collect::<Vec<_>>(),
@@ -455,8 +455,10 @@ pub async fn update_kubernetes_deployment(
 					.ports
 					.iter()
 					.map(|(port, _)| ServicePort {
-						port: *port as i32,
-						target_port: Some(IntOrString::Int(*port as i32)),
+						port: port.value() as i32,
+						target_port: Some(
+							IntOrString::Int(port.value() as i32),
+						),
 						name: Some(format!("port-{}", port)),
 						..ServicePort::default()
 					})
@@ -514,13 +516,14 @@ pub async fn update_kubernetes_deployment(
 								service: Some(IngressServiceBackend {
 									name: format!("service-{}", deployment.id),
 									port: Some(ServiceBackendPort {
-										number: Some(*port as i32),
-										name: Some(format!("port-{}", port)),
+										number: Some(port.value() as i32),
+										..ServiceBackendPort::default()
 									}),
 								}),
 								..Default::default()
 							},
-							..HTTPIngressPath::default()
+							path: Some("/".to_string()),
+							path_type: Some("Prefix".to_string()),
 						}],
 					}),
 				},

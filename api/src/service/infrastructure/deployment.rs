@@ -10,7 +10,7 @@ use api_models::{
 		ExposedPortType,
 		PatrRegistry,
 	},
-	utils::{constants, Uuid},
+	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
 
@@ -429,6 +429,7 @@ pub async fn get_full_deployment_config(
 	let ports = db::get_exposed_ports_for_deployment(connection, deployment_id)
 		.await?
 		.into_iter()
+		.map(|(port, port_type)| (StringifiedU16::new(port), port_type))
 		.collect();
 
 	let environment_variables =
