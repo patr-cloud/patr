@@ -236,7 +236,7 @@ pub async fn initialize_sample_data(config: crate::app::App) {
 			);
 			continue;
 		}
-		let token = response[request_keys::ACCESS_TOKEN].as_str().unwrap();
+		let token = response["accessToken"].as_str().unwrap();
 
 		let response: Value = client
 			.post(format!("http://localhost:{}/workspace", config.config.port))
