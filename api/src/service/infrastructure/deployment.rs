@@ -10,7 +10,7 @@ use api_models::{
 		ExposedPortType,
 		PatrRegistry,
 	},
-	utils::{constants, deserializer::StringifiedU16, Uuid},
+	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
 
