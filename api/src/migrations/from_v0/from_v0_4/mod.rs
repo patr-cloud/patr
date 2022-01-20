@@ -670,11 +670,6 @@ async fn fix_user_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_to_sign_up
-			DROP COLUMN business_name,
-			DROP COLUMN otp_hash,
-			DROP COLUMN otp_expiry,
-			ALTER COLUMN otp_hash_new DROP DEFAULT,
-			ALTER COLUMN otp_expiry_new DROP DEFAULT,
 			DROP CONSTRAINT user_to_sign_up_chk_business_details_valid,
 			ADD CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
 				(
@@ -683,7 +678,7 @@ async fn fix_user_constraints(
 						business_email_local IS NULL AND
 						business_domain_name IS NULL AND
 						business_domain_tld IS NULL AND
-						business_name IS NULL
+						business_name_new IS NULL
 					)
 				) OR
 				(
@@ -692,10 +687,15 @@ async fn fix_user_constraints(
 						business_email_local IS NOT NULL AND
 						business_domain_name IS NOT NULL AND
 						business_domain_tld IS NOT NULL AND
-						business_name IS NOT NULL
+						business_name_new IS NOT NULL
 					)
 				)
-			);
+			),
+			DROP COLUMN business_name,
+			DROP COLUMN otp_hash,
+			DROP COLUMN otp_expiry,
+			ALTER COLUMN otp_hash_new DROP DEFAULT,
+			ALTER COLUMN otp_expiry_new DROP DEFAULT;
 		"#
 	)
 	.execute(&mut *connection)
