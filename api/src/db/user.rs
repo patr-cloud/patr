@@ -428,6 +428,7 @@ pub async fn initialize_users_post(
 					(
 						business_email_local IS NULL AND
 						business_domain_name IS NULL AND
+						business_domain_tld IS NULL AND
 						business_name IS NULL
 					)
 				) OR
@@ -436,6 +437,7 @@ pub async fn initialize_users_post(
 					(
 						business_email_local IS NOT NULL AND
 						business_domain_name IS NOT NULL AND
+						business_domain_tld IS NOT NULL AND
 						business_name IS NOT NULL
 					)
 				)

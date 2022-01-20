@@ -638,6 +638,8 @@ async fn fix_user_constraints(
 			ADD CONSTRAINT user_to_sign_up_fk_business_domain_tld
 				FOREIGN KEY(business_domain_tld) REFERENCES domain_tld(tld),
 			ADD COLUMN business_name_new VARCHAR(100),
+			ADD COLUMN otp_hash_new TEXT NOT NULL DEFAULT '',
+			ADD COLUMN otp_expiry_new BIGINT NOT NULL DEFAULT 0,
 			DROP CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case,
 			ADD CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
 				CHECK(business_name_new = LOWER(business_name_new)),
@@ -657,7 +659,9 @@ async fn fix_user_constraints(
 		UPDATE
 			user_to_sign_up
 		SET
-			business_name_new = business_name;
+			business_name_new = business_name,
+			otp_hash_new = otp_hash,
+			otp_expiry_new = otp_expiry;
 		"#
 	)
 	.execute(&mut *connection)
@@ -666,7 +670,32 @@ async fn fix_user_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_to_sign_up
-		DROP COLUMN business_name;
+			DROP COLUMN business_name,
+			DROP COLUMN otp_hash,
+			DROP COLUMN otp_expiry,
+			ALTER COLUMN otp_hash_new DROP DEFAULT,
+			ALTER COLUMN otp_expiry_new DROP DEFAULT,
+			DROP CONSTRAINT user_to_sign_up_chk_business_details_valid,
+			ADD CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
+				(
+					account_type = 'personal' AND
+					(
+						business_email_local IS NULL AND
+						business_domain_name IS NULL AND
+						business_domain_tld IS NULL AND
+						business_name IS NULL
+					)
+				) OR
+				(
+					account_type = 'business' AND
+					(
+						business_email_local IS NOT NULL AND
+						business_domain_name IS NOT NULL AND
+						business_domain_tld IS NOT NULL AND
+						business_name IS NOT NULL
+					)
+				)
+			);
 		"#
 	)
 	.execute(&mut *connection)
@@ -676,6 +705,24 @@ async fn fix_user_constraints(
 		r#"
 		ALTER TABLE user_to_sign_up
 		RENAME COLUMN business_name_new to business_name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN otp_hash_new to otp_hash;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN otp_expiry_new to otp_expiry;
 		"#
 	)
 	.execute(&mut *connection)
