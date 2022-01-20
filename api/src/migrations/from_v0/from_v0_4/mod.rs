@@ -599,15 +599,6 @@ async fn fix_user_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_to_sign_up
-		DROP CONSTRAINT user_to_sign_up_chk_username_is_trimmed;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE user_to_sign_up
 		ADD CONSTRAINT user_to_sign_up_chk_username_is_valid
 		CHECK(
 			/* Username is a-z, 0-9, cannot begin or end with a . or - */
