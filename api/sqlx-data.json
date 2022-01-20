@@ -1168,8 +1168,8 @@
           "Bpchar",
           "Varchar",
           "Varchar",
-          "Varchar",
-          "Varchar",
+          "Text",
+          "Text",
           "Varchar",
           "Text",
           "Int8"
@@ -1565,6 +1565,84 @@
       "nullable": []
     }
   },
+  "2f0cf99eb879a4817aac3bf20ddb03dc4f1ad8e206f367189b87a1cd43098c55": {
+    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( /* Username is a-z, 0-9, cannot begin or end with a . or - */ username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\.\\-]*[a-z0-9]))$' AND username NOT LIKE '%..%' AND username NOT LIKE '%--%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2f2379eeaf9af60a0ebcea4a06344c56cba0961169a06423c0251da6e32649c9": {
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: DomainNameserverType",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "zone_identifier?",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
     "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM( 'created', /* Created, but nothing pushed to it yet */ 'pushed', /* Something is pushed, but the system has not deployed it yet */ 'deploying', /* Something is pushed, and the system is currently deploying it */ 'running', /* Deployment is running successfully */ 'stopped', /* Deployment is stopped by the user */ 'errored', /* Deployment is stopped because of too many errors */ 'deleted' /* Deployment is deleted by the user */ );",
     "describe": {
@@ -1725,7 +1803,7 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Varchar",
+          "Text",
           {
             "Custom": {
               "name": "resource_owner_type",
@@ -1741,6 +1819,74 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "3731a5b708ccdb37f2d9cf5351fde34447607b6bc2b6be9914c9cda5e78af55c": {
+    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name!",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "id!: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_type!: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 3,
+          "name": "is_verified!",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "nameserver_type!: DomainNameserverType",
+          "type_info": {
+            "Custom": {
+              "name": "domain_nameserver_type",
+              "kind": {
+                "Enum": [
+                  "internal",
+                  "external"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "zone_identifier?",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
     }
   },
   "373f49a79215c14fff9b20f486d990ad59e47d670c7c95e11b2a205a3ff891cf": {
@@ -2084,16 +2230,6 @@
       "nullable": []
     }
   },
-  "4aa331d1959eef1026879fbef6d5d6ed6ce64d34add5bc7c4074f5a42289913c": {
-    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_lower_case CHECK( username = LOWER(username) ) CONSTRAINT user_chk_username_is_trimmed CHECK( username = TRIM(username) ) CONSTRAINT user_chk_username_is_valid CHECK( username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\\\.-]*$' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id UUID, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uq_backup_email_local_backup_email_domain_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "4b4487ba8d631faee6e9f6ee42b8b5ff0f560d3b29b5ebfedebf3128feb61f88": {
     "query": "INSERT INTO deployment_machine_type VALUES ($1, $2, $3);",
     "describe": {
@@ -2226,16 +2362,6 @@
       "nullable": []
     }
   },
-  "583ee9b6a1e47b700c1044777d6293482b35736f237b88e04d8ef94a834f3c6c": {
-    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_lower_case CHECK( name = LOWER(name) ) CONSTRAINT domain_chk_name_is_trimmed CHECK( name = TRIM(name) ) CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), CONSTRAINT domain_uq_name_tld UNIQUE(name, tld), CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -2278,16 +2404,6 @@
           "Text",
           "Text"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "5cf65bef5402ab7219b5c43e8bfdd6b734f916e59b837951826217de65908198": {
-    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_lower_case CHECK( tld = LOWER(tld) ) CONSTRAINT domain_tld_chk_is_trimmed CHECK( tld = TRIM(tld) ) CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -2578,6 +2694,16 @@
         true,
         true
       ]
+    }
+  },
+  "62533a4e379f2953c4916dc72571a78b6e5155be357fe2c082aefe0455a16a2d": {
+    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), CONSTRAINT domain_uq_name_tld UNIQUE(name, tld), CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "644e32190ee338b91732dde7904a5a3324d014f52c2528ed1a2bdae354d75bad": {
@@ -3502,74 +3628,6 @@
       "nullable": []
     }
   },
-  "8efa0ef34c470063c7b15193da71348b95da6e53225e5d308657ea10c64a82d7": {
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = TRUE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: ResourceType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "nameserver_type!: DomainNameserverType",
-          "type_info": {
-            "Custom": {
-              "name": "domain_nameserver_type",
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "zone_identifier",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
     "describe": {
@@ -3694,74 +3752,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "96b3fb43ee40b6bf8ba1bb4a42005739ea4197d94288bc2f71e7ec24b5b7ceec": {
-    "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "name!",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 1,
-          "name": "id!: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_type!: ResourceType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 3,
-          "name": "is_verified!",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "nameserver_type!: DomainNameserverType",
-          "type_info": {
-            "Custom": {
-              "name": "domain_nameserver_type",
-              "kind": {
-                "Enum": [
-                  "internal",
-                  "external"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "zone_identifier",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        null,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
     }
   },
   "96e525b047f0838a7c25a1277bae273d2ce2aaf541f0b2aad82404728baecc42": {
@@ -4001,6 +3991,16 @@
       "nullable": []
     }
   },
+  "9c19fbbbc797a7734f840bd841f9fb78075b2dd88fb29e2d2f1bd1f587a130e0": {
+    "query": "CREATE TABLE \"user\"( id UUID CONSTRAINT user_pk PRIMARY KEY, username VARCHAR(100) NOT NULL CONSTRAINT user_uq_username UNIQUE CONSTRAINT user_chk_username_is_valid CHECK( /* Username is a-z, 0-9, cannot begin or end with a . or - */ username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\.\\-]*[a-z0-9]))$' AND username NOT LIKE '%..%' AND username NOT LIKE '%--%' AND username NOT LIKE '%.-%' AND username NOT LIKE '%-.%' ), password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, dob BIGINT DEFAULT NULL CONSTRAINT user_chk_dob_unsigned CHECK(dob >= 0), bio VARCHAR(128) DEFAULT NULL, location VARCHAR(128) DEFAULT NULL, created BIGINT NOT NULL CONSTRAINT user_chk_created_unsigned CHECK(created >= 0), /* Recovery options */ backup_email_local VARCHAR(64) CONSTRAINT user_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id UUID, backup_phone_country_code CHAR(2) CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15), CONSTRAINT user_uq_backup_email_local_backup_email_domain_id UNIQUE(backup_email_local, backup_email_domain_id), CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number UNIQUE(backup_phone_country_code, backup_phone_number), CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL ) OR ( backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);",
     "describe": {
@@ -4072,10 +4072,10 @@
               "kind": {
                 "Enum": [
                   "A",
-                  "AAAA",
-                  "CNAME",
                   "MX",
-                  "TXT"
+                  "TXT",
+                  "AAAA",
+                  "CNAME"
                 ]
               }
             }
@@ -4469,10 +4469,10 @@
               "kind": {
                 "Enum": [
                   "A",
-                  "AAAA",
-                  "CNAME",
                   "MX",
-                  "TXT"
+                  "TXT",
+                  "AAAA",
+                  "CNAME"
                 ]
               }
             }
@@ -4544,16 +4544,6 @@
           "Int2",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "a986c7b9676b084b32b5643c76aa058b520c5d74eff79e815d837a9d0ad63db8": {
-    "query": "CREATE TABLE user_to_sign_up( username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY CONSTRAINT user_to_sign_up_chk_username_is_lower_case CHECK( username = LOWER(username) ) CONSTRAINT user_to_sign_up_chk_username_is_trimmed CHECK( username = TRIM(username) ) CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK( username ~ '^[a-zA-Z0-9_]+[a-zA-Z0-9_\\\\.-]*$' ), account_type RESOURCE_OWNER_TYPE NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, /* Personal email address OR backup email */ backup_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK( backup_email_local = LOWER(backup_email_local) ), backup_email_domain_id UUID CONSTRAINT user_to_sign_up_fk_backup_email_domain_id REFERENCES personal_domain(id), backup_phone_country_code CHAR(2) CONSTRAINT user_to_sign_up_fk_backup_phone_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK( backup_phone_country_code = UPPER(backup_phone_country_code) ), backup_phone_number VARCHAR(15) CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK( LENGTH(backup_phone_number) >= 7 AND LENGTH(backup_phone_number) <= 15 AND CAST(backup_phone_number AS BIGINT) > 0 ), /* Workspace email address */ business_email_local VARCHAR(64) CONSTRAINT user_to_sign_up_chk_business_email_local_is_lower_case CHECK( business_email_local = LOWER(business_email_local) ), business_domain_name TEXT CONSTRAINT user_to_sign_up_chk_business_domain_name_is_lower_case CHECK( business_domain_name = LOWER(business_domain_name) ) CONSTRAINT user_to_sign_up_chk_business_domain_name_is_trimmed CHECK(business_domain_name = TRIM(business_domain_name)) CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid CHECK( business_domain_name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' ), business_domain_tld TEXT CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_lower_case CHECK(business_domain_tld = LOWER(business_domain_tld)) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_trimmed CHECK(business_domain_tld = TRIM(business_domain_tld)) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_length_valid CHECK( LENGTH(business_domain_tld) >= 2 AND LENGTH(business_domain_tld) <= 6 ) CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid CHECK( business_domain_tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) CONSTRAINT user_to_sign_up_fk_business_domain_tld REFERENCES domain_tld(tld), business_name VARCHAR(100) CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case CHECK(business_name = LOWER(business_name)), otp_hash TEXT NOT NULL, otp_expiry BIGINT NOT NULL CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(otp_expiry >= 0), CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK( (LENGTH(business_domain_name) + LENGTH(business_domain_tld)) < 255 ), CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK( ( account_type = 'personal' AND ( business_email_local IS NULL AND business_domain_name IS NULL AND business_name IS NULL ) ) OR ( account_type = 'business' AND ( business_email_local IS NOT NULL AND business_domain_name IS NOT NULL AND business_name IS NOT NULL ) ) ), CONSTRAINT user_to_sign_up_chk_backup_details CHECK( ( backup_email_local IS NOT NULL AND backup_email_domain_id IS NOT NULL AND backup_phone_country_code IS NULL AND backup_phone_number IS NULL ) OR ( backup_email_local IS NULL AND backup_email_domain_id IS NULL AND backup_phone_country_code IS NOT NULL AND backup_phone_number IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -7006,10 +6996,10 @@
               "kind": {
                 "Enum": [
                   "A",
-                  "AAAA",
-                  "CNAME",
                   "MX",
-                  "TXT"
+                  "TXT",
+                  "AAAA",
+                  "CNAME"
                 ]
               }
             }
@@ -7081,6 +7071,16 @@
         false,
         true
       ]
+    }
+  },
+  "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
+    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
