@@ -356,6 +356,19 @@
       ]
     }
   },
+  "0dd8d8e9880f4bcc9383d022cf106e1baccce3c610e1bec6c41b6595711b8b25": {
+    "query": "UPDATE workspace_domain SET is_verified = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "0f173a2ae7e9c68cfb8d86191b16740c01ad3febde1b1429e083153b9ad21cb4": {
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(business_email.local, '@', domain.name) = $1;",
     "describe": {
@@ -6108,6 +6121,19 @@
       "nullable": []
     }
   },
+  "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
+    "query": "UPDATE domain SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "d81835183e541ae33686b2b7253fc23557215c3aa163d97c633f5c61f00af249": {
     "query": "INSERT INTO deployment_exposed_port VALUES ($1, $2, $3);",
     "describe": {
@@ -6147,6 +6173,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
+    "query": "UPDATE managed_url SET sub_domain = $2 WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
       },
       "nullable": []
     }
@@ -6978,6 +7017,19 @@
       "nullable": [
         null
       ]
+    }
+  },
+  "f4b563086869478fb23e33f2b2b76c74ba71561f61443053053ae9591126a81e": {
+    "query": "UPDATE resource SET name = $2 WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar"
+        ]
+      },
+      "nullable": []
     }
   },
   "f4b7a3825a9efcb38495b868c76fddc84104816c7d7519a19b6af1185e2e3930": {
