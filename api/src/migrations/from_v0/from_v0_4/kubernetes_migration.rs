@@ -1357,25 +1357,10 @@ async fn create_all_namespaces(
 		let namespace_name = workspace_id.as_str();
 		let kubernetes_namespace = Namespace {
 			metadata: ObjectMeta {
-				annotations: None,
-				cluster_name: None,
-				creation_timestamp: None,
-				deletion_grace_period_seconds: None,
-				deletion_timestamp: None,
-				finalizers: None,
-				generate_name: None,
-				generation: None,
-				labels: None,
-				managed_fields: None,
 				name: Some(namespace_name.to_string()),
-				namespace: None,
-				owner_references: None,
-				resource_version: None,
-				self_link: None,
-				uid: None,
+				..ObjectMeta::default()
 			},
-			spec: Some(NamespaceSpec { finalizers: None }),
-			status: None,
+			..Namespace::default()
 		};
 		namespace_api
 			.create(&PostParams::default(), &kubernetes_namespace)
