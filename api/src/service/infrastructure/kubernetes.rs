@@ -106,9 +106,9 @@ pub async fn update_kubernetes_static_site(
 			),
 			ports: Some(vec![ServicePort {
 				name: Some("https".to_string()),
-				port: 443,
+				port: 80,
 				protocol: Some("TCP".to_string()),
-				target_port: Some(IntOrString::Int(443)),
+				target_port: Some(IntOrString::Int(80)),
 				..ServicePort::default()
 			}]),
 			..ServiceSpec::default()
