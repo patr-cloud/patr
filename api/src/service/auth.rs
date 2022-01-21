@@ -853,6 +853,7 @@ pub async fn join_user(
 			connection,
 			&user_data.business_name.unwrap(),
 			&user_id,
+			&config,
 		)
 		.await?;
 
@@ -959,9 +960,14 @@ pub async fn join_user(
 
 	// add personal workspace
 	let personal_workspace_name =
-		service::get_personal_workspace_name(username);
-	service::create_workspace(connection, &personal_workspace_name, &user_id)
-		.await?;
+		service::get_personal_workspace_name(user_id.as_str());
+	service::create_workspace(
+		connection,
+		&personal_workspace_name,
+		&user_id,
+		&config,
+	)
+	.await?;
 
 	db::delete_user_to_be_signed_up(connection, &user_data.username).await?;
 

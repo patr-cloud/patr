@@ -273,11 +273,14 @@ async fn create_new_workspace(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let workspace_name = workspace_name.trim().to_lowercase();
 
+	let config = context.get_state().config.clone();
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
 		&workspace_name,
 		&user_id,
+		&config,
 	)
 	.await?;
 

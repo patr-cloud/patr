@@ -1,4 +1,20 @@
 use api_models::utils::Uuid;
+use k8s_openapi::api::core::v1::{Namespace, NamespaceSpec};
+use kube::{
+	api::PostParams,
+	config::{
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
+		NamedContext,
+	},
+	core::ObjectMeta,
+	Api,
+	Config,
+};
 use sqlx::Row;
 
 use crate::{migrate_query as query, utils::settings::Settings, Database};
@@ -151,6 +167,7 @@ pub async fn migrate(
 	remove_outdated_tables(&mut *connection, config).await?;
 	rename_permissions_to_managed_url(&mut *connection, config).await?;
 	rename_resource_type_to_managed_url(&mut *connection, config).await?;
+	create_all_namespaces(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1269,4 +1286,102 @@ async fn rename_resource_type_to_managed_url(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+async fn create_all_namespaces(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let client = kube::Client::try_from(config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let namespace_api = Api::<Namespace>::all(client);
+
+	let workspaces = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"));
+
+	for workspace_id in workspaces {
+		let namespace_name = workspace_id.as_str();
+		let kubernetes_namespace = Namespace {
+			metadata: ObjectMeta {
+				annotations: None,
+				cluster_name: None,
+				creation_timestamp: None,
+				deletion_grace_period_seconds: None,
+				deletion_timestamp: None,
+				finalizers: None,
+				generate_name: None,
+				generation: None,
+				labels: None,
+				managed_fields: None,
+				name: Some(namespace_name.to_string()),
+				namespace: None,
+				owner_references: None,
+				resource_version: None,
+				self_link: None,
+				uid: None,
+			},
+			spec: Some(NamespaceSpec { finalizers: None }),
+			status: None,
+		};
+		namespace_api
+			.create(&PostParams::default(), &kubernetes_namespace)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
+
+	Ok(())
 }
