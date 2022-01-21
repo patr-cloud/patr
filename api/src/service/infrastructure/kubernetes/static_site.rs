@@ -52,20 +52,21 @@ pub async fn update_kubernetes_static_site(
 		request_id
 	);
 
-	let mut selector = BTreeMap::new();
-	selector.insert("app".to_string(), "static-sites-proxy".to_string());
-
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", static_site.id)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
-			type_: Some("ClusterIP".to_string()),
-			selector: Some(selector),
+			type_: Some("ExternalName".to_string()),
+			external_name: Some(
+				"proxy-static-site-service.default.svc.cluster.local"
+					.to_string(),
+			),
 			ports: Some(vec![ServicePort {
 				port: 80,
 				name: Some("http".to_string()),
+				protocol: Some("TCP".to_string()),
 				target_port: Some(IntOrString::Int(80)),
 				..ServicePort::default()
 			}]),
@@ -73,6 +74,7 @@ pub async fn update_kubernetes_static_site(
 		}),
 		..Service::default()
 	};
+
 	// Create the service defined above
 	log::trace!("request_id: {} - creating ClusterIP service", request_id);
 	let service_api: Api<Service> =
