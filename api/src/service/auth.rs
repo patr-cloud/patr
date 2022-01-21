@@ -853,7 +853,7 @@ pub async fn join_user(
 			connection,
 			&user_data.business_name.unwrap(),
 			&user_id,
-			&config,
+			config,
 		)
 		.await?;
 
@@ -965,7 +965,7 @@ pub async fn join_user(
 		connection,
 		&personal_workspace_name,
 		&user_id,
-		&config,
+		config,
 	)
 	.await?;
 
