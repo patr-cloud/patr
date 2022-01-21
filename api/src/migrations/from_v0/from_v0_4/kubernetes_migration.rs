@@ -974,7 +974,7 @@ async fn migrate_all_managed_urls(
 	let domain_resource_type_id = query!(
 		r#"
 		SELECT
-			id as "id!: Uuid"
+			id
 		FROM
 			resource_type
 		WHERE
@@ -988,7 +988,7 @@ async fn migrate_all_managed_urls(
 	let managed_url_resource_type_id = query!(
 		r#"
 		SELECT
-			id as "id!: Uuid"
+			id
 		FROM
 			resource_type
 		WHERE
