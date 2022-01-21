@@ -1109,10 +1109,11 @@ async fn migrate_all_managed_urls(
 				INSERT INTO
 					domain
 				VALUES
-					($1, $2, 'business');
+					($1, $2, 'business', $3);
 				"#,
 				&domain_id,
-				&format!("{}.{}", domain_name, tld)
+				&domain_name,
+				&tld
 			)
 			.execute(&mut *connection)
 			.await?;

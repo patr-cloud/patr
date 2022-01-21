@@ -546,10 +546,10 @@ async fn migrate_from_v0_4_9(
 	bytea_to_uuid::migrate(&mut *connection, config).await?;
 	permission_names::migrate(&mut *connection).await?;
 	docker_registry::migrate(&mut *connection, config).await?;
-	add_trim_check_for_username(&mut *connection, config).await?;
 	make_permission_name_unique(&mut *connection, config).await?;
 	rename_static_sites_to_static_site(&mut *connection, config).await?;
 	workspace_domain::migrate(&mut *connection, config).await?;
+	fix_user_constraints(&mut *connection, config).await?;
 	kubernetes_migration::migrate(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	reset_resource_types_order(&mut *connection, config).await?;
@@ -557,20 +557,223 @@ async fn migrate_from_v0_4_9(
 	Ok(())
 }
 
-async fn add_trim_check_for_username(
+async fn fix_user_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE "user"
-		ADD CONSTRAINT user_chk_username_is_trimmed
-		CHECK(username = TRIM(username));
+		DROP CONSTRAINT user_chk_username_is_lower_case;
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		ADD CONSTRAINT user_chk_username_is_valid
+		CHECK(
+			/* Username is a-z, 0-9, cannot begin or end with a . or - */
+			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			username NOT LIKE '%..%' AND
+			username NOT LIKE '%--%' AND
+			username NOT LIKE '%.-%' AND
+			username NOT LIKE '%-.%'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		DROP CONSTRAINT user_to_sign_up_chk_username_is_lower_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		ADD CONSTRAINT user_to_sign_up_chk_username_is_valid
+		CHECK(
+			/* Username is a-z, 0-9, cannot begin or end with a . or - */
+			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			username NOT LIKE '%..%' AND
+			username NOT LIKE '%--%' AND
+			username NOT LIKE '%.-%' AND
+			username NOT LIKE '%-.%'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+			ALTER COLUMN business_domain_name
+				SET DATA TYPE TEXT,
+			DROP CONSTRAINT
+				user_to_sign_up_chk_business_domain_name_is_lower_case,
+			ADD CONSTRAINT user_to_sign_up_chk_business_domain_name_is_valid
+				CHECK(
+					business_domain_name ~
+						'^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+				),
+			ADD COLUMN business_domain_tld TEXT,
+			ADD CONSTRAINT
+				user_to_sign_up_chk_business_domain_tld_is_length_valid
+					CHECK(
+						LENGTH(business_domain_tld) >= 2 AND
+						LENGTH(business_domain_tld) <= 6
+					),
+			ADD CONSTRAINT user_to_sign_up_chk_business_domain_tld_is_valid
+				CHECK(
+					business_domain_tld ~
+						'^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$'
+				),
+			ADD CONSTRAINT user_to_sign_up_fk_business_domain_tld
+				FOREIGN KEY(business_domain_tld) REFERENCES domain_tld(tld),
+			ADD COLUMN business_name_new VARCHAR(100),
+			ADD COLUMN otp_hash_new TEXT NOT NULL DEFAULT '',
+			ADD COLUMN otp_expiry_new BIGINT NOT NULL DEFAULT 0,
+			DROP CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case,
+			ADD CONSTRAINT user_to_sign_up_chk_business_name_is_lower_case
+				CHECK(business_name_new = LOWER(business_name_new)),
+			ADD CONSTRAINT user_to_sign_up_chk_max_domain_name_length CHECK(
+					(
+						LENGTH(business_domain_name) +
+						LENGTH(business_domain_tld)
+					) < 255
+				);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			user_to_sign_up
+		SET
+			business_name_new = business_name,
+			otp_hash_new = otp_hash,
+			otp_expiry_new = otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+			DROP CONSTRAINT user_to_sign_up_chk_business_details_valid,
+			ADD CONSTRAINT user_to_sign_up_chk_business_details_valid CHECK(
+				(
+					account_type = 'personal' AND
+					(
+						business_email_local IS NULL AND
+						business_domain_name IS NULL AND
+						business_domain_tld IS NULL AND
+						business_name_new IS NULL
+					)
+				) OR
+				(
+					account_type = 'business' AND
+					(
+						business_email_local IS NOT NULL AND
+						business_domain_name IS NOT NULL AND
+						business_domain_tld IS NOT NULL AND
+						business_name_new IS NOT NULL
+					)
+				)
+			),
+			DROP COLUMN business_name,
+			DROP COLUMN otp_hash,
+			DROP COLUMN otp_expiry,
+			ALTER COLUMN otp_hash_new DROP DEFAULT,
+			ALTER COLUMN otp_expiry_new DROP DEFAULT,
+			ADD CONSTRAINT user_to_sign_up_chk_expiry_unsigned CHECK(
+				otp_expiry_new >= 0
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP INDEX IF EXISTS user_to_sign_up_idx_username_otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		DROP INDEX IF EXISTS user_to_sign_up_idx_otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_otp_expiry
+		ON
+			user_to_sign_up
+		(otp_expiry_new);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			user_to_sign_up_idx_username_otp_expiry
+		ON
+			user_to_sign_up
+		(username, otp_expiry_new);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN business_name_new to business_name;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN otp_hash_new to otp_hash;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN otp_expiry_new to otp_expiry;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 async fn make_permission_name_unique(
