@@ -963,6 +963,34 @@ async fn migrate_all_managed_urls(
 			})
 			.collect::<Vec<String>>();
 
+	let domain_resource_type_id = query!(
+		r#"
+		SELECT
+			id as "id!: Uuid"
+		FROM
+			resource_type
+		WHERE
+			name = 'domain';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
+
+	let managed_url_resource_type_id = query!(
+		r#"
+		SELECT
+			id as "id!: Uuid"
+		FROM
+			resource_type
+		WHERE
+			name = 'managedUrl';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
+
 	for deployed_domain in deployed_domains {
 		let raw_domain_name = deployed_domain.get::<String, _>("domain_name");
 		let (deployment_id, static_site_id) = (
@@ -1107,20 +1135,6 @@ async fn migrate_all_managed_urls(
 				}
 			};
 
-			let domain_resource_type_id = query!(
-				r#"
-				SELECT
-					id as "id!: Uuid"
-				FROM
-					resource_type
-				WHERE
-					name = 'domain';
-				"#
-			)
-			.fetch_one(&mut *connection)
-			.await?
-			.get::<Uuid, _>("id");
-
 			let current_time = SystemTime::now()
 				.duration_since(UNIX_EPOCH)
 				.expect("Time went backwards. Wtf?")
@@ -1183,20 +1197,6 @@ async fn migrate_all_managed_urls(
 
 			domain_id
 		};
-
-		let managed_url_resource_type_id = query!(
-			r#"
-			SELECT
-				id as "id!: Uuid"
-			FROM
-				resource_type
-			WHERE
-				name = 'managedUrl';
-			"#
-		)
-		.fetch_one(&mut *connection)
-		.await?
-		.get::<Uuid, _>("id");
 
 		let current_time = SystemTime::now()
 			.duration_since(UNIX_EPOCH)

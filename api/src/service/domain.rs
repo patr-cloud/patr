@@ -18,6 +18,7 @@ use cloudflare::{
 			AccountId,
 			CreateZone,
 			CreateZoneParams,
+			DeleteZone,
 			Status,
 			Type,
 			ZoneDetails,
@@ -596,10 +597,16 @@ pub async fn delete_domain_in_workspace(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	db::update_domain_verification_status_from_workspace(
-		connection, &domain.id, false,
-	)
-	.await?;
+	let managed_urls_count =
+		db::get_active_managed_url_count_for_domain(connection, workspace_id)
+			.await?;
+	if managed_urls_count > 0 {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
+
+	db::update_workspace_domain_status(connection, &domain.id, false).await?;
 	db::update_generic_domain_name(
 		connection,
 		&domain.id,
@@ -609,13 +616,28 @@ pub async fn delete_domain_in_workspace(
 	db::update_resource_name(
 		connection,
 		&domain.id,
-		&format!("patr-deleted: {}@{}", domain.id, domain.name),
+		&format!("Domain: patr-deleted: {}@{}", domain.id, domain.name),
 	)
 	.await?;
 
 	if domain.is_ns_internal() {
-		let secret_name = format!("tls-{}", domain.id);
-		let certificate_name = format!("certificate-{}", domain.id);
+		let domain =
+			db::get_patr_controlled_domain_by_id(connection, &domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+		let dns_record_count =
+			db::get_dns_record_count_for_domain(connection, &domain.domain_id)
+				.await?;
+		if dns_record_count > 0 {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(RESOURCE_IN_USE).to_string()));
+		}
+
+		let secret_name = format!("tls-{}", domain.domain_id);
+		let certificate_name = format!("certificate-{}", domain.domain_id);
 		infrastructure::delete_certificates_for_domain(
 			workspace_id,
 			&certificate_name,
@@ -623,6 +645,14 @@ pub async fn delete_domain_in_workspace(
 			config,
 		)
 		.await?;
+
+		// delete cloudflare zone
+		let client = get_cloudflare_client(config).await?;
+		client
+			.request(&DeleteZone {
+				identifier: &domain.zone_identifier,
+			})
+			.await?;
 	}
 	Ok(())
 }

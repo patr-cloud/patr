@@ -136,7 +136,12 @@ pub async fn get_all_managed_urls_in_workspace(
 		FROM
 			managed_url
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		workspace_id as _
 	)
@@ -165,7 +170,12 @@ pub async fn get_all_managed_urls_for_domain(
 		FROM
 			managed_url
 		WHERE
-			domain_id = $1;
+			domain_id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		domain_id as _
 	)
@@ -241,7 +251,12 @@ pub async fn get_managed_url_by_id(
 		FROM
 			managed_url
 		WHERE
-			id = $1;
+			id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		managed_url_id as _,
 	)
@@ -330,6 +345,7 @@ pub async fn delete_managed_url(
 pub async fn get_all_managed_urls_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
 		ManagedUrl,
@@ -382,9 +398,17 @@ pub async fn get_all_managed_urls_for_deployment(
 			url,
 			workspace_id as "workspace_id!: _"
 		FROM
-			managed_url_list;
+			managed_url_list
+		WHERE
+			managed_url_list.workspace_id = $2 AND
+			managed_url_list.sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		deployment_id as _,
+		workspace_id as _
 	)
 	.fetch_all(connection)
 	.await
@@ -393,6 +417,7 @@ pub async fn get_all_managed_urls_for_deployment(
 pub async fn get_all_managed_urls_for_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
+	workspace_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
 		ManagedUrl,
@@ -445,10 +470,43 @@ pub async fn get_all_managed_urls_for_static_site(
 			url,
 			workspace_id as "workspace_id!: _"
 		FROM
-			managed_url_list;
+			managed_url_list
+		WHERE
+			managed_url_list.workspace_id = $2 AND
+			managed_url_list.sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		static_site_id as _,
+		workspace_id as _
 	)
 	.fetch_all(connection)
 	.await
+}
+
+pub async fn get_active_managed_url_count_for_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<i64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			COUNT(*) as "count"
+		FROM
+			managed_url
+		WHERE
+			domain_id = $1 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		domain_id as _
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.count.unwrap_or(0))
 }
