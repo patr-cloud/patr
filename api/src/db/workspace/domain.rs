@@ -575,6 +575,51 @@ pub async fn delete_personal_domain(
 	.map(|_| ())
 }
 
+pub async fn update_domain_verification_status_from_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	is_verified: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace_domain
+		SET
+			is_verified = $1
+		WHERE
+			id = $2;
+		"#,
+		is_verified,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn update_generic_domain_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			name = $1
+		WHERE
+			id = $2;
+		"#,
+		name,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
 pub async fn delete_domain_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -593,6 +638,7 @@ pub async fn delete_domain_from_workspace(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn delete_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,

@@ -585,6 +585,48 @@ pub async fn verify_external_domain(
 	Ok(false)
 }
 
+pub async fn delete_domain_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	db::update_domain_verification_status_from_workspace(
+		connection, &domain.id, false,
+	)
+	.await?;
+	db::update_generic_domain_name(
+		connection,
+		&domain.id,
+		&format!("patr-deleted: {}@{}", domain.id, domain.name),
+	)
+	.await?;
+	db::update_resource_name(
+		connection,
+		&domain.id,
+		&format!("patr-deleted: {}@{}", domain.id, domain.name),
+	)
+	.await?;
+
+	if domain.is_ns_internal() {
+		let secret_name = format!("tls-{}", domain.id);
+		let certificate_name = format!("certificate-{}", domain.id);
+		infrastructure::delete_certificates_for_domain(
+			workspace_id,
+			&certificate_name,
+			&secret_name,
+			config,
+		)
+		.await?;
+	}
+	Ok(())
+}
+
 pub async fn create_certificates_of_managed_urls_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

@@ -691,6 +691,29 @@ pub async fn get_resource_by_id(
 	Ok(resource)
 }
 
+pub async fn update_resource_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	resource_id: &Uuid,
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			name = $2
+		WHERE
+			id = $1;
+		"#,
+		resource_id as _,
+		name
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
 pub async fn delete_resource(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,

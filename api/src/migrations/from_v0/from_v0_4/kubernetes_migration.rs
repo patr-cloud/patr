@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use api_models::utils::Uuid;
 use sqlx::Row;
 
@@ -1033,8 +1035,9 @@ async fn migrate_all_managed_urls(
 			.replace(&format!(".{}", tld), "");
 
 		if raw_domain_name.starts_with(&deleted_marker) {
-			// TODO Domain is deleted. Handle that separately
-			panic!("Domain is deleted");
+			// TODO Domain is deleted. Handle that separately (future work which
+			// can be done manually)
+			continue;
 		}
 
 		// Check if the domain already exists
@@ -1104,6 +1107,42 @@ async fn migrate_all_managed_urls(
 				}
 			};
 
+			let domain_resource_type_id = query!(
+				r#"
+				SELECT
+					id as "id!: Uuid"
+				FROM
+					resource_type
+				WHERE
+					name = 'domain';
+				"#
+			)
+			.fetch_one(&mut *connection)
+			.await?
+			.get::<Uuid, _>("id");
+
+			let current_time = SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.expect("Time went backwards. Wtf?")
+				.as_millis() as i64;
+
+			// create resource
+			query!(
+				r#"
+				INSERT INTO
+					resource
+				VALUES
+					($1, $2, $3, $4, $5);
+				"#,
+				&domain_id,
+				&format!("Domain: {}", domain_name),
+				&domain_resource_type_id,
+				&workspace_id,
+				current_time
+			)
+			.execute(&mut *connection)
+			.await?;
+
 			query!(
 				r#"
 				INSERT INTO
@@ -1144,6 +1183,42 @@ async fn migrate_all_managed_urls(
 
 			domain_id
 		};
+
+		let managed_url_resource_type_id = query!(
+			r#"
+			SELECT
+				id as "id!: Uuid"
+			FROM
+				resource_type
+			WHERE
+				name = 'managedUrl';
+			"#
+		)
+		.fetch_one(&mut *connection)
+		.await?
+		.get::<Uuid, _>("id");
+
+		let current_time = SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.expect("Time went backwards. Wtf?")
+			.as_millis() as i64;
+
+		// create resource
+		query!(
+			r#"
+			INSERT INTO
+				resource
+			VALUES
+				($1, $2, $3, $4, $5);
+			"#,
+			&domain_id,
+			&format!("Managed URL: {}", managed_url_id),
+			&managed_url_resource_type_id,
+			&workspace_id,
+			current_time
+		)
+		.execute(&mut *connection)
+		.await?;
 
 		query!(
 			r#"

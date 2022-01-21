@@ -268,7 +268,15 @@ pub async fn delete_managed_url(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
 
-	db::delete_managed_url(connection, managed_url_id).await?;
+	db::update_managed_url_sub_domain(
+		connection,
+		managed_url_id,
+		&format!(
+			"patr-deleted: {}@{}",
+			managed_url.id, managed_url.sub_domain
+		),
+	)
+	.await?;
 
 	kubernetes::delete_kubernetes_managed_url(
 		workspace_id,

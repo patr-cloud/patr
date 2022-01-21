@@ -286,6 +286,29 @@ pub async fn update_managed_url(
 	.map(|_| ())
 }
 
+pub async fn update_managed_url_sub_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	managed_url_id: &Uuid,
+	sub_domain: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			managed_url
+		SET
+			sub_domain = $2
+		WHERE
+			id = $1;
+		"#,
+		managed_url_id as _,
+		sub_domain
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
 pub async fn delete_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	managed_url_id: &Uuid,
