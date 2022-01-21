@@ -690,6 +690,7 @@ async fn delete_domain_in_workspace(
 		.await?;
 	}
 
+	// TODO: add the info to patr metrics
 	context.success(DeleteDomainResponse {});
 	Ok(context)
 }
