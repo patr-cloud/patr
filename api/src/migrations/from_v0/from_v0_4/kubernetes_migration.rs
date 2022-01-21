@@ -1,5 +1,5 @@
 use api_models::utils::Uuid;
-use k8s_openapi::api::core::v1::{Namespace, NamespaceSpec};
+use k8s_openapi::api::core::v1::Namespace;
 use kube::{
 	api::PostParams,
 	config::{

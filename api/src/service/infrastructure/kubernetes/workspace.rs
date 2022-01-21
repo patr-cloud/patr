@@ -1,8 +1,5 @@
 use api_models::utils::Uuid;
-use k8s_openapi::{
-	self,
-	api::core::v1::{Namespace, NamespaceSpec},
-};
+use k8s_openapi::{self, api::core::v1::Namespace};
 use kube::{self, api::PostParams, core::ObjectMeta, Api};
 
 use crate::utils::{settings::Settings, Error};
