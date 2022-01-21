@@ -1161,6 +1161,7 @@ pub async fn set_personal_user_to_be_signed_up(
 				NULL,
 				NULL,
 				NULL,
+				NULL,
 				
 				$9,
 				$10
