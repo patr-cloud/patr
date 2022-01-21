@@ -4404,6 +4404,27 @@
       ]
     }
   },
+  "a720efee8691c5bda0151a21ed799ad7333c48af16633b804f732ca470e701f1": {
+    "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'personal', $2, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL, NULL, $9, $10 ) ON CONFLICT(username) DO UPDATE SET account_type = 'personal', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = NULL, business_domain_name = NULL, business_name = NULL, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Uuid",
+          "Bpchar",
+          "Varchar",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "a74513bb2baed51c0c47dd715a5181200b191e36120d9a55936a7393db24aa7c": {
     "query": "INSERT INTO managed_url VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 );",
     "describe": {
@@ -7561,27 +7582,6 @@
         false,
         false
       ]
-    }
-  },
-  "febfb7b885f275907b8474e9fee5becbb58af87021e228eba9340347650c3441": {
-    "query": "INSERT INTO user_to_sign_up VALUES ( $1, 'personal', $2, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL, $9, $10 ) ON CONFLICT(username) DO UPDATE SET account_type = 'personal', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, backup_email_local = EXCLUDED.backup_email_local, backup_email_domain_id = EXCLUDED.backup_email_domain_id, backup_phone_country_code = EXCLUDED.backup_phone_country_code, backup_phone_number = EXCLUDED.backup_phone_number, business_email_local = NULL, business_domain_name = NULL, business_name = NULL, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Text",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Uuid",
-          "Bpchar",
-          "Varchar",
-          "Varchar",
-          "Text"
-        ]
-      },
-      "nullable": []
     }
   },
   "ff0cf1576493f7e907c29f9072ccec26e6a9700e4c4bcf089d646da02cc7744e": {
