@@ -304,11 +304,11 @@ pub async fn create_user_join_request(
 			business_email_local,
 			domain,
 		} => {
-			if !validator::is_domain_name_valid(domain).await {
-				Error::as_result()
-					.status(200)
-					.body(error!(INVALID_DOMAIN_NAME).to_string())?;
-			}
+			let (domain_name, tld) = super::split_domain_and_tld(domain)
+				.await
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string())?;
+			let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
 			if !validator::is_workspace_name_valid(workspace_name) {
 				Error::as_result()
@@ -347,6 +347,15 @@ pub async fn create_user_join_request(
 					.body(error!(INVALID_EMAIL).to_string())?;
 			}
 
+			// Check if there's already a user to sign up with that domain name
+			let is_domain_used_for_sign_up =
+				service::is_domain_used_for_sign_up(connection, domain).await?;
+			if is_domain_used_for_sign_up {
+				Error::as_result()
+					.status(400)
+					.body(error!(DOMAIN_EXISTS).to_string())?;
+			}
+
 			db::set_business_user_to_be_signed_up(
 				connection,
 				username,
@@ -357,7 +366,8 @@ pub async fn create_user_join_request(
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				business_email_local,
-				domain,
+				domain_name,
+				tld,
 				workspace_name,
 				&token_hash,
 				token_expiry,
@@ -375,7 +385,7 @@ pub async fn create_user_join_request(
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
-				business_domain_name: Some(domain.to_string()),
+				business_domain_name: Some(format!("{}.{}", domain_name, tld)),
 				business_name: Some(workspace_name.to_string()),
 				otp_hash: token_hash,
 				otp_expiry: token_expiry,

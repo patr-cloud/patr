@@ -17,12 +17,12 @@ use log4rs::{
 	Handle,
 };
 
-use crate::{
-	utils::settings::{RunningEnvironment, Settings},
-	Result,
+use crate::utils::{
+	settings::{RunningEnvironment, Settings},
+	Error,
 };
 
-pub async fn initialize(config: &Settings) -> Result<Handle> {
+pub async fn initialize(config: &Settings) -> Result<Handle, Error> {
 	println!("[TRACE]: Initializing logger...");
 	let config = match config.environment {
 		RunningEnvironment::Development => Config::builder()
