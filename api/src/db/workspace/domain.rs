@@ -45,7 +45,12 @@ pub async fn initialize_domain_pre(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL
 				CONSTRAINT domain_chk_name_is_valid CHECK(
-					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
+					name LIKE CONCAT(
+						'^patr-deleted\: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@%'
+					)
 				),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			tld TEXT NOT NULL CONSTRAINT domain_fk_tld

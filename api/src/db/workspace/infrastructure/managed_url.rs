@@ -28,7 +28,15 @@ pub async fn initialize_managed_url_pre(
 		r#"
 		CREATE TABLE managed_url(
 			id UUID CONSTRAINT managed_url_pk PRIMARY KEY,
-			sub_domain TEXT NOT NULL,
+			sub_domain TEXT NOT NULL
+				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-\.]*[a-z0-9]))$' OR
+					name LIKE CONCAT(
+						'^patr-deleted\: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@%'
+					)
+				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
 			url_type MANAGED_URL_TYPE NOT NULL,

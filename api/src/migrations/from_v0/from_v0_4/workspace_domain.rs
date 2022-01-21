@@ -41,7 +41,12 @@ pub async fn migrate(
 			ALTER COLUMN name SET DATA TYPE TEXT,
 			DROP CONSTRAINT domain_chk_name_is_lower_case,
 			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
-				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
+				name LIKE CONCAT(
+					'^patr-deleted\: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				)
 			),
 			ADD COLUMN tld TEXT NOT NULL,
 			ADD CONSTRAINT domain_fk_tld FOREIGN KEY(tld)
