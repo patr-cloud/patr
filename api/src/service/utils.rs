@@ -280,7 +280,7 @@ pub async fn split_domain_and_tld(
 				item
 			}
 		})?;
-	let domain = domain_name.replace(tld, "");
+	let domain = domain_name.replace(&format!(".{}", tld), "");
 	// domain cannot begin or end with a -, and must be at least 1 character
 	if domain.contains('.') ||
 		domain.is_empty() ||
