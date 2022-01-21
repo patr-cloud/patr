@@ -992,7 +992,7 @@ async fn migrate_all_managed_urls(
 		FROM
 			resource_type
 		WHERE
-			name = 'managedUrl';
+			name = 'deploymentEntryPoint';
 		"#
 	)
 	.fetch_one(&mut *connection)
