@@ -337,6 +337,7 @@ pub async fn update_static_site(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - getting static site details", request_id);
 	db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
