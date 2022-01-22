@@ -20,6 +20,16 @@ pub async fn create_certificates(
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
+	if super::certificate_exists(
+		certificate_name,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		return Ok(());
+	}
+
 	let certificate_resource = ApiResource {
 		group: "cert-manager.io".to_string(),
 		version: "v1".to_string(),
@@ -49,22 +59,8 @@ pub async fn create_certificates(
 			kind: "certificate".to_string(),
 		}),
 		metadata: ObjectMeta {
-			annotations: None,
-			cluster_name: None,
-			creation_timestamp: None,
-			deletion_grace_period_seconds: None,
-			deletion_timestamp: None,
-			finalizers: None,
-			generate_name: None,
-			generation: None,
-			labels: None,
-			managed_fields: None,
 			name: Some(certificate_name.to_string()),
-			namespace: None,
-			owner_references: None,
-			resource_version: None,
-			self_link: None,
-			uid: None,
+			..ObjectMeta::default()
 		},
 		data: certificate_data,
 	};
@@ -78,7 +74,7 @@ pub async fn create_certificates(
 	)
 	.patch(
 		certificate_name,
-		&PatchParams::default(),
+		&PatchParams::apply(certificate_name),
 		&Patch::Apply(&certificate),
 	)
 	.await?;
@@ -97,10 +93,23 @@ pub async fn delete_certificates_for_domain(
 	let namespace = workspace_id.as_str();
 
 	// delete secret and then certificate
+	if super::secret_exists(secret_name, kubernetes_client.clone(), namespace)
+		.await?
+	{
+		Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+			.delete(secret_name, &DeleteParams::default())
+			.await?;
+	}
 
-	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
-		.delete(secret_name, &DeleteParams::default())
-		.await?;
+	if !super::certificate_exists(
+		certificate_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Ok(());
+	}
 
 	let certificate_resource = ApiResource {
 		group: "cert-manager.io".to_string(),

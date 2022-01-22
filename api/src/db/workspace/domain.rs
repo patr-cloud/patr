@@ -45,7 +45,12 @@ pub async fn initialize_domain_pre(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL
 				CONSTRAINT domain_chk_name_is_valid CHECK(
-					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'
+					name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
+					name LIKE CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@%'
+					)
 				),
 			type RESOURCE_OWNER_TYPE NOT NULL,
 			tld TEXT NOT NULL CONSTRAINT domain_fk_tld
@@ -410,7 +415,12 @@ pub async fn get_domains_for_workspace(
 		ON
 			domain.id = resource.id
 		WHERE
-			resource.owner_id = $1;
+			resource.owner_id = $1 AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		workspace_id as _
 	)
@@ -441,7 +451,12 @@ pub async fn get_all_unverified_domains(
 		ON
 			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
-			is_verified = FALSE;
+			is_verified = FALSE AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -487,7 +502,12 @@ pub async fn get_all_verified_domains(
 		ON
 			patr_controlled_domain.domain_id = workspace_domain.id
 		WHERE
-			is_verified = TRUE;
+			is_verified = TRUE AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -575,6 +595,29 @@ pub async fn delete_personal_domain(
 	.map(|_| ())
 }
 
+pub async fn update_generic_domain_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+	name: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			name = $1
+		WHERE
+			id = $2;
+		"#,
+		name,
+		domain_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
 pub async fn delete_domain_from_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -593,6 +636,7 @@ pub async fn delete_domain_from_workspace(
 	.map(|_| ())
 }
 
+#[allow(dead_code)]
 pub async fn delete_generic_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
@@ -631,7 +675,12 @@ pub async fn get_workspace_domain_by_id(
 		ON
 			domain.id = workspace_domain.id
 		WHERE
-			domain.id = $1;
+			domain.id = $1 AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		domain_id as _
 	)
@@ -679,7 +728,12 @@ pub async fn get_domain_by_name(
 		FROM
 			domain
 		WHERE
-			name = $1;
+			name = $1 AND
+			name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		domain_name
 	)
@@ -695,19 +749,28 @@ pub async fn get_dns_records_by_domain_id(
 		DnsRecord,
 		r#"
 		SELECT
-			id as "id: _",
-			record_identifier,
-			domain_id as "domain_id: _",
-			name,
-			type as "type: _",
-			value,
-			priority,
-			ttl,
-			proxied
+			patr_domain_dns_record.id as "id: _",
+			patr_domain_dns_record.record_identifier,
+			patr_domain_dns_record.domain_id as "domain_id: _",
+			patr_domain_dns_record.name,
+			patr_domain_dns_record.type as "type: _",
+			patr_domain_dns_record.value,
+			patr_domain_dns_record.priority,
+			patr_domain_dns_record.ttl,
+			patr_domain_dns_record.proxied
 		FROM
 			patr_domain_dns_record
+		INNER JOIN
+			domain
+		ON
+			patr_domain_dns_record.domain_id = domain.id
 		WHERE
-			domain_id = $1;
+			patr_domain_dns_record.domain_id = $1 AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		domain_id as _
 	)
@@ -745,19 +808,28 @@ pub async fn get_dns_record_by_id(
 		DnsRecord,
 		r#"
 		SELECT
-			id as "id: _",
-			record_identifier,
-			domain_id as "domain_id: _",
-			name,
-			type as "type: _",
-			value,
-			priority,
-			ttl,
-			proxied
+			patr_domain_dns_record.id as "id: _",
+			patr_domain_dns_record.record_identifier,
+			patr_domain_dns_record.domain_id as "domain_id: _",
+			patr_domain_dns_record.name,
+			patr_domain_dns_record.type as "type: _",
+			patr_domain_dns_record.value,
+			patr_domain_dns_record.priority,
+			patr_domain_dns_record.ttl,
+			patr_domain_dns_record.proxied
 		FROM
 			patr_domain_dns_record
+		INNER JOIN
+			domain
+		ON
+			patr_domain_dns_record.domain_id = domain.id
 		WHERE
-			id = $1;
+			patr_domain_dns_record.id = $1 AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		record_id as _
 	)
@@ -895,4 +967,24 @@ pub async fn update_domain_tld_list(
 	}
 
 	Ok(())
+}
+
+pub async fn get_dns_record_count_for_domain(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	domain_id: &Uuid,
+) -> Result<i64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			COUNT(*) as "count"
+		FROM
+			patr_domain_dns_record
+		WHERE
+			domain_id = $1;
+		"#,
+		domain_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.count.unwrap_or(0))
 }

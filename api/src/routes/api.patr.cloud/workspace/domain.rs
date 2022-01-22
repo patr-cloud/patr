@@ -661,34 +661,13 @@ async fn delete_domain_in_workspace(
 
 	let config = context.get_state().config.clone();
 
-	let domain = db::get_workspace_domain_by_id(
+	service::delete_domain_in_workspace(
 		context.get_database_connection(),
+		&workspace_id,
 		&domain_id,
-	)
-	.await?
-	.status(404)
-	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	db::delete_domain_from_workspace(
-		context.get_database_connection(),
-		&domain_id,
+		&config,
 	)
 	.await?;
-	db::delete_generic_domain(context.get_database_connection(), &domain_id)
-		.await?;
-	db::delete_resource(context.get_database_connection(), &domain_id).await?;
-
-	if domain.is_ns_internal() {
-		let secret_name = format!("tls-{}", domain.id);
-		let certificate_name = format!("certificate-{}", domain.id);
-		service::delete_certificates_for_domain(
-			&workspace_id,
-			&certificate_name,
-			&secret_name,
-			&config,
-		)
-		.await?;
-	}
 
 	// TODO: add the info to patr metrics
 	context.success(DeleteDomainResponse {});

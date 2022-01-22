@@ -986,10 +986,14 @@ async fn list_linked_urls(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	)?;
 
 	let urls = db::get_all_managed_urls_for_deployment(
 		context.get_database_connection(),
 		&deployment_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()

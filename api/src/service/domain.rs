@@ -18,6 +18,7 @@ use cloudflare::{
 			AccountId,
 			CreateZone,
 			CreateZoneParams,
+			DeleteZone,
 			Status,
 			Type,
 			ZoneDetails,
@@ -131,18 +132,18 @@ pub async fn ensure_personal_domain_exists(
 ///[`Transaction`]: Transaction
 pub async fn add_domain_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_name: &str,
+	full_domain_name: &str,
 	nameserver_type: &DomainNameserverType,
 	workspace_id: &Uuid,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
-	let (domain_name, tld) = super::split_domain_and_tld(domain_name)
+	let (domain_name, tld) = super::split_domain_and_tld(full_domain_name)
 		.await
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
-	let domain = db::get_domain_by_name(connection, domain_name).await?;
+	let domain = db::get_domain_by_name(connection, full_domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceType::Personal = domain.r#type {
 			Error::as_result()
@@ -151,7 +152,8 @@ pub async fn add_domain_to_workspace(
 		} else {
 			// check if personal domain given by the user is registerd as a
 			// workspace domain
-			if !is_domain_used_for_sign_up(connection, domain_name).await? {
+			if !is_domain_used_for_sign_up(connection, full_domain_name).await?
+			{
 				Error::as_result()
 					.status(400)
 					.body(error!(DOMAIN_EXISTS).to_string())?;
@@ -163,7 +165,7 @@ pub async fn add_domain_to_workspace(
 	db::create_resource(
 		connection,
 		&domain_id,
-		&format!("Domain: {}", domain_name),
+		&format!("Domain: {}", full_domain_name),
 		rbac::RESOURCE_TYPES
 			.get()
 			.unwrap()
@@ -185,14 +187,19 @@ pub async fn add_domain_to_workspace(
 		.await?;
 
 	if nameserver_type.is_internal() {
+		if ["cf", "ga", "gq", "ml", "tk"].contains(&tld) {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(INVALID_DOMAIN_NAME).to_string()));
+		}
 		// create zone
 		let client = get_cloudflare_client(config).await?;
-		log::trace!("Creating zone for domain: {}", domain_name);
+		log::trace!("Creating zone for domain: {}", full_domain_name);
 		// create zone
 		let zone_identifier = client
 			.request(&CreateZone {
 				params: CreateZoneParams {
-					name: domain_name,
+					name: full_domain_name,
 					jump_start: Some(false),
 					account: AccountId {
 						id: &config.cloudflare.account_id,
@@ -204,7 +211,7 @@ pub async fn add_domain_to_workspace(
 			.await?
 			.result
 			.id;
-		log::trace!("Zone created for domain: {}", domain_name);
+		log::trace!("Zone created for domain: {}", full_domain_name);
 		// create a new function to store zone related data
 		db::add_patr_controlled_domain(
 			connection,
@@ -282,14 +289,14 @@ pub async fn is_domain_verified(
 
 		Ok(false)
 	} else {
-		Ok(verify_external_domain(
+		verify_external_domain(
 			connection,
 			workspace_id,
 			&domain.name,
 			&domain.id,
 			config,
 		)
-		.await?)
+		.await
 	}
 }
 
@@ -583,6 +590,77 @@ pub async fn verify_external_domain(
 	}
 
 	Ok(false)
+}
+
+pub async fn delete_domain_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	domain_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let managed_urls_count =
+		db::get_active_managed_url_count_for_domain(connection, domain_id)
+			.await?;
+	if managed_urls_count > 0 {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(RESOURCE_IN_USE).to_string()));
+	}
+
+	db::update_workspace_domain_status(connection, &domain.id, false).await?;
+	db::update_generic_domain_name(
+		connection,
+		&domain.id,
+		&format!("patr-deleted: {}@{}", domain.id, domain.name),
+	)
+	.await?;
+	db::update_resource_name(
+		connection,
+		&domain.id,
+		&format!("Domain: patr-deleted: {}@{}", domain.id, domain.name),
+	)
+	.await?;
+
+	if domain.is_ns_internal() {
+		let domain =
+			db::get_patr_controlled_domain_by_id(connection, &domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+
+		let dns_record_count =
+			db::get_dns_record_count_for_domain(connection, &domain.domain_id)
+				.await?;
+		if dns_record_count > 0 {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(RESOURCE_IN_USE).to_string()));
+		}
+
+		let secret_name = format!("tls-{}", domain.domain_id);
+		let certificate_name = format!("certificate-{}", domain.domain_id);
+		infrastructure::delete_certificates_for_domain(
+			workspace_id,
+			&certificate_name,
+			&secret_name,
+			config,
+		)
+		.await?;
+
+		// delete cloudflare zone
+		let client = get_cloudflare_client(config).await?;
+		client
+			.request(&DeleteZone {
+				identifier: &domain.zone_identifier,
+			})
+			.await?;
+	}
+	Ok(())
 }
 
 pub async fn create_certificates_of_managed_urls_for_domain(

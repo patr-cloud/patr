@@ -756,9 +756,14 @@ async fn list_linked_urls(
 	)
 	.unwrap();
 
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	)?;
+
 	let urls = db::get_all_managed_urls_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
+		&workspace_id,
 	)
 	.await?
 	.into_iter()

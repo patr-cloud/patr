@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use api_models::utils::Uuid;
 use k8s_openapi::api::core::v1::Namespace;
 use kube::{
@@ -856,7 +858,15 @@ async fn migrate_all_managed_urls(
 		r#"
 		CREATE TABLE managed_url(
 			id UUID CONSTRAINT managed_url_pk PRIMARY KEY,
-			sub_domain TEXT NOT NULL,
+			sub_domain TEXT NOT NULL
+				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
+					sub_domain ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\-\.]*[a-z0-9]))$' OR
+					sub_domain LIKE CONCAT(
+						'patr-deleted: ',
+						REPLACE(id::TEXT, '-', ''),
+						'@%'
+					)
+				),
 			domain_id UUID NOT NULL,
 			path TEXT NOT NULL,
 			url_type MANAGED_URL_TYPE NOT NULL,
@@ -978,6 +988,34 @@ async fn migrate_all_managed_urls(
 			})
 			.collect::<Vec<String>>();
 
+	let domain_resource_type_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			resource_type
+		WHERE
+			name = 'domain';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
+
+	let managed_url_resource_type_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			resource_type
+		WHERE
+			name = 'deploymentEntryPoint';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
+
 	for deployed_domain in deployed_domains {
 		let raw_domain_name = deployed_domain.get::<String, _>("domain_name");
 		let (deployment_id, static_site_id) = (
@@ -1050,8 +1088,9 @@ async fn migrate_all_managed_urls(
 			.replace(&format!(".{}", tld), "");
 
 		if raw_domain_name.starts_with(&deleted_marker) {
-			// TODO Domain is deleted. Handle that separately
-			panic!("Domain is deleted");
+			// TODO Domain is deleted. Handle that separately (future work which
+			// can be done manually)
+			continue;
 		}
 
 		// Check if the domain already exists
@@ -1121,6 +1160,28 @@ async fn migrate_all_managed_urls(
 				}
 			};
 
+			let current_time = SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.expect("Time went backwards. Wtf?")
+				.as_millis() as i64;
+
+			// create resource
+			query!(
+				r#"
+				INSERT INTO
+					resource
+				VALUES
+					($1, $2, $3, $4, $5);
+				"#,
+				&domain_id,
+				&format!("Domain: {}", domain_name),
+				&domain_resource_type_id,
+				&workspace_id,
+				current_time
+			)
+			.execute(&mut *connection)
+			.await?;
+
 			query!(
 				r#"
 				INSERT INTO
@@ -1161,6 +1222,28 @@ async fn migrate_all_managed_urls(
 
 			domain_id
 		};
+
+		let current_time = SystemTime::now()
+			.duration_since(UNIX_EPOCH)
+			.expect("Time went backwards. Wtf?")
+			.as_millis() as i64;
+
+		// create resource
+		query!(
+			r#"
+			INSERT INTO
+				resource
+			VALUES
+				($1, $2, $3, $4, $5);
+			"#,
+			&domain_id,
+			&format!("Managed URL: {}", managed_url_id),
+			&managed_url_resource_type_id,
+			&workspace_id,
+			current_time
+		)
+		.execute(&mut *connection)
+		.await?;
 
 		query!(
 			r#"
