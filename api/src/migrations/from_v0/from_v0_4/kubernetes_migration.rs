@@ -1292,6 +1292,24 @@ async fn create_all_namespaces(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"))
+	.collect::<Vec<_>>();
+
+	if workspaces.is_empty() {
+		return Ok(());
+	}
+
 	let config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
@@ -1339,19 +1357,6 @@ async fn create_all_namespaces(
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
 	let namespace_api = Api::<Namespace>::all(client);
-
-	let workspaces = query!(
-		r#"
-		SELECT
-			id
-		FROM
-			workspace;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.get::<Uuid, _>("id"));
 
 	for workspace_id in workspaces {
 		let namespace_name = workspace_id.as_str();
