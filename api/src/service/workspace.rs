@@ -26,8 +26,13 @@ use crate::{
 pub async fn is_workspace_name_allowed(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_name: &str,
+	allow_personal_workspaces: bool,
 ) -> Result<bool, Error> {
-	if !validator::is_workspace_name_valid(workspace_name) {
+	// If personal workspaces are not allowed and the validator check fails,
+	// then throw an error
+	if !allow_personal_workspaces &&
+		!validator::is_workspace_name_valid(workspace_name)
+	{
 		Error::as_result()
 			.status(200)
 			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
@@ -70,9 +75,16 @@ pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_name: &str,
 	super_admin_id: &Uuid,
+	allow_personal_workspaces: bool,
 	config: &Settings,
 ) -> Result<Uuid, Error> {
-	if !is_workspace_name_allowed(connection, workspace_name).await? {
+	if !is_workspace_name_allowed(
+		connection,
+		workspace_name,
+		allow_personal_workspaces,
+	)
+	.await?
+	{
 		Error::as_result()
 			.status(400)
 			.body(error!(WORKSPACE_EXISTS).to_string())?;
@@ -122,6 +134,6 @@ pub async fn create_workspace(
 /// # Returns
 /// This function returns a string containing the name of the personal
 /// workspace
-pub fn get_personal_workspace_name(user_id: &str) -> String {
-	format!("personal-workspace-{}", user_id)
+pub fn get_personal_workspace_name(super_admin_id: &Uuid) -> String {
+	format!("personal-workspace-{}", super_admin_id)
 }

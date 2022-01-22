@@ -227,6 +227,7 @@ async fn is_name_available(
 	let available = service::is_workspace_name_allowed(
 		context.get_database_connection(),
 		&workspace_name,
+		false,
 	)
 	.await?;
 
@@ -280,6 +281,7 @@ async fn create_new_workspace(
 		context.get_database_connection(),
 		&workspace_name,
 		&user_id,
+		false,
 		&config,
 	)
 	.await?;
@@ -340,6 +342,7 @@ async fn update_workspace_info(
 	let allowed = service::is_workspace_name_allowed(
 		context.get_database_connection(),
 		&name,
+		false,
 	)
 	.await?;
 	if !allowed {
