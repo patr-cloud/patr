@@ -10,6 +10,16 @@
       "nullable": []
     }
   },
+  "014218cb95e441c6cd559825f5ed01df173088d2fb86e4220e77976fd1b045dd": {
+    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR name LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), CONSTRAINT domain_uq_name_tld UNIQUE(name, tld), CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "05452f7e8ed0ec4322863866b4604e496c5004b7dce28dd96928cc8b7e8ca699": {
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';",
     "describe": {
@@ -2478,16 +2488,6 @@
       "nullable": []
     }
   },
-  "46d1157bb678b39a3752a8d627de67573b7bb39e2d3fa9bda0d41f1200ad5f74": {
-    "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-\\.]*[a-z0-9]))$' OR sub_domain LIKE CONCAT( '^patr-deleted\\: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE( sub_domain, domain_id, path ), CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "4a55c7a7b6725fdea08a4ff86fd2117e83df1e51f604371a22ba046ba2aa66fd": {
     "query": "INSERT INTO user_unverified_personal_email VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;",
     "describe": {
@@ -2642,16 +2642,6 @@
           "Uuid",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "580f629bdb8460a9347bdf460dab659a29971125f43278028ceeed40937d49f0": {
-    "query": "CREATE TABLE domain( id UUID CONSTRAINT domain_pk PRIMARY KEY, name TEXT NOT NULL CONSTRAINT domain_chk_name_is_valid CHECK( name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR name LIKE CONCAT( '^patr-deleted\\: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), type RESOURCE_OWNER_TYPE NOT NULL, tld TEXT NOT NULL CONSTRAINT domain_fk_tld REFERENCES domain_tld(tld), CONSTRAINT domain_uq_name_tld UNIQUE(name, tld), CONSTRAINT domain_chk_max_domain_name_length CHECK( (LENGTH(name) + LENGTH(tld)) < 255 ), CONSTRAINT domain_uq_name_type UNIQUE(id, type) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -3884,6 +3874,16 @@
         "Left": [
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "8dfbfc8d4cd71b528cc0466a2482634ce04a82affcf603fa33178983d54fdafe": {
+    "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' OR sub_domain LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE( sub_domain, domain_id, path ), CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
