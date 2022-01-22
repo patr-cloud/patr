@@ -101,6 +101,16 @@ pub async fn delete_certificates_for_domain(
 			.await?;
 	}
 
+	if !super::certificate_exists(
+		certificate_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Ok(());
+	}
+
 	let certificate_resource = ApiResource {
 		group: "cert-manager.io".to_string(),
 		version: "v1".to_string(),

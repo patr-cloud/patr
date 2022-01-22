@@ -917,7 +917,7 @@ dependencies = [
 [[package]]
 name = "cloudflare"
 version = "0.9.0"
-source = "git+https://github.com/vicara-hq/cloudflare-rs#6f68e0c905db4eb12d74619906ec9c60e042b2e8"
+source = "git+https://github.com/vicara-hq/cloudflare-rs#f42c11147c664739b907bf2d8663ab333594e9a0"
 dependencies = [
  "anyhow",
  "async-trait",
