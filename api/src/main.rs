@@ -73,13 +73,6 @@ async fn async_main() -> Result<(), EveError> {
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 
-	if args.is_present("db-only") {
-		log::info!(
-			"--db-only detected. Exiting after database initialization."
-		);
-		return Ok(());
-	}
-
 	service::initialize(&app);
 	log::debug!("Service initialized");
 
@@ -88,6 +81,13 @@ async fn async_main() -> Result<(), EveError> {
 
 	scheduler::domain::refresh_domain_tld_list().await?;
 	log::info!("Domain TLD list initialized");
+
+	if args.is_present("db-only") {
+		log::info!(
+			"--db-only detected. Exiting after database initialization."
+		);
+		return Ok(());
+	}
 
 	#[cfg(feature = "sample-data")]
 	if args.is_present("populate-sample-data") {

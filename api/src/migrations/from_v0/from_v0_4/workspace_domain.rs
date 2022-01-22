@@ -301,45 +301,6 @@ pub async fn migrate(
 	.await?
 	.get::<Uuid, _>("id");
 
-	// Update domain TLD list
-	let data =
-		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?
-			.text()
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list as text: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?;
-
-	let tlds = data
-		.split('\n')
-		.map(String::from)
-		.filter(|tld| {
-			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
-		})
-		.map(|item| item.to_lowercase())
-		.collect::<Vec<String>>();
-
-	for tld in &tlds {
-		query!(
-			r#"
-			INSERT INTO
-				domain_tld
-			VALUES
-				($1)
-			ON CONFLICT DO NOTHING;
-			"#,
-			tld,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
 	// Migrate all existing domains and DNS records to the workspace who's
 	// super_admin_id is GOD_USER_ID
 	let god_user_id = query!(
@@ -383,6 +344,45 @@ pub async fn migrate(
 		// Cannot migrate to a workspace
 		return Ok(());
 	};
+
+	// Update domain TLD list
+	let data =
+		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?
+			.text()
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list as text: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?;
+
+	let tlds = data
+		.split('\n')
+		.map(String::from)
+		.filter(|tld| {
+			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
+		})
+		.map(|item| item.to_lowercase())
+		.collect::<Vec<String>>();
+
+	for tld in &tlds {
+		query!(
+			r#"
+			INSERT INTO
+				domain_tld
+			VALUES
+				($1)
+			ON CONFLICT DO NOTHING;
+			"#,
+			tld,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
