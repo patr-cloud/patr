@@ -7,7 +7,7 @@ mod workspace;
 use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	apps::v1::Deployment as K8sDeployment,
-	core::v1::Service,
+	core::v1::{Secret, Service},
 	networking::v1::Ingress,
 };
 use kube::{
@@ -20,6 +20,7 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
+	core::{ApiResource, DynamicObject},
 	Api,
 	Config,
 	Error as KubeError,
@@ -133,6 +134,56 @@ async fn ingress_exists(
 		.get(&format!("ingress-{}", managed_url_id))
 		.await;
 	if let Err(KubeError::Api(error)) = ingress {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
+	}
+
+	Ok(true)
+}
+
+async fn certificate_exists(
+	certificate_name: &str,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let certificate_resource = ApiResource {
+		group: "cert-manager.io".to_string(),
+		version: "v1".to_string(),
+		api_version: "cert-manager.io/v1".to_string(),
+		kind: "certificate".to_string(),
+		plural: "certificates".to_string(),
+	};
+
+	let certificate = Api::<DynamicObject>::namespaced_with(
+		kubernetes_client,
+		namespace,
+		&certificate_resource,
+	)
+	.get(certificate_name)
+	.await;
+	if let Err(KubeError::Api(error)) = certificate {
+		if error.code == 404 {
+			return Ok(false);
+		} else {
+			return Err(KubeError::Api(error));
+		}
+	}
+
+	Ok(true)
+}
+
+async fn secret_exists(
+	secret_name: &str,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let secret = Api::<Secret>::namespaced(kubernetes_client, namespace)
+		.get(secret_name)
+		.await;
+	if let Err(KubeError::Api(error)) = secret {
 		if error.code == 404 {
 			return Ok(false);
 		} else {

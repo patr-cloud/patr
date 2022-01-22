@@ -228,39 +228,85 @@ pub async fn update_kubernetes_managed_url(
 				.collect(),
 			)
 		}
-		ManagedUrlType::Redirect { url } => (
-			IngressRule {
-				host: Some(format!(
-					"{}.{}",
-					managed_url.sub_domain, domain.name
-				)),
-				http: Some(HTTPIngressRuleValue {
-					paths: vec![HTTPIngressPath {
-						backend: IngressBackend {
-							..Default::default()
-						},
-						path: Some(managed_url.path.to_string()),
-						path_type: Some("Prefix".to_string()),
-					}],
+		ManagedUrlType::Redirect { url } => {
+			let kubernetes_service = Service {
+				metadata: ObjectMeta {
+					name: Some(format!("service-{}", managed_url.id)),
+					..ObjectMeta::default()
+				},
+				spec: Some(ServiceSpec {
+					type_: Some("ExternalName".to_string()),
+					external_name: Some(url.clone()),
+					ports: Some(vec![ServicePort {
+						name: Some("https".to_string()),
+						port: 443,
+						protocol: Some("TCP".to_string()),
+						target_port: Some(IntOrString::Int(443)),
+						..ServicePort::default()
+					}]),
+					..ServiceSpec::default()
 				}),
-			},
-			[
-				(
-					"kubernetes.io/ingress.class".to_string(),
-					"nginx".to_string(),
-				),
-				(
-					"nginx.ingress.kubernetes.io/temporal-redirect".to_string(),
-					url.clone(),
-				),
-				(
-					"cert-manager.io/issuer".to_string(),
-					config.kubernetes.cert_issuer.clone(),
-				),
-			]
-			.into_iter()
-			.collect(),
-		),
+				..Service::default()
+			};
+			// Create the service defined above
+			log::trace!(
+				"request_id: {} - creating ExternalName service",
+				request_id
+			);
+			let service_api: Api<Service> =
+				Api::namespaced(kubernetes_client.clone(), namespace);
+			service_api
+				.patch(
+					&format!("service-{}", managed_url.id),
+					&PatchParams::apply(&format!("service-{}", managed_url.id)),
+					&Patch::Apply(kubernetes_service),
+				)
+				.await?
+				.status
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?;
+			(
+				IngressRule {
+					host: Some(format!(
+						"{}.{}",
+						managed_url.sub_domain, domain.name
+					)),
+					http: Some(HTTPIngressRuleValue {
+						paths: vec![HTTPIngressPath {
+							backend: IngressBackend {
+								service: Some(IngressServiceBackend {
+									name: format!("service-{}", managed_url.id),
+									port: Some(ServiceBackendPort {
+										number: Some(443),
+										..ServiceBackendPort::default()
+									}),
+								}),
+								..Default::default()
+							},
+							path: Some(managed_url.path.to_string()),
+							path_type: Some("Prefix".to_string()),
+						}],
+					}),
+				},
+				[
+					(
+						"kubernetes.io/ingress.class".to_string(),
+						"nginx".to_string(),
+					),
+					(
+						"nginx.ingress.kubernetes.io/temporal-redirect"
+							.to_string(),
+						url.clone(),
+					),
+					(
+						"cert-manager.io/issuer".to_string(),
+						config.kubernetes.cert_issuer.clone(),
+					),
+				]
+				.into_iter()
+				.collect(),
+			)
+		}
 	};
 
 	let kubernetes_ingress = Ingress {
@@ -271,32 +317,20 @@ pub async fn update_kubernetes_managed_url(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
-			tls: Some(vec![
-				if domain.is_ns_internal() {
-					IngressTLS {
-						hosts: Some(vec![format!(
-							"{}.{}",
-							managed_url.sub_domain, domain.name
-						)]),
-						secret_name: Some(format!(
-							"tls-domain-wildcard-{}",
-							domain.name.replace(".", "-")
-						)),
+			tls: Some(vec![IngressTLS {
+				hosts: Some(vec![format!(
+					"{}.{}",
+					managed_url.sub_domain, domain.name
+				)]),
+				secret_name: Some(format!(
+					"tls-{}",
+					if domain.is_ns_internal() {
+						&domain.id
+					} else {
+						&managed_url.id
 					}
-				} else {
-					IngressTLS {
-						hosts: Some(vec![format!(
-							"{}.{}",
-							managed_url.sub_domain, domain.name
-						)]),
-						secret_name: Some(format!(
-							"tls-url-{}-{}",
-							managed_url.sub_domain.replace(".", "-"),
-							domain.name.replace(".", "-")
-						)),
-					}
-				},
-			]),
+				)),
+			}]),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()

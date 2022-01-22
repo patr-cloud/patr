@@ -43,7 +43,7 @@ pub async fn migrate(
 			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
 				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
 				name LIKE CONCAT(
-					'^patr-deleted\: ',
+					'patr-deleted: ',
 					REPLACE(id::TEXT, '-', ''),
 					'@%'
 				)
