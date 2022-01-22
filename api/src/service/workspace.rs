@@ -5,7 +5,7 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	utils::{get_current_time_millis, validator, Error},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -70,6 +70,7 @@ pub async fn create_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_name: &str,
 	super_admin_id: &Uuid,
+	config: &Settings,
 ) -> Result<Uuid, Error> {
 	if !is_workspace_name_allowed(connection, workspace_name).await? {
 		Error::as_result()
@@ -101,6 +102,13 @@ pub async fn create_workspace(
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
+
+	super::create_kubernetes_namespace(
+		resource_id.as_str(),
+		config,
+		&Uuid::new_v4(),
+	)
+	.await?;
 
 	Ok(resource_id)
 }
