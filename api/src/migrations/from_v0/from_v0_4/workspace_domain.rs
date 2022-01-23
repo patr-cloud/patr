@@ -55,15 +55,7 @@ pub async fn migrate(
 		ALTER TABLE domain
 			ALTER COLUMN name SET DATA TYPE TEXT,
 			DROP CONSTRAINT domain_chk_name_is_lower_case,
-			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
-				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
-				name LIKE CONCAT(
-					'patr-deleted: ',
-					REPLACE(id::TEXT, '-', ''),
-					'@%'
-				)
-			),
-			ADD COLUMN tld TEXT NOT NULL,
+			ADD COLUMN tld TEXT,
 			ADD CONSTRAINT domain_fk_tld FOREIGN KEY(tld)
 				REFERENCES domain_tld(tld),
 			DROP CONSTRAINT domain_uq_name,
@@ -159,7 +151,7 @@ pub async fn migrate(
 			domain_id UUID NOT NULL,
 			name TEXT NOT NULL
 				CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
-					name ~ '^(\*\.)?(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$' OR
+					name ~ '^(\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_]))$' OR
 					name = '@'
 				),
 			type DNS_RECORD_TYPE NOT NULL,
@@ -287,6 +279,94 @@ pub async fn migrate(
 	.execute(&mut *connection)
 	.await?;
 
+	// Update domain TLD list
+	let data =
+		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?
+			.text()
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list as text: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?;
+
+	let tlds = data
+		.split('\n')
+		.map(String::from)
+		.filter(|tld| {
+			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
+		})
+		.map(|item| item.to_lowercase())
+		.collect::<Vec<String>>();
+
+	for tld in &tlds {
+		query!(
+			r#"
+			INSERT INTO
+				domain_tld
+			VALUES
+				($1)
+			ON CONFLICT DO NOTHING;
+			"#,
+			tld,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			tld = (
+				SELECT
+					tld
+				FROM
+					domain_tld
+				WHERE
+					domain.name LIKE CONCAT('%.', domain_tld.tld)
+				ORDER BY
+					LENGTH(domain_tld.tld) DESC
+				LIMIT 1
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			name = REPLACE(name, CONCAT('.', tld), '');
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE domain
+			ALTER COLUMN tld SET NOT NULL,
+			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
+				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				)
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	let domain_resource_type_id = query!(
 		r#"
 		SELECT
@@ -345,45 +425,6 @@ pub async fn migrate(
 		return Ok(());
 	};
 
-	// Update domain TLD list
-	let data =
-		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?
-			.text()
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list as text: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?;
-
-	let tlds = data
-		.split('\n')
-		.map(String::from)
-		.filter(|tld| {
-			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
-		})
-		.map(|item| item.to_lowercase())
-		.collect::<Vec<String>>();
-
-	for tld in &tlds {
-		query!(
-			r#"
-			INSERT INTO
-				domain_tld
-			VALUES
-				($1)
-			ON CONFLICT DO NOTHING;
-			"#,
-			tld,
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
 	let credentials = Credentials::UserAuthToken {
 		token: config.cloudflare.api_token.clone(),
 	};
@@ -431,6 +472,7 @@ pub async fn migrate(
 					domain_name
 				)
 			});
+		let domain = domain_name.replace(&format!(".{}", tld), "");
 
 		// Insert zone
 		let domain_id = loop {
@@ -504,7 +546,7 @@ pub async fn migrate(
 				($1, $2, 'business', $3);
 			"#,
 			&domain_id,
-			&domain_name,
+			&domain,
 			tld
 		)
 		.execute(&mut *connection)
@@ -550,19 +592,20 @@ pub async fn migrate(
 
 		for dns_record in dns_records {
 			let record_identifier = dns_record.id.as_str();
-			let name = dns_record.name.as_str();
+			let name =
+				dns_record.name.replace(&format!(".{}", domain_name), "");
+			let name = name.as_str();
 			let (r#type, value, priority) = match dns_record.content {
 				DnsContent::A { content } => ("A", content.to_string(), None),
 				DnsContent::AAAA { content } => {
 					("AAAA", content.to_string(), None)
 				}
 				DnsContent::CNAME { content } => ("CNAME", content, None),
-				DnsContent::NS { content } => ("NS", content, None),
 				DnsContent::MX { content, priority } => {
-					("NS", content, Some(priority as i32))
+					("MX", content, Some(priority as i32))
 				}
 				DnsContent::TXT { content } => ("TXT", content, None),
-				DnsContent::SRV { content } => ("SRV", content, None),
+				_ => continue,
 			};
 			let ttl = dns_record.ttl as i64;
 			let proxied = dns_record.proxied;
@@ -616,7 +659,7 @@ pub async fn migrate(
 				INSERT INTO
 					patr_domain_dns_record
 				VALUES
-					($1, $2, $3, $4, $5, $6, $7, $8, $9);
+					($1, $2, $3, $4, $5::DNS_RECORD_TYPE, $6, $7, $8, $9);
 				"#,
 				&record_id,
 				record_identifier,
