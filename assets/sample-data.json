@@ -153,53 +153,6 @@
 				"vcr.to",
 				"getkai.co"
 			],
-			"applications": [
-				{
-					"name": "kai-control-center",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "kai-sdk",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "kai-control-center-module",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				}
-			],
 			"emails": {
 				"rakshith-ravi": [
 					"rakshith@vicara.co",
@@ -238,23 +191,11 @@
 			"superUser": "rakshith-ravi",
 			"roles": {
 				"employee": [
-					"workspace::portus::view",
-					"workspace::portus::list",
-					"workspace::application::list",
-					"workspace::application::viewDetails",
-					"workspace::application::listVersions",
 					"workspace::domain::list",
 					"workspace::domain::viewDetails",
 					"workspace::viewRoles"
 				],
 				"developer": [
-					"workspace::portus::view",
-					"workspace::portus::list",
-					"workspace::portus::add",
-					"workspace::application::list",
-					"workspace::application::add",
-					"workspace::application::viewDetails",
-					"workspace::application::listVersions",
 					"workspace::domain::list",
 					"workspace::domain::viewDetails",
 					"workspace::viewRoles"
@@ -298,53 +239,6 @@
 			"domains": [
 				"gordian.in",
 				"gordain.com"
-			],
-			"applications": [
-				{
-					"name": "delivery-device-firmware",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "delivery-executive-app",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "user-facing-app",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				}
 			],
 			"emails": {
 				"rakshith-ravi": [
