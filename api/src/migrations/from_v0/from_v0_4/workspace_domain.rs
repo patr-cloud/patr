@@ -592,9 +592,12 @@ pub async fn migrate(
 
 		for dns_record in dns_records {
 			let record_identifier = dns_record.id.as_str();
-			let name =
-				dns_record.name.replace(&format!(".{}", domain_name), "");
-			let name = name.as_str();
+			let name = dns_record
+				.name
+				.replace(&domain_name, "")
+				.trim_end_matches('.')
+				.to_string();
+			let name = if name.is_empty() { "@" } else { name.as_str() };
 			let (r#type, value, priority) = match dns_record.content {
 				DnsContent::A { content } => ("A", content.to_string(), None),
 				DnsContent::AAAA { content } => {
