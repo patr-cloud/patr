@@ -30,10 +30,9 @@ pub async fn initialize_users_pre(
 			username VARCHAR(100) NOT NULL
 				CONSTRAINT user_uq_username UNIQUE
 				CONSTRAINT user_chk_username_is_valid CHECK(
-					/* Username is a-z, 0-9, cannot begin or end with a . or - */
-					username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+					/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
+					username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND
 					username NOT LIKE '%..%' AND
-					username NOT LIKE '%--%' AND
 					username NOT LIKE '%.-%' AND
 					username NOT LIKE '%-.%'
 				),
@@ -349,10 +348,9 @@ pub async fn initialize_users_post(
 		CREATE TABLE user_to_sign_up(
 			username VARCHAR(100) CONSTRAINT user_to_sign_up_pk PRIMARY KEY
 				CONSTRAINT user_to_sign_up_chk_username_is_valid CHECK(
-					/* Username is a-z, 0-9, cannot begin or end with a . or - */
-					username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+					/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
+					username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND
 					username NOT LIKE '%..%' AND
-					username NOT LIKE '%--%' AND
 					username NOT LIKE '%.-%' AND
 					username NOT LIKE '%-.%'
 				),

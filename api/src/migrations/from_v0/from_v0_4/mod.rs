@@ -575,10 +575,9 @@ async fn fix_user_constraints(
 		ALTER TABLE "user"
 		ADD CONSTRAINT user_chk_username_is_valid
 		CHECK(
-			/* Username is a-z, 0-9, cannot begin or end with a . or - */
-			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
+			username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND
 			username NOT LIKE '%..%' AND
-			username NOT LIKE '%--%' AND
 			username NOT LIKE '%.-%' AND
 			username NOT LIKE '%-.%'
 		);
@@ -601,10 +600,9 @@ async fn fix_user_constraints(
 		ALTER TABLE user_to_sign_up
 		ADD CONSTRAINT user_to_sign_up_chk_username_is_valid
 		CHECK(
-			/* Username is a-z, 0-9, cannot begin or end with a . or - */
-			username ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\.\-]*[a-z0-9]))$' AND
+			/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
+			username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND
 			username NOT LIKE '%..%' AND
-			username NOT LIKE '%--%' AND
 			username NOT LIKE '%.-%' AND
 			username NOT LIKE '%-.%'
 		);

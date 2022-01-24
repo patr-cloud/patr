@@ -1,11 +1,26 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use api_macros::migrate_query as query;
 use api_models::utils::Uuid;
+use cloudflare::{
+	endpoints::{
+		dns::{DnsContent, ListDnsRecords, ListDnsRecordsParams},
+		zone::{ListZones, ListZonesParams},
+	},
+	framework::{
+		async_api::{ApiClient, Client},
+		auth::Credentials,
+		Environment,
+		HttpApiClientConfig,
+	},
+};
+use sqlx::Row;
 
 use crate::{utils::settings::Settings, Database};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -40,15 +55,7 @@ pub async fn migrate(
 		ALTER TABLE domain
 			ALTER COLUMN name SET DATA TYPE TEXT,
 			DROP CONSTRAINT domain_chk_name_is_lower_case,
-			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
-				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
-				name LIKE CONCAT(
-					'patr-deleted: ',
-					REPLACE(id::TEXT, '-', ''),
-					'@%'
-				)
-			),
-			ADD COLUMN tld TEXT NOT NULL,
+			ADD COLUMN tld TEXT,
 			ADD CONSTRAINT domain_fk_tld FOREIGN KEY(tld)
 				REFERENCES domain_tld(tld),
 			DROP CONSTRAINT domain_uq_name,
@@ -144,7 +151,7 @@ pub async fn migrate(
 			domain_id UUID NOT NULL,
 			name TEXT NOT NULL
 				CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK(
-					name ~ '^(\*\.)?(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$' OR
+					name ~ '^(\*)|((\*\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_]))$' OR
 					name = '@'
 				),
 			type DNS_RECORD_TYPE NOT NULL,
@@ -173,7 +180,7 @@ pub async fn migrate(
 
 	// Add resource type
 	const DNS_RECORD: &str = "dnsRecord";
-	let resource_type_id = loop {
+	let dns_record_resource_type_id = loop {
 		let uuid = Uuid::new_v4();
 
 		let exists = query!(
@@ -203,7 +210,7 @@ pub async fn migrate(
 		VALUES
 			($1, $2, NULL);
 		"#,
-		&resource_type_id,
+		&dns_record_resource_type_id,
 		DNS_RECORD
 	)
 	.execute(&mut *connection)
@@ -271,6 +278,406 @@ pub async fn migrate(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	// Update domain TLD list
+	let data =
+		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?
+			.text()
+			.await
+			.map_err(|e| {
+				log::error!("Failed to fetch TLD list as text: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?;
+
+	let tlds = data
+		.split('\n')
+		.map(String::from)
+		.filter(|tld| {
+			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
+		})
+		.map(|item| item.to_lowercase())
+		.collect::<Vec<String>>();
+
+	for tld in &tlds {
+		query!(
+			r#"
+			INSERT INTO
+				domain_tld
+			VALUES
+				($1)
+			ON CONFLICT DO NOTHING;
+			"#,
+			tld,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			tld = (
+				SELECT
+					tld
+				FROM
+					domain_tld
+				WHERE
+					domain.name LIKE CONCAT('%.', domain_tld.tld)
+				ORDER BY
+					LENGTH(domain_tld.tld) DESC
+				LIMIT 1
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		UPDATE
+			domain
+		SET
+			name = REPLACE(name, CONCAT('.', tld), '');
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE domain
+			ALTER COLUMN tld SET NOT NULL,
+			ADD CONSTRAINT domain_chk_name_is_valid CHECK(
+				name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$' OR
+				name LIKE CONCAT(
+					'patr-deleted: ',
+					REPLACE(id::TEXT, '-', ''),
+					'@%'
+				)
+			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	let domain_resource_type_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			resource_type
+		WHERE
+			name = 'domain';
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<Uuid, _>("id");
+
+	// Migrate all existing domains and DNS records to the workspace who's
+	// super_admin_id is GOD_USER_ID
+	let god_user_id = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			"user"
+		ORDER BY
+			created
+		LIMIT 1;
+		"#
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	let god_user_id = if let Some(id) = god_user_id {
+		id.get::<Uuid, _>("id")
+	} else {
+		// No GOD_USER_ID to migrate to
+		return Ok(());
+	};
+
+	let workspace = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1;
+		"#,
+		&god_user_id
+	)
+	.fetch_optional(&mut *connection)
+	.await?;
+
+	let workspace_id = if let Some(workspace) = workspace {
+		workspace.get::<Uuid, _>("id")
+	} else {
+		// Cannot migrate to a workspace
+		return Ok(());
+	};
+
+	let credentials = Credentials::UserAuthToken {
+		token: config.cloudflare.api_token.clone(),
+	};
+
+	let client = Client::new(
+		credentials,
+		HttpApiClientConfig::default(),
+		Environment::Production,
+	)
+	.map_err(|e| {
+		log::error!("Failed to create client: {}", e);
+		sqlx::Error::WorkerCrashed
+	})?;
+
+	let zones = client
+		.request(&ListZones {
+			params: ListZonesParams {
+				per_page: Some(50),
+				..Default::default()
+			},
+		})
+		.await
+		.map_err(|e| {
+			log::error!("Failed to list domains: {}", e);
+			sqlx::Error::WorkerCrashed
+		})?
+		.result;
+
+	for zone in zones {
+		let zone_identifier = zone.id.as_str();
+		let domain_name = zone.name;
+		let tld = tlds
+			.iter()
+			.filter(|tld| domain_name.ends_with(*tld))
+			.reduce(|accumulator, item| {
+				if accumulator.len() > item.len() {
+					accumulator
+				} else {
+					item
+				}
+			})
+			.unwrap_or_else(|| {
+				panic!(
+					"unable to find a suitable TLD for domain `{}`",
+					domain_name
+				)
+			});
+		let domain = domain_name.replace(&format!(".{}", tld), "");
+
+		// Insert zone
+		let domain_id = loop {
+			let uuid = Uuid::new_v4();
+
+			// If it exists in the resource table, it can't be used
+			// because workspace domains are a resource
+			// If it exists in the domain table, it can't be used
+			// since personal domains are a type of domains
+			let exists = {
+				query!(
+					r#"
+					SELECT
+						*
+					FROM
+						resource
+					WHERE
+						id = $1;
+					"#,
+					&uuid
+				)
+				.fetch_optional(&mut *connection)
+				.await?
+				.is_some()
+			} || {
+				query!(
+					r#"
+					SELECT
+						id
+					FROM
+						domain
+					WHERE
+						id = $1;
+					"#,
+					&uuid
+				)
+				.fetch_optional(&mut *connection)
+				.await?
+				.is_some()
+			};
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		// add a resource first
+		query!(
+			r#"
+			INSERT INTO
+				resource
+			VALUES
+				($1, $2, $3, $4, $5);
+			"#,
+			&domain_id,
+			format!("Domain: {}", domain_name),
+			&domain_resource_type_id,
+			&workspace_id,
+			SystemTime::now()
+				.duration_since(UNIX_EPOCH)
+				.expect("Time went backwards. Wtf?")
+				.as_millis() as i64,
+		)
+		.execute(&mut *connection)
+		.await?;
+		query!(
+			r#"
+			INSERT INTO
+				domain
+			VALUES
+				($1, $2, 'business', $3);
+			"#,
+			&domain_id,
+			&domain,
+			tld
+		)
+		.execute(&mut *connection)
+		.await?;
+		query!(
+			r#"
+			INSERT INTO
+				workspace_domain
+			VALUES
+				($1, 'business', FALSE, 'internal');
+			"#,
+			&domain_id,
+		)
+		.execute(&mut *connection)
+		.await?;
+		query!(
+			r#"
+			INSERT INTO
+				patr_controlled_domain
+			VALUES
+				($1, $2, 'internal');
+			"#,
+			&domain_id,
+			zone_identifier
+		)
+		.execute(&mut *connection)
+		.await?;
+
+		let dns_records = client
+			.request(&ListDnsRecords {
+				zone_identifier,
+				params: ListDnsRecordsParams {
+					per_page: Some(5000),
+					..Default::default()
+				},
+			})
+			.await
+			.map_err(|e| {
+				log::error!("Failed to list domains: {}", e);
+				sqlx::Error::WorkerCrashed
+			})?
+			.result;
+
+		for dns_record in dns_records {
+			let record_identifier = dns_record.id.as_str();
+			let name = dns_record
+				.name
+				.replace(&domain_name, "")
+				.trim_end_matches('.')
+				.to_string();
+			let name = if name.is_empty() { "@" } else { name.as_str() };
+			let (r#type, value, priority) = match dns_record.content {
+				DnsContent::A { content } => ("A", content.to_string(), None),
+				DnsContent::AAAA { content } => {
+					("AAAA", content.to_string(), None)
+				}
+				DnsContent::CNAME { content } => ("CNAME", content, None),
+				DnsContent::MX { content, priority } => {
+					("MX", content, Some(priority as i32))
+				}
+				DnsContent::TXT { content } => ("TXT", content, None),
+				_ => continue,
+			};
+			let ttl = dns_record.ttl as i64;
+			let proxied = dns_record.proxied;
+
+			let record_id = loop {
+				let uuid = Uuid::new_v4();
+
+				let exists = {
+					query!(
+						r#"
+						SELECT
+							*
+						FROM
+							resource
+						WHERE
+							id = $1;
+						"#,
+						&uuid
+					)
+					.fetch_optional(&mut *connection)
+					.await?
+					.is_some()
+				};
+
+				if !exists {
+					break uuid;
+				}
+			};
+
+			// add a resource first
+			query!(
+				r#"
+				INSERT INTO
+					resource
+				VALUES
+					($1, $2, $3, $4, $5);
+				"#,
+				&record_id,
+				&format!("DNS Record `{}.{}`: {}", name, domain_id, r#type),
+				&dns_record_resource_type_id,
+				&workspace_id,
+				SystemTime::now()
+					.duration_since(UNIX_EPOCH)
+					.expect("Time went backwards. Wtf?")
+					.as_millis() as i64,
+			)
+			.execute(&mut *connection)
+			.await?;
+			query!(
+				r#"
+				INSERT INTO
+					patr_domain_dns_record
+				VALUES
+					($1, $2, $3, $4, $5::DNS_RECORD_TYPE, $6, $7, $8, $9);
+				"#,
+				&record_id,
+				record_identifier,
+				&domain_id,
+				&name,
+				&r#type,
+				&value,
+				&priority,
+				ttl,
+				proxied,
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
+	}
 
 	Ok(())
 }
