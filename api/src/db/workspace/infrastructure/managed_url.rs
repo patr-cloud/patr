@@ -30,7 +30,7 @@ pub async fn initialize_managed_url_pre(
 			id UUID CONSTRAINT managed_url_pk PRIMARY KEY,
 			sub_domain TEXT NOT NULL
 				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
-					sub_domain ~ '^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$' OR
+					sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
 					sub_domain = '@' OR
 					sub_domain LIKE CONCAT(
 						'patr-deleted: ',

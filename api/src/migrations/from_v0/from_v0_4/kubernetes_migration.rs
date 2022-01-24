@@ -860,7 +860,7 @@ async fn migrate_all_managed_urls(
 			id UUID CONSTRAINT managed_url_pk PRIMARY KEY,
 			sub_domain TEXT NOT NULL
 				CONSTRAINT managed_url_chk_sub_domain_valid CHECK(
-					sub_domain ~ '^(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])$' OR
+					sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
 					sub_domain = '@' OR
 					sub_domain LIKE CONCAT(
 						'patr-deleted: ',
@@ -1118,7 +1118,7 @@ async fn migrate_all_managed_urls(
 				SELECT
 					*
 				FROM
-					managed_url
+					resource
 				WHERE
 					id = $1;
 				"#,
@@ -1141,20 +1141,41 @@ async fn migrate_all_managed_urls(
 			let domain_id = loop {
 				let uuid = Uuid::new_v4();
 
-				let exists = query!(
-					r#"
-					SELECT
-						*
-					FROM
-						workspace_domain
-					WHERE
-						id = $1;
-					"#,
-					&uuid
-				)
-				.fetch_optional(&mut *connection)
-				.await?
-				.is_some();
+				// If it exists in the resource table, it can't be used
+				// because workspace domains are a resource
+				// If it exists in the domain table, it can't be used
+				// since personal domains are a type of domains
+				let exists = {
+					query!(
+						r#"
+						SELECT
+							*
+						FROM
+							resource
+						WHERE
+							id = $1;
+						"#,
+						&uuid
+					)
+					.fetch_optional(&mut *connection)
+					.await?
+					.is_some()
+				} || {
+					query!(
+						r#"
+						SELECT
+							id
+						FROM
+							domain
+						WHERE
+							id = $1;
+						"#,
+						&uuid
+					)
+					.fetch_optional(&mut *connection)
+					.await?
+					.is_some()
+				};
 
 				if !exists {
 					break uuid;
