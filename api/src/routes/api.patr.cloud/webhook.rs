@@ -1,4 +1,7 @@
-use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -74,6 +77,14 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!(
+		"request_id: {} - Received notification from docker registry",
+		request_id,
+	);
+
+	log::trace!("request_id: {} - Checking the content type", request_id);
 	if context.get_content_type().as_str() !=
 		"application/vnd.docker.distribution.events.v1+json"
 	{
@@ -82,6 +93,10 @@ pub async fn notification_handler(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	log::trace!(
+		"request_id: {} - Checking the Authorization header",
+		request_id
+	);
 	let custom_header = context.get_header("Authorization").status(400).body(
 		json!({
 			request_keys::ERRORS: [{
@@ -94,6 +109,10 @@ pub async fn notification_handler(
 	)?;
 
 	let config = context.get_state().config.clone();
+	log::trace!(
+		"request_id: {} - Parsing the Custom Authorization header",
+		request_id
+	);
 	if custom_header != config.docker_registry.authorization_header {
 		Error::as_result().status(400).body(
 			json!({
@@ -129,6 +148,7 @@ pub async fn notification_handler(
 				continue;
 			};
 
+		log::trace!("request_id: {} - Getting the workspace", request_id);
 		let workspace = db::get_workspace_by_name(
 			context.get_database_connection(),
 			workspace_name,
@@ -140,6 +160,10 @@ pub async fn notification_handler(
 			continue;
 		};
 
+		log::trace!(
+			"request_id: {} - Getting the docker repository info",
+			request_id
+		);
 		let repository = db::get_docker_repository_by_name(
 			context.get_database_connection(),
 			image_name,
@@ -154,6 +178,10 @@ pub async fn notification_handler(
 
 		let current_time = get_current_time_millis();
 
+		log::trace!(
+			"request_id: {} - Creating docker repository digest",
+			request_id
+		);
 		db::create_docker_repository_digest(
 			context.get_database_connection(),
 			&repository.id,
@@ -175,6 +203,10 @@ pub async fn notification_handler(
 			continue;
 		}
 
+		log::trace!(
+			"request_id: {} - Setting the docker repositorty tag details",
+			request_id
+		);
 		db::set_docker_repository_tag_details(
 			context.get_database_connection(),
 			&repository.id,
@@ -184,6 +216,10 @@ pub async fn notification_handler(
 		)
 		.await?;
 
+		log::trace!(
+			"request_id: {} - Getting the deployments by image name and tag",
+			request_id
+		);
 		let deployments =
 			db::get_deployments_by_image_name_and_tag_for_workspace(
 				context.get_database_connection(),
@@ -193,6 +229,7 @@ pub async fn notification_handler(
 			)
 			.await?;
 
+		log::trace!("request_id: {} - Updating the deployments", request_id);
 		for deployment in deployments {
 			if let DeploymentStatus::Stopped = deployment.status {
 				continue;
@@ -205,27 +242,40 @@ pub async fn notification_handler(
 				target.digest
 			);
 
+			log::trace!("request_id: {} - Pushing image to DOCR", request_id);
 			service::push_to_docr(
 				context.get_database_connection(),
 				&deployment.id,
 				&full_image_name,
 				&config,
+				&request_id,
 			)
 			.await?;
+			log::trace!("request_id: {} - Pushed image to DOCR", request_id);
 
+			log::trace!(
+				"request_id: {} - Getting full deployment config",
+				request_id
+			);
 			let (deployment, workspace_id, full_image, running_details) =
 				service::get_full_deployment_config(
 					context.get_database_connection(),
 					&deployment.id,
+					&request_id,
 				)
 				.await?;
 
+			log::trace!(
+				"request_id: {} - Updating the kubernetes deployment",
+				request_id
+			);
 			service::update_kubernetes_deployment(
 				&workspace_id,
 				&deployment,
 				&full_image,
 				&running_details,
 				&config,
+				&request_id,
 			)
 			.await?;
 		}
