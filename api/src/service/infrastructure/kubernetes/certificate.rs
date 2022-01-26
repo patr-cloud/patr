@@ -17,9 +17,15 @@ pub async fn create_certificates(
 	secret_name: &str,
 	domain_list: Vec<String>,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Creating certificates", request_id);
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
+	log::trace!(
+		"request_id: {} - Checking if certificate exists",
+		request_id
+	);
 	if super::certificate_exists(
 		certificate_name,
 		kubernetes_client.clone(),
@@ -67,6 +73,10 @@ pub async fn create_certificates(
 
 	let namespace = workspace_id.as_str();
 
+	log::trace!(
+		"request_id: {} - Creating certificate in Kubernetes",
+		request_id
+	);
 	let _ = Api::<DynamicObject>::namespaced_with(
 		kubernetes_client,
 		namespace,
@@ -79,6 +89,7 @@ pub async fn create_certificates(
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Certificate created", request_id);
 	Ok(())
 }
 
@@ -87,12 +98,15 @@ pub async fn delete_certificates_for_domain(
 	certificate_name: &str,
 	secret_name: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Deleting certificates", request_id);
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
 	let namespace = workspace_id.as_str();
 
 	// delete secret and then certificate
+	log::trace!("request_id: {} - Deleting secret", request_id);
 	if super::secret_exists(secret_name, kubernetes_client.clone(), namespace)
 		.await?
 	{
@@ -119,6 +133,10 @@ pub async fn delete_certificates_for_domain(
 		plural: "certificates".to_string(),
 	};
 
+	log::trace!(
+		"request_id: {} - Deleting certificate in Kubernetes",
+		request_id
+	);
 	Api::<DynamicObject>::namespaced_with(
 		kubernetes_client,
 		namespace,

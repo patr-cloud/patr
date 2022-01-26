@@ -171,6 +171,7 @@ pub async fn create_new_managed_url_in_workspace(
 			&format!("tls-{}", managed_url_id),
 			vec![format!("{}.{}", sub_domain, domain.name)],
 			config,
+			request_id,
 		)
 		.await?;
 	}
@@ -377,6 +378,7 @@ pub async fn delete_managed_url(
 			&certificate_name,
 			&secret_name,
 			config,
+			request_id,
 		)
 		.await?;
 	}
