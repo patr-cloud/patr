@@ -111,6 +111,26 @@
       ]
     }
   },
+  "08133cde3025bc5f5f335c04065b11cc144468352adb85ff3695b424dc0938f9": {
+    "query": "SELECT CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!: String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "query": "SELECT id as \"id: Uuid\", name, resource_type_id as \"resource_type_id: Uuid\", owner_id as \"owner_id: Uuid\", created FROM resource WHERE id = $1;",
     "describe": {
@@ -152,98 +172,6 @@
         false,
         false,
         false
-      ]
-    }
-  },
-  "0cc3abb583408d10147188c34ec3716cb0093acfa377e84813194651e5e2d226": {
-    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(business_email.local, '@', domain.name) = $1 OR CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "dob",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "bio",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "location",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "created",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 9,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 11,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true
       ]
     }
   },
@@ -366,98 +294,6 @@
       ]
     }
   },
-  "0f173a2ae7e9c68cfb8d86191b16740c01ad3febde1b1429e083153b9ad21cb4": {
-    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT(personal_email.local, '@', domain.name) = $1 OR CONCAT(business_email.local, '@', domain.name) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "dob",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 6,
-          "name": "bio",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 7,
-          "name": "location",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "created",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 9,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 11,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
   "109658541c3629fa2b93265b2ac5c6d6dd5d154161d45ef2293027f875ff27f6": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
     "describe": {
@@ -549,6 +385,98 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "136666427185160f1ff4fdafcb26cd3533883404d623a7075d680c7f4ecb7089": {
+    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON user_phone_number.user_id = \"user\".id LEFT JOIN phone_number_country_code ON phone_number_country_code.country_code = user_phone_number.country_code WHERE \"user\".username = $1 OR CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
     }
   },
   "1367b2c0bb8700daf488f62964c8c1396fb2a3a5a2f33577c4d0c1be8806507c": {
@@ -1498,6 +1426,26 @@
       ]
     }
   },
+  "24694606a443f2511160e4199ec028623f4f8f60c0ac156ce26fbff14fd7e9dd": {
+    "query": "SELECT CONCAT( \"user\".backup_email_local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "email!: String",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "25e9105d2a4f541cf9d4a25b5052629777e59c308caa24e83eb2efa386757b87": {
     "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port) );",
     "describe": {
@@ -1596,93 +1544,6 @@
         "Left": []
       },
       "nullable": []
-    }
-  },
-  "2cab26118f3fa05ce3e4c83bb5710ccf377c7e8f4d5ebdc6f7e7719131ea64e3": {
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.deployment_id = $1 AND managed_url.url_type = 'proxy_to_deployment' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "sub_domain!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "domain_id!: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "path!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "url_type!: _",
-          "type_info": {
-            "Custom": {
-              "name": "managed_url_type",
-              "kind": {
-                "Enum": [
-                  "proxy_to_deployment",
-                  "proxy_to_static_site",
-                  "proxy_url",
-                  "redirect"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 5,
-          "name": "deployment_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 6,
-          "name": "port",
-          "type_info": "Int4"
-        },
-        {
-          "ordinal": 7,
-          "name": "static_site_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 8,
-          "name": "url",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 9,
-          "name": "workspace_id!: _",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ]
     }
   },
   "2d9bd34aec2d4a7e2b0a0a989686426764736a4d4c82d91fa157b387bc0a4642": {
@@ -2004,26 +1865,6 @@
         false,
         true,
         false
-      ]
-    }
-  },
-  "35b8c34de1dcb2df4b41fa2f5699ad4740e04ee12a82258daf07c8b375ce56ed": {
-    "query": "SELECT CONCAT(personal_email.local, '@', domain.name) as \"email!: String\" FROM personal_email INNER JOIN domain ON personal_email.domain_id = domain.id WHERE personal_email.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email!: String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        null
       ]
     }
   },
@@ -3278,51 +3119,6 @@
       "nullable": []
     }
   },
-  "75c21385da646aa0555bda704e5efa1f7239ba3bd28daaeaa8812db8d32acc27": {
-    "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: Uuid\", user_unverified_personal_email.user_id as \"user_id: Uuid\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE user_id = $1 AND CONCAT(local, '@', domain.name) = $2;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "user_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "verification_token_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 4,
-          "name": "verification_token_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "7606578be4a3a0e3c1ff30c00644f36007d5519880cfd1e3988d573a3f8c7f0f": {
     "query": "INSERT INTO domain_tld VALUES ($1) ON CONFLICT DO NOTHING;",
     "describe": {
@@ -3474,6 +3270,93 @@
         false,
         false,
         false
+      ]
+    }
+  },
+  "7cbabf53a73fe673bfa522455fbd2fefbc657f6def3531eb922564a9c3627590": {
+    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.deployment_id = $1 AND managed_url.url_type = 'proxy_to_deployment' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "sub_domain!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "path!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "url_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_url_type",
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "deployment_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "static_site_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "url",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "workspace_id!: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
       ]
     }
   },
@@ -4061,114 +3944,6 @@
       "nullable": []
     }
   },
-  "99daf089dedfe126aedbece989aa0c3059ed43295631a6ace6a8dbc1e44e785f": {
-    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id as \"backup_email_domain_id: Uuid\", user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, CASE WHEN user_to_sign_up.business_domain_name IS NULL THEN NULL ELSE CONCAT( user_to_sign_up.business_domain_name, '.', user_to_sign_up.business_domain_tld ) END as \"business_domain_name: String\", user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "username",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 1,
-          "name": "account_type: ResourceType",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        },
-        {
-          "ordinal": 2,
-          "name": "password",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "first_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 4,
-          "name": "last_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 5,
-          "name": "backup_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 6,
-          "name": "backup_email_domain_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 7,
-          "name": "backup_phone_country_code",
-          "type_info": "Bpchar"
-        },
-        {
-          "ordinal": 8,
-          "name": "backup_phone_number",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 9,
-          "name": "business_email_local",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 10,
-          "name": "business_domain_name: String",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 11,
-          "name": "business_name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 12,
-          "name": "otp_hash",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 13,
-          "name": "otp_expiry",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        false,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        null,
-        true,
-        false,
-        false
-      ]
-    }
-  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -4418,26 +4193,6 @@
         true,
         true,
         true
-      ]
-    }
-  },
-  "a1bf8a497d7d6b8762434743b2da880011018fc4bff4f94fffe1e9b41ba6d567": {
-    "query": "SELECT CONCAT(\"user\".backup_email_local, '@', domain.name) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".backup_email_domain_id = domain.id WHERE \"user\".id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "email!: String",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        null
       ]
     }
   },
@@ -4812,6 +4567,114 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "ad9f625141ccfa8ec3b29922b39c40e46897cef99ceef6f74032c5ec5eb5c268": {
+    "query": "SELECT user_to_sign_up.username, user_to_sign_up.account_type as \"account_type: ResourceType\", user_to_sign_up.password, user_to_sign_up.first_name, user_to_sign_up.last_name, user_to_sign_up.backup_email_local, user_to_sign_up.backup_email_domain_id as \"backup_email_domain_id: Uuid\", user_to_sign_up.backup_phone_country_code, user_to_sign_up.backup_phone_number, user_to_sign_up.business_email_local, CASE WHEN user_to_sign_up.business_domain_name IS NULL THEN NULL ELSE CONCAT( user_to_sign_up.business_domain_name, '.', user_to_sign_up.business_domain_tld ) END as \"business_domain_name: String\", user_to_sign_up.business_name, user_to_sign_up.otp_hash, user_to_sign_up.otp_expiry FROM user_to_sign_up INNER JOIN domain ON domain.id = user_to_sign_up.backup_email_domain_id WHERE CONCAT( user_to_sign_up.backup_email_local, '@', domain.name, '.', domain.tld ) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "account_type: ResourceType",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 6,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 7,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 9,
+          "name": "business_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "business_domain_name: String",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 11,
+          "name": "business_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "otp_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "otp_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        true,
+        false,
+        false
+      ]
     }
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
@@ -5573,6 +5436,98 @@
       "nullable": []
     }
   },
+  "b931d4453304ee3c18f34c2567a7559cac74878cd209266bcfb195669a70c29b": {
+    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".backup_email_local, \"user\".backup_email_domain_id as \"backup_email_domain_id: Uuid\", \"user\".backup_phone_country_code, \"user\".backup_phone_number FROM \"user\" LEFT JOIN personal_email ON personal_email.user_id = \"user\".id LEFT JOIN business_email ON business_email.user_id = \"user\".id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id WHERE CONCAT( personal_email.local, '@', domain.name, '.', domain.tld ) = $1 OR CONCAT( business_email.local, '@', domain.name, '.', domain.tld ) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "username",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "first_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 5,
+          "name": "dob",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 6,
+          "name": "bio",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 7,
+          "name": "location",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 8,
+          "name": "created",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 9,
+          "name": "backup_email_local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 10,
+          "name": "backup_email_domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 11,
+          "name": "backup_phone_country_code",
+          "type_info": "Bpchar"
+        },
+        {
+          "ordinal": 12,
+          "name": "backup_phone_number",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
   "b9357a0670c6269e397b5c88dad2278ee579b678ff57c99f049d17026d2660a5": {
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;",
     "describe": {
@@ -5614,6 +5569,50 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "bb1465ae6d54d793b94cc0d96f56cd520c14744c0419f469245692b43069cb27": {
+    "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: Uuid\", user_unverified_personal_email.user_id as \"user_id: Uuid\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(local, '@', domain.name, '.', domain.tld) = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "local",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "domain_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "user_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "verification_token_hash",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "verification_token_expiry",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
@@ -6829,8 +6828,38 @@
       "nullable": []
     }
   },
-  "ed8e2b9e3481dac558927695a0ad9da676c5ddf5ec65ed1241c221f65af5e3ab": {
-    "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: Uuid\", user_unverified_personal_email.user_id as \"user_id: Uuid\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE CONCAT(local, '@', domain.name) = $1;",
+  "ed964d5972036bd49e17512f2588da16a94a81f63db84cdd4a5713b9adeca9be": {
+    "query": "CREATE TABLE personal_email( user_id UUID NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "edbe8c3a433fff62d9b3c03cc7ec2750a6ea433379d0a57b5c374ee3ab892c8c": {
+    "query": "SELECT id as \"id: Uuid\" FROM deployment_region WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: Uuid",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "ee6a880bffc00568efcbb542dce5d2413468402d8a17d135aaf6e36a07e79e66": {
+    "query": "SELECT user_unverified_personal_email.local, user_unverified_personal_email.domain_id as \"domain_id: Uuid\", user_unverified_personal_email.user_id as \"user_id: Uuid\", user_unverified_personal_email.verification_token_hash, user_unverified_personal_email.verification_token_expiry FROM user_unverified_personal_email INNER JOIN domain ON domain.id = user_unverified_personal_email.domain_id WHERE user_id = $1 AND CONCAT(local, '@', domain.name, '.', domain.tld) = $2;",
     "describe": {
       "columns": [
         {
@@ -6861,6 +6890,7 @@
       ],
       "parameters": {
         "Left": [
+          "Uuid",
           "Text"
         ]
       },
@@ -6869,36 +6899,6 @@
         false,
         false,
         false,
-        false
-      ]
-    }
-  },
-  "ed964d5972036bd49e17512f2588da16a94a81f63db84cdd4a5713b9adeca9be": {
-    "query": "CREATE TABLE personal_email( user_id UUID NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "edbe8c3a433fff62d9b3c03cc7ec2750a6ea433379d0a57b5c374ee3ab892c8c": {
-    "query": "SELECT id as \"id: Uuid\" FROM deployment_region WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: Uuid",
-          "type_info": "Uuid"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
         false
       ]
     }
@@ -7028,58 +7028,8 @@
       "nullable": []
     }
   },
-  "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
-    "query": "DELETE FROM role WHERE id = $1;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": []
-    }
-  },
-  "f6cc8d79f2c2f52757cc15fd59ac42c6d1ea67fc8232fed1260895a5d418492a": {
-    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "permission_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "resource_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 3,
-          "name": "description",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ]
-    }
-  },
-  "f80b65598817a3f53b2bbf585ae579431e50df946030b28f0b57f47ff1833415": {
-    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+  "f5dc0fe6c462dd9658c2a0a358fb20ed7da3b85fa0bc49b3e72db40200788833": {
+    "query": "WITH RECURSIVE managed_url_list AS ( SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id WHERE managed_url.static_site_id = $1 AND managed_url.url_type = 'proxy_to_static_site' UNION ALL SELECT managed_url.* FROM managed_url INNER JOIN domain ON managed_url.domain_id = domain.id JOIN managed_url_list ON managed_url.url LIKE CONCAT( managed_url.sub_domain, '.', domain.name, '.', domain.tld, CASE managed_url.path WHEN '/' THEN '%' ELSE CONCAT(managed_url.path, '%') END ) WHERE managed_url.url_type = 'redirect' OR managed_url.url_type = 'proxy_url' ) SELECT id as \"id!: _\", sub_domain as \"sub_domain!: _\", domain_id as \"domain_id!: _\", path as \"path!: _\", url_type as \"url_type!: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id!: _\" FROM managed_url_list WHERE managed_url_list.workspace_id = $2 AND managed_url_list.sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
     "describe": {
       "columns": [
         {
@@ -7162,6 +7112,56 @@
         null,
         null,
         null
+      ]
+    }
+  },
+  "f677f0f49f5509a73a29aa93a7525c287fdc8601417c0b671f6a2848cdcc1265": {
+    "query": "DELETE FROM role WHERE id = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "f6cc8d79f2c2f52757cc15fd59ac42c6d1ea67fc8232fed1260895a5d418492a": {
+    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\", name, description FROM role_permissions_resource INNER JOIN permission ON role_permissions_resource.permission_id = permission.id WHERE role_permissions_resource.role_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "permission_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "resource_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 3,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true
       ]
     }
   },
