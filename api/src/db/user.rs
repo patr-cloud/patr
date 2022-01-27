@@ -835,9 +835,25 @@ pub async fn get_user_by_username_email_or_phone_number(
 			phone_number_country_code.country_code = user_phone_number.country_code
 		WHERE
 			"user".username = $1 OR
-			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(business_email.local, '@', domain.name) = $1 OR
-			CONCAT('+', phone_number_country_code.phone_code, user_phone_number.number) = $1;
+			CONCAT(
+				personal_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1 OR
+			CONCAT(
+				business_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1 OR
+			CONCAT(
+				'+',
+				phone_number_country_code.phone_code,
+				user_phone_number.number
+			) = $1;
 		"#,
 		user_id
 	)
@@ -898,8 +914,20 @@ pub async fn get_user_by_email(
 			domain.id = personal_email.domain_id OR
 			domain.id = business_email.domain_id
 		WHERE
-			CONCAT(personal_email.local, '@', domain.name) = $1 OR
-			CONCAT(business_email.local, '@', domain.name) = $1;
+			CONCAT(
+				personal_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1 OR
+			CONCAT(
+				business_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1;
 		"#,
 		email
 	)
@@ -1439,7 +1467,13 @@ pub async fn get_user_to_sign_up_by_email(
 		ON
 			domain.id = user_to_sign_up.backup_email_domain_id
 		WHERE
-			CONCAT(user_to_sign_up.backup_email_local, '@', domain.name) = $1;
+			CONCAT(
+				user_to_sign_up.backup_email_local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) = $1;
 		"#,
 		email
 	)
@@ -1683,7 +1717,7 @@ pub async fn get_personal_email_to_be_verified_for_user(
 			domain.id = user_unverified_personal_email.domain_id
 		WHERE
 			user_id = $1 AND
-			CONCAT(local, '@', domain.name) = $2;
+			CONCAT(local, '@', domain.name, '.', domain.tld) = $2;
 		"#,
 		user_id as _,
 		email
@@ -1720,7 +1754,7 @@ pub async fn get_personal_email_to_be_verified_by_email(
 		ON
 			domain.id = user_unverified_personal_email.domain_id
 		WHERE
-			CONCAT(local, '@', domain.name) = $1;
+			CONCAT(local, '@', domain.name, '.', domain.tld) = $1;
 		"#,
 		email
 	)
@@ -2548,7 +2582,13 @@ pub async fn get_personal_emails_for_user(
 	let rows = query!(
 		r#"
 		SELECT
-			CONCAT(personal_email.local, '@', domain.name) as "email!: String"
+			CONCAT(
+				personal_email.local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) as "email!: String"
 		FROM
 			personal_email
 		INNER JOIN
@@ -2645,7 +2685,13 @@ pub async fn get_backup_email_for_user(
 	query!(
 		r#"
 		SELECT
-			CONCAT("user".backup_email_local, '@', domain.name) as "email!: String"
+			CONCAT(
+				"user".backup_email_local,
+				'@',
+				domain.name,
+				'.',
+				domain.tld
+			) as "email!: String"
 		FROM
 			"user"
 		INNER JOIN

@@ -387,9 +387,13 @@ pub async fn get_all_managed_urls_for_deployment(
 					managed_url.sub_domain,
 					'.',
 					domain.name,
+					'.',
+					domain.tld,
 					CASE managed_url.path
-						WHEN '/' THEN '%'
-						ELSE CONCAT(managed_url.path, '%')
+						WHEN '/' THEN
+							'%'
+						ELSE
+							CONCAT(managed_url.path, '%')
 					END
 				)
 			WHERE
@@ -459,9 +463,13 @@ pub async fn get_all_managed_urls_for_static_site(
 					managed_url.sub_domain,
 					'.',
 					domain.name,
+					'.',
+					domain.tld,
 					CASE managed_url.path
-						WHEN '/' THEN '%'
-						ELSE CONCAT(managed_url.path, '%')
+						WHEN '/' THEN
+							'%'
+						ELSE
+							CONCAT(managed_url.path, '%')
 					END
 				)
 			WHERE
