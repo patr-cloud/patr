@@ -2,7 +2,7 @@ use api_models::utils::Uuid;
 use k8s_openapi::{self, api::core::v1::Secret};
 use kube::{
 	self,
-	api::{DeleteParams, Patch, PatchParams},
+	api::{DeleteParams, PostParams},
 	core::{ApiResource, DynamicObject, ObjectMeta, TypeMeta},
 	Api,
 };
@@ -72,11 +72,7 @@ pub async fn create_certificates(
 		namespace,
 		&certificate_resource,
 	)
-	.patch(
-		certificate_name,
-		&PatchParams::apply(certificate_name),
-		&Patch::Apply(&certificate),
-	)
+	.create(&PostParams::default(), &certificate)
 	.await?;
 
 	Ok(())

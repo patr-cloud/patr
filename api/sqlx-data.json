@@ -1098,7 +1098,7 @@
         true,
         true,
         true,
-        true
+        false
       ]
     }
   },
@@ -1380,7 +1380,7 @@
         false,
         true,
         false,
-        false
+        true
       ]
     }
   },
@@ -2121,7 +2121,7 @@
         true,
         true,
         true,
-        true
+        false
       ]
     }
   },
@@ -3861,16 +3861,6 @@
           "Uuid",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "954b82d0bb99b3952a294e4b16931c5c766f4b44d0bc69f747432a475f320250": {
-    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN NOT NULL, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -5638,6 +5628,16 @@
       "nullable": []
     }
   },
+  "bd853bcb69038469be44529c098efd6cb915625b19e0cfb0771ba1da83ac987e": {
+    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority), CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK( ( ( type = 'A' OR type = 'AAAA' OR type = 'CNAME' ) AND proxied IS NOT NULL ) OR ( ( type = 'MX' OR type = 'TXT' ) AND proxied IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "bdaeb51981c627273df25d9f429211412a10aecdf420ea483c71fa45c480a52f": {
     "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );",
     "describe": {
@@ -6612,7 +6612,7 @@
         false,
         true,
         false,
-        false
+        true
       ]
     }
   },

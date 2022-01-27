@@ -10,8 +10,7 @@ use cloudflare::{
 	framework::{
 		async_api::{ApiClient, Client},
 		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
+		Environment, HttpApiClientConfig,
 	},
 };
 use sqlx::Row;
@@ -599,11 +598,13 @@ pub async fn migrate(
 				.to_string();
 			let name = if name.is_empty() { "@" } else { name.as_str() };
 			let (r#type, value, priority) = match dns_record.content {
-				DnsContent::A { content } => ("A", content.to_string(), None),
-				DnsContent::AAAA { content } => {
+				DnsContent::A { content, .. } => {
+					("A", content.to_string(), None)
+				}
+				DnsContent::AAAA { content, .. } => {
 					("AAAA", content.to_string(), None)
 				}
-				DnsContent::CNAME { content } => ("CNAME", content, None),
+				DnsContent::CNAME { content, .. } => ("CNAME", content, None),
 				DnsContent::MX { content, priority } => {
 					("MX", content, Some(priority as i32))
 				}
