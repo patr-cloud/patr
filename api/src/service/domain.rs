@@ -385,9 +385,8 @@ pub async fn create_patr_domain_dns_record(
 	.await?;
 
 	let content = match dns_record {
-		DnsRecordValue::A { target, proxied } => DnsContent::A {
+		DnsRecordValue::A { target, .. } => DnsContent::A {
 			content: target.parse::<Ipv4Addr>()?,
-			proxied: *proxied,
 		},
 		DnsRecordValue::MX { target, priority } => DnsContent::MX {
 			priority: *priority,
@@ -396,13 +395,11 @@ pub async fn create_patr_domain_dns_record(
 		DnsRecordValue::TXT { target } => DnsContent::TXT {
 			content: target.clone(),
 		},
-		DnsRecordValue::AAAA { target, proxied } => DnsContent::AAAA {
+		DnsRecordValue::AAAA { target, .. } => DnsContent::AAAA {
 			content: target.parse::<Ipv6Addr>()?,
-			proxied: *proxied,
 		},
-		DnsRecordValue::CNAME { target, proxied } => DnsContent::CNAME {
+		DnsRecordValue::CNAME { target, .. } => DnsContent::CNAME {
 			content: target.clone(),
-			proxied: *proxied,
 		},
 	};
 
@@ -494,11 +491,9 @@ pub async fn update_patr_domain_dns_record(
 	let content = match dns_record.r#type {
 		DnsRecordType::A => DnsContent::A {
 			content: record.parse::<Ipv4Addr>()?,
-			proxied,
 		},
 		DnsRecordType::AAAA => DnsContent::AAAA {
 			content: record.parse::<Ipv6Addr>()?,
-			proxied,
 		},
 		DnsRecordType::MX => DnsContent::MX {
 			priority: priority
@@ -508,7 +503,6 @@ pub async fn update_patr_domain_dns_record(
 		},
 		DnsRecordType::CNAME => DnsContent::CNAME {
 			content: record.to_string(),
-			proxied,
 		},
 		DnsRecordType::TXT => DnsContent::TXT {
 			content: record.to_string(),

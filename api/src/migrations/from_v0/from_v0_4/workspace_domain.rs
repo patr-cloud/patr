@@ -10,7 +10,8 @@ use cloudflare::{
 	framework::{
 		async_api::{ApiClient, Client},
 		auth::Credentials,
-		Environment, HttpApiClientConfig,
+		Environment,
+		HttpApiClientConfig,
 	},
 };
 use sqlx::Row;
