@@ -39,8 +39,8 @@ pub(super) async fn create_managed_database_cluster(
 	database_plan: &ManagedDatabasePlan,
 	region: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on digitalocean with id: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
 		database_id,
 		db_name,
@@ -100,12 +100,13 @@ pub(super) async fn create_managed_database_cluster(
 	let database_id = database_id.clone();
 	let db_name = db_name.to_string();
 
+	let request_id = request_id.clone();
 	task::spawn(async move {
 		let result = update_database_cluster_credentials(
 			database_id.clone(),
 			db_name,
 			database_cluster.database.id,
-			request_id,
+			&request_id,
 		)
 		.await;
 
@@ -128,8 +129,8 @@ pub(super) async fn create_managed_database_cluster(
 pub(super) async fn delete_database(
 	digitalocean_db_id: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!("Deleting managed database on DigitalOcean with digital_ocean_id: {} and request_id: {}",
 		digitalocean_db_id,
 		request_id,
@@ -158,9 +159,14 @@ pub(super) async fn delete_database(
 pub(super) async fn delete_image_from_digitalocean_registry(
 	deployment_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client = Client::new();
 
+	log::trace!(
+		"request_id: {} - deleting image from digital ocean registry",
+		request_id
+	);
 	let container_status = client
 		.delete(format!(
 			"https://api.digitalocean.com/v2/registry/{}/repositories/{}/tags/latest",
@@ -179,6 +185,10 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
+	log::trace!(
+		"request_id: {} - image deleted from digital ocean registry",
+		request_id
+	);
 	Ok(())
 }
 
@@ -187,12 +197,12 @@ pub async fn push_to_docr(
 	deployment_id: &Uuid,
 	full_image_name: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	// Fetch the image from patr registry
 	// upload the image to DOCR
 	// Update kubernetes
 
-	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Pulling image from registry", request_id);
 	service::pull_image_from_registry(full_image_name, config).await?;
 	log::trace!("request_id: {} - Image pulled", request_id);
@@ -305,7 +315,7 @@ async fn update_database_cluster_credentials(
 	database_id: Uuid,
 	db_name: String,
 	digitalocean_db_id: String,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client = Client::new();
 	let settings = service::get_settings();

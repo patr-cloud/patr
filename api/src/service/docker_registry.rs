@@ -14,7 +14,13 @@ pub async fn delete_docker_repository_image(
 	repository_id: &Uuid,
 	digest: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Deleting docker repository image with digest: {}",
+		request_id,
+		digest
+	);
 	let repository = db::get_docker_repository_by_id(connection, repository_id)
 		.await?
 		.status(404)
@@ -30,6 +36,10 @@ pub async fn delete_docker_repository_image(
 	);
 
 	// First, delete all tags for the given image
+	log::trace!(
+		"request_id: {} - Deleting all tags for the given image.",
+		request_id
+	);
 	let tags = db::get_tags_for_docker_repository_image(
 		connection,
 		repository_id,
@@ -45,6 +55,7 @@ pub async fn delete_docker_repository_image(
 		.await?;
 	}
 
+	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the database", request_id, digest);
 	db::delete_docker_repository_image(connection, repository_id, digest)
 		.await?;
 
@@ -55,6 +66,7 @@ pub async fn delete_docker_repository_image(
 
 	let iat = get_current_time().as_secs();
 
+	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry", request_id, digest);
 	let response_code = reqwest::Client::new()
 		.delete(format!(
 			"{}://{}/v2/{}/manifests/{}",
@@ -103,6 +115,7 @@ pub async fn delete_docker_repository_image(
 	} else if !response_code.is_success() {
 		return Err(Error::empty());
 	}
+	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry was successful", request_id, digest);
 
 	Ok(())
 }
@@ -111,7 +124,13 @@ pub async fn delete_docker_repository(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Deleting docker repository with id: {}",
+		request_id,
+		repository_id
+	);
 	let repository = db::get_docker_repository_by_id(connection, repository_id)
 		.await?
 		.status(404)
@@ -132,11 +151,23 @@ pub async fn delete_docker_repository(
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Deleting all tags for the given repository.",
+		request_id
+	);
 	db::delete_all_tags_for_docker_repository(connection, repository_id)
 		.await?;
+	log::trace!(
+		"request_id: {} - Deleting all images for the given repository",
+		request_id
+	);
 	db::delete_all_images_for_docker_repository(connection, repository_id)
 		.await?;
 
+	log::trace!(
+		"request_id: {} - Updating the name of docker repository",
+		request_id
+	);
 	db::update_docker_repository_name(
 		connection,
 		repository_id,
@@ -157,6 +188,7 @@ pub async fn delete_docker_repository(
 
 	let iat = get_current_time().as_secs();
 
+	log::trace!("request_id: {} - Deleting docker images of the repositories from the registry", request_id);
 	for image in images {
 		let response_code = client
 			.delete(format!(
@@ -209,5 +241,6 @@ pub async fn delete_docker_repository(
 		}
 	}
 
+	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
 	Ok(())
 }

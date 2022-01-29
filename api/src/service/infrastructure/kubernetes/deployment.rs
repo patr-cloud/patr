@@ -66,10 +66,10 @@ pub async fn update_kubernetes_deployment(
 	full_image: &str,
 	running_details: &DeploymentRunningDetails,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
-	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Deploying the container with id: {} on kubernetes with request_id: {}",
 		deployment.id,
@@ -418,6 +418,7 @@ pub async fn delete_kubernetes_deployment(
 	digitalocean::delete_image_from_digitalocean_registry(
 		deployment_id,
 		config,
+		request_id,
 	)
 	.await?;
 
@@ -454,8 +455,8 @@ pub async fn delete_kubernetes_deployment(
 pub async fn get_container_logs(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
-	request_id: Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
 	// TODO: interact with prometheus to get the logs
 
