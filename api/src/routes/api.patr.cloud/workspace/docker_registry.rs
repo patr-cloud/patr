@@ -356,6 +356,11 @@ async fn create_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Creating docker repository in the workspace",
+		request_id
+	);
 	// check if the token is valid
 	let CreateDockerRepositoryRequest {
 		repository,
@@ -378,6 +383,10 @@ async fn create_docker_repository(
 	}
 
 	// check if repository already exists
+	log::trace!(
+		"request_id: {} - Checking if repository already exists",
+		request_id
+	);
 	let check = db::get_docker_repository_by_name(
 		context.get_database_connection(),
 		&repository,
@@ -397,6 +406,10 @@ async fn create_docker_repository(
 
 	// call function to add repo details to the table
 	// `docker_registry_repository` add a new resource
+	log::trace!(
+		"request_id: {} - Creating a new resource in the database",
+		request_id
+	);
 	db::create_resource(
 		context.get_database_connection(),
 		&resource_id,
@@ -410,6 +423,11 @@ async fn create_docker_repository(
 		get_current_time_millis(),
 	)
 	.await?;
+
+	log::trace!(
+		"request_id: {} - Adding a new docker repository in the database",
+		request_id
+	);
 	db::create_docker_repository(
 		context.get_database_connection(),
 		&resource_id,
@@ -418,6 +436,7 @@ async fn create_docker_repository(
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Docker repository created", request_id);
 	context.success(CreateDockerRepositoryResponse { id: resource_id });
 	Ok(context)
 }
@@ -458,9 +477,12 @@ async fn list_docker_repositories(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
+
+	log::trace!("request_id: {} - Listing docker repositories", request_id);
 
 	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
@@ -474,6 +496,8 @@ async fn list_docker_repositories(
 		size,
 	})
 	.collect::<Vec<_>>();
+
+	log::trace!("request_id: {} - Docker repositories listed", request_id);
 
 	context.success(ListDockerRepositoriesResponse { repositories });
 	Ok(context)
@@ -502,6 +526,11 @@ async fn get_docker_repository_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Getting docker repository info",
+		request_id
+	);
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -531,6 +560,11 @@ async fn get_docker_repository_info(
 	images.iter().for_each(|image| {
 		last_updated = last_updated.max(image.created);
 	});
+
+	log::trace!(
+		"request_id: {} - Docker repository info fetched",
+		request_id
+	);
 
 	context.success(GetDockerRepositoryInfoResponse {
 		repository: DockerRepository {
@@ -568,6 +602,11 @@ async fn get_repository_image_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Getting docker repository image details",
+		request_id
+	);
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -592,6 +631,10 @@ async fn get_repository_image_details(
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Docker repository image details fetched",
+		request_id
+	);
 	context.success(GetDockerRepositoryImageDetailsResponse { image, tags });
 	Ok(context)
 }
@@ -620,6 +663,11 @@ async fn get_list_of_repository_tags(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Getting docker repository tags",
+		request_id
+	);
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -638,6 +686,10 @@ async fn get_list_of_repository_tags(
 	})
 	.collect();
 
+	log::trace!(
+		"request_id: {} - Docker repository tags fetched",
+		request_id
+	);
 	context.success(ListDockerRepositoryTagsResponse { tags });
 	Ok(context)
 }
@@ -666,6 +718,11 @@ async fn get_repository_tag_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Getting docker repository tag details",
+		request_id
+	);
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -683,6 +740,10 @@ async fn get_repository_tag_details(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	log::trace!(
+		"request_id: {} - Docker repository tag details fetched",
+		request_id
+	);
 	context.success(GetDockerRepositoryTagDetailsResponse { tag_info, digest });
 	Ok(context)
 }
@@ -721,6 +782,11 @@ async fn delete_docker_repository_image(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Deleting docker repository image",
+		request_id
+	);
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -734,9 +800,14 @@ async fn delete_docker_repository_image(
 		&repository_id,
 		&digest,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Docker repository image deleted",
+		request_id
+	);
 	context.success(DeleteDockerRepositoryImageResponse {});
 	Ok(context)
 }
@@ -775,6 +846,8 @@ async fn delete_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Deleting docker repository", request_id);
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
 	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
@@ -796,9 +869,11 @@ async fn delete_docker_repository(
 		context.get_database_connection(),
 		&repository_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Docker repository deleted", request_id);
 	context.success(DeleteDockerRepositoryResponse {});
 	Ok(context)
 }

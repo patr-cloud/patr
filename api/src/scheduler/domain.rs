@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use cloudflare::{
 	endpoints::zone::{self, Status},
 	framework::async_api::ApiClient,
@@ -70,6 +71,8 @@ pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 }
 
 async fn verify_unverified_domains() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Verifying unverified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.acquire().await?;
 
@@ -114,6 +117,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					unverified_domain.name.clone(),
 				],
 				&settings,
+				&request_id,
 			)
 			.await?;
 
@@ -151,6 +155,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&format!("tls-{}", unverified_domain.id),
 					vec![unverified_domain.name.clone()],
 					&settings,
+					&request_id,
 				)
 				.await?;
 			} else {
@@ -160,6 +165,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&unverified_domain.id,
 					&unverified_domain.name,
 					&settings,
+					&request_id,
 				)
 				.await?;
 			}
@@ -172,6 +178,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				&unverified_domain.name,
 				&unverified_domain.id,
 				&settings,
+				&request_id,
 			)
 			.await?;
 
@@ -188,6 +195,8 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 }
 
 async fn reverify_verified_domains() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Re-verifying verified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.begin().await?;
 

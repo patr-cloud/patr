@@ -411,9 +411,12 @@ async fn list_static_sites(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	log::trace!("request_id: {} - Getting the list of all static sites for the workspace", request_id);
 	let static_sites = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -426,6 +429,7 @@ async fn list_static_sites(
 		status: static_site.status,
 	})
 	.collect::<Vec<_>>();
+	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);
 
 	context.success(ListStaticSitesResponse { static_sites });
 	Ok(context)
@@ -493,6 +497,8 @@ async fn create_static_site_deployment(
 
 	context.commit_database_transaction().await?;
 
+	log::trace!("request_id: {} - Static-site created", request_id);
+	log::trace!("request_id: {} - Starting the static site", request_id);
 	service::start_static_site_deployment(
 		context.get_database_connection(),
 		&id,
@@ -539,12 +545,12 @@ async fn start_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
 	.unwrap();
 
-	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - Starting a static site with id: {}",
 		request_id,
@@ -751,6 +757,7 @@ async fn list_linked_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -760,6 +767,11 @@ async fn list_linked_urls(
 		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
 	)?;
 
+	log::trace!(
+		"request_id: {} - Listing the linked urls for static site with id: {}",
+		request_id,
+		static_site_id
+	);
 	let urls = db::get_all_managed_urls_for_static_site(
 		context.get_database_connection(),
 		&static_site_id,
