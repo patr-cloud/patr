@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
@@ -10,6 +11,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::{DateTime, Local};
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -50,6 +52,7 @@ use kube::{
 	core::ObjectMeta,
 	Api,
 };
+use serde_json::json;
 
 use crate::{
 	db,
@@ -61,13 +64,75 @@ use crate::{
 };
 
 pub async fn update_kubernetes_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment: &Deployment,
 	full_image: &str,
 	running_details: &DeploymentRunningDetails,
 	config: &Settings,
 	request_id: &Uuid,
+	user_id: Option<&Uuid>,
+	login_id: Option<&Uuid>,
+	patr_action: bool,
+	time_now: DateTime<Local>,
 ) -> Result<(), Error> {
+	let workspace_audit_log_id =
+		db::generate_new_workspace_audit_log_id(connection).await?;
+
+	let edit_permission_id = db::get_all_permissions(connection)
+		.await?
+		.into_iter()
+		.find_map(|permission| {
+			if permission.name == "workspace::infrastructure::deployment::edit"
+			{
+				Some(permission)
+			} else {
+				None
+			}
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.id;
+
+	let registry_name = match deployment.registry.clone() {
+		DeploymentRegistry::PatrRegistry { .. } => {
+			"registry.patr.cloud".to_string()
+		}
+		DeploymentRegistry::ExternalRegistry { registry, .. } => registry,
+	};
+
+	let metadata = json!(
+		{
+
+			"id": &deployment.id,
+			"name": &deployment.name,
+			"registry": &registry_name,
+			"image": full_image,
+			"deploymentStatus": DeploymentStatus::Running.to_string(),
+			"machineType": deployment.machine_type,
+			"deployOnPush": running_details.deploy_on_push, // true or false
+			"horizontalScale": running_details.min_horizontal_scale,
+			"region": deployment.region
+		}
+	);
+
+	db::create_workspace_audit_log(
+		connection,
+		workspace_id,
+		&workspace_audit_log_id,
+		"0.0.0.0",
+		time_now,
+		user_id,
+		login_id,
+		&deployment.id,
+		&edit_permission_id,
+		request_id,
+		&metadata,
+		patr_action,
+		true,
+	)
+	.await?;
+
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
 	log::trace!(

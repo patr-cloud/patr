@@ -1,4 +1,5 @@
 use api_models::utils::Uuid;
+use chrono::{DateTime, Local};
 
 use crate::{models::db_mapping::Workspace, query, query_as, Database};
 
@@ -66,6 +67,39 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE workspace_audit_log (
+			id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY,
+			date TIMESTAMPTZ NOT NULL,
+			ip_address TEXT NOT NULL,
+			workspace_id UUID NOT NULL,
+			user_id UUID,
+			login_id UUID,
+			resource_id UUID NOT NULL,
+			action UUID NOT NULL,
+			request_id UUID NOT NULL,
+			metadata JSON NOT NULL,
+			patr_action BOOL NOT NULL,
+			success BOOL NOT NULL,
+			CONSTRAINT workspace_audit_log_chk_patr_action CHECK(
+				(
+					patr_action = true AND
+					user_id IS NULL AND
+					login_id IS NULL
+				) OR
+				(
+					patr_action = false AND
+					user_id IS NOT NULL AND
+					login_id IS NOT NULL
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
@@ -83,6 +117,56 @@ pub async fn initialize_workspaces_post(
 		ADD CONSTRAINT workspace_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id)
 		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_user_id
+		FOREIGN KEY(user_id) REFERENCES "user"(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_login_id
+		FOREIGN KEY(login_id) REFERENCES user_login(login_id);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_resource_id
+		FOREIGN KEY(resource_id) REFERENCES resource(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_action
+		FOREIGN KEY(action) REFERENCES permission(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -183,7 +267,88 @@ pub async fn update_workspace_name(
 		workspace_id as _,
 	)
 	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
+	.await
+	.map(|_| ())
 }
+
+pub async fn create_workspace_audit_log(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	id: &Uuid,
+	ip_address: &str,
+	date: DateTime<Local>,
+	user_id: Option<&Uuid>,
+	login_id: Option<&Uuid>,
+	resource_id: &Uuid,
+	action: &Uuid,
+	request_id: &Uuid,
+	metadata: &serde_json::Value,
+	patr_action: bool,
+	success: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			workspace_audit_log
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+		"#,
+		id as _,
+		date,
+		ip_address,
+		workspace_id as _,
+		user_id as _,
+		login_id as _,
+		resource_id as _,
+		action as _,
+		request_id as _,
+		metadata,
+		patr_action,
+		success,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn generate_new_workspace_audit_log_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				workspace_audit_log
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+/*
+id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY,
+			date TIMESTAMPTZ NOT NULL,
+			ip_address TEXT NOT NULL,
+			workspace_id UUID NOT NULL,
+			user_id UUID,
+			login_id UUID,
+			resource_id UUID NOT NULL,
+			action UUID NOT NULL,
+			request_id UUID NOT NULL CONSTRAINT workspace_audit_log_uq_request_id UNIQUE,
+			metadata JSON NOT NULL,
+			patr_action BOOL NOT NULL,
+			success BOOL NOT NULL,
+*/

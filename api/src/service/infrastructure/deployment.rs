@@ -12,7 +12,9 @@ use api_models::{
 	},
 	utils::{constants, StringifiedU16, Uuid},
 };
+use chrono::{DateTime, Local};
 use eve_rs::AsError;
+use serde_json::json;
 
 use crate::{
 	db,
@@ -57,6 +59,11 @@ pub async fn create_deployment_in_workspace(
 	ports: &BTreeMap<u16, ExposedPortType>,
 	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	workspace_audit_log_id: &Uuid,
+	patr_action: bool,
+	time_now: DateTime<Local>,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -106,7 +113,23 @@ pub async fn create_deployment_in_workspace(
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
 
-	match registry {
+	let create_permission_id = db::get_all_permissions(connection)
+		.await?
+		.into_iter()
+		.find_map(|permission| {
+			if permission.name ==
+				"workspace::infrastructure::deployment::create"
+			{
+				Some(permission)
+			} else {
+				None
+			}
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.id;
+
+	let (registry_name, image_name) = match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry: _,
 			repository_id,
@@ -126,6 +149,18 @@ pub async fn create_deployment_in_workspace(
 				max_horizontal_scale,
 			)
 			.await?;
+
+			let repo_name =
+				db::get_docker_repository_by_id(connection, repository_id)
+					.await?
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())?
+					.name;
+
+			(
+				"registry.patr.cloud".to_string(),
+				format!("{}/{}:{}", repo_name, repo_name, image_tag),
+			)
 		}
 		DeploymentRegistry::ExternalRegistry {
 			registry,
@@ -147,8 +182,45 @@ pub async fn create_deployment_in_workspace(
 				max_horizontal_scale,
 			)
 			.await?;
+
+			(
+				registry.to_string(),
+				format!("{}:{}", image_name, image_tag),
+			)
 		}
-	}
+	};
+
+	let metadata = json!(
+		{
+
+			"id": deployment_id,
+			"name": name,
+			"registry": registry_name,
+			"image_name": image_name,
+			"deploymentStatus": DeploymentStatus::Created.to_string(),
+			"machineType": machine_type,
+			"deployOnPush": deploy_on_push, // true or false
+			"horizontalScale": min_horizontal_scale,
+			"region": region
+		}
+	);
+
+	db::create_workspace_audit_log(
+		connection,
+		workspace_id,
+		workspace_audit_log_id,
+		"0.0.0.0",
+		time_now,
+		Some(user_id),
+		Some(login_id),
+		&deployment_id,
+		&create_permission_id,
+		request_id,
+		&metadata,
+		patr_action,
+		true,
+	)
+	.await?;
 
 	for (port, port_type) in ports {
 		log::trace!(
@@ -194,12 +266,17 @@ pub async fn start_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	patr_action: bool,
+	time_now: DateTime<Local>,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Starting deployment with id: {}",
 		request_id,
 		deployment_id
 	);
+
 	let (deployment, workspace_id, full_image, running_details) =
 		service::get_full_deployment_config(
 			connection,
@@ -212,13 +289,19 @@ pub async fn start_deployment(
 		"request_id: {} - Updating kubernetes deployment",
 		request_id
 	);
+
 	kubernetes::update_kubernetes_deployment(
+		connection,
 		&workspace_id,
 		&deployment,
 		&full_image,
 		&running_details,
 		config,
 		request_id,
+		Some(user_id),
+		Some(login_id),
+		patr_action,
+		time_now,
 	)
 	.await?;
 
@@ -230,6 +313,12 @@ pub async fn stop_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	workspace_audit_log_id: &Uuid,
+	patr_action: bool,
+	time_now: DateTime<Local>,
+	is_stopped: bool,
 ) -> Result<(), Error> {
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
@@ -241,6 +330,69 @@ pub async fn stop_deployment(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let mut metadata = json!(
+		{
+
+			"id": deployment_id,
+			"name": deployment.name,
+			"registry": deployment.registry,
+			"image_name": deployment.get_full_image(connection).await?,
+			"deploymentStatus": DeploymentStatus::Stopped.to_string(),
+			"machineType": deployment.machine_type,
+			"deployOnPush": deployment.deploy_on_push, // true or false
+			"horizontalScale": deployment.min_horizontal_scale,
+			"region": deployment.region
+		}
+	);
+
+	if !is_stopped {
+		metadata = json!({
+
+			"id": deployment_id,
+			"name": deployment.name,
+			"registry": deployment.registry,
+			"image_name": deployment.get_full_image(connection).await?,
+			"deploymentStatus": DeploymentStatus::Deleted.to_string(),
+			"machineType": deployment.machine_type,
+			"deployOnPush": deployment.deploy_on_push, // true or false
+			"horizontalScale": deployment.min_horizontal_scale,
+			"region": deployment.region
+		});
+	}
+
+	let delete_permission_id = db::get_all_permissions(connection)
+		.await?
+		.into_iter()
+		.find_map(|permission| {
+			if permission.name ==
+				*"workspace::infrastructure::deployment::delete"
+			{
+				Some(permission)
+			} else {
+				None
+			}
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.id;
+
+	db::create_workspace_audit_log(
+		connection,
+		&deployment.workspace_id,
+		workspace_audit_log_id,
+		"0.0.0.0",
+		time_now,
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		&delete_permission_id,
+		request_id,
+		&metadata,
+		patr_action,
+		true,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - deleting the deployment from digitalocean kubernetes",
@@ -271,6 +423,11 @@ pub async fn delete_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	workspace_audit_log_id: &Uuid,
+	patr_action: bool,
+	time_now: DateTime<Local>,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Deleting the deployment with id: {}",
@@ -284,8 +441,19 @@ pub async fn delete_deployment(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!("request_id: {} - Stopping the deployment", request_id);
-	service::stop_deployment(connection, deployment_id, config, request_id)
-		.await?;
+	service::stop_deployment(
+		connection,
+		deployment_id,
+		config,
+		request_id,
+		user_id,
+		login_id,
+		workspace_audit_log_id,
+		patr_action,
+		time_now,
+		false,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Updating the deployment name in the database",
@@ -340,6 +508,7 @@ pub async fn get_deployment_container_logs(
 
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	region: Option<&Uuid>,
@@ -350,6 +519,11 @@ pub async fn update_deployment(
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	workspace_audit_log_id: &Uuid,
+	patr_action: bool,
+	time_now: DateTime<Local>,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Updating deployment with id: {}",
@@ -365,6 +539,51 @@ pub async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
+	)
+	.await?;
+
+	let edit_permission_id = db::get_all_permissions(connection)
+		.await?
+		.into_iter()
+		.find_map(|permission| {
+			if permission.name == "workspace::infrastructure::deployment::edit"
+			{
+				Some(permission)
+			} else {
+				None
+			}
+		})
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.id;
+
+	let metadata = json!(
+		{
+
+			"id": deployment_id,
+			"name": name,
+			"deploymentStatus": DeploymentStatus::Created.to_string(),
+			"machineType": machine_type,
+			"deployOnPush": deploy_on_push, // true or false
+			"horizontalScale": min_horizontal_scale,
+			"region": region
+		}
+	);
+
+	db::create_workspace_audit_log(
+		connection,
+		workspace_id,
+		workspace_audit_log_id,
+		"0.0.0.0",
+		time_now,
+		Some(user_id),
+		Some(login_id),
+		deployment_id,
+		&edit_permission_id,
+		request_id,
+		&metadata,
+		patr_action,
+		true,
 	)
 	.await?;
 

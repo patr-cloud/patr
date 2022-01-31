@@ -2,6 +2,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
+use chrono::Local;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -270,12 +271,17 @@ pub async fn notification_handler(
 				request_id
 			);
 			service::update_kubernetes_deployment(
+				context.get_database_connection(),
 				&workspace_id,
 				&deployment,
 				&full_image,
 				&running_details,
 				&config,
 				&request_id,
+				None,
+				None,
+				true,
+				Local::now(),
 			)
 			.await?;
 		}

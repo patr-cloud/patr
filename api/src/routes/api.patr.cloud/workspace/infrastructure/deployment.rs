@@ -23,6 +23,7 @@ use api_models::{
 	},
 	utils::{constants, Uuid},
 };
+use chrono::Local;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use tokio::task;
 
@@ -477,6 +478,16 @@ async fn create_deployment(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
+	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
 	let CreateDeploymentRequest {
 		workspace_id: _,
 		name,
@@ -506,6 +517,7 @@ async fn create_deployment(
 		"request_id: {} - Creating the deployment in workspace",
 		request_id
 	);
+
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -524,6 +536,11 @@ async fn create_deployment(
 			.collect(),
 		&environment_variables,
 		&request_id,
+		&user_id,
+		&login_id,
+		&workspace_audit_log_id,
+		false,
+		Local::now(),
 	)
 	.await?;
 
@@ -628,7 +645,17 @@ async fn create_deployment(
 					return;
 				}
 
+				let connection = service::get_app().database.begin().await;
+
+				let mut connection = if let Ok(connection) = connection {
+					connection
+				} else {
+					log::error!("Unable to acquire a database connection");
+					return;
+				};
+
 				let _ = service::update_kubernetes_deployment(
+					&mut connection,
 					&workspace_id,
 					&Deployment {
 						id,
@@ -649,6 +676,10 @@ async fn create_deployment(
 					},
 					&config,
 					&request_id,
+					Some(&user_id),
+					Some(&login_id),
+					false,
+					Local::now(),
 				)
 				.await
 				.map_err(|e| {
@@ -657,6 +688,8 @@ async fn create_deployment(
 						e.get_error()
 					);
 				});
+
+				service::get_app().database.close().await;
 			});
 		}
 	}
@@ -800,6 +833,11 @@ async fn start_deployment(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -812,6 +850,10 @@ async fn start_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
+		&user_id,
+		&login_id,
+		false,
+		Local::now(),
 	)
 	.await?;
 
@@ -852,6 +894,15 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
+	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Stopping deployment", request_id);
 	// stop the running container, if it exists
 	let config = context.get_state().config.clone();
@@ -860,6 +911,12 @@ async fn stop_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
+		&user_id,
+		&login_id,
+		&workspace_audit_log_id,
+		false,
+		Local::now(),
+		true,
 	)
 	.await?;
 
@@ -949,6 +1006,15 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
+	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
 	log::trace!("request_id: {} - Deleting deployment", request_id);
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
@@ -957,6 +1023,11 @@ async fn delete_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
+		&user_id,
+		&login_id,
+		&workspace_audit_log_id,
+		true,
+		Local::now(),
 	)
 	.await?;
 
@@ -1002,6 +1073,10 @@ async fn update_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	// Is any one value present?
 	if name.is_none() &&
 		region.is_none() &&
@@ -1019,8 +1094,18 @@ async fn update_deployment(
 
 	let config = context.get_state().config.clone();
 
+	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	)?;
+
 	service::update_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
 		name,
 		region.as_ref(),
@@ -1031,6 +1116,11 @@ async fn update_deployment(
 		ports.as_ref(),
 		environment_variables.as_ref(),
 		&request_id,
+		&user_id,
+		&login_id,
+		&workspace_audit_log_id,
+		true,
+		Local::now(),
 	)
 	.await?;
 
@@ -1050,12 +1140,17 @@ async fn update_deployment(
 		}
 		_ => {
 			service::update_kubernetes_deployment(
+				context.get_database_connection(),
 				&workspace_id,
 				&deployment,
 				&full_image,
 				&running_details,
 				&config,
 				&request_id,
+				Some(&user_id),
+				Some(&login_id),
+				true,
+				Local::now(),
 			)
 			.await?;
 		}
