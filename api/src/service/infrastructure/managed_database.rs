@@ -33,9 +33,21 @@ pub async fn create_managed_database_in_workspace(
 	region: &str,
 	workspace_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	log::trace!("request_id: {} - Creating a managed database on digitalocean with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
+		request_id,
+		name,
+		db_name,
+		request_id
+	);
+
+	log::trace!(
+		"request_id: {} - Validating the managed database name",
+		request_id
+	);
 	if !validator::is_database_name_valid(db_name) {
-		log::trace!("Database name is invalid. Rejecting create request");
+		log::trace!("request_id: {} - Database name is invalid. Rejecting create request", request_id);
 		return Err(Error::empty()
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string()));
@@ -46,7 +58,7 @@ pub async fn create_managed_database_in_workspace(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	log::trace!("generating new resource");
+	log::trace!("request_id: {} - Generating new resource", request_id);
 	let database_id = db::generate_new_resource_id(connection).await?;
 
 	let version = match engine {
@@ -69,7 +81,10 @@ pub async fn create_managed_database_in_workspace(
 	)
 	.await?;
 
-	log::trace!("creating entry for newly created managed database");
+	log::trace!(
+		"request_id: {} - Creating entry for newly created managed database",
+		request_id
+	);
 	db::create_managed_database(
 		connection,
 		&database_id,
@@ -88,7 +103,7 @@ pub async fn create_managed_database_in_workspace(
 		None,
 	)
 	.await?;
-	log::trace!("resource generation complete");
+	log::trace!("request_id: {} - Resource generation complete", request_id);
 
 	match provider {
 		"do" => {
@@ -102,6 +117,7 @@ pub async fn create_managed_database_in_workspace(
 				database_plan,
 				region,
 				config,
+				request_id,
 			)
 			.await?;
 		}
@@ -116,6 +132,7 @@ pub async fn create_managed_database_in_workspace(
 				database_plan,
 				region,
 				config,
+				request_id,
 			)
 			.await?;
 		}
@@ -133,7 +150,13 @@ pub async fn delete_managed_database(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	database_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Deleting managed database with id: {}",
+		request_id,
+		database_id
+	);
 	let database = db::get_managed_database_by_id(connection, database_id)
 		.await?
 		.status(400)
@@ -147,15 +170,25 @@ pub async fn delete_managed_database(
 
 	match provider {
 		"do" => {
-			log::trace!("Deleting the database from digitalocean");
+			log::trace!(
+				"request_id: {} - Deleting the database from digitalocean",
+				request_id
+			);
 			if let Some(digitalocean_db_id) = database.digitalocean_db_id {
-				digitalocean::delete_database(&digitalocean_db_id, config)
-					.await?;
+				digitalocean::delete_database(
+					&digitalocean_db_id,
+					config,
+					request_id,
+				)
+				.await?;
 			}
 		}
 		"aws" => {
-			log::trace!("deleting the deployment from aws");
-			aws::delete_database(database_id, region).await?;
+			log::trace!(
+				"request_id: {} - deleting the deployment from aws",
+				request_id
+			);
+			aws::delete_database(database_id, region, request_id).await?;
 		}
 		_ => {
 			return Err(Error::empty()

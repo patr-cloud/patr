@@ -383,9 +383,17 @@ async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Listing deployments", request_id);
+
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	log::trace!(
+		"request_id: {} - Getting deployments from database",
+		request_id
+	);
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -414,6 +422,10 @@ async fn list_deployments(
 		})
 	})
 	.collect();
+	log::trace!(
+		"request_id: {} - Deployments successfully retreived",
+		request_id
+	);
 
 	context.success(ListDeploymentsResponse { deployments });
 	Ok(context)
@@ -460,6 +472,8 @@ async fn create_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Creating deployment", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -488,6 +502,10 @@ async fn create_deployment(
 
 	let config = context.get_state().config.clone();
 
+	log::trace!(
+		"request_id: {} - Creating the deployment in workspace",
+		request_id
+	);
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -505,17 +523,23 @@ async fn create_deployment(
 			.map(|(port, port_type)| (port.value(), port_type))
 			.collect(),
 		&environment_variables,
+		&request_id,
 	)
 	.await?;
 
 	// Check if image exists
 	// If it does, push to docr.
 	// Can't check for image existence for non-patr registry
+	log::trace!("request_id: {} - Checking if image exists", request_id);
 	if let DeploymentRegistry::PatrRegistry {
 		registry: _,
 		repository_id,
 	} = &registry
 	{
+		log::trace!(
+			"request_id: {} - Getting tag details from database",
+			request_id
+		);
 		let tag_details = db::get_docker_repository_tag_details(
 			context.get_database_connection(),
 			repository_id,
@@ -523,6 +547,10 @@ async fn create_deployment(
 		)
 		.await?;
 
+		log::trace!(
+			"request_id: {} - Getting repository details from the database",
+			request_id
+		);
 		let repository_details = db::get_docker_repository_by_id(
 			context.get_database_connection(),
 			repository_id,
@@ -530,6 +558,10 @@ async fn create_deployment(
 		.await?
 		.status(500)?;
 
+		log::trace!(
+			"request_id: {} - Getting workspace details from the database",
+			request_id
+		);
 		let workspace_details = db::get_workspace_info(
 			context.get_database_connection(),
 			&repository_details.workspace_id,
@@ -537,7 +569,12 @@ async fn create_deployment(
 		.await?
 		.status(500)?;
 
+		log::trace!(
+			"request_id: {} - Checking if the image exists",
+			request_id
+		);
 		if let Some((_, digest)) = tag_details {
+			log::trace!("request_id: {} - Image exists", request_id);
 			// Push to docr
 			let id = id.clone();
 			let workspace_id = workspace_details.id.clone();
@@ -550,8 +587,12 @@ async fn create_deployment(
 				repository_details.name,
 				digest
 			);
-
+			let request_id = request_id.clone();
 			task::spawn(async move {
+				log::trace!(
+					"request_id: {} - Acquiring database connection",
+					request_id
+				);
 				let mut connection = if let Ok(connection) =
 					service::get_app().database.acquire().await
 				{
@@ -560,11 +601,17 @@ async fn create_deployment(
 					log::error!("Unable to acquire a database connection");
 					return;
 				};
+				log::trace!(
+					"request_id: {} - Acquired database connection",
+					request_id
+				);
+
 				let result = service::push_to_docr(
 					&mut connection,
 					&id,
 					&full_image,
 					&config,
+					&request_id,
 				)
 				.await;
 
@@ -601,6 +648,7 @@ async fn create_deployment(
 						environment_variables,
 					},
 					&config,
+					&request_id,
 				)
 				.await
 				.map_err(|e| {
@@ -662,21 +710,34 @@ async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+
+	log::trace!(
+		"request_id: {} - Getting deployment details from the database for deployment: {}",
+		request_id,
+		deployment_id,
+	);
 	let (mut deployment, workspace_id, _, running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
+			&request_id,
 		)
 		.await?;
 
+	log::trace!("request_id: {} - Checking deployment status", request_id);
 	deployment.status = match deployment.status {
 		// If it's deploying or running, check with k8s on the actual status
 		db_status @ (DeploymentStatus::Deploying |
 		DeploymentStatus::Running) => {
+			log::trace!(
+				"request_id: {} - Deployment is deploying or running",
+				request_id
+			);
 			let config = context.get_state().config.clone();
 			let status = service::get_kubernetes_deployment_status(
 				context.get_database_connection(),
@@ -687,6 +748,10 @@ async fn get_deployment_info(
 			.await?;
 
 			if db_status != status {
+				log::trace!(
+					"request_id: {} - Updating deployment status",
+					request_id
+				);
 				db::update_deployment_status(
 					context.get_database_connection(),
 					&deployment_id,
@@ -733,6 +798,8 @@ async fn start_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Start deployment", request_id);
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -744,6 +811,7 @@ async fn start_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -778,17 +846,20 @@ async fn stop_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 
+	log::trace!("request_id: {} - Stopping deployment", request_id);
 	// stop the running container, if it exists
 	let config = context.get_state().config.clone();
 	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -823,17 +894,21 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 	let config = context.get_state().config.clone();
 
+	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -868,17 +943,20 @@ async fn delete_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 
+	log::trace!("request_id: {} - Deleting deployment", request_id);
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
 	service::delete_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -896,11 +974,17 @@ async fn update_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
 
+	log::trace!(
+		"{} - Updating deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	let UpdateDeploymentRequest {
 		workspace_id: _,
 		deployment_id: _,
@@ -946,6 +1030,7 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports.as_ref(),
 		environment_variables.as_ref(),
+		&request_id,
 	)
 	.await?;
 
@@ -955,6 +1040,7 @@ async fn update_deployment(
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
+			&request_id,
 		)
 		.await?;
 
@@ -969,6 +1055,7 @@ async fn update_deployment(
 				&full_image,
 				&running_details,
 				&config,
+				&request_id,
 			)
 			.await?;
 		}

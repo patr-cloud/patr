@@ -858,12 +858,15 @@ pub async fn join_user(
 		)
 		.await?;
 
+		// TODO: remove this and add logs to auth and other patrs of the api
+		let request_id = Uuid::new_v4();
 		let domain_id = service::add_domain_to_workspace(
 			connection,
 			user_data.business_domain_name.as_ref().unwrap(),
 			&DomainNameserverType::External,
 			&workspace_id,
 			config,
+			&request_id,
 		)
 		.await?;
 

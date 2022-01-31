@@ -71,6 +71,7 @@ use crate::{
 /// or an error
 ///
 ///[`Transaction`]: Transaction
+//TODO: add log statements
 pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_name: &str,
@@ -136,13 +137,22 @@ pub async fn add_domain_to_workspace(
 	nameserver_type: &DomainNameserverType,
 	workspace_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	log::trace!(
+		"request_id: {} - Splitting the domain name and TLD",
+		request_id
+	);
 	let (domain_name, tld) = super::split_domain_and_tld(full_domain_name)
 		.await
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
+	log::trace!(
+		"request_id: {} - Checking if the domain is already used",
+		request_id
+	);
 	let domain = db::get_domain_by_name(connection, full_domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceType::Personal = domain.r#type {
@@ -161,7 +171,10 @@ pub async fn add_domain_to_workspace(
 		}
 	}
 
+	log::trace!("request_id: {} - Generating new domain id", request_id);
 	let domain_id = db::generate_new_domain_id(connection).await?;
+
+	log::trace!("request_id: {} - Generating new resource", request_id);
 	db::create_resource(
 		connection,
 		&domain_id,
@@ -183,10 +196,16 @@ pub async fn add_domain_to_workspace(
 		&ResourceType::Business,
 	)
 	.await?;
+
+	log::trace!("request_id: {} - Adding domain to workspace", request_id);
 	db::add_to_workspace_domain(connection, &domain_id, nameserver_type)
 		.await?;
 
 	if nameserver_type.is_internal() {
+		log::trace!(
+			"request_id: {} - Adding domain to internal nameserver",
+			request_id
+		);
 		if ["cf", "ga", "gq", "ml", "tk"].contains(&tld) {
 			return Err(Error::empty()
 				.status(400)
@@ -194,7 +213,11 @@ pub async fn add_domain_to_workspace(
 		}
 		// create zone
 		let client = get_cloudflare_client(config).await?;
-		log::trace!("Creating zone for domain: {}", full_domain_name);
+		log::trace!(
+			"request_id: {} - Creating zone for domain: {}",
+			request_id,
+			full_domain_name
+		);
 		// create zone
 		let zone_identifier = client
 			.request(&CreateZone {
@@ -223,6 +246,7 @@ pub async fn add_domain_to_workspace(
 		db::add_user_controlled_domain(connection, &domain_id).await?;
 	}
 
+	log::trace!("request_id: {} - Domain added successfully", request_id);
 	Ok(domain_id)
 }
 
@@ -246,7 +270,12 @@ pub async fn is_domain_verified(
 	domain_id: &Uuid,
 	workspace_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<bool, Error> {
+	log::trace!(
+		"request_id: {} - Checking if domain is verified",
+		request_id
+	);
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(404)
@@ -257,6 +286,7 @@ pub async fn is_domain_verified(
 	}
 
 	if domain.is_ns_internal() {
+		log::trace!("request_id: {} - Domain is internal", request_id);
 		let client = get_cloudflare_client(config).await?;
 
 		let zone_identifier =
@@ -266,6 +296,7 @@ pub async fn is_domain_verified(
 				.body(error!(SERVER_ERROR).to_string())?
 				.zone_identifier;
 
+		log::trace!("request_id: {} - Checking if zone is active", request_id);
 		let zone = client
 			.request(&ZoneDetails {
 				identifier: &zone_identifier,
@@ -273,28 +304,39 @@ pub async fn is_domain_verified(
 			.await?;
 
 		if let Status::Active = zone.result.status {
+			log::trace!("request_id: {} - Zone is active", request_id);
+			log::trace!(
+				"request_id: {} - Updating domain verification status",
+				request_id
+			);
 			db::update_workspace_domain_status(connection, domain_id, true)
 				.await?;
 
+			log::trace!("request_id: {} - Creating wild card certiifcate for internal domain", request_id);
 			infrastructure::create_certificates(
 				workspace_id,
 				&format!("certificate-{}", domain_id),
 				&format!("tls-{}", domain_id),
 				vec![format!("*.{}", domain.name), domain.name],
 				config,
+				request_id,
 			)
 			.await?;
+			log::trace!("request_id: {} - Domain verified", request_id);
 			return Ok(true);
 		}
 
 		Ok(false)
 	} else {
+		log::trace!("request_id: {} - Domain is not internal", request_id);
+		log::trace!("request_id: {} - Verifying external domain", request_id);
 		verify_external_domain(
 			connection,
 			workspace_id,
 			&domain.name,
 			&domain.id,
 			config,
+			request_id,
 		)
 		.await
 	}
@@ -339,8 +381,13 @@ pub async fn create_patr_domain_dns_record(
 	ttl: u32,
 	dns_record: &DnsRecordValue,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// check if domain is patr controlled
+	log::trace!(
+		"request_id: {} - Checking if domain is patr controlled",
+		request_id
+	);
 	let domain = db::get_patr_controlled_domain_by_id(connection, domain_id)
 		.await?
 		.status(400)
@@ -348,10 +395,11 @@ pub async fn create_patr_domain_dns_record(
 
 	// login to cloudflare to create new DNS record cloudflare
 	let client = get_cloudflare_client(config).await?;
-	log::trace!("creating resource");
 
+	log::trace!("request_id: {} - Creating domain id", request_id);
 	let record_id = db::generate_new_resource_id(connection).await?;
 
+	log::trace!("request_id: {} - Getting dns record type", request_id);
 	let (record, priority, dns_record_type, proxied) = match dns_record {
 		DnsRecordValue::A { target, proxied } => {
 			(target, None, DnsRecordType::A, Some(*proxied))
@@ -370,6 +418,7 @@ pub async fn create_patr_domain_dns_record(
 		}
 	};
 
+	log::trace!("request_id: {} - Generating new resource", request_id);
 	db::create_resource(
 		connection,
 		&record_id,
@@ -384,6 +433,7 @@ pub async fn create_patr_domain_dns_record(
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Parsing Dns record type", request_id);
 	let content = match dns_record {
 		DnsRecordValue::A { target, .. } => DnsContent::A {
 			content: target.parse::<Ipv4Addr>()?,
@@ -404,6 +454,7 @@ pub async fn create_patr_domain_dns_record(
 	};
 
 	// send request to Cloudflare
+	log::trace!("request_id: {} - Sending request to Cloudflare for creating DNS record", request_id);
 	let dns_identifier = client
 		.request(&CreateDnsRecord {
 			zone_identifier: &domain.zone_identifier,
@@ -418,8 +469,14 @@ pub async fn create_patr_domain_dns_record(
 		.await?
 		.result
 		.id;
+	log::trace!(
+		"request_id: {} - Created DNS record id: {}",
+		request_id,
+		dns_identifier
+	);
 
 	// add to db
+	log::trace!("request_id: {} - Adding to db", request_id);
 	db::create_patr_domain_dns_record(
 		connection,
 		&record_id,
@@ -434,6 +491,11 @@ pub async fn create_patr_domain_dns_record(
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Created DNS record id: {}",
+		request_id,
+		dns_identifier
+	);
 	Ok(record_id)
 }
 
@@ -446,12 +508,15 @@ pub async fn update_patr_domain_dns_record(
 	proxied: Option<bool>,
 	priority: Option<u16>,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Checking if domain exists", request_id);
 	let domain = db::get_patr_controlled_domain_by_id(connection, domain_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	log::trace!("request_id: {} - Checking if DNS record exists", request_id);
 	let dns_record = db::get_dns_record_by_id(connection, record_id)
 		.await?
 		.status(404)
@@ -466,6 +531,7 @@ pub async fn update_patr_domain_dns_record(
 	// login to cloudflare to create new DNS record cloudflare
 	let client = get_cloudflare_client(config).await?;
 
+	log::trace!("request_id: {} - Updating DNS record in the db", request_id);
 	db::update_patr_domain_dns_record(
 		connection,
 		record_id,
@@ -510,6 +576,7 @@ pub async fn update_patr_domain_dns_record(
 	};
 
 	// send request to Cloudflare
+	log::trace!("request_id: {} - Sending request to Cloudflare for updating DNS record", request_id);
 	client
 		.request(&UpdateDnsRecord {
 			zone_identifier: &domain.zone_identifier,
@@ -522,6 +589,12 @@ pub async fn update_patr_domain_dns_record(
 			identifier: &dns_record.record_identifier,
 		})
 		.await?;
+
+	log::trace!(
+		"request_id: {} - Updated DNS record id: {}",
+		request_id,
+		dns_record.record_identifier
+	);
 	Ok(())
 }
 
@@ -530,22 +603,27 @@ pub async fn delete_patr_domain_dns_record(
 	domain_id: &Uuid,
 	record_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Checking if domain exists", request_id);
 	// check if domain is patr controlled
 	let domain = db::get_patr_controlled_domain_by_id(connection, domain_id)
 		.await?
 		.status(400)
 		.body(error!(DOMAIN_NOT_PATR_CONTROLLED).to_string())?;
 
+	log::trace!("request_id: {} - Checking if DNS record exists", request_id);
 	let dns_record = db::get_dns_record_by_id(connection, record_id)
 		.await?
 		.status(400)
 		.body(error!(DNS_RECORD_NOT_FOUND).to_string())?;
 
+	log::trace!("request_id: {} - Deleting DNS record in the db", request_id);
 	db::delete_patr_controlled_dns_record(connection, record_id).await?;
 
 	let client = get_cloudflare_client(config).await?;
 
+	log::trace!("request_id: {} - Sending request to Cloudflare for deleting DNS record", request_id);
 	client
 		.request(&DeleteDnsRecord {
 			identifier: &dns_record.record_identifier,
@@ -553,6 +631,7 @@ pub async fn delete_patr_domain_dns_record(
 		})
 		.await?;
 
+	log::trace!("request_id: {} - Deleted DNS record", request_id);
 	Ok(())
 }
 
@@ -562,13 +641,17 @@ pub async fn verify_external_domain(
 	domain_name: &str,
 	domain_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<bool, Error> {
+	log::trace!("request_id: {} - Getting the client", request_id);
 	let (mut client, bg) = AsyncClient::connect(
 		UdpClientStream::<UdpSocket>::new(constants::DNS_RESOLVER.parse()?),
 	)
 	.await?;
 
 	let handle = task::spawn(bg);
+
+	log::trace!("request_id: {} - querying the DNS server to check if the TXT record exists or not", request_id);
 	let mut response = client
 		.query(
 			Name::from_utf8(format!("patrVerify.{}", domain_name))?,
@@ -586,15 +669,22 @@ pub async fn verify_external_domain(
 	drop(handle);
 
 	if response.is_some() {
+		log::trace!("request_id: {} - The TXT record exists", request_id);
+		log::trace!(
+			"request_id: {} - Creating the certificate for managed url",
+			request_id
+		);
 		create_certificates_of_managed_urls_for_domain(
 			connection,
 			workspace_id,
 			domain_id,
 			domain_name,
 			config,
+			request_id,
 		)
 		.await?;
 
+		log::trace!("request_id: {} - Verified the domain and updating workspace domain status", request_id);
 		db::update_workspace_domain_status(connection, domain_id, true).await?;
 
 		return Ok(true);
@@ -608,12 +698,15 @@ pub async fn delete_domain_in_workspace(
 	workspace_id: &Uuid,
 	domain_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Deleting the domain in the db", request_id);
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	log::trace!("request_id: {} - Checking if there are any active managed urls for the domain or not", request_id);
 	let managed_urls_count =
 		db::get_active_managed_url_count_for_domain(connection, domain_id)
 			.await?;
@@ -623,6 +716,10 @@ pub async fn delete_domain_in_workspace(
 			.body(error!(RESOURCE_IN_USE).to_string()));
 	}
 
+	log::trace!(
+		"request_id: {} - Updating the domain name in the db",
+		request_id
+	);
 	db::update_workspace_domain_status(connection, &domain.id, false).await?;
 	db::update_generic_domain_name(
 		connection,
@@ -638,12 +735,17 @@ pub async fn delete_domain_in_workspace(
 	.await?;
 
 	if domain.is_ns_internal() {
+		log::trace!(
+			"request_id: {} - Getting the information for the internal domain",
+			request_id
+		);
 		let domain =
 			db::get_patr_controlled_domain_by_id(connection, &domain.id)
 				.await?
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string())?;
 
+		log::trace!("request_id: {} - Checking if there are any DNS records present for the domain", request_id);
 		let dns_record_count =
 			db::get_dns_record_count_for_domain(connection, &domain.domain_id)
 				.await?;
@@ -655,15 +757,24 @@ pub async fn delete_domain_in_workspace(
 
 		let secret_name = format!("tls-{}", domain.domain_id);
 		let certificate_name = format!("certificate-{}", domain.domain_id);
+		log::trace!(
+			"request_id: {} - Deleting the certificate from db",
+			request_id
+		);
 		infrastructure::delete_certificates_for_domain(
 			workspace_id,
 			&certificate_name,
 			&secret_name,
 			config,
+			request_id,
 		)
 		.await?;
 
 		// delete cloudflare zone
+		log::trace!(
+			"request_id: {} - Deleting the cloudflare zone",
+			request_id
+		);
 		let client = get_cloudflare_client(config).await?;
 		client
 			.request(&DeleteZone {
@@ -671,6 +782,7 @@ pub async fn delete_domain_in_workspace(
 			})
 			.await?;
 	}
+	log::trace!("request_id: {} - Domain deleted successfully", request_id);
 	Ok(())
 }
 
@@ -680,10 +792,19 @@ pub async fn create_certificates_of_managed_urls_for_domain(
 	domain_id: &Uuid,
 	domain_name: &str,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Getting the managed urls for the domain",
+		request_id
+	);
 	let managed_urls =
 		db::get_all_managed_urls_for_domain(connection, domain_id).await?;
 
+	log::trace!(
+		"request_id: {} - Creating the certificates for the managed urls",
+		request_id
+	);
 	for managed_url in managed_urls {
 		infrastructure::create_certificates(
 			workspace_id,
@@ -691,6 +812,7 @@ pub async fn create_certificates_of_managed_urls_for_domain(
 			&format!("tls-{}", managed_url.id),
 			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
 			config,
+			request_id,
 		)
 		.await?;
 	}

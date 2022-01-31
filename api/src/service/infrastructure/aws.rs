@@ -27,8 +27,8 @@ pub(super) async fn create_managed_database_cluster(
 	database_plan: &ManagedDatabasePlan,
 	region: &str,
 	_config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!("Creating a managed database on aws lightsail with id: {} and db_name: {} with request_id: {}",
 		database_id,
 		db_name,
@@ -70,13 +70,14 @@ pub(super) async fn create_managed_database_cluster(
 	let database_id = database_id.clone();
 	let region = region.to_string();
 
+	let request_id = request_id.clone();
 	task::spawn(async move {
 		let result = update_database_cluster_credentials(
 			database_id.clone(),
 			region,
 			username,
 			password,
-			request_id,
+			&request_id,
 		)
 		.await;
 
@@ -99,8 +100,8 @@ pub(super) async fn create_managed_database_cluster(
 pub(super) async fn delete_database(
 	database_id: &Uuid,
 	region: &str,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!("Deleting managed database on Awl lightsail with digital_ocean_id: {} and request_id: {}",
 		database_id,
 		request_id,
@@ -141,7 +142,7 @@ async fn update_database_cluster_credentials(
 	region: String,
 	username: String,
 	password: String,
-	request_id: Uuid,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let client = get_lightsail_client(&region);
 

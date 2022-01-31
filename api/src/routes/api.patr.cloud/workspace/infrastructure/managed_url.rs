@@ -175,6 +175,9 @@ async fn list_all_managed_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!("request_id: {} - Listing all managed URLs", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -213,6 +216,7 @@ async fn list_all_managed_urls(
 	})
 	.collect();
 
+	log::trace!("request_id: {} - Returning managed URLs", request_id);
 	context.success(ListManagedUrlsResponse { urls });
 	Ok(context)
 }
@@ -221,6 +225,7 @@ async fn create_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -237,6 +242,11 @@ async fn create_managed_url(
 
 	let config = context.get_state().config.clone();
 
+	log::trace!(
+		"{} - Creating new managed URL for workspace {}",
+		request_id,
+		workspace_id,
+	);
 	let id = service::create_new_managed_url_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -245,9 +255,11 @@ async fn create_managed_url(
 		&path,
 		&url_type,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Returning new managed URL", request_id);
 	context.success(CreateNewManagedUrlResponse { id });
 	Ok(context)
 }
@@ -256,11 +268,17 @@ async fn update_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
 	)
 	.unwrap();
 
+	log::trace!(
+		"request_id: {} - Updating managed URL {}",
+		request_id,
+		managed_url_id
+	);
 	let UpdateManagedUrlRequest {
 		managed_url_id: _,
 		workspace_id: _,
@@ -279,6 +297,7 @@ async fn update_managed_url(
 		&path,
 		&url_type,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -290,6 +309,8 @@ async fn delete_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
 	)
@@ -300,11 +321,17 @@ async fn delete_managed_url(
 
 	let config = context.get_state().config.clone();
 
+	log::trace!(
+		"request_id: {} - Deleting managed URL {}",
+		request_id,
+		managed_url_id
+	);
 	service::delete_managed_url(
 		context.get_database_connection(),
 		&workspace_id,
 		&managed_url_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 

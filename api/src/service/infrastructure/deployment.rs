@@ -56,9 +56,11 @@ pub async fn create_deployment_in_workspace(
 	max_horizontal_scale: u16,
 	ports: &BTreeMap<u16, ExposedPortType>,
 	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
+	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
+	log::trace!("request_id: {} - Checking if the deployment's image is in patr registry", request_id);
 	if !registry.is_patr_registry() {
 		return Err(Error::empty()
 			.status(400)
@@ -66,12 +68,17 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	// validate deployment name
+	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
 		return Err(Error::empty()
 			.status(200)
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string()));
 	}
 
+	log::trace!(
+		"request_id: {} - Checking if the deployment name already exists",
+		request_id
+	);
 	let existing_deployment =
 		db::get_deployment_by_name_in_workspace(connection, name, workspace_id)
 			.await?;
@@ -81,6 +88,7 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
+	log::trace!("request_id: {} - Generating new resource id", request_id);
 	let deployment_id = db::generate_new_resource_id(connection).await?;
 
 	db::create_resource(
@@ -96,12 +104,14 @@ pub async fn create_deployment_in_workspace(
 		get_current_time_millis(),
 	)
 	.await?;
+	log::trace!("request_id: {} - Created resource", request_id);
 
 	match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry: _,
 			repository_id,
 		} => {
+			log::trace!("request_id: {} - Creating database record with internal registry", request_id);
 			db::create_deployment_with_internal_registry(
 				connection,
 				&deployment_id,
@@ -121,6 +131,7 @@ pub async fn create_deployment_in_workspace(
 			registry,
 			image_name,
 		} => {
+			log::trace!("request_id: {} - Creating database record with external registry", request_id);
 			db::create_deployment_with_external_registry(
 				connection,
 				&deployment_id,
@@ -140,6 +151,10 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	for (port, port_type) in ports {
+		log::trace!(
+			"request_id: {} - Adding exposed port entry to database",
+			request_id
+		);
 		db::add_exposed_port_for_deployment(
 			connection,
 			&deployment_id,
@@ -150,6 +165,10 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	for (key, value) in environment_variables {
+		log::trace!(
+			"request_id: {} - Adding environment variable entry to database",
+			request_id
+		);
 		db::add_environment_variable_for_deployment(
 			connection,
 			&deployment_id,
@@ -174,16 +193,32 @@ pub async fn start_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Starting deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	let (deployment, workspace_id, full_image, running_details) =
-		service::get_full_deployment_config(connection, deployment_id).await?;
+		service::get_full_deployment_config(
+			connection,
+			deployment_id,
+			request_id,
+		)
+		.await?;
 
+	log::trace!(
+		"request_id: {} - Updating kubernetes deployment",
+		request_id
+	);
 	kubernetes::update_kubernetes_deployment(
 		&workspace_id,
 		&deployment,
 		&full_image,
 		&running_details,
 		config,
+		request_id,
 	)
 	.await?;
 
@@ -194,8 +229,8 @@ pub async fn stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
 		deployment_id,
@@ -215,12 +250,12 @@ pub async fn stop_deployment(
 		&deployment.workspace_id,
 		deployment_id,
 		config,
-		&request_id,
+		request_id,
 	)
 	.await?;
 
 	// TODO: implement logic for handling domains of the stopped deployment
-
+	log::trace!("request_id: {} - Updating deployment status", request_id);
 	db::update_deployment_status(
 		connection,
 		deployment_id,
@@ -235,14 +270,27 @@ pub async fn delete_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Deleting the deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	service::stop_deployment(connection, deployment_id, config).await?;
+	log::trace!("request_id: {} - Stopping the deployment", request_id);
+	service::stop_deployment(connection, deployment_id, config, request_id)
+		.await?;
 
+	log::trace!(
+		"request_id: {} - Updating the deployment name in the database",
+		request_id
+	);
 	db::update_deployment_name(
 		connection,
 		deployment_id,
@@ -250,8 +298,7 @@ pub async fn delete_deployment(
 	)
 	.await?;
 
-	// TODO: implement logic for handling domains of the deleted deployment
-
+	log::trace!("request_id: {} - Updating deployment status", request_id);
 	db::update_deployment_status(
 		connection,
 		deployment_id,
@@ -266,8 +313,8 @@ pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<String, Error> {
-	let request_id = Uuid::new_v4();
 	log::trace!(
 		"Getting deployment logs for deployment_id: {} with request_id: {}",
 		deployment_id,
@@ -282,10 +329,11 @@ pub async fn get_deployment_container_logs(
 	let logs = kubernetes::get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
-		request_id,
 		config,
+		request_id,
 	)
 	.await?;
+	log::trace!("request_id: {} - Logs retreived successfully", request_id);
 
 	Ok(logs)
 }
@@ -301,7 +349,13 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	db::update_deployment_details(
 		connection,
 		deployment_id,
@@ -315,6 +369,10 @@ pub async fn update_deployment(
 	.await?;
 
 	if let Some(ports) = ports {
+		log::trace!(
+			"request_id: {} - Updating deployment ports in the database",
+			request_id
+		);
 		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
 			.await?;
 		for (port, exposed_port_type) in ports {
@@ -329,6 +387,10 @@ pub async fn update_deployment(
 	}
 
 	if let Some(environment_variables) = environment_variables {
+		log::trace!(
+			"request_id: {} - Updating deployment environment variables in the database",
+			request_id
+		);
 		db::remove_all_environment_variables_for_deployment(
 			connection,
 			deployment_id,
@@ -350,6 +412,10 @@ pub async fn update_deployment(
 			.await?;
 		}
 	}
+	log::trace!(
+		"request_id: {} - Deployment updated in the database",
+		request_id
+	);
 
 	Ok(())
 }
@@ -357,7 +423,13 @@ pub async fn update_deployment(
 pub async fn get_full_deployment_config(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	request_id: &Uuid,
 ) -> Result<(Deployment, Uuid, String, DeploymentRunningDetails), Error> {
+	log::trace!(
+		"request_id: {} - Getting the full deployment config for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	let (
 		deployment,
 		workspace_id,
@@ -438,6 +510,7 @@ pub async fn get_full_deployment_config(
 			.into_iter()
 			.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
 			.collect();
+	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 
 	Ok((
 		deployment,
