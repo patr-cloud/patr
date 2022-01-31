@@ -25,13 +25,22 @@ pub async fn create_new_managed_url_in_workspace(
 	path: &str,
 	url_type: &ManagedUrlType,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	log::trace!("request_id: {} - Creating a new managed url with sub_domain: {} and domain_id: {} on Kubernetes with request_id: {}",
+		request_id,
+		sub_domain,
+		domain_id,
+		request_id
+	);
+
 	let managed_url_id = db::generate_new_resource_id(connection).await?;
 
 	let domain = db::get_workspace_domain_by_id(connection, domain_id)
 		.await?
 		.status(500)?;
 
+	log::trace!("request_id: {} - Creating resource.", request_id);
 	db::create_resource(
 		connection,
 		&managed_url_id,
@@ -46,11 +55,16 @@ pub async fn create_new_managed_url_in_workspace(
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Creating managed url.", request_id);
 	match url_type {
 		ManagedUrlType::ProxyDeployment {
 			deployment_id,
 			port,
 		} => {
+			log::trace!(
+				"request_id: {} - Creating managed url for proxyDeployment.",
+				request_id
+			);
 			db::create_new_managed_url_in_workspace(
 				connection,
 				&managed_url_id,
@@ -67,6 +81,10 @@ pub async fn create_new_managed_url_in_workspace(
 			.await?;
 		}
 		ManagedUrlType::ProxyStaticSite { static_site_id } => {
+			log::trace!(
+				"request_id: {} - Creating managed url for proxyStaticSite.",
+				request_id
+			);
 			db::create_new_managed_url_in_workspace(
 				connection,
 				&managed_url_id,
@@ -83,6 +101,10 @@ pub async fn create_new_managed_url_in_workspace(
 			.await?;
 		}
 		ManagedUrlType::ProxyUrl { url } => {
+			log::trace!(
+				"request_id: {} - Creating managed url for proxyUrl.",
+				request_id
+			);
 			db::create_new_managed_url_in_workspace(
 				connection,
 				&managed_url_id,
@@ -99,6 +121,10 @@ pub async fn create_new_managed_url_in_workspace(
 			.await?;
 		}
 		ManagedUrlType::Redirect { url } => {
+			log::trace!(
+				"request_id: {} - Creating managed url for redirect.",
+				request_id
+			);
 			db::create_new_managed_url_in_workspace(
 				connection,
 				&managed_url_id,
@@ -116,6 +142,10 @@ pub async fn create_new_managed_url_in_workspace(
 		}
 	}
 
+	log::trace!(
+		"request_id: {} - Updating managed url on Kubernetes.",
+		request_id
+	);
 	kubernetes::update_kubernetes_managed_url(
 		workspace_id,
 		&ManagedUrl {
@@ -131,16 +161,22 @@ pub async fn create_new_managed_url_in_workspace(
 	.await?;
 
 	if domain.is_ns_external() && domain.is_verified {
+		log::trace!(
+			"request_id: {} - Creating certificates for managed url.",
+			request_id
+		);
 		kubernetes::create_certificates(
 			workspace_id,
 			&format!("certificate-{}", managed_url_id),
 			&format!("tls-{}", managed_url_id),
 			vec![format!("{}.{}", sub_domain, domain.name)],
 			config,
+			request_id,
 		)
 		.await?;
 	}
 
+	log::trace!("request_id: {} - ManagedUrl Created.", request_id);
 	Ok(managed_url_id)
 }
 
@@ -150,7 +186,14 @@ pub async fn update_managed_url(
 	path: &str,
 	url_type: &ManagedUrlType,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Updating managed url with id: {} on Kubernetes with request_id: {}",
+		request_id,
+		managed_url_id,
+		request_id
+	);
+
 	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
@@ -161,6 +204,10 @@ pub async fn update_managed_url(
 			deployment_id,
 			port,
 		} => {
+			log::trace!(
+				"request_id: {} - Updating managed url for proxyDeployment.",
+				request_id
+			);
 			db::update_managed_url(
 				connection,
 				managed_url_id,
@@ -174,6 +221,10 @@ pub async fn update_managed_url(
 			.await?;
 		}
 		ManagedUrlType::ProxyStaticSite { static_site_id } => {
+			log::trace!(
+				"request_id: {} - Updating managed url for proxyStaticSite.",
+				request_id
+			);
 			db::update_managed_url(
 				connection,
 				managed_url_id,
@@ -187,6 +238,10 @@ pub async fn update_managed_url(
 			.await?;
 		}
 		ManagedUrlType::ProxyUrl { url } => {
+			log::trace!(
+				"request_id: {} - Updating managed url for proxyUrl.",
+				request_id
+			);
 			db::update_managed_url(
 				connection,
 				managed_url_id,
@@ -200,6 +255,10 @@ pub async fn update_managed_url(
 			.await?;
 		}
 		ManagedUrlType::Redirect { url } => {
+			log::trace!(
+				"request_id: {} - Updating managed url for redirect.",
+				request_id
+			);
 			db::update_managed_url(
 				connection,
 				managed_url_id,
@@ -214,6 +273,10 @@ pub async fn update_managed_url(
 		}
 	}
 
+	log::trace!(
+		"request_id: {} - Updating managed url on Kubernetes.",
+		request_id
+	);
 	kubernetes::update_kubernetes_managed_url(
 		&managed_url.workspace_id,
 		&ManagedUrl {
@@ -248,6 +311,7 @@ pub async fn update_managed_url(
 	)
 	.await?;
 
+	log::trace!("request_id: {} - ManagedUrl Updated.", request_id);
 	Ok(())
 }
 
@@ -256,7 +320,14 @@ pub async fn delete_managed_url(
 	workspace_id: &Uuid,
 	managed_url_id: &Uuid,
 	config: &Settings,
+	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - Deleting managed url with id: {} on Kubernetes with request_id: {}",
+		request_id,
+		managed_url_id,
+		request_id
+	);
+
 	let managed_url = db::get_managed_url_by_id(connection, managed_url_id)
 		.await?
 		.status(404)
@@ -278,6 +349,10 @@ pub async fn delete_managed_url(
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Deleting managed url on Kubernetes.",
+		request_id
+	);
 	kubernetes::delete_kubernetes_managed_url(
 		workspace_id,
 		managed_url_id,
@@ -287,17 +362,27 @@ pub async fn delete_managed_url(
 	.await?;
 
 	if domain.is_ns_external() {
+		log::trace!(
+			"request_id: {} - Deleting certificates for external managed url",
+			request_id
+		);
 		let secret_name = format!("tls-{}", managed_url.id);
 		let certificate_name = format!("certificate-{}", managed_url.id);
 
+		log::trace!(
+			"request_id: {} - Deleting certificate for external managed url",
+			request_id
+		);
 		service::delete_certificates_for_domain(
 			workspace_id,
 			&certificate_name,
 			&secret_name,
 			config,
+			request_id,
 		)
 		.await?;
 	}
+	log::trace!("request_id: {} - ManagedUrl Deleted.", request_id);
 
 	Ok(())
 }

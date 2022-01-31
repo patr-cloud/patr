@@ -378,6 +378,8 @@ async fn get_domains_for_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Getting domains for workspace", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -399,6 +401,10 @@ async fn get_domains_for_workspace(
 	})
 	.collect();
 
+	log::trace!(
+		"request_id: {} - Returning domains for workspace",
+		request_id
+	);
 	context.success(GetDomainsForWorkspaceResponse { domains });
 	Ok(context)
 }
@@ -438,6 +444,8 @@ async fn add_domain_to_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Adding domain to workspace", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -459,9 +467,14 @@ async fn add_domain_to_workspace(
 		&nameserver_type,
 		&workspace_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!(
+		"request_id: {} - Added the domain to the workspace",
+		request_id
+	);
 	context.success(AddDomainResponse { id: domain_id });
 
 	Ok(context)
@@ -502,6 +515,8 @@ async fn verify_domain_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Verifying domain in workspace", request_id);
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
 
@@ -533,6 +548,7 @@ async fn verify_domain_in_workspace(
 		&domain.id,
 		&workspace_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -586,6 +602,11 @@ async fn get_domain_info_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!(
+		"request_id: {} - Getting domain info in workspace",
+		request_id
+	);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
 	// Uuid::parse_str throws an error for a wrong string
@@ -610,6 +631,8 @@ async fn get_domain_info_in_workspace(
 		},
 		is_verified: domain.is_verified,
 	});
+
+	log::trace!("request_id: {} - Got domain info in workspace", request_id);
 	Ok(context)
 }
 
@@ -647,6 +670,8 @@ async fn delete_domain_in_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Deleting domain in workspace", request_id);
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id)?;
 
@@ -666,9 +691,11 @@ async fn delete_domain_in_workspace(
 		&workspace_id,
 		&domain_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
 	// TODO: add the info to patr metrics
 	context.success(DeleteDomainResponse {});
 	Ok(context)
@@ -678,6 +705,8 @@ async fn get_domain_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Getting domain dns record", request_id);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 
 	// Uuid::parse_str throws an error for a wrong string
@@ -723,6 +752,7 @@ async fn get_domain_dns_record(
 	})
 	.collect();
 
+	log::trace!("request_id: {} - Got domain dns record", request_id);
 	context.success(GetDomainDnsRecordsResponse { records });
 	Ok(context)
 }
@@ -731,6 +761,8 @@ async fn add_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Adding dns record", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -763,9 +795,11 @@ async fn add_dns_record(
 		proxied,
 		&r#type,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Added dns record", request_id);
 	context.success(AddDnsRecordResponse { id: record_id });
 	Ok(context)
 }
@@ -774,6 +808,8 @@ async fn update_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Updating dns record", request_id);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
 
@@ -804,9 +840,11 @@ async fn update_dns_record(
 		proxied,
 		priority,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Updated dns record", request_id);
 	context.success(UpdateDomainDnsRecordResponse {});
 	Ok(context)
 }
@@ -815,6 +853,8 @@ async fn delete_dns_record(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Deleting dns record", request_id);
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
 
@@ -828,9 +868,11 @@ async fn delete_dns_record(
 		&domain_id,
 		&record_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
+	log::trace!("request_id: {} - Deleted dns record", request_id);
 	context.success(DeleteDnsRecordResponse {});
 	Ok(context)
 }

@@ -153,10 +153,15 @@ async fn list_all_database_clusters(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	log::trace!(
+		"request_id: {} - Getting all database cluster info from db",
+		request_id
+	);
 	let database_clusters = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -184,6 +189,11 @@ async fn list_all_database_clusters(
 	})
 	.collect::<Vec<_>>();
 
+	log::trace!(
+		"request_id: {} - Returning all database cluster info",
+		request_id
+	);
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASES: database_clusters
@@ -196,12 +206,14 @@ async fn create_database_cluster(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let body = context.get_body_object().clone();
 	let config = context.get_state().config.clone();
 
+	log::trace!("request_id: {} - Creating database cluster", request_id);
 	let name = body
 		.get(request_keys::NAME)
 		.map(|value| value.as_str())
@@ -275,6 +287,7 @@ async fn create_database_cluster(
 		region,
 		&workspace_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
@@ -295,10 +308,13 @@ async fn get_managed_database_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 
+	log::trace!("request_id: {} - Getting database info", request_id);
 	let database = db::get_managed_database_by_id(
 		context.get_database_connection(),
 		&database_id,
@@ -306,6 +322,7 @@ async fn get_managed_database_info(
 	.await?
 	.status(400)
 	.body(error!(WRONG_PARAMETERS).to_string())?;
+	log::trace!("request_id: {} - Returning database info", request_id);
 
 	context.json(json!({
 		request_keys::SUCCESS: true,
@@ -333,15 +350,19 @@ async fn delete_managed_database(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
 	let config = context.get_state().config.clone();
 
+	log::trace!("request_id: {} - Deleting database cluster", request_id);
 	service::delete_managed_database(
 		context.get_database_connection(),
 		&database_id,
 		&config,
+		&request_id,
 	)
 	.await?;
 
