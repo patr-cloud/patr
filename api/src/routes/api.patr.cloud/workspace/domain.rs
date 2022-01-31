@@ -825,7 +825,7 @@ async fn update_dns_record(
 		record_id: _,
 		ttl,
 		proxied,
-		target: content,
+		target,
 		priority,
 	} = context
 		.get_body_as()
@@ -838,7 +838,7 @@ async fn update_dns_record(
 		context.get_database_connection(),
 		&domain_id,
 		&record_id,
-		content.as_deref(),
+		target.as_deref(),
 		ttl,
 		proxied,
 		priority,

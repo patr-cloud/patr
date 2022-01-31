@@ -205,21 +205,16 @@ pub async fn initialize_domain_pre(
 			CONSTRAINT
 				patr_domain_dns_record_uq_domain_id_name_type_value_priority
 					UNIQUE(domain_id, name, type, value, priority),
-			CONSTRAINT 
-				patr_domain_dns_record_chk_proxied_is_valid CHECK(	
+			CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK(
 				(
-					(
-						type = 'A' OR type = 'AAAA' OR type = 'CNAME'
-					) AND 
+					(type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND
 					proxied IS NOT NULL
 				) OR
 				(
-					(
-						type = 'MX' OR type = 'TXT'
-					) AND 
+					(type = 'MX' OR type = 'TXT') AND 
 					proxied IS NULL
 				)
-			) 	
+			)
 		);
 		"#
 	)

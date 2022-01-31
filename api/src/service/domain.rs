@@ -503,7 +503,7 @@ pub async fn update_patr_domain_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	record_id: &Uuid,
-	content: Option<&str>,
+	target: Option<&str>,
 	ttl: Option<u32>,
 	proxied: Option<bool>,
 	priority: Option<u16>,
@@ -535,23 +535,17 @@ pub async fn update_patr_domain_dns_record(
 	db::update_patr_domain_dns_record(
 		connection,
 		record_id,
-		content,
+		target,
 		priority.map(|p| p as i32),
 		ttl.map(|ttl| ttl as i64),
 		proxied,
 	)
 	.await?;
 
-	let record = if let Some(record) = content {
+	let record = if let Some(record) = target {
 		record
 	} else {
 		&dns_record.value
-	};
-
-	let proxied = if let Some(proxied) = proxied {
-		proxied
-	} else {
-		false
 	};
 
 	let content = match dns_record.r#type {
@@ -582,7 +576,7 @@ pub async fn update_patr_domain_dns_record(
 			zone_identifier: &domain.zone_identifier,
 			params: UpdateDnsRecordParams {
 				ttl,
-				proxied: Some(proxied),
+				proxied,
 				name: &dns_record.name,
 				content,
 			},
