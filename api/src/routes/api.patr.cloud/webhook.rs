@@ -257,7 +257,10 @@ pub async fn notification_handler(
 				{
 					connection
 				} else {
-					log::error!("request_id: {} - Unable to acquire a database connection", request_id);
+					log::error!(
+						"request_id: {} - Cannot acquire a db connection",
+						request_id
+					);
 					return;
 				};
 				log::trace!(
@@ -333,12 +336,22 @@ pub async fn notification_handler(
 
 				if let Err(error) = update_kubernetes_result {
 					log::error!(
-						"request_id: {} - Error updating kubernetes deployment: {}",
+						"request_id: {} - Error updating k8s deployment: {}",
 						request_id,
 						error.get_error()
 					);
-					let _ = db::update_deployment_status(&mut connection, &deployment.id, &DeploymentStatus::Errored).await.map_err(|e| {
-						log::error!("request_id: {} - Error updating deployment status: {}", request_id, e);
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&deployment.id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
+						log::error!(
+							"request_id: {} - Error setting db status: {}",
+							request_id,
+							e
+						);
 					});
 				}
 			});

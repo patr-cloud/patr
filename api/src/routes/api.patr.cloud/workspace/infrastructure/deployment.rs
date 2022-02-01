@@ -663,12 +663,22 @@ async fn create_deployment(
 
 				if let Err(error) = update_kubernetes_result {
 					log::error!(
-						"request_id: {} - Error updating kubernetes deployment: {}",
+						"request_id: {} - Error updating k8s deployment: {}",
 						request_id,
 						error.get_error()
 					);
-					let _ = db::update_deployment_status(&mut connection, &id, &DeploymentStatus::Errored).await.map_err(|e| {
-						log::error!("request_id: {} - Error updating deployment status: {}", request_id, e);
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
+						log::error!(
+							"request_id: {} - Error updating db status: {}",
+							request_id,
+							e
+						);
 					});
 				}
 			});
