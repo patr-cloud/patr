@@ -141,7 +141,7 @@
 			"password": "Rentbaaz@123"
 		}
 	],
-	"organisations": [
+	"workspaces": [
 		{
 			"name": "Vicara",
 			"domains": [
@@ -152,53 +152,6 @@
 				"araciv.com",
 				"vcr.to",
 				"getkai.co"
-			],
-			"applications": [
-				{
-					"name": "kai-control-center",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "kai-sdk",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "kai-control-center-module",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				}
 			],
 			"emails": {
 				"rakshith-ravi": [
@@ -238,26 +191,14 @@
 			"superUser": "rakshith-ravi",
 			"roles": {
 				"employee": [
-					"organisation::portus::view",
-					"organisation::portus::list",
-					"organisation::application::list",
-					"organisation::application::viewDetails",
-					"organisation::application::listVersions",
-					"organisation::domain::list",
-					"organisation::domain::viewDetails",
-					"organisation::viewRoles"
+					"workspace::domain::list",
+					"workspace::domain::viewDetails",
+					"workspace::viewRoles"
 				],
 				"developer": [
-					"organisation::portus::view",
-					"organisation::portus::list",
-					"organisation::portus::add",
-					"organisation::application::list",
-					"organisation::application::add",
-					"organisation::application::viewDetails",
-					"organisation::application::listVersions",
-					"organisation::domain::list",
-					"organisation::domain::viewDetails",
-					"organisation::viewRoles"
+					"workspace::domain::list",
+					"workspace::domain::viewDetails",
+					"workspace::viewRoles"
 				]
 			},
 			"users": {
@@ -298,53 +239,6 @@
 			"domains": [
 				"gordian.in",
 				"gordain.com"
-			],
-			"applications": [
-				{
-					"name": "delivery-device-firmware",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "delivery-executive-app",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				},
-				{
-					"name": "user-facing-app",
-					"versions": [
-						"0.0.1",
-						"0.0.2",
-						"0.1.0",
-						"0.2.0",
-						"0.2.1",
-						"0.2.2",
-						"1.0.0",
-						"1.0.1",
-						"1.0.2",
-						"1.0.3"
-					]
-				}
 			],
 			"emails": {
 				"rakshith-ravi": [

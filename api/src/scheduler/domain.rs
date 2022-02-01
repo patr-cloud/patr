@@ -1,14 +1,18 @@
+use api_models::utils::Uuid;
 use cloudflare::{
-	endpoints::zone::{self, Status, Zone},
-	framework::{
-		async_api::{ApiClient, Client},
-		auth::Credentials,
-		Environment,
-		HttpApiClientConfig,
-	},
+	endpoints::zone::{self, Status},
+	framework::async_api::ApiClient,
 };
+use eve_rs::AsError;
+use sqlx::Connection;
 
-use crate::{db, scheduler::Job, utils::validator};
+use crate::{
+	db,
+	error,
+	scheduler::Job,
+	service,
+	utils::{validator, Error},
+};
 
 // Every two hours
 pub(super) fn verify_unverified_domains_job() -> Job {
@@ -37,82 +41,93 @@ pub(super) fn refresh_domain_tld_list_job() -> Job {
 	)
 }
 
-pub async fn refresh_domain_tld_list() -> crate::Result<()> {
+pub async fn refresh_domain_tld_list() -> Result<(), Error> {
+	let mut connection = super::CONFIG.get().unwrap().database.begin().await?;
 	let data =
 		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
 			.await?
 			.text()
 			.await?;
 
-	let tlds = data
+	let mut tlds = data
 		.split('\n')
 		.map(String::from)
 		.filter(|tld| {
 			!tld.starts_with('#') && !tld.is_empty() && !tld.starts_with("XN--")
 		})
+		.map(|item| item.to_lowercase())
 		.collect::<Vec<String>>();
 
-	validator::update_domain_tld_list(tlds).await;
+	db::update_domain_tld_list(&mut connection, &tlds).await?;
+
+	let mut tld_list = validator::DOMAIN_TLD_LIST.write().await;
+	tld_list.clear();
+	tld_list.append(&mut tlds);
+	drop(tld_list);
+
+	connection.commit().await?;
+
 	Ok(())
 }
 
-async fn verify_unverified_domains() -> crate::Result<()> {
+async fn verify_unverified_domains() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Verifying unverified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
-	let mut connection = config.database.begin().await?;
+	let mut connection = config.database.acquire().await?;
+
+	let settings = config.config.clone();
 
 	let unverified_domains =
 		db::get_all_unverified_domains(&mut connection).await?;
 
-	let credentials = Credentials::UserAuthToken {
-		token: config.config.cloudflare.api_token.clone(),
-	};
+	let client = service::get_cloudflare_client(&config.config).await?;
 
-	let client = Client::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	)?;
+	for (unverified_domain, zone_identifier) in unverified_domains {
+		let mut connection = connection.begin().await?;
 
-	for unverified_domain in unverified_domains {
-		let zone = get_zone_for_domain(&client, &unverified_domain.name).await;
+		let workspace_id =
+			db::get_resource_by_id(&mut connection, &unverified_domain.id)
+				.await?
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string())?
+				.owner_id;
 
-		if zone.is_none() {
-			// add to cflr
-			log::error!(
-				"Domain `{}` was not added to cloudflare. Adding again.",
-				unverified_domain.name
-			);
+		if let (Some(zone_identifier), true) =
+			(zone_identifier, unverified_domain.is_ns_internal())
+		{
 			let response = client
-				.request(&zone::CreateZone {
-					params: zone::CreateZoneParams {
-						account: &config.config.cloudflare.account_id,
-						name: &unverified_domain.name,
-						jump_start: Some(false),
-						zone_type: Some(zone::Type::Full),
-					},
+				.request(&zone::ZoneDetails {
+					identifier: &zone_identifier,
 				})
 				.await?;
-			if !response.errors.is_empty() {
-				log::error!(
-					"Domain `{}` errored while adding to cloudflare: {:#?}",
-					unverified_domain.name,
-					response.errors
-				);
+
+			if let Status::Active = response.result.status {
+				// Create certs below
+			} else {
 				continue;
 			}
-		}
-		let zone = zone.unwrap();
 
-		let response = client
-			.request(&zone::ZoneDetails {
-				identifier: &zone.id,
-			})
+			service::create_certificates(
+				&workspace_id,
+				&format!("certificate-{}", unverified_domain.id),
+				&format!("tls-{}", unverified_domain.id),
+				vec![
+					format!("*.{}", unverified_domain.name),
+					unverified_domain.name.clone(),
+				],
+				&settings,
+				&request_id,
+			)
 			.await?;
 
-		if let Status::Active = response.result.status {
 			// Domain is now verified
-			db::set_domain_as_verified(&mut connection, &unverified_domain.id)
-				.await?;
+			db::update_workspace_domain_status(
+				&mut connection,
+				&unverified_domain.id,
+				true,
+			)
+			.await?;
 			let notification_email = db::get_notification_email_for_domain(
 				&mut connection,
 				&unverified_domain.id,
@@ -132,82 +147,82 @@ async fn verify_unverified_domains() -> crate::Result<()> {
 				// 	unverified_domain.name,
 				// );
 			}
-			continue;
-		}
-		// else
 
-		// Domain is still not verified. Initiate zone activation check
-		let reqwest_client = reqwest::Client::new();
-		let response = reqwest_client
-			.put(format!(
-				"https://api.cloudflare.com/client/v4/zones/{}/activation_check",
-				response.result.id
-			))
-			.header(
-				"Authorization",
-				format!("Bearer {}", config.config.cloudflare.api_token),
+			if unverified_domain.is_ns_internal() {
+				service::create_certificates(
+					&workspace_id,
+					&format!("certificate-{}", unverified_domain.id),
+					&format!("tls-{}", unverified_domain.id),
+					vec![unverified_domain.name.clone()],
+					&settings,
+					&request_id,
+				)
+				.await?;
+			} else {
+				service::create_certificates_of_managed_urls_for_domain(
+					&mut connection,
+					&workspace_id,
+					&unverified_domain.id,
+					&unverified_domain.name,
+					&settings,
+					&request_id,
+				)
+				.await?;
+			}
+
+			connection.commit().await?;
+		} else {
+			let response = service::verify_external_domain(
+				&mut connection,
+				&workspace_id,
+				&unverified_domain.name,
+				&unverified_domain.id,
+				&settings,
+				&request_id,
 			)
-			.send()
-			.await;
-		if let Err(err) = response {
-			log::error!("Cannot initiate zone activation check: {}", err);
+			.await?;
+
+			if !response {
+				log::error!(
+					"Could not verify domain `{}`",
+					unverified_domain.name
+				);
+			}
 		}
 	}
 
 	Ok(())
 }
 
-async fn reverify_verified_domains() -> crate::Result<()> {
+async fn reverify_verified_domains() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Re-verifying verified domains", request_id);
 	let config = super::CONFIG.get().unwrap();
 	let mut connection = config.database.begin().await?;
 
 	let verified_domains =
 		db::get_all_verified_domains(&mut connection).await?;
 
-	let credentials = Credentials::UserAuthToken {
-		token: config.config.cloudflare.api_token.clone(),
+	let client = service::get_cloudflare_client(&config.config).await;
+
+	let client = match client {
+		Ok(client) => client,
+		Err(err) => {
+			log::error!("Cannot get cloudflare client: {}", err.get_error());
+			return Ok(());
+		}
 	};
 
-	let client = Client::new(
-		credentials,
-		HttpApiClientConfig::default(),
-		Environment::Production,
-	)
-	.unwrap();
-
-	for verified_domain in verified_domains {
-		let zone = get_zone_for_domain(&client, &verified_domain.name).await;
-
-		if zone.is_none() {
-			// add to cflr
-			log::error!(
-				"Domain `{}` was not added to cloudflare. Adding again.",
-				verified_domain.name
-			);
-			let response = client
-				.request(&zone::CreateZone {
-					params: zone::CreateZoneParams {
-						account: &config.config.cloudflare.account_id,
-						name: &verified_domain.name,
-						jump_start: Some(false),
-						zone_type: Some(zone::Type::Full),
-					},
-				})
-				.await?;
-			if !response.errors.is_empty() {
-				log::error!(
-					"Domain `{}` errored while adding to cloudflare: {:#?}",
-					verified_domain.name,
-					response.errors
-				);
-				continue;
-			}
-		}
-		let zone = zone.unwrap();
-
+	for (verified_domain, zone_identifier) in verified_domains {
+		let zone_identifier = if let Some(zone_identifier) = zone_identifier {
+			zone_identifier
+		} else {
+			// TODO delete the domain altogether or add to cloudflare?
+			continue;
+		};
 		let response = client
 			.request(&zone::ZoneDetails {
-				identifier: &zone.id,
+				identifier: &zone_identifier,
 			})
 			.await?;
 
@@ -215,8 +230,12 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 			continue;
 		}
 		// Domain is now unverified
-		db::set_domain_as_unverified(&mut connection, &verified_domain.id)
-			.await?;
+		db::update_workspace_domain_status(
+			&mut connection,
+			&verified_domain.id,
+			false,
+		)
+		.await?;
 		let notification_email = db::get_notification_email_for_domain(
 			&mut connection,
 			&verified_domain.id,
@@ -225,31 +244,16 @@ async fn reverify_verified_domains() -> crate::Result<()> {
 		if notification_email.is_none() {
 			log::error!("Notification email for domain `{}` is None. You might have a dangling resource for the domain", verified_domain.name);
 			continue;
+		} else {
+			// TODO change this to notifier
+			// mailer::send_domain_unverified_mail(
+			// 	config.config.clone(),
+			// 	notification_email.unwrap(),
+			// 	verified_domain.name,
+			// );
 		}
-		// TODO change this to notifier
-		// mailer::send_domain_unverified_mail(
-		// 	config.config.clone(),
-		// 	notification_email.unwrap(),
-		// 	verified_domain.name,
-		// );
+		// TODO delete certificates and managed urls after 3 days
 	}
 
 	Ok(())
-}
-
-pub async fn get_zone_for_domain(
-	client: &Client,
-	domain: &str,
-) -> Option<Zone> {
-	client
-		.request(&zone::ListZones {
-			params: zone::ListZonesParams {
-				name: Some(domain.to_string()),
-				..Default::default()
-			},
-		})
-		.await
-		.ok()
-		.map(|zones| zones.result.into_iter().next())
-		.flatten()
 }

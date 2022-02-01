@@ -1,4 +1,4 @@
-use std::{array::IntoIter, env};
+use std::env;
 
 use clap::crate_version;
 use reqwest::multipart::{Form, Part};
@@ -64,12 +64,12 @@ async fn main() {
 		.expect("cannot find ID in response")
 		.as_u64()
 		.expect("ID in response is not an integer");
-	for (name, asset) in IntoIter::new([
+	for (name, asset) in [
 		("assets.zip", "./assets.zip"),
 		("api", "./target/release/api"),
 		("config.sample.json", "./config/dev.sample.json"),
 		("database.sql", "./fresh.sql"),
-	]) {
+	] {
 		println!("Uploading {}...", name);
 		let response = client
 			.post(format!(
@@ -81,12 +81,9 @@ async fn main() {
 			.multipart(
 				Form::new().text("name", name).part(
 					"attachment",
-					Part::bytes(
-						fs::read(asset).await.expect(&format!(
-							"unable to read file `{}`",
-							asset
-						)),
-					)
+					Part::bytes(fs::read(asset).await.unwrap_or_else(|_| {
+						panic!("unable to read file `{}`", asset)
+					}))
 					.file_name(name),
 				),
 			)

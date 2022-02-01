@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use argon2::{
 	password_hash::{PasswordVerifier, SaltString},
 	Algorithm,
@@ -8,10 +9,14 @@ use argon2::{
 	Version,
 };
 use eve_rs::AsError;
-use hex::ToHex;
-use uuid::Uuid;
 
-use crate::{db, error, service, utils::Error, Database};
+use crate::{
+	db,
+	error,
+	service,
+	utils::{validator, Error},
+	Database,
+};
 
 lazy_static::lazy_static! {
 	static ref ARGON: Argon2<'static> = Argon2::new(
@@ -108,10 +113,10 @@ pub fn get_refresh_token_expiry() -> u64 {
 /// [`Transaction`]: Transaction
 pub async fn generate_new_refresh_token_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &[u8],
-) -> Result<(String, String), Error> {
+	user_id: &Uuid,
+) -> Result<(Uuid, String), Error> {
 	loop {
-		let refresh_token = Uuid::new_v4().as_bytes().encode_hex::<String>();
+		let refresh_token = Uuid::new_v4();
 		let hashed = hash(refresh_token.as_bytes())?;
 		let login = db::get_login_for_user_with_refresh_token(
 			connection, user_id, &hashed,
@@ -186,17 +191,14 @@ pub fn generate_new_otp() -> String {
 pub async fn split_email_with_domain_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	email_address: &str,
-) -> Result<(String, Vec<u8>), Error> {
+) -> Result<(String, Uuid), Error> {
 	let (email_local, domain_name) = email_address
 		.split_once('@')
 		.status(400)
 		.body(error!(INVALID_EMAIL).to_string())?;
 
 	let domain_id =
-		service::ensure_personal_domain_exists(connection, domain_name)
-			.await?
-			.as_bytes()
-			.to_vec();
+		service::ensure_personal_domain_exists(connection, domain_name).await?;
 
 	Ok((email_local.to_string(), domain_id))
 }
@@ -262,4 +264,34 @@ pub fn mask_phone_number(phone_number: &str) -> String {
 		return String::from("******");
 	};
 	format!("{}******{}", first, last)
+}
+
+pub async fn split_domain_and_tld(
+	domain_name: &str,
+) -> Option<(String, String)> {
+	let tld_list = validator::DOMAIN_TLD_LIST.read().await;
+	let tld = tld_list
+		.iter()
+		.filter(|tld| domain_name.ends_with(*tld))
+		.reduce(|accumulator, item| {
+			if accumulator.len() > item.len() {
+				accumulator
+			} else {
+				item
+			}
+		})?;
+	let domain = domain_name.replace(&format!(".{}", tld), "");
+	// domain cannot begin or end with a -, and must be at least 1 character
+	if domain.contains('.') ||
+		domain.is_empty() ||
+		domain.starts_with('-') ||
+		domain.ends_with('-') ||
+		domain
+			.chars()
+			.any(|c| !c.is_ascii_alphanumeric() && c != '-')
+	{
+		return None;
+	}
+
+	Some((domain, tld.clone()))
 }

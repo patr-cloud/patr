@@ -1,7 +1,8 @@
 [workspace]
 members = [
   "api",
-  "macros"
+  "macros",
+  "api-models"
 ]
 
 [profile.release]

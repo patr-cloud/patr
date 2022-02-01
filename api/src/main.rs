@@ -13,26 +13,25 @@
 mod app;
 mod db;
 mod macros;
+mod migrations;
 mod models;
 mod routes;
 mod scheduler;
 mod service;
 mod utils;
 
-use std::{error::Error, sync::Arc};
+use std::sync::Arc;
 
 use api_macros::{migrate_query, query, query_as};
 use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
 use eve_rs::handlebars::Handlebars;
 use tokio::{fs, runtime::Builder};
-use utils::{constants, logger};
+use utils::{constants, logger, Error as EveError};
 
-pub type Result<TValue> = std::result::Result<TValue, Box<dyn Error>>;
-pub type Database = sqlx::Postgres;
-pub type DbConnection = <Database as sqlx::Database>::Connection;
+type Database = sqlx::Postgres;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), EveError> {
 	Builder::new_multi_thread()
 		.enable_io()
 		.enable_time()
@@ -40,12 +39,11 @@ fn main() -> Result<()> {
 		// Each CPU gets at least 2 workers to avoid idling
 		.worker_threads(num_cpus::get() * 2)
 		.thread_stack_size(1024 * 1024 * 10) // 10 MiB to avoid stack overflow
-		.build()
-		.unwrap()
+		.build()?
 		.block_on(async_main())
 }
 
-async fn async_main() -> Result<()> {
+async fn async_main() -> Result<(), EveError> {
 	let args = parse_cli_args();
 
 	let config = utils::settings::parse_config();
@@ -75,21 +73,21 @@ async fn async_main() -> Result<()> {
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
 
+	service::initialize(&app);
+	log::debug!("Service initialized");
+
+	scheduler::initialize_jobs(&app);
+	log::debug!("Schedulers initialized");
+
+	scheduler::domain::refresh_domain_tld_list().await?;
+	log::info!("Domain TLD list initialized");
+
 	if args.is_present("db-only") {
 		log::info!(
 			"--db-only detected. Exiting after database initialization."
 		);
 		return Ok(());
 	}
-
-	service::initialize(&app);
-	log::debug!("Service initialized");
-
-	scheduler::domain::refresh_domain_tld_list().await?;
-	log::info!("Domain TLD list initialized");
-
-	scheduler::initialize_jobs(&app);
-	log::debug!("Schedulers initialized");
 
 	#[cfg(feature = "sample-data")]
 	if args.is_present("populate-sample-data") {
@@ -133,7 +131,7 @@ fn parse_cli_args<'a>() -> ArgMatches<'a> {
 
 async fn create_render_registry(
 	template_location: &str,
-) -> Result<Arc<Handlebars<'static>>> {
+) -> Result<Arc<Handlebars<'static>>, EveError> {
 	let mut iterator = fs::read_dir(template_location).await?;
 	let mut render_register = Handlebars::new();
 

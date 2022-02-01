@@ -1,9 +1,10 @@
+use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
 use eve_rs::AsError;
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::{PreferredRecoveryOption, User, UserToSignUp},
+	models::db_mapping::{User, UserToSignUp},
 	utils::Error,
 	Database,
 };
@@ -18,7 +19,7 @@ mod sms;
 ///
 /// # Arguments
 /// * `welcome_email` - an Option<String> containing either String which has
-/// user's personal or organisation email to send a welcome notification to or
+/// user's personal or business email to send a welcome notification to or
 /// `None`
 /// * `backup_email` - an Option<String> containing either String which has
 /// user's backup email to send a verification email to or `None`
@@ -243,7 +244,7 @@ pub async fn send_user_reset_password_notification(
 pub async fn send_forgot_password_otp(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
-	recovery_option: PreferredRecoveryOption,
+	recovery_option: &PreferredRecoveryOption,
 	otp: &str,
 ) -> Result<(), Error> {
 	// match on the recovery type
@@ -290,7 +291,7 @@ pub async fn send_forgot_password_otp(
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `domain_id` - An unsigned 8 bit integer array containing id of
-/// organisation domain
+/// workspace domain
 /// * `email_string` - a string containing user's email_local
 ///  
 /// # Returns
@@ -300,7 +301,7 @@ pub async fn send_forgot_password_otp(
 /// [`Transaction`]: Transaction
 async fn get_user_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_id: &[u8],
+	domain_id: &Uuid,
 	email_string: &str,
 ) -> Result<String, Error> {
 	let domain = db::get_personal_domain_by_id(connection, domain_id)

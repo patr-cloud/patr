@@ -1,21 +1,10 @@
-use std::str::FromStr;
-
-use eve_rs::AsError;
+use api_models::utils::{ResourceType, Uuid};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-use crate::{
-	error,
-	utils::{
-		constants::{request_keys, ResourceOwnerType},
-		Error,
-	},
-};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub username: String,
 	#[serde(skip)]
 	pub password: String,
@@ -32,7 +21,7 @@ pub struct User {
 	#[serde(skip)]
 	pub backup_email_local: Option<String>,
 	#[serde(skip)]
-	pub backup_email_domain_id: Option<Vec<u8>>,
+	pub backup_email_domain_id: Option<Uuid>,
 
 	#[serde(skip)]
 	pub backup_phone_country_code: Option<String>,
@@ -41,10 +30,11 @@ pub struct User {
 }
 
 pub struct UserLogin {
-	pub login_id: Vec<u8>,
+	pub login_id: Uuid,
+	/// Hashed refresh token
 	pub refresh_token: String,
 	pub token_expiry: u64,
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub last_login: u64,
 	pub last_activity: u64,
 }
@@ -52,47 +42,41 @@ pub struct UserLogin {
 #[derive(Clone)]
 pub struct UserEmailAddress {
 	pub email_local: String,
-	pub domain_id: Vec<u8>,
-}
-
-pub struct UserPhoneNumber {
-	pub user_id: Vec<u8>,
-	pub country_code: String,
-	pub number: String,
+	pub domain_id: Uuid,
 }
 
 pub struct UserToSignUp {
 	pub username: String,
-	pub account_type: ResourceOwnerType,
+	pub account_type: ResourceType,
 
 	pub password: String,
 	pub first_name: String,
 	pub last_name: String,
 
 	pub backup_email_local: Option<String>,
-	pub backup_email_domain_id: Option<Vec<u8>>,
+	pub backup_email_domain_id: Option<Uuid>,
 
 	pub backup_phone_country_code: Option<String>,
 	pub backup_phone_number: Option<String>,
 
-	pub org_email_local: Option<String>,
-	pub org_domain_name: Option<String>,
-	pub organisation_name: Option<String>,
+	pub business_email_local: Option<String>,
+	pub business_domain_name: Option<String>,
+	pub business_name: Option<String>,
 
 	pub otp_hash: String,
 	pub otp_expiry: u64,
 }
 
 pub struct PasswordResetRequest {
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub token: String,
 	pub token_expiry: u64,
 }
 
 pub struct PersonalEmailToBeVerified {
 	pub local: String,
-	pub domain_id: Vec<u8>,
-	pub user_id: Vec<u8>,
+	pub domain_id: Uuid,
+	pub user_id: Uuid,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,
 }
@@ -100,7 +84,7 @@ pub struct PersonalEmailToBeVerified {
 pub struct PhoneNumberToBeVerified {
 	pub country_code: String,
 	pub phone_number: String,
-	pub user_id: Vec<u8>,
+	pub user_id: Uuid,
 	pub verification_token_hash: String,
 	pub verification_token_expiry: u64,
 }
@@ -109,32 +93,6 @@ pub struct PhoneCountryCode {
 	pub country_code: String,
 	pub phone_code: String,
 	pub country_name: String,
-}
-
-// enum taken in as response from the front end
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub enum PreferredRecoveryOption {
-	BackupPhoneNumber,
-	BackupEmail,
-}
-
-impl FromStr for PreferredRecoveryOption {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			request_keys::BACKUP_PHONE_NUMBER => {
-				Ok(PreferredRecoveryOption::BackupPhoneNumber)
-			}
-			request_keys::BACKUP_EMAIL => {
-				Ok(PreferredRecoveryOption::BackupEmail)
-			}
-			_ => Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
 }
 
 pub struct JoinUser {

@@ -10,8 +10,8 @@ pub mod id {
 	pub const INVALID_USERNAME: &str = "invalidUsername";
 	pub const INVALID_PHONE_NUMBER: &str = "invalidPhoneNumber";
 	pub const INVALID_COUNTRY_CODE: &str = "invalidCountryCode";
-	pub const INVALID_ORGANISATION_NAME: &str = "invalidOrganisationName";
-	pub const ORGANISATION_EXISTS: &str = "organisationExists";
+	pub const INVALID_WORKSPACE_NAME: &str = "invalidWorkspaceName";
+	pub const WORKSPACE_EXISTS: &str = "workspaceExists";
 	pub const PASSWORD_TOO_WEAK: &str = "passwordTooWeak";
 	pub const WRONG_PARAMETERS: &str = "wrongParameters";
 	pub const UNAUTHORIZED: &str = "unauthorized";
@@ -40,8 +40,7 @@ pub mod id {
 	pub const INVALID_REQUEST: &str = "invalidRequest";
 	pub const INVALID_REPOSITORY_NAME: &str = "invalidRepositoryName";
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
-	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =
-		"domainBelongsToOrganisation";
+	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str = "domainBelongsToWorkspace";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
 	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
@@ -49,6 +48,9 @@ pub mod id {
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
+	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
+	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
+	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 }
 
 #[allow(dead_code)]
@@ -65,10 +67,8 @@ pub mod message {
 		"Your phone number seems to be incorrect";
 	pub const INVALID_COUNTRY_CODE: &str =
 		"Your country code seems to be incorrect";
-	pub const INVALID_ORGANISATION_NAME: &str =
-		"That organisation name is not valid";
-	pub const ORGANISATION_EXISTS: &str =
-		"That organisation name is already taken";
+	pub const INVALID_WORKSPACE_NAME: &str = "That workspace name is not valid";
+	pub const WORKSPACE_EXISTS: &str = "That workspace name is already taken";
 	pub const PASSWORD_TOO_WEAK: &str =
 		"Your password is too weak. Please choose a stronger password";
 	pub const WRONG_PARAMETERS: &str =
@@ -109,8 +109,9 @@ pub mod message {
 	pub const PROFILE_NOT_FOUND: &str = "The profile doesn't seem to exist";
 	pub const DUPLICATE_USER: &str =
 		"Sorry, the email address/username is taken";
-	pub const DOMAIN_UNVERIFIED: &str =
-		"That domain is unverified. Check your verification settings";
+	pub const DOMAIN_UNVERIFIED: &str = r#"That domain is unverified. Check your verification settings. 
+		Or you might have to wait for the TTL to expire before you can verify it again. 
+		Note the TTL is usually set to 3600 seconds"#;
 	pub const REPOSITORY_ALREADY_EXISTS: &str =
 		"The given repository already exists";
 	pub const REPOSITORY_NOT_FOUND: &str = "The repository does not exist";
@@ -120,8 +121,8 @@ pub mod message {
 	pub const REPOSITORY_NOT_PRESENT: &str =
 		"Repository name not present in request";
 	pub const ACTION_NOT_PRESENT: &str = "Action not present in request";
-	pub const NO_ORGANISATION_OR_REPOSITORY: &str =
-		"Invalid Organisation or Repository name";
+	pub const NO_WORKSPACE_OR_REPOSITORY: &str =
+		"Invalid Workspace or Repository name";
 	pub const INVALID_REPOSITORY_NAME: &str = "Invalid repository name";
 	pub const USER_ROLE_NOT_FOUND: &str =
 		"No valid role for the user was found";
@@ -142,8 +143,8 @@ pub mod message {
 	pub const PASSWORD_NOT_FOUND: &str = "Invalid request sent by the client. Authorization header did not have password";
 	pub const DOMAIN_IS_PERSONAL: &str =
 		"That domain seems to be used for a personal account. Please remove all personal accounts related to that domain first. If this problem persists, please contact us";
-	pub const DOMAIN_BELONGS_TO_ORGANISATION: &str =
-		"That domain seems to belong to an organisation. Please choose a personal domain instead. If this problem persists, please contact us";
+	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str =
+		"That domain seems to belong to an workspace. Please choose a personal domain instead. If this problem persists, please contact us";
 	pub const NO_RECOVERY_OPTIONS: &str =
 		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
 	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
@@ -152,4 +153,8 @@ pub mod message {
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
+	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
+		"The domain has nameservers outside of Patr";
+	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
+	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 }

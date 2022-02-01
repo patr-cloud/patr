@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use api_models::utils::Uuid;
 use jsonwebtoken::{
 	errors::Error,
 	DecodingKey,
@@ -9,9 +10,9 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::models::rbac::OrgPermissions;
+use crate::models::rbac::WorkspacePermissions;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccessTokenData {
 	pub iss: String,
@@ -19,8 +20,8 @@ pub struct AccessTokenData {
 	pub iat: u64,
 	pub typ: String,
 	pub exp: u64,
-	pub orgs: HashMap<String, OrgPermissions>,
-	pub login_id: String,
+	pub workspaces: HashMap<Uuid, WorkspacePermissions>,
+	pub login_id: Uuid,
 	pub user: ExposedUserData,
 	// Do we need to add more?
 }
@@ -50,8 +51,8 @@ impl AccessTokenData {
 	pub fn new(
 		iat: u64,
 		exp: u64,
-		orgs: HashMap<String, OrgPermissions>,
-		login_id: String,
+		workspaces: HashMap<Uuid, WorkspacePermissions>,
+		login_id: Uuid,
 		user: ExposedUserData,
 	) -> Self {
 		AccessTokenData {
@@ -60,7 +61,7 @@ impl AccessTokenData {
 			iat,
 			typ: String::from("accessToken"),
 			exp,
-			orgs,
+			workspaces,
 			login_id,
 			user,
 		}
@@ -71,7 +72,7 @@ impl AccessTokenData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExposedUserData {
-	pub id: Vec<u8>,
+	pub id: Uuid,
 	pub username: String,
 	pub first_name: String,
 	pub last_name: String,

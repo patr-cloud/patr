@@ -3,6 +3,7 @@ use std::{
 	sync::Arc,
 };
 
+use api_models::{ApiResponse, ErrorType};
 use eve_rs::{
 	handlebars::Handlebars,
 	Context,
@@ -10,9 +11,11 @@ use eve_rs::{
 	Request,
 	Response,
 };
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
 
+use super::Error;
 use crate::{app::App, models::AccessTokenData, Database};
 
 pub struct EveContext {
@@ -79,6 +82,34 @@ impl EveContext {
 		&self.body_object
 	}
 
+	pub fn get_body_as<TBody>(&self) -> Result<TBody, Error>
+	where
+		TBody: DeserializeOwned,
+	{
+		serde_json::from_value(self.body_object.clone())
+			.map_err(|err| Error::new(Box::new(err)))
+	}
+
+	pub fn success<TBody>(&mut self, data: TBody) -> &mut Self
+	where
+		TBody: Serialize + Debug,
+	{
+		self.json(ApiResponse::success(data))
+	}
+
+	pub fn error(&mut self, error: ErrorType) -> &mut Self {
+		self.json(ApiResponse::error(error))
+	}
+
+	#[allow(dead_code)]
+	pub fn error_with_message(
+		&mut self,
+		error: ErrorType,
+		message: impl Into<String>,
+	) -> &mut Self {
+		self.json(ApiResponse::error_with_message(error, message))
+	}
+
 	pub fn set_body_object(&mut self, body: Value) {
 		self.body_object = body;
 	}
@@ -93,6 +124,14 @@ impl EveContext {
 
 	pub fn get_param(&self, param_id: &str) -> Option<&String> {
 		self.get_request().get_params().get(param_id)
+	}
+
+	pub fn get_query_as<TBody>(&self) -> Result<TBody, Error>
+	where
+		TBody: DeserializeOwned,
+	{
+		serde_qs::from_str(&self.get_query_string())
+			.map_err(|err| Error::new(Box::new(err)))
 	}
 }
 
@@ -109,12 +148,7 @@ impl RenderEngine for EveContext {
 #[cfg(debug_assertions)]
 impl Debug for EveContext {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"Context: {} - {}",
-			self.get_method().to_string(),
-			self.get_path()
-		)
+		write!(f, "Context: {} - {}", self.get_method(), self.get_path())
 	}
 }
 

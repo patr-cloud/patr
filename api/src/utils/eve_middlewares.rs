@@ -10,17 +10,21 @@ use eve_rs::{
 		url_encoded::parser as url_encoded_parser,
 	},
 	App as EveApp,
+	AsError,
 	Context,
 	Middleware,
 	NextHandler,
 };
-use hex::ToHex;
-use redis::{AsyncCommands, RedisError};
+use redis::AsyncCommands;
 
 use crate::{
 	app::App,
 	error,
-	models::{db_mapping::Resource, rbac::GOD_USER_ID, AccessTokenData},
+	models::{
+		db_mapping::Resource,
+		rbac::{self, GOD_USER_ID},
+		AccessTokenData,
+	},
 	utils::{get_current_time_millis, Error, ErrorData, EveContext},
 };
 
@@ -103,23 +107,12 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						return Ok(context);
 					};
 
-				let token_valid = is_access_token_valid(
+				is_access_token_valid(
 					&access_data,
 					&context.get_header("Authorization").unwrap(),
 					context.get_state_mut(),
 				)
-				.await;
-				if let Err(err) = token_valid {
-					log::error!("Error checking access token: {}", err);
-					context.status(500).json(error!(SERVER_ERROR));
-					return Ok(context);
-				}
-				let access_token_valid = token_valid.unwrap();
-
-				if !access_token_valid {
-					context.status(401).json(error!(EXPIRED));
-					return Ok(context);
-				}
+				.await?;
 
 				context.set_token_data(access_data);
 				next(context).await
@@ -128,73 +121,72 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				permission_required,
 				resource_in_question,
 			) => {
-				let access_data =
-					if let Some(token) = decode_access_token(&context) {
-						token
-					} else {
-						context.status(401).json(error!(UNAUTHORIZED));
-						return Ok(context);
-					};
+				let access_data = decode_access_token(&context)
+					.status(401)
+					.body(error!(UNAUTHORIZED).to_string())?;
 
-				let token_valid = is_access_token_valid(
+				is_access_token_valid(
 					&access_data,
 					&context.get_header("Authorization").unwrap(),
 					context.get_state_mut(),
 				)
-				.await;
-				if let Err(err) = token_valid {
-					log::error!("Error checking access token: {}", err);
-					context.status(500).json(error!(SERVER_ERROR));
-					return Ok(context);
-				}
-				let access_token_valid = token_valid.unwrap();
-
-				if !access_token_valid {
-					context.status(401).json(error!(UNAUTHORIZED));
-					return Ok(context);
-				}
+				.await?;
 
 				// check if the access token has access to the resource
 				let (mut context, resource) =
 					resource_in_question(context).await?;
-				if resource.is_none() {
+				let resource = if let Some(resource) = resource {
+					resource
+				} else {
 					return Ok(context);
-				}
-				let resource = resource.unwrap();
+				};
 
-				let org_id = resource.owner_id.encode_hex::<String>();
-				let org_permission = access_data.orgs.get(&org_id);
-				if org_permission.is_none() {
+				let workspace_id = resource.owner_id;
+				let workspace_permission = if let Some(permission) =
+					access_data.workspaces.get(&workspace_id)
+				{
+					permission
+				} else {
 					context.status(404).json(error!(RESOURCE_DOES_NOT_EXIST));
 					return Ok(context);
-				}
-				let org_permission = org_permission.unwrap();
+				};
 
 				let allowed = {
 					// Check if the resource type is allowed
-					if let Some(permissions) = org_permission
+					if let Some(permissions) = workspace_permission
 						.resource_types
 						.get(&resource.resource_type_id)
 					{
-						permissions.contains(&permission_required.to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission_required).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}
 				} || {
 					// Check if that specific resource is allowed
 					if let Some(permissions) =
-						org_permission.resources.get(&resource.id)
+						workspace_permission.resources.get(&resource.id)
 					{
-						permissions
-							.contains(&(*permission_required).to_string())
+						permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission_required).to_string())
+								.unwrap(),
+						)
 					} else {
 						false
 					}
 				} || {
 					// Check if super admin or god is permitted
-					org_permission.is_super_admin || {
-						let god_user_id = GOD_USER_ID.get().unwrap().as_bytes();
-						access_data.user.id == god_user_id
+					workspace_permission.is_super_admin || {
+						let god_user_id = GOD_USER_ID.get().unwrap();
+						god_user_id == &access_data.user.id
 					}
 				};
 
@@ -243,7 +235,7 @@ async fn is_access_token_valid(
 	token: &AccessTokenData,
 	token_string: &str,
 	app: &mut App,
-) -> Result<bool, RedisError> {
+) -> Result<(), Error> {
 	// token banning goes here
 	// Different types of banned tokens:
 	// - Specific tokens
@@ -251,23 +243,29 @@ async fn is_access_token_valid(
 	// - Global timestamp after which all tokens are invalid
 	if token.exp < get_current_time_millis() {
 		// If current time is more than expiry, return false
-		return Ok(false);
+		return Error::as_result()
+			.status(401)
+			.body(error!(EXPIRED).to_string())?;
 	}
 
 	let token_banned: Option<String> = app.redis.get(token_string).await?;
 	if token_banned.is_some() {
 		// This token is banned. Invalidate it
-		return Ok(false);
+		return Error::as_result()
+			.status(401)
+			.body(error!(UNAUTHORIZED).to_string())?;
 	}
 
 	let user_exp: Option<u64> = app
 		.redis
-		.get(format!("user-{}-exp", token.user.id.encode_hex::<String>()))
+		.get(format!("user-{}-exp", token.user.id.as_str()))
 		.await?;
 	if let Some(exp) = user_exp {
 		if exp < get_current_time_millis() {
 			// This user needs an exp greater than user-userid-exp
-			return Ok(false);
+			return Error::as_result()
+				.status(401)
+				.body(error!(EXPIRED).to_string())?;
 		}
 	}
 
@@ -275,9 +273,11 @@ async fn is_access_token_valid(
 	if let Some(exp) = global_exp {
 		if exp < get_current_time_millis() {
 			// This user needs an exp greater than global-user-exp
-			return Ok(false);
+			return Error::as_result()
+				.status(401)
+				.body(error!(EXPIRED).to_string())?;
 		}
 	}
 
-	Ok(true)
+	Ok(())
 }

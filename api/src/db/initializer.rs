@@ -3,7 +3,8 @@ use std::cmp::Ordering;
 use crate::{
 	app::App,
 	db::{self, get_database_version, set_database_version},
-	models::rbac,
+	migrations,
+	models::{deployment, rbac},
 	query,
 	utils::constants,
 };
@@ -37,6 +38,14 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 	.execute(&app.database)
 	.await?;
 
+	query!(
+		r#"
+		CREATE EXTENSION IF NOT EXISTS citext;
+		"#
+	)
+	.execute(&app.database)
+	.await?;
+
 	// If no tables exist in the database, initialize fresh
 	if tables.is_empty() {
 		log::warn!("No tables exist. Creating fresh");
@@ -44,11 +53,11 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		// Create all tables
 		db::initialize_meta_pre(&mut transaction).await?;
 		db::initialize_users_pre(&mut transaction).await?;
-		db::initialize_organisations_pre(&mut transaction).await?;
+		db::initialize_workspaces_pre(&mut transaction).await?;
 		db::initialize_rbac_pre(&mut transaction).await?;
 
 		db::initialize_rbac_post(&mut transaction).await?;
-		db::initialize_organisations_post(&mut transaction).await?;
+		db::initialize_workspaces_post(&mut transaction).await?;
 		db::initialize_users_post(&mut transaction).await?;
 		db::initialize_meta_post(&mut transaction).await?;
 
@@ -78,7 +87,12 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version.patch
 				);
 
-				db::migrate_database(&mut transaction, version).await?;
+				migrations::run_migrations(
+					&mut transaction,
+					version,
+					&app.config,
+				)
+				.await?;
 
 				transaction.commit().await?;
 				log::info!(
@@ -104,15 +118,47 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 				.expect("GOD_USER_ID was already set");
 		}
 
-		let resource_types =
-			db::get_all_resource_types(&mut transaction).await?;
-		let resource_types = resource_types
+		let resource_types = db::get_all_resource_types(&mut transaction)
+			.await?
 			.into_iter()
 			.map(|resource_type| (resource_type.name, resource_type.id))
 			.collect();
 		rbac::RESOURCE_TYPES
 			.set(resource_types)
 			.expect("RESOURCE_TYPES is already set");
+
+		let permissions = db::get_all_permissions(&mut transaction)
+			.await?
+			.into_iter()
+			.map(|permission| (permission.name, permission.id))
+			.collect();
+		rbac::PERMISSIONS
+			.set(permissions)
+			.expect("PERMISSIONS is already set");
+
+		let machine_types =
+			db::get_all_deployment_machine_types(&mut *transaction)
+				.await?
+				.into_iter()
+				.map(|machine_type| {
+					(
+						machine_type.id,
+						(machine_type.cpu_count, machine_type.memory_count),
+					)
+				})
+				.collect();
+		deployment::MACHINE_TYPES
+			.set(machine_types)
+			.expect("MACHINE_TYPES is already set");
+
+		let regions = db::get_all_deployment_regions(&mut *transaction)
+			.await?
+			.into_iter()
+			.map(|region| (region.id, (region.name, region.cloud_provider)))
+			.collect();
+		deployment::REGIONS
+			.set(regions)
+			.expect("REGIONS is already set");
 
 		drop(transaction);
 
