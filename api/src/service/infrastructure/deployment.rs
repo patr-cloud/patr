@@ -212,6 +212,14 @@ pub async fn start_deployment(
 		"request_id: {} - Updating kubernetes deployment",
 		request_id
 	);
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
 	kubernetes::update_kubernetes_deployment(
 		&workspace_id,
 		&deployment,

@@ -588,6 +588,14 @@ async fn create_deployment(
 				digest
 			);
 			let request_id = request_id.clone();
+
+			db::update_deployment_status(
+				context.get_database_connection(),
+				&id,
+				&DeploymentStatus::Pushed,
+			)
+			.await?;
+
 			task::spawn(async move {
 				log::trace!(
 					"request_id: {} - Acquiring database connection",
@@ -598,7 +606,7 @@ async fn create_deployment(
 				{
 					connection
 				} else {
-					log::error!("Unable to acquire a database connection");
+					log::error!("request_id: {} - Unable to acquire a database connection", request_id);
 					return;
 				};
 				log::trace!(
@@ -628,35 +636,51 @@ async fn create_deployment(
 					return;
 				}
 
-				let _ = service::update_kubernetes_deployment(
-					&workspace_id,
-					&Deployment {
-						id,
-						name,
-						registry,
-						image_tag,
-						status: DeploymentStatus::Deploying,
-						region,
-						machine_type,
-					},
-					&full_image,
-					&DeploymentRunningDetails {
-						min_horizontal_scale,
-						max_horizontal_scale,
-						deploy_on_push,
-						ports,
-						environment_variables,
-					},
-					&config,
-					&request_id,
-				)
-				.await
-				.map_err(|e| {
+				let update_kubernetes_result =
+					service::update_kubernetes_deployment(
+						&workspace_id,
+						&Deployment {
+							id: id.clone(),
+							name,
+							registry,
+							image_tag,
+							status: DeploymentStatus::Deploying,
+							region,
+							machine_type,
+						},
+						&full_image,
+						&DeploymentRunningDetails {
+							min_horizontal_scale,
+							max_horizontal_scale,
+							deploy_on_push,
+							ports,
+							environment_variables,
+						},
+						&config,
+						&request_id,
+					)
+					.await;
+
+				if let Err(error) = update_kubernetes_result {
 					log::error!(
-						"Error deploying deployment: {}",
-						e.get_error()
+						"request_id: {} - Error updating k8s deployment: {}",
+						request_id,
+						error.get_error()
 					);
-				});
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
+						log::error!(
+							"request_id: {} - Error updating db status: {}",
+							request_id,
+							e
+						);
+					});
+				}
 			});
 		}
 	}
@@ -1049,6 +1073,13 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
+			db::update_deployment_status(
+				context.get_database_connection(),
+				&deployment_id,
+				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
 			service::update_kubernetes_deployment(
 				&workspace_id,
 				&deployment,
