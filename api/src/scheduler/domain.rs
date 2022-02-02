@@ -149,32 +149,6 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				// );
 			}
 
-			if unverified_domain.is_ns_internal() {
-				service::create_certificates(
-					&workspace_id,
-					&format!("certificate-{}", unverified_domain.id),
-					&format!("tls-{}", unverified_domain.id),
-					vec![
-						format!("*.{}", unverified_domain.name),
-						unverified_domain.name.clone(),
-					],
-					true,
-					&settings,
-					&request_id,
-				)
-				.await?;
-			} else {
-				service::create_certificates_of_managed_urls_for_domain(
-					&mut connection,
-					&workspace_id,
-					&unverified_domain.id,
-					&unverified_domain.name,
-					&settings,
-					&request_id,
-				)
-				.await?;
-			}
-
 			connection.commit().await?;
 		} else {
 			let response = service::verify_external_domain(
