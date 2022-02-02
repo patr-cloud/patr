@@ -170,6 +170,7 @@ pub async fn create_new_managed_url_in_workspace(
 			&format!("certificate-{}", managed_url_id),
 			&format!("tls-{}", managed_url_id),
 			vec![format!("{}.{}", sub_domain, domain.name)],
+			false,
 			config,
 			request_id,
 		)

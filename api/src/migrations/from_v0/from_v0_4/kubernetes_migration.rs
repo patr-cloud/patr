@@ -1623,7 +1623,7 @@ async fn migrate_static_sites(
 
 		annotations.insert(
 			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer.clone(),
+			config.kubernetes.cert_issuer_dns.clone(),
 		);
 		let ingress_rule = vec![IngressRule {
 			host: Some(format!("{}.patr.cloud", static_site_id)),
