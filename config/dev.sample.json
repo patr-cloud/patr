@@ -75,6 +75,7 @@
 		"authUsername": "",
 		"authToken": "",
 		"contextName": "",
-		"certIssuer": "letsencrypt-staging"
+		"certIssuer": "letsencrypt-staging",
+		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
 	}
 }

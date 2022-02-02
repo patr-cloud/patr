@@ -1583,8 +1583,7 @@ async fn migrate_static_sites(
 			spec: Some(ServiceSpec {
 				type_: Some("ExternalName".to_string()),
 				external_name: Some(
-					"proxy-static-site-service.default.svc.cluster.local"
-						.to_string(),
+					config.kubernetes.static_site_proxy_service.to_string(),
 				),
 				ports: Some(vec![ServicePort {
 					port: 80,
