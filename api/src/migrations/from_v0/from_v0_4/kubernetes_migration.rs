@@ -1122,9 +1122,11 @@ async fn migrate_all_managed_urls(
 			FROM
 				domain
 			WHERE
-				name = $1;
+				name = $1 AND
+				tld = $2;
 			"#,
-			&format!("{}.{}", domain_name, tld)
+			&domain_name,
+			&tld,
 		)
 		.fetch_optional(&mut *connection)
 		.await?
