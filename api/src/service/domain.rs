@@ -318,7 +318,7 @@ pub async fn is_domain_verified(
 				&format!("certificate-{}", domain_id),
 				&format!("tls-{}", domain_id),
 				vec![format!("*.{}", domain.name), domain.name.clone()],
-				domain.is_ns_internal(),
+				true,
 				config,
 				request_id,
 			)
@@ -674,7 +674,6 @@ pub async fn verify_external_domain(
 			workspace_id,
 			domain_id,
 			domain_name,
-			false,
 			config,
 			request_id,
 		)
@@ -787,7 +786,6 @@ pub async fn create_certificates_of_managed_urls_for_domain(
 	workspace_id: &Uuid,
 	domain_id: &Uuid,
 	domain_name: &str,
-	is_internal: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -808,7 +806,7 @@ pub async fn create_certificates_of_managed_urls_for_domain(
 			&format!("certificate-{}", managed_url.id),
 			&format!("tls-{}", managed_url.id),
 			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
-			is_internal,
+			false,
 			config,
 			request_id,
 		)
