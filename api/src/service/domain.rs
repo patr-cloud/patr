@@ -317,7 +317,8 @@ pub async fn is_domain_verified(
 				workspace_id,
 				&format!("certificate-{}", domain_id),
 				&format!("tls-{}", domain_id),
-				vec![format!("*.{}", domain.name), domain.name],
+				vec![format!("*.{}", domain.name), domain.name.clone()],
+				true,
 				config,
 				request_id,
 			)
@@ -805,6 +806,7 @@ pub async fn create_certificates_of_managed_urls_for_domain(
 			&format!("certificate-{}", managed_url.id),
 			&format!("tls-{}", managed_url.id),
 			vec![format!("{}.{}", managed_url.sub_domain, domain_name)],
+			false,
 			config,
 			request_id,
 		)

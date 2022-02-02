@@ -1,9 +1,28 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+	collections::BTreeMap,
+	time::{SystemTime, UNIX_EPOCH},
+};
 
 use api_models::utils::Uuid;
-use k8s_openapi::api::core::v1::Namespace;
+use k8s_openapi::{
+	api::{
+		core::v1::{Namespace, Service, ServicePort, ServiceSpec},
+		networking::v1::{
+			HTTPIngressPath,
+			HTTPIngressRuleValue,
+			Ingress,
+			IngressBackend,
+			IngressRule,
+			IngressServiceBackend,
+			IngressSpec,
+			IngressTLS,
+			ServiceBackendPort,
+		},
+	},
+	apimachinery::pkg::util::intstr::IntOrString,
+};
 use kube::{
-	api::PostParams,
+	api::{Patch, PatchParams, PostParams},
 	config::{
 		AuthInfo,
 		Cluster,
@@ -170,6 +189,7 @@ pub async fn migrate(
 	rename_permissions_to_managed_url(&mut *connection, config).await?;
 	rename_resource_type_to_managed_url(&mut *connection, config).await?;
 	create_all_namespaces(&mut *connection, config).await?;
+	migrate_static_sites(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -1478,5 +1498,184 @@ async fn create_all_namespaces(
 			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 	}
 
+	Ok(())
+}
+
+async fn migrate_static_sites(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let static_sites = query!(
+		r#"
+		SELECT
+			id,
+			workspace_id
+		FROM
+			deployment_static_site
+		WHERE
+			status = 'running';
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.get::<Uuid, _>("id"), row.get::<Uuid, _>("workspace_id")))
+	.collect::<Vec<_>>();
+
+	if static_sites.is_empty() {
+		return Ok(());
+	}
+
+	let kube_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let client = kube::Client::try_from(kube_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	for (static_site_id, workspace_id) in static_sites {
+		let namespace = workspace_id.as_str();
+
+		let kubernetes_service = Service {
+			metadata: ObjectMeta {
+				name: Some(format!("service-{}", static_site_id)),
+				..ObjectMeta::default()
+			},
+			spec: Some(ServiceSpec {
+				type_: Some("ExternalName".to_string()),
+				external_name: Some(
+					config.kubernetes.static_site_proxy_service.to_string(),
+				),
+				ports: Some(vec![ServicePort {
+					port: 80,
+					name: Some("http".to_string()),
+					protocol: Some("TCP".to_string()),
+					target_port: Some(IntOrString::Int(80)),
+					..ServicePort::default()
+				}]),
+				..ServiceSpec::default()
+			}),
+			..Service::default()
+		};
+
+		// Create the service defined above
+		let service_api: Api<Service> =
+			Api::namespaced(client.clone(), namespace);
+		service_api
+			.patch(
+				&format!("service-{}", static_site_id),
+				&PatchParams::apply(&format!("service-{}", static_site_id)),
+				&Patch::Apply(kubernetes_service),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
+			.status
+			.ok_or(sqlx::Error::WorkerCrashed)?;
+
+		let mut annotations: BTreeMap<String, String> = BTreeMap::new();
+		annotations.insert(
+			"kubernetes.io/ingress.class".to_string(),
+			"nginx".to_string(),
+		);
+		annotations.insert(
+			"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
+			format!("{}.patr.cloud", static_site_id),
+		);
+
+		annotations.insert(
+			"cert-manager.io/cluster-issuer".to_string(),
+			config.kubernetes.cert_issuer_dns.clone(),
+		);
+		let ingress_rule = vec![IngressRule {
+			host: Some(format!("{}.patr.cloud", static_site_id)),
+			http: Some(HTTPIngressRuleValue {
+				paths: vec![HTTPIngressPath {
+					backend: IngressBackend {
+						service: Some(IngressServiceBackend {
+							name: format!("service-{}", static_site_id),
+							port: Some(ServiceBackendPort {
+								number: Some(80),
+								..ServiceBackendPort::default()
+							}),
+						}),
+						..Default::default()
+					},
+					path: Some("/".to_string()),
+					path_type: Some("Prefix".to_string()),
+				}],
+			}),
+		}];
+
+		let patr_domain_tls = vec![IngressTLS {
+			hosts: Some(vec![format!("{}.patr.cloud", static_site_id)]),
+			secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
+		}];
+
+		let kubernetes_ingress = Ingress {
+			metadata: ObjectMeta {
+				name: Some(format!("ingress-{}", static_site_id)),
+				annotations: Some(annotations),
+				..ObjectMeta::default()
+			},
+			spec: Some(IngressSpec {
+				rules: Some(ingress_rule),
+				tls: Some(patr_domain_tls),
+				..IngressSpec::default()
+			}),
+			..Ingress::default()
+		};
+		// Create the ingress defined above
+		let ingress_api: Api<Ingress> =
+			Api::namespaced(client.clone(), namespace);
+		ingress_api
+			.patch(
+				&format!("ingress-{}", static_site_id),
+				&PatchParams::apply(&format!("ingress-{}", static_site_id)),
+				&Patch::Apply(kubernetes_ingress),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
+			.status
+			.ok_or(sqlx::Error::WorkerCrashed)?;
+	}
 	Ok(())
 }

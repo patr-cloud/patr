@@ -60,8 +60,7 @@ pub async fn update_kubernetes_static_site(
 		spec: Some(ServiceSpec {
 			type_: Some("ExternalName".to_string()),
 			external_name: Some(
-				"proxy-static-site-service.default.svc.cluster.local"
-					.to_string(),
+				config.kubernetes.static_site_proxy_service.to_string(),
 			),
 			ports: Some(vec![ServicePort {
 				port: 80,
@@ -101,8 +100,8 @@ pub async fn update_kubernetes_static_site(
 	);
 
 	annotations.insert(
-		"cert-manager.io/issuer".to_string(),
-		config.kubernetes.cert_issuer.clone(),
+		"cert-manager.io/cluster-issuer".to_string(),
+		config.kubernetes.cert_issuer_dns.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
 		host: Some(format!("{}.patr.cloud", static_site.id)),

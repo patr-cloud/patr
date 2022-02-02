@@ -96,8 +96,12 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
-					config.kubernetes.cert_issuer.clone(),
+					"cert-manager.io/cluster-issuer".to_string(),
+					if domain.is_ns_internal() {
+						config.kubernetes.cert_issuer_dns.clone()
+					} else {
+						config.kubernetes.cert_issuer_http.clone()
+					},
 				),
 			]
 			.into_iter()
@@ -136,8 +140,12 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
-					config.kubernetes.cert_issuer.clone(),
+					"cert-manager.io/cluster-issuer".to_string(),
+					if domain.is_ns_internal() {
+						config.kubernetes.cert_issuer_dns.clone()
+					} else {
+						config.kubernetes.cert_issuer_http.clone()
+					},
 				),
 			]
 			.into_iter()
@@ -220,8 +228,12 @@ pub async fn update_kubernetes_managed_url(
 						"HTTPS".to_string(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
-						config.kubernetes.cert_issuer.clone(),
+						"cert-manager.io/cluster-issuer".to_string(),
+						if domain.is_ns_internal() {
+							config.kubernetes.cert_issuer_dns.clone()
+						} else {
+							config.kubernetes.cert_issuer_http.clone()
+						},
 					),
 				]
 				.into_iter()
@@ -299,8 +311,12 @@ pub async fn update_kubernetes_managed_url(
 						url.clone(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
-						config.kubernetes.cert_issuer.clone(),
+						"cert-manager.io/cluster-issuer".to_string(),
+						if domain.is_ns_internal() {
+							config.kubernetes.cert_issuer_dns.clone()
+						} else {
+							config.kubernetes.cert_issuer_http.clone()
+						},
 					),
 				]
 				.into_iter()
