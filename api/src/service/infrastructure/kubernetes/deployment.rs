@@ -291,7 +291,7 @@ pub async fn update_kubernetes_deployment(
 		),
 		(
 			"cert-manager.io/cluster-issuer".to_string(),
-			config.kubernetes.cert_issuer.clone(),
+			config.kubernetes.cert_issuer_dns.clone(),
 		),
 	]
 	.into_iter()

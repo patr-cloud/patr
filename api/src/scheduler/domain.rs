@@ -116,6 +116,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					format!("*.{}", unverified_domain.name),
 					unverified_domain.name.clone(),
 				],
+				unverified_domain.is_ns_internal(),
 				&settings,
 				&request_id,
 			)
@@ -154,6 +155,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&format!("certificate-{}", unverified_domain.id),
 					&format!("tls-{}", unverified_domain.id),
 					vec![unverified_domain.name.clone()],
+					unverified_domain.is_ns_internal(),
 					&settings,
 					&request_id,
 				)
@@ -164,6 +166,7 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 					&workspace_id,
 					&unverified_domain.id,
 					&unverified_domain.name,
+					unverified_domain.is_ns_internal(),
 					&settings,
 					&request_id,
 				)

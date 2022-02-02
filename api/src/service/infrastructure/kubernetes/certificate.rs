@@ -16,6 +16,7 @@ pub async fn create_certificates(
 	certificate_name: &str,
 	secret_name: &str,
 	domain_list: Vec<String>,
+	is_internal: bool,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -45,19 +46,35 @@ pub async fn create_certificates(
 	};
 
 	// TODO: use yaml raw string to be converted in to value
-	let certificate_data = json!(
-		{
-			"spec": {
-				"secretName": secret_name,
-				"dnsNames": domain_list,
-				"issuerRef": {
-					"name": config.kubernetes.cert_issuer,
-					"kind": "ClusterIssuer",
-					"group": "cert-manager.io"
-				},
+	let certificate_data = if is_internal {
+		json!(
+			{
+				"spec": {
+					"secretName": secret_name,
+					"dnsNames": domain_list,
+					"issuerRef": {
+						"name": config.kubernetes.cert_issuer_dns,
+						"kind": "ClusterIssuer",
+						"group": "cert-manager.io"
+					},
+				}
 			}
-		}
-	);
+		)
+	} else {
+		json!(
+			{
+				"spec": {
+					"secretName": secret_name,
+					"dnsNames": domain_list,
+					"issuerRef": {
+						"name": config.kubernetes.cert_issuer_http,
+						"kind": "ClusterIssuer",
+						"group": "cert-manager.io"
+					},
+				}
+			}
+		)
+	};
 
 	let certificate = DynamicObject {
 		types: Some(TypeMeta {

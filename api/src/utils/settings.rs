@@ -187,7 +187,8 @@ pub struct KubernetesSettings {
 	pub auth_username: String,
 	pub auth_token: String,
 	pub context_name: String,
-	pub cert_issuer: String,
+	pub cert_issuer_http: String,
+	pub cert_issuer_dns: String,
 	pub static_site_proxy_service: String,
 }
 
