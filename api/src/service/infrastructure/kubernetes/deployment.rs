@@ -290,7 +290,7 @@ pub async fn update_kubernetes_deployment(
 			"nginx".to_string(),
 		),
 		(
-			"cert-manager.io/issuer".to_string(),
+			"cert-manager.io/cluster-issuer".to_string(),
 			config.kubernetes.cert_issuer.clone(),
 		),
 	]
