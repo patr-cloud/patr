@@ -608,22 +608,26 @@ pub async fn migrate(
 				.trim_end_matches('.')
 				.to_string();
 			let name = if name.is_empty() { "@" } else { name.as_str() };
-			let (r#type, value, priority) = match dns_record.content {
+			let (r#type, value, priority, proxied) = match dns_record.content {
 				DnsContent::A { content, .. } => {
-					("A", content.to_string(), None)
+					("A", content.to_string(), None, Some(dns_record.proxied))
 				}
-				DnsContent::AAAA { content, .. } => {
-					("AAAA", content.to_string(), None)
+				DnsContent::AAAA { content, .. } => (
+					"AAAA",
+					content.to_string(),
+					None,
+					Some(dns_record.proxied),
+				),
+				DnsContent::CNAME { content, .. } => {
+					("CNAME", content, None, Some(dns_record.proxied))
 				}
-				DnsContent::CNAME { content, .. } => ("CNAME", content, None),
 				DnsContent::MX { content, priority } => {
-					("MX", content, Some(priority as i32))
+					("MX", content, Some(priority as i32), None)
 				}
-				DnsContent::TXT { content } => ("TXT", content, None),
+				DnsContent::TXT { content } => ("TXT", content, None, None),
 				_ => continue,
 			};
 			let ttl = dns_record.ttl as i64;
-			let proxied = dns_record.proxied;
 
 			let record_id = loop {
 				let uuid = Uuid::new_v4();

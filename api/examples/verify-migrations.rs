@@ -135,7 +135,8 @@ async fn main() {
 
 	println!("If everything is going fine, existing.sql should be exactly the same as fresh.sql");
 	println!("Performing sanity check...");
-	check_if_files_are_equal("existing.sql", "fresh.sql").await;
+	check_if_files_are_equal("existing.sql-replaced", "fresh.sql-replaced")
+		.await;
 	println!("Both files are the exact same. We are sane");
 	println!("Running migration tests...");
 
@@ -358,7 +359,8 @@ async fn handle_release(
 	println!("Migrated database dumped to migrated.sql");
 
 	println!("Checking if migrated.sql is the same as fresh.sql...");
-	check_if_files_are_equal("migrated.sql", "fresh.sql").await;
+	check_if_files_are_equal("migrated.sql-replaced", "fresh.sql-replaced")
+		.await;
 	println!("Both files are the exact same.");
 	println!("Migrations successful against version {}", release.tag_name);
 	println!();
@@ -576,7 +578,7 @@ async fn rewrite_uuids(file_name: &str) {
 		.expect("Unable to read file");
 
 	let replaced = uuid_regex.replace_all(&contents, "<<uuid>>");
-	fs::write(file_name, replaced.to_string())
+	fs::write(format!("{}-replaced", file_name), replaced.to_string())
 		.await
 		.expect("Unable to write back to the file");
 }
