@@ -379,7 +379,6 @@ pub async fn create_patr_domain_dns_record(
 	domain_id: &Uuid,
 	name: &str,
 	ttl: u32,
-	proxied: bool,
 	dns_record: &DnsRecordValue,
 	config: &Settings,
 	request_id: &Uuid,
@@ -401,15 +400,21 @@ pub async fn create_patr_domain_dns_record(
 	let record_id = db::generate_new_resource_id(connection).await?;
 
 	log::trace!("request_id: {} - Getting dns record type", request_id);
-	let (record, priority, dns_record_type) = match dns_record {
-		DnsRecordValue::A { target } => (target, None, DnsRecordType::A),
-		DnsRecordValue::MX { target, priority } => {
-			(target, Some(priority), DnsRecordType::MX)
+	let (record, priority, dns_record_type, proxied) = match dns_record {
+		DnsRecordValue::A { target, proxied } => {
+			(target, None, DnsRecordType::A, Some(*proxied))
 		}
-		DnsRecordValue::TXT { target } => (target, None, DnsRecordType::TXT),
-		DnsRecordValue::AAAA { target } => (target, None, DnsRecordType::AAAA),
-		DnsRecordValue::CNAME { target } => {
-			(target, None, DnsRecordType::CNAME)
+		DnsRecordValue::MX { target, priority } => {
+			(target, Some(priority), DnsRecordType::MX, None)
+		}
+		DnsRecordValue::TXT { target } => {
+			(target, None, DnsRecordType::TXT, None)
+		}
+		DnsRecordValue::AAAA { target, proxied } => {
+			(target, None, DnsRecordType::AAAA, Some(*proxied))
+		}
+		DnsRecordValue::CNAME { target, proxied } => {
+			(target, None, DnsRecordType::CNAME, Some(*proxied))
 		}
 	};
 
@@ -430,7 +435,7 @@ pub async fn create_patr_domain_dns_record(
 
 	log::trace!("request_id: {} - Parsing Dns record type", request_id);
 	let content = match dns_record {
-		DnsRecordValue::A { target } => DnsContent::A {
+		DnsRecordValue::A { target, .. } => DnsContent::A {
 			content: target.parse::<Ipv4Addr>()?,
 		},
 		DnsRecordValue::MX { target, priority } => DnsContent::MX {
@@ -440,10 +445,10 @@ pub async fn create_patr_domain_dns_record(
 		DnsRecordValue::TXT { target } => DnsContent::TXT {
 			content: target.clone(),
 		},
-		DnsRecordValue::AAAA { target } => DnsContent::AAAA {
+		DnsRecordValue::AAAA { target, .. } => DnsContent::AAAA {
 			content: target.parse::<Ipv6Addr>()?,
 		},
-		DnsRecordValue::CNAME { target } => DnsContent::CNAME {
+		DnsRecordValue::CNAME { target, .. } => DnsContent::CNAME {
 			content: target.clone(),
 		},
 	};
@@ -456,7 +461,7 @@ pub async fn create_patr_domain_dns_record(
 			params: CreateDnsRecordParams {
 				ttl: Some(ttl),
 				priority: None,
-				proxied: Some(proxied),
+				proxied,
 				name,
 				content,
 			},
@@ -498,7 +503,7 @@ pub async fn update_patr_domain_dns_record(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,
 	record_id: &Uuid,
-	content: Option<&str>,
+	target: Option<&str>,
 	ttl: Option<u32>,
 	proxied: Option<bool>,
 	priority: Option<u16>,
@@ -530,14 +535,14 @@ pub async fn update_patr_domain_dns_record(
 	db::update_patr_domain_dns_record(
 		connection,
 		record_id,
-		content,
+		target,
 		priority.map(|p| p as i32),
 		ttl.map(|ttl| ttl as i64),
 		proxied,
 	)
 	.await?;
 
-	let record = if let Some(record) = content {
+	let record = if let Some(record) = target {
 		record
 	} else {
 		&dns_record.value

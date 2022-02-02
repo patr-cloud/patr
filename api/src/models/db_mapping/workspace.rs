@@ -57,7 +57,7 @@ pub struct DnsRecord {
 	pub value: String,
 	pub priority: Option<i32>,
 	pub ttl: i64,
-	pub proxied: bool,
+	pub proxied: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
