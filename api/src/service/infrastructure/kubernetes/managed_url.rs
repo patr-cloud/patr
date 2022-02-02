@@ -96,7 +96,7 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
+					"cert-manager.io/cluster-issuer".to_string(),
 					config.kubernetes.cert_issuer.clone(),
 				),
 			]
@@ -136,7 +136,7 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
+					"cert-manager.io/cluster-issuer".to_string(),
 					config.kubernetes.cert_issuer.clone(),
 				),
 			]
@@ -220,7 +220,7 @@ pub async fn update_kubernetes_managed_url(
 						"HTTPS".to_string(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
+						"cert-manager.io/cluster-issuer".to_string(),
 						config.kubernetes.cert_issuer.clone(),
 					),
 				]
@@ -299,7 +299,7 @@ pub async fn update_kubernetes_managed_url(
 						url.clone(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
+						"cert-manager.io/cluster-issuer".to_string(),
 						config.kubernetes.cert_issuer.clone(),
 					),
 				]

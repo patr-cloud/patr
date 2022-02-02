@@ -101,7 +101,7 @@ pub async fn update_kubernetes_static_site(
 	);
 
 	annotations.insert(
-		"cert-manager.io/issuer".to_string(),
+		"cert-manager.io/cluster-issuer".to_string(),
 		config.kubernetes.cert_issuer.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
