@@ -736,8 +736,8 @@ pub async fn get_domain_by_name(
 		FROM
 			domain
 		WHERE
-			name = $1 AND
-			name NOT LIKE CONCAT(
+			CONCAT(domain.name, '.', domain.tld) = $1 AND
+			domain.name NOT LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(domain.id::TEXT, '-', ''),
 				'@%'
