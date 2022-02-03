@@ -996,3 +996,25 @@ pub async fn get_dns_record_count_for_domain(
 	.await
 	.map(|row| row.count.unwrap_or(0))
 }
+
+pub async fn update_dns_record_identifier(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	record_id: &Uuid,
+	record_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_domain_dns_record
+		SET
+			record_identifier = $1
+		WHERE
+			id = $2;
+		"#,
+		record_identifier,
+		record_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}

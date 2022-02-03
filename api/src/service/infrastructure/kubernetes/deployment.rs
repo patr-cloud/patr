@@ -371,7 +371,7 @@ pub async fn update_kubernetes_deployment(
 	log::trace!("request_id: {} - deployment created", request_id);
 
 	log::trace!(
-		"request_id: {} - App ingress is at {}.patr.cloud",
+		"request_id: {} - App ingress is at port-{}.patr.cloud",
 		request_id,
 		deployment.id
 	);
@@ -391,30 +391,6 @@ pub async fn delete_kubernetes_deployment(
 	);
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
-	if !super::deployment_exists(
-		deployment_id,
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.await?
-	{
-		log::trace!(
-			"request_id: {} - App doesn't exist as {}",
-			request_id,
-			deployment_id
-		);
-		log::trace!(
-			"request_id: {} - deployment deleted successfully!",
-			request_id
-		);
-		return Ok(());
-	}
-
-	log::trace!(
-		"request_id: {} - App exists as {}",
-		request_id,
-		deployment_id
-	);
 	digitalocean::delete_image_from_digitalocean_registry(
 		deployment_id,
 		config,
@@ -422,29 +398,95 @@ pub async fn delete_kubernetes_deployment(
 	)
 	.await?;
 
-	log::trace!("request_id: {} - deleting the deployment", request_id);
+	if super::deployment_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - Deployment exists as deployment-{}",
+			request_id,
+			deployment_id
+		);
 
-	Api::<K8sDeployment>::namespaced(
+		log::trace!("request_id: {} - deleting the deployment", request_id);
+
+		Api::<K8sDeployment>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(deployment_id.as_str(), &DeleteParams::default())
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No deployment found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
+	if super::service_exists(
+		deployment_id,
 		kubernetes_client.clone(),
 		workspace_id.as_str(),
 	)
-	.delete(deployment_id.as_str(), &DeleteParams::default())
-	.await?;
-	Api::<Service>::namespaced(
-		kubernetes_client.clone(),
-		workspace_id.as_str(),
-	)
-	.delete(
-		&format!("service-{}", deployment_id),
-		&DeleteParams::default(),
-	)
-	.await?;
-	Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - Service exists as service-{}",
+			request_id,
+			deployment_id
+		);
+		log::trace!("request_id: {} - deleting the service", request_id);
+		Api::<Service>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
 		.delete(
-			&format!("ingress-{}", deployment_id),
+			&format!("service-{}", deployment_id),
 			&DeleteParams::default(),
 		)
 		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No deployment service found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
+	if super::ingress_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - Ingress exists as ingress-{}",
+			request_id,
+			deployment_id
+		);
+		log::trace!("request_id: {} - deleting the ingress", request_id);
+		Api::<Ingress>::namespaced(kubernetes_client, workspace_id.as_str())
+			.delete(
+				&format!("ingress-{}", deployment_id),
+				&DeleteParams::default(),
+			)
+			.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No deployment ingress found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
 	log::trace!(
 		"request_id: {} - deployment deleted successfully!",
 		request_id

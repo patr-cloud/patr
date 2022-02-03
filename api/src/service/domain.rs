@@ -51,6 +51,7 @@ use crate::{
 		constants::{self},
 		get_current_time_millis,
 		settings::Settings,
+		validator,
 		Error,
 	},
 	Database,
@@ -385,6 +386,14 @@ pub async fn create_patr_domain_dns_record(
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// check if domain is patr controlled
+	log::trace!("request_id: {} - Checking if name is valid", request_id);
+
+	if !validator::is_dns_record_name_valid(name) {
+		Error::as_result()
+			.status(200)
+			.body(error!(INVALID_DNS_RECORD_NAME).to_string())?;
+	};
+
 	log::trace!(
 		"request_id: {} - Checking if domain is patr controlled",
 		request_id
@@ -454,6 +463,22 @@ pub async fn create_patr_domain_dns_record(
 		},
 	};
 
+	// add to db
+	log::trace!("request_id: {} - Adding to db", request_id);
+	db::create_patr_domain_dns_record(
+		connection,
+		&record_id,
+		Uuid::nil().as_str(),
+		domain_id,
+		name,
+		&dns_record_type,
+		record,
+		priority.map(|p| *p as i32),
+		ttl as i64,
+		proxied,
+	)
+	.await?;
+
 	// send request to Cloudflare
 	log::trace!("request_id: {} - Sending request to Cloudflare for creating DNS record", request_id);
 	let dns_identifier = client
@@ -476,21 +501,10 @@ pub async fn create_patr_domain_dns_record(
 		dns_identifier
 	);
 
-	// add to db
-	log::trace!("request_id: {} - Adding to db", request_id);
-	db::create_patr_domain_dns_record(
-		connection,
-		&record_id,
-		&dns_identifier,
-		domain_id,
-		name,
-		&dns_record_type,
-		record,
-		priority.map(|p| *p as i32),
-		ttl as i64,
-		proxied,
-	)
-	.await?;
+	log::trace!("request_id: {} - Updating patr domain dns record with record identifier", request_id);
+
+	db::update_dns_record_identifier(connection, &record_id, &dns_identifier)
+		.await?;
 
 	log::trace!(
 		"request_id: {} - Created DNS record id: {}",
