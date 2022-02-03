@@ -5,7 +5,7 @@ services:
     network_mode: host
     image: registry:2
     ports:
-      - 5004:5004
+      - 5000:5000
     volumes:
       - ./dev.registry.yml:/etc/docker/registry/config.yml
       - ./certs:/certs
