@@ -4199,6 +4199,26 @@
       ]
     }
   },
+  "a1417b8a2899e7c48e46db1824b5c06fcfed90d96901d1b439fda33e3c7a0c16": {
+    "query": "SELECT GREATEST(resource.created, docker_registry_repository_manifest.created, docker_registry_repository_tag.last_updated) as \"last_updated!\" FROM resource LEFT JOIN docker_registry_repository_manifest ON resource.id = docker_registry_repository_manifest.repository_id LEFT JOIN docker_registry_repository_tag ON resource.id = docker_registry_repository_tag.repository_id WHERE resource.id = $1 ORDER BY GREATEST(resource.created, docker_registry_repository_manifest.created, docker_registry_repository_tag.last_updated) DESC;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "last_updated!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;",
     "describe": {
