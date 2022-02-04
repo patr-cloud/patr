@@ -24,6 +24,7 @@ pub async fn migrate(
 	match (version.major, version.minor, version.patch) {
 		(0, 5, 0) => migrate_from_v0_5_0(&mut *connection, config).await?,
 		(0, 5, 1) => migrate_from_v0_5_1(&mut *connection, config).await?,
+		(0, 5, 2) => migrate_from_v0_5_2(&mut *connection, config).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -40,6 +41,13 @@ async fn migrate_from_v0_5_0(
 }
 
 async fn migrate_from_v0_5_1(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_5_2(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
