@@ -609,7 +609,8 @@ pub async fn get_last_updated_for_docker_repository(
 					ORDER BY
 						created DESC
 					LIMIT 1
-				)) as "last_updated!"
+				)
+			) as "last_updated!"
 		FROM
 			resource
 		WHERE
