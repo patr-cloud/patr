@@ -6779,6 +6779,26 @@
       "nullable": []
     }
   },
+  "e9d0764903c5d929f560f8069e0e610181f2724a5642fe65ba3a94dcba724460": {
+    "query": "SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ) ) as \"last_updated!\" FROM resource WHERE resource.id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "last_updated!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
   "ea6dfc14493175d975a95da55d24d8da3232f3eb8e199a7505a1ea890fe86f38": {
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
     "describe": {
@@ -7223,26 +7243,6 @@
         false,
         false,
         true
-      ]
-    }
-  },
-  "fa64c4a762d7d199ad6ae7513e45426752ae7d39d85e709c8702575b7781adbd": {
-    "query": "SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 )) as \"last_updated!\" FROM resource WHERE resource.id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "last_updated!",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        null
       ]
     }
   },
