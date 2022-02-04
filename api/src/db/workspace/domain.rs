@@ -736,8 +736,8 @@ pub async fn get_domain_by_name(
 		FROM
 			domain
 		WHERE
-			name = $1 AND
-			name NOT LIKE CONCAT(
+			CONCAT(domain.name, '.', domain.tld) = $1 AND
+			domain.name NOT LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(domain.id::TEXT, '-', ''),
 				'@%'
@@ -995,4 +995,26 @@ pub async fn get_dns_record_count_for_domain(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.count.unwrap_or(0))
+}
+
+pub async fn update_dns_record_identifier(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	record_id: &Uuid,
+	record_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_domain_dns_record
+		SET
+			record_identifier = $1
+		WHERE
+			id = $2;
+		"#,
+		record_identifier,
+		record_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

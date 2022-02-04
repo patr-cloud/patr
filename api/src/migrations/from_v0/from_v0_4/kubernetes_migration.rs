@@ -698,7 +698,7 @@ async fn migrate_machine_types(
 					deployment_machine_type_new
 				WHERE
 					cpu_count = 2 AND
-					memory_count = 16
+					memory_count = 8
 			)
 		WHERE
 			machine_type = 'large';
@@ -819,10 +819,10 @@ async fn delete_all_do_apps(
 			.await
 			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 		if !response.status().is_success() {
-			return Err(sqlx::Error::Protocol(format!(
+			log::info!(
 				"failed to delete DO app: `{:#?}`",
 				response.text().await
-			)));
+			);
 		}
 	}
 

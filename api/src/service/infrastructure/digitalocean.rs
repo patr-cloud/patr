@@ -5,6 +5,7 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::AsError;
+use http::StatusCode;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
 
@@ -178,7 +179,9 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 		.await?
 		.status();
 
-	if container_status.is_server_error() || container_status.is_client_error()
+	if (container_status.is_server_error() ||
+		container_status.is_client_error()) &&
+		(container_status != StatusCode::NOT_FOUND)
 	{
 		return Error::as_result()
 			.status(500)

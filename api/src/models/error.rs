@@ -51,6 +51,7 @@ pub mod id {
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
 	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
+	pub const INVALID_DNS_RECORD_NAME: &str = "invalidDnsRecordName";
 }
 
 #[allow(dead_code)]
@@ -157,4 +158,5 @@ pub mod message {
 		"The domain has nameservers outside of Patr";
 	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
+	pub const INVALID_DNS_RECORD_NAME: &str = "The DNS record name is invalid";
 }
