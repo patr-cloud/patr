@@ -794,7 +794,7 @@ async fn add_dns_record(
 		context.get_database_connection(),
 		&workspace_id,
 		&domain_id,
-		&name,
+		&name.to_lowercase(),
 		ttl,
 		&r#type,
 		&config,

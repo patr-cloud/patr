@@ -550,16 +550,17 @@ async fn get_docker_repository_info(
 		&repository_id,
 	)
 	.await?;
-	let mut last_updated = 0; // TODO fetch this from the db for the sake of pagination
+	let last_updated = db::get_last_updated_for_docker_repository(
+		context.get_database_connection(),
+		&repository_id,
+	)
+	.await?;
 
 	let images = db::get_list_of_digests_for_docker_repository(
 		context.get_database_connection(),
 		&repository_id,
 	)
 	.await?;
-	images.iter().for_each(|image| {
-		last_updated = last_updated.max(image.created);
-	});
 
 	log::trace!(
 		"request_id: {} - Docker repository info fetched",

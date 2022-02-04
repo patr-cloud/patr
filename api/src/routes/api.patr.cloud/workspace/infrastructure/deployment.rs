@@ -1069,7 +1069,9 @@ async fn update_deployment(
 		.await?;
 
 	match &deployment.status {
-		DeploymentStatus::Stopped | DeploymentStatus::Deleted => {
+		DeploymentStatus::Stopped |
+		DeploymentStatus::Deleted |
+		DeploymentStatus::Created => {
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {

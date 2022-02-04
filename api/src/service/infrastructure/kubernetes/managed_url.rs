@@ -409,7 +409,7 @@ pub async fn delete_kubernetes_managed_url(
 		);
 	} else {
 		log::trace!(
-			"request_id: {} - managed URL doesn't exist as {}",
+			"request_id: {} - managed URL service doesn't exist as service-{}",
 			request_id,
 			managed_url_id
 		);
@@ -436,7 +436,7 @@ pub async fn delete_kubernetes_managed_url(
 			.await?;
 	} else {
 		log::trace!(
-			"request_id: {} - ingress doesn't exist as {}",
+			"request_id: {} - managed URL ingress doesn't exist as ingress-{}",
 			request_id,
 			managed_url_id
 		);

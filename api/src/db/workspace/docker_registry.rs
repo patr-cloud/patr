@@ -578,3 +578,47 @@ pub async fn delete_tag_from_docker_repository(
 	.await
 	.map(|_| ())
 }
+
+pub async fn get_last_updated_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<u64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT 
+			GREATEST(
+				resource.created, 
+				(
+					SELECT 
+						COALESCE(created, 0) 
+					FROM 
+						docker_registry_repository_manifest 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				), 
+				(
+					SELECT 
+						COALESCE(last_updated, 0) 
+					FROM 
+						docker_registry_repository_tag 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				)
+			) as "last_updated!"
+		FROM
+			resource
+		WHERE
+			resource.id = $1;
+		"#,
+		repository_id as _
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.last_updated as u64)
+}

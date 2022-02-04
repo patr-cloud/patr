@@ -194,7 +194,7 @@ pub async fn delete_kubernetes_static_site(
 	.await?
 	{
 		log::trace!(
-			"request_id: {} - site exists as {}",
+			"request_id: {} - static site service exists as service-{}",
 			request_id,
 			static_site_id
 		);
@@ -205,6 +205,27 @@ pub async fn delete_kubernetes_static_site(
 				&DeleteParams::default(),
 			)
 			.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - static site doesn't exist as service-{} in the namespace: {}",
+			request_id,
+			static_site_id,
+			namespace,
+		);
+	}
+
+	if super::ingress_exists(
+		static_site_id,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - ingress exists as ingress-{}",
+			request_id,
+			static_site_id
+		);
 		Api::<Ingress>::namespaced(kubernetes_client, namespace)
 			.delete(
 				&format!("ingress-{}", static_site_id),
@@ -213,9 +234,10 @@ pub async fn delete_kubernetes_static_site(
 			.await?;
 	} else {
 		log::trace!(
-			"request_id: {} - App doesn't exist as {}",
+			"request_id: {} - static site ingress doesn't exist as ingress-{} in the namespace: {}",
 			request_id,
-			static_site_id
+			static_site_id,
+			namespace,
 		);
 	}
 
