@@ -1,6 +1,25 @@
-use semver::Version;
+use std::collections::BTreeMap;
 
-use crate::{utils::settings::Settings, Database};
+use api_models::utils::Uuid;
+use k8s_openapi::api::core::v1::Secret;
+use kube::{
+	api::{Patch, PatchParams},
+	config::{
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
+		NamedContext,
+	},
+	Api,
+	Config,
+};
+use semver::Version;
+use sqlx::Row;
+
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -48,8 +67,113 @@ async fn migrate_from_v0_5_1(
 }
 
 async fn migrate_from_v0_5_2(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"))
+	.collect::<Vec<_>>();
+
+	if workspaces.is_empty() {
+		return Ok(());
+	}
+
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let client = kube::Client::try_from(kubernetes_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
+		.get("tls-domain-domain-wildcard-patr-cloud")
+		.await
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let annotations = wild_card_secret
+		.metadata
+		.annotations
+		.ok_or(sqlx::Error::WorkerCrashed)?
+		.into_iter()
+		.filter(|(key, _)| key.contains("cert-manager.io"))
+		.collect::<BTreeMap<String, String>>();
+
+	for workspace in workspaces {
+		let mut workspace_secret =
+			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
+				.get("tls-domain-domain-wildcard-patr-cloud")
+				.await
+				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		let mut secret_annotations = workspace_secret
+			.metadata
+			.annotations
+			.ok_or(sqlx::Error::WorkerCrashed)?
+			.into_iter()
+			.filter(|(key, _)| !key.contains("cert-manager.io"))
+			.collect::<BTreeMap<String, String>>();
+
+		secret_annotations.append(&mut annotations.clone());
+
+		workspace_secret.metadata.annotations = Some(secret_annotations);
+
+		Api::<Secret>::namespaced(client.clone(), workspace.as_str())
+			.patch(
+				"tls-domain-domain-wildcard-patr-cloud",
+				&PatchParams::apply("tls-domain-domain-wildcard-patr-cloud"),
+				&Patch::Apply(workspace_secret),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
+
 	Ok(())
 }

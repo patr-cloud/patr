@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use num_traits::ToPrimitive;
 
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
@@ -164,7 +165,7 @@ pub async fn get_docker_repositories_for_workspace(
 			id as "id: Uuid",
 			workspace_id as "workspace_id: Uuid",
 			name::TEXT as "name!: String",
-			COALESCE(size, 0) as "size!: i64"
+			COALESCE(size, 0) as "size!"
 		FROM
 			docker_registry_repository
 		LEFT JOIN (
@@ -189,13 +190,18 @@ pub async fn get_docker_repositories_for_workspace(
 	.await?
 	.into_iter()
 	.map(|row| {
+		let size = if let Some(size) = row.size.to_u64() {
+			size
+		} else {
+			0
+		};
 		(
 			DockerRepository {
 				id: row.id,
 				name: row.name,
 				workspace_id: row.workspace_id,
 			},
-			row.size as u64,
+			size,
 		)
 	})
 	.collect();
