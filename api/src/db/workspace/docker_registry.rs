@@ -585,21 +585,35 @@ pub async fn get_last_updated_for_docker_repository(
 ) -> Result<u64, sqlx::Error> {
 	query!(
 		r#"
-		SELECT GREATEST(resource.created, docker_registry_repository_manifest.created, docker_registry_repository_tag.last_updated) as "last_updated!"
+		SELECT 
+			GREATEST(
+				resource.created, 
+				(
+					SELECT 
+						COALESCE(created, 0) 
+					FROM 
+						docker_registry_repository_manifest 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				), 
+				(
+					SELECT 
+						COALESCE(last_updated, 0) 
+					FROM 
+						docker_registry_repository_tag 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				)) as "last_updated!"
 		FROM
 			resource
-		LEFT JOIN
-			docker_registry_repository_manifest
-		ON
-			resource.id = docker_registry_repository_manifest.repository_id
-		LEFT JOIN
-			docker_registry_repository_tag
-		ON
-			resource.id = docker_registry_repository_tag.repository_id
 		WHERE
-			resource.id = $1
-		ORDER BY
-			GREATEST(resource.created, docker_registry_repository_manifest.created, docker_registry_repository_tag.last_updated) DESC;
+			resource.id = $1;
 		"#,
 		repository_id as _
 	)
