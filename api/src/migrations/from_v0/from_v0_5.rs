@@ -135,7 +135,7 @@ async fn migrate_from_v0_5_2(
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
 	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
-		.get("tls-domain-domain-wildcard-patr-cloud")
+		.get("tls-domain-wildcard-patr-cloud")
 		.await
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
@@ -150,7 +150,7 @@ async fn migrate_from_v0_5_2(
 	for workspace in workspaces {
 		let mut workspace_secret =
 			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
-				.get("tls-domain-domain-wildcard-patr-cloud")
+				.get("tls-domain-wildcard-patr-cloud")
 				.await
 				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 		let mut secret_annotations = workspace_secret
@@ -158,7 +158,7 @@ async fn migrate_from_v0_5_2(
 			.annotations
 			.ok_or(sqlx::Error::WorkerCrashed)?
 			.into_iter()
-			.filter(|(key, _)| !key.contains("cert-manager.io"))
+			.filter(|(key, _)| !key.starts_with("cert-manager.io/"))
 			.collect::<BTreeMap<String, String>>();
 
 		secret_annotations.append(&mut annotations.clone());
@@ -167,8 +167,8 @@ async fn migrate_from_v0_5_2(
 
 		Api::<Secret>::namespaced(client.clone(), workspace.as_str())
 			.patch(
-				"tls-domain-domain-wildcard-patr-cloud",
-				&PatchParams::apply("tls-domain-domain-wildcard-patr-cloud"),
+				"tls-domain-wildcard-patr-cloud",
+				&PatchParams::apply("tls-domain-wildcard-patr-cloud"),
 				&Patch::Apply(workspace_secret),
 			)
 			.await

@@ -45,7 +45,7 @@ pub async fn create_kubernetes_namespace(
 	);
 
 	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
-		.get("tls-domain-domain-wildcard-patr-cloud")
+		.get("tls-domain-wildcard-patr-cloud")
 		.await?;
 
 	let mut annotations = wild_card_secret
@@ -54,12 +54,12 @@ pub async fn create_kubernetes_namespace(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?
 		.into_iter()
-		.filter(|(key, _)| !key.contains("cert-manager.io"))
+		.filter(|(key, _)| key.starts_with("cert-manager.io"))
 		.collect::<BTreeMap<String, String>>();
 
 	let mut reflector_annotation = [(
 		"reflector.v1.k8s.emberstack.com/reflects".to_string(),
-		"default/tls-domain-domain-wildcard-patr-cloud".to_string(),
+		"default/tls-domain-wildcard-patr-cloud".to_string(),
 	)]
 	.into_iter()
 	.collect();
@@ -71,7 +71,7 @@ pub async fn create_kubernetes_namespace(
 		immutable: wild_card_secret.immutable,
 		metadata: ObjectMeta {
 			annotations: Some(annotations),
-			name: Some("tls-domain-domain-wildcard-patr-cloud".to_string()),
+			name: Some("tls-domain-wildcard-patr-cloud".to_string()),
 			namespace: Some(namespace_name.to_string()),
 			..ObjectMeta::default()
 		},
@@ -80,8 +80,8 @@ pub async fn create_kubernetes_namespace(
 
 	Api::<Secret>::namespaced(client, namespace_name)
 		.patch(
-			"tls-domain-domain-wildcard-patr-cloud",
-			&PatchParams::apply("tls-domain-domain-wildcard-patr-cloud"),
+			"tls-domain-wildcard-patr-cloud",
+			&PatchParams::apply("tls-domain-wildcard-patr-cloud"),
 			&Patch::Apply(wild_card_secret),
 		)
 		.await?;

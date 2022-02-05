@@ -1,0 +1,144 @@
+{
+  "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE id = $1 AND status != 'deleted';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "db_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "engine: _",
+        "type_info": {
+          "Custom": {
+            "name": "managed_database_engine",
+            "kind": {
+              "Enum": [
+                "postgres",
+                "mysql"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "num_nodes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "database_plan: _",
+        "type_info": {
+          "Custom": {
+            "name": "managed_database_plan",
+            "kind": {
+              "Enum": [
+                "nano",
+                "micro",
+                "small",
+                "medium",
+                "large",
+                "xlarge",
+                "xxlarge",
+                "mammoth"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "region",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status: _",
+        "type_info": {
+          "Custom": {
+            "name": "managed_database_status",
+            "kind": {
+              "Enum": [
+                "creating",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "host",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "username",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "workspace_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 14,
+        "name": "digitalocean_db_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "fa9213a72b19a2d2ddedbf3309082989a735933d738146936c5a852521f327f9"
+}
