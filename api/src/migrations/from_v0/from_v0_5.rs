@@ -70,6 +70,17 @@ async fn migrate_from_v0_5_2(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	update_wild_card_certificate(connection, config).await?;
+
+	update_empty_tags(connection).await?;
+
+	Ok(())
+}
+
+async fn update_wild_card_certificate(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -83,11 +94,9 @@ async fn migrate_from_v0_5_2(
 	.into_iter()
 	.map(|row| row.get::<Uuid, _>("id"))
 	.collect::<Vec<_>>();
-
 	if workspaces.is_empty() {
 		return Ok(());
 	}
-
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
@@ -130,15 +139,12 @@ async fn migrate_from_v0_5_2(
 	)
 	.await
 	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let client = kube::Client::try_from(kubernetes_config)
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
 		.get("tls-domain-wildcard-patr-cloud")
 		.await
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let annotations = wild_card_secret
 		.metadata
 		.annotations
@@ -146,7 +152,6 @@ async fn migrate_from_v0_5_2(
 		.into_iter()
 		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
-
 	for workspace in workspaces {
 		let mut workspace_secret =
 			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
@@ -174,6 +179,24 @@ async fn migrate_from_v0_5_2(
 			.await
 			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 	}
+	Ok(())
+}
+
+async fn update_empty_tags(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			image_tag = 'latest'
+		WHERE
+			image_tag = '';
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
