@@ -97,6 +97,7 @@ dependencies = [
  "lettre",
  "log",
  "log4rs",
+ "num-traits 0.2.14",
  "num_cpus",
  "once_cell",
  "openssh",
