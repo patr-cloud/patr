@@ -144,7 +144,7 @@ async fn migrate_from_v0_5_2(
 		.annotations
 		.ok_or(sqlx::Error::WorkerCrashed)?
 		.into_iter()
-		.filter(|(key, _)| key.contains("cert-manager.io"))
+		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
 
 	for workspace in workspaces {

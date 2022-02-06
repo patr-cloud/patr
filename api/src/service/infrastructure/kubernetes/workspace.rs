@@ -54,7 +54,7 @@ pub async fn create_kubernetes_namespace(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?
 		.into_iter()
-		.filter(|(key, _)| key.starts_with("cert-manager.io"))
+		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
 
 	let mut reflector_annotation = [(
