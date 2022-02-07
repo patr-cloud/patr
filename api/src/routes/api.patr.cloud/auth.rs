@@ -442,7 +442,7 @@ async fn get_access_token(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let login_id = context
 		.get_request()
-		.get_params()
+		.get_query()
 		.get(request_keys::LOGIN_ID)
 		.map(|value| Uuid::parse_str(value).ok())
 		.flatten()
