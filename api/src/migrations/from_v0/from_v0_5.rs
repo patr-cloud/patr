@@ -52,6 +52,17 @@ pub async fn migrate(
 	Ok(())
 }
 
+/// # Description
+/// The function is used to get a list of all 0.3.x migrations to migrate the
+/// database from
+///
+/// # Return
+/// This function returns [&'static str; _] containing a list of all migration
+/// versions
+pub fn get_migrations() -> Vec<&'static str> {
+	vec!["0.5.0", "0.5.1", "0.5.2"]
+}
+
 async fn migrate_from_v0_5_0(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -70,6 +81,17 @@ async fn migrate_from_v0_5_2(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	update_patr_wildcard_certificates(connection, config).await?;
+	remove_empty_tags_for_deployments(connection).await?;
+	update_deployment_table_constraint(connection).await?;
+
+	Ok(())
+}
+
+async fn update_patr_wildcard_certificates(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -83,11 +105,9 @@ async fn migrate_from_v0_5_2(
 	.into_iter()
 	.map(|row| row.get::<Uuid, _>("id"))
 	.collect::<Vec<_>>();
-
 	if workspaces.is_empty() {
 		return Ok(());
 	}
-
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
@@ -130,15 +150,12 @@ async fn migrate_from_v0_5_2(
 	)
 	.await
 	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let client = kube::Client::try_from(kubernetes_config)
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
 		.get("tls-domain-wildcard-patr-cloud")
 		.await
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-
 	let annotations = wild_card_secret
 		.metadata
 		.annotations
@@ -146,7 +163,6 @@ async fn migrate_from_v0_5_2(
 		.into_iter()
 		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
-
 	for workspace in workspaces {
 		let mut workspace_secret =
 			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
@@ -174,6 +190,43 @@ async fn migrate_from_v0_5_2(
 			.await
 			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 	}
+	Ok(())
+}
+
+async fn remove_empty_tags_for_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			image_tag = 'latest'
+		WHERE
+			image_tag = '';
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_deployment_table_constraint(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE
+			deployment
+		ADD CONSTRAINT deployment_chk_image_tag_is_valid 
+		CHECK(
+			image_tag != ''
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

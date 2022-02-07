@@ -1,7 +1,7 @@
 use api_models::utils::Uuid;
 
 #[derive(sqlx::Type, Debug, PartialEq)]
-#[sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "lowercase")]
+#[sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")]
 pub enum ManagedUrlType {
 	ProxyToDeployment,
 	ProxyToStaticSite,
