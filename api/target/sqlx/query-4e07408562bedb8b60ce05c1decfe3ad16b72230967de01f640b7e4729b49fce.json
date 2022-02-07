@@ -1,0 +1,13 @@
+{
+  "query": "DELETE FROM workspace_user WHERE role_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ddf2963936615eb58225ace43d720c4c708e1abced58c94dc7a8d9b83c0f6321"
+}
