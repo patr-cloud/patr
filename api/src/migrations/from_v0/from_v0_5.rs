@@ -70,14 +70,14 @@ async fn migrate_from_v0_5_2(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	update_wild_card_certificate(connection, config).await?;
-
-	update_empty_tags(connection).await?;
+	update_patr_wildcard_certificates(connection, config).await?;
+	remove_empty_tags_for_deployments(connection).await?;
+	update_deployment_table_constraint(connection).await?;
 
 	Ok(())
 }
 
-async fn update_wild_card_certificate(
+async fn update_patr_wildcard_certificates(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -182,7 +182,7 @@ async fn update_wild_card_certificate(
 	Ok(())
 }
 
-async fn update_empty_tags(
+async fn remove_empty_tags_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	query!(
@@ -198,5 +198,23 @@ async fn update_empty_tags(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn update_deployment_table_constraint(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE
+			deployment
+		ADD CONSTRAINT deployment_chk_image_tag_is_valid 
+		CHECK(
+			image_tag != ''
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 	Ok(())
 }
