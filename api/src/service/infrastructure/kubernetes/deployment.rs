@@ -417,7 +417,10 @@ pub async fn delete_kubernetes_deployment(
 			kubernetes_client.clone(),
 			workspace_id.as_str(),
 		)
-		.delete(deployment_id.as_str(), &DeleteParams::default())
+		.delete(
+			&format!("deployment-{}", deployment_id),
+			&DeleteParams::default(),
+		)
 		.await?;
 	} else {
 		log::trace!(
@@ -558,7 +561,7 @@ pub async fn get_kubernetes_deployment_status(
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 	let deployment_status =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
-			.get(deployment.id.as_str())
+			.get(&format!("deployment-{}", deployment.id))
 			.await?
 			.status
 			.status(500)

@@ -246,7 +246,11 @@ pub async fn notification_handler(
 			let config = config.clone();
 
 			let request_id = request_id.clone();
-
+			log::trace!(
+				"request_id: {} - Updating the deployment with id: {}",
+				request_id,
+				deployment.id
+			);
 			task::spawn(async move {
 				log::trace!(
 					"request_id: {} - Acquiring database connection",

@@ -142,6 +142,9 @@ pub async fn initialize_deployment_pre(
 					image_name IS NOT NULL AND
 					repository_id IS NULL
 				)
+			),
+			CONSTRAINT deployment_chk_image_tag_is_valid CHECK(
+				image_tag != ''
 			)
 		);
 		"#

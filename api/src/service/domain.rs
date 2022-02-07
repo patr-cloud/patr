@@ -75,15 +75,15 @@ use crate::{
 //TODO: add log statements
 pub async fn ensure_personal_domain_exists(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	domain_name: &str,
+	full_domain_name: &str,
 ) -> Result<Uuid, Error> {
-	let (domain_name, tld) = super::split_domain_and_tld(domain_name)
+	let (domain_name, tld) = super::split_domain_and_tld(full_domain_name)
 		.await
 		.status(400)
 		.body(error!(INVALID_DOMAIN_NAME).to_string())?;
 	let (domain_name, tld) = (domain_name.as_str(), tld.as_str());
 
-	let domain = db::get_domain_by_name(connection, domain_name).await?;
+	let domain = db::get_domain_by_name(connection, full_domain_name).await?;
 	if let Some(domain) = domain {
 		if let ResourceType::Business = domain.r#type {
 			Error::as_result()
