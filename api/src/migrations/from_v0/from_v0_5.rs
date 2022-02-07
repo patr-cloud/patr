@@ -195,7 +195,7 @@ async fn update_patr_wildcard_certificates(
 		Api::<Secret>::namespaced(client.clone(), workspace.as_str())
 			.patch(
 				"tls-domain-wildcard-patr-cloud",
-				&PatchParams::apply("tls-domain-wildcard-patr-cloud"),
+				&PatchParams::apply("tls-domain-wildcard-patr-cloud").force(),
 				&Patch::Apply(workspace_secret),
 			)
 			.await
