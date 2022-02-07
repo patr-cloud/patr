@@ -52,6 +52,17 @@ pub async fn migrate(
 	Ok(())
 }
 
+/// # Description
+/// The function is used to get a list of all 0.3.x migrations to migrate the
+/// database from
+///
+/// # Return
+/// This function returns [&'static str; _] containing a list of all migration
+/// versions
+pub fn get_migrations() -> Vec<&'static str> {
+	vec!["0.5.0", "0.5.1", "0.5.2"]
+}
+
 async fn migrate_from_v0_5_0(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -70,7 +81,6 @@ async fn migrate_from_v0_5_2(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	log::trace!("Migrating from v0.5.2");
 	update_patr_wildcard_certificates(connection, config).await?;
 	remove_empty_tags_for_deployments(connection).await?;
 	update_deployment_table_constraint(connection).await?;
@@ -82,7 +92,6 @@ async fn update_patr_wildcard_certificates(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	log::trace!("Updating Patr wildcard certificates");
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -97,7 +106,6 @@ async fn update_patr_wildcard_certificates(
 	.map(|row| row.get::<Uuid, _>("id"))
 	.collect::<Vec<_>>();
 	if workspaces.is_empty() {
-		log::trace!("wildcard certificates not updated, no workspaces found");
 		return Ok(());
 	}
 	let kubernetes_config = Config::from_custom_kubeconfig(
@@ -188,7 +196,6 @@ async fn update_patr_wildcard_certificates(
 async fn remove_empty_tags_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::trace!("Removing empty tags for deployments");
 	query!(
 		r#"
 		UPDATE
@@ -202,14 +209,12 @@ async fn remove_empty_tags_for_deployments(
 	.execute(&mut *connection)
 	.await?;
 
-	log::trace!("Removed empty tags from deployment");
 	Ok(())
 }
 
 async fn update_deployment_table_constraint(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
-	log::trace!("Updating deployment table constraint");
 	query!(
 		r#"
 		ALTER TABLE
@@ -222,6 +227,6 @@ async fn update_deployment_table_constraint(
 	)
 	.execute(&mut *connection)
 	.await?;
-	log::trace!("Updated deployment table constraint");
+
 	Ok(())
 }
