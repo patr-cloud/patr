@@ -13,6 +13,7 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
+	core::ObjectMeta,
 	Api,
 	Config,
 };
@@ -164,7 +165,7 @@ async fn update_patr_wildcard_certificates(
 		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
 	for workspace in workspaces {
-		let mut workspace_secret =
+		let workspace_secret =
 			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
 				.get("tls-domain-wildcard-patr-cloud")
 				.await
@@ -179,7 +180,17 @@ async fn update_patr_wildcard_certificates(
 
 		secret_annotations.append(&mut annotations.clone());
 
-		workspace_secret.metadata.annotations = Some(secret_annotations);
+		let workspace_secret = Secret {
+			data: workspace_secret.data,
+			immutable: workspace_secret.immutable,
+			metadata: ObjectMeta {
+				annotations: Some(secret_annotations),
+				name: Some("tls-domain-wildcard-patr-cloud".to_string()),
+				namespace: Some(workspace.to_string()),
+				..ObjectMeta::default()
+			},
+			..Secret::default()
+		};
 
 		Api::<Secret>::namespaced(client.clone(), workspace.as_str())
 			.patch(
