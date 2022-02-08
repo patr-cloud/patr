@@ -68,7 +68,6 @@ pub async fn create_kubernetes_namespace(
 
 	let wild_card_secret = Secret {
 		data: wild_card_secret.data,
-		immutable: wild_card_secret.immutable,
 		metadata: ObjectMeta {
 			annotations: Some(annotations),
 			name: Some("tls-domain-wildcard-patr-cloud".to_string()),
@@ -81,7 +80,7 @@ pub async fn create_kubernetes_namespace(
 	Api::<Secret>::namespaced(client, namespace_name)
 		.patch(
 			"tls-domain-wildcard-patr-cloud",
-			&PatchParams::apply("tls-domain-wildcard-patr-cloud"),
+			&PatchParams::apply("tls-domain-wildcard-patr-cloud").force(),
 			&Patch::Apply(wild_card_secret),
 		)
 		.await?;
