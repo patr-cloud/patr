@@ -128,7 +128,7 @@ pub async fn update_kubernetes_static_site(
 		request_id
 	);
 	let patr_domain_tls = vec![IngressTLS {
-		hosts: Some(vec![format!("{}.patr.cloud", static_site.id)]),
+		hosts: Some(vec!["*.patr.cloud".to_string(), "patr.cloud".to_string()]),
 		secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
 	}];
 	log::trace!(

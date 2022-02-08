@@ -334,10 +334,17 @@ pub async fn update_kubernetes_managed_url(
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
 			tls: Some(vec![IngressTLS {
-				hosts: Some(vec![format!(
-					"{}.{}",
-					managed_url.sub_domain, domain.name
-				)]),
+				hosts: if domain.is_ns_internal() {
+					Some(vec![
+						format!("*.{}", domain.name),
+						domain.name.clone(),
+					])
+				} else {
+					Some(vec![format!(
+						"{}.{}",
+						managed_url.sub_domain, domain.name
+					)])
+				},
 				secret_name: Some(format!(
 					"tls-{}",
 					if domain.is_ns_internal() {
