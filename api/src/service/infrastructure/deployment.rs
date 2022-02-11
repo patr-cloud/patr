@@ -2,22 +2,23 @@ use std::{collections::BTreeMap, str};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRegistry,
-		DeploymentRunningDetails,
-		DeploymentStatus,
-		EnvironmentVariableValue,
-		ExposedPortType,
+		Deployment, DeploymentRegistry, DeploymentRunningDetails,
+		DeploymentStatus, EnvironmentVariableValue, ExposedPortType,
 		PatrRegistry,
 	},
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db,
-	error,
-	models::rbac,
+	db, error,
+	models::{
+		rabbitmq::{
+			DeploymentRequestData, RequestData, RequestMessage, RequestType,
+		},
+		rbac,
+	},
 	service::{self, infrastructure::kubernetes},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -226,15 +227,32 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	kubernetes::update_kubernetes_deployment(
-		&workspace_id,
-		&deployment,
-		&full_image,
-		&running_details,
-		config,
-		request_id,
-	)
-	.await?;
+	let channel = &service::get_app().rabbit_mq.channel_a;
+
+	let content = RequestMessage {
+		request_type: RequestType::Update,
+		request_data: RequestData::Deployment(Box::new(
+			DeploymentRequestData::Update {
+				workspace_id,
+				deployment,
+				full_image,
+				running_details,
+				config: Box::new(config.clone()),
+				request_id: request_id.clone(),
+			},
+		)),
+	};
+
+	channel
+		.basic_publish(
+			"",
+			"infrastructure",
+			BasicPublishOptions::default(),
+			serde_json::to_string(&content)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
 
 	Ok(())
 }
@@ -260,13 +278,31 @@ pub async fn stop_deployment(
 		"request_id: {} - deleting the deployment from digitalocean kubernetes",
 		request_id
 	);
-	kubernetes::delete_kubernetes_deployment(
-		&deployment.workspace_id,
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
+
+	let channel = &service::get_app().rabbit_mq.channel_a;
+
+	let content = RequestMessage {
+		request_type: RequestType::Update,
+		request_data: RequestData::Deployment(Box::new(
+			DeploymentRequestData::Delete {
+				workspace_id: deployment.workspace_id,
+				deployment_id: deployment_id.clone(),
+				config: config.clone(),
+				request_id: request_id.clone(),
+			},
+		)),
+	};
+
+	channel
+		.basic_publish(
+			"",
+			"infrastructure",
+			BasicPublishOptions::default(),
+			serde_json::to_string(&content)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
 
 	// TODO: implement logic for handling domains of the stopped deployment
 	log::trace!("request_id: {} - Updating deployment status", request_id);

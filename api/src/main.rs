@@ -15,6 +15,7 @@ mod db;
 mod macros;
 mod migrations;
 mod models;
+mod rabbitmq;
 mod routes;
 mod scheduler;
 mod service;
@@ -26,6 +27,7 @@ use api_macros::{migrate_query, query, query_as};
 use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
 use eve_rs::handlebars::Handlebars;
+use futures::future;
 use tokio::{fs, runtime::Builder};
 use utils::{constants, logger, Error as EveError};
 
@@ -64,11 +66,15 @@ async fn async_main() -> Result<(), EveError> {
 	let render_register = create_render_registry("./assets/templates/").await?;
 	log::debug!("Render register initialised");
 
+	log::info!("Creating a Consumer");
+	let rabbit_mq = rabbitmq::set_up_rabbitmq(&config).await?;
+
 	let app = App {
-		config,
+		config: config.clone(),
 		database,
 		redis,
 		render_register,
+		rabbit_mq,
 	};
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
@@ -95,7 +101,12 @@ async fn async_main() -> Result<(), EveError> {
 
 		task::spawn(models::initialize_sample_data(app.clone()));
 	}
-	app::start_server(app).await;
+
+	future::join(
+		app::start_server(app.clone()),
+		rabbitmq::start_consumer(&config, app.rabbit_mq.channel_b),
+	)
+	.await;
 
 	Ok(())
 }

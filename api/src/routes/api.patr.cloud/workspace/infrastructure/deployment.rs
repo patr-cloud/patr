@@ -2,46 +2,35 @@ use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::infrastructure::{
 		deployment::{
-			CreateDeploymentRequest,
-			CreateDeploymentResponse,
-			DeleteDeploymentResponse,
-			Deployment,
-			DeploymentRegistry,
-			DeploymentRunningDetails,
-			DeploymentStatus,
-			GetDeploymentInfoResponse,
-			GetDeploymentLogsResponse,
-			ListDeploymentsResponse,
-			ListLinkedURLsResponse,
-			PatrRegistry,
-			StartDeploymentResponse,
-			StopDeploymentResponse,
-			UpdateDeploymentRequest,
-			UpdateDeploymentResponse,
+			CreateDeploymentRequest, CreateDeploymentResponse,
+			DeleteDeploymentResponse, Deployment, DeploymentRegistry,
+			DeploymentRunningDetails, DeploymentStatus,
+			GetDeploymentInfoResponse, GetDeploymentLogsResponse,
+			ListDeploymentsResponse, ListLinkedURLsResponse, PatrRegistry,
+			StartDeploymentResponse, StopDeploymentResponse,
+			UpdateDeploymentRequest, UpdateDeploymentResponse,
 		},
 		managed_urls::{ManagedUrl, ManagedUrlType},
 	},
 	utils::{constants, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use lapin::{options::BasicPublishOptions, BasicProperties};
 use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
+		rabbitmq::{
+			DeploymentRequestData, RequestData, RequestMessage, RequestType,
+		},
 		rbac::permissions,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -636,51 +625,74 @@ async fn create_deployment(
 					return;
 				}
 
-				let update_kubernetes_result =
-					service::update_kubernetes_deployment(
-						&workspace_id,
-						&Deployment {
-							id: id.clone(),
-							name,
-							registry,
-							image_tag,
-							status: DeploymentStatus::Deploying,
-							region,
-							machine_type,
+				let channel = &service::get_app().rabbit_mq.channel_a;
+
+				let content = RequestMessage {
+					request_type: RequestType::Update,
+					request_data: RequestData::Deployment(Box::new(
+						DeploymentRequestData::Update {
+							workspace_id,
+							deployment: Deployment {
+								id: id.clone(),
+								name,
+								registry,
+								image_tag,
+								status: DeploymentStatus::Deploying,
+								region,
+								machine_type,
+							},
+							full_image,
+							running_details: DeploymentRunningDetails {
+								min_horizontal_scale,
+								max_horizontal_scale,
+								deploy_on_push,
+								ports,
+								environment_variables,
+							},
+							config: Box::new(config.clone()),
+							request_id: request_id.clone(),
 						},
-						&full_image,
-						&DeploymentRunningDetails {
-							min_horizontal_scale,
-							max_horizontal_scale,
-							deploy_on_push,
-							ports,
-							environment_variables,
-						},
-						&config,
-						&request_id,
+					)),
+				};
+
+				let payload = serde_json::to_string(&content);
+
+				let payload = if let Ok(payload) = payload {
+					payload.into_bytes()
+				} else {
+					log::error!(
+						"request_id: {} - Unable to serialize request message",
+						request_id
+					);
+					return;
+				};
+
+				let publish_result = channel
+					.basic_publish(
+						"",
+						"infrastructure",
+						BasicPublishOptions::default(),
+						&payload,
+						BasicProperties::default(),
 					)
 					.await;
 
-				if let Err(error) = update_kubernetes_result {
-					log::error!(
-						"request_id: {} - Error updating k8s deployment: {}",
-						request_id,
-						error.get_error()
-					);
-					let _ = db::update_deployment_status(
-						&mut connection,
-						&id,
-						&DeploymentStatus::Errored,
-					)
-					.await
-					.map_err(|e| {
+				let _result = match publish_result {
+					Ok(publish_result) => match publish_result.await {
+						Ok(result) => result,
+						Err(e) => {
+							log::error!("Error publishing message to infrastructure queue: {}", e);
+							return;
+						}
+					},
+					Err(e) => {
 						log::error!(
-							"request_id: {} - Error updating db status: {}",
-							request_id,
+							"Error publishing message to infrastructure queue: {}",
 							e
 						);
-					});
-				}
+						return;
+					}
+				};
 			});
 		}
 	}
@@ -756,8 +768,8 @@ async fn get_deployment_info(
 	log::trace!("request_id: {} - Checking deployment status", request_id);
 	deployment.status = match deployment.status {
 		// If it's deploying or running, check with k8s on the actual status
-		db_status @ (DeploymentStatus::Deploying |
-		DeploymentStatus::Running) => {
+		db_status @ (DeploymentStatus::Deploying
+		| DeploymentStatus::Running) => {
 			log::trace!(
 				"request_id: {} - Deployment is deploying or running",
 				request_id
@@ -1027,14 +1039,14 @@ async fn update_deployment(
 	let name = name.as_ref().map(|name| name.trim());
 
 	// Is any one value present?
-	if name.is_none() &&
-		region.is_none() &&
-		machine_type.is_none() &&
-		deploy_on_push.is_none() &&
-		min_horizontal_scale.is_none() &&
-		max_horizontal_scale.is_none() &&
-		ports.is_none() &&
-		environment_variables.is_none()
+	if name.is_none()
+		&& region.is_none()
+		&& machine_type.is_none()
+		&& deploy_on_push.is_none()
+		&& min_horizontal_scale.is_none()
+		&& max_horizontal_scale.is_none()
+		&& ports.is_none()
+		&& environment_variables.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1069,9 +1081,9 @@ async fn update_deployment(
 		.await?;
 
 	match &deployment.status {
-		DeploymentStatus::Stopped |
-		DeploymentStatus::Deleted |
-		DeploymentStatus::Created => {
+		DeploymentStatus::Stopped
+		| DeploymentStatus::Deleted
+		| DeploymentStatus::Created => {
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
@@ -1082,15 +1094,34 @@ async fn update_deployment(
 			)
 			.await?;
 
-			service::update_kubernetes_deployment(
-				&workspace_id,
-				&deployment,
-				&full_image,
-				&running_details,
-				&config,
-				&request_id,
-			)
-			.await?;
+			let channel = &service::get_app().rabbit_mq.channel_a;
+
+			let content = RequestMessage {
+				request_type: RequestType::Update,
+				request_data: RequestData::Deployment(Box::new(
+					DeploymentRequestData::Update {
+						workspace_id,
+						deployment,
+						full_image,
+						running_details,
+						config: Box::new(config.clone()),
+						request_id: request_id.clone(),
+					},
+				)),
+			};
+
+			let payload = serde_json::to_string(&content)?;
+
+			let _publish_result = channel
+				.basic_publish(
+					"",
+					"infrastructure",
+					BasicPublishOptions::default(),
+					payload.as_bytes(),
+					BasicProperties::default(),
+				)
+				.await?
+				.await?;
 		}
 	}
 

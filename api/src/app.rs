@@ -28,12 +28,20 @@ use crate::{
 	Database,
 };
 
+#[derive(Debug, Clone)]
+pub struct RabbitMqConnection {
+	pub channel_a: lapin::Channel,
+	pub channel_b: lapin::Channel,
+	pub queue: String,
+}
+
 #[derive(Clone)]
 pub struct App {
 	pub config: Settings,
 	pub database: Pool<Database>,
 	pub redis: RedisConnection,
 	pub render_register: Arc<Handlebars<'static>>,
+	pub rabbit_mq: RabbitMqConnection,
 }
 
 impl Debug for App {
@@ -56,6 +64,7 @@ pub async fn start_server(app: App) {
 		app.config.bind_address,
 		port
 	);
+
 	let shutdown_signal = Some(get_shutdown_signal());
 	listen(eve_app, (app.config.bind_address, port), shutdown_signal).await;
 }

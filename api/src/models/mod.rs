@@ -1,6 +1,7 @@
 pub mod db_mapping;
 pub mod deployment;
 pub mod error;
+pub mod rabbitmq;
 pub mod rbac;
 
 mod access_token_data;
