@@ -334,37 +334,7 @@ pub async fn notification_handler(
 					"request_id: {} - Updating the kubernetes deployment",
 					request_id
 				);
-				// let update_kubernetes_result =
-				// 	service::update_kubernetes_deployment(
-				// 		&workspace_id,
-				// 		&deployment,
-				// 		&full_image,
-				// 		&running_details,
-				// 		&config,
-				// 		&request_id,
-				// 	)
-				// 	.await;
 
-				// if let Err(error) = update_kubernetes_result {
-				// 	log::error!(
-				// 		"request_id: {} - Error updating k8s deployment: {}",
-				// 		request_id,
-				// 		error.get_error()
-				// 	);
-				// 	let _ = db::update_deployment_status(
-				// 		&mut connection,
-				// 		&deployment.id,
-				// 		&DeploymentStatus::Errored,
-				// 	)
-				// 	.await
-				// 	.map_err(|e| {
-				// 		log::error!(
-				// 			"request_id: {} - Error setting db status: {}",
-				// 			request_id,
-				// 			e
-				// 		);
-				// 	});
-				// }
 				let channel = &service::get_app().rabbit_mq.channel_a;
 
 				let content = RequestMessage {
