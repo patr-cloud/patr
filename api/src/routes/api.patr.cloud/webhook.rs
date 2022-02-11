@@ -372,7 +372,7 @@ pub async fn notification_handler(
 					request_data: RequestData::Deployment(Box::new(
 						DeploymentRequestData::Update {
 							workspace_id,
-							deployment,
+							deployment: Box::new(deployment),
 							full_image,
 							running_details,
 							config: Box::new(config.clone()),

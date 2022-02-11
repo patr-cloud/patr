@@ -1,6 +1,7 @@
 use api_models::{
 	models::workspace::infrastructure::deployment::{
-		Deployment, DeploymentRunningDetails,
+		Deployment,
+		DeploymentRunningDetails,
 	},
 	utils::Uuid,
 };
@@ -35,7 +36,7 @@ pub enum RequestData {
 pub enum DeploymentRequestData {
 	Update {
 		workspace_id: Uuid,
-		deployment: Deployment,
+		deployment: Box<Deployment>,
 		full_image: String,
 		running_details: DeploymentRunningDetails,
 		config: Box<Settings>,
@@ -44,7 +45,7 @@ pub enum DeploymentRequestData {
 	Delete {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
-		config: Settings,
+		config: Box<Settings>,
 		request_id: Uuid,
 	},
 }

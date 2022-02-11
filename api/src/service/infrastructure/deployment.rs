@@ -2,8 +2,12 @@ use std::{collections::BTreeMap, str};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::{
-		Deployment, DeploymentRegistry, DeploymentRunningDetails,
-		DeploymentStatus, EnvironmentVariableValue, ExposedPortType,
+		Deployment,
+		DeploymentRegistry,
+		DeploymentRunningDetails,
+		DeploymentStatus,
+		EnvironmentVariableValue,
+		ExposedPortType,
 		PatrRegistry,
 	},
 	utils::{constants, StringifiedU16, Uuid},
@@ -12,10 +16,14 @@ use eve_rs::AsError;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		rabbitmq::{
-			DeploymentRequestData, RequestData, RequestMessage, RequestType,
+			DeploymentRequestData,
+			RequestData,
+			RequestMessage,
+			RequestType,
 		},
 		rbac,
 	},
@@ -234,7 +242,7 @@ pub async fn start_deployment(
 		request_data: RequestData::Deployment(Box::new(
 			DeploymentRequestData::Update {
 				workspace_id,
-				deployment,
+				deployment: Box::new(deployment),
 				full_image,
 				running_details,
 				config: Box::new(config.clone()),
@@ -287,7 +295,7 @@ pub async fn stop_deployment(
 			DeploymentRequestData::Delete {
 				workspace_id: deployment.workspace_id,
 				deployment_id: deployment_id.clone(),
-				config: config.clone(),
+				config: Box::new(config.clone()),
 				request_id: request_id.clone(),
 			},
 		)),
