@@ -66,15 +66,11 @@ async fn async_main() -> Result<(), EveError> {
 	let render_register = create_render_registry("./assets/templates/").await?;
 	log::debug!("Render register initialised");
 
-	log::info!("Creating a Consumer");
-	let rabbit_mq = rabbitmq::set_up_rabbitmq(&config).await?;
-
 	let app = App {
 		config: config.clone(),
 		database,
 		redis,
 		render_register,
-		rabbit_mq,
 	};
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
@@ -104,7 +100,7 @@ async fn async_main() -> Result<(), EveError> {
 
 	future::join(
 		app::start_server(app.clone()),
-		rabbitmq::start_consumer(&config, app.rabbit_mq.channel_b),
+		rabbitmq::start_consumer(&config),
 	)
 	.await;
 

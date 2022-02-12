@@ -235,7 +235,8 @@ pub async fn start_deployment(
 	)
 	.await?;
 
-	let channel = &service::get_app().rabbit_mq.channel_a;
+	let (channel, connection) =
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let content = RequestMessage {
 		request_type: RequestType::Update,
@@ -262,6 +263,9 @@ pub async fn start_deployment(
 		.await?
 		.await?;
 
+	channel.close(200, "Normal shutdown").await?;
+	connection.close(200, "Normal shutdown").await?;
+
 	Ok(())
 }
 
@@ -287,7 +291,8 @@ pub async fn stop_deployment(
 		request_id
 	);
 
-	let channel = &service::get_app().rabbit_mq.channel_a;
+	let (channel, rabbitmq_connection) =
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let content = RequestMessage {
 		request_type: RequestType::Update,
@@ -320,6 +325,9 @@ pub async fn stop_deployment(
 		&DeploymentStatus::Stopped,
 	)
 	.await?;
+
+	channel.close(200, "Normal shutdown").await?;
+	rabbitmq_connection.close(200, "Normal shutdown").await?;
 
 	Ok(())
 }

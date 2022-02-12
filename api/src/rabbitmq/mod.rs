@@ -1,6 +1,7 @@
 use std::ops::DerefMut;
 
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
+use eve_rs::AsError;
 use futures::{FutureExt, StreamExt};
 use lapin::{
 	options::{
@@ -17,22 +18,21 @@ use lapin::{
 use tokio::{signal, task};
 
 use crate::{
-	app::RabbitMqConnection,
 	db,
+	error,
 	models::rabbitmq::{
 		DeploymentRequestData,
 		RequestData,
 		RequestMessage,
 		RequestType,
+		StaticSiteRequestData,
 	},
 	service,
 	utils::{settings::Settings, Error},
 };
 
-pub async fn set_up_rabbitmq(
-	config: &Settings,
-) -> Result<RabbitMqConnection, Error> {
-	// Create a connection to RabbitMQ
+pub async fn start_consumer(config: &Settings) {
+	// Create connection
 	let connection = Connection::connect(
 		&format!(
 			"amqp://{}:{}/%2f",
@@ -40,32 +40,26 @@ pub async fn set_up_rabbitmq(
 		),
 		ConnectionProperties::default(),
 	)
-	.await?;
+	.await
+	.expect("Cannot establish connection to RabbitMQ");
 
-	// Create channel
-	let channel_a = connection.create_channel().await?;
-	let channel_b = connection.create_channel().await?;
+	let channel = connection
+		.create_channel()
+		.await
+		.expect("Cannot create channel");
 
 	// Create Queue
-	let _ = channel_a
+	let _ = channel
 		.queue_declare(
 			"infrastructure",
 			QueueDeclareOptions::default(),
 			FieldTable::default(),
 		)
-		.await?;
+		.await
+		.expect("Cannot create queue");
 
-	Ok(RabbitMqConnection {
-		channel_a,
-		channel_b,
-		queue: config.rabbit_mq.queue.clone(),
-	})
-}
-
-pub async fn start_consumer(config: &Settings, channel: lapin::Channel) {
 	let mut shutdown_signal = task::spawn(signal::ctrl_c());
 
-	log::trace!("Creating a consumer");
 	let mut consumer = channel
 		.basic_consume(
 			&config.rabbit_mq.queue,
@@ -126,13 +120,14 @@ pub async fn start_consumer(config: &Settings, channel: lapin::Channel) {
 			};
 		}
 	}
+	println!("Shutting down consumer");
 }
 
 async fn execute_kubernetes_deployment(
 	content: RequestMessage,
 ) -> Result<(), Error> {
 	match content.request_type {
-		RequestType::Create => {
+		RequestType::Update => {
 			match content.request_data {
 				RequestData::Deployment(deployment_request_data) => {
 					match *deployment_request_data {
@@ -153,8 +148,92 @@ async fn execute_kubernetes_deployment(
 								&config,
 								&request_id,
 							)
-							.await?
+							.await
 						}
+						_ => {
+							log::error!("Unable to deserialize request data");
+							// TODO: change the return statement
+							Error::as_result()
+								.status(500)
+								.body(error!(SERVER_ERROR).to_string())
+						}
+					}
+				}
+				RequestData::StaticSiteRequest(static_site_request_data) => {
+					match *static_site_request_data {
+						StaticSiteRequestData::Update {
+							workspace_id,
+							static_site,
+							static_site_details,
+							config,
+							request_id,
+						} => {
+							log::trace!(
+								"Received a update static site request"
+							);
+							let result =
+								service::update_kubernetes_static_site(
+									&workspace_id,
+									&static_site,
+									&static_site_details,
+									&config,
+									&request_id,
+								)
+								.await;
+
+							match result {
+								Ok(()) => {
+									log::trace!(
+										"request_id: {} - updating database status",
+										request_id
+									);
+									log::trace!("request_id: {} - updated database status", request_id);
+									db::update_static_site_status(
+										service::get_app()
+											.database
+											.acquire()
+											.await?
+											.deref_mut(),
+										&static_site.id,
+										&DeploymentStatus::Running,
+									)
+									.await
+									.map_err(|err| err.into())
+								}
+								Err(e) => {
+									log::error!(
+										"Error occured during deployment of static site: {}",
+										e.get_error()
+									);
+									db::update_static_site_status(
+										service::get_app()
+											.database
+											.acquire()
+											.await?
+											.deref_mut(),
+										&static_site.id,
+										&DeploymentStatus::Errored,
+									)
+									.await
+									.map_err(|err| err.into())
+								}
+							}
+						}
+						_ => {
+							log::error!("Unable to deserialize request data");
+							Error::as_result()
+								.status(500)
+								.body(error!(SERVER_ERROR).to_string())
+						}
+					}
+				}
+				RequestData::DatabaseRequest {} => todo!(),
+			}
+		}
+		RequestType::Delete => {
+			match content.request_data {
+				RequestData::Deployment(deployment_request_data) => {
+					match *deployment_request_data {
 						DeploymentRequestData::Delete {
 							workspace_id,
 							deployment_id,
@@ -170,6 +249,8 @@ async fn execute_kubernetes_deployment(
 							)
 							.await?;
 
+							// TODO: change this incase the request is stop
+							// deployment
 							db::update_deployment_status(
 								service::get_app()
 									.database
@@ -180,36 +261,55 @@ async fn execute_kubernetes_deployment(
 								&DeploymentStatus::Deleted,
 							)
 							.await
-							.map_err(|e| {
-								log::error!(
-									"Error updating deployment status: {}",
-									e
-								);
-								e
-							})?;
+							.map_err(|e| e.into())
 						}
+						_ => Error::as_result()
+							.status(500)
+							.body(error!(SERVER_ERROR).to_string()),
 					}
 				}
-				RequestData::StaticSiteRequest {} => todo!(),
+				RequestData::StaticSiteRequest(static_site_request_data) => {
+					match *static_site_request_data {
+						StaticSiteRequestData::Delete {
+							workspace_id,
+							static_site_id,
+							config,
+							request_id,
+						} => {
+							log::trace!(
+								"Received a delete static site request"
+							);
+							service::delete_kubernetes_static_site(
+								&workspace_id,
+								&static_site_id,
+								&config,
+								&request_id,
+							)
+							.await?;
+							log::trace!("request_id: {} - updating db status to stopped", request_id);
+							db::update_static_site_status(
+								service::get_app()
+									.database
+									.acquire()
+									.await?
+									.deref_mut(),
+								&static_site_id,
+								&DeploymentStatus::Stopped,
+							)
+							.await
+							.map_err(|err| err.into())
+						}
+						_ => Error::as_result()
+							.status(500)
+							.body(error!(SERVER_ERROR).to_string()),
+					}
+				}
 				RequestData::DatabaseRequest {} => todo!(),
 			}
 		}
-		RequestType::Update => match &content.request_data {
-			RequestData::Deployment(_) => todo!(),
-			RequestData::StaticSiteRequest {} => todo!(),
-			RequestData::DatabaseRequest {} => todo!(),
-		},
-		RequestType::Delete => match &content.request_data {
-			RequestData::Deployment(_) => todo!(),
-			RequestData::StaticSiteRequest {} => todo!(),
-			RequestData::DatabaseRequest {} => todo!(),
-		},
-		RequestType::Get => match &content.request_data {
-			RequestData::Deployment(_) => todo!(),
-			RequestData::StaticSiteRequest {} => todo!(),
-			RequestData::DatabaseRequest {} => todo!(),
-		},
-		// IF DEPLOYMENT, CALL SEPARATE FUNCTION
-	};
-	Ok(())
+
+		_ => Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	}
 }

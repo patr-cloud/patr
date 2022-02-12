@@ -31,7 +31,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct RabbitMqConnection {
 	pub channel_a: lapin::Channel,
-	pub channel_b: lapin::Channel,
 	pub queue: String,
 }
 
@@ -41,7 +40,6 @@ pub struct App {
 	pub database: Pool<Database>,
 	pub redis: RedisConnection,
 	pub render_register: Arc<Handlebars<'static>>,
-	pub rabbit_mq: RabbitMqConnection,
 }
 
 impl Debug for App {

@@ -604,6 +604,21 @@ async fn create_deployment(
 			.await?;
 
 			task::spawn(async move {
+				let rabbitmq_result = service::get_rabbitmq_connection_channel(
+					&config,
+					&request_id,
+				)
+				.await;
+
+				let (channel, rabbitmq_connection) =
+					if let Ok((channel, rabbitmq_connection)) = rabbitmq_result
+					{
+						(channel, rabbitmq_connection)
+					} else {
+						log::error!("request_id: {} - Failed to get rabbitmq connection", request_id);
+						return;
+					};
+
 				log::trace!(
 					"request_id: {} - Acquiring database connection",
 					request_id
@@ -642,8 +657,6 @@ async fn create_deployment(
 				if !deploy_on_create {
 					return;
 				}
-
-				let channel = &service::get_app().rabbit_mq.channel_a;
 
 				let content = RequestMessage {
 					request_type: RequestType::Update,
@@ -710,6 +723,16 @@ async fn create_deployment(
 						);
 						return;
 					}
+				};
+
+				if let Err(e) = channel.close(200, "Normal shutdown").await {
+					log::error!("Error closing rabbitmq channel: {}", e);
+				};
+
+				if let Err(e) =
+					rabbitmq_connection.close(200, "Normal shutdown").await
+				{
+					log::error!("Error closing rabbitmq connection: {}", e);
 				};
 			});
 		}
@@ -1112,7 +1135,9 @@ async fn update_deployment(
 			)
 			.await?;
 
-			let channel = &service::get_app().rabbit_mq.channel_a;
+			let (channel, connection) =
+				service::get_rabbitmq_connection_channel(&config, &request_id)
+					.await?;
 
 			let content = RequestMessage {
 				request_type: RequestType::Update,
@@ -1140,6 +1165,8 @@ async fn update_deployment(
 				)
 				.await?
 				.await?;
+			channel.close(200, "Normal shutdown").await?;
+			connection.close(200, "Normal shutdown").await?;
 		}
 	}
 

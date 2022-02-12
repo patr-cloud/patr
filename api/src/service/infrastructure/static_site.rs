@@ -13,12 +13,17 @@ use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
 use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
 use eve_rs::AsError;
 use http::Uri;
+use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db,
-	error,
-	models::rbac,
-	service::infrastructure::kubernetes,
+	db, error,
+	models::{
+		rabbitmq::{
+			RequestData, RequestMessage, RequestType, StaticSiteRequestData,
+		},
+		rbac,
+	},
+	service::{self},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -116,46 +121,41 @@ pub async fn start_static_site_deployment(
 
 	log::trace!("request_id: {} - starting the static site", request_id);
 
-	let result = kubernetes::update_kubernetes_static_site(
-		&static_site.workspace_id,
-		&StaticSite {
-			id: static_site.id,
-			name: static_site.name,
-			status: DeploymentStatus::Deploying,
-		},
-		&StaticSiteDetails {},
-		config,
-		request_id,
-	)
-	.await;
+	let (channel, rabbitmq_connection) =
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	match result {
-		Ok(()) => {
-			log::trace!(
-				"request_id: {} - updating database status",
-				request_id
-			);
-			db::update_static_site_status(
-				connection,
-				static_site_id,
-				&DeploymentStatus::Running,
-			)
-			.await?;
-			log::trace!("request_id: {} - updated database status", request_id);
-		}
-		Err(e) => {
-			db::update_static_site_status(
-				connection,
-				static_site_id,
-				&DeploymentStatus::Errored,
-			)
-			.await?;
-			log::error!(
-				"Error occured during deployment of static site: {}",
-				e.get_error()
-			);
-		}
-	}
+	let static_site_info = StaticSite {
+		id: static_site.id,
+		name: static_site.name,
+		status: DeploymentStatus::Deploying,
+	};
+
+	let content = RequestMessage {
+		request_type: RequestType::Update,
+		request_data: RequestData::StaticSiteRequest(Box::new(
+			StaticSiteRequestData::Update {
+				workspace_id: static_site.workspace_id.clone(),
+				static_site: static_site_info,
+				static_site_details: StaticSiteDetails {},
+				config: config.clone(),
+				request_id: request_id.clone(),
+			},
+		)),
+	};
+
+	channel
+		.basic_publish(
+			"",
+			"infrastructure",
+			BasicPublishOptions::default(),
+			serde_json::to_string(&content)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	channel.close(200, "Normal shutdown").await?;
+	rabbitmq_connection.close(200, "Normal shutdown").await?;
 	Ok(())
 }
 
@@ -171,13 +171,34 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_kubernetes_static_site(
-		&static_site.workspace_id,
-		static_site_id,
-		config,
-		request_id,
-	)
-	.await?;
+	let (channel, rabbitmq_connection) =
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
+
+	let content = RequestMessage {
+		request_type: RequestType::Update,
+		request_data: RequestData::StaticSiteRequest(Box::new(
+			StaticSiteRequestData::Delete {
+				workspace_id: static_site.workspace_id.clone(),
+				static_site_id: static_site.id.clone(),
+				config: config.clone(),
+				request_id: request_id.clone(),
+			},
+		)),
+	};
+
+	channel
+		.basic_publish(
+			"",
+			"infrastructure",
+			BasicPublishOptions::default(),
+			serde_json::to_string(&content)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	channel.close(200, "Normal shutdown").await?;
+	rabbitmq_connection.close(200, "Normal shutdown").await?;
 
 	log::trace!(
 		"request_id: {} - static site stopped successfully",
@@ -205,13 +226,34 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_kubernetes_static_site(
-		&static_site.workspace_id,
-		static_site_id,
-		config,
-		request_id,
-	)
-	.await?;
+	let (channel, rabbitmq_connection) =
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
+
+	let content = RequestMessage {
+		request_type: RequestType::Update,
+		request_data: RequestData::StaticSiteRequest(Box::new(
+			StaticSiteRequestData::Delete {
+				workspace_id: static_site.workspace_id.clone(),
+				static_site_id: static_site.id.clone(),
+				config: config.clone(),
+				request_id: request_id.clone(),
+			},
+		)),
+	};
+
+	channel
+		.basic_publish(
+			"",
+			"infrastructure",
+			BasicPublishOptions::default(),
+			serde_json::to_string(&content)?.as_bytes(),
+			BasicProperties::default(),
+		)
+		.await?
+		.await?;
+
+	channel.close(200, "Normal shutdown").await?;
+	rabbitmq_connection.close(200, "Normal shutdown").await?;
 
 	db::update_static_site_name(
 		connection,

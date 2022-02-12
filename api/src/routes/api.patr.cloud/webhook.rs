@@ -3,7 +3,6 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use lapin::{options::BasicPublishOptions, BasicProperties};
 use serde_json::json;
 use tokio::task;
 
@@ -13,12 +12,6 @@ use crate::{
 	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
-		rabbitmq::{
-			DeploymentRequestData,
-			RequestData,
-			RequestMessage,
-			RequestType,
-		},
 		Action,
 		EventData,
 	},
@@ -278,7 +271,6 @@ pub async fn notification_handler(
 					"request_id: {} - Acquired database connection",
 					request_id
 				);
-
 				log::trace!(
 					"request_id: {} - Pushing image to DOCR",
 					request_id
@@ -291,7 +283,6 @@ pub async fn notification_handler(
 					&request_id,
 				)
 				.await;
-
 				if let Err(e) = result {
 					log::error!(
 						"Error pushing image to docr: {}",
@@ -299,12 +290,10 @@ pub async fn notification_handler(
 					);
 					return;
 				}
-
 				log::trace!(
 					"request_id: {} - Pushed image to DOCR",
 					request_id
 				);
-
 				log::trace!(
 					"request_id: {} - Getting full deployment config",
 					request_id
@@ -316,7 +305,6 @@ pub async fn notification_handler(
 						&request_id,
 					)
 					.await;
-
 				let (deployment, workspace_id, full_image, running_details) =
 					if let Ok(deployment_config_result) =
 						deployment_config_result
@@ -329,66 +317,40 @@ pub async fn notification_handler(
 					);
 						return;
 					};
-
 				log::trace!(
 					"request_id: {} - Updating the kubernetes deployment",
 					request_id
 				);
-
-				let channel = &service::get_app().rabbit_mq.channel_a;
-
-				let content = RequestMessage {
-					request_type: RequestType::Update,
-					request_data: RequestData::Deployment(Box::new(
-						DeploymentRequestData::Update {
-							workspace_id,
-							deployment: Box::new(deployment),
-							full_image,
-							running_details,
-							config: Box::new(config.clone()),
-							request_id: request_id.clone(),
-						},
-					)),
-				};
-
-				let payload = serde_json::to_string(&content);
-
-				let payload = if let Ok(payload) = payload {
-					payload.into_bytes()
-				} else {
-					log::error!(
-						"request_id: {} - Unable to serialize request message",
-						request_id
-					);
-					return;
-				};
-
-				let publish_result = channel
-					.basic_publish(
-						"",
-						"infrastructure",
-						BasicPublishOptions::default(),
-						&payload,
-						BasicProperties::default(),
+				let update_kubernetes_result =
+					service::update_kubernetes_deployment(
+						&workspace_id,
+						&deployment,
+						&full_image,
+						&running_details,
+						&config,
+						&request_id,
 					)
 					.await;
-
-				let _result = match publish_result {
-					Ok(publish_result) => match publish_result.await {
-						Ok(result) => result,
-						Err(e) => {
-							log::error!("Error publishing message to infrastructure queue: {}", e);
-							return;
-						}
-					},
-					Err(e) => {
+				if let Err(error) = update_kubernetes_result {
+					log::error!(
+						"request_id: {} - Error updating k8s deployment: {}",
+						request_id,
+						error.get_error()
+					);
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&deployment.id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
 						log::error!(
-							"Error publishing message to infrastructure queue: {}",
+							"request_id: {} - Error setting db status: {}",
+							request_id,
 							e
 						);
-						return;
-					}
-				};
+					});
+				}
 			});
 		}
 	}
