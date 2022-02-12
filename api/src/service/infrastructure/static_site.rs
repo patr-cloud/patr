@@ -16,10 +16,14 @@ use http::Uri;
 use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
-	db, error,
+	db,
+	error,
 	models::{
 		rabbitmq::{
-			RequestData, RequestMessage, RequestType, StaticSiteRequestData,
+			RequestData,
+			RequestMessage,
+			RequestType,
+			StaticSiteRequestData,
 		},
 		rbac,
 	},
