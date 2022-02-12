@@ -141,8 +141,8 @@ pub async fn start_static_site_deployment(
 				workspace_id: static_site.workspace_id.clone(),
 				static_site: static_site_info,
 				static_site_details: StaticSiteDetails {},
-				config: config.clone(),
 				request_id: request_id.clone(),
+				static_site_status: DeploymentStatus::Running,
 			},
 		)),
 	};
@@ -179,13 +179,13 @@ pub async fn stop_static_site(
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let content = RequestMessage {
-		request_type: RequestType::Update,
+		request_type: RequestType::Delete,
 		request_data: RequestData::StaticSiteRequest(Box::new(
 			StaticSiteRequestData::Delete {
 				workspace_id: static_site.workspace_id.clone(),
 				static_site_id: static_site.id.clone(),
-				config: config.clone(),
 				request_id: request_id.clone(),
+				static_site_status: DeploymentStatus::Stopped,
 			},
 		)),
 	};
@@ -234,13 +234,13 @@ pub async fn delete_static_site(
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let content = RequestMessage {
-		request_type: RequestType::Update,
+		request_type: RequestType::Delete,
 		request_data: RequestData::StaticSiteRequest(Box::new(
 			StaticSiteRequestData::Delete {
 				workspace_id: static_site.workspace_id.clone(),
 				static_site_id: static_site.id.clone(),
-				config: config.clone(),
 				request_id: request_id.clone(),
+				static_site_status: DeploymentStatus::Deleted,
 			},
 		)),
 	};

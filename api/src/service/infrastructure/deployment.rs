@@ -246,7 +246,6 @@ pub async fn start_deployment(
 				deployment: Box::new(deployment),
 				full_image,
 				running_details,
-				config: Box::new(config.clone()),
 				request_id: request_id.clone(),
 			},
 		)),
@@ -274,6 +273,7 @@ pub async fn stop_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	deployment_status: DeploymentStatus,
 ) -> Result<(), Error> {
 	log::trace!(
 		"Stopping the deployment with id: {} and request_id: {}",
@@ -295,13 +295,13 @@ pub async fn stop_deployment(
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let content = RequestMessage {
-		request_type: RequestType::Update,
+		request_type: RequestType::Delete,
 		request_data: RequestData::Deployment(Box::new(
 			DeploymentRequestData::Delete {
 				workspace_id: deployment.workspace_id,
 				deployment_id: deployment_id.clone(),
-				config: Box::new(config.clone()),
 				request_id: request_id.clone(),
+				deployment_status,
 			},
 		)),
 	};
@@ -350,8 +350,14 @@ pub async fn delete_deployment(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	log::trace!("request_id: {} - Stopping the deployment", request_id);
-	service::stop_deployment(connection, deployment_id, config, request_id)
-		.await?;
+	service::stop_deployment(
+		connection,
+		deployment_id,
+		config,
+		request_id,
+		DeploymentStatus::Deleted,
+	)
+	.await?;
 
 	log::trace!(
 		"request_id: {} - Updating the deployment name in the database",

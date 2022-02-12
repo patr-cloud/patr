@@ -1,6 +1,9 @@
 use std::ops::DerefMut;
 
-use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
+};
 use eve_rs::AsError;
 use futures::{FutureExt, StreamExt};
 use lapin::{
@@ -12,8 +15,6 @@ use lapin::{
 	},
 	types::FieldTable,
 	BasicProperties,
-	Connection,
-	ConnectionProperties,
 };
 use tokio::{signal, task};
 
@@ -33,20 +34,10 @@ use crate::{
 
 pub async fn start_consumer(config: &Settings) {
 	// Create connection
-	let connection = Connection::connect(
-		&format!(
-			"amqp://{}:{}/%2f",
-			config.rabbit_mq.host, config.rabbit_mq.port
-		),
-		ConnectionProperties::default(),
-	)
-	.await
-	.expect("Cannot establish connection to RabbitMQ");
-
-	let channel = connection
-		.create_channel()
-		.await
-		.expect("Cannot create channel");
+	let (channel, connection) =
+		service::get_rabbitmq_connection_channel(config, &Uuid::new_v4())
+			.await
+			.unwrap();
 
 	// Create Queue
 	let _ = channel
@@ -71,6 +62,7 @@ pub async fn start_consumer(config: &Settings) {
 		.expect("Consumer creation failed");
 
 	while (&mut shutdown_signal).now_or_never().is_none() {
+		println!("Waiting for messages...");
 		let delivery = match consumer.next().await {
 			Some(Ok(delivery)) => delivery,
 			Some(Err(_)) => continue,
@@ -79,14 +71,16 @@ pub async fn start_consumer(config: &Settings) {
 		let content = delivery.data.clone();
 		let payload = serde_json::from_slice(content.as_slice());
 
-		let payload = if let Ok(payload) = payload {
-			payload
-		} else {
-			log::error!("Unable to deserialize request message");
-			return;
+		let payload = match payload {
+			Ok(payload) => payload,
+			Err(err) => {
+				println!("content: {}", String::from_utf8(content).unwrap());
+				log::error!("{}", err);
+				continue;
+			}
 		};
 
-		let response = execute_kubernetes_deployment(payload).await;
+		let response = execute_kubernetes_deployment(payload, config).await;
 		if response.is_ok() {
 			if let Err(err) = delivery.ack(BasicAckOptions::default()).await {
 				log::error!("Unable to ack message: {}", err);
@@ -120,11 +114,21 @@ pub async fn start_consumer(config: &Settings) {
 			};
 		}
 	}
+
+	channel
+		.close(200, "closing channel")
+		.await
+		.expect("Channel close failed");
+	connection
+		.close(200, "Bye")
+		.await
+		.expect("Connection close failed");
 	println!("Shutting down consumer");
 }
 
 async fn execute_kubernetes_deployment(
 	content: RequestMessage,
+	config: &Settings,
 ) -> Result<(), Error> {
 	match content.request_type {
 		RequestType::Update => {
@@ -136,19 +140,29 @@ async fn execute_kubernetes_deployment(
 							deployment,
 							full_image,
 							running_details,
-							config,
 							request_id,
 						} => {
 							log::trace!("Received a update kubernetes deployment request");
-							service::update_kubernetes_deployment(
-								&workspace_id,
-								&deployment,
-								&full_image,
-								&running_details,
-								&config,
-								&request_id,
-							)
-							.await
+							let update_kubernetes_result =
+								service::update_kubernetes_deployment(
+									&workspace_id,
+									&deployment,
+									&full_image,
+									&running_details,
+									config,
+									&request_id,
+								)
+								.await;
+
+							if let Err(err) = update_kubernetes_result {
+								log::error!(
+									"Error updating kubernetes deployment: {}",
+									err.get_error()
+								);
+								Err(err)
+							} else {
+								Ok(())
+							}
 						}
 						_ => {
 							log::error!("Unable to deserialize request data");
@@ -165,8 +179,8 @@ async fn execute_kubernetes_deployment(
 							workspace_id,
 							static_site,
 							static_site_details,
-							config,
 							request_id,
+							static_site_status,
 						} => {
 							log::trace!(
 								"Received a update static site request"
@@ -176,7 +190,7 @@ async fn execute_kubernetes_deployment(
 									&workspace_id,
 									&static_site,
 									&static_site_details,
-									&config,
+									config,
 									&request_id,
 								)
 								.await;
@@ -195,7 +209,7 @@ async fn execute_kubernetes_deployment(
 											.await?
 											.deref_mut(),
 										&static_site.id,
-										&DeploymentStatus::Running,
+										&static_site_status,
 									)
 									.await
 									.map_err(|err| err.into())
@@ -237,14 +251,14 @@ async fn execute_kubernetes_deployment(
 						DeploymentRequestData::Delete {
 							workspace_id,
 							deployment_id,
-							config,
 							request_id,
+							deployment_status,
 						} => {
 							log::trace!("reciver a delete kubernetes deployment request");
 							service::delete_kubernetes_deployment(
 								&workspace_id,
 								&deployment_id,
-								&config,
+								config,
 								&request_id,
 							)
 							.await?;
@@ -258,7 +272,7 @@ async fn execute_kubernetes_deployment(
 									.await?
 									.deref_mut(),
 								&deployment_id,
-								&DeploymentStatus::Deleted,
+								&deployment_status,
 							)
 							.await
 							.map_err(|e| e.into())
@@ -273,8 +287,8 @@ async fn execute_kubernetes_deployment(
 						StaticSiteRequestData::Delete {
 							workspace_id,
 							static_site_id,
-							config,
 							request_id,
+							static_site_status,
 						} => {
 							log::trace!(
 								"Received a delete static site request"
@@ -282,7 +296,7 @@ async fn execute_kubernetes_deployment(
 							service::delete_kubernetes_static_site(
 								&workspace_id,
 								&static_site_id,
-								&config,
+								config,
 								&request_id,
 							)
 							.await?;
@@ -294,7 +308,7 @@ async fn execute_kubernetes_deployment(
 									.await?
 									.deref_mut(),
 								&static_site_id,
-								&DeploymentStatus::Stopped,
+								&static_site_status,
 							)
 							.await
 							.map_err(|err| err.into())
@@ -307,9 +321,5 @@ async fn execute_kubernetes_deployment(
 				RequestData::DatabaseRequest {} => todo!(),
 			}
 		}
-
-		_ => Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?,
 	}
 }

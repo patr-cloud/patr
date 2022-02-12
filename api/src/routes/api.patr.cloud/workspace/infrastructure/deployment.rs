@@ -680,7 +680,6 @@ async fn create_deployment(
 								ports,
 								environment_variables,
 							},
-							config: Box::new(config.clone()),
 							request_id: request_id.clone(),
 						},
 					)),
@@ -937,6 +936,7 @@ async fn stop_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
+		DeploymentStatus::Stopped,
 	)
 	.await?;
 
@@ -1147,7 +1147,6 @@ async fn update_deployment(
 						deployment: Box::new(deployment),
 						full_image,
 						running_details,
-						config: Box::new(config.clone()),
 						request_id: request_id.clone(),
 					},
 				)),
