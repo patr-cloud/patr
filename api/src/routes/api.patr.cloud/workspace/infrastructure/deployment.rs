@@ -33,12 +33,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
-		rabbitmq::{
-			DeploymentRequestData,
-			RequestData,
-			RequestMessage,
-			RequestType,
-		},
+		rabbitmq::{DeploymentRequestData, RequestMessage},
 		rbac::permissions,
 	},
 	pin_fn,
@@ -658,32 +653,28 @@ async fn create_deployment(
 					return;
 				}
 
-				let content = RequestMessage {
-					request_type: RequestType::Update,
-					request_data: RequestData::Deployment(Box::new(
-						DeploymentRequestData::Update {
-							workspace_id,
-							deployment: Box::new(Deployment {
-								id: id.clone(),
-								name,
-								registry,
-								image_tag,
-								status: DeploymentStatus::Deploying,
-								region,
-								machine_type,
-							}),
-							full_image,
-							running_details: DeploymentRunningDetails {
-								min_horizontal_scale,
-								max_horizontal_scale,
-								deploy_on_push,
-								ports,
-								environment_variables,
-							},
-							request_id: request_id.clone(),
+				let content =
+					RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+						workspace_id,
+						deployment: Deployment {
+							id,
+							name,
+							registry,
+							image_tag,
+							status: DeploymentStatus::Deploying,
+							region,
+							machine_type,
 						},
-					)),
-				};
+						full_image,
+						running_details: DeploymentRunningDetails {
+							min_horizontal_scale,
+							max_horizontal_scale,
+							deploy_on_push,
+							ports,
+							environment_variables,
+						},
+						request_id: request_id.clone(),
+					});
 
 				let payload = serde_json::to_string(&content);
 
@@ -1139,18 +1130,14 @@ async fn update_deployment(
 				service::get_rabbitmq_connection_channel(&config, &request_id)
 					.await?;
 
-			let content = RequestMessage {
-				request_type: RequestType::Update,
-				request_data: RequestData::Deployment(Box::new(
-					DeploymentRequestData::Update {
-						workspace_id,
-						deployment: Box::new(deployment),
-						full_image,
-						running_details,
-						request_id: request_id.clone(),
-					},
-				)),
-			};
+			let content =
+				RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+					workspace_id,
+					deployment,
+					full_image,
+					running_details,
+					request_id: request_id.clone(),
+				});
 
 			let payload = serde_json::to_string(&content)?;
 

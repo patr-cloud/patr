@@ -28,12 +28,6 @@ use crate::{
 	Database,
 };
 
-#[derive(Debug, Clone)]
-pub struct RabbitMqConnection {
-	pub channel_a: lapin::Channel,
-	pub queue: String,
-}
-
 #[derive(Clone)]
 pub struct App {
 	pub config: Settings,
@@ -48,7 +42,7 @@ impl Debug for App {
 	}
 }
 
-pub async fn start_server(app: App) {
+pub async fn start_server(app: &App) {
 	let port = app.config.port;
 
 	let mut eve_app = create_eve_app(&app);
@@ -62,7 +56,6 @@ pub async fn start_server(app: App) {
 		app.config.bind_address,
 		port
 	);
-
 	let shutdown_signal = Some(get_shutdown_signal());
 	listen(eve_app, (app.config.bind_address, port), shutdown_signal).await;
 }

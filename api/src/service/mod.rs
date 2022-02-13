@@ -15,13 +15,7 @@ mod utils;
 mod workspace;
 
 use api_models::utils::Uuid;
-use lapin::{
-	options::QueueDeclareOptions,
-	types::FieldTable,
-	Channel,
-	Connection,
-	ConnectionProperties,
-};
+use lapin::{Channel, Connection, ConnectionProperties};
 
 pub use self::{
 	auth::*,
@@ -92,15 +86,6 @@ pub(super) async fn get_rabbitmq_connection_channel(
 
 	log::trace!("request_id: {} - Creating channel", request_id);
 	let channel = connection.create_channel().await?;
-
-	log::trace!("request_id: {} - Declaring queue", request_id);
-	let _ = channel
-		.queue_declare(
-			"infrastructure",
-			QueueDeclareOptions::default(),
-			FieldTable::default(),
-		)
-		.await?;
 
 	Ok((channel, connection))
 }

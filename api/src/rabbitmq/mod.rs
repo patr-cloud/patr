@@ -4,43 +4,42 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
-use eve_rs::AsError;
-use futures::{FutureExt, StreamExt};
+use futures::{
+	future::{self, Either},
+	StreamExt,
+};
 use lapin::{
 	options::{
 		BasicAckOptions,
 		BasicConsumeOptions,
-		BasicPublishOptions,
+		BasicNackOptions,
 		QueueDeclareOptions,
 	},
 	types::FieldTable,
-	BasicProperties,
 };
 use tokio::{signal, task};
 
 use crate::{
+	app::App,
 	db,
-	error,
 	models::rabbitmq::{
 		DeploymentRequestData,
-		RequestData,
 		RequestMessage,
-		RequestType,
 		StaticSiteRequestData,
 	},
 	service,
 	utils::{settings::Settings, Error},
 };
 
-pub async fn start_consumer(config: &Settings) {
+pub async fn start_consumer(app: &App) {
 	// Create connection
 	let (channel, connection) =
-		service::get_rabbitmq_connection_channel(config, &Uuid::new_v4())
+		service::get_rabbitmq_connection_channel(&app.config, &Uuid::new_v4())
 			.await
-			.unwrap();
+			.expect("unable to get rabbitmq connection");
 
 	// Create Queue
-	let _ = channel
+	channel
 		.queue_declare(
 			"infrastructure",
 			QueueDeclareOptions::default(),
@@ -49,11 +48,9 @@ pub async fn start_consumer(config: &Settings) {
 		.await
 		.expect("Cannot create queue");
 
-	let mut shutdown_signal = task::spawn(signal::ctrl_c());
-
 	let mut consumer = channel
 		.basic_consume(
-			&config.rabbit_mq.queue,
+			&app.config.rabbit_mq.queue,
 			"patr_queue",
 			BasicConsumeOptions::default(),
 			FieldTable::default(),
@@ -61,57 +58,60 @@ pub async fn start_consumer(config: &Settings) {
 		.await
 		.expect("Consumer creation failed");
 
-	while (&mut shutdown_signal).now_or_never().is_none() {
+	let mut shutdown_signal = task::spawn(signal::ctrl_c());
+	let mut delivery_future = consumer.next();
+
+	loop {
 		println!("Waiting for messages...");
-		let delivery = match consumer.next().await {
+		let selector = future::select(shutdown_signal, delivery_future).await;
+		let delivery = match selector {
+			Either::Left(_) => {
+				break;
+			}
+			Either::Right((delivery, signal)) => {
+				shutdown_signal = signal;
+				delivery_future = consumer.next();
+				delivery
+			}
+		};
+
+		let delivery = match delivery {
 			Some(Ok(delivery)) => delivery,
 			Some(Err(_)) => continue,
-			None => panic!("Delivery failed"),
+			None => panic!("Delivery None"),
 		};
-		let content = delivery.data.clone();
-		let payload = serde_json::from_slice(content.as_slice());
+		let payload = serde_json::from_slice(&delivery.data);
 
 		let payload = match payload {
 			Ok(payload) => payload,
 			Err(err) => {
-				println!("content: {}", String::from_utf8(content).unwrap());
-				log::error!("{}", err);
+				log::error!(
+					"Unknown payload recieved: `{}`",
+					String::from_utf8(delivery.data).unwrap_or_default()
+				);
+				log::error!("Error parsing payload: {}", err);
 				continue;
 			}
 		};
 
-		let response = execute_kubernetes_deployment(payload, config).await;
-		if response.is_ok() {
-			if let Err(err) = delivery.ack(BasicAckOptions::default()).await {
-				log::error!("Unable to ack message: {}", err);
-			};
-		} else {
-			let publish_result = channel
-				.basic_publish(
-					"",
-					"infrastructure",
-					BasicPublishOptions::default(),
-					&content,
-					BasicProperties::default(),
-				)
-				.await;
-
-			let _result = match publish_result {
-				Ok(publish_result) => match publish_result.await {
-					Ok(result) => result,
-					Err(e) => {
-						log::error!("Error consuming message from infrastructure queue: {}", e);
-						return;
-					}
-				},
-				Err(e) => {
-					log::error!(
-						"Error consuming message  infrastructure queue: {}",
-						e
-					);
-					return;
-				}
-			};
+		let result = process_queue_payload(payload, &app.config)
+			.await
+			.and(
+				delivery
+					.ack(BasicAckOptions::default())
+					.await
+					.map_err(|err| err.into()),
+			)
+			.or({
+				delivery
+					.nack(BasicNackOptions {
+						multiple: false,
+						requeue: true,
+					})
+					.await
+			});
+		if let Err(error) = result {
+			log::error!("Error communicating with rabbitmq: {}", error);
 		}
 	}
 
@@ -126,200 +126,160 @@ pub async fn start_consumer(config: &Settings) {
 	println!("Shutting down consumer");
 }
 
-async fn execute_kubernetes_deployment(
+async fn process_queue_payload(
 	content: RequestMessage,
 	config: &Settings,
 ) -> Result<(), Error> {
-	match content.request_type {
-		RequestType::Update => {
-			match content.request_data {
-				RequestData::Deployment(deployment_request_data) => {
-					match *deployment_request_data {
-						DeploymentRequestData::Update {
-							workspace_id,
-							deployment,
-							full_image,
-							running_details,
-							request_id,
-						} => {
-							log::trace!("Received a update kubernetes deployment request");
-							let update_kubernetes_result =
-								service::update_kubernetes_deployment(
-									&workspace_id,
-									&deployment,
-									&full_image,
-									&running_details,
-									config,
-									&request_id,
-								)
-								.await;
-
-							if let Err(err) = update_kubernetes_result {
-								log::error!(
-									"Error updating kubernetes deployment: {}",
-									err.get_error()
-								);
-								Err(err)
-							} else {
-								Ok(())
-							}
-						}
-						_ => {
-							log::error!("Unable to deserialize request data");
-							// TODO: change the return statement
-							Error::as_result()
-								.status(500)
-								.body(error!(SERVER_ERROR).to_string())
-						}
-					}
-				}
-				RequestData::StaticSiteRequest(static_site_request_data) => {
-					match *static_site_request_data {
-						StaticSiteRequestData::Update {
-							workspace_id,
-							static_site,
-							static_site_details,
-							request_id,
-							static_site_status,
-						} => {
-							log::trace!(
-								"Received a update static site request"
-							);
-							let result =
-								service::update_kubernetes_static_site(
-									&workspace_id,
-									&static_site,
-									&static_site_details,
-									config,
-									&request_id,
-								)
-								.await;
-
-							match result {
-								Ok(()) => {
-									log::trace!(
-										"request_id: {} - updating database status",
-										request_id
-									);
-									log::trace!("request_id: {} - updated database status", request_id);
-									db::update_static_site_status(
-										service::get_app()
-											.database
-											.acquire()
-											.await?
-											.deref_mut(),
-										&static_site.id,
-										&static_site_status,
-									)
-									.await
-									.map_err(|err| err.into())
-								}
-								Err(e) => {
-									log::error!(
-										"Error occured during deployment of static site: {}",
-										e.get_error()
-									);
-									db::update_static_site_status(
-										service::get_app()
-											.database
-											.acquire()
-											.await?
-											.deref_mut(),
-										&static_site.id,
-										&DeploymentStatus::Errored,
-									)
-									.await
-									.map_err(|err| err.into())
-								}
-							}
-						}
-						_ => {
-							log::error!("Unable to deserialize request data");
-							Error::as_result()
-								.status(500)
-								.body(error!(SERVER_ERROR).to_string())
-						}
-					}
-				}
-				RequestData::DatabaseRequest {} => todo!(),
-			}
+	match content {
+		RequestMessage::DeploymentRequest(request_data) => {
+			process_deployment_request(request_data, config).await
 		}
-		RequestType::Delete => {
-			match content.request_data {
-				RequestData::Deployment(deployment_request_data) => {
-					match *deployment_request_data {
-						DeploymentRequestData::Delete {
-							workspace_id,
-							deployment_id,
-							request_id,
-							deployment_status,
-						} => {
-							log::trace!("reciver a delete kubernetes deployment request");
-							service::delete_kubernetes_deployment(
-								&workspace_id,
-								&deployment_id,
-								config,
-								&request_id,
-							)
-							.await?;
+		RequestMessage::StaticSiteRequest(request_data) => {
+			process_static_sites_request(request_data, config).await
+		}
+		RequestMessage::DatabaseRequest {} => todo!(),
+	}
+}
 
-							// TODO: change this incase the request is stop
-							// deployment
-							db::update_deployment_status(
-								service::get_app()
-									.database
-									.acquire()
-									.await?
-									.deref_mut(),
-								&deployment_id,
-								&deployment_status,
-							)
-							.await
-							.map_err(|e| e.into())
-						}
-						_ => Error::as_result()
-							.status(500)
-							.body(error!(SERVER_ERROR).to_string()),
-					}
-				}
-				RequestData::StaticSiteRequest(static_site_request_data) => {
-					match *static_site_request_data {
-						StaticSiteRequestData::Delete {
-							workspace_id,
-							static_site_id,
-							request_id,
-							static_site_status,
-						} => {
-							log::trace!(
-								"Received a delete static site request"
-							);
-							service::delete_kubernetes_static_site(
-								&workspace_id,
-								&static_site_id,
-								config,
-								&request_id,
-							)
-							.await?;
-							log::trace!("request_id: {} - updating db status to stopped", request_id);
-							db::update_static_site_status(
-								service::get_app()
-									.database
-									.acquire()
-									.await?
-									.deref_mut(),
-								&static_site_id,
-								&static_site_status,
-							)
-							.await
-							.map_err(|err| err.into())
-						}
-						_ => Error::as_result()
-							.status(500)
-							.body(error!(SERVER_ERROR).to_string()),
-					}
-				}
-				RequestData::DatabaseRequest {} => todo!(),
-			}
+async fn process_deployment_request(
+	request_data: DeploymentRequestData,
+	config: &Settings,
+) -> Result<(), Error> {
+	match request_data {
+		DeploymentRequestData::Update {
+			workspace_id,
+			deployment,
+			full_image,
+			running_details,
+			request_id,
+		} => {
+			log::trace!("Received a update kubernetes deployment request");
+			service::update_kubernetes_deployment(
+				&workspace_id,
+				&deployment,
+				&full_image,
+				&running_details,
+				config,
+				&request_id,
+			)
+			.await
+			.map_err(|err| {
+				log::error!(
+					"Error updating kubernetes deployment: {}",
+					err.get_error()
+				);
+				err
+			})
+		}
+		DeploymentRequestData::Delete {
+			workspace_id,
+			deployment_id,
+			request_id,
+			deployment_status,
+		} => {
+			log::trace!("reciver a delete kubernetes deployment request");
+			service::delete_kubernetes_deployment(
+				&workspace_id,
+				&deployment_id,
+				config,
+				&request_id,
+			)
+			.await?;
+
+			// TODO: change this incase the request is stop
+			// deployment
+			db::update_deployment_status(
+				service::get_app().database.acquire().await?.deref_mut(),
+				&deployment_id,
+				&deployment_status,
+			)
+			.await
+			.map_err(|e| e.into())
+		}
+	}
+}
+
+async fn process_static_sites_request(
+	request_data: StaticSiteRequestData,
+	config: &Settings,
+) -> Result<(), Error> {
+	match request_data {
+		StaticSiteRequestData::Update {
+			workspace_id,
+			static_site,
+			static_site_details,
+			request_id,
+			static_site_status,
+		} => {
+			log::trace!("Received a update static site request");
+			service::update_kubernetes_static_site(
+				&workspace_id,
+				&static_site,
+				&static_site_details,
+				config,
+				&request_id,
+			)
+			.await
+			.and({
+				log::trace!(
+					"request_id: {} - updating database status",
+					request_id
+				);
+				db::update_static_site_status(
+					service::get_app().database.acquire().await?.deref_mut(),
+					&static_site.id,
+					&static_site_status,
+				)
+				.await
+				.map(|_| {
+					log::trace!(
+						"request_id: {} - updated database status",
+						request_id
+					);
+				})
+				.map_err(|err| err.into())
+			})
+			.or({
+				db::update_static_site_status(
+					service::get_app().database.acquire().await?.deref_mut(),
+					&static_site.id,
+					&DeploymentStatus::Errored,
+				)
+				.await
+				.map_err(|err| {
+					log::error!(
+						"Error occured during deployment of static site: {}",
+						err
+					);
+					err.into()
+				})
+			})
+		}
+		StaticSiteRequestData::Delete {
+			workspace_id,
+			static_site_id,
+			request_id,
+			static_site_status,
+		} => {
+			log::trace!("Received a delete static site request");
+			service::delete_kubernetes_static_site(
+				&workspace_id,
+				&static_site_id,
+				config,
+				&request_id,
+			)
+			.await?;
+			log::trace!(
+				"request_id: {} - updating db status to stopped",
+				request_id
+			);
+			db::update_static_site_status(
+				service::get_app().database.acquire().await?.deref_mut(),
+				&static_site_id,
+				&static_site_status,
+			)
+			.await
+			.map_err(|err| err.into())
 		}
 	}
 }

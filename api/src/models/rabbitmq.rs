@@ -8,22 +8,9 @@ use api_models::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RequestMessage {
-	pub request_type: RequestType,
-	pub request_data: RequestData,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum RequestType {
-	Update,
-	Delete,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-
-pub enum RequestData {
-	Deployment(Box<DeploymentRequestData>),
-	StaticSiteRequest(Box<StaticSiteRequestData>),
+pub enum RequestMessage {
+	DeploymentRequest(DeploymentRequestData),
+	StaticSiteRequest(StaticSiteRequestData),
 	DatabaseRequest {},
 }
 
@@ -31,7 +18,7 @@ pub enum RequestData {
 pub enum DeploymentRequestData {
 	Update {
 		workspace_id: Uuid,
-		deployment: Box<Deployment>,
+		deployment: Deployment,
 		full_image: String,
 		running_details: DeploymentRunningDetails,
 		request_id: Uuid,

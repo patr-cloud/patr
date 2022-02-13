@@ -67,7 +67,7 @@ async fn async_main() -> Result<(), EveError> {
 	log::debug!("Render register initialised");
 
 	let app = App {
-		config: config.clone(),
+		config,
 		database,
 		redis,
 		render_register,
@@ -99,8 +99,8 @@ async fn async_main() -> Result<(), EveError> {
 	}
 
 	future::join(
-		app::start_server(app.clone()),
-		rabbitmq::start_consumer(&config),
+		app::start_server(&app),
+		rabbitmq::start_consumer(&app),
 	)
 	.await;
 

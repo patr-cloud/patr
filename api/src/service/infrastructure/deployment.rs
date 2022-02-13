@@ -19,12 +19,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		rabbitmq::{
-			DeploymentRequestData,
-			RequestData,
-			RequestMessage,
-			RequestType,
-		},
+		rabbitmq::{DeploymentRequestData, RequestMessage},
 		rbac,
 	},
 	service::{self, infrastructure::kubernetes},
@@ -238,18 +233,13 @@ pub async fn start_deployment(
 	let (channel, connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content = RequestMessage {
-		request_type: RequestType::Update,
-		request_data: RequestData::Deployment(Box::new(
-			DeploymentRequestData::Update {
-				workspace_id,
-				deployment: Box::new(deployment),
-				full_image,
-				running_details,
-				request_id: request_id.clone(),
-			},
-		)),
-	};
+	let content = RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+		workspace_id,
+		deployment,
+		full_image,
+		running_details,
+		request_id: request_id.clone(),
+	});
 
 	channel
 		.basic_publish(
@@ -294,17 +284,12 @@ pub async fn stop_deployment(
 	let (channel, rabbitmq_connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content = RequestMessage {
-		request_type: RequestType::Delete,
-		request_data: RequestData::Deployment(Box::new(
-			DeploymentRequestData::Delete {
-				workspace_id: deployment.workspace_id,
-				deployment_id: deployment_id.clone(),
-				request_id: request_id.clone(),
-				deployment_status,
-			},
-		)),
-	};
+	let content = RequestMessage::DeploymentRequest(DeploymentRequestData::Delete {
+		workspace_id: deployment.workspace_id,
+		deployment_id: deployment_id.clone(),
+		request_id: request_id.clone(),
+		deployment_status,
+	});
 
 	channel
 		.basic_publish(
