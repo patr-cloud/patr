@@ -8,13 +8,15 @@ use api_models::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum RequestMessage {
-	DeploymentRequest(DeploymentRequestData),
-	StaticSiteRequest(StaticSiteRequestData),
-	DatabaseRequest {},
+	Deployment(DeploymentRequestData),
+	StaticSite(StaticSiteRequestData),
+	Database {},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum DeploymentRequestData {
 	Update {
 		workspace_id: Uuid,

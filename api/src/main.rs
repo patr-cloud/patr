@@ -98,11 +98,7 @@ async fn async_main() -> Result<(), EveError> {
 		task::spawn(models::initialize_sample_data(app.clone()));
 	}
 
-	future::join(
-		app::start_server(&app),
-		rabbitmq::start_consumer(&app),
-	)
-	.await;
+	future::join(app::start_server(&app), rabbitmq::start_consumer(&app)).await;
 
 	Ok(())
 }

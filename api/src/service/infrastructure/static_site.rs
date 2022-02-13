@@ -129,14 +129,13 @@ pub async fn start_static_site_deployment(
 		status: DeploymentStatus::Deploying,
 	};
 
-	let content =
-		RequestMessage::StaticSiteRequest(StaticSiteRequestData::Update {
-			workspace_id: static_site.workspace_id.clone(),
-			static_site: static_site_info,
-			static_site_details: StaticSiteDetails {},
-			request_id: request_id.clone(),
-			static_site_status: DeploymentStatus::Running,
-		});
+	let content = RequestMessage::StaticSite(StaticSiteRequestData::Update {
+		workspace_id: static_site.workspace_id.clone(),
+		static_site: static_site_info,
+		static_site_details: StaticSiteDetails {},
+		request_id: request_id.clone(),
+		static_site_status: DeploymentStatus::Running,
+	});
 
 	channel
 		.basic_publish(
@@ -169,13 +168,12 @@ pub async fn stop_static_site(
 	let (channel, rabbitmq_connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content =
-		RequestMessage::StaticSiteRequest(StaticSiteRequestData::Delete {
-			workspace_id: static_site.workspace_id.clone(),
-			static_site_id: static_site.id.clone(),
-			request_id: request_id.clone(),
-			static_site_status: DeploymentStatus::Stopped,
-		});
+	let content = RequestMessage::StaticSite(StaticSiteRequestData::Delete {
+		workspace_id: static_site.workspace_id.clone(),
+		static_site_id: static_site.id.clone(),
+		request_id: request_id.clone(),
+		static_site_status: DeploymentStatus::Stopped,
+	});
 
 	channel
 		.basic_publish(
@@ -220,13 +218,12 @@ pub async fn delete_static_site(
 	let (channel, rabbitmq_connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content =
-		RequestMessage::StaticSiteRequest(StaticSiteRequestData::Delete {
-			workspace_id: static_site.workspace_id.clone(),
-			static_site_id: static_site.id.clone(),
-			request_id: request_id.clone(),
-			static_site_status: DeploymentStatus::Deleted,
-		});
+	let content = RequestMessage::StaticSite(StaticSiteRequestData::Delete {
+		workspace_id: static_site.workspace_id.clone(),
+		static_site_id: static_site.id.clone(),
+		request_id: request_id.clone(),
+		static_site_status: DeploymentStatus::Deleted,
+	});
 
 	channel
 		.basic_publish(

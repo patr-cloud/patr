@@ -233,7 +233,7 @@ pub async fn start_deployment(
 	let (channel, connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content = RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+	let content = RequestMessage::Deployment(DeploymentRequestData::Update {
 		workspace_id,
 		deployment,
 		full_image,
@@ -284,7 +284,7 @@ pub async fn stop_deployment(
 	let (channel, rabbitmq_connection) =
 		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
-	let content = RequestMessage::DeploymentRequest(DeploymentRequestData::Delete {
+	let content = RequestMessage::Deployment(DeploymentRequestData::Delete {
 		workspace_id: deployment.workspace_id,
 		deployment_id: deployment_id.clone(),
 		request_id: request_id.clone(),

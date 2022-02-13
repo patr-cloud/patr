@@ -131,13 +131,13 @@ async fn process_queue_payload(
 	config: &Settings,
 ) -> Result<(), Error> {
 	match content {
-		RequestMessage::DeploymentRequest(request_data) => {
+		RequestMessage::Deployment(request_data) => {
 			process_deployment_request(request_data, config).await
 		}
-		RequestMessage::StaticSiteRequest(request_data) => {
+		RequestMessage::StaticSite(request_data) => {
 			process_static_sites_request(request_data, config).await
 		}
-		RequestMessage::DatabaseRequest {} => todo!(),
+		RequestMessage::Database {} => todo!(),
 	}
 }
 

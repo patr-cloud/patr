@@ -654,7 +654,7 @@ async fn create_deployment(
 				}
 
 				let content =
-					RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+					RequestMessage::Deployment(DeploymentRequestData::Update {
 						workspace_id,
 						deployment: Deployment {
 							id,
@@ -1131,7 +1131,7 @@ async fn update_deployment(
 					.await?;
 
 			let content =
-				RequestMessage::DeploymentRequest(DeploymentRequestData::Update {
+				RequestMessage::Deployment(DeploymentRequestData::Update {
 					workspace_id,
 					deployment,
 					full_image,
