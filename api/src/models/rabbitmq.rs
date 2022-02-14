@@ -34,7 +34,6 @@ pub enum DeploymentRequestData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-
 pub enum StaticSiteRequestData {
 	Update {
 		workspace_id: Uuid,

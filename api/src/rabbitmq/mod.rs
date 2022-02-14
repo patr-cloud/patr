@@ -41,7 +41,7 @@ pub async fn start_consumer(app: &App) {
 	// Create Queue
 	channel
 		.queue_declare(
-			"infrastructure",
+			app.config.rabbit_mq.queue.as_str(),
 			QueueDeclareOptions::default(),
 			FieldTable::default(),
 		)
@@ -94,23 +94,20 @@ pub async fn start_consumer(app: &App) {
 			}
 		};
 
-		let result = process_queue_payload(payload, &app.config)
-			.await
-			.and(
-				delivery
-					.ack(BasicAckOptions::default())
-					.await
-					.map_err(|err| err.into()),
-			)
-			.or({
-				delivery
-					.nack(BasicNackOptions {
-						multiple: false,
-						requeue: true,
-					})
-					.await
-			});
-		if let Err(error) = result {
+		let result = process_queue_payload(payload, &app.config).await;
+		let ack_result = if let Err(error) = result {
+			log::error!("Error processing payload: {}", error.get_error());
+			delivery
+				.nack(BasicNackOptions {
+					multiple: false,
+					requeue: true,
+				})
+				.await
+		} else {
+			delivery.ack(BasicAckOptions::default()).await
+		};
+
+		if let Err(error) = ack_result {
 			log::error!("Error communicating with rabbitmq: {}", error);
 		}
 	}

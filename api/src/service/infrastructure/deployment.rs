@@ -194,8 +194,6 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	// TODO UPDATE ENTRY POINTS
-
 	Ok(deployment_id)
 }
 
