@@ -158,7 +158,7 @@ pub async fn migrate(
 			value TEXT NOT NULL,
 			priority INTEGER,
 			ttl BIGINT NOT NULL,
-			proxied BOOLEAN NOT NULL,
+			proxied BOOLEAN,
 			CONSTRAINT patr_domain_dns_record_fk_domain_id
 				FOREIGN KEY(domain_id)
 					REFERENCES patr_controlled_domain(domain_id),
@@ -171,7 +171,17 @@ pub async fn migrate(
 			),
 			CONSTRAINT
 				patr_domain_dns_record_uq_domain_id_name_type_value_priority
-					UNIQUE(domain_id, name, type, value, priority)
+					UNIQUE(domain_id, name, type, value, priority),
+			CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK(
+				(
+					(type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND
+					proxied IS NOT NULL
+				) OR
+				(
+					(type = 'MX' OR type = 'TXT') AND
+					proxied IS NULL
+				)
+			)
 		);
 		"#
 	)
@@ -598,20 +608,26 @@ pub async fn migrate(
 				.trim_end_matches('.')
 				.to_string();
 			let name = if name.is_empty() { "@" } else { name.as_str() };
-			let (r#type, value, priority) = match dns_record.content {
-				DnsContent::A { content } => ("A", content.to_string(), None),
-				DnsContent::AAAA { content } => {
-					("AAAA", content.to_string(), None)
+			let (r#type, value, priority, proxied) = match dns_record.content {
+				DnsContent::A { content, .. } => {
+					("A", content.to_string(), None, Some(dns_record.proxied))
 				}
-				DnsContent::CNAME { content } => ("CNAME", content, None),
+				DnsContent::AAAA { content, .. } => (
+					"AAAA",
+					content.to_string(),
+					None,
+					Some(dns_record.proxied),
+				),
+				DnsContent::CNAME { content, .. } => {
+					("CNAME", content, None, Some(dns_record.proxied))
+				}
 				DnsContent::MX { content, priority } => {
-					("MX", content, Some(priority as i32))
+					("MX", content, Some(priority as i32), None)
 				}
-				DnsContent::TXT { content } => ("TXT", content, None),
+				DnsContent::TXT { content } => ("TXT", content, None, None),
 				_ => continue,
 			};
 			let ttl = dns_record.ttl as i64;
-			let proxied = dns_record.proxied;
 
 			let record_id = loop {
 				let uuid = Uuid::new_v4();

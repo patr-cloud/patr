@@ -96,8 +96,12 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
-					config.kubernetes.cert_issuer.clone(),
+					"cert-manager.io/cluster-issuer".to_string(),
+					if domain.is_ns_internal() {
+						config.kubernetes.cert_issuer_dns.clone()
+					} else {
+						config.kubernetes.cert_issuer_http.clone()
+					},
 				),
 			]
 			.into_iter()
@@ -136,8 +140,12 @@ pub async fn update_kubernetes_managed_url(
 					format!("{}.{}", managed_url.sub_domain, domain.name),
 				),
 				(
-					"cert-manager.io/issuer".to_string(),
-					config.kubernetes.cert_issuer.clone(),
+					"cert-manager.io/cluster-issuer".to_string(),
+					if domain.is_ns_internal() {
+						config.kubernetes.cert_issuer_dns.clone()
+					} else {
+						config.kubernetes.cert_issuer_http.clone()
+					},
 				),
 			]
 			.into_iter()
@@ -220,8 +228,12 @@ pub async fn update_kubernetes_managed_url(
 						"HTTPS".to_string(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
-						config.kubernetes.cert_issuer.clone(),
+						"cert-manager.io/cluster-issuer".to_string(),
+						if domain.is_ns_internal() {
+							config.kubernetes.cert_issuer_dns.clone()
+						} else {
+							config.kubernetes.cert_issuer_http.clone()
+						},
 					),
 				]
 				.into_iter()
@@ -299,8 +311,12 @@ pub async fn update_kubernetes_managed_url(
 						url.clone(),
 					),
 					(
-						"cert-manager.io/issuer".to_string(),
-						config.kubernetes.cert_issuer.clone(),
+						"cert-manager.io/cluster-issuer".to_string(),
+						if domain.is_ns_internal() {
+							config.kubernetes.cert_issuer_dns.clone()
+						} else {
+							config.kubernetes.cert_issuer_http.clone()
+						},
 					),
 				]
 				.into_iter()
@@ -318,10 +334,17 @@ pub async fn update_kubernetes_managed_url(
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
 			tls: Some(vec![IngressTLS {
-				hosts: Some(vec![format!(
-					"{}.{}",
-					managed_url.sub_domain, domain.name
-				)]),
+				hosts: if domain.is_ns_internal() {
+					Some(vec![
+						format!("*.{}", domain.name),
+						domain.name.clone(),
+					])
+				} else {
+					Some(vec![format!(
+						"{}.{}",
+						managed_url.sub_domain, domain.name
+					)])
+				},
 				secret_name: Some(format!(
 					"tls-{}",
 					if domain.is_ns_internal() {
@@ -393,7 +416,7 @@ pub async fn delete_kubernetes_managed_url(
 		);
 	} else {
 		log::trace!(
-			"request_id: {} - managed URL doesn't exist as {}",
+			"request_id: {} - managed URL service doesn't exist as service-{}",
 			request_id,
 			managed_url_id
 		);
@@ -420,7 +443,7 @@ pub async fn delete_kubernetes_managed_url(
 			.await?;
 	} else {
 		log::trace!(
-			"request_id: {} - ingress doesn't exist as {}",
+			"request_id: {} - managed URL ingress doesn't exist as ingress-{}",
 			request_id,
 			managed_url_id
 		);

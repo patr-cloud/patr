@@ -60,8 +60,7 @@ pub async fn update_kubernetes_static_site(
 		spec: Some(ServiceSpec {
 			type_: Some("ExternalName".to_string()),
 			external_name: Some(
-				"proxy-static-site-service.default.svc.cluster.local"
-					.to_string(),
+				config.kubernetes.static_site_proxy_service.to_string(),
 			),
 			ports: Some(vec![ServicePort {
 				port: 80,
@@ -101,8 +100,8 @@ pub async fn update_kubernetes_static_site(
 	);
 
 	annotations.insert(
-		"cert-manager.io/issuer".to_string(),
-		config.kubernetes.cert_issuer.clone(),
+		"cert-manager.io/cluster-issuer".to_string(),
+		config.kubernetes.cert_issuer_dns.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
 		host: Some(format!("{}.patr.cloud", static_site.id)),
@@ -129,7 +128,7 @@ pub async fn update_kubernetes_static_site(
 		request_id
 	);
 	let patr_domain_tls = vec![IngressTLS {
-		hosts: Some(vec![format!("{}.patr.cloud", static_site.id)]),
+		hosts: Some(vec!["*.patr.cloud".to_string(), "patr.cloud".to_string()]),
 		secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
 	}];
 	log::trace!(
@@ -195,7 +194,7 @@ pub async fn delete_kubernetes_static_site(
 	.await?
 	{
 		log::trace!(
-			"request_id: {} - site exists as {}",
+			"request_id: {} - static site service exists as service-{}",
 			request_id,
 			static_site_id
 		);
@@ -206,6 +205,27 @@ pub async fn delete_kubernetes_static_site(
 				&DeleteParams::default(),
 			)
 			.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - static site doesn't exist as service-{} in the namespace: {}",
+			request_id,
+			static_site_id,
+			namespace,
+		);
+	}
+
+	if super::ingress_exists(
+		static_site_id,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - ingress exists as ingress-{}",
+			request_id,
+			static_site_id
+		);
 		Api::<Ingress>::namespaced(kubernetes_client, namespace)
 			.delete(
 				&format!("ingress-{}", static_site_id),
@@ -214,9 +234,10 @@ pub async fn delete_kubernetes_static_site(
 			.await?;
 	} else {
 		log::trace!(
-			"request_id: {} - App doesn't exist as {}",
+			"request_id: {} - static site ingress doesn't exist as ingress-{} in the namespace: {}",
 			request_id,
-			static_site_id
+			static_site_id,
+			namespace,
 		);
 	}
 

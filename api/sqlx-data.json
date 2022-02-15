@@ -989,44 +989,6 @@
       "nullable": []
     }
   },
-  "1a9b57c08d7e29f0bfa77c074322fa6a97286ec41ac182294dfe5349afa93685": {
-    "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!: i64\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name!: String",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "size!: i64",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        null,
-        null
-      ]
-    }
-  },
   "1b91d51ce01a40c989017198a841c47361919562817d7f58d41e147a10bc2b2c": {
     "query": "SELECT tag, last_updated FROM docker_registry_repository_tag WHERE repository_id = $1 AND manifest_digest = $2;",
     "describe": {
@@ -1400,7 +1362,7 @@
         false,
         true,
         false,
-        false
+        true
       ]
     }
   },
@@ -2631,48 +2593,6 @@
       ]
     }
   },
-  "5fc6893c3642cfd4fb4e27c70e19197dfcf01b14630195707d8360fb3f716a95": {
-    "query": "SELECT id as \"id: _\", CONCAT(domain.name, '.', domain.tld) as \"name!\", type as \"type: _\" FROM domain WHERE name = $1 AND name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "type: _",
-          "type_info": {
-            "Custom": {
-              "name": "resource_owner_type",
-              "kind": {
-                "Enum": [
-                  "personal",
-                  "business"
-                ]
-              }
-            }
-          }
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false
-      ]
-    }
-  },
   "60052c09546b142087edbb8c7677a63a9567bbdc0ae3a6cb1626a3fd3b520c67": {
     "query": "SELECT * FROM \"user\" WHERE id = $1;",
     "describe": {
@@ -2763,6 +2683,19 @@
         true,
         true
       ]
+    }
+  },
+  "60383fb5599092877e06a8e6a920ae78e76d609cc8ea603b5f1a9dda010f4e2e": {
+    "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      },
+      "nullable": []
     }
   },
   "60af027f2e663763fc387f893cb4fb3d82ad2cc31340f27df96cdffee8198f88": {
@@ -4020,16 +3953,6 @@
           "Uuid",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "954b82d0bb99b3952a294e4b16931c5c766f4b44d0bc69f747432a475f320250": {
-    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN NOT NULL, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -6089,6 +6012,16 @@
       ]
     }
   },
+  "ce5f94c07e5c7f5f624f8f47a1d02c75ed66c92eb9b8b32fcc05c107f9e1ad0f": {
+    "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority), CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK( ( (type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND proxied IS NOT NULL ) OR ( (type = 'MX' OR type = 'TXT') AND proxied IS NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "cf89fc51ab1464b12fc7e5f4add548647aac5c811c10851239fa91bbb95ec319": {
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_database WHERE status != 'deleted';",
     "describe": {
@@ -6234,6 +6167,44 @@
         ]
       },
       "nullable": [
+        null
+      ]
+    }
+  },
+  "d8025ea32bd00497ab2e0b817f283edaac5f41d132887ce359f758fb7ff689a8": {
+    "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "name!: String",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "size!",
+          "type_info": "Numeric"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        null,
         null
       ]
     }
@@ -6781,7 +6752,7 @@
         false,
         true,
         false,
-        false
+        true
       ]
     }
   },
@@ -6977,14 +6948,66 @@
       "nullable": []
     }
   },
-  "ea6dfc14493175d975a95da55d24d8da3232f3eb8e199a7505a1ea890fe86f38": {
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ) );",
+  "e9d0764903c5d929f560f8069e0e610181f2724a5642fe65ba3a94dcba724460": {
+    "query": "SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = $1 ORDER BY created DESC LIMIT 1 ) ) as \"last_updated!\" FROM resource WHERE resource.id = $1;",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "last_updated!",
+          "type_info": "Int8"
+        }
+      ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       },
-      "nullable": []
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "eae55af4308b23ddda0f1baddb26ab64d833bd6135785f365fbc23b89e29ef2c": {
+    "query": "SELECT id as \"id: _\", CONCAT(domain.name, '.', domain.tld) as \"name!\", type as \"type: _\" FROM domain WHERE CONCAT(domain.name, '.', domain.tld) = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "type: _",
+          "type_info": {
+            "Custom": {
+              "name": "resource_owner_type",
+              "kind": {
+                "Enum": [
+                  "personal",
+                  "business"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false
+      ]
     }
   },
   "ed03b82d7f2dae1014156e82999b9804b120f50fbd13d06969daca39c47e3c88": {
@@ -7332,6 +7355,16 @@
         false,
         true
       ]
+    }
+  },
+  "f6fd226a2dbddcdaa814f0e47874e447b759180761627cdc941cbe554a07abe5": {
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {

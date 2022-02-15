@@ -74,6 +74,12 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
+	if image_tag.is_empty() {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	}
+
 	// validate deployment name
 	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
@@ -289,6 +295,13 @@ pub async fn start_deployment(
 		"request_id: {} - Updating kubernetes deployment",
 		request_id
 	);
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
 
 	kubernetes::update_kubernetes_deployment(
 		connection,

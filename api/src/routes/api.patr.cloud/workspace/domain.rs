@@ -394,7 +394,6 @@ async fn get_domains_for_workspace(
 		domain: Domain {
 			id: domain.id,
 			name: domain.name,
-			domain_type: domain.domain_type,
 		},
 		is_verified: domain.is_verified,
 		nameserver_type: domain.nameserver_type,
@@ -627,7 +626,6 @@ async fn get_domain_info_in_workspace(
 		domain: Domain {
 			id: domain.id,
 			name: domain.name,
-			domain_type: domain.domain_type,
 		},
 		is_verified: domain.is_verified,
 	});
@@ -723,15 +721,23 @@ async fn get_domain_dns_record(
 	.await?
 	.into_iter()
 	.filter_map(|record| {
+		let proxied = if let Some(proxied) = record.proxied {
+			proxied
+		} else {
+			false
+		};
 		let record_value = match record.r#type {
 			DnsRecordType::A => DnsRecordValue::A {
 				target: record.value,
+				proxied,
 			},
 			DnsRecordType::AAAA => DnsRecordValue::AAAA {
 				target: record.value,
+				proxied,
 			},
 			DnsRecordType::CNAME => DnsRecordValue::CNAME {
 				target: record.value,
+				proxied,
 			},
 			DnsRecordType::MX => DnsRecordValue::MX {
 				target: record.value,
@@ -747,7 +753,6 @@ async fn get_domain_dns_record(
 			name: record.name,
 			r#type: record_value,
 			ttl: record.ttl as u32,
-			proxied: record.proxied,
 		})
 	})
 	.collect();
@@ -776,7 +781,6 @@ async fn add_dns_record(
 		domain_id: _,
 		name,
 		r#type,
-		proxied,
 		ttl,
 	} = context
 		.get_body_as()
@@ -790,9 +794,8 @@ async fn add_dns_record(
 		context.get_database_connection(),
 		&workspace_id,
 		&domain_id,
-		&name,
+		&name.to_lowercase(),
 		ttl,
-		proxied,
 		&r#type,
 		&config,
 		&request_id,
@@ -822,7 +825,7 @@ async fn update_dns_record(
 		record_id: _,
 		ttl,
 		proxied,
-		content,
+		target,
 		priority,
 	} = context
 		.get_body_as()
@@ -835,7 +838,7 @@ async fn update_dns_record(
 		context.get_database_connection(),
 		&domain_id,
 		&record_id,
-		content.as_deref(),
+		target.as_deref(),
 		ttl,
 		proxied,
 		priority,

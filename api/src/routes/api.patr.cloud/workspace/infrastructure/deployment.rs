@@ -605,6 +605,14 @@ async fn create_deployment(
 				digest
 			);
 			let request_id = request_id.clone();
+
+			db::update_deployment_status(
+				context.get_database_connection(),
+				&id,
+				&DeploymentStatus::Pushed,
+			)
+			.await?;
+
 			task::spawn(async move {
 				log::trace!(
 					"request_id: {} - Acquiring database connection",
@@ -615,7 +623,7 @@ async fn create_deployment(
 				{
 					connection
 				} else {
-					log::error!("Unable to acquire a database connection");
+					log::error!("request_id: {} - Unable to acquire a database connection", request_id);
 					return;
 				};
 				log::trace!(
@@ -658,7 +666,7 @@ async fn create_deployment(
 					&mut connection,
 					&workspace_id,
 					&Deployment {
-						id,
+						id: id.clone(),
 						name,
 						registry,
 						image_tag,
@@ -690,6 +698,19 @@ async fn create_deployment(
 				});
 
 				service::get_app().database.close().await;
+				let _ = db::update_deployment_status(
+					&mut connection,
+					&id,
+					&DeploymentStatus::Errored,
+				)
+				.await
+				.map_err(|e| {
+					log::error!(
+						"request_id: {} - Error updating db status: {}",
+						request_id,
+						e
+					);
+				});
 			});
 		}
 	}
@@ -1135,10 +1156,19 @@ async fn update_deployment(
 		.await?;
 
 	match &deployment.status {
-		DeploymentStatus::Stopped | DeploymentStatus::Deleted => {
+		DeploymentStatus::Stopped |
+		DeploymentStatus::Deleted |
+		DeploymentStatus::Created => {
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
+			db::update_deployment_status(
+				context.get_database_connection(),
+				&deployment_id,
+				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
 			service::update_kubernetes_deployment(
 				context.get_database_connection(),
 				&workspace_id,

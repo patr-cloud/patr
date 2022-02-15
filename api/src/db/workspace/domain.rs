@@ -191,7 +191,7 @@ pub async fn initialize_domain_pre(
 			value TEXT NOT NULL,
 			priority INTEGER,
 			ttl BIGINT NOT NULL,
-			proxied BOOLEAN NOT NULL,
+			proxied BOOLEAN,
 			CONSTRAINT patr_domain_dns_record_fk_domain_id
 				FOREIGN KEY(domain_id)
 					REFERENCES patr_controlled_domain(domain_id),
@@ -204,7 +204,17 @@ pub async fn initialize_domain_pre(
 			),
 			CONSTRAINT
 				patr_domain_dns_record_uq_domain_id_name_type_value_priority
-					UNIQUE(domain_id, name, type, value, priority)
+					UNIQUE(domain_id, name, type, value, priority),
+			CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK(
+				(
+					(type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND
+					proxied IS NOT NULL
+				) OR
+				(
+					(type = 'MX' OR type = 'TXT') AND 
+					proxied IS NULL
+				)
+			)
 		);
 		"#
 	)
@@ -726,8 +736,8 @@ pub async fn get_domain_by_name(
 		FROM
 			domain
 		WHERE
-			name = $1 AND
-			name NOT LIKE CONCAT(
+			CONCAT(domain.name, '.', domain.tld) = $1 AND
+			domain.name NOT LIKE CONCAT(
 				'patr-deleted: ',
 				REPLACE(domain.id::TEXT, '-', ''),
 				'@%'
@@ -846,7 +856,7 @@ pub async fn create_patr_domain_dns_record(
 	value: &str,
 	priority: Option<i32>,
 	ttl: i64,
-	proxied: bool,
+	proxied: Option<bool>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -985,4 +995,26 @@ pub async fn get_dns_record_count_for_domain(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.count.unwrap_or(0))
+}
+
+pub async fn update_dns_record_identifier(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	record_id: &Uuid,
+	record_identifier: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			patr_domain_dns_record
+		SET
+			record_identifier = $1
+		WHERE
+			id = $2;
+		"#,
+		record_identifier,
+		record_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

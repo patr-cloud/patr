@@ -5,6 +5,7 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::AsError;
+use http::StatusCode;
 use reqwest::Client;
 use tokio::{process::Command, task, time};
 
@@ -178,7 +179,9 @@ pub(super) async fn delete_image_from_digitalocean_registry(
 		.await?
 		.status();
 
-	if container_status.is_server_error() || container_status.is_client_error()
+	if (container_status.is_server_error() ||
+		container_status.is_client_error()) &&
+		(container_status != StatusCode::NOT_FOUND)
 	{
 		return Error::as_result()
 			.status(500)
@@ -280,12 +283,15 @@ pub async fn push_to_docr(
 	db::update_deployment_status(
 		connection,
 		deployment_id,
-		&DeploymentStatus::Pushed,
+		&DeploymentStatus::Deploying,
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Pushed to DO", request_id);
-	log::trace!("Deleting image tagged with registry.digitalocean.com");
+	log::trace!(
+		"request_id: {} - Deleting image tagged with registry.digitalocean.com",
+		request_id
+	);
 	let _ = super::delete_docker_image(&new_repo_name)
 		.await
 		.map_err(|error| {
@@ -296,7 +302,7 @@ pub async fn push_to_docr(
 			);
 		});
 
-	log::trace!("deleting the pulled image");
+	log::trace!("request_id: {} - deleting the pulled image", request_id);
 	let _ =
 		super::delete_docker_image(full_image_name)
 			.await
@@ -307,7 +313,7 @@ pub async fn push_to_docr(
 					error.get_error()
 				);
 			});
-	log::trace!("Docker image deleted");
+	log::trace!("request_id: {} - Docker image deleted", request_id);
 	Ok(())
 }
 

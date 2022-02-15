@@ -5,6 +5,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use num_traits::ToPrimitive;
 
 use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
 
@@ -164,7 +165,7 @@ pub async fn get_docker_repositories_for_workspace(
 			id as "id: Uuid",
 			workspace_id as "workspace_id: Uuid",
 			name::TEXT as "name!: String",
-			COALESCE(size, 0) as "size!: i64"
+			COALESCE(size, 0) as "size!"
 		FROM
 			docker_registry_repository
 		LEFT JOIN (
@@ -189,13 +190,18 @@ pub async fn get_docker_repositories_for_workspace(
 	.await?
 	.into_iter()
 	.map(|row| {
+		let size = if let Some(size) = row.size.to_u64() {
+			size
+		} else {
+			0
+		};
 		(
 			DockerRepository {
 				id: row.id,
 				name: row.name,
 				workspace_id: row.workspace_id,
 			},
-			row.size as u64,
+			size,
 		)
 	})
 	.collect();
@@ -577,4 +583,48 @@ pub async fn delete_tag_from_docker_repository(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_last_updated_for_docker_repository(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repository_id: &Uuid,
+) -> Result<u64, sqlx::Error> {
+	query!(
+		r#"
+		SELECT 
+			GREATEST(
+				resource.created, 
+				(
+					SELECT 
+						COALESCE(created, 0) 
+					FROM 
+						docker_registry_repository_manifest 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				), 
+				(
+					SELECT 
+						COALESCE(last_updated, 0) 
+					FROM 
+						docker_registry_repository_tag 
+					WHERE 
+						repository_id = $1
+					ORDER BY
+						created DESC
+					LIMIT 1
+				)
+			) as "last_updated!"
+		FROM
+			resource
+		WHERE
+			resource.id = $1;
+		"#,
+		repository_id as _
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.last_updated as u64)
 }

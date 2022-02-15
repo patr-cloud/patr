@@ -19,7 +19,7 @@ pub async fn create_kubernetes_namespace(
 		},
 		..Namespace::default()
 	};
-	let namespace_api = Api::<Namespace>::all(client);
+	let namespace_api = Api::<Namespace>::all(client.clone());
 	namespace_api
 		.create(&PostParams::default(), &kubernetes_namespace)
 		.await?;
