@@ -53,11 +53,7 @@ pub async fn create_deployment_in_workspace(
 	image_tag: &str,
 	region: &Uuid,
 	machine_type: &Uuid,
-	deploy_on_push: bool,
-	min_horizontal_scale: u16,
-	max_horizontal_scale: u16,
-	ports: &BTreeMap<u16, ExposedPortType>,
-	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
+	deployment_running_details: &DeploymentRunningDetails,
 	request_id: &Uuid,
 	user_id: &Uuid,
 	login_id: &Uuid,
@@ -79,6 +75,13 @@ pub async fn create_deployment_in_workspace(
 			.status(400)
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
+
+	let ports = deployment_running_details
+		.clone()
+		.ports
+		.into_iter()
+		.map(|(port, port_type)| (port.value(), port_type))
+		.collect::<BTreeMap<u16, ExposedPortType>>();
 
 	// validate deployment name
 	log::trace!("request_id: {} - Validating deployment name", request_id);
@@ -150,9 +153,9 @@ pub async fn create_deployment_in_workspace(
 				workspace_id,
 				region,
 				machine_type,
-				deploy_on_push,
-				min_horizontal_scale,
-				max_horizontal_scale,
+				deployment_running_details.deploy_on_push,
+				deployment_running_details.min_horizontal_scale,
+				deployment_running_details.max_horizontal_scale,
 			)
 			.await?;
 
@@ -183,9 +186,9 @@ pub async fn create_deployment_in_workspace(
 				workspace_id,
 				region,
 				machine_type,
-				deploy_on_push,
-				min_horizontal_scale,
-				max_horizontal_scale,
+				deployment_running_details.deploy_on_push,
+				deployment_running_details.min_horizontal_scale,
+				deployment_running_details.max_horizontal_scale,
 			)
 			.await?;
 
@@ -205,8 +208,8 @@ pub async fn create_deployment_in_workspace(
 			"image_name": image_name,
 			"deploymentStatus": DeploymentStatus::Created.to_string(),
 			"machineType": machine_type,
-			"deployOnPush": deploy_on_push, // true or false
-			"horizontalScale": min_horizontal_scale,
+			"deployOnPush": deployment_running_details.deploy_on_push.clone(), // true or false
+			"horizontalScale": deployment_running_details.min_horizontal_scale.clone(),
 			"region": region
 		}
 	);
@@ -236,13 +239,13 @@ pub async fn create_deployment_in_workspace(
 		db::add_exposed_port_for_deployment(
 			connection,
 			&deployment_id,
-			*port,
-			port_type,
+			port,
+			&port_type,
 		)
 		.await?;
 	}
 
-	for (key, value) in environment_variables {
+	for (key, value) in &deployment_running_details.environment_variables {
 		log::trace!(
 			"request_id: {} - Adding environment variable entry to database",
 			request_id
