@@ -72,13 +72,6 @@ pub async fn create_deployment_in_workspace(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	}
 
-	let ports = deployment_running_details
-		.clone()
-		.ports
-		.into_iter()
-		.map(|(port, port_type)| (port.value(), port_type))
-		.collect::<BTreeMap<u16, ExposedPortType>>();
-
 	// validate deployment name
 	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
@@ -227,7 +220,7 @@ pub async fn create_deployment_in_workspace(
 	)
 	.await?;
 
-	for (port, port_type) in ports {
+	for (port, port_type) in &deployment_running_details.ports {
 		log::trace!(
 			"request_id: {} - Adding exposed port entry to database",
 			request_id
@@ -235,8 +228,8 @@ pub async fn create_deployment_in_workspace(
 		db::add_exposed_port_for_deployment(
 			connection,
 			&deployment_id,
-			port,
-			&port_type,
+			port.value(),
+			port_type,
 		)
 		.await?;
 	}
