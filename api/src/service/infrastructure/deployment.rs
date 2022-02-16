@@ -51,11 +51,7 @@ pub async fn create_deployment_in_workspace(
 	image_tag: &str,
 	region: &Uuid,
 	machine_type: &Uuid,
-	deploy_on_push: bool,
-	min_horizontal_scale: u16,
-	max_horizontal_scale: u16,
-	ports: &BTreeMap<u16, ExposedPortType>,
-	environment_variables: &BTreeMap<String, EnvironmentVariableValue>,
+	deployment_running_details: &DeploymentRunningDetails,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -127,9 +123,9 @@ pub async fn create_deployment_in_workspace(
 				workspace_id,
 				region,
 				machine_type,
-				deploy_on_push,
-				min_horizontal_scale,
-				max_horizontal_scale,
+				deployment_running_details.deploy_on_push,
+				deployment_running_details.min_horizontal_scale,
+				deployment_running_details.max_horizontal_scale,
 			)
 			.await?;
 		}
@@ -148,15 +144,15 @@ pub async fn create_deployment_in_workspace(
 				workspace_id,
 				region,
 				machine_type,
-				deploy_on_push,
-				min_horizontal_scale,
-				max_horizontal_scale,
+				deployment_running_details.deploy_on_push,
+				deployment_running_details.min_horizontal_scale,
+				deployment_running_details.max_horizontal_scale,
 			)
 			.await?;
 		}
 	}
 
-	for (port, port_type) in ports {
+	for (port, port_type) in &deployment_running_details.ports {
 		log::trace!(
 			"request_id: {} - Adding exposed port entry to database",
 			request_id
@@ -164,13 +160,13 @@ pub async fn create_deployment_in_workspace(
 		db::add_exposed_port_for_deployment(
 			connection,
 			&deployment_id,
-			*port,
+			port.value(),
 			port_type,
 		)
 		.await?;
 	}
 
-	for (key, value) in environment_variables {
+	for (key, value) in &deployment_running_details.environment_variables {
 		log::trace!(
 			"request_id: {} - Adding environment variable entry to database",
 			request_id
