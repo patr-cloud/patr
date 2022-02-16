@@ -12,7 +12,6 @@ use api_models::{
 	},
 	utils::{constants, StringifiedU16, Uuid},
 };
-use chrono::{DateTime, Local};
 use eve_rs::AsError;
 use serde_json::json;
 
@@ -209,8 +208,8 @@ pub async fn create_deployment_in_workspace(
 		&deployment_audit_log.workspace_audit_log_id,
 		&deployment_audit_log.ip_address,
 		deployment_audit_log.time_now,
-		Some(&deployment_audit_log.user_id),
-		Some(&deployment_audit_log.login_id),
+		deployment_audit_log.user_id.as_ref(),
+		deployment_audit_log.login_id.as_ref(),
 		&deployment_id,
 		&create_permission_id,
 		request_id,
@@ -264,10 +263,7 @@ pub async fn start_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Starting deployment with id: {}",
@@ -303,10 +299,7 @@ pub async fn start_deployment(
 		&running_details,
 		config,
 		request_id,
-		Some(user_id),
-		Some(login_id),
-		patr_action,
-		time_now,
+		deployment_audit_log,
 	)
 	.await?;
 
@@ -384,8 +377,8 @@ pub async fn stop_deployment(
 		&deployment_audit_log.workspace_audit_log_id,
 		"0.0.0.0",
 		deployment_audit_log.time_now,
-		Some(&deployment_audit_log.user_id),
-		Some(&deployment_audit_log.login_id),
+		deployment_audit_log.user_id.as_ref(),
+		deployment_audit_log.login_id.as_ref(),
 		deployment_id,
 		&delete_permission_id,
 		request_id,
@@ -565,8 +558,8 @@ pub async fn update_deployment(
 		&deployment_audit_log.workspace_audit_log_id,
 		"0.0.0.0",
 		deployment_audit_log.time_now,
-		Some(&deployment_audit_log.user_id),
-		Some(&deployment_audit_log.login_id),
+		deployment_audit_log.user_id.as_ref(),
+		deployment_audit_log.login_id.as_ref(),
 		deployment_id,
 		&edit_permission_id,
 		request_id,

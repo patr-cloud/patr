@@ -507,9 +507,9 @@ async fn create_deployment(
 	);
 
 	let deployment_audit_log = DeploymentAuditLog {
-		user_id: user_id.clone(),
+		user_id: Some(user_id.clone()),
 		ip_address: "0.0.0.0".to_string(),
-		login_id: login_id.clone(),
+		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),
 		)
@@ -666,10 +666,7 @@ async fn create_deployment(
 					&running_details,
 					&config,
 					&request_id,
-					Some(&user_id),
-					Some(&login_id),
-					false,
-					Local::now(),
+					&deployment_audit_log,
 				)
 				.await
 				.map_err(|e| {
@@ -846,6 +843,20 @@ async fn start_deployment(
 	)
 	.unwrap();
 
+	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
+	let deployment_audit_log = DeploymentAuditLog {
+		user_id: Some(user_id.clone()),
+		ip_address: "0.0.0.0".to_string(),
+		login_id: Some(login_id.clone()),
+		workspace_audit_log_id,
+		patr_action: false,
+		time_now: Local::now(),
+	};
+
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
 	service::start_deployment(
@@ -853,10 +864,7 @@ async fn start_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
-		&user_id,
-		&login_id,
-		false,
-		Local::now(),
+		&deployment_audit_log,
 	)
 	.await?;
 
@@ -905,9 +913,9 @@ async fn stop_deployment(
 	// stop the running container, if it exists
 
 	let deployment_audit_log = DeploymentAuditLog {
-		user_id: user_id.clone(),
+		user_id: Some(user_id.clone()),
 		ip_address: "0.0.0.0".to_string(),
-		login_id: login_id.clone(),
+		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),
 		)
@@ -1018,9 +1026,9 @@ async fn delete_deployment(
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
 	let deployment_audit_log = DeploymentAuditLog {
-		user_id: user_id.clone(),
+		user_id: Some(user_id.clone()),
 		ip_address: "0.0.0.0".to_string(),
-		login_id: login_id.clone(),
+		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),
 		)
@@ -1105,9 +1113,9 @@ async fn update_deployment(
 	let config = context.get_state().config.clone();
 
 	let deployment_audit_log = DeploymentAuditLog {
-		user_id: user_id.clone(),
+		user_id: Some(user_id.clone()),
 		ip_address: "0.0.0.0".to_string(),
-		login_id: login_id.clone(),
+		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),
 		)
@@ -1169,10 +1177,7 @@ async fn update_deployment(
 				&running_details,
 				&config,
 				&request_id,
-				Some(&user_id),
-				Some(&login_id),
-				true,
-				Local::now(),
+				&deployment_audit_log,
 			)
 			.await?;
 		}

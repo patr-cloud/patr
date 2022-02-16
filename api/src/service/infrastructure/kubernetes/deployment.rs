@@ -11,7 +11,6 @@ use api_models::{
 	},
 	utils::Uuid,
 };
-use chrono::{DateTime, Local};
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -57,7 +56,7 @@ use serde_json::json;
 use crate::{
 	db,
 	error,
-	models::deployment,
+	models::deployment::{self, DeploymentAuditLog},
 	service::infrastructure::digitalocean,
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
@@ -71,14 +70,8 @@ pub async fn update_kubernetes_deployment(
 	running_details: &DeploymentRunningDetails,
 	config: &Settings,
 	request_id: &Uuid,
-	user_id: Option<&Uuid>,
-	login_id: Option<&Uuid>,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
-	let workspace_audit_log_id =
-		db::generate_new_workspace_audit_log_id(connection).await?;
-
 	let edit_permission_id = db::get_all_permissions(connection)
 		.await?
 		.into_iter()
@@ -119,16 +112,16 @@ pub async fn update_kubernetes_deployment(
 	db::create_workspace_audit_log(
 		connection,
 		workspace_id,
-		&workspace_audit_log_id,
-		"0.0.0.0",
-		time_now,
-		user_id,
-		login_id,
+		&deployment_audit_log.workspace_audit_log_id,
+		&deployment_audit_log.ip_address,
+		deployment_audit_log.time_now,
+		deployment_audit_log.user_id.as_ref(),
+		deployment_audit_log.login_id.as_ref(),
 		&deployment.id,
 		&edit_permission_id,
 		request_id,
 		&metadata,
-		patr_action,
+		deployment_audit_log.patr_action,
 		true,
 	)
 	.await?;

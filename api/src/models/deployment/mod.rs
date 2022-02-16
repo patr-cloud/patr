@@ -149,9 +149,9 @@ pub struct DefaultDeploymentRegion {
 
 #[derive(Debug, Clone)]
 pub struct DeploymentAuditLog {
-	pub user_id: Uuid,
+	pub user_id: Option<Uuid>,
 	pub ip_address: String,
-	pub login_id: Uuid,
+	pub login_id: Option<Uuid>,
 	pub workspace_audit_log_id: Uuid,
 	pub patr_action: bool,
 	pub time_now: DateTime<Local>,

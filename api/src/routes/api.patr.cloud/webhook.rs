@@ -12,6 +12,7 @@ use crate::{
 	db,
 	error,
 	models::{
+		deployment::DeploymentAuditLog,
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
 		EventData,
@@ -332,6 +333,29 @@ pub async fn notification_handler(
 					"request_id: {} - Updating the kubernetes deployment",
 					request_id
 				);
+
+				let workspace_audit_log_id = if let Ok(audit_log_id) =
+					db::generate_new_workspace_audit_log_id(&mut connection)
+						.await
+				{
+					audit_log_id
+				} else {
+					log::error!(
+						"request_id: {} - Unable to generate a new workspace audit log id",
+						request_id
+					);
+					return;
+				};
+
+				let deployment_audit_log = DeploymentAuditLog {
+					user_id: None,
+					ip_address: "0.0.0.0".to_string(),
+					login_id: None,
+					workspace_audit_log_id,
+					patr_action: true,
+					time_now: Local::now(),
+				};
+
 				let update_kubernetes_result =
 					service::update_kubernetes_deployment(
 						&mut connection,
@@ -341,10 +365,7 @@ pub async fn notification_handler(
 						&running_details,
 						&config,
 						&request_id,
-						None,
-						None,
-						true,
-						Local::now(),
+						&deployment_audit_log,
 					)
 					.await;
 
