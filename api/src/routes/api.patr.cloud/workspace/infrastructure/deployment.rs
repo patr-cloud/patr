@@ -32,6 +32,7 @@ use crate::{
 	error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
+		deployment::DeploymentAuditLog,
 		rbac::permissions,
 	},
 	pin_fn,
@@ -482,11 +483,6 @@ async fn create_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
-	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
-
 	let CreateDeploymentRequest {
 		workspace_id: _,
 		name,
@@ -510,6 +506,18 @@ async fn create_deployment(
 		request_id
 	);
 
+	let deployment_audit_log = DeploymentAuditLog {
+		user_id: user_id.clone(),
+		ip_address: "0.0.0.0".to_string(),
+		login_id: login_id.clone(),
+		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
+			context.get_database_connection(),
+		)
+		.await?,
+		patr_action: false,
+		time_now: Local::now(),
+	};
+
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -520,11 +528,7 @@ async fn create_deployment(
 		&machine_type,
 		&running_details,
 		&request_id,
-		&user_id,
-		&login_id,
-		&workspace_audit_log_id,
-		false,
-		Local::now(),
+		&deployment_audit_log,
 	)
 	.await?;
 
@@ -897,24 +901,28 @@ async fn stop_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
-	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
-
 	log::trace!("request_id: {} - Stopping deployment", request_id);
 	// stop the running container, if it exists
+
+	let deployment_audit_log = DeploymentAuditLog {
+		user_id: user_id.clone(),
+		ip_address: "0.0.0.0".to_string(),
+		login_id: login_id.clone(),
+		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
+			context.get_database_connection(),
+		)
+		.await?,
+		patr_action: false,
+		time_now: Local::now(),
+	};
+
 	let config = context.get_state().config.clone();
 	service::stop_deployment(
 		context.get_database_connection(),
 		&deployment_id,
 		&config,
 		&request_id,
-		&user_id,
-		&login_id,
-		&workspace_audit_log_id,
-		false,
-		Local::now(),
+		&deployment_audit_log,
 		true,
 	)
 	.await?;
@@ -1009,10 +1017,17 @@ async fn delete_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
-	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
+	let deployment_audit_log = DeploymentAuditLog {
+		user_id: user_id.clone(),
+		ip_address: "0.0.0.0".to_string(),
+		login_id: login_id.clone(),
+		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
+			context.get_database_connection(),
+		)
+		.await?,
+		patr_action: false,
+		time_now: Local::now(),
+	};
 
 	log::trace!("request_id: {} - Deleting deployment", request_id);
 	// stop and delete the container running the image, if it exists
@@ -1022,11 +1037,7 @@ async fn delete_deployment(
 		&deployment_id,
 		&config,
 		&request_id,
-		&user_id,
-		&login_id,
-		&workspace_audit_log_id,
-		true,
-		Local::now(),
+		&deployment_audit_log,
 	)
 	.await?;
 
@@ -1093,10 +1104,17 @@ async fn update_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
+	let deployment_audit_log = DeploymentAuditLog {
+		user_id: user_id.clone(),
+		ip_address: "0.0.0.0".to_string(),
+		login_id: login_id.clone(),
+		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
+			context.get_database_connection(),
+		)
+		.await?,
+		patr_action: true,
+		time_now: Local::now(),
+	};
 
 	let workspace_id = Uuid::parse_str(
 		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
@@ -1115,11 +1133,7 @@ async fn update_deployment(
 		ports.as_ref(),
 		environment_variables.as_ref(),
 		&request_id,
-		&user_id,
-		&login_id,
-		&workspace_audit_log_id,
-		true,
-		Local::now(),
+		&deployment_audit_log,
 	)
 	.await?;
 

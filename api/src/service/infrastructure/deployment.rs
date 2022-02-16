@@ -19,7 +19,7 @@ use serde_json::json;
 use crate::{
 	db,
 	error,
-	models::rbac,
+	models::{deployment::DeploymentAuditLog, rbac},
 	service::{self, infrastructure::kubernetes},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -55,11 +55,7 @@ pub async fn create_deployment_in_workspace(
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
 	request_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	workspace_audit_log_id: &Uuid,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
 	// Docker hub will also be allowed in the near future
@@ -217,16 +213,16 @@ pub async fn create_deployment_in_workspace(
 	db::create_workspace_audit_log(
 		connection,
 		workspace_id,
-		workspace_audit_log_id,
-		"0.0.0.0",
-		time_now,
-		Some(user_id),
-		Some(login_id),
+		&deployment_audit_log.workspace_audit_log_id,
+		&deployment_audit_log.ip_address,
+		deployment_audit_log.time_now,
+		Some(&deployment_audit_log.user_id),
+		Some(&deployment_audit_log.login_id),
 		&deployment_id,
 		&create_permission_id,
 		request_id,
 		&metadata,
-		patr_action,
+		deployment_audit_log.patr_action,
 		true,
 	)
 	.await?;
@@ -329,11 +325,7 @@ pub async fn stop_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	workspace_audit_log_id: &Uuid,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 	is_stopped: bool,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -396,16 +388,16 @@ pub async fn stop_deployment(
 	db::create_workspace_audit_log(
 		connection,
 		&deployment.workspace_id,
-		workspace_audit_log_id,
+		&deployment_audit_log.workspace_audit_log_id,
 		"0.0.0.0",
-		time_now,
-		Some(user_id),
-		Some(login_id),
+		deployment_audit_log.time_now,
+		Some(&deployment_audit_log.user_id),
+		Some(&deployment_audit_log.login_id),
 		deployment_id,
 		&delete_permission_id,
 		request_id,
 		&metadata,
-		patr_action,
+		deployment_audit_log.patr_action,
 		true,
 	)
 	.await?;
@@ -439,11 +431,7 @@ pub async fn delete_deployment(
 	deployment_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	workspace_audit_log_id: &Uuid,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Deleting the deployment with id: {}",
@@ -462,11 +450,7 @@ pub async fn delete_deployment(
 		deployment_id,
 		config,
 		request_id,
-		user_id,
-		login_id,
-		workspace_audit_log_id,
-		patr_action,
-		time_now,
+		deployment_audit_log,
 		false,
 	)
 	.await?;
@@ -535,11 +519,7 @@ pub async fn update_deployment(
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	request_id: &Uuid,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	workspace_audit_log_id: &Uuid,
-	patr_action: bool,
-	time_now: DateTime<Local>,
+	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Updating deployment with id: {}",
@@ -589,16 +569,16 @@ pub async fn update_deployment(
 	db::create_workspace_audit_log(
 		connection,
 		workspace_id,
-		workspace_audit_log_id,
+		&deployment_audit_log.workspace_audit_log_id,
 		"0.0.0.0",
-		time_now,
-		Some(user_id),
-		Some(login_id),
+		deployment_audit_log.time_now,
+		Some(&deployment_audit_log.user_id),
+		Some(&deployment_audit_log.login_id),
 		deployment_id,
 		&edit_permission_id,
 		request_id,
 		&metadata,
-		patr_action,
+		deployment_audit_log.patr_action,
 		true,
 	)
 	.await?;

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::utils::Uuid;
+use chrono::{DateTime, Local};
 use once_cell::sync::OnceCell;
 
 use super::db_mapping::DeploymentCloudProvider;
@@ -144,4 +145,14 @@ pub struct DefaultDeploymentRegion {
 	pub cloud_provider: Option<DeploymentCloudProvider>,
 	pub coordinates: Option<(f64, f64)>,
 	pub child_regions: Vec<DefaultDeploymentRegion>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeploymentAuditLog {
+	pub user_id: Uuid,
+	pub ip_address: String,
+	pub login_id: Uuid,
+	pub workspace_audit_log_id: Uuid,
+	pub patr_action: bool,
+	pub time_now: DateTime<Local>,
 }
