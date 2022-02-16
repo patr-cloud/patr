@@ -1,0 +1,15 @@
+{
+  "query": "DELETE FROM user_phone_number WHERE user_id = $1 AND country_code = $2 AND number = $3;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bpchar",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "228f448b2b9762ad776a9141f6d887b5b8bc31c914c927619b580ae829b118a8"
+}
