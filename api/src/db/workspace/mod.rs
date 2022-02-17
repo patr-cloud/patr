@@ -1,7 +1,12 @@
 use api_models::utils::Uuid;
 use chrono::{DateTime, Local};
 
-use crate::{models::db_mapping::Workspace, query, query_as, Database};
+use crate::{
+	models::db_mapping::{Workspace, WorkspaceAuditLog},
+	query,
+	query_as,
+	Database,
+};
 
 mod docker_registry;
 mod domain;
@@ -338,17 +343,72 @@ pub async fn generate_new_workspace_audit_log_id(
 	}
 }
 
-/*
-id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY,
-			date TIMESTAMPTZ NOT NULL,
-			ip_address TEXT NOT NULL,
-			workspace_id UUID NOT NULL,
-			user_id UUID,
-			login_id UUID,
-			resource_id UUID NOT NULL,
-			action UUID NOT NULL,
-			request_id UUID NOT NULL CONSTRAINT workspace_audit_log_uq_request_id UNIQUE,
-			metadata JSON NOT NULL,
-			patr_action BOOL NOT NULL,
-			success BOOL NOT NULL,
-*/
+pub async fn get_workspace_audit_log(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
+	query_as!(
+		WorkspaceAuditLog,
+		r#"
+		SELECT
+			workspace_audit_log.id as "id: _",
+			date as "date: _",
+			ip_address,
+			workspace_id as "workspace_id: _",
+			user_id as "user_id: _",
+			login_id as "login_id: _",
+			resource_id as "resource_id: _",
+			permission.name as "action",
+			request_id as "request_id: _",
+			metadata as "metadata: _",
+			patr_action as "patr_action: _",
+			success
+		FROM
+			workspace_audit_log
+		INNER JOIN
+			permission
+		ON
+			permission.id = workspace_audit_log.action
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_resource_audit_log(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	resource_id: &Uuid,
+) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
+	query_as!(
+		WorkspaceAuditLog,
+		r#"
+		SELECT
+			workspace_audit_log.id as "id: _",
+			date as "date: _",
+			ip_address,
+			workspace_id as "workspace_id: _",
+			user_id as "user_id: _",
+			login_id as "login_id: _",
+			resource_id as "resource_id: _",
+			permission.name as "action",
+			request_id as "request_id: _",
+			metadata as "metadata: _",
+			patr_action as "patr_action: _",
+			success
+		FROM
+			workspace_audit_log
+		INNER JOIN
+			permission
+		ON
+			permission.id = workspace_audit_log.action
+		WHERE
+			resource_id = $1;
+		"#,
+		resource_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}

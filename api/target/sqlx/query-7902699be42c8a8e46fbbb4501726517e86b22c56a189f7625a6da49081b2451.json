@@ -1,0 +1,87 @@
+{
+  "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "date: _",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "ip_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "workspace_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "login_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "action",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "request_id: _",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "metadata: _",
+        "type_info": "Json"
+      },
+      {
+        "ordinal": 10,
+        "name": "patr_action: _",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "success",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19"
+}

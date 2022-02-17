@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::domain::DomainNameserverType,
 	utils::{ResourceType, Uuid},
 };
+use chrono::{DateTime, Local};
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +45,22 @@ impl WorkspaceDomain {
 	pub fn is_ns_internal(&self) -> bool {
 		self.nameserver_type.is_internal()
 	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WorkspaceAuditLog {
+	pub id: Uuid,
+	pub date: DateTime<Local>,
+	pub ip_address: String,
+	pub workspace_id: Uuid,
+	pub user_id: Option<Uuid>,
+	pub login_id: Option<Uuid>,
+	pub resource_id: Uuid,
+	pub action: String,
+	pub request_id: Uuid,
+	pub metadata: serde_json::value::Value,
+	pub patr_action: bool,
+	pub success: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
