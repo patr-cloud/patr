@@ -209,15 +209,27 @@ async fn process_static_sites_request(
 			static_site_status,
 		} => {
 			log::trace!("Received a update static site request");
-			service::update_kubernetes_static_site(
+			let result = service::update_kubernetes_static_site(
 				&workspace_id,
 				&static_site,
 				&static_site_details,
 				config,
 				&request_id,
 			)
-			.await
-			.and({
+			.await;
+			if let Err(err) = result {
+				log::error!(
+					"Error occured during deployment of static site: {}",
+					err.get_error()
+				);
+				db::update_static_site_status(
+					service::get_app().database.acquire().await?.deref_mut(),
+					&static_site.id,
+					&DeploymentStatus::Errored,
+				)
+				.await
+				.map_err(|err| err.into())
+			} else {
 				log::trace!(
 					"request_id: {} - updating database status",
 					request_id
@@ -235,22 +247,7 @@ async fn process_static_sites_request(
 					);
 				})
 				.map_err(|err| err.into())
-			})
-			.or({
-				db::update_static_site_status(
-					service::get_app().database.acquire().await?.deref_mut(),
-					&static_site.id,
-					&DeploymentStatus::Errored,
-				)
-				.await
-				.map_err(|err| {
-					log::error!(
-						"Error occured during deployment of static site: {}",
-						err
-					);
-					err.into()
-				})
-			})
+			}
 		}
 		StaticSiteRequestData::Delete {
 			workspace_id,
