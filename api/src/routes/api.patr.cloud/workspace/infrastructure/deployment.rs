@@ -7,7 +7,6 @@ use api_models::{
 			DeleteDeploymentResponse,
 			Deployment,
 			DeploymentRegistry,
-			DeploymentRunningDetails,
 			DeploymentStatus,
 			GetDeploymentInfoResponse,
 			GetDeploymentLogsResponse,
@@ -486,14 +485,7 @@ async fn create_deployment(
 		image_tag,
 		region,
 		machine_type,
-		running_details:
-			DeploymentRunningDetails {
-				deploy_on_push,
-				max_horizontal_scale,
-				min_horizontal_scale,
-				ports,
-				environment_variables,
-			},
+		running_details,
 		deploy_on_create,
 	} = context
 		.get_body_as()
@@ -516,15 +508,7 @@ async fn create_deployment(
 		image_tag,
 		&region,
 		&machine_type,
-		deploy_on_push,
-		min_horizontal_scale,
-		max_horizontal_scale,
-		&ports
-			.clone()
-			.into_iter()
-			.map(|(port, port_type)| (port.value(), port_type))
-			.collect(),
-		&environment_variables,
+		&running_details,
 		&request_id,
 	)
 	.await?;
@@ -666,13 +650,7 @@ async fn create_deployment(
 							machine_type,
 						},
 						full_image,
-						running_details: DeploymentRunningDetails {
-							min_horizontal_scale,
-							max_horizontal_scale,
-							deploy_on_push,
-							ports,
-							environment_variables,
-						},
+						running_details,
 						request_id: request_id.clone(),
 					});
 
