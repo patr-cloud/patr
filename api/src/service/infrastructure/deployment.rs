@@ -19,7 +19,10 @@ use crate::{
 	db,
 	error,
 	models::{deployment::DeploymentAuditLog, rbac},
-	service::{self, infrastructure::kubernetes},
+	service::{
+		self,
+		infrastructure::{digitalocean, kubernetes},
+	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -429,6 +432,14 @@ pub async fn delete_deployment(
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!("deleting the image from DO registry");
+	digitalocean::delete_image_from_digitalocean_registry(
+		deployment_id,
+		config,
+		request_id,
+	)
+	.await?;
 
 	log::trace!("request_id: {} - Stopping the deployment", request_id);
 	service::stop_deployment(

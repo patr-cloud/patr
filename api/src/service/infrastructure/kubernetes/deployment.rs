@@ -57,7 +57,6 @@ use crate::{
 	db,
 	error,
 	models::deployment::{self, DeploymentAuditLog},
-	service::infrastructure::digitalocean,
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -443,18 +442,7 @@ pub async fn delete_kubernetes_deployment(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - deleting the image from registry",
-		request_id
-	);
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	digitalocean::delete_image_from_digitalocean_registry(
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
 
 	if super::deployment_exists(
 		deployment_id,
