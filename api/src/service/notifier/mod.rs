@@ -2,8 +2,7 @@ use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
 use eve_rs::AsError;
 
 use crate::{
-	db,
-	error,
+	db, error,
 	models::db_mapping::{User, UserToSignUp},
 	utils::Error,
 	Database,
@@ -249,7 +248,7 @@ pub async fn send_forgot_password_otp(
 ) -> Result<(), Error> {
 	// match on the recovery type
 	match recovery_option {
-		PreferredRecoveryOption::BackupEmail => {
+		PreferredRecoveryOption::RecoveryEmail => {
 			let email = get_user_email(
 				connection,
 				user.backup_email_domain_id
@@ -265,7 +264,7 @@ pub async fn send_forgot_password_otp(
 			// send email
 			email::send_forgot_password_otp(email.parse()?, otp).await
 		}
-		PreferredRecoveryOption::BackupPhoneNumber => {
+		PreferredRecoveryOption::RecoveryPhoneNumber => {
 			let phone_number = get_user_phone_number(
 				connection,
 				user.backup_phone_country_code

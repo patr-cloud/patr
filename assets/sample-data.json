@@ -1,262 +1,210 @@
 {
-	"users": [
-		{
-			"username": "rakshith-ravi",
-			"firstName": "Rakshith",
-			"lastName": "Ravi",
-			"backupEmail": "rakshith@gmx.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "adarsh-warrier",
-			"firstName": "Adarsh",
-			"lastName": "Warrier",
-			"backupEmail": "adarshwarrier01@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "abhishek-satish",
-			"firstName": "Adarsh",
-			"lastName": "Warrier",
-			"backupEmail": "shadowex01@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "manan-barjatya",
-			"firstName": "Manan",
-			"lastName": "Barjatya",
-			"backupEmail": "manan11697@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "anupama-nair",
-			"firstName": "Anupama",
-			"lastName": "Nair",
-			"backupEmail": "a7nair711@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "adityaraj-bhatt",
-			"firstName": "Aditya Raj",
-			"lastName": "Bhatt",
-			"backupEmail": "adityarajbhatt@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "manjeet-arneja",
-			"firstName": "Manjeet",
-			"lastName": "Arneja",
-			"backupEmail": "manjeet.arneja@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "aniket-jain",
-			"firstName": "Aniket",
-			"lastName": "Jain",
-			"backupEmail": "aniket.jain@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "manasva-bhargava",
-			"firstName": "Manasva",
-			"lastName": "Bhargava",
-			"backupEmail": "manasva.bhargava@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "aditi-shah",
-			"firstName": "Aditi",
-			"lastName": "Shah",
-			"backupEmail": "aditi.shah@gmail.com",
-			"password": "Vicara@123"
-		},
-		{
-			"username": "prajwal-ajay",
-			"firstName": "Prajwal",
-			"lastName": "Ajay",
-			"backupEmail": "prajwal.ajay@gmail.com",
-			"password": "Gordian@123"
-		},
-		{
-			"username": "dhanush-gowda",
-			"firstName": "Dhanush",
-			"lastName": "Gowda",
-			"backupEmail": "dhanush.gowda@gmail.com",
-			"password": "Gordian@123"
-		},
-		{
-			"username": "sagar-rs",
-			"firstName": "Sagar",
-			"lastName": "RS",
-			"backupEmail": "sagar.rs@gmail.com",
-			"password": "Gordian@123"
-		},
-		{
-			"username": "nishant-gupta",
-			"firstName": "Nishant",
-			"lastName": "Gupta",
-			"backupEmail": "nishant.gupta@gmail.com",
-			"password": "Renaura@123"
-		},
-		{
-			"username": "palash-pandey",
-			"firstName": "Palash",
-			"lastName": "Pandey",
-			"backupEmail": "palash.pandey@gmail.com",
-			"password": "Renaura@123"
-		},
-		{
-			"username": "dheeraj-raj",
-			"firstName": "Dheeraj",
-			"lastName": "Raj",
-			"backupEmail": "dheeraj.raj@gmail.com",
-			"password": "Renaura@123"
-		},
-		{
-			"username": "guarav-sharma",
-			"firstName": "Gaurav",
-			"lastName": "Sharma",
-			"backupEmail": "gaurav.sharma@gmail.com",
-			"password": "Rentbaaz@123"
-		},
-		{
-			"username": "nayan-mishra",
-			"firstName": "Nayan",
-			"lastName": "Mishra",
-			"backupEmail": "nayan.mishra@gmail.com",
-			"password": "Rentbaaz@123"
-		},
-		{
-			"username": "amey-acharya",
-			"firstName": "Amey",
-			"lastName": "Acharya",
-			"backupEmail": "amey.acharya@gmail.com",
-			"password": "Rentbaaz@123"
-		},
-		{
-			"username": "rajat-mukhati",
-			"firstName": "Rajat",
-			"lastName": "Mukhati",
-			"backupEmail": "rajat.mukhati@gmail.com",
-			"password": "Rentbaaz@123"
-		}
-	],
-	"workspaces": [
-		{
-			"name": "Vicara",
-			"domains": [
-				"vicara.co",
-				"vicara.in",
-				"vicara.tech",
-				"vicaratech.com",
-				"araciv.com",
-				"vcr.to",
-				"getkai.co"
-			],
-			"emails": {
-				"rakshith-ravi": [
-					"rakshith@vicara.co",
-					"rakshith.ravi@vicara.co"
-				],
-				"adarsh-warrier": [
-					"adarsh.warrier@vicara.co",
-					"adarsh@vicara.co"
-				],
-				"abhishek-satish": [
-					"abhishek.satish@vicara.co",
-					"abhishek@vicara.co"
-				],
-				"manan-barjatya": [
-					"manan.barjatya@vicara.co",
-					"manan@vicara.co",
-					"mananbarjatya@vicara.co"
-				],
-				"anupama-nair": [
-					"anupama.nair@vicara.co",
-					"anupamanair@vicara.co"
-				],
-				"adityaraj-bhatt": [
-					"adityaraj.bhatt@vicara.co"
-				],
-				"manjeet-arneja": [
-					"manjeet.arneja@vicara.co"
-				],
-				"aniket-jain": [
-					"aniket.jain@vicara.co"
-				],
-				"manasva-bhargava": [
-					"manasva.bhargava@vicara.co"
-				]
-			},
-			"superUser": "rakshith-ravi",
-			"roles": {
-				"employee": [
-					"workspace::domain::list",
-					"workspace::domain::viewDetails",
-					"workspace::viewRoles"
-				],
-				"developer": [
-					"workspace::domain::list",
-					"workspace::domain::viewDetails",
-					"workspace::viewRoles"
-				]
-			},
-			"users": {
-				"adarsh-warrier": [
-					"employee"
-				],
-				"abhishek-satish": [
-					"employee",
-					"developer"
-				],
-				"manan-barjatya": [
-					"employee"
-				],
-				"anupama-nair": [
-					"employee"
-				],
-				"adityaraj-bhatt": [
-					"employee"
-				],
-				"manjeet-arneja": [
-					"employee",
-					"developer"
-				],
-				"aniket-jain": [
-					"employee",
-					"developer"
-				],
-				"manasva-bhargava": [
-					"employee"
-				],
-				"aditi-shah": [
-					"employee"
-				]
-			}
-		},
-		{
-			"name": "Gordian",
-			"domains": [
-				"gordian.in",
-				"gordain.com"
-			],
-			"emails": {
-				"rakshith-ravi": [
-					"rakshith@gordian.in"
-				],
-				"prajwal-ajay": [
-					"prajwal@gordian.in"
-				],
-				"dhanush-gowda": [
-					"dhanush@gordian.in"
-				],
-				"sagar-rs": [
-					"sagar@gordian.in"
-				]
-			},
-			"superUser": "prajwal-ajay",
-			"roles": {},
-			"users": {}
-		}
-	]
+  "users": [
+    {
+      "username": "rakshith-ravi",
+      "firstName": "Rakshith",
+      "lastName": "Ravi",
+      "recoveryEmail": "rakshith@gmx.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "adarsh-warrier",
+      "firstName": "Adarsh",
+      "lastName": "Warrier",
+      "recoveryEmail": "adarshwarrier01@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "abhishek-satish",
+      "firstName": "Adarsh",
+      "lastName": "Warrier",
+      "recoveryEmail": "shadowex01@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "manan-barjatya",
+      "firstName": "Manan",
+      "lastName": "Barjatya",
+      "recoveryEmail": "manan11697@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "anupama-nair",
+      "firstName": "Anupama",
+      "lastName": "Nair",
+      "recoveryEmail": "a7nair711@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "adityaraj-bhatt",
+      "firstName": "Aditya Raj",
+      "lastName": "Bhatt",
+      "recoveryEmail": "adityarajbhatt@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "manjeet-arneja",
+      "firstName": "Manjeet",
+      "lastName": "Arneja",
+      "recoveryEmail": "manjeet.arneja@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "aniket-jain",
+      "firstName": "Aniket",
+      "lastName": "Jain",
+      "recoveryEmail": "aniket.jain@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "manasva-bhargava",
+      "firstName": "Manasva",
+      "lastName": "Bhargava",
+      "recoveryEmail": "manasva.bhargava@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "aditi-shah",
+      "firstName": "Aditi",
+      "lastName": "Shah",
+      "recoveryEmail": "aditi.shah@gmail.com",
+      "password": "Vicara@123"
+    },
+    {
+      "username": "prajwal-ajay",
+      "firstName": "Prajwal",
+      "lastName": "Ajay",
+      "recoveryEmail": "prajwal.ajay@gmail.com",
+      "password": "Gordian@123"
+    },
+    {
+      "username": "dhanush-gowda",
+      "firstName": "Dhanush",
+      "lastName": "Gowda",
+      "recoveryEmail": "dhanush.gowda@gmail.com",
+      "password": "Gordian@123"
+    },
+    {
+      "username": "sagar-rs",
+      "firstName": "Sagar",
+      "lastName": "RS",
+      "recoveryEmail": "sagar.rs@gmail.com",
+      "password": "Gordian@123"
+    },
+    {
+      "username": "nishant-gupta",
+      "firstName": "Nishant",
+      "lastName": "Gupta",
+      "recoveryEmail": "nishant.gupta@gmail.com",
+      "password": "Renaura@123"
+    },
+    {
+      "username": "palash-pandey",
+      "firstName": "Palash",
+      "lastName": "Pandey",
+      "recoveryEmail": "palash.pandey@gmail.com",
+      "password": "Renaura@123"
+    },
+    {
+      "username": "dheeraj-raj",
+      "firstName": "Dheeraj",
+      "lastName": "Raj",
+      "recoveryEmail": "dheeraj.raj@gmail.com",
+      "password": "Renaura@123"
+    },
+    {
+      "username": "guarav-sharma",
+      "firstName": "Gaurav",
+      "lastName": "Sharma",
+      "recoveryEmail": "gaurav.sharma@gmail.com",
+      "password": "Rentbaaz@123"
+    },
+    {
+      "username": "nayan-mishra",
+      "firstName": "Nayan",
+      "lastName": "Mishra",
+      "recoveryEmail": "nayan.mishra@gmail.com",
+      "password": "Rentbaaz@123"
+    },
+    {
+      "username": "amey-acharya",
+      "firstName": "Amey",
+      "lastName": "Acharya",
+      "recoveryEmail": "amey.acharya@gmail.com",
+      "password": "Rentbaaz@123"
+    },
+    {
+      "username": "rajat-mukhati",
+      "firstName": "Rajat",
+      "lastName": "Mukhati",
+      "recoveryEmail": "rajat.mukhati@gmail.com",
+      "password": "Rentbaaz@123"
+    }
+  ],
+  "workspaces": [
+    {
+      "name": "Vicara",
+      "domains": [
+        "vicara.co",
+        "vicara.in",
+        "vicara.tech",
+        "vicaratech.com",
+        "araciv.com",
+        "vcr.to",
+        "getkai.co"
+      ],
+      "emails": {
+        "rakshith-ravi": ["rakshith@vicara.co", "rakshith.ravi@vicara.co"],
+        "adarsh-warrier": ["adarsh.warrier@vicara.co", "adarsh@vicara.co"],
+        "abhishek-satish": ["abhishek.satish@vicara.co", "abhishek@vicara.co"],
+        "manan-barjatya": [
+          "manan.barjatya@vicara.co",
+          "manan@vicara.co",
+          "mananbarjatya@vicara.co"
+        ],
+        "anupama-nair": ["anupama.nair@vicara.co", "anupamanair@vicara.co"],
+        "adityaraj-bhatt": ["adityaraj.bhatt@vicara.co"],
+        "manjeet-arneja": ["manjeet.arneja@vicara.co"],
+        "aniket-jain": ["aniket.jain@vicara.co"],
+        "manasva-bhargava": ["manasva.bhargava@vicara.co"]
+      },
+      "superUser": "rakshith-ravi",
+      "roles": {
+        "employee": [
+          "workspace::domain::list",
+          "workspace::domain::viewDetails",
+          "workspace::viewRoles"
+        ],
+        "developer": [
+          "workspace::domain::list",
+          "workspace::domain::viewDetails",
+          "workspace::viewRoles"
+        ]
+      },
+      "users": {
+        "adarsh-warrier": ["employee"],
+        "abhishek-satish": ["employee", "developer"],
+        "manan-barjatya": ["employee"],
+        "anupama-nair": ["employee"],
+        "adityaraj-bhatt": ["employee"],
+        "manjeet-arneja": ["employee", "developer"],
+        "aniket-jain": ["employee", "developer"],
+        "manasva-bhargava": ["employee"],
+        "aditi-shah": ["employee"]
+      }
+    },
+    {
+      "name": "Gordian",
+      "domains": ["gordian.in", "gordain.com"],
+      "emails": {
+        "rakshith-ravi": ["rakshith@gordian.in"],
+        "prajwal-ajay": ["prajwal@gordian.in"],
+        "dhanush-gowda": ["dhanush@gordian.in"],
+        "sagar-rs": ["sagar@gordian.in"]
+      },
+      "superUser": "prajwal-ajay",
+      "roles": {},
+      "users": {}
+    }
+  ]
 }

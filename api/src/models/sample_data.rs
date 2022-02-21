@@ -29,7 +29,7 @@ struct SampleDataUser {
 	username: String,
 	first_name: String,
 	last_name: String,
-	backup_email: String,
+	recovery_email: String,
 	password: String,
 }
 
@@ -136,7 +136,7 @@ async fn create_user_account(
 	client: &Client,
 	config: &Settings,
 ) {
-	let response: ApiResponse<CreateAccountResponse> = client
+	let response = client
 		.post(format!("http://localhost:{}/auth/sign-up", config.port))
 		.json(&CreateAccountRequest {
 			username: user.username.clone(),
@@ -144,7 +144,7 @@ async fn create_user_account(
 			first_name: user.first_name.clone(),
 			last_name: user.last_name.clone(),
 			recovery_method: RecoveryMethod::Email {
-				backup_email: user.backup_email.clone(),
+				recovery_email: user.recovery_email.clone(),
 			},
 			account_type: SignUpAccountType::Personal {
 				account_type: Personal,
@@ -152,10 +152,10 @@ async fn create_user_account(
 		})
 		.send()
 		.await
-		.unwrap()
-		.json()
-		.await
 		.unwrap();
+	let text = response.text().await.unwrap();
+
+	let response: ApiResponse<CreateAccountResponse> = serde_json::from_str(&text).unwrap();
 
 	if let ApiResponse::Error { success: _, error } = response {
 		log::error!("Error signing up user `{}`: {:?}", user.username, error);

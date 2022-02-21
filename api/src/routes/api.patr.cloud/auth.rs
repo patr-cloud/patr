@@ -4,25 +4,17 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
-	error,
+	db, error,
 	models::{
 		db_mapping::UserLogin,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken,
-		RegistryTokenAccess,
+		RegistryToken, RegistryTokenAccess,
 	},
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
-		constants::request_keys,
-		get_current_time,
-		validator,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, get_current_time, validator, Error, ErrorData,
+		EveContext, EveMiddleware,
 	},
 };
 
@@ -190,9 +182,9 @@ async fn sign_in(
 ///    accountType: personal
 ///    firstName:
 ///    lastName:
-///    backupEmail:
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryEmail:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 /// }
 /// ```
 /// Business account:
@@ -203,9 +195,9 @@ async fn sign_in(
 ///    accountType: personal
 ///    firstName:
 ///    lastName:
-///    backupEmail:
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryEmail:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 ///    businessEmailLocal:
 ///    domain:
 ///    businessName:
@@ -279,7 +271,7 @@ async fn sign_up(
 
 /// # Description
 /// This function is used to sign-out the user, there will be an otp sent to
-/// user's backup email or phone number
+/// user's recovery email or phone number
 /// required inputs:
 /// example: Authorization: <insert authToken>
 /// auth token in the authorization headers
@@ -573,13 +565,13 @@ async fn is_username_valid(
 
 /// # Description
 /// This function is used to recover the user's account incase the user forgets
-/// the password by sending a recovery link or otp to user's registered backup
+/// the password by sending a recovery link or otp to user's registered recovery
 /// email or phone number
 /// required inputs:
 /// ```
 /// {
 ///    userId:
-///    preferredRecoveryOption: BackupPhoneNumber or BackupEmail
+///    preferredRecoveryOption: RecoveryPhoneNumber or RecoveryEmail
 /// }
 /// ```
 ///
@@ -1402,8 +1394,8 @@ async fn docker_registry_authenticate(
 /// this function returns a `Result<EveContext, Error>` containing an object of
 /// [`EveContext`] or an error output:
 /// {
-///    backupPhoneNumber:
-///    backupEmail:
+///    recoveryPhoneNumber:
+///    recoveryEmail:
 ///    success: true or false
 /// }
 ///
@@ -1426,7 +1418,7 @@ async fn list_recovery_options(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let backup_email =
+	let recovery_email =
 		if let (Some(backup_email_local), Some(backup_email_domain_id)) =
 			(user.backup_email_local, user.backup_email_domain_id)
 		{
@@ -1445,7 +1437,8 @@ async fn list_recovery_options(
 			None
 		};
 
-	let backup_phone_number =
+	
+	let recovery_phone_number =
 		if let Some(phone_number) = user.backup_phone_number {
 			let phone_number = service::mask_phone_number(&phone_number);
 			let country_code = db::get_phone_country_by_country_code(
@@ -1462,8 +1455,8 @@ async fn list_recovery_options(
 		};
 
 	context.success(ListRecoveryOptionsResponse {
-		backup_email,
-		backup_phone_number,
+		recovery_email,
+		recovery_phone_number,
 	});
 	Ok(context)
 }
