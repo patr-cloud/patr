@@ -29,12 +29,22 @@ pub async fn create_managed_database_in_workspace(
 	engine: &ManagedDatabaseEngine,
 	version: Option<&str>,
 	num_nodes: Option<u64>,
-	_database_plan: &ManagedDatabasePlan,
+	database_plan: &ManagedDatabasePlan,
 	region: &str,
 	workspace_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let databases =
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?;
+
+	if databases.len() > 3 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MAX_LIMIT_REACHED).to_string())?;
+	}
+
 	log::trace!("request_id: {} - Creating a managed database on digitalocean with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
 		request_id,
 		name,
@@ -93,11 +103,7 @@ pub async fn create_managed_database_in_workspace(
 		engine,
 		version,
 		num_nodes,
-		if provider == "do" {
-			&ManagedDatabasePlan::Nano
-		} else {
-			&ManagedDatabasePlan::Micro
-		},
+		database_plan,
 		&format!("{}-{}", provider, region),
 		"",
 		0,
@@ -118,7 +124,7 @@ pub async fn create_managed_database_in_workspace(
 				engine,
 				version,
 				num_nodes,
-				&ManagedDatabasePlan::Nano,
+				database_plan,
 				region,
 				config,
 				request_id,
@@ -133,7 +139,7 @@ pub async fn create_managed_database_in_workspace(
 				engine,
 				version,
 				num_nodes,
-				&ManagedDatabasePlan::Micro,
+				database_plan,
 				region,
 				config,
 				request_id,

@@ -37,7 +37,7 @@ pub(super) async fn create_managed_database_cluster(
 	engine: &ManagedDatabaseEngine,
 	version: &str,
 	num_nodes: u64,
-	database_plan: &ManagedDatabasePlan,
+	_database_plan: &ManagedDatabasePlan,
 	region: &str,
 	config: &Settings,
 	request_id: &Uuid,
@@ -82,7 +82,7 @@ pub(super) async fn create_managed_database_cluster(
 			engine: db_engine.to_string(),
 			version: Some(version.to_string()),
 			num_nodes,
-			size: database_plan.as_do_plan()?,
+			size: "db-s-1vcpu-1gb".to_string(),
 			region: region.to_string(),
 		})
 		.send()

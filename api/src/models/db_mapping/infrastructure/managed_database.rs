@@ -19,6 +19,7 @@ pub enum ManagedDatabasePlan {
 	Mammoth,
 }
 
+#[allow(dead_code)]
 impl ManagedDatabasePlan {
 	pub fn as_do_plan(&self) -> Result<String, Error> {
 		match self {
