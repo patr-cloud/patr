@@ -29,7 +29,7 @@ pub async fn create_managed_database_in_workspace(
 	engine: &ManagedDatabaseEngine,
 	version: Option<&str>,
 	num_nodes: Option<u64>,
-	database_plan: &ManagedDatabasePlan,
+	_database_plan: &ManagedDatabasePlan,
 	region: &str,
 	workspace_id: &Uuid,
 	config: &Settings,
@@ -93,7 +93,11 @@ pub async fn create_managed_database_in_workspace(
 		engine,
 		version,
 		num_nodes,
-		database_plan,
+		if provider == "do" {
+			&ManagedDatabasePlan::Nano
+		} else {
+			&ManagedDatabasePlan::Micro
+		},
 		&format!("{}-{}", provider, region),
 		"",
 		0,
@@ -114,7 +118,7 @@ pub async fn create_managed_database_in_workspace(
 				engine,
 				version,
 				num_nodes,
-				database_plan,
+				&ManagedDatabasePlan::Nano,
 				region,
 				config,
 				request_id,
@@ -129,7 +133,7 @@ pub async fn create_managed_database_in_workspace(
 				engine,
 				version,
 				num_nodes,
-				database_plan,
+				&ManagedDatabasePlan::Micro,
 				region,
 				config,
 				request_id,
