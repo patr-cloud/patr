@@ -4,17 +4,25 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::{
 		db_mapping::UserLogin,
 		error::{id as ErrorId, message as ErrorMessage},
 		rbac::{self, permissions, GOD_USER_ID},
-		RegistryToken, RegistryTokenAccess,
+		RegistryToken,
+		RegistryTokenAccess,
 	},
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, get_current_time, validator, Error, ErrorData,
-		EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time,
+		validator,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
