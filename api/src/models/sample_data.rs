@@ -155,7 +155,8 @@ async fn create_user_account(
 		.unwrap();
 	let text = response.text().await.unwrap();
 
-	let response: ApiResponse<CreateAccountResponse> = serde_json::from_str(&text).unwrap();
+	let response: ApiResponse<CreateAccountResponse> =
+		serde_json::from_str(&text).unwrap();
 
 	if let ApiResponse::Error { success: _, error } = response {
 		log::error!("Error signing up user `{}`: {:?}", user.username, error);
