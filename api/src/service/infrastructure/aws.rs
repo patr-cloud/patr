@@ -24,7 +24,7 @@ pub(super) async fn create_managed_database_cluster(
 	engine: &ManagedDatabaseEngine,
 	version: &str,
 	_num_nodes: u64,
-	database_plan: &ManagedDatabasePlan,
+	_database_plan: &ManagedDatabasePlan,
 	region: &str,
 	_config: &Settings,
 	request_id: &Uuid,
@@ -61,7 +61,7 @@ pub(super) async fn create_managed_database_cluster(
 				value => value,
 			}
 		))
-		.relational_database_bundle_id(database_plan.as_aws_plan()?)
+		.relational_database_bundle_id("micro_1_0")
 		.relational_database_name(database_id.as_str())
 		.send()
 		.await?;
