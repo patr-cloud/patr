@@ -152,7 +152,7 @@ async fn sign_in(
 		user_id.to_lowercase().trim(),
 	)
 	.await?
-	.status(200)
+	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let success = service::validate_hash(&password, &user_data.password)?;
@@ -315,7 +315,7 @@ async fn sign_out(
 		&user_id,
 	)
 	.await?
-	.status(200)
+	.status(400)
 	.body(error!(TOKEN_NOT_FOUND).to_string())?;
 
 	db::delete_user_login_by_id(
@@ -460,7 +460,7 @@ async fn get_access_token(
 
 	if !success {
 		Error::as_result()
-			.status(200)
+			.status(401)
 			.body(error!(UNAUTHORIZED).to_string())?;
 	}
 

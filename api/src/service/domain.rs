@@ -390,7 +390,7 @@ pub async fn create_patr_domain_dns_record(
 
 	if !validator::is_dns_record_name_valid(name) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_DNS_RECORD_NAME).to_string())?;
 	};
 

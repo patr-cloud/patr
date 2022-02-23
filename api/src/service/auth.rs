@@ -45,7 +45,7 @@ pub async fn is_username_allowed(
 ) -> Result<bool, Error> {
 	if !validator::is_username_valid(username) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_USERNAME).to_string())?;
 	}
 
@@ -87,7 +87,7 @@ pub async fn is_email_allowed(
 ) -> Result<bool, Error> {
 	if !validator::is_email_valid(email) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 
@@ -136,7 +136,7 @@ pub async fn is_phone_number_allowed(
 ) -> Result<bool, Error> {
 	if !validator::is_phone_number_valid(phone_number) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 	}
 
@@ -228,14 +228,14 @@ pub async fn create_user_join_request(
 	// Check if the username is allowed
 	if !is_username_allowed(connection, username).await? {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(USERNAME_TAKEN).to_string())?;
 	}
 
 	// Check if the password passes standards
 	if !validator::is_password_valid(password) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
@@ -273,7 +273,7 @@ pub async fn create_user_join_request(
 			// Check if backup_email is allowed and valid
 			if !is_email_allowed(connection, backup_email).await? {
 				Error::as_result()
-					.status(200)
+					.status(400)
 					.body(error!(EMAIL_TAKEN).to_string())?;
 			}
 
@@ -312,7 +312,7 @@ pub async fn create_user_join_request(
 
 			if !validator::is_workspace_name_valid(workspace_name) {
 				Error::as_result()
-					.status(200)
+					.status(400)
 					.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 			}
 
@@ -321,7 +321,7 @@ pub async fn create_user_join_request(
 				.is_some()
 			{
 				Error::as_result()
-					.status(200)
+					.status(400)
 					.body(error!(WORKSPACE_EXISTS).to_string())?;
 			}
 
@@ -333,7 +333,7 @@ pub async fn create_user_join_request(
 			if let Some(user_sign_up) = user_sign_up {
 				if user_sign_up.otp_expiry < get_current_time_millis() {
 					Error::as_result()
-						.status(200)
+						.status(400)
 						.body(error!(WORKSPACE_EXISTS).to_string())?;
 				}
 			}
@@ -343,7 +343,7 @@ pub async fn create_user_join_request(
 				business_email_local, domain
 			)) {
 				Error::as_result()
-					.status(200)
+					.status(400)
 					.body(error!(INVALID_EMAIL).to_string())?;
 			}
 
@@ -543,13 +543,13 @@ pub async fn get_user_login_for_login_id(
 ) -> Result<UserLogin, Error> {
 	let user_login = db::get_user_login(connection, login_id)
 		.await?
-		.status(200)
+		.status(400)
 		.body(error!(EMAIL_TOKEN_NOT_FOUND).to_string())?;
 
 	if user_login.token_expiry < get_current_time_millis() {
 		// Token has expired
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(EXPIRED).to_string())?;
 	}
 
@@ -638,7 +638,7 @@ pub async fn forgot_password(
 	let user =
 		db::get_user_by_username_email_or_phone_number(connection, user_id)
 			.await?
-			.status(200)
+			.status(404)
 			.body(error!(USER_NOT_FOUND).to_string())?;
 
 	let otp = service::generate_new_otp();
@@ -698,7 +698,7 @@ pub async fn reset_password(
 	// check password strength
 	if !validator::is_password_valid(new_password) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
 
@@ -753,20 +753,20 @@ pub async fn join_user(
 ) -> Result<JoinUser, Error> {
 	let user_data = db::get_user_to_sign_up_by_username(connection, username)
 		.await?
-		.status(200)
+		.status(400)
 		.body(error!(OTP_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(otp, &user_data.otp_hash)?;
 
 	if !success {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_OTP).to_string())?;
 	}
 
 	if user_data.otp_expiry < get_current_time_millis() {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(OTP_EXPIRED).to_string())?;
 	}
 

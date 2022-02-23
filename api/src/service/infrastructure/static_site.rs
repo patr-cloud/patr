@@ -33,7 +33,7 @@ pub async fn create_static_site_deployment_in_workspace(
 	log::trace!("request_id: {} - validating static site name", request_id);
 	if !validator::is_deployment_name_valid(name) {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
 	}
 
@@ -50,7 +50,7 @@ pub async fn create_static_site_deployment_in_workspace(
 	.await?;
 	if existing_static_site.is_some() {
 		Error::as_result()
-			.status(200)
+			.status(400)
 			.body(error!(RESOURCE_EXISTS).to_string())?;
 	}
 
