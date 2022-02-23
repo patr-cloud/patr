@@ -353,6 +353,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.get(
+		"/:deploymentId/build-logs",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_build_logs)),
+		],
+	);
+
 	app
 }
 
@@ -1059,6 +1090,29 @@ async fn delete_deployment(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1187,6 +1241,29 @@ async fn update_deployment(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list linked urls for the deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_linked_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1236,5 +1313,49 @@ async fn list_linked_urls(
 	.collect();
 
 	context.success(ListLinkedURLsResponse { urls });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the build logs for a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+pub async fn get_build_logs(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	// let deployment_id = Uuid::parse_str(
+	// 	context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	// )
+	// .unwrap();
+
+	// let logs = db::get_build_logs(context.get_database_connection(),
+	// &deployment_id) 	.await?
+	// 	.into_iter()
+	// 	.map(|log| BuildLog {
+	// 		id: log.id,
+	// 		log: log.log,
+	// 		created_at: log.created_at,
+	// 	})
+	// 	.collect();
 	Ok(context)
 }

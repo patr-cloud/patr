@@ -25,7 +25,7 @@ use api_models::{
 			VerifyPersonalEmailRequest,
 			VerifyPersonalEmailResponse,
 			VerifyPhoneNumberRequest,
-			VerifyPhoneNumberResponse,
+			VerifyPhoneNumberResponse, UpdateRecoveryEmailRequest, UpdateRecoveryEmailResponse, UpdateRecoveryPhoneNumberRequest, UpdateRecoveryPhoneNumberResponse,
 		},
 		workspace::Workspace,
 	},
@@ -674,11 +674,11 @@ async fn update_backup_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateBackupEmailRequest { backup_email } = context
+	let UpdateRecoveryEmailRequest { recovery_email } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let email_address = backup_email.to_lowercase();
+	let email_address = recovery_email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -689,7 +689,7 @@ async fn update_backup_email_address(
 	)
 	.await?;
 
-	context.success(UpdateBackupEmailResponse {});
+	context.success(UpdateRecoveryEmailResponse {});
 	Ok(context)
 }
 
@@ -727,14 +727,14 @@ async fn update_backup_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateBackupPhoneNumberRequest {
-		backup_phone_country_code,
-		backup_phone_number: phone_number,
+	let UpdateRecoveryPhoneNumberRequest {
+		recovery_phone_country_code,
+		recovery_phone_number: phone_number,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let country_code = backup_phone_country_code.to_uppercase();
+	let country_code = recovery_phone_country_code.to_uppercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -746,7 +746,7 @@ async fn update_backup_phone_number(
 	)
 	.await?;
 
-	context.success(UpdateBackupPhoneNumberResponse {});
+	context.success(UpdateRecoveryPhoneNumberResponse {});
 	Ok(context)
 }
 
