@@ -60,9 +60,7 @@ pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 	let unused_tlds = db::get_all_unused_domain_tlds(&mut connection).await?;
 	let depreciated_tlds = unused_tlds
 		.into_iter()
-		.filter(|tld| {
-			!tlds.contains(tld)
-		})
+		.filter(|tld| !tlds.contains(tld))
 		.collect::<Vec<_>>();
 
 	db::update_domain_tld_list(&mut connection, &tlds).await?;
