@@ -1462,8 +1462,8 @@ async fn list_recovery_options(
 		};
 
 	context.success(ListRecoveryOptionsResponse {
-		backup_email,
-		backup_phone_number,
+		recovery_phone_number: backup_email,
+		recovery_email: backup_phone_number,
 	});
 	Ok(context)
 }

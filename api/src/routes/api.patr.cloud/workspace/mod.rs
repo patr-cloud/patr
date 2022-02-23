@@ -464,7 +464,7 @@ async fn get_workspace_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date.to_string(),
+		date: log.date,
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,
@@ -524,7 +524,7 @@ async fn get_resource_audit_log(
 	.into_iter()
 	.map(|log| WorkspaceAuditLog {
 		id: log.id,
-		date: log.date.to_string(),
+		date: log.date,
 		ip_address: log.ip_address,
 		workspace_id: log.workspace_id,
 		user_id: log.user_id,

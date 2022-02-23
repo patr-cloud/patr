@@ -22,7 +22,7 @@ use api_models::{
 	},
 	utils::{constants, Uuid},
 };
-use chrono::Local;
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use tokio::task;
 
@@ -515,7 +515,7 @@ async fn create_deployment(
 		)
 		.await?,
 		patr_action: false,
-		time_now: Local::now(),
+		time_now: Utc::now(),
 	};
 
 	let id = service::create_deployment_in_workspace(
@@ -854,7 +854,7 @@ async fn start_deployment(
 		login_id: Some(login_id.clone()),
 		workspace_audit_log_id,
 		patr_action: false,
-		time_now: Local::now(),
+		time_now: Utc::now(),
 	};
 
 	// start the container running the image, if doesn't exist
@@ -921,7 +921,7 @@ async fn stop_deployment(
 		)
 		.await?,
 		patr_action: false,
-		time_now: Local::now(),
+		time_now: Utc::now(),
 	};
 
 	let config = context.get_state().config.clone();
@@ -1034,7 +1034,7 @@ async fn delete_deployment(
 		)
 		.await?,
 		patr_action: false,
-		time_now: Local::now(),
+		time_now: Utc::now(),
 	};
 
 	log::trace!("request_id: {} - Deleting deployment", request_id);
@@ -1121,7 +1121,7 @@ async fn update_deployment(
 		)
 		.await?,
 		patr_action: true,
-		time_now: Local::now(),
+		time_now: Utc::now(),
 	};
 
 	let workspace_id = Uuid::parse_str(

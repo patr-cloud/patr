@@ -2,9 +2,9 @@ use std::{fmt::Display, str::FromStr};
 
 use api_models::{
 	models::workspace::domain::DomainNameserverType,
-	utils::{ResourceType, Uuid},
+	utils::{DateTime, ResourceType, Uuid},
 };
-use chrono::{DateTime, Local};
+use chrono::Utc;
 use eve_rs::AsError;
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +50,7 @@ impl WorkspaceDomain {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WorkspaceAuditLog {
 	pub id: Uuid,
-	pub date: DateTime<Local>,
+	pub date: DateTime<Utc>,
 	pub ip_address: String,
 	pub workspace_id: Uuid,
 	pub user_id: Option<Uuid>,

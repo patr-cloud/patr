@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use api_models::utils::Uuid;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use once_cell::sync::OnceCell;
 
 use super::db_mapping::DeploymentCloudProvider;
@@ -154,5 +154,5 @@ pub struct DeploymentAuditLog {
 	pub login_id: Option<Uuid>,
 	pub workspace_audit_log_id: Uuid,
 	pub patr_action: bool,
-	pub time_now: DateTime<Local>,
+	pub time_now: DateTime<Utc>,
 }

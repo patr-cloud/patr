@@ -241,21 +241,21 @@ pub async fn create_user_join_request(
 
 	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
-	let backup_email_local;
-	let backup_email_domain_id;
+	let recovery_email_local;
+	let recovery_email_domain_id;
 	let phone_country_code;
 	let phone_number;
 
 	match recovery_method {
 		// If phone is provided
 		RecoveryMethod::PhoneNumber {
-			backup_phone_country_code,
-			backup_phone_number,
+			recovery_phone_country_code,
+			recovery_phone_number,
 		} => {
 			if !is_phone_number_allowed(
 				connection,
-				backup_phone_country_code,
-				backup_phone_number,
+				recovery_phone_country_code,
+				recovery_phone_number,
 			)
 			.await?
 			{
@@ -263,15 +263,15 @@ pub async fn create_user_join_request(
 					.status(400)
 					.body(error!(PHONE_NUMBER_TAKEN).to_string())?;
 			}
-			phone_country_code = Some(backup_phone_country_code.clone());
-			phone_number = Some(backup_phone_number.clone());
-			backup_email_local = None;
-			backup_email_domain_id = None;
+			phone_country_code = Some(recovery_phone_country_code.clone());
+			phone_number = Some(recovery_phone_number.clone());
+			recovery_email_local = None;
+			recovery_email_domain_id = None;
 		}
 		// If backup_email is only provided
-		RecoveryMethod::Email { backup_email } => {
+		RecoveryMethod::Email { recovery_email } => {
 			// Check if backup_email is allowed and valid
-			if !is_email_allowed(connection, backup_email).await? {
+			if !is_email_allowed(connection, recovery_email).await? {
 				Error::as_result()
 					.status(200)
 					.body(error!(EMAIL_TAKEN).to_string())?;
@@ -280,13 +280,13 @@ pub async fn create_user_join_request(
 			// extract the email_local and domain name from it
 			// split email into 2 parts and get domain_id
 			let (email_local, domain_id) =
-				service::split_email_with_domain_id(connection, backup_email)
+				service::split_email_with_domain_id(connection, recovery_email)
 					.await?;
 
 			phone_country_code = None;
 			phone_number = None;
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(domain_id);
+			recovery_email_local = Some(email_local);
+			recovery_email_domain_id = Some(domain_id);
 		}
 	}
 
@@ -361,8 +361,8 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local.as_deref(),
-				backup_email_domain_id.as_ref(),
+				recovery_email_local.as_deref(),
+				recovery_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				business_email_local,
@@ -380,8 +380,8 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local,
-				backup_email_domain_id,
+				backup_email_local: recovery_email_local,
+				backup_email_domain_id: recovery_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
@@ -397,8 +397,8 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local.as_deref(),
-				backup_email_domain_id.as_ref(),
+				recovery_email_local.as_deref(),
+				recovery_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
@@ -412,8 +412,8 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local,
-				backup_email_domain_id,
+				backup_email_local: recovery_email_local,
+				backup_email_domain_id: recovery_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: None,

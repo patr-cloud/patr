@@ -2,7 +2,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
-use chrono::Local;
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 use tokio::task;
@@ -353,7 +353,7 @@ pub async fn notification_handler(
 					login_id: None,
 					workspace_audit_log_id,
 					patr_action: true,
-					time_now: Local::now(),
+					time_now: Utc::now(),
 				};
 
 				let update_kubernetes_result =

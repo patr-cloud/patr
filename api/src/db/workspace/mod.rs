@@ -1,5 +1,5 @@
 use api_models::utils::Uuid;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 
 use crate::{
 	models::db_mapping::{Workspace, WorkspaceAuditLog},
@@ -281,7 +281,7 @@ pub async fn create_workspace_audit_log(
 	workspace_id: &Uuid,
 	id: &Uuid,
 	ip_address: &str,
-	date: DateTime<Local>,
+	date: DateTime<Utc>,
 	user_id: Option<&Uuid>,
 	login_id: Option<&Uuid>,
 	resource_id: &Uuid,

@@ -19,10 +19,6 @@ use api_models::{
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
-			UpdateBackupEmailRequest,
-			UpdateBackupEmailResponse,
-			UpdateBackupPhoneNumberRequest,
-			UpdateBackupPhoneNumberResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
 			UserLogin,
@@ -263,7 +259,7 @@ async fn get_user_info(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let backup_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -276,15 +272,15 @@ async fn get_user_info(
 	.await?
 	.into_iter()
 	.filter(|email| {
-		if let Some(backup_email) = &backup_email {
-			email != backup_email
+		if let Some(recovery_email) = &recovery_email {
+			email != recovery_email
 		} else {
 			true
 		}
 	})
 	.collect::<Vec<_>>();
 
-	let backup_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_backup_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -297,8 +293,8 @@ async fn get_user_info(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some(backup_phone_number) = &backup_phone_number {
-			phone_number != backup_phone_number
+		if let Some(recovery_phone_number) = &recovery_phone_number {
+			phone_number != recovery_phone_number
 		} else {
 			true
 		}
@@ -314,9 +310,9 @@ async fn get_user_info(
 		bio,
 		location,
 		created,
-		backup_email,
+		recovery_email,
 		secondary_emails,
-		backup_phone_number,
+		recovery_phone_number,
 		secondary_phone_numbers,
 	});
 	Ok(context)
@@ -554,7 +550,7 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let backup_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -567,8 +563,8 @@ async fn list_email_addresses(
 	.await?
 	.into_iter()
 	.filter(|email| {
-		if let Some(backup_email) = &backup_email {
-			email != backup_email
+		if let Some(recovery_email) = &recovery_email {
+			email != recovery_email
 		} else {
 			true
 		}
@@ -576,7 +572,7 @@ async fn list_email_addresses(
 	.collect::<Vec<_>>();
 
 	context.success(ListPersonalEmailsResponse {
-		backup_email,
+		recovery_email,
 		secondary_emails,
 	});
 	Ok(context)
@@ -617,7 +613,7 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let backup_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_backup_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -630,8 +626,8 @@ async fn list_phone_numbers(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some(backup_phone_number) = &backup_phone_number {
-			phone_number != backup_phone_number
+		if let Some(recovery_phone_number) = &recovery_phone_number {
+			phone_number != recovery_phone_number
 		} else {
 			true
 		}
@@ -639,7 +635,7 @@ async fn list_phone_numbers(
 	.collect::<Vec<_>>();
 
 	context.success(ListPhoneNumbersResponse {
-		backup_phone_number,
+		recovery_phone_number,
 		secondary_phone_numbers,
 	});
 	Ok(context)
