@@ -256,7 +256,12 @@ pub async fn initialize_deployment_post(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_machine_type
+				deployment_machine_type 
+				(
+					id, 
+					cpu_count, 
+					memory_count
+				)
 			VALUES
 				($1, $2, $3);
 			"#,
@@ -301,7 +306,22 @@ pub async fn create_deployment_with_internal_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment
+			deployment 
+			(
+				id, 
+				name, 
+				registry, 
+				repository_id, 
+				image_name, 
+				image_tag, 
+				status, 
+				workspace_id, 
+				region, 
+				min_horizontal_scale, 
+				max_horizontal_scale, 
+				machine_type,
+				deploy_on_push
+			)
 		VALUES
 			(
 				$1,
@@ -352,7 +372,22 @@ pub async fn create_deployment_with_external_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment
+			deployment 
+			(
+				id, 
+				name,
+				registry, 
+				repository_id, 
+				image_name, 
+				image_tag, 
+				status, 
+				workspace_id, 
+				region, 
+				min_horizontal_scale, 
+				max_horizontal_scale, 
+				machine_type, 
+				deploy_on_push
+			)
 		VALUES
 			(
 				$1,
@@ -653,7 +688,12 @@ pub async fn add_environment_variable_for_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_environment_variable
+			deployment_environment_variable 
+			(
+				deployment_id, 
+				name, 
+				value
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -718,7 +758,12 @@ pub async fn add_exposed_port_for_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_exposed_port
+			deployment_exposed_port 
+			(
+				deployment_id, 
+				port, 
+				port_type
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -914,7 +959,14 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region
+				deployment_region 
+				(
+					id, 
+					name, 
+					provider, 
+					location, 
+					parent_region_id
+				)
 			VALUES
 				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
 			"#,
@@ -932,7 +984,14 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region
+				deployment_region 
+				(
+					id, 
+					name, 
+					provider, 
+					location, 
+					parent_region_id
+				)
 			VALUES
 				($1, $2, NULL, NULL, $3);
 			"#,
