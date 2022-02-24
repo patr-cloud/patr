@@ -2449,6 +2449,24 @@
       "nullable": []
     }
   },
+  "571435b90fe135c72da1588938fba41d3e6371f8da7f50ca74e254a6a6826699": {
+    "query": "SELECT tld FROM domain_tld WHERE ( SELECT COUNT(*) FROM domain WHERE domain.tld = tld ) = 0;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "tld",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
     "query": "SELECT manifest_digest, size, created FROM docker_registry_repository_manifest WHERE repository_id = $1;",
     "describe": {
@@ -4147,6 +4165,18 @@
         false,
         false
       ]
+    }
+  },
+  "a1fbca12fee638f4712ee6c0458d471e6978fbe3745de16d24c157b960491206": {
+    "query": "DELETE FROM domain_tld WHERE tld = $1;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "a3abf15ceb610eac63cbccf25ff04116545f97f57c3c36a7fe9e75a139e74bd8": {
