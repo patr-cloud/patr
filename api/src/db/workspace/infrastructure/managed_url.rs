@@ -258,6 +258,18 @@ pub async fn create_new_managed_url_in_workspace(
 		r#"
 		INSERT INTO
 			managed_url
+			(
+				id,
+				sub_domain,
+				domain_id,
+				path,
+				url_type,
+				deployment_id,
+				port,
+				static_site_id,
+				url,
+				workspace_id
+			)
 		VALUES
 			(
 				$1,
