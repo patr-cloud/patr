@@ -104,7 +104,7 @@ pub async fn create_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			workspace
+			workspace (id, name, super_admin_id, active)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
