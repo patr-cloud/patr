@@ -315,7 +315,7 @@ async fn sign_out(
 		&user_id,
 	)
 	.await?
-	.status(400)
+	.status(200)
 	.body(error!(TOKEN_NOT_FOUND).to_string())?;
 
 	db::delete_user_login_by_id(

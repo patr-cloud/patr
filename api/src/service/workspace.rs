@@ -34,7 +34,7 @@ pub async fn is_workspace_name_allowed(
 		!validator::is_workspace_name_valid(workspace_name)
 	{
 		Error::as_result()
-			.status(400)
+			.status(200)
 			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
 	}
 

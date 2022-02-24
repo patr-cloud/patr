@@ -97,7 +97,7 @@ pub async fn verify_personal_email_address_for_user(
 			email_address,
 		)
 		.await?
-		.status(400)
+		.status(200)
 		.body(error!(EMAIL_TOKEN_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(
@@ -183,7 +183,7 @@ pub async fn update_user_backup_email(
 ) -> Result<(), Error> {
 	if !validator::is_email_valid(email_address) {
 		Error::as_result()
-			.status(400)
+			.status(200)
 			.body(error!(INVALID_EMAIL).to_string())?;
 	}
 	// split email into 2 parts and get domain_id
@@ -212,7 +212,7 @@ pub async fn update_user_backup_phone_number(
 ) -> Result<(), Error> {
 	if !validator::is_phone_number_valid(phone_number) {
 		Error::as_result()
-			.status(400)
+			.status(200)
 			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 	}
 
@@ -374,7 +374,7 @@ pub async fn verify_phone_number_for_user(
 		phone_number,
 	)
 	.await?
-	.status(400)
+	.status(200)
 	.body(error!(PHONE_NUMBER_TOKEN_EXPIRED).to_string())?;
 
 	let success = service::validate_hash(

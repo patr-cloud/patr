@@ -76,7 +76,7 @@ pub async fn create_deployment_in_workspace(
 	log::trace!("request_id: {} - Validating deployment name", request_id);
 	if !validator::is_deployment_name_valid(name) {
 		return Err(Error::empty()
-			.status(400)
+			.status(200)
 			.body(error!(INVALID_DEPLOYMENT_NAME).to_string()));
 	}
 
