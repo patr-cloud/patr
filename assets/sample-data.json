@@ -175,10 +175,18 @@
 					"anupama.nair@vicara.co",
 					"anupamanair@vicara.co"
 				],
-				"adityaraj-bhatt": ["adityaraj.bhatt@vicara.co"],
-				"manjeet-arneja": ["manjeet.arneja@vicara.co"],
-				"aniket-jain": ["aniket.jain@vicara.co"],
-				"manasva-bhargava": ["manasva.bhargava@vicara.co"]
+				"adityaraj-bhatt": [
+					"adityaraj.bhatt@vicara.co"
+				],
+				"manjeet-arneja": [
+					"manjeet.arneja@vicara.co"
+				],
+				"aniket-jain": [
+					"aniket.jain@vicara.co"
+				],
+				"manasva-bhargava": [
+					"manasva.bhargava@vicara.co"
+				]
 			},
 			"superUser": "rakshith-ravi",
 			"roles": {
@@ -194,25 +202,57 @@
 				]
 			},
 			"users": {
-				"adarsh-warrier": ["employee"],
-				"abhishek-satish": ["employee", "developer"],
-				"manan-barjatya": ["employee"],
-				"anupama-nair": ["employee"],
-				"adityaraj-bhatt": ["employee"],
-				"manjeet-arneja": ["employee", "developer"],
-				"aniket-jain": ["employee", "developer"],
-				"manasva-bhargava": ["employee"],
-				"aditi-shah": ["employee"]
+				"adarsh-warrier": [
+					"employee"
+				],
+				"abhishek-satish": [
+					"employee",
+					"developer"
+				],
+				"manan-barjatya": [
+					"employee"
+				],
+				"anupama-nair": [
+					"employee"
+				],
+				"adityaraj-bhatt": [
+					"employee"
+				],
+				"manjeet-arneja": [
+					"employee",
+					"developer"
+				],
+				"aniket-jain": [
+					"employee",
+					"developer"
+				],
+				"manasva-bhargava": [
+					"employee"
+				],
+				"aditi-shah": [
+					"employee"
+				]
 			}
 		},
 		{
 			"name": "Gordian",
-			"domains": ["gordian.in", "gordain.com"],
+			"domains": [
+				"gordian.in",
+				"gordain.com"
+			],
 			"emails": {
-				"rakshith-ravi": ["rakshith@gordian.in"],
-				"prajwal-ajay": ["prajwal@gordian.in"],
-				"dhanush-gowda": ["dhanush@gordian.in"],
-				"sagar-rs": ["sagar@gordian.in"]
+				"rakshith-ravi": [
+					"rakshith@gordian.in"
+				],
+				"prajwal-ajay": [
+					"prajwal@gordian.in"
+				],
+				"dhanush-gowda": [
+					"dhanush@gordian.in"
+				],
+				"sagar-rs": [
+					"sagar@gordian.in"
+				]
 			},
 			"superUser": "prajwal-ajay",
 			"roles": {},
