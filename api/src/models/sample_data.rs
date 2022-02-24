@@ -144,7 +144,7 @@ async fn create_user_account(
 			first_name: user.first_name.clone(),
 			last_name: user.last_name.clone(),
 			recovery_method: RecoveryMethod::Email {
-				backup_email: user.backup_email.clone(),
+				recovery_email: user.backup_email.clone(),
 			},
 			account_type: SignUpAccountType::Personal {
 				account_type: Personal,

@@ -6,8 +6,10 @@ use api_models::{
 			CreateDeploymentResponse,
 			DeleteDeploymentResponse,
 			Deployment,
+			DeploymentBuildLog,
 			DeploymentRegistry,
 			DeploymentStatus,
+			GetDeploymentBuildLogsResponse,
 			GetDeploymentInfoResponse,
 			GetDeploymentLogsResponse,
 			ListDeploymentsResponse,
@@ -681,46 +683,79 @@ async fn create_deployment(
 					return;
 				};
 
-				let _ = service::update_kubernetes_deployment(
-					&mut connection,
-					&workspace_id,
-					&Deployment {
-						id: id.clone(),
-						name,
-						registry,
-						image_tag,
-						status: DeploymentStatus::Deploying,
-						region,
-						machine_type,
-					},
-					&full_image,
-					&running_details,
-					&config,
-					&request_id,
-					&deployment_audit_log,
-				)
-				.await
-				.map_err(|e| {
+				let workspace_audit_log_id = if let Ok(audit_log_id) =
+					db::generate_new_workspace_audit_log_id(&mut connection)
+						.await
+				{
+					audit_log_id
+				} else {
 					log::error!(
-						"Error deploying deployment: {}",
-						e.get_error()
+						"Unable to generate a new workspace audit log id"
 					);
-				});
+					// TODO: maybe comment this and use some other alternative?
+					return;
+				};
 
-				service::get_app().database.close().await;
-				let _ = db::update_deployment_status(
-					&mut connection,
-					&id,
-					&DeploymentStatus::Errored,
-				)
-				.await
-				.map_err(|e| {
+				let deployment_audit_log = DeploymentAuditLog {
+					user_id: Some(user_id.clone()),
+					ip_address: "0.0.0.0".to_string(),
+					login_id: Some(login_id.clone()),
+					workspace_audit_log_id,
+					patr_action: false,
+					time_now: Utc::now(),
+				};
+
+				let update_kubernetes_result =
+					service::update_kubernetes_deployment(
+						&mut connection,
+						&workspace_id,
+						&Deployment {
+							id: id.clone(),
+							name,
+							registry,
+							image_tag,
+							status: DeploymentStatus::Deploying,
+							region,
+							machine_type,
+						},
+						&full_image,
+						&running_details,
+						&config,
+						&request_id,
+						&deployment_audit_log,
+					)
+					.await;
+
+				if let Err(error) = update_kubernetes_result {
 					log::error!(
-						"request_id: {} - Error updating db status: {}",
+						"request_id: {} - Error updating k8s deployment: {}",
 						request_id,
-						e
+						error.get_error()
 					);
-				});
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
+						log::error!(
+							"request_id: {} - Error updating db status: {}",
+							request_id,
+							e
+						);
+					});
+				}
+
+				let commit_result = connection.commit().await;
+
+				if let Err(error) = commit_result {
+					log::error!(
+						"request_id: {} - Error committing transaction: {}",
+						request_id,
+						error
+					);
+				}
 			});
 		}
 	}
@@ -1343,19 +1378,36 @@ pub async fn get_build_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	// let deployment_id = Uuid::parse_str(
-	// 	context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	// )
-	// .unwrap();
+	let request_id = Uuid::new_v4();
 
-	// let logs = db::get_build_logs(context.get_database_connection(),
-	// &deployment_id) 	.await?
-	// 	.into_iter()
-	// 	.map(|log| BuildLog {
-	// 		id: log.id,
-	// 		log: log.log,
-	// 		created_at: log.created_at,
-	// 	})
-	// 	.collect();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let config = context.get_state().config.clone();
+
+	log::trace!("request_id: {} - Getting build logs", request_id);
+	// stop the running container, if it exists
+	let logs = service::get_deployment_build_logs(
+		context.get_database_connection(),
+		&workspace_id,
+		&deployment_id,
+		&config,
+		&request_id,
+	)
+	.await?
+	.into_iter()
+	.map(|b_log| DeploymentBuildLog {
+		pod: b_log.pod,
+		logs: b_log.logs,
+	})
+	.collect();
+
+	context.success(GetDeploymentBuildLogsResponse { logs });
 	Ok(context)
 }

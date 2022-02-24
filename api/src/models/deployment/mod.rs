@@ -156,3 +156,9 @@ pub struct DeploymentAuditLog {
 	pub patr_action: bool,
 	pub time_now: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone)]
+pub struct DeploymentBuildLog {
+	pub pod: String,
+	pub logs: Vec<String>,
+}
