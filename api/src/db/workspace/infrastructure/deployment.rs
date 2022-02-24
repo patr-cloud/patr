@@ -765,11 +765,11 @@ pub async fn add_environment_variable_for_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_environment_variable 
-			(
+			deployment_environment_variable(
 				deployment_id, 
 				name, 
-				value
+				value,
+				secret_id
 			)
 		VALUES
 			($1, $2, $3, $4);
