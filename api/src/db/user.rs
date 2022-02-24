@@ -528,7 +528,7 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		INSERT INTO
-			phone_number_country_code
+			phone_number_country_code (country_code, phone_code, country_name)
 		VALUES
 			($$AF$$, $$93$$, $$Afghanistan$$),
 			($$AX$$, $$358$$, $$Aland Islands$$),
@@ -1168,7 +1168,24 @@ pub async fn set_personal_user_to_be_signed_up(
 	query!(
 		r#"
 		INSERT INTO
-			user_to_sign_up
+			user_to_sign_up 
+			(
+				username,
+				account_type,
+				password,
+				first_name,
+				last_name,
+				backup_email_local,
+				backup_email_domain_id,
+				backup_phone_country_code,
+				backup_phone_number,
+				business_email_local,
+				business_domain_name,
+				business_domain_tld,
+				business_name,
+				otp_hash,
+				otp_expiry
+			)
 		VALUES
 			(
 				$1,
@@ -1252,6 +1269,23 @@ pub async fn set_business_user_to_be_signed_up(
 		r#"
 		INSERT INTO
 			user_to_sign_up
+			(
+				username,
+				account_type,
+				password,
+				first_name,
+				last_name,
+				backup_email_local,
+				backup_email_domain_id,
+				backup_phone_country_code,
+				backup_phone_number,
+				business_email_local,
+				business_domain_name,
+				business_domain_tld,
+				business_name,
+				otp_hash,
+				otp_expiry
+			)
 		VALUES
 			(
 				$1,
@@ -1646,6 +1680,13 @@ pub async fn add_personal_email_to_be_verified_for_user(
 		r#"
 		INSERT INTO
 			user_unverified_personal_email
+			(
+				local,
+				domain_id,
+				user_id,
+				verification_token_hash,
+				verification_token_expiry
+			)
 		VALUES
 			($1, $2, $3, $4, $5)
 		ON CONFLICT(local, domain_id) DO UPDATE SET
@@ -1677,6 +1718,13 @@ pub async fn add_phone_number_to_be_verified_for_user(
 		r#"
 		INSERT INTO
 			user_unverified_phone_number
+			(
+				country_code,
+				phone_number,
+				user_id,
+				verification_token_hash,
+				verification_token_expiry
+			)
 		VALUES
 			($1, $2, $3, $4, $5)
 		ON CONFLICT(country_code, phone_number) DO UPDATE SET
@@ -1907,7 +1955,7 @@ pub async fn add_personal_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			personal_email
+			personal_email (user_id, local, domain_id)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -1930,7 +1978,7 @@ pub async fn add_business_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			business_email
+			business_email (user_id, local, domain_id)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -2029,7 +2077,15 @@ pub async fn add_user_login(
 	query!(
 		r#"
 		INSERT INTO
-			user_login
+			user_login 
+			(
+				login_id,
+				refresh_token, 
+				token_expiry, 
+				user_id, 
+				last_login, 
+				last_activity
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6);
 		"#,
@@ -2441,7 +2497,7 @@ pub async fn add_password_reset_request(
 	query!(
 		r#"
 		INSERT INTO
-			password_reset_request
+			password_reset_request (user_id, token, token_expiry)
 		VALUES
 			($1, $2, $3)
 		ON CONFLICT(user_id) DO UPDATE SET
@@ -2562,7 +2618,7 @@ pub async fn add_phone_number_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			user_phone_number
+			user_phone_number (user_id, country_code, number)
 		VALUES
 			($1, $2, $3);
 		"#,

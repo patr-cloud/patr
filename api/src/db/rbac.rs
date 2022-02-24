@@ -236,7 +236,7 @@ pub async fn initialize_rbac_post(
 		query!(
 			r#"
 			INSERT INTO
-				permission
+				permission (id, name, description)
 			VALUES
 				($1, $2, NULL);
 			"#,
@@ -254,7 +254,7 @@ pub async fn initialize_rbac_post(
 		query!(
 			r#"
 			INSERT INTO
-				resource_type
+				resource_type (id, name, description)
 			VALUES
 				($1, $2, NULL);
 			"#,
@@ -591,7 +591,7 @@ pub async fn create_role(
 	query!(
 		r#"
 		INSERT INTO
-			role
+			role (id, name, description, owner_id)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
@@ -616,7 +616,7 @@ pub async fn create_resource(
 	query!(
 		r#"
 		INSERT INTO
-			resource
+			resource (id, name, resource_type_id, owner_id, created)
 		VALUES
 			($1, $2, $3, $4, $5);
 		"#,
@@ -906,7 +906,7 @@ pub async fn insert_resource_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource
+					role_permissions_resource (role_id, permission_id, resource_id)
 				VALUES
 					($1, $2, $3);
 				"#,
@@ -931,7 +931,7 @@ pub async fn insert_resource_type_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource_type
+					role_permissions_resource_type (role_id, permission_id, resource_type_id)
 				VALUES
 					($1, $2, $3);
 				"#,
