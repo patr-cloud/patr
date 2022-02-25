@@ -1374,7 +1374,7 @@ async fn list_linked_urls(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-pub async fn get_build_logs(
+async fn get_build_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
