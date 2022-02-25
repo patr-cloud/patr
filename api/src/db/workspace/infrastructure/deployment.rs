@@ -9,7 +9,12 @@ use api_models::{
 use crate::{
 	db,
 	models::{
-		db_mapping::{Deployment, DeploymentMachineType, DeploymentRegion},
+		db_mapping::{
+			Deployment,
+			DeploymentMachineType,
+			DeploymentRegion,
+			WorkspaceAuditLog,
+		},
 		deployment::{
 			DefaultDeploymentRegion,
 			DEFAULT_DEPLOYMENT_REGIONS,
@@ -960,6 +965,46 @@ pub async fn get_all_deployment_regions(
 		FROM
 			deployment_region;
 		"#
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_build_events_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
+	query_as!(
+		WorkspaceAuditLog,
+		r#"
+		SELECT
+			workspace_audit_log.id as "id: _",
+			date as "date: _",
+			ip_address,
+			workspace_id as "workspace_id: _",
+			user_id as "user_id: _",
+			login_id as "login_id: _",
+			resource_id as "resource_id: _",
+			permission.name as "action",
+			request_id as "request_id: _",
+			metadata as "metadata: _",
+			patr_action as "patr_action: _",
+			success
+		FROM
+			workspace_audit_log
+		INNER JOIN
+			permission
+		ON
+			permission.id = workspace_audit_log.action
+		WHERE
+			workspace_id = $1 AND 
+			(
+				metadata ->> 'deploymentStatus' = 'created' OR
+				metadata ->> 'deploymentStatus' = 'running' OR
+				metadata ->> 'deploymentStatus' = 'stopped'
+			);
+		"#,
+		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
 	.await
