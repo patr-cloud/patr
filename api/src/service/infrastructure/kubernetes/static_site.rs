@@ -53,6 +53,18 @@ pub async fn update_kubernetes_static_site(
 		request_id
 	);
 
+	if !kubernetes::secret_exists(
+		"tls-domain-wildcard-patr-cloud",
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
 			name: Some(format!("service-{}", static_site.id)),
@@ -128,24 +140,10 @@ pub async fn update_kubernetes_static_site(
 		"request_id: {} - adding patr domain config to ingress",
 		request_id
 	);
-	let patr_domain_tls = if kubernetes::secret_exists(
-		"tls-domain-wildcard-patr-cloud",
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		Some(vec![IngressTLS {
-			hosts: Some(vec![
-				"*.patr.cloud".to_string(),
-				"patr.cloud".to_string(),
-			]),
-			secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
-		}])
-	} else {
-		None
-	};
-
+	let patr_domain_tls = vec![IngressTLS {
+		hosts: Some(vec!["*.patr.cloud".to_string(), "patr.cloud".to_string()]),
+		secret_name: Some("tls-domain-wildcard-patr-cloud".to_string()),
+	}];
 	log::trace!(
 		"request_id: {} - creating https certificates for domain",
 		request_id
@@ -158,7 +156,7 @@ pub async fn update_kubernetes_static_site(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(ingress_rule),
-			tls: patr_domain_tls,
+			tls: Some(patr_domain_tls),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()

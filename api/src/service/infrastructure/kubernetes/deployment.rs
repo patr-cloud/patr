@@ -70,6 +70,21 @@ pub async fn update_kubernetes_deployment(
 ) -> Result<(), Error> {
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
+	// the namespace is workspace id
+	let namespace = workspace_id.as_str();
+
+	if !kubernetes::secret_exists(
+		"tls-domain-wildcard-patr-cloud",
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+
 	log::trace!(
 		"Deploying the container with id: {} on kubernetes with request_id: {}",
 		deployment.id,
@@ -110,9 +125,6 @@ pub async fn update_kubernetes_deployment(
 		request_id,
 		deployment.id,
 	);
-
-	// the namespace is workspace id
-	let namespace = workspace_id.as_str();
 
 	let labels = [
 		(
@@ -338,18 +350,6 @@ pub async fn update_kubernetes_deployment(
 		})
 		.unzip::<_, _, Vec<_>, Vec<_>>();
 
-	let default_tls_rules = if kubernetes::secret_exists(
-		"tls-domain-wildcard-patr-cloud",
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		Some(default_tls_rules)
-	} else {
-		None
-	};
-
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
@@ -358,7 +358,7 @@ pub async fn update_kubernetes_deployment(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(default_ingress_rules),
-			tls: default_tls_rules,
+			tls: Some(default_tls_rules),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()

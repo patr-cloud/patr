@@ -52,12 +52,34 @@ pub async fn update_kubernetes_managed_url(
 		"request_id: {} - generating deployment configuration",
 		request_id
 	);
+
 	let domain = db::get_workspace_domain_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&managed_url.domain_id,
 	)
 	.await?
 	.status(500)?;
+
+	let secret_name = format!(
+		"tls-{}",
+		if domain.is_ns_internal() {
+			&domain.id
+		} else {
+			&managed_url.id
+		}
+	);
+
+	if !kubernetes::secret_exists(
+		&secret_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
 	let (ingress, annotations) = match &managed_url.url_type {
 		ManagedUrlType::ProxyDeployment {
@@ -325,36 +347,6 @@ pub async fn update_kubernetes_managed_url(
 		}
 	};
 
-	let hosts = if domain.is_ns_internal() {
-		Some(vec![format!("*.{}", domain.name), domain.name.clone()])
-	} else {
-		Some(vec![format!("{}.{}", managed_url.sub_domain, domain.name)])
-	};
-
-	let secret_name = format!(
-		"tls-{}",
-		if domain.is_ns_internal() {
-			&domain.id
-		} else {
-			&managed_url.id
-		}
-	);
-
-	let tls_secret = if kubernetes::secret_exists(
-		&secret_name,
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		Some(vec![IngressTLS {
-			hosts,
-			secret_name: Some(secret_name),
-		}])
-	} else {
-		None
-	};
-
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", managed_url.id)),
@@ -363,7 +355,20 @@ pub async fn update_kubernetes_managed_url(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
-			tls: tls_secret,
+			tls: Some(vec![IngressTLS {
+				hosts: if domain.is_ns_internal() {
+					Some(vec![
+						format!("*.{}", domain.name),
+						domain.name.clone(),
+					])
+				} else {
+					Some(vec![format!(
+						"{}.{}",
+						managed_url.sub_domain, domain.name
+					)])
+				},
+				secret_name: Some(secret_name),
+			}]),
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
