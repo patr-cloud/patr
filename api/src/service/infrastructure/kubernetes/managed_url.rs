@@ -35,7 +35,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	service,
+	service::{self, infrastructure::kubernetes},
 	utils::{settings::Settings, Error},
 };
 
@@ -325,6 +325,36 @@ pub async fn update_kubernetes_managed_url(
 		}
 	};
 
+	let hosts = if domain.is_ns_internal() {
+		Some(vec![format!("*.{}", domain.name), domain.name.clone()])
+	} else {
+		Some(vec![format!("{}.{}", managed_url.sub_domain, domain.name)])
+	};
+
+	let secret_name = format!(
+		"tls-{}",
+		if domain.is_ns_internal() {
+			&domain.id
+		} else {
+			&managed_url.id
+		}
+	);
+
+	let tls_secret = if kubernetes::secret_exists(
+		&secret_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		Some(vec![IngressTLS {
+			hosts,
+			secret_name: Some(secret_name),
+		}])
+	} else {
+		None
+	};
+
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", managed_url.id)),
@@ -333,27 +363,7 @@ pub async fn update_kubernetes_managed_url(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(vec![ingress]),
-			tls: Some(vec![IngressTLS {
-				hosts: if domain.is_ns_internal() {
-					Some(vec![
-						format!("*.{}", domain.name),
-						domain.name.clone(),
-					])
-				} else {
-					Some(vec![format!(
-						"{}.{}",
-						managed_url.sub_domain, domain.name
-					)])
-				},
-				secret_name: Some(format!(
-					"tls-{}",
-					if domain.is_ns_internal() {
-						&domain.id
-					} else {
-						&managed_url.id
-					}
-				)),
-			}]),
+			tls: tls_secret,
 			..IngressSpec::default()
 		}),
 		..Ingress::default()

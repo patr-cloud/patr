@@ -55,6 +55,7 @@ use crate::{
 	db,
 	error,
 	models::deployment,
+	service::infrastructure::kubernetes,
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -337,6 +338,18 @@ pub async fn update_kubernetes_deployment(
 		})
 		.unzip::<_, _, Vec<_>, Vec<_>>();
 
+	let default_tls_rules = if kubernetes::secret_exists(
+		"tls-domain-wildcard-patr-cloud",
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		Some(default_tls_rules)
+	} else {
+		None
+	};
+
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
 			name: Some(format!("ingress-{}", deployment.id)),
@@ -345,7 +358,7 @@ pub async fn update_kubernetes_deployment(
 		},
 		spec: Some(IngressSpec {
 			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules),
+			tls: default_tls_rules,
 			..IngressSpec::default()
 		}),
 		..Ingress::default()
