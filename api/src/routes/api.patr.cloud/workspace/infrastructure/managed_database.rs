@@ -216,26 +216,22 @@ async fn create_database_cluster(
 	log::trace!("request_id: {} - Creating database cluster", request_id);
 	let name = body
 		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
+		.and_then(|value| value.as_str())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.trim();
 
 	let db_name = body
 		.get(request_keys::DATABASE_NAME)
-		.map(|value| value.as_str())
-		.flatten()
+		.and_then(|value| value.as_str())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?
 		.trim();
 
 	let engine = body
 		.get(request_keys::ENGINE)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|engine| engine.parse().ok())
-		.flatten()
+		.and_then(|value| value.as_str())
+		.and_then(|engine| engine.parse().ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -262,17 +258,14 @@ async fn create_database_cluster(
 
 	let database_plan = body
 		.get(request_keys::DATABASE_PLAN)
-		.map(|value| value.as_str())
-		.flatten()
-		.map(|c| c.parse::<ManagedDatabasePlan>().ok())
-		.flatten()
+		.and_then(|value| value.as_str())
+		.and_then(|c| c.parse::<ManagedDatabasePlan>().ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let region = body
 		.get(request_keys::REGION)
-		.map(|value| value.as_str())
-		.flatten()
+		.and_then(|value| value.as_str())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
