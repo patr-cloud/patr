@@ -33,6 +33,7 @@ use kube::{
 
 use crate::{
 	error,
+	service::infrastructure::kubernetes,
 	utils::{settings::Settings, Error},
 };
 
@@ -51,6 +52,18 @@ pub async fn update_kubernetes_static_site(
 		"request_id: {} - generating deployment configuration",
 		request_id
 	);
+
+	if !kubernetes::secret_exists(
+		"tls-domain-wildcard-patr-cloud",
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
