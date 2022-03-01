@@ -962,6 +962,35 @@ pub async fn update_workspace_domain_status(
 	.map(|_| ())
 }
 
+pub async fn get_all_unused_domain_tlds(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<String>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			tld
+		FROM
+			domain_tld
+		WHERE
+			(
+				SELECT
+					COUNT(*)
+				FROM
+					domain
+				WHERE
+					domain.tld = tld
+			) = 0;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.tld)
+	.collect();
+
+	Ok(rows)
+}
+
 pub async fn update_domain_tld_list(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	tlds: &[String],
@@ -981,6 +1010,31 @@ pub async fn update_domain_tld_list(
 		.await
 		.map_err(|err| {
 			log::error!("Error inserting TLD `{}`", tld);
+			err
+		})?;
+	}
+
+	Ok(())
+}
+
+pub async fn remove_from_domain_tld_list(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	tlds: &[String],
+) -> Result<(), sqlx::Error> {
+	for tld in tlds {
+		query!(
+			r#"
+			DELETE FROM
+				domain_tld
+			WHERE
+				tld = $1;
+			"#,
+			tld,
+		)
+		.execute(&mut *connection)
+		.await
+		.map_err(|err| {
+			log::error!("Error removing TLD `{}`", tld);
 			err
 		})?;
 	}

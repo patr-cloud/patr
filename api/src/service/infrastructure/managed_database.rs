@@ -35,6 +35,16 @@ pub async fn create_managed_database_in_workspace(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
+	let databases =
+		db::get_all_database_clusters_for_workspace(connection, workspace_id)
+			.await?;
+
+	if databases.len() > 3 {
+		return Error::as_result()
+			.status(400)
+			.body(error!(MAX_LIMIT_REACHED).to_string())?;
+	}
+
 	log::trace!("request_id: {} - Creating a managed database on digitalocean with name: {} and db_name: {} on DigitalOcean App platform with request_id: {}",
 		request_id,
 		name,
