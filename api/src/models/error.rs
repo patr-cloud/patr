@@ -52,6 +52,7 @@ pub mod id {
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
 	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 	pub const INVALID_DNS_RECORD_NAME: &str = "invalidDnsRecordName";
+	pub const MAX_LIMIT_REACHED: &str = "maxLimitReached";
 }
 
 #[allow(dead_code)]
@@ -159,4 +160,5 @@ pub mod message {
 	pub const INVALID_IP_ADDRESS: &str = "The IP address is invalid";
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 	pub const INVALID_DNS_RECORD_NAME: &str = "The DNS record name is invalid";
+	pub const MAX_LIMIT_REACHED: &str = "You have reached the limit of the maximum number resources allowed for your workspace";
 }

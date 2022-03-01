@@ -268,7 +268,7 @@ pub async fn create_user_join_request(
 			recovery_email_local = None;
 			recovery_email_domain_id = None;
 		}
-		// If backup_email is only provided
+		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
 			// Check if backup_email is allowed and valid
 			if !is_email_allowed(connection, recovery_email).await? {

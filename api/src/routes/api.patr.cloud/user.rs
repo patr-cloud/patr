@@ -108,17 +108,21 @@ pub fn create_sub_app(
 		],
 	);
 	app.post(
-		"/update-backup-email",
+		"/update-recovery-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				update_recovery_email_address
+			)),
 		],
 	);
 	app.post(
-		"/update-backup-phone",
+		"/update-recovery-phone",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				update_recovery_phone_number
+			)),
 		],
 	);
 	app.post(
@@ -652,7 +656,7 @@ async fn list_phone_numbers(
 /// example: Authorization: <insert authToken>
 /// ```
 /// {
-///    backupEMail: new backupEmail
+///    recoveryEMail: new recoveryEmail
 /// }
 /// ```
 ///
@@ -674,7 +678,7 @@ async fn list_phone_numbers(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_backup_email_address(
+async fn update_recovery_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -686,7 +690,7 @@ async fn update_backup_email_address(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	service::update_user_backup_email(
+	service::update_user_recovery_email(
 		context.get_database_connection(),
 		&user_id,
 		&email_address,
@@ -698,14 +702,14 @@ async fn update_backup_email_address(
 }
 
 /// # Description
-/// This function is used to update the backup phone number of the user
+/// This function is used to update the recovery phone number of the user
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
 /// ```
 /// {
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 /// }
 /// ```
 ///
@@ -727,7 +731,7 @@ async fn update_backup_email_address(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_backup_phone_number(
+async fn update_recovery_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -742,7 +746,7 @@ async fn update_backup_phone_number(
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	service::update_user_backup_phone_number(
+	service::update_user_recovery_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
