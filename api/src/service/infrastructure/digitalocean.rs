@@ -232,7 +232,7 @@ pub async fn push_to_docr(
 
 	// get username and password from the auth token
 	let (username, password) = auth_token
-		.split_once(":")
+		.split_once(':')
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
