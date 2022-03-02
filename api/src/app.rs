@@ -129,9 +129,7 @@ fn eve_error_handler(mut response: Response, error: Error) -> Response {
 
 	let default_error = error!(SERVER_ERROR).to_string();
 	response.set_body_bytes(
-		error
-			.get_body_bytes()
-			.unwrap_or_else(|| default_error.as_bytes()),
+		error.get_body_bytes().unwrap_or(default_error.as_bytes()),
 	);
 	response
 }
