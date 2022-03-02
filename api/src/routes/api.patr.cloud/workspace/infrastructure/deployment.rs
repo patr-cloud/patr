@@ -10,6 +10,7 @@ use api_models::{
 			DeploymentStatus,
 			GetDeploymentInfoResponse,
 			GetDeploymentLogsResponse,
+			GetDeploymentMetricsResponse,
 			ListDeploymentsResponse,
 			ListLinkedURLsResponse,
 			PatrRegistry,
@@ -31,12 +32,14 @@ use crate::{
 	error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
+		deployment::{Interval, Step},
 		rbac::permissions,
 	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -348,6 +351,38 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
+		],
+	);
+
+	// get all deployment metrics
+	app.get(
+		"/:deploymentId/metrics",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_deployment_metrics)),
 		],
 	);
 
@@ -663,7 +698,7 @@ async fn create_deployment(
 		}
 	}
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A new deployment has been created",
 	)
@@ -962,7 +997,7 @@ async fn delete_deployment(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A deployment has been deleted",
 	)
@@ -1125,5 +1160,77 @@ async fn list_linked_urls(
 	.collect();
 
 	context.success(ListLinkedURLsResponse { urls });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to fetch all deployment metrics (cpu usage, memory
+/// usage, etc) required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_deployment_metrics(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	log::trace!(
+		"request_id: {} - Getting deployment metrics for deployment: {}",
+		request_id,
+		deployment_id
+	);
+	let start_time = context
+		.get_request()
+		.get_query()
+		.get(request_keys::START_TIME)
+		.unwrap_or(&String::from("hour"))
+		.parse::<Interval>()
+		.unwrap_or(Interval::Hour);
+
+	let step = context
+		.get_request()
+		.get_query()
+		.get(request_keys::INTERVAL)
+		.unwrap_or(&String::from("10m"))
+		.parse::<Step>()
+		.unwrap_or(Step::TenMinutes);
+
+	let config = context.get_state().config.clone();
+
+	let deployment_metrics = service::get_deployment_metrics(
+		&deployment_id,
+		&config,
+		start_time.as_u64(),
+		get_current_time_millis(),
+		&step.to_string(),
+		&request_id,
+	)
+	.await?;
+
+	context.success(GetDeploymentMetricsResponse {
+		metrics: deployment_metrics,
+	});
 	Ok(context)
 }

@@ -267,7 +267,7 @@ async fn sign_up(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A new user has attempted to sign-up",
 	)
@@ -387,7 +387,7 @@ async fn join(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A new user has completed sign-up",
 	)

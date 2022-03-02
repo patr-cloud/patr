@@ -3,21 +3,24 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentMetrics,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
+		Metric,
 		PatrRegistry,
 	},
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
+	models::{deployment::PrometheusResponse, rbac},
 	service::{
 		self,
 		infrastructure::{digitalocean, kubernetes},
@@ -545,4 +548,262 @@ pub async fn get_full_deployment_config(
 			environment_variables,
 		},
 	))
+}
+
+pub async fn get_deployment_metrics(
+	deployment_id: &Uuid,
+	config: &Settings,
+	start_time: u64,
+	end_time: u64,
+	step: &str,
+	request_id: &Uuid,
+) -> Result<Vec<DeploymentMetrics>, Error> {
+	log::trace!(
+		"request_id: {} - Getting deployment metrics for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	// TODO: make this as a hashmap
+	let mut metric_response = Vec::<DeploymentMetrics>::new();
+	let client = Client::new();
+
+	let (
+		cpu_usage_response,
+		memory_usage_response,
+		network_usage_tx_response,
+		network_usage_rx_response,
+	): (
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+	) = tokio::join!(
+		async {
+			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		}
+	);
+
+	let (
+		cpu_usage_response,
+		memory_usage_response,
+		network_usage_tx_response,
+		network_usage_rx_response,
+	) = (
+		cpu_usage_response?,
+		memory_usage_response?,
+		network_usage_tx_response?,
+		network_usage_rx_response?,
+	);
+
+	cpu_usage_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					let new_item = Metric {
+						timestamp: value.timestamp,
+						cpu_usage: 0f64,
+						memory_usage: 0,
+						network_usage_tx: 0f64,
+						network_usage_rx: 0f64,
+					};
+
+					let pod_item_size = pod_item.metrics.len();
+
+					pod_item.metrics.push(new_item);
+					if let Some(item) = pod_item.metrics.get_mut(pod_item_size)
+					{
+						item
+					} else {
+						return;
+					}
+				};
+				metric_item.cpu_usage = value.value;
+			});
+		});
+
+	memory_usage_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.memory_usage = value.value as u64;
+			});
+		});
+
+	network_usage_tx_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.network_usage_tx = value.value;
+			});
+		});
+
+	network_usage_rx_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.network_usage_rx = value.value;
+			});
+		});
+
+	Ok(metric_response)
 }

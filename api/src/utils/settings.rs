@@ -64,6 +64,7 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
+	pub prometheus: PrometheusSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,4 +200,10 @@ where
 	let string = String::deserialize(value)?;
 	Ok(base64::decode(&string)
 		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusSettings {
+	pub host: String,
 }

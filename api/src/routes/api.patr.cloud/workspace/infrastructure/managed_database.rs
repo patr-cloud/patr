@@ -291,7 +291,7 @@ async fn create_database_cluster(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A database instance has been created",
 	)
@@ -366,7 +366,7 @@ async fn delete_managed_database(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A database instance has been deleted",
 	)

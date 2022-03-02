@@ -508,7 +508,7 @@ async fn create_static_site_deployment(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A static site has been created",
 	)
@@ -743,7 +743,7 @@ async fn delete_static_site(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A static site has been deleted",
 	)
