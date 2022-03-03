@@ -238,8 +238,6 @@ pub async fn create_user_join_request(
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
-
-	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
 	let recovery_email_local;
 	let recovery_email_domain_id;
@@ -297,7 +295,7 @@ pub async fn create_user_join_request(
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
 
-	match account_type {
+	let response: UserToSignUp = match account_type {
 		SignUpAccountType::Business {
 			account_type: _,
 			workspace_name,
@@ -374,7 +372,7 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 
-			response = UserToSignUp {
+			UserToSignUp {
 				username: username.to_string(),
 				account_type: ResourceType::Business,
 				password,
@@ -406,7 +404,7 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 
-			response = UserToSignUp {
+			UserToSignUp {
 				username: username.to_string(),
 				account_type: ResourceType::Business,
 				password,
@@ -423,7 +421,7 @@ pub async fn create_user_join_request(
 				otp_expiry: token_expiry,
 			}
 		}
-	}
+	};
 
 	Ok((response, otp))
 }
