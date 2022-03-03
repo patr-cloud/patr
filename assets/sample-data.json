@@ -4,140 +4,140 @@
 			"username": "rakshith-ravi",
 			"firstName": "Rakshith",
 			"lastName": "Ravi",
-			"backupEmail": "rakshith@gmx.com",
+			"recoveryEmail": "rakshith@gmx.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "adarsh-warrier",
 			"firstName": "Adarsh",
 			"lastName": "Warrier",
-			"backupEmail": "adarshwarrier01@gmail.com",
+			"recoveryEmail": "adarshwarrier01@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "abhishek-satish",
 			"firstName": "Adarsh",
 			"lastName": "Warrier",
-			"backupEmail": "shadowex01@gmail.com",
+			"recoveryEmail": "shadowex01@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "manan-barjatya",
 			"firstName": "Manan",
 			"lastName": "Barjatya",
-			"backupEmail": "manan11697@gmail.com",
+			"recoveryEmail": "manan11697@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "anupama-nair",
 			"firstName": "Anupama",
 			"lastName": "Nair",
-			"backupEmail": "a7nair711@gmail.com",
+			"recoveryEmail": "a7nair711@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "adityaraj-bhatt",
 			"firstName": "Aditya Raj",
 			"lastName": "Bhatt",
-			"backupEmail": "adityarajbhatt@gmail.com",
+			"recoveryEmail": "adityarajbhatt@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "manjeet-arneja",
 			"firstName": "Manjeet",
 			"lastName": "Arneja",
-			"backupEmail": "manjeet.arneja@gmail.com",
+			"recoveryEmail": "manjeet.arneja@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "aniket-jain",
 			"firstName": "Aniket",
 			"lastName": "Jain",
-			"backupEmail": "aniket.jain@gmail.com",
+			"recoveryEmail": "aniket.jain@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "manasva-bhargava",
 			"firstName": "Manasva",
 			"lastName": "Bhargava",
-			"backupEmail": "manasva.bhargava@gmail.com",
+			"recoveryEmail": "manasva.bhargava@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "aditi-shah",
 			"firstName": "Aditi",
 			"lastName": "Shah",
-			"backupEmail": "aditi.shah@gmail.com",
+			"recoveryEmail": "aditi.shah@gmail.com",
 			"password": "Vicara@123"
 		},
 		{
 			"username": "prajwal-ajay",
 			"firstName": "Prajwal",
 			"lastName": "Ajay",
-			"backupEmail": "prajwal.ajay@gmail.com",
+			"recoveryEmail": "prajwal.ajay@gmail.com",
 			"password": "Gordian@123"
 		},
 		{
 			"username": "dhanush-gowda",
 			"firstName": "Dhanush",
 			"lastName": "Gowda",
-			"backupEmail": "dhanush.gowda@gmail.com",
+			"recoveryEmail": "dhanush.gowda@gmail.com",
 			"password": "Gordian@123"
 		},
 		{
 			"username": "sagar-rs",
 			"firstName": "Sagar",
 			"lastName": "RS",
-			"backupEmail": "sagar.rs@gmail.com",
+			"recoveryEmail": "sagar.rs@gmail.com",
 			"password": "Gordian@123"
 		},
 		{
 			"username": "nishant-gupta",
 			"firstName": "Nishant",
 			"lastName": "Gupta",
-			"backupEmail": "nishant.gupta@gmail.com",
+			"recoveryEmail": "nishant.gupta@gmail.com",
 			"password": "Renaura@123"
 		},
 		{
 			"username": "palash-pandey",
 			"firstName": "Palash",
 			"lastName": "Pandey",
-			"backupEmail": "palash.pandey@gmail.com",
+			"recoveryEmail": "palash.pandey@gmail.com",
 			"password": "Renaura@123"
 		},
 		{
 			"username": "dheeraj-raj",
 			"firstName": "Dheeraj",
 			"lastName": "Raj",
-			"backupEmail": "dheeraj.raj@gmail.com",
+			"recoveryEmail": "dheeraj.raj@gmail.com",
 			"password": "Renaura@123"
 		},
 		{
 			"username": "guarav-sharma",
 			"firstName": "Gaurav",
 			"lastName": "Sharma",
-			"backupEmail": "gaurav.sharma@gmail.com",
+			"recoveryEmail": "gaurav.sharma@gmail.com",
 			"password": "Rentbaaz@123"
 		},
 		{
 			"username": "nayan-mishra",
 			"firstName": "Nayan",
 			"lastName": "Mishra",
-			"backupEmail": "nayan.mishra@gmail.com",
+			"recoveryEmail": "nayan.mishra@gmail.com",
 			"password": "Rentbaaz@123"
 		},
 		{
 			"username": "amey-acharya",
 			"firstName": "Amey",
 			"lastName": "Acharya",
-			"backupEmail": "amey.acharya@gmail.com",
+			"recoveryEmail": "amey.acharya@gmail.com",
 			"password": "Rentbaaz@123"
 		},
 		{
 			"username": "rajat-mukhati",
 			"firstName": "Rajat",
 			"lastName": "Mukhati",
-			"backupEmail": "rajat.mukhati@gmail.com",
+			"recoveryEmail": "rajat.mukhati@gmail.com",
 			"password": "Rentbaaz@123"
 		}
 	],

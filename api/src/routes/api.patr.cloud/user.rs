@@ -19,10 +19,10 @@ use api_models::{
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
-			UpdateBackupEmailRequest,
-			UpdateBackupEmailResponse,
-			UpdateBackupPhoneNumberRequest,
-			UpdateBackupPhoneNumberResponse,
+			UpdateRecoveryEmailRequest,
+			UpdateRecoveryEmailResponse,
+			UpdateRecoveryPhoneNumberRequest,
+			UpdateRecoveryPhoneNumberResponse,
 			UpdateUserInfoRequest,
 			UpdateUserInfoResponse,
 			UserLogin,
@@ -108,17 +108,21 @@ pub fn create_sub_app(
 		],
 	);
 	app.post(
-		"/update-backup-email",
+		"/update-recovery-email",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(update_backup_email_address)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				update_recovery_email_address
+			)),
 		],
 	);
 	app.post(
-		"/update-backup-phone",
+		"/update-recovery-phone",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(update_backup_phone_number)),
+			EveMiddleware::CustomFunction(pin_fn!(
+				update_recovery_phone_number
+			)),
 		],
 	);
 	app.post(
@@ -263,7 +267,7 @@ async fn get_user_info(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let backup_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -276,15 +280,15 @@ async fn get_user_info(
 	.await?
 	.into_iter()
 	.filter(|email| {
-		if let Some(backup_email) = &backup_email {
-			email != backup_email
+		if let Some(recovery_email) = &recovery_email {
+			email != recovery_email
 		} else {
 			true
 		}
 	})
 	.collect::<Vec<_>>();
 
-	let backup_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_backup_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -297,8 +301,8 @@ async fn get_user_info(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some(backup_phone_number) = &backup_phone_number {
-			phone_number != backup_phone_number
+		if let Some(recovery_phone_number) = &recovery_phone_number {
+			phone_number != recovery_phone_number
 		} else {
 			true
 		}
@@ -314,9 +318,9 @@ async fn get_user_info(
 		bio,
 		location,
 		created,
-		backup_email,
+		recovery_email,
 		secondary_emails,
-		backup_phone_number,
+		recovery_phone_number,
 		secondary_phone_numbers,
 	});
 	Ok(context)
@@ -446,10 +450,10 @@ async fn update_user_info(
 	// If no parameters to update
 	first_name
 		.as_ref()
-		.or_else(|| last_name.as_ref())
-		.or_else(|| dob_string.as_ref())
-		.or_else(|| bio.as_ref())
-		.or_else(|| location.as_ref())
+		.or(last_name.as_ref())
+		.or(dob_string.as_ref())
+		.or(bio.as_ref())
+		.or(location.as_ref())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -554,7 +558,7 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let backup_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_backup_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -567,8 +571,8 @@ async fn list_email_addresses(
 	.await?
 	.into_iter()
 	.filter(|email| {
-		if let Some(backup_email) = &backup_email {
-			email != backup_email
+		if let Some(recovery_email) = &recovery_email {
+			email != recovery_email
 		} else {
 			true
 		}
@@ -576,7 +580,7 @@ async fn list_email_addresses(
 	.collect::<Vec<_>>();
 
 	context.success(ListPersonalEmailsResponse {
-		backup_email,
+		recovery_email,
 		secondary_emails,
 	});
 	Ok(context)
@@ -617,7 +621,7 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let backup_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_backup_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -630,8 +634,8 @@ async fn list_phone_numbers(
 	.await?
 	.into_iter()
 	.filter(|phone_number| {
-		if let Some(backup_phone_number) = &backup_phone_number {
-			phone_number != backup_phone_number
+		if let Some(recovery_phone_number) = &recovery_phone_number {
+			phone_number != recovery_phone_number
 		} else {
 			true
 		}
@@ -639,7 +643,7 @@ async fn list_phone_numbers(
 	.collect::<Vec<_>>();
 
 	context.success(ListPhoneNumbersResponse {
-		backup_phone_number,
+		recovery_phone_number,
 		secondary_phone_numbers,
 	});
 	Ok(context)
@@ -652,7 +656,7 @@ async fn list_phone_numbers(
 /// example: Authorization: <insert authToken>
 /// ```
 /// {
-///    backupEMail: new backupEmail
+///    recoveryEMail: new recoveryEmail
 /// }
 /// ```
 ///
@@ -674,38 +678,38 @@ async fn list_phone_numbers(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_backup_email_address(
+async fn update_recovery_email_address(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateBackupEmailRequest { backup_email } = context
+	let UpdateRecoveryEmailRequest { recovery_email } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let email_address = backup_email.to_lowercase();
+	let email_address = recovery_email.to_lowercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	service::update_user_backup_email(
+	service::update_user_recovery_email(
 		context.get_database_connection(),
 		&user_id,
 		&email_address,
 	)
 	.await?;
 
-	context.success(UpdateBackupEmailResponse {});
+	context.success(UpdateRecoveryEmailResponse {});
 	Ok(context)
 }
 
 /// # Description
-/// This function is used to update the backup phone number of the user
+/// This function is used to update the recovery phone number of the user
 /// required inputs:
 /// auth token in the authorization headers
 /// example: Authorization: <insert authToken>
 /// ```
 /// {
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 /// }
 /// ```
 ///
@@ -727,22 +731,22 @@ async fn update_backup_email_address(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn update_backup_phone_number(
+async fn update_recovery_phone_number(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateBackupPhoneNumberRequest {
-		backup_phone_country_code,
-		backup_phone_number: phone_number,
+	let UpdateRecoveryPhoneNumberRequest {
+		recovery_phone_country_code,
+		recovery_phone_number: phone_number,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let country_code = backup_phone_country_code.to_uppercase();
+	let country_code = recovery_phone_country_code.to_uppercase();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	service::update_user_backup_phone_number(
+	service::update_user_recovery_phone_number(
 		context.get_database_connection(),
 		&user_id,
 		&country_code,
@@ -750,7 +754,7 @@ async fn update_backup_phone_number(
 	)
 	.await?;
 
-	context.success(UpdateBackupPhoneNumberResponse {});
+	context.success(UpdateRecoveryPhoneNumberResponse {});
 	Ok(context)
 }
 
@@ -1194,8 +1198,7 @@ async fn get_login_info(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
-		.map(|param| Uuid::parse_str(param).ok())
-		.flatten()
+		.and_then(|param| Uuid::parse_str(param).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -1221,8 +1224,7 @@ async fn delete_user_login(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
-		.map(|param| Uuid::parse_str(param).ok())
-		.flatten()
+		.and_then(|param| Uuid::parse_str(param).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 

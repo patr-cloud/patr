@@ -176,7 +176,7 @@ pub async fn change_password_for_user(
 	Ok(user)
 }
 
-pub async fn update_user_backup_email(
+pub async fn update_user_recovery_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	email_address: &str,
@@ -204,7 +204,7 @@ pub async fn update_user_backup_email(
 	Ok(())
 }
 
-pub async fn update_user_backup_phone_number(
+pub async fn update_user_recovery_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	country_code: &str,
