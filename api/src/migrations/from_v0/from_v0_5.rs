@@ -50,6 +50,7 @@ pub async fn migrate(
 		(0, 5, 2) => migrate_from_v0_5_2(&mut *connection, config).await?,
 		(0, 5, 3) => migrate_from_v0_5_3(&mut *connection, config).await?,
 		(0, 5, 4) => migrate_from_v0_5_4(&mut *connection, config).await?,
+		(0, 5, 5) => migrate_from_v0_5_5(&mut *connection, config).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -66,7 +67,7 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.5.0", "0.5.1", "0.5.2", "0.5.3", "0.5.4"]
+	vec!["0.5.0", "0.5.1", "0.5.2", "0.5.3", "0.5.4", "0.5.5"]
 }
 
 async fn migrate_from_v0_5_0(
@@ -374,6 +375,13 @@ async fn update_deployment_table_constraint(
 }
 
 async fn migrate_from_v0_5_4(
+	_connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_5_5(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
