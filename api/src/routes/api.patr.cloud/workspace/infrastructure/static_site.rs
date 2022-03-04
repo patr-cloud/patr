@@ -749,7 +749,7 @@ async fn delete_static_site(
 	)
 	.await;
 
-	context.json(DeleteStaticSiteResponse {});
+	context.success(DeleteStaticSiteResponse {});
 	Ok(context)
 }
 
