@@ -997,7 +997,7 @@ pub async fn get_build_events_for_deployment(
 		ON
 			permission.id = workspace_audit_log.action
 		WHERE
-			workspace_id = $1 AND 
+			resource_id = $1 AND 
 			(
 				metadata ->> 'deploymentStatus' = 'created' OR
 				metadata ->> 'deploymentStatus' = 'running' OR
