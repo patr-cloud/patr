@@ -678,10 +678,6 @@ pub async fn get_deployment_build_logs(
 			let logs = pod_events
 				.into_iter()
 				.map(|event| {
-					println!(
-						"event: {:#?} - {:#?} - {:#?}",
-						event, event.message, event.metadata.creation_timestamp
-					);
 					if let (Some(message), Some(timestamp)) =
 						(event.message, event.metadata.creation_timestamp)
 					{
