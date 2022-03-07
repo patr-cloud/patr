@@ -580,28 +580,28 @@ pub async fn get_deployment_metrics(
 		Result<_, reqwest::Error>,
 	) = tokio::join!(
 		async {
-			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://prometheus.{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
