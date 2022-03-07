@@ -47,8 +47,9 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
-	core::ObjectMeta,
+	core::{ErrorResponse, ObjectMeta},
 	Api,
+	Error as KubeError,
 };
 
 use crate::{
@@ -329,9 +330,7 @@ pub async fn update_kubernetes_deployment(
 						"*.patr.cloud".to_string(),
 						"patr.cloud".to_string(),
 					]),
-					secret_name: Some(
-						"tls-domain-wildcard-patr-cloud".to_string(),
-					),
+					secret_name: None,
 				},
 			)
 		})
@@ -547,13 +546,20 @@ pub async fn get_kubernetes_deployment_status(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
-	let deployment_status =
+	let deployment_result =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))
-			.await?
+			.await;
+	let deployment_status = match deployment_result {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
+			return Ok(DeploymentStatus::Deploying)
+		}
+		Err(err) => return Err(err.into()),
+		Ok(deployment) => deployment
 			.status
 			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.body(error!(SERVER_ERROR).to_string())?,
+	};
 
 	if deployment_status.available_replicas ==
 		Some(deployment.min_horizontal_scale.into())
