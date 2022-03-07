@@ -333,7 +333,12 @@ pub async fn update_kubernetes_managed_url(
 			&managed_url.id
 		}
 	);
-	let secret_exists = super::secret_exists(&secret_name, kubernetes_client.clone(), namespace).await?;
+	let secret_exists = super::secret_exists(
+		&secret_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?;
 
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
