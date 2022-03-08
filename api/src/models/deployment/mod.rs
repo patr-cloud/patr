@@ -153,18 +153,21 @@ pub struct DefaultDeploymentRegion {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrometheusResponse {
 	pub status: String,
 	pub data: PrometheusData,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrometheusData {
 	pub result_type: String,
 	pub result: Vec<PrometheusMetrics>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrometheusMetrics {
 	pub metric: PodName,
 	pub values: Vec<Metric>,
@@ -176,6 +179,7 @@ pub struct PodName {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Metric {
 	pub timestamp: u64,
 	pub value: f64,
