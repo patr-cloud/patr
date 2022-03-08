@@ -142,6 +142,7 @@ pub async fn notification_handler(
 
 		// Update the docker registry db with details on the image
 		let repository_name = target.repository;
+
 		let (workspace_name, image_name) =
 			if let Some(value) = repository_name.split_once('/') {
 				value
@@ -251,6 +252,7 @@ pub async fn notification_handler(
 				request_id,
 				deployment.id
 			);
+
 			task::spawn(async move {
 				log::trace!(
 					"request_id: {} - Acquiring database connection",
@@ -341,6 +343,35 @@ pub async fn notification_handler(
 				if let Err(error) = update_kubernetes_result {
 					log::error!(
 						"request_id: {} - Error updating k8s deployment: {}",
+						request_id,
+						error.get_error()
+					);
+					let _ = db::update_deployment_status(
+						&mut connection,
+						&deployment.id,
+						&DeploymentStatus::Errored,
+					)
+					.await
+					.map_err(|e| {
+						log::error!(
+							"request_id: {} - Error setting db status: {}",
+							request_id,
+							e
+						);
+					});
+				}
+
+				let restart_deployment_result = service::restart_deployment(
+					&deployment.id,
+					&request_id,
+					&config,
+					&workspace_id,
+				)
+				.await;
+
+				if let Err(error) = restart_deployment_result {
+					log::error!(
+						"request_id: {} - Error restarting k8s deployment: {}",
 						request_id,
 						error.get_error()
 					);
