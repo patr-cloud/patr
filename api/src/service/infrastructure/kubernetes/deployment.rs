@@ -582,7 +582,7 @@ pub async fn get_kubernetes_deployment_status(
 	}
 }
 
-pub async fn restart_deployment(
+pub async fn restart_kubernetes_deployment(
 	deployment_id: &Uuid,
 	request_id: &Uuid,
 	config: &Settings,
@@ -595,23 +595,10 @@ pub async fn restart_deployment(
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 	let namespace = workspace_id.as_str();
 
-	if !kubernetes::secret_exists(
-		"tls-domain-wildcard-patr-cloud",
-		kubernetes_client.clone(),
-		namespace,
-	)
-	.await?
-	{
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
-
-	let deployment_api =
-		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace);
-
 	let restart_deployment_name = format!("deployment-{}", deployment_id);
+	Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
+		.restart(&restart_deployment_name)
+		.await?;
 
-	deployment_api.restart(&restart_deployment_name).await?;
 	Ok(())
 }
