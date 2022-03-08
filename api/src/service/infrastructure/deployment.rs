@@ -622,6 +622,10 @@ pub async fn get_deployment_metrics(
 		}
 	);
 
+	// TODO: this part handles error, however it is not handled properly
+	// there is a possibility that the error that we get from prometheus is not
+	// a reqwest error but a prometheus error, in that case we should handle it
+	// properly and show it to the user
 	let (
 		cpu_usage_response,
 		memory_usage_response,
