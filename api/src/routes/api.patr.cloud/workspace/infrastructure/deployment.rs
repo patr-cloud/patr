@@ -39,7 +39,7 @@ use crate::{
 	service,
 	utils::{
 		constants::request_keys,
-		get_current_time_millis,
+		get_current_time,
 		Error,
 		ErrorData,
 		EveContext,
@@ -1223,7 +1223,7 @@ async fn get_deployment_metrics(
 		&deployment_id,
 		&config,
 		start_time.as_u64(),
-		get_current_time_millis(),
+		get_current_time().as_secs(),
 		&step.to_string(),
 		&request_id,
 	)

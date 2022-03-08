@@ -580,28 +580,41 @@ pub async fn get_deployment_metrics(
 		Result<_, reqwest::Error>,
 	) = tokio::join!(
 		async {
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			log::trace!("request_id: {} - Getting cpu metrics", request_id);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			log::trace!(
+				"request_id: {} - Getting memory usage metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			log::trace!(
+				"request_id: {} - Getting network usage transmit metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
 				.await
 		},
 		async {
-			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"cert-manager-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, start_time, end_time))
+			log::trace!(
+				"request_id: {} - Getting network usage recieve metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -621,6 +634,10 @@ pub async fn get_deployment_metrics(
 		network_usage_rx_response?,
 	);
 
+	log::trace!(
+		"request_id: {} - mapping cpu usage metrics on to response struct",
+		request_id
+	);
 	cpu_usage_response
 		.data
 		.result
@@ -659,10 +676,10 @@ pub async fn get_deployment_metrics(
 				} else {
 					let new_item = Metric {
 						timestamp: value.timestamp,
-						cpu_usage: 0f64,
-						memory_usage: 0,
-						network_usage_tx: 0f64,
-						network_usage_rx: 0f64,
+						cpu_usage: "0".to_string(),
+						memory_usage: "0".to_string(),
+						network_usage_tx: "0".to_string(),
+						network_usage_rx: "0".to_string(),
 					};
 
 					let pod_item_size = pod_item.metrics.len();
@@ -679,6 +696,10 @@ pub async fn get_deployment_metrics(
 			});
 		});
 
+	log::trace!(
+		"request_id: {} - mapping memory usage metrics on to response struct",
+		request_id
+	);
 	memory_usage_response
 		.data
 		.result
@@ -717,10 +738,11 @@ pub async fn get_deployment_metrics(
 				} else {
 					return;
 				};
-				metric_item.memory_usage = value.value as u64;
+				metric_item.memory_usage = value.value;
 			});
 		});
 
+	log::trace!("request_id: {} - mapping network usage transmit metrics on to response struct", request_id);
 	network_usage_tx_response
 		.data
 		.result
@@ -763,6 +785,7 @@ pub async fn get_deployment_metrics(
 			});
 		});
 
+	log::trace!("request_id: {} - mapping network usage receive metrics on to response struct", request_id);
 	network_usage_rx_response
 		.data
 		.result

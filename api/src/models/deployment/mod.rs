@@ -8,7 +8,7 @@ use serde::Deserialize;
 use super::db_mapping::DeploymentCloudProvider;
 use crate::{
 	error,
-	utils::{get_current_time_millis, Error},
+	utils::{get_current_time, Error},
 };
 
 pub mod cloud_providers;
@@ -182,7 +182,7 @@ pub struct PodName {
 #[serde(rename_all = "camelCase")]
 pub struct Metric {
 	pub timestamp: u64,
-	pub value: f64,
+	pub value: String,
 }
 
 #[derive(Debug, Clone)]
@@ -197,11 +197,11 @@ pub enum Interval {
 impl Interval {
 	pub fn as_u64(&self) -> u64 {
 		match self {
-			Interval::Hour => get_current_time_millis() - 3600000,
-			Interval::Day => get_current_time_millis() - 86400000,
-			Interval::Week => get_current_time_millis() - 604800000,
-			Interval::Month => get_current_time_millis() - 2628000000,
-			Interval::Year => get_current_time_millis() - 31556952000,
+			Interval::Hour => get_current_time().as_secs() - 3600,
+			Interval::Day => get_current_time().as_secs() - 86400,
+			Interval::Week => get_current_time().as_secs() - 604800,
+			Interval::Month => get_current_time().as_secs() - 2628000,
+			Interval::Year => get_current_time().as_secs() - 31556952,
 		}
 	}
 }
