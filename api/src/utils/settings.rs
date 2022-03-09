@@ -64,6 +64,7 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
+	pub chargebee: ChargebeeSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,4 +200,11 @@ where
 	let string = String::deserialize(value)?;
 	Ok(base64::decode(&string)
 		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChargebeeSettings {
+	pub api_key: String,
+	pub url: String,
 }

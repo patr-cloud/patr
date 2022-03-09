@@ -1,12 +1,16 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::billing::Address, utils::Uuid};
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::User,
+	models::{
+		db_mapping::User,
+		deployment::{BillingAddress, Customer, PromotionalCreditList},
+	},
 	service,
-	utils::{get_current_time_millis, validator, Error},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -412,4 +416,81 @@ pub async fn verify_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn update_billing_info(
+	workspace_id: &Uuid,
+	first_name: Option<String>,
+	last_name: Option<String>,
+	email: Option<String>,
+	phone: Option<String>,
+	address_details: Option<Address>,
+	config: &Settings,
+) -> Result<(), Error> {
+	if let Some(address_details) = address_details.clone() {
+		if address_details.address_line2.is_none() &&
+			address_details.address_line3.is_some()
+		{
+			return Error::as_result()
+				.status(400)
+				.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+		}
+	}
+
+	let client = Client::new();
+
+	let address_details = if let Some(address) = address_details {
+		Some(BillingAddress {
+			address_line1: address.address_line1,
+			address_line2: address.address_line2,
+			address_line3: address.address_line3,
+			city: address.city,
+			state: address.state,
+			zip: address.zip,
+			country: address.country,
+		})
+	} else {
+		None
+	};
+
+	let status = client
+		.post(format!(
+			"{}/customers/{}",
+			config.chargebee.url, workspace_id
+		))
+		.json(&Customer {
+			id: Some(workspace_id.to_string()),
+			first_name,
+			last_name,
+			email,
+			phone,
+			address: address_details,
+		})
+		.send()
+		.await?
+		.status();
+
+	if !status.is_success() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+
+	Ok(())
+}
+
+pub async fn get_credit_balance(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<PromotionalCreditList, Error> {
+	let client = Client::new();
+
+	client
+		.get(format!("{}/promotional_credits", config.chargebee.url))
+		.form(&[("customer_id", (workspace_id.as_str()))])
+		.send()
+		.await?
+		.json::<PromotionalCreditList>()
+		.await
+		.map_err(|e| e.into())
 }

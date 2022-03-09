@@ -595,6 +595,7 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&running_details,
+		&config,
 		&request_id,
 		&deployment_audit_log,
 	)

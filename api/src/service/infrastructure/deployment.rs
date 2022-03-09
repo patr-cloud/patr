@@ -13,12 +13,16 @@ use api_models::{
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use reqwest::Client;
 use serde_json::json;
 
 use crate::{
 	db,
 	error,
-	models::{deployment::DeploymentAuditLog, rbac},
+	models::{
+		deployment::{DeploymentAuditLog, Subscription},
+		rbac,
+	},
 	service::{
 		self,
 		infrastructure::{digitalocean, kubernetes},
@@ -56,6 +60,7 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
 	request_id: &Uuid,
 	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<Uuid, Error> {
@@ -255,6 +260,16 @@ pub async fn create_deployment_in_workspace(
 		)
 		.await?;
 	}
+
+	start_subscription(
+		connection,
+		&deployment_id,
+		machine_type.to_string(),
+		deployment_running_details.min_horizontal_scale,
+		config,
+		request_id,
+	)
+	.await?;
 
 	// TODO UPDATE ENTRY POINTS
 
@@ -470,6 +485,8 @@ pub async fn delete_deployment(
 		&DeploymentStatus::Deleted,
 	)
 	.await?;
+
+	cancel_subscription(deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -736,4 +753,94 @@ pub async fn get_full_deployment_config(
 			environment_variables,
 		},
 	))
+}
+
+async fn start_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	item_price_id: String,
+	quantity: u16,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Starting subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/customers/{}/subscription_for_items",
+			config.chargebee.url, deployment.workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.json(&Subscription {
+			id: deployment_id.to_string(),
+			item_price_id,
+			quantity,
+		})
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
+}
+
+async fn cancel_subscription(
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Stopping subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscription/{}/cancel_for_items",
+			config.chargebee.url, deployment_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
 }

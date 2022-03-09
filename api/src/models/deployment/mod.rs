@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 
 use super::db_mapping::DeploymentCloudProvider;
 
@@ -161,4 +162,83 @@ pub struct DeploymentAuditLog {
 pub struct DeploymentBuildLog {
 	pub pod: String,
 	pub logs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Customer {
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub id: Option<String>,
+
+	#[serde(rename = "billing_address[first_name]")]
+	pub first_name: Option<String>,
+
+	#[serde(rename = "billing_address[last_name]")]
+	pub last_name: Option<String>,
+
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub email: Option<String>,
+
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub phone: Option<String>,
+
+	#[serde(skip_serializing_if = "Option::is_none", flatten)]
+	pub address: Option<BillingAddress>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingAddress {
+	#[serde(rename = "billing_address[line1]")]
+	pub address_line1: String,
+
+	#[serde(
+		rename = "billing_address[line2]",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub address_line2: Option<String>,
+
+	#[serde(
+		rename = "billing_address[line3]",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub address_line3: Option<String>,
+
+	#[serde(rename = "billing_address[city]")]
+	pub city: String,
+
+	#[serde(rename = "billing_address[state]")]
+	pub state: String,
+
+	#[serde(rename = "billing_address[zip]")]
+	pub zip: String,
+
+	#[serde(rename = "billing_address[country]")]
+	pub country: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Subscription {
+	pub id: String,
+	#[serde(rename = "subscription_items[item_price_id]")]
+	pub item_price_id: String,
+	#[serde(rename = "subscription_items[quantity]")]
+	pub quantity: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionalCreditList {
+	pub list: Vec<PromotionalCreditBalance>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionalCreditBalance {
+	pub id: String,
+	pub customer_id: Uuid,
+	pub r#type: String,
+	pub amount: i64,
+	pub description: String,
+	pub credit_type: String,
+	pub closing_balance: i64,
+	pub created_at: u64,
+	pub object: String,
+	pub currency_code: String,
 }
