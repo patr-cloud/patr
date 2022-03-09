@@ -453,11 +453,14 @@ pub async fn update_billing_info(
 		None
 	};
 
+	let password: Option<String> = None;
+
 	let status = client
 		.post(format!(
 			"{}/customers/{}",
 			config.chargebee.url, workspace_id
 		))
+		.basic_auth(config.chargebee.api_key.as_str(), password)
 		.json(&Customer {
 			id: Some(workspace_id.to_string()),
 			first_name,
@@ -485,8 +488,11 @@ pub async fn get_credit_balance(
 ) -> Result<PromotionalCreditList, Error> {
 	let client = Client::new();
 
+	let password: Option<String> = None;
+
 	client
 		.get(format!("{}/promotional_credits", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
 		.form(&[("customer_id", (workspace_id.as_str()))])
 		.send()
 		.await?

@@ -207,4 +207,6 @@ where
 pub struct ChargebeeSettings {
 	pub api_key: String,
 	pub url: String,
+	pub credit_amount: String,
+	pub description: String,
 }

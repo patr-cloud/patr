@@ -169,10 +169,16 @@ pub struct Customer {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub id: Option<String>,
 
-	#[serde(rename = "billing_address[first_name]")]
+	#[serde(
+		rename = "billing_address[first_name]",
+		skip_serializing_if = "Option::is_none"
+	)]
 	pub first_name: Option<String>,
 
-	#[serde(rename = "billing_address[last_name]")]
+	#[serde(
+		rename = "billing_address[last_name]",
+		skip_serializing_if = "Option::is_none"
+	)]
 	pub last_name: Option<String>,
 
 	#[serde(skip_serializing_if = "Option::is_none")]

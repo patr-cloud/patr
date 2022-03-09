@@ -81,6 +81,8 @@
 	},
 	"chargebee": {
 		"apiKey": "key",
-		"url": "https://vicara-test.chargebee.com/api/v2"
+		"url": "https://vicara-test.chargebee.com/api/v2",
+		"creditAmount": "69000",
+		"description": "Patr Test"
 	}
 }
