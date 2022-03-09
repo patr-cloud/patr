@@ -1039,7 +1039,7 @@ pub async fn resend_user_sign_up_otp(
 	))
 }
 
-async fn create_chargebee_user(
+pub async fn create_chargebee_user(
 	workspace_id: &Uuid,
 	first_name: &str,
 	last_name: &str,
