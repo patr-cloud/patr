@@ -423,7 +423,8 @@ async fn migrate_from_v0_5_5(
 		ON
 			deployment.id = deployment_exposed_port.deployment_id
 		WHERE
-			port_type = 'http';
+			port_type = 'http' AND
+			deployment.status = 'running';
 		"#
 	)
 	.fetch_all(&mut *connection)
