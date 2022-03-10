@@ -4059,6 +4059,38 @@
     },
     "query": "SELECT * FROM resource_type WHERE id = $1;"
   },
+  "86b65641c9298e4ee92844aef07c16d79fd401584f2a84b30361efa91114e24c": {
+    "query": "SELECT \"user\".backup_phone_country_code as \"backup_phone_country_code!\", \"user\".backup_phone_number as \"backup_phone_number!\" FROM \"user\" WHERE \"user\".id = $1 AND \"user\".backup_phone_number IS NOT NULL AND \"user\".backup_phone_country_code IS NOT NULL;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
     "describe": {
       "columns": [],
