@@ -382,8 +382,160 @@ async fn migrate_from_v0_5_4(
 }
 
 async fn migrate_from_v0_5_5(
-	_connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"))
+	.collect::<Vec<_>>();
+	if workspaces.is_empty() {
+		return Ok(());
+	}
+
+	let deployment_ports = query!(
+		r#"
+		SELECT
+			*
+		FROM
+			deployment_exposed_port
+		
+		"#	
+	)
+
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let annotations = [
+		(
+			"kubernetes.io/ingress.class".to_string(),
+			"nginx".to_string(),
+		),
+		(
+			"cert-manager.io/cluster-issuer".to_string(),
+			config.kubernetes.cert_issuer_dns.clone(),
+		),
+	]
+	.into_iter()
+	.collect();
+
+	let (default_ingress_rules, default_tls_rules) = running_details
+		.ports
+		.iter()
+		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+		.map(|(port, _)| {
+			(
+				IngressRule {
+					host: Some(format!(
+						"{}-{}.patr.cloud",
+						port, deployment.id
+					)),
+					http: Some(HTTPIngressRuleValue {
+						paths: vec![HTTPIngressPath {
+							backend: IngressBackend {
+								service: Some(IngressServiceBackend {
+									name: format!("service-{}", deployment.id),
+									port: Some(ServiceBackendPort {
+										number: Some(port.value() as i32),
+										..ServiceBackendPort::default()
+									}),
+								}),
+								..Default::default()
+							},
+							path: Some("/".to_string()),
+							path_type: Some("Prefix".to_string()),
+						}],
+					}),
+				},
+				IngressTLS {
+					hosts: Some(vec![
+						"*.patr.cloud".to_string(),
+						"patr.cloud".to_string(),
+					]),
+					secret_name: None,
+				},
+			)
+		})
+		.unzip::<_, _, Vec<_>, Vec<_>>();
+
+	let kubernetes_ingress = Ingress {
+		metadata: ObjectMeta {
+			name: Some(format!("ingress-{}", deployment.id)),
+			annotations: Some(annotations),
+			..ObjectMeta::default()
+		},
+		spec: Some(IngressSpec {
+			rules: Some(default_ingress_rules),
+			tls: Some(default_tls_rules),
+			..IngressSpec::default()
+		}),
+		..Ingress::default()
+	};
+
+	// Create the ingress defined above
+	log::trace!("request_id: {} - creating ingress", request_id);
+	let ingress_api: Api<Ingress> =
+		Api::namespaced(kubernetes_client, namespace);
+
+	ingress_api
+		.patch(
+			&format!("ingress-{}", deployment.id),
+			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
+			&Patch::Apply(kubernetes_ingress),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
 	Ok(())
 }
