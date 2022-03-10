@@ -23,6 +23,7 @@ use k8s_openapi::{
 			PodSpec,
 			PodTemplateSpec,
 			ResourceRequirements,
+			Secret,
 			Service,
 			ServicePort,
 			ServiceSpec,
@@ -579,4 +580,46 @@ pub async fn get_kubernetes_deployment_status(
 	} else {
 		Ok(DeploymentStatus::Errored)
 	}
+}
+
+pub async fn update_kuberenetes_secrets(
+	workspace_id: &Uuid,
+	secret_id: &Uuid,
+	secret: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let namespace = workspace_id.as_str();
+
+	let kubernetes_secret = Secret {
+		metadata: ObjectMeta {
+			name: Some(format!("secret-{}", secret_id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		type_: Some("Opaque".to_string()),
+		immutable: Some(true),
+		string_data: Some(
+			[("data".to_string(), secret.to_string())]
+				.into_iter()
+				.collect(),
+		),
+		..Secret::default()
+	};
+
+	let secret_api =
+		Api::<Secret>::namespaced(kubernetes_client.clone(), namespace);
+
+	secret_api
+		.patch(
+			&format!("service-{}", secret_id),
+			&PatchParams::apply(&format!("secret-{}", secret_id)),
+			&Patch::Apply(kubernetes_secret),
+		)
+		.await?;
+
+	log::trace!("request_id: {} - secret created", request_id);
+
+	Ok(())
 }
