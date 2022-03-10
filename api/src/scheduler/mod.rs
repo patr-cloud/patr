@@ -49,6 +49,7 @@ async fn run_job(job: Job) {
 fn get_scheduled_jobs() -> Vec<Job> {
 	vec![
 		domain::verify_unverified_domains_job(),
+		domain::repatch_all_managed_urls_job(),
 		domain::reverify_verified_domains_job(),
 		domain::refresh_domain_tld_list_job(),
 	]
