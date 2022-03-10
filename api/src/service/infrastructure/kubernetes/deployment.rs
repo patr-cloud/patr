@@ -723,3 +723,56 @@ pub async fn update_kuberenetes_secrets(
 
 	Ok(())
 }
+
+pub async fn get_kubernetes_secret(
+	workspace_id: &Uuid,
+	secret_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - request to get list of secrets for - {}",
+		request_id,
+		secret_id
+	);
+
+	// TODO - db check if this resource exists with secret_id
+	// if exits.
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let namespace = workspace_id.as_str();
+
+	let secret =
+		Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+			.get(&format!("secret-{}", secret_id))
+			.await?;
+
+	// TODO - do something with secret if successfully retreived
+
+	Ok(())
+}
+
+pub async fn delete_kubernetes_secret(
+	workspace_id: &Uuid,
+	secret_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - request to delete secret - {}",
+		request_id,
+		secret_id
+	);
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+	let namespace = workspace_id.as_str();
+
+	// TODO - check if the secret resource is present in DB with secret_id as
+	// passed in params if exists them do the below delete operation,
+	// otherwise there will be a else condition which says the secret doesn't
+	// exist
+
+	Api::<Secret>::namespaced(kubernetes_client.clone(), namespace)
+		.delete(&format!("secret-{}", secret_id), &DeleteParams::default())
+		.await?;
+
+	Ok(())
+}
