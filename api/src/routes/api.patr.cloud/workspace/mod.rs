@@ -216,7 +216,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:workspaceId/update-billing-info",
+		"/:workspaceId/promotional-credits",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
