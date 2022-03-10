@@ -3,7 +3,17 @@ use std::collections::BTreeMap;
 use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	core::v1::Secret,
-	networking::v1::{Ingress, IngressSpec, IngressTLS},
+	networking::v1::{
+		HTTPIngressPath,
+		HTTPIngressRuleValue,
+		Ingress,
+		IngressBackend,
+		IngressRule,
+		IngressServiceBackend,
+		IngressSpec,
+		IngressTLS,
+		ServiceBackendPort,
+	},
 };
 use kube::{
 	api::{ListParams, Patch, PatchParams},
@@ -394,23 +404,48 @@ async fn migrate_from_v0_5_5(
 		"#
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.get::<Uuid, _>("id"))
-	.collect::<Vec<_>>();
+	.await?;
+
 	if workspaces.is_empty() {
 		return Ok(());
 	}
 
-	let deployment_ports = query!(
+	let deployment_port_list = query!(
 		r#"
 		SELECT
-			*
+			deployment_exposed_port.deployment_id,
+			deployment_exposed_port.port,
+			deployment.workspace_id
 		FROM
 			deployment_exposed_port
-		
-		"#	
+		INNER JOIN
+			deployment
+		ON
+			deployment.id = deployment_exposed_port.deployment_id
+		WHERE
+			port_type = 'http';
+		"#
 	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("deployment_id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<i32, _>("port") as u16,
+		)
+	})
+	.collect::<Vec<_>>();
+
+	let mut deployment_ports = BTreeMap::new();
+
+	for (deployment_id, workspace_id, port) in deployment_port_list {
+		deployment_ports
+			.entry((deployment_id, workspace_id))
+			.or_insert_with(Vec::new)
+			.push(port);
+	}
 
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
@@ -455,6 +490,9 @@ async fn migrate_from_v0_5_5(
 	.await
 	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
 	let annotations = [
 		(
 			"kubernetes.io/ingress.class".to_string(),
@@ -466,76 +504,72 @@ async fn migrate_from_v0_5_5(
 		),
 	]
 	.into_iter()
-	.collect();
+	.collect::<BTreeMap<_, _>>();
 
-	let (default_ingress_rules, default_tls_rules) = running_details
-		.ports
-		.iter()
-		.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
-		.map(|(port, _)| {
-			(
-				IngressRule {
-					host: Some(format!(
-						"{}-{}.patr.cloud",
-						port, deployment.id
-					)),
-					http: Some(HTTPIngressRuleValue {
-						paths: vec![HTTPIngressPath {
-							backend: IngressBackend {
-								service: Some(IngressServiceBackend {
-									name: format!("service-{}", deployment.id),
-									port: Some(ServiceBackendPort {
-										number: Some(port.value() as i32),
-										..ServiceBackendPort::default()
-									}),
-								}),
-								..Default::default()
-							},
-							path: Some("/".to_string()),
-							path_type: Some("Prefix".to_string()),
-						}],
-					}),
-				},
-				IngressTLS {
-					hosts: Some(vec![
-						"*.patr.cloud".to_string(),
-						"patr.cloud".to_string(),
-					]),
-					secret_name: None,
-				},
-			)
-		})
-		.unzip::<_, _, Vec<_>, Vec<_>>();
-
-	let kubernetes_ingress = Ingress {
-		metadata: ObjectMeta {
-			name: Some(format!("ingress-{}", deployment.id)),
-			annotations: Some(annotations),
-			..ObjectMeta::default()
-		},
-		spec: Some(IngressSpec {
-			rules: Some(default_ingress_rules),
-			tls: Some(default_tls_rules),
-			..IngressSpec::default()
-		}),
-		..Ingress::default()
+	let ingress_tls_rules = IngressTLS {
+		hosts: Some(vec!["*.patr.cloud".to_string(), "patr.cloud".to_string()]),
+		secret_name: None,
 	};
 
-	// Create the ingress defined above
-	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api: Api<Ingress> =
-		Api::namespaced(kubernetes_client, namespace);
+	for ((deployment_id, workspace_id), ports) in deployment_ports {
+		let kubernetes_ingress = Ingress {
+			metadata: ObjectMeta {
+				name: Some(format!("ingress-{}", deployment_id)),
+				annotations: Some(annotations.clone()),
+				..ObjectMeta::default()
+			},
+			spec: Some(IngressSpec {
+				rules: Some(
+					ports
+						.iter()
+						.map(|port| IngressRule {
+							host: Some(format!(
+								"{}-{}.patr.cloud",
+								port, deployment_id
+							)),
+							http: Some(HTTPIngressRuleValue {
+								paths: vec![HTTPIngressPath {
+									backend: IngressBackend {
+										service: Some(IngressServiceBackend {
+											name: format!(
+												"service-{}",
+												deployment_id
+											),
+											port: Some(ServiceBackendPort {
+												number: Some(*port as i32),
+												..ServiceBackendPort::default()
+											}),
+										}),
+										..Default::default()
+									},
+									path: Some("/".to_string()),
+									path_type: Some("Prefix".to_string()),
+								}],
+							}),
+						})
+						.collect(),
+				),
+				tls: Some(
+					ports.iter().map(|_| ingress_tls_rules.clone()).collect(),
+				),
+				..IngressSpec::default()
+			}),
+			..Ingress::default()
+		};
 
-	ingress_api
+		// Create the ingress defined above
+		Api::<Ingress>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
 		.patch(
-			&format!("ingress-{}", deployment.id),
-			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
+			&format!("ingress-{}", deployment_id),
+			&PatchParams::apply(&format!("ingress-{}", deployment_id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
 
 	Ok(())
 }

@@ -47,9 +47,8 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
-	core::{ErrorResponse, ObjectMeta},
+	core::ObjectMeta,
 	Api,
-	Error as KubeError,
 };
 
 use crate::{
