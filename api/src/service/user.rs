@@ -493,7 +493,7 @@ pub async fn get_credit_balance(
 	client
 		.get(format!("{}/promotional_credits", config.chargebee.url))
 		.basic_auth(&config.chargebee.api_key, password)
-		.form(&[("customer_id", (workspace_id.as_str()))])
+		.query(&[("customer_id[is]", (workspace_id.as_str()))])
 		.send()
 		.await?
 		.json::<PromotionalCreditList>()

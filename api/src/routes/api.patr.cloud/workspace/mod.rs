@@ -729,16 +729,16 @@ async fn get_promotional_credits(
 		.list
 		.into_iter()
 		.map(|credit| PromotionalCredits {
-			id: credit.id,
-			customer_id: credit.customer_id,
-			r#type: credit.r#type,
-			amount: credit.amount,
-			description: credit.description,
-			credit_type: credit.credit_type,
-			closing_balance: credit.closing_balance,
-			created_at: credit.created_at,
-			object: credit.object,
-			currency_code: credit.currency_code,
+			id: credit.promotional_credit.id,
+			customer_id: credit.promotional_credit.customer_id,
+			r#type: credit.promotional_credit.r#type,
+			amount: credit.promotional_credit.amount,
+			description: credit.promotional_credit.description,
+			credit_type: credit.promotional_credit.credit_type,
+			closing_balance: credit.promotional_credit.closing_balance,
+			created_at: credit.promotional_credit.created_at,
+			object: credit.promotional_credit.object,
+			currency_code: credit.promotional_credit.currency_code,
 		})
 		.collect();
 

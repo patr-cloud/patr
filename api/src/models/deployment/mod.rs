@@ -232,7 +232,12 @@ pub struct Subscription {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromotionalCreditList {
-	pub list: Vec<PromotionalCreditBalance>,
+	pub list: Vec<PromotionalCredit>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromotionalCredit {
+	pub promotional_credit: PromotionalCreditBalance,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
