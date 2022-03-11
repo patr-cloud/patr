@@ -63,8 +63,8 @@ impl RegistryToken {
 		public_key: &[u8],
 	) -> Result<String, JWTError> {
 		let hash: Vec<u8> = Sha256::digest(public_key)
-			.to_vec()
-			.into_iter()
+			.iter()
+			.copied()
 			.take(30)
 			.collect();
 		let encoded =

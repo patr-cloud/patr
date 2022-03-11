@@ -2981,6 +2981,90 @@
       ]
     }
   },
+  "72ac7bbce66b7ce6bf31c659da6b9c2b4f396b0a1738bdf2ccf4ef98e3ae61eb": {
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "sub_domain",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "domain_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "path",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 4,
+          "name": "url_type: _",
+          "type_info": {
+            "Custom": {
+              "name": "managed_url_type",
+              "kind": {
+                "Enum": [
+                  "proxy_to_deployment",
+                  "proxy_to_static_site",
+                  "proxy_url",
+                  "redirect"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 5,
+          "name": "deployment_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "port",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "static_site_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 8,
+          "name": "url",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 9,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        true,
+        false
+      ]
+    }
+  },
   "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
     "query": "INSERT INTO resource_type VALUES ($1, $2, NULL);",
     "describe": {
