@@ -190,9 +190,9 @@ async fn sign_in(
 ///    accountType: personal
 ///    firstName:
 ///    lastName:
-///    backupEmail:
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryEmail:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 /// }
 /// ```
 /// Business account:
@@ -203,9 +203,9 @@ async fn sign_in(
 ///    accountType: personal
 ///    firstName:
 ///    lastName:
-///    backupEmail:
-///    backupPhoneCountryCode:
-///    backupPhoneNumber:
+///    recoveryEmail:
+///    recoveryPhoneCountryCode:
+///    recoveryPhoneNumber:
 ///    businessEmailLocal:
 ///    domain:
 ///    businessName:
@@ -279,7 +279,7 @@ async fn sign_up(
 
 /// # Description
 /// This function is used to sign-out the user, there will be an otp sent to
-/// user's backup email or phone number
+/// user's recovery email or phone number
 /// required inputs:
 /// example: Authorization: <insert authToken>
 /// auth token in the authorization headers
@@ -572,13 +572,13 @@ async fn is_username_valid(
 
 /// # Description
 /// This function is used to recover the user's account incase the user forgets
-/// the password by sending a recovery link or otp to user's registered backup
+/// the password by sending a recovery link or otp to user's registered recovery
 /// email or phone number
 /// required inputs:
 /// ```
 /// {
 ///    userId:
-///    preferredRecoveryOption: BackupPhoneNumber or BackupEmail
+///    preferredRecoveryOption: RecoveryPhoneNumber or RecoveryEmail
 /// }
 /// ```
 ///
@@ -1399,8 +1399,8 @@ async fn docker_registry_authenticate(
 /// this function returns a `Result<EveContext, Error>` containing an object of
 /// [`EveContext`] or an error output:
 /// {
-///    backupPhoneNumber:
-///    backupEmail:
+///    recoveryPhoneNumber:
+///    recoveryEmail:
 ///    success: true or false
 /// }
 ///
@@ -1423,16 +1423,16 @@ async fn list_recovery_options(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let backup_email =
-		if let (Some(backup_email_local), Some(backup_email_domain_id)) =
+	let recovery_email =
+		if let (Some(recovery_email_local), Some(recovery_email_domain_id)) =
 			(user.backup_email_local, user.backup_email_domain_id)
 		{
 			Some(format!(
 				"{}@{}",
-				service::mask_email_local(&backup_email_local),
+				service::mask_email_local(&recovery_email_local),
 				db::get_personal_domain_by_id(
 					context.get_database_connection(),
-					&backup_email_domain_id
+					&recovery_email_domain_id
 				)
 				.await?
 				.status(500)?
@@ -1442,25 +1442,26 @@ async fn list_recovery_options(
 			None
 		};
 
-	let backup_phone_number =
-		if let Some(phone_number) = user.backup_phone_number {
-			let phone_number = service::mask_phone_number(&phone_number);
-			let country_code = db::get_phone_country_by_country_code(
-				context.get_database_connection(),
-				&user.backup_phone_country_code.unwrap(),
-			)
-			.await?
-			.status(500)
-			.body(error!(INVALID_PHONE_NUMBER).to_string())?;
+	let recovery_phone_number = if let Some(recovery_phone_number) =
+		user.backup_phone_number
+	{
+		let phone_number = service::mask_phone_number(&recovery_phone_number);
+		let country_code = db::get_phone_country_by_country_code(
+			context.get_database_connection(),
+			&user.backup_phone_country_code.unwrap(),
+		)
+		.await?
+		.status(500)
+		.body(error!(INVALID_PHONE_NUMBER).to_string())?;
 
-			Some(format!("+{}{}", country_code.phone_code, phone_number))
-		} else {
-			None
-		};
+		Some(format!("+{}{}", country_code.phone_code, phone_number))
+	} else {
+		None
+	};
 
 	context.success(ListRecoveryOptionsResponse {
-		backup_email,
-		backup_phone_number,
+		recovery_email,
+		recovery_phone_number,
 	});
 	Ok(context)
 }
