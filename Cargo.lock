@@ -66,7 +66,7 @@ checksum = "159bb86af3a200e19a068f4224eae4c8bb2d0fa054c7e5d1cacd5cef95e684cd"
 
 [[package]]
 name = "api"
-version = "0.5.6"
+version = "0.5.7"
 dependencies = [
  "argon2",
  "askama",
