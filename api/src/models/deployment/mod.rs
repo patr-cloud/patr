@@ -253,3 +253,102 @@ pub struct PromotionalCreditBalance {
 	pub object: String,
 	pub currency_code: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentSourceList {
+	pub list: Vec<PaymentSources>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentSources {
+	pub payment_source: PaymentSource,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaymentSource {
+	pub id: String,
+	pub updated_at: String,
+	pub deleted: bool,
+	pub object: String,
+	pub customer_id: String,
+	pub r#type: String,
+	pub reference_id: String,
+	pub status: String,
+	pub gateway: String,
+	pub gateway_account_id: String,
+	pub created_at: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub card: Option<Card>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Card {
+	pub first_name: String,
+	pub last_name: String,
+	pub iin: String,
+	pub last4: String,
+	pub funding_type: String,
+	pub expiry_month: String,
+	pub expiry_year: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub billing_addr1: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub billing_addre2: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub billing_city: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub billing_state: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub billing_zip: Option<String>,
+	pub masked_number: String,
+	pub object: String,
+	pub brand: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionList {
+	pub list: Vec<Subscriptions>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Subscriptions {
+	pub subscription: SubscriptionResponse,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionResponse {
+	pub id: String,
+	pub billing_period: u32,
+	pub billing_period_unit: String,
+	pub customer_id: String,
+	pub status: String,
+	pub current_term_start: String,
+	pub current_term_end: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub next_billing_at: Option<String>,
+	pub created_at: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub started_at: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub activated_at: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub cancelled_at: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub updated_at: Option<String>,
+	pub has_scheduled_changes: bool,
+	pub channel: String,
+	pub object: String,
+	pub currency_code: String,
+	pub subscription_items: Vec<SubscriptionItem>,
+	pub due_invoices_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionItem {
+	pub item_price_id: String,
+	pub item_type: String,
+	pub quantity: u16,
+	pub unit_price: u64,
+	pub amount: u64,
+	pub object: String,
+}

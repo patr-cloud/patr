@@ -7,7 +7,13 @@ use crate::{
 	error,
 	models::{
 		db_mapping::User,
-		deployment::{BillingAddress, Customer, PromotionalCreditList},
+		deployment::{
+			BillingAddress,
+			Customer,
+			PaymentSourceList,
+			PromotionalCreditList,
+			SubscriptionList,
+		},
 	},
 	service,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
@@ -497,6 +503,44 @@ pub async fn get_credit_balance(
 		.send()
 		.await?
 		.json::<PromotionalCreditList>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_card_details(
+	config: &Settings,
+	workspace_id: &Uuid,
+) -> Result<PaymentSourceList, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!("{}/payment-sources", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[("customer_id[is]", (workspace_id.as_str()))])
+		.send()
+		.await?
+		.json::<PaymentSourceList>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_subscriptions(
+	config: &Settings,
+	workspace_id: &Uuid,
+) -> Result<SubscriptionList, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!("{}/subscriptions", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[("customer_id[is]", (workspace_id.as_str()))])
+		.send()
+		.await?
+		.json::<SubscriptionList>()
 		.await
 		.map_err(|e| e.into())
 }

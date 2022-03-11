@@ -1,8 +1,14 @@
 use api_models::{
 	models::workspace::{
 		billing::{
+			Card,
+			GetCardDetailsResponse,
 			GetCreditBalanceResponse,
+			GetSubscriptionsResponse,
+			PaymentSource,
 			PromotionalCredits,
+			Subscription,
+			SubscriptionItem,
 			UpdateBillingInfoRequest,
 			UpdateBillingInfoResponse,
 		},
@@ -243,6 +249,68 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_promotional_credits)),
+		],
+	);
+
+	sub_app.get(
+		"/:workspaceId/card-details",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT_INFO,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_card_details)),
+		],
+	);
+
+	sub_app.get(
+		"/:workspaceId/subscriptions",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT_INFO,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_subscriptions)),
 		],
 	);
 	sub_app
@@ -619,17 +687,17 @@ async fn get_resource_audit_log(
 /// workspace id in the url
 /// ```
 /// {
-///   "firstName": "",
-///   "lastName": "",
-///   "email": "",
-///   "phone": "",
-///   "addressDetails": {
-///                         "addressLine1": "",
-///                         "addressLine2": "",
-///                         "city": "",
-///                         "state": "",
-///                         "country": "",
-///                         "zip": ""
+///   firstName: "",
+///   lastName: "",
+///   email: "",
+///   phone: "",
+///   addressDetails: {
+///                         addressLine1: "",
+///                         addressLine2: "",
+///                         city: "",
+///                         state: "",
+///                         country: "",
+///                         zip: ""
 ///                     },
 /// }
 /// ```
@@ -693,9 +761,6 @@ async fn update_billing_info(
 /// required inputs:
 /// auth token in the authorization headers
 /// workspace id in the url
-/// ```
-/// {}
-/// ```
 ///
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
@@ -709,7 +774,24 @@ async fn update_billing_info(
 /// [`EveContext`] or an error output:
 /// ```
 /// {
+///
 ///    success: true or false
+///    list: [
+///              {
+///                  id:
+///                  customerId:
+///                  type:
+///                  amount:
+///                  description:
+///                  creditType:
+///                  closingBalance:
+///                  createdAt:
+///                  closingBalance:
+///                  createdAt:
+///                  object:
+///                  currencyCode:
+///              }
+///          ]
 /// }
 /// ```
 ///
@@ -744,6 +826,217 @@ async fn get_promotional_credits(
 
 	context.success(GetCreditBalanceResponse {
 		list: credit_balance,
+	});
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to fetch the promotional credits of the workspace
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///
+///    success: true or false
+///    list: [
+///            {
+///                id:,
+///                updatedAt:,
+///                deleted:,
+///                object:,
+///                customerId:,
+///                type:,
+///                referenceId:,
+///                status:,
+///                gateway:,
+///                gatewayAccountId:,
+///                createdAt:,
+///                card:
+///                {
+///                    firstName:,
+///                    lastName:,
+///                    iin:,
+///                    last4:,
+///                    fundingType:,
+///                    expiryMonth:,
+///                    expiryYear:,
+///                    billingAddr1:,
+///                    billingAddre2:,
+///                    billingCity:,
+///                    billingState:,
+///                    billingZip:,
+///                    maskedNumber:,
+///                    object:,
+///                    brand:
+///                }
+///             }
+///           ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_card_details(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let config = context.get_state().config.clone();
+
+	let card_details = service::get_card_details(&config, &workspace_id)
+		.await?
+		.list
+		.into_iter()
+		.map(|payment_source| PaymentSource {
+			id: payment_source.payment_source.id,
+			updated_at: payment_source.payment_source.updated_at,
+			deleted: payment_source.payment_source.deleted,
+			object: payment_source.payment_source.object,
+			customer_id: payment_source.payment_source.customer_id,
+			r#type: payment_source.payment_source.r#type,
+			reference_id: payment_source.payment_source.reference_id,
+			status: payment_source.payment_source.status,
+			gateway: payment_source.payment_source.gateway,
+			gateway_account_id: payment_source
+				.payment_source
+				.gateway_account_id,
+			created_at: payment_source.payment_source.created_at,
+			card: payment_source.payment_source.card.map(|card| Card {
+				first_name: card.first_name,
+				last_name: card.last_name,
+				iin: card.iin,
+				last4: card.last4,
+				funding_type: card.funding_type,
+				expiry_month: card.expiry_month,
+				expiry_year: card.expiry_year,
+				billing_addr1: card.billing_addr1,
+				billing_addre2: card.billing_addre2,
+				billing_city: card.billing_city,
+				billing_state: card.billing_state,
+				billing_zip: card.billing_zip,
+				masked_number: card.masked_number,
+				object: card.object,
+				brand: card.brand,
+			}),
+		})
+		.collect();
+
+	context.success(GetCardDetailsResponse { list: card_details });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to fetch the promotional credits of the workspace
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///
+///    success: true or false
+///    list: [
+///              {
+///                  id:
+///                  billingPeriod:
+///                  billing_period_unit:
+///                  customerId:
+///                  status:
+///                  current_term_start:
+///                  current_term_end:
+///                  next_billing_at:
+///                  type:
+///                  amount:
+///                  description:
+///                  creditType:
+///                  closingBalance:
+///                  createdAt:
+///                  closingBalance:
+///                  createdAt:
+///                  object:
+///                  currencyCode:
+///              }
+///          ]
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_subscriptions(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let config = context.get_state().config.clone();
+	let subscriptions = service::get_subscriptions(&config, &workspace_id)
+		.await?
+		.list
+		.into_iter()
+		.map(|subscription| Subscription {
+			id: subscription.subscription.id,
+			billing_period: subscription.subscription.billing_period,
+			billing_period_unit: subscription.subscription.billing_period_unit,
+			customer_id: subscription.subscription.customer_id,
+			status: subscription.subscription.status,
+			current_term_start: subscription.subscription.current_term_start,
+			current_term_end: subscription.subscription.current_term_end,
+			next_billing_at: subscription.subscription.next_billing_at,
+			created_at: subscription.subscription.created_at,
+			started_at: subscription.subscription.started_at,
+			activated_at: subscription.subscription.activated_at,
+			cancelled_at: subscription.subscription.cancelled_at,
+			updated_at: subscription.subscription.updated_at,
+			has_scheduled_changes: subscription
+				.subscription
+				.has_scheduled_changes,
+			channel: subscription.subscription.channel,
+			object: subscription.subscription.object,
+			currency_code: subscription.subscription.currency_code,
+			subscription_items: subscription
+				.subscription
+				.subscription_items
+				.into_iter()
+				.map(|subscription_item| SubscriptionItem {
+					item_price_id: subscription_item.item_price_id,
+					item_type: subscription_item.item_type,
+					quantity: subscription_item.quantity,
+					unit_price: subscription_item.unit_price,
+					amount: subscription_item.amount,
+					object: subscription_item.object,
+				})
+				.collect(),
+			due_invoices_count: subscription.subscription.due_invoices_count,
+		})
+		.collect();
+
+	context.success(GetSubscriptionsResponse {
+		list: subscriptions,
 	});
 	Ok(context)
 }
