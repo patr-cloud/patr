@@ -1,6 +1,7 @@
 mod certificate;
 mod deployment;
 mod managed_url;
+mod secret;
 mod static_site;
 mod workspace;
 
@@ -30,6 +31,7 @@ pub use self::{
 	certificate::*,
 	deployment::*,
 	managed_url::*,
+	secret::*,
 	static_site::*,
 	workspace::*,
 };

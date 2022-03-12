@@ -103,6 +103,15 @@ pub mod permissions {
 				pub const EDIT: &str =
 					"workspace::infrastructure::staticSite::edit";
 			}
+
+			pub mod secret {
+				pub const LIST: &str =
+					"workspace::infrastructure::secret::list";
+				pub const CREATE: &str =
+					"workspace::infrastructure::secret::create";
+				pub const DELETE: &str =
+					"workspace::infrastructure::secret::delete";
+			}
 		}
 
 		pub mod docker_registry {
@@ -148,4 +157,5 @@ pub mod resource_types {
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const MANAGED_URL: &str = "managedUrl";
+	pub const SECRET_ID: &str = "secretId";
 }

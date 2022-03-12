@@ -141,17 +141,21 @@ pub async fn create_new_secret_for_deployment(
 	.map(|_| ())
 }
 
-pub async fn delete_secret(
+pub async fn update_secret_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	secret_id: &Uuid,
+	name: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		DELETE FROM
+		UPDATE
 			secret
+		SET
+			name = $1
 		WHERE
-			id = $1;
+			id = $2;
 		"#,
+		name as _,
 		secret_id as _
 	)
 	.execute(&mut *connection)

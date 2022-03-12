@@ -14,7 +14,13 @@ mod infrastructure;
 mod metrics;
 mod secret;
 
-pub use self::{docker_registry::*, domain::*, infrastructure::*, metrics::*};
+pub use self::{
+	docker_registry::*,
+	domain::*,
+	infrastructure::*,
+	metrics::*,
+	secret::*,
+};
 
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

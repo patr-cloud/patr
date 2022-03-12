@@ -26,6 +26,7 @@ use api_models::{
 				UpdateDeploymentResponse,
 			},
 			managed_urls::{ManagedUrl, ManagedUrlType},
+			secret::Secret,
 		},
 		WorkspaceAuditLog,
 	},
@@ -525,6 +526,39 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_build_events)),
+		],
+	);
+
+	// List all secrets of a deployment
+	app.get(
+		"/:deploymentId/secrets",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(list_deployment_secrets)),
 		],
 	);
 
@@ -1395,6 +1429,7 @@ async fn get_deployment_metrics(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1570,5 +1605,36 @@ async fn get_build_events(
 		request_id
 	);
 	context.success(GetDeploymentEventsResponse { logs: build_events });
+	Ok(context)
+}
+
+async fn list_deployment_secrets(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	let workspace_id = Uuid::parse_str(
+		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
+	)?;
+
+	let secrets = db::get_secrets_for_deployment(
+		context.get_database_connection(),
+		&workspace_id,
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|secret| Secret {
+		id: secret.id,
+		name: secret.name,
+		deployment_id: secret.deployment_id,
+	})
+	.collect();
+
+	context.success(ListDeploymentSecretsResponse { secrets });
 	Ok(context)
 }
