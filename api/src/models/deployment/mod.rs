@@ -224,9 +224,9 @@ pub struct BillingAddress {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Subscription {
 	pub id: String,
-	#[serde(rename = "subscription_items[item_price_id]")]
+	#[serde(rename = "subscription_items[item_price_id][0]")]
 	pub item_price_id: String,
-	#[serde(rename = "subscription_items[quantity]")]
+	#[serde(rename = "subscription_items[quantity][0]")]
 	pub quantity: u16,
 }
 

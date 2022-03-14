@@ -467,7 +467,7 @@ pub async fn update_billing_info(
 			config.chargebee.url, workspace_id
 		))
 		.basic_auth(config.chargebee.api_key.as_str(), password)
-		.json(&Customer {
+		.query(&Customer {
 			id: Some(workspace_id.to_string()),
 			first_name,
 			last_name,

@@ -784,9 +784,9 @@ async fn start_subscription(
 			config.chargebee.url, deployment.workspace_id
 		))
 		.basic_auth(&config.chargebee.api_key, password)
-		.json(&Subscription {
+		.query(&Subscription {
 			id: deployment_id.to_string(),
-			item_price_id,
+			item_price_id: format!("{}-USD-monthly", item_price_id),
 			quantity,
 		})
 		.send()

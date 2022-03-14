@@ -1052,14 +1052,14 @@ pub async fn create_chargebee_user(
 	client
 		.post(format!("{}/customers", config.chargebee.url))
 		.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-		.form(&[("first_name", first_name), ("last_name", last_name)])
+		.query(&[("first_name", first_name), ("last_name", last_name)])
 		.send()
 		.await?;
 
 	client
 		.post(format!("{}/promotional_credits/set", config.chargebee.url))
 		.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-		.form(&[
+		.query(&[
 			("customer_id", workspace_id.as_str()),
 			("amount", &config.chargebee.credit_amount),
 			("description", &config.chargebee.description),
