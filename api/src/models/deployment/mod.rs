@@ -267,7 +267,7 @@ pub struct PaymentSources {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PaymentSource {
 	pub id: String,
-	pub updated_at: String,
+	pub updated_at: u64,
 	pub deleted: bool,
 	pub object: String,
 	pub customer_id: String,
@@ -276,7 +276,7 @@ pub struct PaymentSource {
 	pub status: String,
 	pub gateway: String,
 	pub gateway_account_id: String,
-	pub created_at: String,
+	pub created_at: u64,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub card: Option<Card>,
 }
@@ -288,8 +288,8 @@ pub struct Card {
 	pub iin: String,
 	pub last4: String,
 	pub funding_type: String,
-	pub expiry_month: String,
-	pub expiry_year: String,
+	pub expiry_month: u8,
+	pub expiry_year: u16,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub billing_addr1: Option<String>,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -322,19 +322,19 @@ pub struct SubscriptionResponse {
 	pub billing_period_unit: String,
 	pub customer_id: String,
 	pub status: String,
-	pub current_term_start: String,
-	pub current_term_end: String,
+	pub current_term_start: u64,
+	pub current_term_end: u64,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub next_billing_at: Option<String>,
-	pub created_at: String,
+	pub next_billing_at: Option<u64>,
+	pub created_at: u64,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub started_at: Option<String>,
+	pub started_at: Option<u64>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub activated_at: Option<String>,
+	pub activated_at: Option<u64>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub cancelled_at: Option<String>,
+	pub cancelled_at: Option<u64>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub updated_at: Option<String>,
+	pub updated_at: Option<u64>,
 	pub has_scheduled_changes: bool,
 	pub channel: String,
 	pub object: String,

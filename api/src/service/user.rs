@@ -516,9 +516,12 @@ pub async fn get_card_details(
 	let password: Option<String> = None;
 
 	client
-		.get(format!("{}/payment-sources", config.chargebee.url))
+		.get(format!("{}/payment_sources", config.chargebee.url))
 		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[("customer_id[is]", (workspace_id.as_str()))])
+		.query(&[
+			("customer_id[is]", (workspace_id.as_str())),
+			("type[is]", "card"),
+		])
 		.send()
 		.await?
 		.json::<PaymentSourceList>()
