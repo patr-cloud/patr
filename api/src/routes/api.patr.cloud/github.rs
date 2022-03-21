@@ -163,8 +163,49 @@ async fn configure_github_build_steps_static_site(
 			})
 			.send()
 			.await?;
+	} else {
+		octocrab
+			.repos(owner_name, repo_name)
+			.create_file(
+				".github/workflows/build.yaml",
+				"created: build.yaml",
+				format!(
+					r#"
+				name: Github action for your static site
+
+				on:
+			      push:
+				    branch: [main]
+				
+				jobs:
+				  build:
+				    runs-on: ubuntu-latest
+				    steps:
+				    - uses: actions/checkout@master
+				    - name: Archive Release
+					    uses: {owner_name}/{repo_name}@master
+					    with:
+					    type: 'zip'
+					    filename: 'release.zip'
+				    - name: push to patr
+				      run: echo TODO
+			"#
+				),
+			)
+			.branch("main")
+			.commiter(GitUser {
+				name: "Patr Configuration".to_string(),
+				email: "hello@patr.cloud".to_string(),
+			})
+			.author(GitUser {
+				name: "Patr Configuration".to_string(),
+				email: "hello@patr.cloud".to_string(),
+			})
+			.send()
+			.await?;
 	}
 
+	// TODO - this is not the actual response
 	Ok(context)
 }
 
@@ -188,18 +229,68 @@ async fn configure_github_build_steps_deployment(
 		repo_name,
 		build_command,
 		publish_dir,
+		node_version,
+		framework,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// create a github actions config file based on the the deployment steps
+	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
 
-	// setup header with acccess_token
-	// example - curl -i -H "Authorization: <access_token>" https://api.github.com/repos/{owner}/{repo_name}
-	// using {reqwest crate}
-	// if response is success send the repository back to user
-	// else send an appropriate error message as  response
+	if framework == "node" {
+		octocrab
+			.repos(owner_name, repo_name)
+			.create_file(
+				".github/workflows/build.yaml",
+				"created: build.yaml",
+				format!(
+					r#"
+					name: Github action for your deployment
+	
+					on:
+					  push:
+						branch: [main]
+					
+					jobs:
+					  build:
+	
+						runs-on: ubuntu-latest
+	
+						strategy:
+						  matrix: 
+							node-version: {node_version}
+						
+					steps:
+				    - uses: actions/checkout@v2
+					- name: using node ${{matrix.node-version}}
+					  uses: actions/setup-node@v2
+					  with: 
+						node-version: ${{matrix.node-version}}
+						cache: 'npm'
+					- run: npm install
+					- run: {build_command}
+					- run: npm run test --if-present
+
+					- name: build docker image from Dockerfile
+					  run: |
+					    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
+						echo TODO
+				"#
+				),
+			)
+			.branch("main")
+			.commiter(GitUser {
+				name: "Patr Configuration".to_string(),
+				email: "hello@patr.cloud".to_string(),
+			})
+			.author(GitUser {
+				name: "Patr Configuration".to_string(),
+				email: "hello@patr.cloud".to_string(),
+			})
+			.send()
+			.await?;
+	}
 
 	Ok(context)
 }
