@@ -81,6 +81,7 @@ sqlx = { version = "0.5", features = [
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.20"
 serde_qs = "0.8.4"
+octocrab = "0.15.4"
 
 [dependencies.log4rs]
 default-features = false
