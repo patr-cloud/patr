@@ -21,6 +21,8 @@ lazy_static! {
 	static ref DATABASE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z][a-zA-Z0-9_]{2,59}$").unwrap();
 	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
 	static ref DEPLOYMENT_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
+	// 2-64 characters long ([a-zA-Z0-9_- .]), cannot begin with a _, -, . or a space, cannot end with a space
+	static ref STATIC_SITE_NAME_REGEX: Regex = Regex::new("^[a-zA-Z0-9_\\-\\.][a-zA-Z0-9_\\-\\. ]{0,62}[a-zA-Z0-9_\\-\\.]$").unwrap();
 	// Validate the name of a dns record
 	static ref DNS_NAME_REGEX: Regex = Regex::new("^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$").unwrap();
 }
@@ -78,6 +80,10 @@ pub fn is_docker_repo_name_valid(repo_name: &str) -> bool {
 
 pub fn is_deployment_name_valid(deployment_name: &str) -> bool {
 	DEPLOYMENT_NAME_REGEX.is_match(deployment_name)
+}
+
+pub fn is_static_site_name_valid(static_site_name: &str) -> bool {
+	STATIC_SITE_NAME_REGEX.is_match(static_site_name)
 }
 
 pub fn is_database_name_valid(database_name: &str) -> bool {

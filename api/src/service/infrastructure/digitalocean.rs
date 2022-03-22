@@ -1,13 +1,9 @@
-use std::{process::Stdio, str, time::Duration};
+use std::{str, time::Duration};
 
-use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
-};
+use api_models::utils::Uuid;
 use eve_rs::AsError;
-use http::StatusCode;
 use reqwest::Client;
-use tokio::{process::Command, task, time};
+use tokio::{task, time};
 
 use crate::{
 	db,
@@ -19,7 +15,6 @@ use crate::{
 			ManagedDatabaseStatus,
 		},
 		deployment::cloud_providers::digitalocean::{
-			Auth,
 			DatabaseConfig,
 			DatabaseResponse,
 			Db,
@@ -157,166 +152,6 @@ pub(super) async fn delete_database(
 	Ok(())
 }
 
-pub(super) async fn delete_image_from_digitalocean_registry(
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let client = Client::new();
-
-	log::trace!(
-		"request_id: {} - deleting image from digital ocean registry",
-		request_id
-	);
-	let container_status = client
-		.delete(format!(
-			"https://api.digitalocean.com/v2/registry/{}/repositories/{}/tags/latest",
-			config.digitalocean.registry,
-			deployment_id,
-		))
-		.bearer_auth(&config.digitalocean.api_key)
-		.send()
-		.await?
-		.status();
-
-	if (container_status.is_server_error() ||
-		container_status.is_client_error()) &&
-		(container_status != StatusCode::NOT_FOUND)
-	{
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-
-	log::trace!(
-		"request_id: {} - image deleted from digital ocean registry",
-		request_id
-	);
-	Ok(())
-}
-
-pub async fn push_to_docr(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	full_image_name: &str,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	// Fetch the image from patr registry
-	// upload the image to DOCR
-	// Update kubernetes
-
-	log::trace!("request_id: {} - Pulling image from registry", request_id);
-	service::pull_image_from_registry(full_image_name, config).await?;
-	log::trace!("request_id: {} - Image pulled", request_id);
-
-	// new name for the docker image
-	let new_repo_name = format!(
-		"registry.digitalocean.com/{}/{}",
-		config.digitalocean.registry, deployment_id,
-	);
-	log::trace!("request_id: {} - Pushing to {}", request_id, new_repo_name);
-
-	// rename the docker image with the digital ocean registry url
-	service::tag_docker_image(full_image_name, &new_repo_name).await?;
-	log::trace!("request_id: {} - Image tagged", request_id);
-
-	// Get login details from digital ocean registry and decode from
-	// base 64 to binary
-	let auth_token = base64::decode(get_registry_auth_token(config).await?)?;
-	log::trace!("request_id: {} - Got auth token", request_id);
-
-	// Convert auth token from binary to utf8
-	let auth_token = str::from_utf8(&auth_token)?;
-	log::trace!("request_id: {} - Decoded auth token", request_id);
-
-	// get username and password from the auth token
-	let (username, password) = auth_token
-		.split_once(':')
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	// Login into the registry
-	let output = Command::new("docker")
-		.arg("login")
-		.arg("-u")
-		.arg(username)
-		.arg("-p")
-		.arg(password)
-		.arg("registry.digitalocean.com")
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()?
-		.wait()
-		.await?;
-	log::trace!("request_id: {} - Logged into DO registry", request_id);
-
-	if !output.success() {
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
-	log::trace!("request_id: {} - Login was success", request_id);
-
-	// if the loggin in is successful the push the docker image to
-	// registry
-	let push_status = Command::new("docker")
-		.arg("push")
-		.arg(&new_repo_name)
-		.stdout(Stdio::piped())
-		.stderr(Stdio::piped())
-		.spawn()?
-		.wait()
-		.await?;
-	log::trace!(
-		"request_id: {} - Pushing to DO to {}",
-		request_id,
-		new_repo_name,
-	);
-
-	if !push_status.success() {
-		return Err(Error::empty()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string()));
-	}
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Pushed to DO", request_id);
-	log::trace!(
-		"request_id: {} - Deleting image tagged with registry.digitalocean.com",
-		request_id
-	);
-	let _ = super::delete_docker_image(&new_repo_name)
-		.await
-		.map_err(|error| {
-			log::error!(
-				"Failed to delete the image: {}, Error: {}",
-				new_repo_name,
-				error.get_error()
-			);
-		});
-
-	log::trace!("request_id: {} - deleting the pulled image", request_id);
-	let _ =
-		super::delete_docker_image(full_image_name)
-			.await
-			.map_err(|error| {
-				log::error!(
-					"Failed to delete the image: {}, Error: {}",
-					full_image_name,
-					error.get_error()
-				);
-			});
-	log::trace!("request_id: {} - Docker image deleted", request_id);
-	Ok(())
-}
-
 async fn update_database_cluster_credentials(
 	database_id: Uuid,
 	db_name: String,
@@ -398,16 +233,4 @@ async fn update_database_cluster_credentials(
 	log::trace!("request_id: {} - database successfully updated", request_id);
 
 	Ok(())
-}
-
-async fn get_registry_auth_token(config: &Settings) -> Result<String, Error> {
-	let registry = Client::new()
-		.get("https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true?expiry_seconds=86400")
-		.bearer_auth(&config.digitalocean.api_key)
-		.send()
-		.await?
-		.json::<Auth>()
-		.await?;
-
-	Ok(registry.auths.registry.auth)
 }

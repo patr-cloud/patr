@@ -15,7 +15,6 @@ use shiplift::{Docker, PullOptions, RegistryAuth, TagOptions};
 
 pub use self::{
 	deployment::*,
-	digitalocean::*,
 	kubernetes::*,
 	managed_database::*,
 	managed_url::*,

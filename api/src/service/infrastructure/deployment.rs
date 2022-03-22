@@ -5,7 +5,6 @@ use api_models::{
 		Deployment,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
-		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		PatrRegistry,
@@ -13,19 +12,12 @@ use api_models::{
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
-use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db,
 	error,
-	models::{
-		rabbitmq::{DeploymentRequestData, RequestMessage},
-		rbac,
-	},
-	service::{
-		self,
-		infrastructure::{digitalocean, kubernetes},
-	},
+	models::rbac,
+	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -194,181 +186,6 @@ pub async fn create_deployment_in_workspace(
 	}
 
 	Ok(deployment_id)
-}
-
-pub async fn start_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-	let (deployment, workspace_id, full_image, running_details) =
-		service::get_full_deployment_config(
-			connection,
-			deployment_id,
-			request_id,
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - Updating kubernetes deployment",
-		request_id
-	);
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
-	let (channel, connection) =
-		service::get_rabbitmq_connection_channel(config, request_id).await?;
-
-	let content = RequestMessage::Deployment(DeploymentRequestData::Update {
-		workspace_id,
-		deployment,
-		full_image,
-		running_details,
-		request_id: request_id.clone(),
-	});
-
-	channel
-		.basic_publish(
-			"",
-			"infrastructure",
-			BasicPublishOptions::default(),
-			serde_json::to_string(&content)?.as_bytes(),
-			BasicProperties::default(),
-		)
-		.await?
-		.await?;
-
-	channel.close(200, "Normal shutdown").await?;
-	connection.close(200, "Normal shutdown").await?;
-
-	Ok(())
-}
-
-pub async fn stop_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-	deployment_status: DeploymentStatus,
-) -> Result<(), Error> {
-	log::trace!(
-		"Stopping the deployment with id: {} and request_id: {}",
-		deployment_id,
-		request_id
-	);
-	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} - deleting the deployment from digitalocean kubernetes",
-		request_id
-	);
-
-	let (channel, rabbitmq_connection) =
-		service::get_rabbitmq_connection_channel(config, request_id).await?;
-
-	let content = RequestMessage::Deployment(DeploymentRequestData::Delete {
-		workspace_id: deployment.workspace_id,
-		deployment_id: deployment_id.clone(),
-		request_id: request_id.clone(),
-		deployment_status,
-	});
-
-	channel
-		.basic_publish(
-			"",
-			"infrastructure",
-			BasicPublishOptions::default(),
-			serde_json::to_string(&content)?.as_bytes(),
-			BasicProperties::default(),
-		)
-		.await?
-		.await?;
-
-	// TODO: implement logic for handling domains of the stopped deployment
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Stopped,
-	)
-	.await?;
-
-	channel.close(200, "Normal shutdown").await?;
-	rabbitmq_connection.close(200, "Normal shutdown").await?;
-
-	Ok(())
-}
-
-pub async fn delete_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Deleting the deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!("deleting the image from DO registry");
-	digitalocean::delete_image_from_digitalocean_registry(
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Stopping the deployment", request_id);
-	service::stop_deployment(
-		connection,
-		deployment_id,
-		config,
-		request_id,
-		DeploymentStatus::Deleted,
-	)
-	.await?;
-
-	log::trace!(
-		"request_id: {} - Updating the deployment name in the database",
-		request_id
-	);
-	db::update_deployment_name(
-		connection,
-		deployment_id,
-		&format!("patr-deleted: {}-{}", deployment.name, deployment_id),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
-
-	Ok(())
 }
 
 pub async fn get_deployment_container_logs(

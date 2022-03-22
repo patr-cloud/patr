@@ -1,4 +1,7 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::deployment::DeploymentRegistry,
+	utils::Uuid,
+};
 use argon2::{
 	password_hash::{PasswordVerifier, SaltString},
 	Algorithm,
@@ -14,7 +17,7 @@ use crate::{
 	db,
 	error,
 	service,
-	utils::{validator, Error},
+	utils::{settings::Settings, validator, Error},
 	Database,
 };
 
@@ -294,4 +297,66 @@ pub async fn split_domain_and_tld(
 	}
 
 	Some((domain, tld.clone()))
+}
+
+pub async fn get_image_name_and_digest_for_deployment_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	registry: &DeploymentRegistry,
+	image_tag: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(String, Option<String>), Error> {
+	match registry {
+		DeploymentRegistry::PatrRegistry {
+			registry: _,
+			repository_id,
+		} => {
+			log::trace!(
+				"request_id: {} - Getting tag details from database",
+				request_id
+			);
+			let digest = db::get_docker_repository_tag_details(
+				connection,
+				repository_id,
+				image_tag,
+			)
+			.await?
+			.map(|(_, digest)| digest);
+
+			log::trace!(
+				"request_id: {} - Getting repository details from the database",
+				request_id
+			);
+			let repository_details =
+				db::get_docker_repository_by_id(connection, repository_id)
+					.await?
+					.status(500)?;
+
+			log::trace!(
+				"request_id: {} - Getting workspace details from the database",
+				request_id
+			);
+			let workspace_name = db::get_workspace_info(
+				connection,
+				&repository_details.workspace_id,
+			)
+			.await?
+			.status(500)?
+			.name;
+
+			Ok((
+				format!(
+					"{}/{}/{}",
+					config.docker_registry.registry_url,
+					workspace_name,
+					repository_details.name
+				),
+				digest,
+			))
+		}
+		DeploymentRegistry::ExternalRegistry {
+			registry,
+			image_name,
+		} => Ok((format!("{}/{}", registry, image_name), None)),
+	}
 }
