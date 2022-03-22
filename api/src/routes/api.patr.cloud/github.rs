@@ -1,4 +1,4 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::get_github_info::*, utils::Uuid};
 use eve_rs::{App as EveApp, AsError, NextHandler};
 use octocrab::{models::repos::GitUser, Octocrab};
 
@@ -64,8 +64,6 @@ async fn get_github_repo(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - requested to get repo", request_id,);
 
-	// take our useful info(access_token, user_name, repo_name) from the request
-	// body create a api_model named as GetGithubRepoRequest
 	let GetGithubRepoRequest {
 		access_token,
 		owner_name,
@@ -76,17 +74,26 @@ async fn get_github_repo(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
+	// let octocrab = Octocrab::builder().build()?;
 
-	let repo = octocrab.repos(owner_name, repo_name).get().await?;
+	let repo = octocrab.repos(&owner_name, &repo_name).get().await?;
 
-	// TODO - check for successful/error octocrab api response and send the
-	// desired response as Repository struct has 84 fields
+	let html_url = match repo.html_url {
+		Some(url) => url.to_string(),
+		None => String::from("_"),
+	};
+
+	context.success(GetGithubRepoResponse {
+		id: repo.id.to_string(),
+		name: repo.name,
+		html_url,
+	});
 
 	Ok(context)
 }
 
 async fn configure_github_build_steps_static_site(
-	mut context: EveContext,
+	context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
@@ -95,10 +102,6 @@ async fn configure_github_build_steps_static_site(
 		request_id,
 	);
 
-	// create a api_model named as GithubStaticSiteBuildStepRequest
-	// That contains a all the information needed for the request
-	// For normal projects the publish_dir should be "." and build command
-	// should be empty string("")
 	let GetGithubStaticSiteBuildStepRequest {
 		access_token,
 		owner_name,
@@ -112,13 +115,11 @@ async fn configure_github_build_steps_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// request github with Authorizarion header setup with access_token
-	// setup header with acccess_token
 	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
 
 	if framework == "node" {
 		octocrab
-			.repos(owner_name, repo_name)
+			.repos(&owner_name, &repo_name)
 			.create_file(
 				".github/workflows/build.yaml",
 				"created: build.yaml",
@@ -165,7 +166,7 @@ async fn configure_github_build_steps_static_site(
 			.await?;
 	} else {
 		octocrab
-			.repos(owner_name, repo_name)
+			.repos(&owner_name, &repo_name)
 			.create_file(
 				".github/workflows/build.yaml",
 				"created: build.yaml",
@@ -205,12 +206,11 @@ async fn configure_github_build_steps_static_site(
 			.await?;
 	}
 
-	// TODO - this is not the actual response
-	Ok(context)
+	Ok(())
 }
 
 async fn configure_github_build_steps_deployment(
-	mut context: EveContext,
+	context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	// create a request_id
@@ -220,9 +220,6 @@ async fn configure_github_build_steps_deployment(
 		request_id,
 	);
 
-	// take our useful info(access_token, user_name, repo_name, build_command,
-	// publish_dir) from the request body create a api_model named as
-	// GithubDeploymentBuildStepRequest
 	let GetGithubDeploymentBuildStepRequest {
 		access_token,
 		owner_name,
@@ -294,5 +291,3 @@ async fn configure_github_build_steps_deployment(
 
 	Ok(context)
 }
-
-// route to setup github repo with github actions
