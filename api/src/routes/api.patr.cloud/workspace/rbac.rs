@@ -650,8 +650,7 @@ async fn create_role(
 	let body = context.get_body_object().clone();
 	let name = body
 		.get(request_keys::NAME)
-		.map(|value| value.as_str())
-		.flatten()
+		.and_then(|value| value.as_str())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let description = body

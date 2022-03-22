@@ -444,8 +444,7 @@ async fn get_access_token(
 		.get_request()
 		.get_query()
 		.get(request_keys::LOGIN_ID)
-		.map(|value| Uuid::parse_str(value).ok())
-		.flatten()
+		.and_then(|value| Uuid::parse_str(value).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -899,8 +898,7 @@ async fn docker_registry_login(
 		.map(|value| {
 			base64::decode(value)
 				.ok()
-				.map(|value| String::from_utf8(value).ok())
-				.flatten()
+				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)
 				.body(
 					json!({
@@ -1032,8 +1030,7 @@ async fn docker_registry_authenticate(
 		.map(|value| {
 			base64::decode(value)
 				.ok()
-				.map(|value| String::from_utf8(value).ok())
-				.flatten()
+				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)
 				.body(
 					json!({
