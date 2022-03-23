@@ -4,7 +4,6 @@ use api_models::{
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -235,130 +234,36 @@ pub async fn notification_handler(
 			if let DeploymentStatus::Stopped = deployment.status {
 				continue;
 			}
-			let full_image_name = format!(
-				"{}@{}",
-				deployment
-					.get_full_image(context.get_database_connection())
-					.await?,
-				target.digest
-			);
 
-			let config = config.clone();
+			let (deployment, workspace_id, _, deployment_running_details) =
+				service::get_full_deployment_config(
+					context.get_database_connection(),
+					&deployment.id,
+					&request_id,
+				)
+				.await?;
 
-			let request_id = request_id.clone();
 			log::trace!(
 				"request_id: {} - Updating the deployment with id: {}",
 				request_id,
 				deployment.id
 			);
-			task::spawn(async move {
-				log::trace!(
-					"request_id: {} - Acquiring database connection",
-					request_id
-				);
-				let mut connection = if let Ok(connection) =
-					service::get_app().database.acquire().await
-				{
-					connection
-				} else {
-					log::error!(
-						"request_id: {} - Cannot acquire a db connection",
-						request_id
-					);
-					return;
-				};
-				log::trace!(
-					"request_id: {} - Acquired database connection",
-					request_id
-				);
 
-				log::trace!(
-					"request_id: {} - Pushing image to DOCR",
-					request_id
-				);
-				let result = service::push_to_docr(
-					&mut connection,
-					&deployment.id,
-					&full_image_name,
-					&config,
-					&request_id,
-				)
-				.await;
-
-				if let Err(e) = result {
-					log::error!(
-						"Error pushing image to docr: {}",
-						e.get_error()
-					);
-					return;
-				}
-
-				log::trace!(
-					"request_id: {} - Pushed image to DOCR",
-					request_id
-				);
-
-				log::trace!(
-					"request_id: {} - Getting full deployment config",
-					request_id
-				);
-				let deployment_config_result =
-					service::get_full_deployment_config(
-						&mut connection,
-						&deployment.id,
-						&request_id,
-					)
-					.await;
-
-				let (deployment, workspace_id, full_image, running_details) =
-					if let Ok(deployment_config_result) =
-						deployment_config_result
-					{
-						deployment_config_result
-					} else {
-						log::error!(
-						"request_id: {} - Unable to get full deployment config",
-						request_id
-					);
-						return;
-					};
-
-				log::trace!(
-					"request_id: {} - Updating the kubernetes deployment",
-					request_id
-				);
-				let update_kubernetes_result =
-					service::update_kubernetes_deployment(
-						&workspace_id,
-						&deployment,
-						&full_image,
-						&running_details,
-						&config,
-						&request_id,
-					)
-					.await;
-
-				if let Err(error) = update_kubernetes_result {
-					log::error!(
-						"request_id: {} - Error updating k8s deployment: {}",
-						request_id,
-						error.get_error()
-					);
-					let _ = db::update_deployment_status(
-						&mut connection,
-						&deployment.id,
-						&DeploymentStatus::Errored,
-					)
-					.await
-					.map_err(|e| {
-						log::error!(
-							"request_id: {} - Error setting db status: {}",
-							request_id,
-							e
-						);
-					});
-				}
-			});
+			service::queue_update_deployment_image(
+				context.get_database_connection(),
+				&workspace_id,
+				&deployment.id,
+				&deployment.name,
+				&deployment.registry,
+				&target.digest,
+				&deployment.image_tag,
+				&deployment.region,
+				&deployment.machine_type,
+				&deployment_running_details,
+				&config,
+				&request_id,
+			)
+			.await?;
 		}
 	}
 

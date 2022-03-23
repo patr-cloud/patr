@@ -3,7 +3,7 @@ authors = ["Rakshith Ravi <rakshith.ravi@vicara.co>"]
 default-run = "api"
 edition = "2021"
 name = "api"
-version = "0.5.7"
+version = "0.6.0"
 
 [features]
 default = []
@@ -39,6 +39,7 @@ hex = "0.4.2"
 http = "0.2.5"
 jsonwebtoken = "7.2.0"
 lazy_static = "1.4.0"
+lapin = "2.0.1"
 lettre = { version = "=0.10.0-rc.3", features = [
   "tokio1",
   "smtp-transport",

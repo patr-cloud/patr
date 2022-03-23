@@ -1,19 +1,29 @@
 use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
-use k8s_openapi::api::{
-	core::v1::Secret,
-	networking::v1::{
-		HTTPIngressPath,
-		HTTPIngressRuleValue,
-		Ingress,
-		IngressBackend,
-		IngressRule,
-		IngressServiceBackend,
-		IngressSpec,
-		IngressTLS,
-		ServiceBackendPort,
+use k8s_openapi::{
+	api::{
+		apps::v1::{Deployment, DeploymentSpec},
+		core::v1::{
+			Container,
+			LocalObjectReference,
+			PodSpec,
+			PodTemplateSpec,
+			Secret,
+		},
+		networking::v1::{
+			HTTPIngressPath,
+			HTTPIngressRuleValue,
+			Ingress,
+			IngressBackend,
+			IngressRule,
+			IngressServiceBackend,
+			IngressSpec,
+			IngressTLS,
+			ServiceBackendPort,
+		},
 	},
+	apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{
 	api::{ListParams, Patch, PatchParams},
@@ -62,6 +72,7 @@ pub async fn migrate(
 		(0, 5, 4) => migrate_from_v0_5_4(&mut *connection, config).await?,
 		(0, 5, 5) => migrate_from_v0_5_5(&mut *connection, config).await?,
 		(0, 5, 6) => migrate_from_v0_5_6(&mut *connection, config).await?,
+		(0, 5, 7) => migrate_from_v0_5_7(&mut *connection, config).await?,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -79,7 +90,7 @@ pub async fn migrate(
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
 	vec![
-		"0.5.0", "0.5.1", "0.5.2", "0.5.3", "0.5.4", "0.5.5", "0.5.6",
+		"0.5.0", "0.5.1", "0.5.2", "0.5.3", "0.5.4", "0.5.5", "0.5.6", "0.5.7",
 	]
 }
 
@@ -728,5 +739,160 @@ async fn migrate_from_v0_5_6(
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 	}
 
+	Ok(())
+}
+
+async fn migrate_from_v0_5_7(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let deployment_list = query!(
+		r#"
+		SELECT
+			deployment.id,
+			deployment.workspace_id,
+			workspace.name,
+			docker_registry_repository.name as "repository",
+			deployment.image_tag,
+			deployment.region
+		FROM
+			deployment
+		INNER JOIN
+			workspace
+		ON
+			deployment.workspace_id = workspace.id
+		INNER JOIN
+			docker_registry_repository
+		ON
+			deployment.repository_id = docker_registry_repository.id
+		WHERE
+			deployment.status = 'running';
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<String, _>("name"),
+			row.get::<String, _>("repository"),
+			row.get::<String, _>("image_tag"),
+			row.get::<String, _>("region"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	if deployment_list.is_empty() {
+		return Ok(());
+	}
+
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let client = kube::Client::try_from(kubernetes_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	for (
+		deployment_id,
+		workspace_id,
+		workspace_name,
+		repository,
+		image_tag,
+		region,
+	) in deployment_list
+	{
+		let namespace = workspace_id.as_str();
+
+		let labels = [
+			("deploymentId".to_string(), deployment_id.to_string()),
+			("workspaceId".to_string(), workspace_id.to_string()),
+			("region".to_string(), region.to_string()),
+		]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		let kubernetes_deployment = Deployment {
+			spec: Some(DeploymentSpec {
+				selector: LabelSelector {
+					match_labels: Some(labels.clone()),
+					..LabelSelector::default()
+				},
+				template: PodTemplateSpec {
+					metadata: Some(ObjectMeta {
+						labels: Some(labels),
+						..ObjectMeta::default()
+					}),
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							image: Some(format!(
+								"registry.patr.cloud/{}/{}:{}",
+								workspace_name, repository, image_tag
+							)),
+							..Container::default()
+						}],
+						image_pull_secrets: Some(vec![LocalObjectReference {
+							name: Some("patr-regcred".to_string()),
+						}]),
+						..PodSpec::default()
+					}),
+				},
+				..DeploymentSpec::default()
+			}),
+			..Deployment::default()
+		};
+
+		let deployment_api =
+			Api::<Deployment>::namespaced(client.clone(), namespace);
+
+		deployment_api
+			.patch(
+				&format!("deployment-{}", deployment_id),
+				&PatchParams::apply(&format!("deployment-{}", deployment_id)),
+				&Patch::Apply(kubernetes_deployment),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
 	Ok(())
 }

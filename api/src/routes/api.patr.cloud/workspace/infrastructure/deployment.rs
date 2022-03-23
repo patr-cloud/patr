@@ -23,7 +23,6 @@ use api_models::{
 	utils::{constants, Uuid},
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -483,7 +482,7 @@ async fn create_deployment(
 		image_tag,
 		region,
 		machine_type,
-		running_details,
+		running_details: deployment_running_details,
 		deploy_on_create,
 	} = context
 		.get_body_as()
@@ -506,161 +505,28 @@ async fn create_deployment(
 		image_tag,
 		&region,
 		&machine_type,
-		&running_details,
+		&deployment_running_details,
 		&request_id,
 	)
 	.await?;
 
-	// Check if image exists
-	// If it does, push to docr.
-	// Can't check for image existence for non-patr registry
-	log::trace!("request_id: {} - Checking if image exists", request_id);
-	if let DeploymentRegistry::PatrRegistry {
-		registry: _,
-		repository_id,
-	} = &registry
-	{
-		log::trace!(
-			"request_id: {} - Getting tag details from database",
-			request_id
-		);
-		let tag_details = db::get_docker_repository_tag_details(
+	context.commit_database_transaction().await?;
+
+	if deploy_on_create {
+		service::queue_create_deployment(
 			context.get_database_connection(),
-			repository_id,
+			&workspace_id,
+			&id,
+			name,
+			&registry,
 			image_tag,
+			&region,
+			&machine_type,
+			&deployment_running_details,
+			&config,
+			&request_id,
 		)
 		.await?;
-
-		log::trace!(
-			"request_id: {} - Getting repository details from the database",
-			request_id
-		);
-		let repository_details = db::get_docker_repository_by_id(
-			context.get_database_connection(),
-			repository_id,
-		)
-		.await?
-		.status(500)?;
-
-		log::trace!(
-			"request_id: {} - Getting workspace details from the database",
-			request_id
-		);
-		let workspace_details = db::get_workspace_info(
-			context.get_database_connection(),
-			&repository_details.workspace_id,
-		)
-		.await?
-		.status(500)?;
-
-		log::trace!(
-			"request_id: {} - Checking if the image exists",
-			request_id
-		);
-		if let Some((_, digest)) = tag_details {
-			log::trace!("request_id: {} - Image exists", request_id);
-			// Push to docr
-			let id = id.clone();
-			let workspace_id = workspace_details.id.clone();
-			let name = name.to_string();
-			let image_tag = image_tag.to_string();
-			let full_image = format!(
-				"{}/{}/{}@{}",
-				config.docker_registry.registry_url,
-				workspace_details.name,
-				repository_details.name,
-				digest
-			);
-			let request_id = request_id.clone();
-
-			db::update_deployment_status(
-				context.get_database_connection(),
-				&id,
-				&DeploymentStatus::Pushed,
-			)
-			.await?;
-
-			task::spawn(async move {
-				log::trace!(
-					"request_id: {} - Acquiring database connection",
-					request_id
-				);
-				let mut connection = if let Ok(connection) =
-					service::get_app().database.acquire().await
-				{
-					connection
-				} else {
-					log::error!("request_id: {} - Unable to acquire a database connection", request_id);
-					return;
-				};
-				log::trace!(
-					"request_id: {} - Acquired database connection",
-					request_id
-				);
-
-				let result = service::push_to_docr(
-					&mut connection,
-					&id,
-					&full_image,
-					&config,
-					&request_id,
-				)
-				.await;
-
-				if let Err(e) = result {
-					log::error!(
-						"Error pushing image to docr: {}",
-						e.get_error()
-					);
-					return;
-				}
-
-				// If deploy_on_create is false, then return
-				if !deploy_on_create {
-					return;
-				}
-
-				let update_kubernetes_result =
-					service::update_kubernetes_deployment(
-						&workspace_id,
-						&Deployment {
-							id: id.clone(),
-							name,
-							registry,
-							image_tag,
-							status: DeploymentStatus::Deploying,
-							region,
-							machine_type,
-						},
-						&full_image,
-						&running_details,
-						&config,
-						&request_id,
-					)
-					.await;
-
-				if let Err(error) = update_kubernetes_result {
-					log::error!(
-						"request_id: {} - Error updating k8s deployment: {}",
-						request_id,
-						error.get_error()
-					);
-					let _ = db::update_deployment_status(
-						&mut connection,
-						&id,
-						&DeploymentStatus::Errored,
-					)
-					.await
-					.map_err(|e| {
-						log::error!(
-							"request_id: {} - Error updating db status: {}",
-							request_id,
-							e
-						);
-					});
-				}
-			});
-		}
 	}
 
 	let _ = service::get_deployment_metrics(
@@ -809,9 +675,26 @@ async fn start_deployment(
 
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
-	service::start_deployment(
+	log::trace!(
+		"request_id: {} - Starting deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
+
+	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
+	service::queue_start_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
+		&deployment,
+		&deployment_running_details,
 		&config,
 		&request_id,
 	)
@@ -854,11 +737,29 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
-	log::trace!("request_id: {} - Stopping deployment", request_id);
+	log::trace!(
+		"Stopping the deployment with id: {} and request_id: {}",
+		deployment_id,
+		request_id
+	);
 	// stop the running container, if it exists
 	let config = context.get_state().config.clone();
-	service::stop_deployment(
+	log::trace!("request_id: {} - Getting deployment id from db", request_id);
+	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} - queuing stop the deployment request",
+		request_id
+	);
+	service::queue_stop_deployment(
+		context.get_database_connection(),
+		&deployment.workspace_id,
 		&deployment_id,
 		&config,
 		&request_id,
@@ -951,12 +852,27 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
-	log::trace!("request_id: {} - Deleting deployment", request_id);
+	log::trace!(
+		"request_id: {} - Deleting the deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::delete_deployment(
+	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!("request_id: {} - Queuing delete deployment", request_id);
+	service::queue_delete_deployment(
+		context.get_database_connection(),
+		&deployment.workspace_id,
+		&deployment_id,
+		&deployment.name,
 		&config,
 		&request_id,
 	)
@@ -1038,7 +954,7 @@ async fn update_deployment(
 
 	context.commit_database_transaction().await?;
 
-	let (deployment, workspace_id, full_image, running_details) =
+	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
@@ -1053,18 +969,16 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
-			db::update_deployment_status(
+			service::queue_update_deployment(
 				context.get_database_connection(),
-				&deployment_id,
-				&DeploymentStatus::Deploying,
-			)
-			.await?;
-
-			service::update_kubernetes_deployment(
 				&workspace_id,
-				&deployment,
-				&full_image,
-				&running_details,
+				&deployment_id,
+				&deployment.name,
+				&deployment.registry,
+				&deployment.image_tag,
+				&deployment.region,
+				&deployment.machine_type,
+				&deployment_running_details,
 				&config,
 				&request_id,
 			)

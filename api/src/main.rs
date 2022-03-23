@@ -15,6 +15,7 @@ mod db;
 mod macros;
 mod migrations;
 mod models;
+mod rabbitmq;
 mod routes;
 mod scheduler;
 mod service;
@@ -26,6 +27,7 @@ use api_macros::{migrate_query, query, query_as};
 use app::App;
 use clap::{App as ClapApp, Arg, ArgMatches};
 use eve_rs::handlebars::Handlebars;
+use futures::future;
 use tokio::{fs, runtime::Builder};
 use utils::{constants, logger, Error as EveError};
 
@@ -95,7 +97,8 @@ async fn async_main() -> Result<(), EveError> {
 
 		task::spawn(models::initialize_sample_data(app.clone()));
 	}
-	app::start_server(app).await;
+
+	future::join(app::start_server(&app), rabbitmq::start_consumer(&app)).await;
 
 	Ok(())
 }

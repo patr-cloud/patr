@@ -65,6 +65,7 @@ pub async fn update_kubernetes_deployment(
 	workspace_id: &Uuid,
 	deployment: &Deployment,
 	full_image: &str,
+	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
 	config: &Settings,
 	request_id: &Uuid,
@@ -92,12 +93,8 @@ pub async fn update_kubernetes_deployment(
 		request_id,
 	);
 
-	// new name for the docker image
-	let image_name = if deployment.registry.is_patr_registry() {
-		format!(
-			"registry.digitalocean.com/{}/{}",
-			config.digitalocean.registry, deployment.id,
-		)
+	let image_name = if let Some(digest) = digest {
+		format!("{}@{}", full_image, digest)
 	} else {
 		full_image.to_string()
 	};
@@ -167,6 +164,7 @@ pub async fn update_kubernetes_deployment(
 					containers: vec![Container {
 						name: format!("deployment-{}", deployment.id),
 						image: Some(image_name),
+						image_pull_policy: Some("Always".to_string()),
 						ports: Some(
 							running_details
 								.ports
@@ -225,7 +223,7 @@ pub async fn update_kubernetes_deployment(
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
-						name: Some("regcred".to_string()),
+						name: Some("patr-regcred".to_string()),
 					}]),
 					..PodSpec::default()
 				}),
