@@ -680,7 +680,7 @@ async fn start_deployment(
 		request_id,
 		deployment_id
 	);
-	let (deployment, workspace_id, full_image, deployment_running_details) =
+	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
@@ -954,7 +954,7 @@ async fn update_deployment(
 
 	context.commit_database_transaction().await?;
 
-	let (deployment, workspace_id, full_image, deployment_running_details) =
+	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,

@@ -77,7 +77,7 @@ pub(super) async fn process_request(
 			.await
 		}
 		StaticSiteRequestData::UploadSite {
-			workspace_id,
+			workspace_id: _,
 			static_site_id,
 			file,
 			request_id,
@@ -112,7 +112,7 @@ async fn update_static_site_and_db_status(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	file: Option<&str>,
-	running_details: &StaticSiteDetails,
+	_running_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {

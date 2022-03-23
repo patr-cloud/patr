@@ -14,7 +14,7 @@ use crate::{
 	db,
 	models::rabbitmq::DeploymentRequestData,
 	service,
-	utils::{settings::Settings, Error},
+	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
 
@@ -178,6 +178,8 @@ async fn update_deployment_and_db_status(
 
 		Err(err)
 	} else {
+		let start_time = get_current_time_millis();
+
 		loop {
 			let status = service::get_kubernetes_deployment_status(
 				connection,
@@ -198,6 +200,10 @@ async fn update_deployment_and_db_status(
 				break;
 			}
 			time::sleep(Duration::from_millis(500)).await;
+
+			if get_current_time_millis() - start_time > 30000 {
+				break;
+			}
 		}
 
 		Ok(())

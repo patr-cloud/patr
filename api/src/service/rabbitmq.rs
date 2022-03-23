@@ -52,9 +52,6 @@ pub async fn queue_create_deployment(
 	)
 	.await?;
 
-	let (channel, rabbitmq_connection) =
-		service::get_rabbitmq_connection_channel(&config, &request_id).await?;
-
 	send_message_to_rabbit_mq(
 		&RequestMessage::Deployment(DeploymentRequestData::Create {
 			workspace_id: workspace_id.clone(),
@@ -228,6 +225,56 @@ pub async fn queue_update_deployment(
 			},
 			image_name,
 			digest,
+			running_details: deployment_running_details.clone(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
+pub async fn queue_update_deployment_image(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	digest: &str,
+	image_tag: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let (image_name, _) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection, registry, image_tag, config, request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		&deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+
+	send_message_to_rabbit_mq(
+		&RequestMessage::Deployment(DeploymentRequestData::UpdateImage {
+			workspace_id: workspace_id.clone(),
+			deployment: Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+			},
+			image_name,
+			digest: Some(digest.to_string()),
 			running_details: deployment_running_details.clone(),
 			request_id: request_id.clone(),
 		}),

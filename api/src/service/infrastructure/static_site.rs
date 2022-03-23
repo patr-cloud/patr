@@ -181,60 +181,7 @@ pub async fn delete_static_site(
 	Ok(())
 }
 
-pub async fn start_static_site_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	static_site_id: &Uuid,
-	config: &Settings,
-	file: Option<&str>,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	let static_site = db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"Deploying the static site with id: {} and request_id: {}",
-		static_site_id,
-		request_id
-	);
-
-	if let Some(file) = file {
-		log::trace!(
-			"request_id: {} - Uploading files to s3 server",
-			request_id
-		);
-		upload_static_site_files_to_s3(
-			connection,
-			file,
-			static_site_id,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-	Ok(())
-}
-
-
-
-
-
-
 // -----------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
