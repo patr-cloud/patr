@@ -2,7 +2,14 @@ use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
 use k8s_openapi::api::{
-	core::v1::Secret,
+	apps::v1::{Deployment, DeploymentSpec},
+	core::v1::{
+		Container,
+		LocalObjectReference,
+		PodSpec,
+		PodTemplateSpec,
+		Secret,
+	},
 	networking::v1::{Ingress, IngressSpec, IngressTLS},
 };
 use kube::{
@@ -377,5 +384,150 @@ async fn migrate_from_v0_5_4(
 	_connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	Ok(())
+}
+
+async fn migrate_from_v0_5_7(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| row.get::<Uuid, _>("id"))
+	.collect::<Vec<_>>();
+	if workspaces.is_empty() {
+		return Ok(());
+	}
+
+	let deployment_list = query!(
+		r#"
+		SELECT
+			deployment.id,
+			deployment.workspace_id,
+			workspace.name,
+			docker_registry_repository.name as "repository",
+			deployment.image_tag
+		FROM
+			deployment
+		INNER JOIN
+			workspace
+		ON
+			deployment.workspace_id = workspace.id
+		INNER JOIN
+			docker_registry_repository
+		ON
+			deployment.repository_id = docker_registry_repository.id
+		WHERE
+			deployment.status = 'running';
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<String, _>("name"),
+			row.get::<String, _>("repository"),
+			row.get::<String, _>("image_tag"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let client = kube::Client::try_from(kubernetes_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	for (deployment_id, workspace_id, workspace_name, repository, image_tag) in
+		deployment_list
+	{
+		let namespace = workspace_id.as_str();
+
+		let kubernetes_deployment = Deployment {
+			spec: Some(DeploymentSpec {
+				template: PodTemplateSpec {
+					spec: Some(PodSpec {
+						containers: vec![Container {
+							image: Some(format!(
+								"registry.patr.cloud/{}/{}:{}",
+								workspace_name, repository, image_tag
+							)),
+							..Container::default()
+						}],
+						image_pull_secrets: Some(vec![LocalObjectReference {
+							name: Some("adminregcred".to_string()),
+						}]),
+						..PodSpec::default()
+					}),
+					..PodTemplateSpec::default()
+				},
+				..DeploymentSpec::default()
+			}),
+			..Deployment::default()
+		};
+
+		let deployment_api =
+			Api::<Deployment>::namespaced(client.clone(), namespace);
+
+		deployment_api
+			.patch(
+				&format!("deployment-{}", deployment_id),
+				&PatchParams::apply(&format!("deployment-{}", deployment_id)),
+				&Patch::Apply(kubernetes_deployment),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
 	Ok(())
 }
