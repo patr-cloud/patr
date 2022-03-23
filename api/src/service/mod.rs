@@ -10,12 +10,18 @@ mod domain;
 mod infrastructure;
 mod metrics;
 mod notifier;
+mod rabbitmq;
 mod user;
 mod utils;
 mod workspace;
 
 use api_models::utils::Uuid;
-use lapin::{Channel, Connection, ConnectionProperties};
+use lapin::{
+	options::ConfirmSelectOptions,
+	Channel,
+	Connection,
+	ConnectionProperties,
+};
 
 pub use self::{
 	auth::*,
@@ -24,6 +30,7 @@ pub use self::{
 	infrastructure::*,
 	metrics::*,
 	notifier::*,
+	rabbitmq::*,
 	user::*,
 	utils::*,
 	workspace::*,
@@ -86,6 +93,9 @@ pub(super) async fn get_rabbitmq_connection_channel(
 
 	log::trace!("request_id: {} - Creating channel", request_id);
 	let channel = connection.create_channel().await?;
+	channel
+		.confirm_select(ConfirmSelectOptions::default())
+		.await?;
 
 	Ok((channel, connection))
 }

@@ -1,9 +1,4 @@
-use std::ops::DerefMut;
-
-use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
-};
+use api_models::utils::Uuid;
 use futures::{
 	future::{self, Either},
 	StreamExt,
@@ -21,15 +16,14 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
-	db,
-	models::rabbitmq::{
-		DeploymentRequestData,
-		RequestMessage,
-		StaticSiteRequestData,
-	},
+	models::rabbitmq::RequestMessage,
 	service,
-	utils::{settings::Settings, Error},
+	utils::Error,
 };
+
+mod database;
+mod deployment;
+mod static_site;
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
@@ -94,7 +88,7 @@ pub async fn start_consumer(app: &App) {
 			}
 		};
 
-		let result = process_queue_payload(payload, &app.config).await;
+		let result = process_queue_payload(payload, &app).await;
 		let ack_result = if let Err(error) = result {
 			log::error!("Error processing payload: {}", error.get_error());
 			delivery
@@ -125,155 +119,23 @@ pub async fn start_consumer(app: &App) {
 
 async fn process_queue_payload(
 	content: RequestMessage,
-	config: &Settings,
+	app: &App,
 ) -> Result<(), Error> {
+	let config = &app.config;
+	let mut connection = app.database.acquire().await?;
 	match content {
 		RequestMessage::Deployment(request_data) => {
-			process_deployment_request(request_data, config).await
+			deployment::process_request(&mut connection, request_data, config)
+				.await
 		}
 		RequestMessage::StaticSite(request_data) => {
-			process_static_sites_request(request_data, config).await
+			static_site::process_request(&mut connection, request_data, config)
+				.await
 		}
 		RequestMessage::Database {} => todo!(),
 	}
-}
-
-async fn process_deployment_request(
-	request_data: DeploymentRequestData,
-	config: &Settings,
-) -> Result<(), Error> {
-	match request_data {
-		DeploymentRequestData::Update {
-			workspace_id,
-			deployment,
-			full_image,
-			running_details,
-			request_id,
-		} => {
-			log::trace!("Received a update kubernetes deployment request");
-			service::update_kubernetes_deployment(
-				&workspace_id,
-				&deployment,
-				&full_image,
-				&running_details,
-				config,
-				&request_id,
-			)
-			.await
-			.map_err(|err| {
-				log::error!(
-					"Error updating kubernetes deployment: {}",
-					err.get_error()
-				);
-				err
-			})
-		}
-		DeploymentRequestData::Delete {
-			workspace_id,
-			deployment_id,
-			request_id,
-			deployment_status,
-		} => {
-			log::trace!("reciver a delete kubernetes deployment request");
-			service::delete_kubernetes_deployment(
-				&workspace_id,
-				&deployment_id,
-				config,
-				&request_id,
-			)
-			.await?;
-
-			// TODO: change this incase the request is stop
-			// deployment
-			db::update_deployment_status(
-				service::get_app().database.acquire().await?.deref_mut(),
-				&deployment_id,
-				&deployment_status,
-			)
-			.await
-			.map_err(|e| e.into())
-		}
-	}
-}
-
-async fn process_static_sites_request(
-	request_data: StaticSiteRequestData,
-	config: &Settings,
-) -> Result<(), Error> {
-	match request_data {
-		StaticSiteRequestData::Update {
-			workspace_id,
-			static_site,
-			static_site_details,
-			request_id,
-			static_site_status,
-		} => {
-			log::trace!("Received a update static site request");
-			let result = service::update_kubernetes_static_site(
-				&workspace_id,
-				&static_site,
-				&static_site_details,
-				config,
-				&request_id,
-			)
-			.await;
-			if let Err(err) = result {
-				log::error!(
-					"Error occured during deployment of static site: {}",
-					err.get_error()
-				);
-				db::update_static_site_status(
-					service::get_app().database.acquire().await?.deref_mut(),
-					&static_site.id,
-					&DeploymentStatus::Errored,
-				)
-				.await
-				.map_err(|err| err.into())
-			} else {
-				log::trace!(
-					"request_id: {} - updating database status",
-					request_id
-				);
-				db::update_static_site_status(
-					service::get_app().database.acquire().await?.deref_mut(),
-					&static_site.id,
-					&static_site_status,
-				)
-				.await
-				.map(|_| {
-					log::trace!(
-						"request_id: {} - updated database status",
-						request_id
-					);
-				})
-				.map_err(|err| err.into())
-			}
-		}
-		StaticSiteRequestData::Delete {
-			workspace_id,
-			static_site_id,
-			request_id,
-			static_site_status,
-		} => {
-			log::trace!("Received a delete static site request");
-			service::delete_kubernetes_static_site(
-				&workspace_id,
-				&static_site_id,
-				config,
-				&request_id,
-			)
-			.await?;
-			log::trace!(
-				"request_id: {} - updating db status to stopped",
-				request_id
-			);
-			db::update_static_site_status(
-				service::get_app().database.acquire().await?.deref_mut(),
-				&static_site_id,
-				&static_site_status,
-			)
-			.await
-			.map_err(|err| err.into())
-		}
-	}
+	.map_err(|error| {
+		log::error!("Error processing RabbitMQ message: {}", error.get_error());
+		error
+	})
 }

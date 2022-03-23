@@ -487,7 +487,7 @@ async fn create_static_site_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let id = service::create_static_site_deployment_in_workspace(
+	let id = service::create_static_site_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		name,
@@ -497,16 +497,18 @@ async fn create_static_site_deployment(
 
 	context.commit_database_transaction().await?;
 
-	log::trace!("request_id: {} - Static-site created", request_id);
-	log::trace!("request_id: {} - Starting the static site", request_id);
-	service::start_static_site_deployment(
-		context.get_database_connection(),
-		&id,
-		&config,
-		file.as_deref(),
-		&request_id,
-	)
-	.await?;
+	if let Some(file) = file {
+		log::trace!("request_id: {} - Static-site created", request_id);
+		log::trace!("request_id: {} - Starting the static site", request_id);
+		service::queue_create_static_site(
+			&workspace_id,
+			&id,
+			file,
+			&config,
+			&request_id,
+		)
+		.await?;
+	}
 
 	let _ = service::get_deployment_metrics(
 		context.get_database_connection(),
@@ -551,6 +553,14 @@ async fn start_static_site(
 	)
 	.unwrap();
 
+	let static_site = db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
 	log::trace!(
 		"request_id: {} - Starting a static site with id: {}",
 		request_id,
@@ -558,11 +568,10 @@ async fn start_static_site(
 	);
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
-	service::start_static_site_deployment(
-		context.get_database_connection(),
+	service::queue_start_static_site(
+		&static_site.workspace_id,
 		&static_site_id,
 		&config,
-		None,
 		&request_id,
 	)
 	.await?;
@@ -628,9 +637,9 @@ async fn update_static_site(
 
 	service::update_static_site(
 		context.get_database_connection(),
-		name,
-		file.as_deref(),
 		&static_site_id,
+		name,
+		file,
 		&config,
 		&request_id,
 	)
