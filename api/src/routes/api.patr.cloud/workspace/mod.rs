@@ -456,7 +456,7 @@ async fn get_workspace_audit_log(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let workspace_audit_logs = db::get_workspace_audit_log(
+	let workspace_audit_logs = db::get_workspace_audit_logs(
 		context.get_database_connection(),
 		&workspace_id,
 	)
@@ -516,7 +516,7 @@ async fn get_resource_audit_log(
 	let resource_id = context.get_param(request_keys::RESOURCE_ID).unwrap();
 	let resource_id = Uuid::parse_str(resource_id).unwrap();
 
-	let workspace_audit_logs = db::get_resource_audit_log(
+	let workspace_audit_logs = db::get_resource_audit_logs(
 		context.get_database_connection(),
 		&resource_id,
 	)

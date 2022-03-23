@@ -12,7 +12,7 @@ use tokio::time;
 
 use crate::{
 	db,
-	models::rabbitmq::DeploymentRequestData,
+	models::{rabbitmq::DeploymentRequestData, rbac::permissions},
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
@@ -36,6 +36,45 @@ pub(super) async fn process_request(
 				connection,
 				&deployment.id,
 				&DeploymentStatus::Deploying,
+			)
+			.await?;
+
+			let audit_log_id = db::generate_new_workspace_audit_log_id(
+				context.get_database_connection(),
+			)
+			.await?;
+
+			let metadata = serde_json::to_value(DeploymentMetadata::Create {
+				deployment: Deployment {
+					id: id.clone(),
+					name: name.to_string(),
+					registry: registry.clone(),
+					image_tag: image_tag.to_string(),
+					status: DeploymentStatus::Created,
+					region: region.clone(),
+					machine_type: machine_type.clone(),
+				},
+				running_details: deployment_running_details.clone(),
+			})?;
+
+			db::create_workspace_audit_log(
+				context.get_database_connection(),
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now(),
+				Some(&user_id),
+				Some(&login_id),
+				&id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&metadata,
+				false,
+				true,
 			)
 			.await?;
 

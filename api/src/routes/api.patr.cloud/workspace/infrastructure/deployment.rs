@@ -38,9 +38,11 @@ use crate::{
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
 		deployment::DeploymentAuditLog,
-		rbac::permissions,
+		rbac::{self, permissions},
+		DeploymentMetadata,
 	},
 	pin_fn,
+	routes::api_patr_cloud,
 	service,
 	utils::{
 		constants::request_keys,
@@ -546,8 +548,9 @@ async fn create_deployment(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
 	let CreateDeploymentRequest {
@@ -575,7 +578,7 @@ async fn create_deployment(
 
 	let deployment_audit_log = DeploymentAuditLog {
 		user_id: Some(user_id.clone()),
-		ip_address: "0.0.0.0".to_string(),
+		ip_address: ip_address.clone(),
 		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),
@@ -594,10 +597,46 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		&user_id,
-		&login_id,
-		&ip_address,
 		&request_id,
+	)
+	.await?;
+
+	let audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
+	let metadata = serde_json::to_value(DeploymentMetadata::Create {
+		deployment: Deployment {
+			id: id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Created,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+		},
+		running_details: deployment_running_details.clone(),
+	})?;
+
+	db::create_workspace_audit_log(
+		context.get_database_connection(),
+		&audit_log_id,
+		&workspace_id,
+		&ip_address,
+		Utc::now(),
+		Some(&user_id),
+		Some(&login_id),
+		&id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::CREATE)
+			.unwrap(),
+		&request_id,
+		&metadata,
+		false,
+		true,
 	)
 	.await?;
 
@@ -760,6 +799,8 @@ async fn start_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
 
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
@@ -776,7 +817,7 @@ async fn start_deployment(
 
 	let deployment_audit_log = DeploymentAuditLog {
 		user_id: Some(user_id.clone()),
-		ip_address: "0.0.0.0".to_string(),
+		ip_address,
 		login_id: Some(login_id.clone()),
 		workspace_audit_log_id,
 		patr_action: false,
@@ -1051,6 +1092,8 @@ async fn update_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
 	// Is any one value present?
 	if name.is_none() &&
 		region.is_none() &&
@@ -1070,7 +1113,7 @@ async fn update_deployment(
 
 	let deployment_audit_log = DeploymentAuditLog {
 		user_id: Some(user_id.clone()),
-		ip_address: "0.0.0.0".to_string(),
+		ip_address,
 		login_id: Some(login_id.clone()),
 		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
 			context.get_database_connection(),

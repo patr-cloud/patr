@@ -51,9 +51,6 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	user_id: &Uuid,
-	login_id: &Uuid,
-	ip_address: &str,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
