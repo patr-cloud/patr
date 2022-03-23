@@ -25,7 +25,7 @@ use std::sync::Arc;
 
 use api_macros::{migrate_query, query, query_as};
 use app::App;
-use clap::{App as ClapApp, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use eve_rs::handlebars::Handlebars;
 use futures::future;
 use tokio::{fs, runtime::Builder};
@@ -103,25 +103,23 @@ async fn async_main() -> Result<(), EveError> {
 	Ok(())
 }
 
-fn parse_cli_args<'a>() -> ArgMatches<'a> {
-	let app = ClapApp::new(constants::APP_NAME)
+fn parse_cli_args() -> ArgMatches {
+	let app = Command::new(constants::APP_NAME)
 		.version(constants::APP_VERSION)
 		.author(constants::APP_AUTHORS)
 		.about(constants::APP_ABOUT)
 		.arg(
-			Arg::with_name("db-only")
+			Arg::new("db-only")
 				.long("db-only")
 				.takes_value(false)
-				.multiple(false)
 				.help("Initialises the database and quits"),
 		);
 	#[cfg(feature = "sample-data")]
 	{
 		app.arg(
-			Arg::with_name("populate-sample-data")
+			Arg::new("populate-sample-data")
 				.long("populate-sample-data")
 				.takes_value(false)
-				.multiple(false)
 				.help("Initialises the database with sample data"),
 		)
 		.get_matches()

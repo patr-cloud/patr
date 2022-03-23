@@ -162,7 +162,7 @@ async fn migrate_from_v0_5_3(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
@@ -285,7 +285,7 @@ async fn update_patr_wildcard_certificates(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
@@ -482,7 +482,7 @@ async fn migrate_from_v0_5_5(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
@@ -644,7 +644,7 @@ async fn migrate_from_v0_5_6(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
@@ -808,7 +808,7 @@ async fn migrate_from_v0_5_7(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
