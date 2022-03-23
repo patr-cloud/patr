@@ -1,4 +1,10 @@
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::managed_urls::{
+		ManagedUrl,
+		ManagedUrlType,
+	},
+	utils::Uuid,
+};
 use cloudflare::{
 	endpoints::zone::{self, Status},
 	framework::async_api::ApiClient,
@@ -9,6 +15,7 @@ use sqlx::Connection;
 use crate::{
 	db,
 	error,
+	models::db_mapping::ManagedUrlType as DbManagedUrlType,
 	scheduler::Job,
 	service,
 	utils::{validator, Error},
@@ -20,6 +27,15 @@ pub(super) fn verify_unverified_domains_job() -> Job {
 		String::from("Verify unverified domains"),
 		"0 0 1/2 * * *".parse().unwrap(),
 		|| Box::pin(verify_unverified_domains()),
+	)
+}
+
+// Every two hours
+pub(super) fn repatch_all_managed_urls_job() -> Job {
+	Job::new(
+		String::from("Repatch all managed URLs"),
+		"0 0 1/2 * * *".parse().unwrap(),
+		|| Box::pin(repatch_all_managed_urls()),
 	)
 }
 
@@ -174,6 +190,54 @@ async fn verify_unverified_domains() -> Result<(), Error> {
 				);
 			}
 		}
+	}
+
+	Ok(())
+}
+
+async fn repatch_all_managed_urls() -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Re-patching all Managed URLs", request_id);
+	let config = super::CONFIG.get().unwrap();
+	let mut connection = config.database.begin().await?;
+	let managed_urls = db::get_all_managed_urls(&mut connection).await?;
+
+	for managed_url in managed_urls {
+		service::update_kubernetes_managed_url(
+			&managed_url.workspace_id,
+			&ManagedUrl {
+				id: managed_url.id,
+				sub_domain: managed_url.sub_domain,
+				domain_id: managed_url.domain_id,
+				path: managed_url.path,
+				url_type: match managed_url.url_type {
+					DbManagedUrlType::ProxyToDeployment => {
+						ManagedUrlType::ProxyDeployment {
+							deployment_id: managed_url
+								.deployment_id
+								.status(500)?,
+							port: managed_url.port.status(500)? as u16,
+						}
+					}
+					DbManagedUrlType::ProxyToStaticSite => {
+						ManagedUrlType::ProxyStaticSite {
+							static_site_id: managed_url
+								.static_site_id
+								.status(500)?,
+						}
+					}
+					DbManagedUrlType::ProxyUrl => ManagedUrlType::ProxyUrl {
+						url: managed_url.url.status(500)?,
+					},
+					DbManagedUrlType::Redirect => ManagedUrlType::Redirect {
+						url: managed_url.url.status(500)?,
+					},
+				},
+			},
+			&config.config,
+			&request_id,
+		)
+		.await?;
 	}
 
 	Ok(())

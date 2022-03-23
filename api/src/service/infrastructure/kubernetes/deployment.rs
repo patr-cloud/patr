@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
-		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 		EnvironmentVariableValue,
@@ -50,83 +49,28 @@ use k8s_openapi::{
 };
 use kube::{
 	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
-	core::ObjectMeta,
+	core::{ErrorResponse, ObjectMeta},
 	Api,
+	Error as KubeError,
 };
-use serde_json::json;
 
 use crate::{
 	db,
 	error,
-	models::deployment::{self, DeploymentAuditLog, DeploymentBuildLog},
+	models::deployment::{self, DeploymentBuildLog},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
 
 pub async fn update_kubernetes_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment: &Deployment,
 	full_image: &str,
+	digest: Option<&str>,
 	running_details: &DeploymentRunningDetails,
 	config: &Settings,
 	request_id: &Uuid,
-	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
-	let edit_permission_id = db::get_all_permissions(connection)
-		.await?
-		.into_iter()
-		.find_map(|permission| {
-			if permission.name == "workspace::infrastructure::deployment::edit"
-			{
-				Some(permission)
-			} else {
-				None
-			}
-		})
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.id;
-
-	let registry_name = match deployment.registry.clone() {
-		DeploymentRegistry::PatrRegistry { .. } => {
-			"registry.patr.cloud".to_string()
-		}
-		DeploymentRegistry::ExternalRegistry { registry, .. } => registry,
-	};
-
-	let metadata = json!(
-		{
-
-			"id": &deployment.id,
-			"name": &deployment.name,
-			"registry": &registry_name,
-			"image": full_image,
-			"deploymentStatus": DeploymentStatus::Running.to_string(),
-			"machineType": deployment.machine_type,
-			"deployOnPush": running_details.deploy_on_push, // true or false
-			"horizontalScale": running_details.min_horizontal_scale,
-			"region": deployment.region
-		}
-	);
-
-	db::create_workspace_audit_log(
-		connection,
-		workspace_id,
-		&deployment_audit_log.workspace_audit_log_id,
-		&deployment_audit_log.ip_address,
-		deployment_audit_log.time_now,
-		deployment_audit_log.user_id.as_ref(),
-		deployment_audit_log.login_id.as_ref(),
-		&deployment.id,
-		&edit_permission_id,
-		request_id,
-		&metadata,
-		deployment_audit_log.patr_action,
-		true,
-	)
-	.await?;
-
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
 
 	// the namespace is workspace id
@@ -150,12 +94,8 @@ pub async fn update_kubernetes_deployment(
 		request_id,
 	);
 
-	// new name for the docker image
-	let image_name = if deployment.registry.is_patr_registry() {
-		format!(
-			"registry.digitalocean.com/{}/{}",
-			config.digitalocean.registry, deployment.id,
-		)
+	let image_name = if let Some(digest) = digest {
+		format!("{}@{}", full_image, digest)
 	} else {
 		full_image.to_string()
 	};
@@ -225,6 +165,7 @@ pub async fn update_kubernetes_deployment(
 					containers: vec![Container {
 						name: format!("deployment-{}", deployment.id),
 						image: Some(image_name),
+						image_pull_policy: Some("Always".to_string()),
 						ports: Some(
 							running_details
 								.ports
@@ -283,7 +224,7 @@ pub async fn update_kubernetes_deployment(
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
-						name: Some("regcred".to_string()),
+						name: Some("patr-regcred".to_string()),
 					}]),
 					..PodSpec::default()
 				}),
@@ -401,9 +342,7 @@ pub async fn update_kubernetes_deployment(
 						"*.patr.cloud".to_string(),
 						"patr.cloud".to_string(),
 					]),
-					secret_name: Some(
-						"tls-domain-wildcard-patr-cloud".to_string(),
-					),
+					secret_name: None,
 				},
 			)
 		})
@@ -712,13 +651,22 @@ pub async fn get_kubernetes_deployment_status(
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	let kubernetes_client = super::get_kubernetes_config(config).await?;
-	let deployment_status =
+	let deployment_result =
 		Api::<K8sDeployment>::namespaced(kubernetes_client.clone(), namespace)
 			.get(&format!("deployment-{}", deployment.id))
-			.await?
+			.await;
+	let deployment_status = match deployment_result {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => {
+			// TODO: This is a temporary fix to solve issue #361.
+			// Need to find a better solution to do this
+			return Ok(DeploymentStatus::Deploying);
+		}
+		Err(err) => return Err(err.into()),
+		Ok(deployment) => deployment
 			.status
 			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
+			.body(error!(SERVER_ERROR).to_string())?,
+	};
 
 	if deployment_status.available_replicas ==
 		Some(deployment.min_horizontal_scale.into())

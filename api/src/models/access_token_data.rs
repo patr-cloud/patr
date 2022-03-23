@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use api_models::utils::Uuid;
 use jsonwebtoken::{
 	errors::Error,
+	Algorithm,
 	DecodingKey,
 	EncodingKey,
 	TokenData,
@@ -29,14 +30,12 @@ pub struct AccessTokenData {
 impl AccessTokenData {
 	pub fn parse(token: String, key: &str) -> Result<AccessTokenData, Error> {
 		let decode_key = DecodingKey::from_secret(key.as_ref());
-		let TokenData { header: _, claims } = jsonwebtoken::decode(
-			&token,
-			&decode_key,
-			&Validation {
-				validate_exp: false,
-				..Default::default()
-			},
-		)?;
+		let TokenData { header: _, claims } =
+			jsonwebtoken::decode(&token, &decode_key, &{
+				let mut validation = Validation::new(Algorithm::HS256);
+				validation.validate_exp = false;
+				validation
+			})?;
 		Ok(claims)
 	}
 
