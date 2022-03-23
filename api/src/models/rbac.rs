@@ -114,6 +114,15 @@ pub mod permissions {
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
 		}
 
+		pub mod github {
+			pub mod repo {
+				pub const LIST: &str = "workspace::github:repo::list";
+			}
+			pub mod action {
+				pub const CREATE: &str = "workspace::github::action::create";
+			}
+		}
+
 		pub const VIEW_ROLES: &str = "workspace::viewRoles";
 		pub const CREATE_ROLE: &str = "workspace::createRole";
 		pub const EDIT_ROLE: &str = "workspace::editRole";

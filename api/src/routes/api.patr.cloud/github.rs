@@ -1,12 +1,16 @@
+use api_macros::closure_as_pinned_box;
 use api_models::{models::workspace::get_github_info::*, utils::Uuid};
-use eve_rs::{App as EveApp, AsError, NextHandler};
+use eve_rs::{App as EveApp, AsError, NextHandler, Context};
 use octocrab::{models::repos::GitUser, Octocrab};
 
 use crate::{
 	app::{create_eve_app, App},
-	error,
+	db, error,
+	models::rbac::permissions,
 	pin_fn,
-	utils::{Error, ErrorData, EveContext, EveMiddleware},
+	utils::{
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware
+	},
 };
 
 /// # Description
@@ -31,14 +35,60 @@ pub fn create_sub_app(
 	app.get(
 		"/get-repository",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::repo::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
 			EveMiddleware::CustomFunction(pin_fn!(get_github_repo)),
 		],
 	);
 	app.post(
 		"/config-static-build",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::action::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
 			EveMiddleware::CustomFunction(pin_fn!(
 				configure_github_build_steps_static_site
 			)),
@@ -47,7 +97,30 @@ pub fn create_sub_app(
 	app.post(
 		"/config-deployment-build",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::action::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
 			EveMiddleware::CustomFunction(pin_fn!(
 				configure_github_build_steps_deployment
 			)),
@@ -206,7 +279,7 @@ async fn configure_github_build_steps_static_site(
 			.await?;
 	}
 
-	Ok(())
+	Ok(context)
 }
 
 async fn configure_github_build_steps_deployment(
