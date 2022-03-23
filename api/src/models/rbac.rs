@@ -105,6 +105,11 @@ pub mod permissions {
 			}
 		}
 
+		pub mod user {
+			pub const CREATE: &str = "workspace::user::create";
+			pub const DELETE: &str = "workspace::user::delete";
+		}
+
 		pub mod docker_registry {
 			pub const CREATE: &str = "workspace::dockerRegistry::create";
 			pub const LIST: &str = "workspace::dockerRegistry::list";

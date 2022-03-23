@@ -187,3 +187,54 @@ pub async fn update_workspace_name(
 
 	Ok(())
 }
+
+pub async fn add_user_to_workspace_with_role(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+	role_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			workspace_user
+			(
+				user_id,
+				workspace_id,
+				role_id
+			)
+		VALUES 
+			($1, $2, $3);	
+		"#,
+		user_id as _,
+		workspace_id as _,
+		role_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_user_from_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user_id: &Uuid,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			workspace_user
+		WHERE
+			workspace_id = $1
+			AND
+			user_id = $2;	
+		"#,
+		workspace_id as _,
+		user_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}

@@ -62,6 +62,7 @@ pub mod request_keys {
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
 	pub const USERS_TO_SIGN_UP: &str = "usersToSignUp";
 	pub const USERS: &str = "users";
+	pub const USER_ID: &str = "userId";
 	pub const CUSTOM_DOMAINS_FOR_DEPLOYMENTS: &str =
 		"customDomainsForDeployments";
 	pub const DELETED_DEPLOYMENTS: &str = "deletedDeployments";
