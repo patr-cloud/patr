@@ -223,7 +223,7 @@ pub async fn update_kubernetes_deployment(
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
-						name: Some("regcred".to_string()),
+						name: Some("patr-regcred".to_string()),
 					}]),
 					..PodSpec::default()
 				}),

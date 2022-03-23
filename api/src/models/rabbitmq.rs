@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
 pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	StaticSite(StaticSiteRequestData),

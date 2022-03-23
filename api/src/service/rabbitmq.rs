@@ -206,7 +206,7 @@ pub async fn queue_update_deployment(
 
 	db::update_deployment_status(
 		connection,
-		&deployment_id,
+		deployment_id,
 		&DeploymentStatus::Deploying,
 	)
 	.await?;
@@ -256,7 +256,7 @@ pub async fn queue_update_deployment_image(
 
 	db::update_deployment_status(
 		connection,
-		&deployment_id,
+		deployment_id,
 		&DeploymentStatus::Deploying,
 	)
 	.await?;
@@ -386,12 +386,12 @@ async fn send_message_to_rabbit_mq(
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	let (channel, rabbitmq_connection) =
-		service::get_rabbitmq_connection_channel(&config, &request_id).await?;
+		service::get_rabbitmq_connection_channel(config, request_id).await?;
 
 	let confirmation = channel
 		.basic_publish(
 			"",
-			"infrastructure",
+			config.rabbit_mq.queue.as_str(),
 			BasicPublishOptions::default(),
 			serde_json::to_string(&message)?.as_bytes(),
 			BasicProperties::default(),

@@ -128,10 +128,10 @@ async fn update_static_site_and_db_status(
 	if let Some(file) = file {
 		service::upload_static_site_files_to_s3(
 			connection,
-			&file,
-			&static_site_id,
+			file,
+			static_site_id,
 			config,
-			&request_id,
+			request_id,
 		)
 		.await?;
 	}
@@ -146,7 +146,7 @@ async fn update_static_site_and_db_status(
 		// TODO log in audit log that there was an error while deploying
 		db::update_static_site_status(
 			connection,
-			&static_site_id,
+			static_site_id,
 			&DeploymentStatus::Errored,
 		)
 		.await?;

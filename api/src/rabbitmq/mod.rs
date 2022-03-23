@@ -88,7 +88,7 @@ pub async fn start_consumer(app: &App) {
 			}
 		};
 
-		let result = process_queue_payload(payload, &app).await;
+		let result = process_queue_payload(payload, app).await;
 		let ack_result = if let Err(error) = result {
 			log::error!("Error processing payload: {}", error.get_error());
 			delivery

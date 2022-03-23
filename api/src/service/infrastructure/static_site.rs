@@ -99,10 +99,10 @@ pub async fn update_static_site(
 	if let Some(file) = file {
 		service::queue_upload_static_site(
 			&static_site.workspace_id,
-			&static_site_id,
+			static_site_id,
 			file,
-			&config,
-			&request_id,
+			config,
+			request_id,
 		)
 		.await?;
 	}
@@ -124,9 +124,9 @@ pub async fn stop_static_site(
 
 	service::queue_stop_static_site(
 		&static_site.workspace_id,
-		&static_site_id,
-		&config,
-		&request_id,
+		static_site_id,
+		config,
+		request_id,
 	)
 	.await?;
 
@@ -158,9 +158,9 @@ pub async fn delete_static_site(
 
 	service::queue_delete_static_site(
 		&static_site.workspace_id,
-		&static_site_id,
-		&config,
-		&request_id,
+		static_site_id,
+		config,
+		request_id,
 	)
 	.await?;
 

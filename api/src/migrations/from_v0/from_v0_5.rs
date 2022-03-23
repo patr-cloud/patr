@@ -1,26 +1,29 @@
 use std::collections::BTreeMap;
 
 use api_models::utils::Uuid;
-use k8s_openapi::api::{
-	apps::v1::{Deployment, DeploymentSpec},
-	core::v1::{
-		Container,
-		LocalObjectReference,
-		PodSpec,
-		PodTemplateSpec,
-		Secret,
+use k8s_openapi::{
+	api::{
+		apps::v1::{Deployment, DeploymentSpec},
+		core::v1::{
+			Container,
+			LocalObjectReference,
+			PodSpec,
+			PodTemplateSpec,
+			Secret,
+		},
+		networking::v1::{
+			HTTPIngressPath,
+			HTTPIngressRuleValue,
+			Ingress,
+			IngressBackend,
+			IngressRule,
+			IngressServiceBackend,
+			IngressSpec,
+			IngressTLS,
+			ServiceBackendPort,
+		},
 	},
-	networking::v1::{
-		HTTPIngressPath,
-		HTTPIngressRuleValue,
-		Ingress,
-		IngressBackend,
-		IngressRule,
-		IngressServiceBackend,
-		IngressSpec,
-		IngressTLS,
-		ServiceBackendPort,
-	},
+	apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{
 	api::{ListParams, Patch, PatchParams},
@@ -743,23 +746,6 @@ async fn migrate_from_v0_5_7(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	let workspaces = query!(
-		r#"
-		SELECT
-			id
-		FROM
-			workspace;
-		"#
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.get::<Uuid, _>("id"))
-	.collect::<Vec<_>>();
-	if workspaces.is_empty() {
-		return Ok(());
-	}
-
 	let deployment_list = query!(
 		r#"
 		SELECT
@@ -767,7 +753,8 @@ async fn migrate_from_v0_5_7(
 			deployment.workspace_id,
 			workspace.name,
 			docker_registry_repository.name as "repository",
-			deployment.image_tag
+			deployment.image_tag,
+			deployment.region
 		FROM
 			deployment
 		INNER JOIN
@@ -792,9 +779,14 @@ async fn migrate_from_v0_5_7(
 			row.get::<String, _>("name"),
 			row.get::<String, _>("repository"),
 			row.get::<String, _>("image_tag"),
+			row.get::<String, _>("region"),
 		)
 	})
 	.collect::<Vec<_>>();
+
+	if deployment_list.is_empty() {
+		return Ok(());
+	}
 
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
@@ -841,14 +833,36 @@ async fn migrate_from_v0_5_7(
 	let client = kube::Client::try_from(kubernetes_config)
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
-	for (deployment_id, workspace_id, workspace_name, repository, image_tag) in
-		deployment_list
+	for (
+		deployment_id,
+		workspace_id,
+		workspace_name,
+		repository,
+		image_tag,
+		region,
+	) in deployment_list
 	{
 		let namespace = workspace_id.as_str();
 
+		let labels = [
+			("deploymentId".to_string(), deployment_id.to_string()),
+			("workspaceId".to_string(), workspace_id.to_string()),
+			("region".to_string(), region.to_string()),
+		]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
 		let kubernetes_deployment = Deployment {
 			spec: Some(DeploymentSpec {
+				selector: LabelSelector {
+					match_labels: Some(labels.clone()),
+					..LabelSelector::default()
+				},
 				template: PodTemplateSpec {
+					metadata: Some(ObjectMeta {
+						labels: Some(labels),
+						..ObjectMeta::default()
+					}),
 					spec: Some(PodSpec {
 						containers: vec![Container {
 							image: Some(format!(
@@ -858,11 +872,10 @@ async fn migrate_from_v0_5_7(
 							..Container::default()
 						}],
 						image_pull_secrets: Some(vec![LocalObjectReference {
-							name: Some("adminregcred".to_string()),
+							name: Some("patr-regcred".to_string()),
 						}]),
 						..PodSpec::default()
 					}),
-					..PodTemplateSpec::default()
 				},
 				..DeploymentSpec::default()
 			}),
