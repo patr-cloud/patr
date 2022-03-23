@@ -1,15 +1,20 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{models::workspace::get_github_info::*, utils::Uuid};
-use eve_rs::{App as EveApp, AsError, NextHandler, Context};
+use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use octocrab::{models::repos::GitUser, Octocrab};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::permissions,
 	pin_fn,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -59,7 +64,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::CustomFunction(pin_fn!(get_github_repo)),
+			EveMiddleware::CustomFunction(pin_fn!(list_github_repos)),
 		],
 	);
 	app.post(
@@ -130,7 +135,7 @@ pub fn create_sub_app(
 	app
 }
 
-async fn get_github_repo(
+async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -140,27 +145,21 @@ async fn get_github_repo(
 	let GetGithubRepoRequest {
 		access_token,
 		owner_name,
-		repo_name,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
-	// let octocrab = Octocrab::builder().build()?;
+	let client = reqwest::Client::new();
 
-	let repo = octocrab.repos(&owner_name, &repo_name).get().await?;
+	let response = client
+		.get(format!("https://api.github.com/users/{}/repos", owner_name))
+		.header("AUTHORIZATION", format!("token {}", access_token))
+		.send()
+		.await?;
 
-	let html_url = match repo.html_url {
-		Some(url) => url.to_string(),
-		None => String::from("_"),
-	};
-
-	context.success(GetGithubRepoResponse {
-		id: repo.id.to_string(),
-		name: repo.name,
-		html_url,
-	});
+	// TODO - send response.body as a response
+	println!("{:#?}", response);
 
 	Ok(context)
 }
@@ -198,32 +197,32 @@ async fn configure_github_build_steps_static_site(
 				"created: build.yaml",
 				format!(
 					r#"
-				name: Github action for your static site
+name: Github action for your static site
 
-				on:
-			      push:
-				    branch: [main]
-				
-				jobs:
-				  build:
+on:
+    push:
+    branch: [main]
 
-				  	runs-on: ubuntu-latest
+jobs:
+    build:
 
-					strategy:
-					  matrix: 
-					    node-version: {node_version}
-					
-				steps:
-				- uses: actions/checkout@v2
-				- name: using node ${{matrix.node-version}}
-			      uses: actions/setup-node@v2
-				  with: 
-				  	node-version: ${{matrix.node-version}}
-					cache: 'npm'
-				- run: npm install
-				- run: {build_command}
-				- run: npm run test --if-present
-			"#
+    runs-on: ubuntu-latest
+
+    strategy:
+        matrix: 
+        node-version: {node_version}
+	
+steps:
+- uses: actions/checkout@v2
+- name: using node ${{matrix.node-version}}
+    uses: actions/setup-node@v2
+    with: 
+    node-version: ${{matrix.node-version}}
+    cache: 'npm'
+- run: npm install
+- run: {build_command}
+- run: npm run test --if-present
+"#
 				),
 			)
 			.branch("main")
@@ -245,25 +244,25 @@ async fn configure_github_build_steps_static_site(
 				"created: build.yaml",
 				format!(
 					r#"
-				name: Github action for your static site
+name: Github action for your static site
 
-				on:
-			      push:
-				    branch: [main]
-				
-				jobs:
-				  build:
-				    runs-on: ubuntu-latest
-				    steps:
-				    - uses: actions/checkout@master
-				    - name: Archive Release
-					    uses: {owner_name}/{repo_name}@master
-					    with:
-					    type: 'zip'
-					    filename: 'release.zip'
-				    - name: push to patr
-				      run: echo TODO
-			"#
+on:
+    push:
+    branch: [main]
+
+jobs:
+    build:
+    runs-on: ubuntu-latest
+    steps:
+	- uses: actions/checkout@master
+	- name: Archive Release
+        uses: {owner_name}/{repo_name}@master
+        with:
+        type: 'zip'
+        filename: 'release.zip'
+	- name: push to patr
+        run: echo TODO
+"#
 				),
 			)
 			.branch("main")
@@ -286,7 +285,6 @@ async fn configure_github_build_steps_deployment(
 	context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	// create a request_id
 	let request_id = Uuid::new_v4();
 	log::trace!(
 		"request_id: {} - requested config build steps using github actions",
@@ -316,37 +314,37 @@ async fn configure_github_build_steps_deployment(
 				"created: build.yaml",
 				format!(
 					r#"
-					name: Github action for your deployment
-	
-					on:
-					  push:
-						branch: [main]
-					
-					jobs:
-					  build:
-	
-						runs-on: ubuntu-latest
-	
-						strategy:
-						  matrix: 
-							node-version: {node_version}
-						
-					steps:
-				    - uses: actions/checkout@v2
-					- name: using node ${{matrix.node-version}}
-					  uses: actions/setup-node@v2
-					  with: 
-						node-version: ${{matrix.node-version}}
-						cache: 'npm'
-					- run: npm install
-					- run: {build_command}
-					- run: npm run test --if-present
+name: Github action for your deployment
 
-					- name: build docker image from Dockerfile
-					  run: |
-					    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-						echo TODO
-				"#
+on:
+    push:
+    branch: [main]
+
+jobs:
+    build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+        matrix: 
+        node-version: {node_version}
+	
+steps:
+- uses: actions/checkout@v2
+- name: using node ${{matrix.node-version}}
+    uses: actions/setup-node@v2
+    with: 
+    node-version: ${{matrix.node-version}}
+    cache: 'npm'
+- run: npm install
+- run: {build_command}
+- run: npm run test --if-present
+
+- name: build docker image from Dockerfile
+    run: |
+    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
+    echo TODO
+"#
 				),
 			)
 			.branch("main")
