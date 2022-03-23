@@ -499,7 +499,7 @@ pub async fn get_credit_balance(
 	client
 		.get(format!("{}/promotional_credits", config.chargebee.url))
 		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[("customer_id[is]", (workspace_id.as_str()))])
+		.query(&[("customer_id[is]", workspace_id.as_str())])
 		.send()
 		.await?
 		.json::<PromotionalCreditList>()
@@ -508,8 +508,8 @@ pub async fn get_credit_balance(
 }
 
 pub async fn get_card_details(
-	config: &Settings,
 	workspace_id: &Uuid,
+	config: &Settings,
 ) -> Result<PaymentSourceList, Error> {
 	let client = Client::new();
 
@@ -519,7 +519,7 @@ pub async fn get_card_details(
 		.get(format!("{}/payment_sources", config.chargebee.url))
 		.basic_auth(&config.chargebee.api_key, password)
 		.query(&[
-			("customer_id[is]", (workspace_id.as_str())),
+			("customer_id[is]", workspace_id.as_str()),
 			("type[is]", "card"),
 		])
 		.send()
@@ -527,6 +527,34 @@ pub async fn get_card_details(
 		.json::<PaymentSourceList>()
 		.await
 		.map_err(|e| e.into())
+}
+
+pub async fn add_card_details(
+	workspace_id: &Uuid,
+	token_id: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.get(format!("{}/create_using_token", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("customer_id", workspace_id.as_str()),
+			("token_id", token_id),
+		])
+		.send()
+		.await?
+		.status();
+
+	if !status.is_success() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+	Ok(())
 }
 
 pub async fn get_subscriptions(
@@ -540,7 +568,7 @@ pub async fn get_subscriptions(
 	client
 		.get(format!("{}/subscriptions", config.chargebee.url))
 		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[("customer_id[is]", (workspace_id.as_str()))])
+		.query(&[("customer_id[is]", workspace_id.as_str())])
 		.send()
 		.await?
 		.json::<SubscriptionList>()
