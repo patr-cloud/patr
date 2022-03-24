@@ -538,15 +538,18 @@ pub async fn add_card_details(
 
 	let password: Option<String> = None;
 
+	// https://vicara-test.chargebee.com/api/v2/hosted_pages/manage_payment_sources
+
 	client
-		.get(format!(
-			"{}/hosted_pages/update_payment_method",
+		.post(format!(
+			"{}/hosted_pages/manage_payment_sources",
 			config.chargebee.url
 		))
 		.basic_auth(&config.chargebee.api_key, password)
 		.query(&[
 			("customer[id]", workspace_id.as_str()),
 			("card[gateway_account_id]", &config.chargebee.gateway_id),
+			("redirect_url", &config.chargebee.redirect_url),
 		])
 		.send()
 		.await?

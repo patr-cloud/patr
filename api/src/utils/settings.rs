@@ -201,6 +201,7 @@ pub struct ChargebeeSettings {
 	pub credit_amount: String,
 	pub description: String,
 	pub gateway_id: String,
+	pub redirect_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
