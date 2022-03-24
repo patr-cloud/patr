@@ -13,6 +13,7 @@ use crate::{
 			PaymentSourceList,
 			PromotionalCreditList,
 			SubscriptionList,
+			UpdatePaymentMethod,
 		},
 	},
 	service,
@@ -531,30 +532,27 @@ pub async fn get_card_details(
 
 pub async fn add_card_details(
 	workspace_id: &Uuid,
-	token_id: &str,
 	config: &Settings,
-) -> Result<(), Error> {
+) -> Result<UpdatePaymentMethod, Error> {
 	let client = Client::new();
 
 	let password: Option<String> = None;
 
-	let status = client
-		.get(format!("{}/create_using_token", config.chargebee.url))
+	client
+		.get(format!(
+			"{}/hosted_pages/update_payment_method",
+			config.chargebee.url
+		))
 		.basic_auth(&config.chargebee.api_key, password)
 		.query(&[
-			("customer_id", workspace_id.as_str()),
-			("token_id", token_id),
+			("customer[id]", workspace_id.as_str()),
+			("card[gateway_account_id]", &config.chargebee.gateway_id),
 		])
 		.send()
 		.await?
-		.status();
-
-	if !status.is_success() {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-	}
-	Ok(())
+		.json::<UpdatePaymentMethod>()
+		.await
+		.map_err(|e| e.into())
 }
 
 pub async fn get_subscriptions(

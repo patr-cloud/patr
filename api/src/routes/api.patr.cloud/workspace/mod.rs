@@ -1,8 +1,7 @@
 use api_models::{
 	models::workspace::{
 		billing::{
-			AddCardDetailsRequest,
-			AddCardDetailsResponse,
+			AddPaymentSourceResponse,
 			Card,
 			GetCardDetailsResponse,
 			GetCreditBalanceResponse,
@@ -14,6 +13,7 @@ use api_models::{
 			UpdateBillingInfoRequest,
 			UpdateBillingInfoResponse,
 		},
+		infrastructure::deployment::HostedPage,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
@@ -1001,19 +1001,29 @@ async fn add_card_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let AddCardDetailsRequest { token_id, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let config = context.get_state().config.clone();
 
-	service::add_card_details(&workspace_id, &token_id, &config).await?;
+	let hosted_page = service::add_card_details(&workspace_id, &config)
+		.await?
+		.hosted_page;
 
-	context.success(AddCardDetailsResponse {});
+	context.success(AddPaymentSourceResponse {
+		hosted_page: HostedPage {
+			id: hosted_page.id,
+			r#type: hosted_page.r#type,
+			url: hosted_page.url,
+			state: hosted_page.state,
+			embed: hosted_page.embed,
+			created_at: hosted_page.created_at,
+			expires_at: hosted_page.expires_at,
+			object: hosted_page.object,
+			updated_at: hosted_page.updated_at,
+			resource_version: hosted_page.resource_version,
+		},
+	});
 
 	Ok(context)
 }

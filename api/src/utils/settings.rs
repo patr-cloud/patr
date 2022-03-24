@@ -209,4 +209,5 @@ pub struct ChargebeeSettings {
 	pub url: String,
 	pub credit_amount: String,
 	pub description: String,
+	pub gateway_id: String,
 }

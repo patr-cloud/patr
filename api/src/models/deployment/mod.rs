@@ -352,3 +352,41 @@ pub struct SubscriptionItem {
 	pub amount: u64,
 	pub object: String,
 }
+
+/*
+{
+	"hosted_page": {
+		"id": "5own0wCWwqY7HEaQcdhCES4sgEq6Ow3h9",
+		"type": "manage_payment_sources",
+		"url": "https://vicara-test.chargebee.com/pages/v3/5own0wCWwqY7HEaQcdhCES4sgEq6Ow3h9/",
+		"state": "created",
+		"embed": false,
+		"created_at": 1648127941,
+		"expires_at": 1648559941,
+		"object": "hosted_page",
+		"updated_at": 1648127941,
+		"resource_version": 1648127941174
+	}
+}
+*/
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdatePaymentMethod {
+	pub hosted_page: HostedPage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct HostedPage {
+	pub id: String,
+	pub r#type: String,
+	pub url: String,
+	pub state: String,
+	pub embed: bool,
+	pub created_at: u64,
+	pub expires_at: u64,
+	pub object: String,
+	pub updated_at: u64,
+	pub resource_version: u64,
+}
