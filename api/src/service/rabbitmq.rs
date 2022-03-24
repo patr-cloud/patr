@@ -14,10 +14,13 @@ use lapin::{options::BasicPublishOptions, BasicProperties};
 
 use crate::{
 	db,
-	models::rabbitmq::{
-		DeploymentRequestData,
-		RequestMessage,
-		StaticSiteRequestData,
+	models::{
+		rabbitmq::{
+			DeploymentRequestData,
+			RequestMessage,
+			StaticSiteRequestData,
+		},
+		DeploymentMetadata,
 	},
 	service,
 	utils::{settings::Settings, Error},
@@ -81,6 +84,9 @@ pub async fn queue_start_deployment(
 	deployment_id: &Uuid,
 	deployment: &Deployment,
 	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -110,6 +116,9 @@ pub async fn queue_start_deployment(
 			image_name,
 			digest,
 			running_details: deployment_running_details.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -122,6 +131,9 @@ pub async fn queue_stop_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -138,6 +150,9 @@ pub async fn queue_stop_deployment(
 		&RequestMessage::Deployment(DeploymentRequestData::Stop {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -151,6 +166,9 @@ pub async fn queue_delete_deployment(
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: &str,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -177,6 +195,9 @@ pub async fn queue_delete_deployment(
 		&RequestMessage::Deployment(DeploymentRequestData::Delete {
 			workspace_id: workspace_id.clone(),
 			deployment_id: deployment_id.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -195,6 +216,10 @@ pub async fn queue_update_deployment(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	metadata: &DeploymentMetadata,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -226,6 +251,10 @@ pub async fn queue_update_deployment(
 			image_name,
 			digest,
 			running_details: deployment_running_details.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
+			metadata: metadata.clone(),
 			request_id: request_id.clone(),
 		}),
 		config,

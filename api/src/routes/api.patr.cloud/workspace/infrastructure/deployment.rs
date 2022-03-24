@@ -37,7 +37,6 @@ use crate::{
 	error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
-		deployment::DeploymentAuditLog,
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
@@ -576,18 +575,6 @@ async fn create_deployment(
 		request_id
 	);
 
-	let deployment_audit_log = DeploymentAuditLog {
-		user_id: Some(user_id.clone()),
-		ip_address: ip_address.clone(),
-		login_id: Some(login_id.clone()),
-		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
-			context.get_database_connection(),
-		)
-		.await?,
-		patr_action: false,
-		time_now: Utc::now(),
-	};
-
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -810,20 +797,6 @@ async fn start_deployment(
 	)
 	.unwrap();
 
-	let workspace_audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
-
-	let deployment_audit_log = DeploymentAuditLog {
-		user_id: Some(user_id.clone()),
-		ip_address,
-		login_id: Some(login_id.clone()),
-		workspace_audit_log_id,
-		patr_action: false,
-		time_now: Utc::now(),
-	};
-
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
 	log::trace!(
@@ -846,6 +819,9 @@ async fn start_deployment(
 		&deployment_id,
 		&deployment,
 		&deployment_running_details,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
@@ -888,6 +864,12 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	let config = context.get_state().config.clone();
 	log::trace!("request_id: {} - Getting deployment id from db", request_id);
 	let deployment = db::get_deployment_by_id(
@@ -906,6 +888,9 @@ async fn stop_deployment(
 		context.get_database_connection(),
 		&deployment.workspace_id,
 		&deployment_id,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
@@ -948,6 +933,7 @@ async fn get_logs(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+
 	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Getting logs", request_id);
@@ -997,6 +983,12 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	log::trace!(
 		"request_id: {} - Deleting the deployment with id: {}",
 		request_id,
@@ -1018,6 +1010,9 @@ async fn delete_deployment(
 		&deployment.workspace_id,
 		&deployment_id,
 		&deployment.name,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
@@ -1111,25 +1106,19 @@ async fn update_deployment(
 
 	let config = context.get_state().config.clone();
 
-	let deployment_audit_log = DeploymentAuditLog {
-		user_id: Some(user_id.clone()),
-		ip_address,
-		login_id: Some(login_id.clone()),
-		workspace_audit_log_id: db::generate_new_workspace_audit_log_id(
-			context.get_database_connection(),
-		)
-		.await?,
-		patr_action: true,
-		time_now: Utc::now(),
+	let metadata = DeploymentMetadata::Update {
+		name: name.map(|n| n.to_string()),
+		region: region.clone(),
+		machine_type: machine_type.clone(),
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		ports: ports.clone(),
+		environment_variables: environment_variables.clone(),
 	};
-
-	let workspace_id = Uuid::parse_str(
-		context.get_param(request_keys::WORKSPACE_ID).unwrap(),
-	)?;
 
 	service::update_deployment(
 		context.get_database_connection(),
-		&workspace_id,
 		&deployment_id,
 		name,
 		region.as_ref(),
@@ -1140,7 +1129,6 @@ async fn update_deployment(
 		ports.as_ref(),
 		environment_variables.as_ref(),
 		&request_id,
-		&deployment_audit_log,
 	)
 	.await?;
 
@@ -1171,6 +1159,10 @@ async fn update_deployment(
 				&deployment.region,
 				&deployment.machine_type,
 				&deployment_running_details,
+				&user_id,
+				&login_id,
+				&ip_address,
+				&metadata,
 				&config,
 				&request_id,
 			)

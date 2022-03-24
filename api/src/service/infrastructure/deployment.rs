@@ -16,7 +16,7 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
-	models::{deployment::DeploymentAuditLog, rbac},
+	models::rbac,
 	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -219,7 +219,6 @@ pub async fn get_deployment_container_logs(
 
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	deployment_id: &Uuid,
 	name: Option<&str>,
 	region: Option<&Uuid>,
@@ -230,7 +229,6 @@ pub async fn update_deployment(
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
 	request_id: &Uuid,
-	deployment_audit_log: &DeploymentAuditLog,
 ) -> Result<(), Error> {
 	log::trace!(
 		"request_id: {} - Updating deployment with id: {}",

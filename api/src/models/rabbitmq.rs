@@ -7,6 +7,8 @@ use api_models::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::DeploymentMetadata;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
@@ -18,6 +20,7 @@ pub enum RequestMessage {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
 pub enum DeploymentRequestData {
 	Create {
 		workspace_id: Uuid,
@@ -41,11 +44,17 @@ pub enum DeploymentRequestData {
 		image_name: String,
 		digest: Option<String>,
 		running_details: DeploymentRunningDetails,
+		user_id: Uuid,
+		login_id: Uuid,
+		ip_address: String,
 		request_id: Uuid,
 	},
 	Stop {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
+		user_id: Uuid,
+		login_id: Uuid,
+		ip_address: String,
 		request_id: Uuid,
 	},
 	Update {
@@ -54,11 +63,18 @@ pub enum DeploymentRequestData {
 		image_name: String,
 		digest: Option<String>,
 		running_details: DeploymentRunningDetails,
+		user_id: Uuid,
+		login_id: Uuid,
+		ip_address: String,
+		metadata: DeploymentMetadata,
 		request_id: Uuid,
 	},
 	Delete {
 		workspace_id: Uuid,
 		deployment_id: Uuid,
+		user_id: Uuid,
+		login_id: Uuid,
+		ip_address: String,
 		request_id: Uuid,
 	},
 }

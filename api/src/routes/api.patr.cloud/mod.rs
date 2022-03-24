@@ -44,7 +44,7 @@ pub fn get_request_ip_address(context: &EveContext) -> String {
 	let x_real_ip = context.get_header("X-Real-IP");
 	let x_forwarded_for =
 		context.get_header("X-Forwarded-For").and_then(|value| {
-			value.split(",").next().map(|ip| ip.trim().to_string())
+			value.split(',').next().map(|ip| ip.trim().to_string())
 		});
 	let ip = context.get_ip().to_string();
 
