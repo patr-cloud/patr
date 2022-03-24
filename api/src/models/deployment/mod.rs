@@ -283,8 +283,8 @@ pub struct PaymentSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Card {
-	pub first_name: String,
-	pub last_name: String,
+	pub first_name: Option<String>,
+	pub last_name: Option<String>,
 	pub iin: String,
 	pub last4: String,
 	pub funding_type: String,

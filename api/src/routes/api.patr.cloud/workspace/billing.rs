@@ -448,8 +448,8 @@ async fn get_card_details(
 				.gateway_account_id,
 			created_at: payment_source.payment_source.created_at,
 			card: payment_source.payment_source.card.map(|card| Card {
-				first_name: card.first_name,
-				last_name: card.last_name,
+				first_name: card.first_name.unwrap_or_else(|| "".to_string()),
+				last_name: card.last_name.unwrap_or_else(|| "".to_string()),
 				iin: card.iin,
 				last4: card.last4,
 				funding_type: card.funding_type,
