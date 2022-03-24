@@ -1,10 +1,7 @@
 use std::io::Cursor;
 
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
-		static_site::{StaticSite, StaticSiteDetails},
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
 use async_zip::read::seek::ZipFileReader;
@@ -18,12 +15,12 @@ use crate::{
 	db,
 	error,
 	models::rbac,
-	service::infrastructure::kubernetes,
+	service::{self},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
-pub async fn create_static_site_deployment_in_workspace(
+pub async fn create_static_site_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	name: &str,
@@ -31,10 +28,10 @@ pub async fn create_static_site_deployment_in_workspace(
 ) -> Result<Uuid, Error> {
 	// validate static site name
 	log::trace!("request_id: {} - validating static site name", request_id);
-	if !validator::is_deployment_name_valid(name) {
+	if !validator::is_static_site_name_valid(name) {
 		Error::as_result()
 			.status(200)
-			.body(error!(INVALID_DEPLOYMENT_NAME).to_string())?;
+			.body(error!(INVALID_STATIC_SITE_NAME).to_string())?;
 	}
 
 	log::trace!(
@@ -81,81 +78,35 @@ pub async fn create_static_site_deployment_in_workspace(
 	Ok(static_site_id)
 }
 
-pub async fn start_static_site_deployment(
+pub async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	static_site_id: &Uuid,
+	name: Option<&str>,
+	file: Option<String>,
 	config: &Settings,
-	file: Option<&str>,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!("request_id: {} - getting static site details", request_id);
 	let static_site = db::get_static_site_by_id(connection, static_site_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	log::trace!(
-		"Deploying the static site with id: {} and request_id: {}",
-		static_site_id,
-		request_id
-	);
+	if let Some(name) = name {
+		db::update_static_site_name(connection, static_site_id, name).await?;
+	}
 
 	if let Some(file) = file {
-		log::trace!(
-			"request_id: {} - Uploading files to s3 server",
-			request_id
-		);
-		upload_static_site_files_to_s3(
-			connection,
-			file,
+		service::queue_upload_static_site(
+			&static_site.workspace_id,
 			static_site_id,
+			file,
 			config,
 			request_id,
 		)
 		.await?;
 	}
 
-	log::trace!("request_id: {} - starting the static site", request_id);
-
-	let result = kubernetes::update_kubernetes_static_site(
-		&static_site.workspace_id,
-		&StaticSite {
-			id: static_site.id,
-			name: static_site.name,
-			status: DeploymentStatus::Deploying,
-		},
-		&StaticSiteDetails {},
-		config,
-		request_id,
-	)
-	.await;
-
-	match result {
-		Ok(()) => {
-			log::trace!(
-				"request_id: {} - updating database status",
-				request_id
-			);
-			db::update_static_site_status(
-				connection,
-				static_site_id,
-				&DeploymentStatus::Running,
-			)
-			.await?;
-			log::trace!("request_id: {} - updated database status", request_id);
-		}
-		Err(e) => {
-			db::update_static_site_status(
-				connection,
-				static_site_id,
-				&DeploymentStatus::Errored,
-			)
-			.await?;
-			log::error!(
-				"Error occured during deployment of static site: {}",
-				e.get_error()
-			);
-		}
-	}
 	Ok(())
 }
 
@@ -171,7 +122,7 @@ pub async fn stop_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_kubernetes_static_site(
+	service::queue_stop_static_site(
 		&static_site.workspace_id,
 		static_site_id,
 		config,
@@ -205,7 +156,7 @@ pub async fn delete_static_site(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	kubernetes::delete_kubernetes_static_site(
+	service::queue_delete_static_site(
 		&static_site.workspace_id,
 		static_site_id,
 		config,
@@ -229,6 +180,8 @@ pub async fn delete_static_site(
 
 	Ok(())
 }
+
+// -----------------------------------------------------------------------
 
 pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -325,40 +278,6 @@ pub async fn upload_static_site_files_to_s3(
 			.await?;
 	}
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
-
-	Ok(())
-}
-
-pub async fn update_static_site(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	name: Option<&str>,
-	file: Option<&str>,
-	static_site_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!("request_id: {} - getting static site details", request_id);
-	db::get_static_site_by_id(connection, static_site_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	if let Some(name) = name {
-		db::update_static_site_name(connection, static_site_id, name).await?;
-	}
-
-	if let Some(file) = file {
-		upload_static_site_files_to_s3(
-			connection,
-			file,
-			static_site_id,
-			config,
-			request_id,
-		)
-		.await?;
-	}
-
-	// TODO Do something about entry points
 
 	Ok(())
 }

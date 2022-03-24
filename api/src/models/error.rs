@@ -47,6 +47,7 @@ pub mod id {
 		"cannotDeleteBackupPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
+	pub const INVALID_STATIC_SITE_NAME: &str = "invalidStaticSiteName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
@@ -155,6 +156,8 @@ pub mod message {
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
+	pub const INVALID_STATIC_SITE_NAME: &str =
+		"Static site can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain has nameservers outside of Patr";

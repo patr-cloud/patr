@@ -78,7 +78,9 @@ pub async fn initialize_workspaces_pre(
 			id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY,
 			date TIMESTAMPTZ NOT NULL,
 			ip_address TEXT NOT NULL,
-			workspace_id UUID NOT NULL,
+			workspace_id UUID NOT NULL
+				CONSTRAINT workspace_audit_log_fk_workspace_id
+					REFERENCES workspace(id),
 			user_id UUID,
 			login_id UUID,
 			resource_id UUID NOT NULL,
@@ -130,16 +132,6 @@ pub async fn initialize_workspaces_post(
 	query!(
 		r#"
 		ALTER TABLE workspace_audit_log
-		ADD CONSTRAINT workspace_audit_log_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_user_id
 		FOREIGN KEY(user_id) REFERENCES "user"(id);
 		"#
@@ -151,7 +143,7 @@ pub async fn initialize_workspaces_post(
 		r#"
 		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_login_id
-		FOREIGN KEY(login_id) REFERENCES user_login(login_id);
+		FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -278,8 +270,8 @@ pub async fn update_workspace_name(
 
 pub async fn create_workspace_audit_log(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
 	id: &Uuid,
+	workspace_id: &Uuid,
 	ip_address: &str,
 	date: DateTime<Utc>,
 	user_id: Option<&Uuid>,
@@ -343,7 +335,7 @@ pub async fn generate_new_workspace_audit_log_id(
 	}
 }
 
-pub async fn get_workspace_audit_log(
+pub async fn get_workspace_audit_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 ) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {
@@ -378,7 +370,7 @@ pub async fn get_workspace_audit_log(
 	.await
 }
 
-pub async fn get_resource_audit_log(
+pub async fn get_resource_audit_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	resource_id: &Uuid,
 ) -> Result<Vec<WorkspaceAuditLog>, sqlx::Error> {

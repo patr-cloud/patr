@@ -9,7 +9,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
-	let mut settings = Config::new();
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
@@ -17,32 +16,23 @@ pub fn parse_config() -> Settings {
 	};
 
 	match env.as_ref() {
-		"prod" | "production" => {
-			settings
-				.merge(File::with_name("config/prod"))
-				.expect("unable to find prod config");
-			settings
-				.set("environment", "production")
-				.expect("unable to set running environment");
-		}
-		"dev" | "development" => {
-			settings
-				.merge(File::with_name("config/dev"))
-				.expect("unable to find dev config");
-			settings
-				.set("environment", "development")
-				.expect("unable to set running environment");
-		}
+		"prod" | "production" => Config::builder()
+			.add_source(File::with_name("config/prod"))
+			.set_default("environment", "production")
+			.expect("unable to set environment to develop"),
+		"dev" | "development" => Config::builder()
+			.add_source(File::with_name("config/dev"))
+			.set_default("environment", "development")
+			.expect("unable to set environment to develop"),
 		_ => {
 			panic!("Unknown running environment found!");
 		}
 	}
-
-	settings
-		.merge(Environment::with_prefix("APP").separator("_"))
-		.expect("unable to merge with environment variables");
-
-	settings.try_into().expect("unable to parse settings")
+	.add_source(Environment::with_prefix("APP").separator("_"))
+	.build()
+	.expect("unable to merge with environment variables")
+	.try_deserialize()
+	.expect("unable to parse settings")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,6 +55,7 @@ pub struct Settings {
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
 	pub chargebee: ChargebeeSettings,
+	pub rabbit_mq: RabbitMqSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,4 +201,12 @@ pub struct ChargebeeSettings {
 	pub credit_amount: String,
 	pub description: String,
 	pub gateway_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RabbitMqSettings {
+	pub host: String,
+	pub port: u16,
+	pub queue: String,
 }

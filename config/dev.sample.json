@@ -79,11 +79,18 @@
 		"certIssuerDns": "letsencrypt-staging-dns",
 		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
 	},
+<<<<<<< HEAD
 	"chargebee": {
 		"apiKey": "key",
 		"url": "https://vicara-test.chargebee.com/api/v2",
 		"creditAmount": "69000",
 		"description": "Patr Test",
 		"gatewayId": "test"
+=======
+	"rabbitMq": {
+		"host": "localhost",
+		"port": 5672,
+		"queue": "infrastructure"
+>>>>>>> vicara-api/develop
 	}
 }
