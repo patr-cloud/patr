@@ -124,6 +124,7 @@ pub mod permissions {
 		pub const EDIT_ROLE: &str = "workspace::editRole";
 		pub const DELETE_ROLE: &str = "workspace::deleteRole";
 		pub const EDIT_INFO: &str = "workspace::editInfo";
+		pub const DELETE: &str = "workspace::delete";
 	}
 }
 
