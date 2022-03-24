@@ -746,6 +746,15 @@ async fn migrate_from_v0_5_7(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
+	rabbitmq(connection, config).await?;
+	audit_logs(connection).await?;
+	Ok(())
+}
+
+async fn rabbitmq(
+	connection: &mut sqlx::PgConnection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
 	let deployment_list = query!(
 		r#"
 		SELECT
@@ -783,11 +792,9 @@ async fn migrate_from_v0_5_7(
 		)
 	})
 	.collect::<Vec<_>>();
-
 	if deployment_list.is_empty() {
 		return Ok(());
 	}
-
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
@@ -894,5 +901,62 @@ async fn migrate_from_v0_5_7(
 			.await
 			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 	}
+	Ok(())
+}
+
+async fn audit_logs(
+	connection: &mut sqlx::PgConnection,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE TABLE workspace_audit_log (
+			id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY,
+			date TIMESTAMPTZ NOT NULL,
+			ip_address TEXT NOT NULL,
+			workspace_id UUID NOT NULL
+				CONSTRAINT workspace_audit_log_fk_workspace_id
+					REFERENCES workspace(id),
+			user_id UUID,
+			login_id UUID,
+			resource_id UUID NOT NULL,
+			action UUID NOT NULL,
+			request_id UUID NOT NULL,
+			metadata JSON NOT NULL,
+			patr_action BOOL NOT NULL,
+			success BOOL NOT NULL,
+			CONSTRAINT workspace_audit_log_chk_patr_action CHECK(
+				(
+					patr_action = true AND
+					user_id IS NULL AND
+					login_id IS NULL
+				) OR
+				(
+					patr_action = false AND
+					user_id IS NOT NULL AND
+					login_id IS NOT NULL
+				)
+			)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace_audit_log
+		ADD CONSTRAINT workspace_audit_log_fk_user_id
+			FOREIGN KEY(user_id) REFERENCES "user"(id),
+		ADD CONSTRAINT workspace_audit_log_fk_login_id
+			FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id),
+		ADD CONSTRAINT workspace_audit_log_fk_resource_id
+			FOREIGN KEY(resource_id) REFERENCES resource(id),
+		ADD CONSTRAINT workspace_audit_log_fk_action
+			FOREIGN KEY(action) REFERENCES permission(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
