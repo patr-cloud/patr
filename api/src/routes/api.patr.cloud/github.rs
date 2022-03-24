@@ -9,6 +9,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -74,7 +75,8 @@ pub fn create_sub_app(
 				permissions::workspace::github::action::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+						"ed413db9bc214a84a273874c487a3b23";
+					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -187,95 +189,25 @@ async fn configure_github_build_steps_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
-
+	// for now only going forward with node and vanilla
+	// will add other frameworks support
 	if framework == "node" {
-		octocrab
-			.repos(&owner_name, &repo_name)
-			.create_file(
-				".github/workflows/build.yaml",
-				"created: build.yaml",
-				format!(
-					r#"
-name: Github action for your static site
-
-on:
-    push:
-    branch: [main]
-
-jobs:
-    build:
-
-    runs-on: ubuntu-latest
-
-    strategy:
-        matrix: 
-        node-version: {node_version}
-	
-steps:
-- uses: actions/checkout@v2
-- name: using node ${{matrix.node-version}}
-    uses: actions/setup-node@v2
-    with: 
-    node-version: ${{matrix.node-version}}
-    cache: 'npm'
-- run: npm install
-- run: {build_command}
-- run: npm run test --if-present
-"#
-				),
-			)
-			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
+		service::github_actions_for_node_static_site(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			node_version,
+		)
+		.await?;
 	} else {
-		octocrab
-			.repos(&owner_name, &repo_name)
-			.create_file(
-				".github/workflows/build.yaml",
-				"created: build.yaml",
-				format!(
-					r#"
-name: Github action for your static site
-
-on:
-    push:
-    branch: [main]
-
-jobs:
-    build:
-    runs-on: ubuntu-latest
-    steps:
-	- uses: actions/checkout@master
-	- name: Archive Release
-        uses: {owner_name}/{repo_name}@master
-        with:
-        type: 'zip'
-        filename: 'release.zip'
-	- name: push to patr
-        run: echo TODO
-"#
-				),
-			)
-			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
+		service::github_actions_for_vanilla_static_site(
+			access_token,
+			owner_name,
+			repo_name,
+		)
+		.await?
 	}
 
 	Ok(context)
@@ -304,16 +236,28 @@ async fn configure_github_build_steps_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let octocrab = Octocrab::builder().personal_token(access_token).build()?;
+	let octocrab = Octocrab::builder()
+		.personal_token(access_token.clone())
+		.build()?;
+	let client = reqwest::Client::new();
+
+	let response = client
+		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
+		.header("AUTHORIZATION", format!("token {}", access_token))
+		.send()
+		.await?;
+
+	println!("{:#?}", response);
 
 	if framework == "node" {
-		octocrab
-			.repos(owner_name, repo_name)
-			.create_file(
-				".github/workflows/build.yaml",
-				"created: build.yaml",
-				format!(
-					r#"
+		if response.status() == 404 {
+			octocrab
+				.repos(owner_name, repo_name)
+				.create_file(
+					".github/workflows/build.yaml",
+					"created: build.yaml",
+					format!(
+						r#"
 name: Github action for your deployment
 
 on:
@@ -345,19 +289,72 @@ steps:
     docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
     echo TODO
 "#
-				),
-			)
-			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
+					),
+				)
+				.branch("main")
+				.commiter(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.author(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.send()
+				.await?;
+		} else if response.status() == 200 {
+			octocrab
+				.repos(owner_name, repo_name)
+				.create_file(
+					".github/workflows/build.yaml",
+					"updated: build.yaml",
+					format!(
+						r#"
+name: Github action for your deployment
+
+on:
+    push:
+    branch: [main]
+
+jobs:
+    build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+        matrix: 
+        node-version: {node_version}
+	
+steps:
+- uses: actions/checkout@v2
+- name: using node ${{matrix.node-version}}
+    uses: actions/setup-node@v2
+    with: 
+    node-version: ${{matrix.node-version}}
+    cache: 'npm'
+- run: npm install
+- run: {build_command}
+- run: npm run test --if-present
+
+- name: build docker image from Dockerfile
+    run: |
+    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
+    echo TODO
+"#
+					),
+				)
+				.branch("main")
+				.commiter(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.author(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.send()
+				.await?;
+		}
 	}
 
 	Ok(context)

@@ -7,6 +7,7 @@
 mod auth;
 mod docker_registry;
 mod domain;
+mod github_actions_config;
 mod infrastructure;
 mod metrics;
 mod notifier;
@@ -18,6 +19,7 @@ pub use self::{
 	auth::*,
 	docker_registry::*,
 	domain::*,
+	github_actions_config::*,
 	infrastructure::*,
 	metrics::*,
 	notifier::*,
