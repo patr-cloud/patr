@@ -597,16 +597,6 @@
       "nullable": []
     }
   },
-  "14a7ab7e3ef277bcf0425002b09e2be22ba09f72567bb0e498558e04a767dca0": {
-    "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL, user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "14af716f3befcb12cd9e3703395c6277742cdea22e93bfc319aebb490c0b7403": {
     "query": "CREATE TABLE managed_url( id UUID CONSTRAINT managed_url_pk PRIMARY KEY, sub_domain TEXT NOT NULL CONSTRAINT managed_url_chk_sub_domain_valid CHECK( sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])$' OR sub_domain = '@' OR sub_domain LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' ) ), domain_id UUID NOT NULL, path TEXT NOT NULL, url_type MANAGED_URL_TYPE NOT NULL, deployment_id UUID, port INTEGER CONSTRAINT managed_url_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), static_site_id UUID, url TEXT, workspace_id UUID NOT NULL, CONSTRAINT managed_url_uq_sub_domain_domain_id_path UNIQUE( sub_domain, domain_id, path ), CONSTRAINT managed_url_chk_values_null_or_not_null CHECK( ( url_type = 'proxy_to_deployment' AND deployment_id IS NOT NULL AND port IS NOT NULL AND static_site_id IS NULL AND url IS NULL ) OR ( url_type = 'proxy_to_static_site' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NOT NULL AND url IS NULL ) OR ( url_type = 'proxy_url' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) OR ( url_type = 'redirect' AND deployment_id IS NULL AND port IS NULL AND static_site_id IS NULL AND url IS NOT NULL ) ) );",
     "describe": {
@@ -1108,6 +1098,16 @@
         false,
         false
       ]
+    }
+  },
+  "1d05ab27fbc6052a09fe32569ad75b5041f02c31ea8e7fcb880c557da0db666f": {
+    "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL CONSTRAINT workspace_audit_log_fk_workspace_id REFERENCES workspace(id), user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "1d060e8f1c3d2ddbc982c7006b489a10007b4e6dd2eed4ff01c2200912301c2f": {
@@ -1918,16 +1918,6 @@
       "nullable": []
     }
   },
-  "38df57e229f5deca36338a4a517dceac9849a9f2b92331b72b6b64e81c1abbdc": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
     "describe": {
@@ -2563,6 +2553,16 @@
           "Text",
           "Int8"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "5f1d0325462a97c5165fdae1c672a40d3589e067a8785b7b2da2e1256010aae9": {
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -4590,16 +4590,6 @@
         "Left": [
           "Text"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "a204303545c61be300d1fc61e208f7c38e037a4f9103daf2f9cd31b3ad59fb8e": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(login_id) REFERENCES user_login(login_id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
