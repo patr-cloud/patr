@@ -55,7 +55,7 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.post(
-		"/:workspaceId/billing/update-billing-info",
+		"/update-billing-info",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -86,7 +86,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:workspaceId/billing/promotional-credits",
+		"/promotional-credits",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -117,7 +117,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:workspaceId/billing/card-details",
+		"/card-details",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -148,7 +148,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.post(
-		"/:workspaceId/billing/card-details",
+		"/card-details",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -179,7 +179,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.get(
-		"/:workspaceId/billing/subscriptions",
+		"/subscriptions",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,

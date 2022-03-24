@@ -291,9 +291,6 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
-			service::cancel_subscription(&deployment_id, config, &request_id)
-				.await?;
-
 			service::delete_kubernetes_deployment(
 				&workspace_id,
 				&deployment_id,

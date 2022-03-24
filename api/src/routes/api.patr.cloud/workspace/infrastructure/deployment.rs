@@ -1025,6 +1025,8 @@ async fn delete_deployment(
 	)
 	.await;
 
+	service::cancel_subscription(&deployment_id, &config, &request_id).await?;
+
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
 }
