@@ -10,6 +10,7 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
@@ -18,6 +19,7 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			EnvVar,
+			Event,
 			LocalObjectReference,
 			Pod,
 			PodSpec,
@@ -55,8 +57,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	models::deployment,
-	service::infrastructure::kubernetes,
+	models::deployment::{self, DeploymentBuildLog},
 	utils::{constants::request_keys, settings::Settings, Error},
 	Database,
 };
@@ -75,7 +76,7 @@ pub async fn update_kubernetes_deployment(
 	// the namespace is workspace id
 	let namespace = workspace_id.as_str();
 
-	if !kubernetes::secret_exists(
+	if !super::secret_exists(
 		"tls-domain-wildcard-patr-cloud",
 		kubernetes_client.clone(),
 		namespace,
@@ -542,6 +543,99 @@ pub async fn get_container_logs(
 
 	log::trace!("request_id: {} - logs retreived successfully!", request_id);
 	Ok(deployment_logs)
+}
+
+pub async fn get_deployment_build_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<Vec<DeploymentBuildLog>, Error> {
+	log::trace!(
+		"request_id: {} - Checking if deployment exists or not",
+		request_id
+	);
+	let _ = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(404)
+		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	// TODO: interact with prometheus to get the logs
+
+	let kubernetes_client = super::get_kubernetes_config(config).await?;
+
+	// TODO: change log to stream_log when eve gets websockets
+	// TODO: change customise LogParams for different types of logs
+	// TODO: this is a temporary log retrieval method, use prometheus to get the
+	// logs
+	log::trace!(
+		"request_id: {} - Getting the events from kubernetes",
+		request_id
+	);
+	let pod_api = Api::<Pod>::namespaced(
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	);
+
+	let event_api =
+		Api::<Event>::namespaced(kubernetes_client, workspace_id.as_str());
+
+	let pod_names = pod_api
+		.list(&ListParams {
+			label_selector: Some(format!(
+				"{}={}",
+				request_keys::DEPLOYMENT_ID,
+				deployment_id
+			)),
+			..ListParams::default()
+		})
+		.await?
+		.items
+		.into_iter()
+		.map(|pod| {
+			if let Some(pod_name) = pod.metadata.name {
+				pod_name
+			} else {
+				"deployment-0".to_string()
+			}
+		})
+		.enumerate();
+
+	let mut deployment_build_logs = Vec::new();
+
+	for (pod_number, pod_name) in pod_names {
+		let list_params = ListParams::default()
+			.fields(&format!("involvedObject.name={}", pod_name));
+		let pod_events = event_api.list(&list_params).await?;
+
+		if pod_events.items.is_empty() {
+			deployment_build_logs.push(DeploymentBuildLog {
+				pod: format!("pod-{}", pod_number + 1),
+				logs: vec!["No logs found".to_string()],
+			});
+		} else {
+			let logs = pod_events
+				.into_iter()
+				.map(|event| {
+					if let (Some(message), Some(timestamp)) =
+						(event.message, event.metadata.creation_timestamp)
+					{
+						format!("{} - {}", timestamp.0, message)
+					} else {
+						format!("{} - failed to get the build log", Utc::now())
+					}
+				})
+				.collect::<Vec<String>>();
+
+			deployment_build_logs.push(DeploymentBuildLog {
+				pod: format!("pod-{}", pod_number + 1),
+				logs,
+			});
+		}
+	}
+
+	log::trace!("request_id: {} - logs retreived successfully!", request_id);
+	Ok(deployment_build_logs)
 }
 
 // TODO: add the logic of errored deployment

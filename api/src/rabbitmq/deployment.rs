@@ -8,11 +8,16 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use chrono::Utc;
 use tokio::time;
 
 use crate::{
 	db,
-	models::rabbitmq::DeploymentRequestData,
+	models::{
+		rabbitmq::DeploymentRequestData,
+		rbac::{self, permissions},
+		DeploymentMetadata,
+	},
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
@@ -39,6 +44,30 @@ pub(super) async fn process_request(
 			)
 			.await?;
 
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				"0.0.0.0",
+				Utc::now(),
+				None,
+				None,
+				&deployment.id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(DeploymentMetadata::Start {})?,
+				true,
+				true,
+			)
+			.await?;
+
 			update_deployment_and_db_status(
 				connection,
 				&workspace_id,
@@ -59,6 +88,30 @@ pub(super) async fn process_request(
 			running_details,
 			request_id,
 		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				"0.0.0.0",
+				Utc::now(),
+				None,
+				None,
+				&deployment.id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(DeploymentMetadata::Start {})?,
+				true,
+				true,
+			)
+			.await?;
+
 			update_deployment_and_db_status(
 				connection,
 				&workspace_id,
@@ -77,8 +130,35 @@ pub(super) async fn process_request(
 			image_name,
 			digest,
 			running_details,
+			user_id,
+			login_id,
+			ip_address,
 			request_id,
 		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now(),
+				Some(&user_id),
+				Some(&login_id),
+				&deployment.id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(DeploymentMetadata::Start {})?,
+				false,
+				true,
+			)
+			.await?;
+
 			update_deployment_and_db_status(
 				connection,
 				&workspace_id,
@@ -94,8 +174,35 @@ pub(super) async fn process_request(
 		DeploymentRequestData::Stop {
 			workspace_id,
 			deployment_id,
+			user_id,
+			login_id,
+			ip_address,
 			request_id,
 		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now(),
+				Some(&user_id),
+				Some(&login_id),
+				&deployment_id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(DeploymentMetadata::Stop {})?,
+				false,
+				true,
+			)
+			.await?;
+
 			service::delete_kubernetes_deployment(
 				&workspace_id,
 				&deployment_id,
@@ -110,8 +217,36 @@ pub(super) async fn process_request(
 			image_name,
 			digest,
 			running_details,
+			user_id,
+			login_id,
+			ip_address,
+			metadata,
 			request_id,
 		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now(),
+				Some(&user_id),
+				Some(&login_id),
+				&deployment.id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(metadata)?,
+				false,
+				true,
+			)
+			.await?;
+
 			update_deployment_and_db_status(
 				connection,
 				&workspace_id,
@@ -127,8 +262,35 @@ pub(super) async fn process_request(
 		DeploymentRequestData::Delete {
 			workspace_id,
 			deployment_id,
+			user_id,
+			login_id,
+			ip_address,
 			request_id,
 		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now(),
+				Some(&user_id),
+				Some(&login_id),
+				&deployment_id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(DeploymentMetadata::Delete {  })?,
+				false,
+				true,
+			)
+			.await?;
+
 			service::delete_kubernetes_deployment(
 				&workspace_id,
 				&deployment_id,

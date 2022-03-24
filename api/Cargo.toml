@@ -73,11 +73,14 @@ serde_qs = "0.9.1"
 sha2 = "0.10.0"
 shiplift = "0.7"
 sqlx = { version = "0.5", features = [
+  "bigdecimal",
+  "chrono",
+  "ipnetwork",
+  "json",
+  "offline",
   "postgres",
   "runtime-tokio-rustls",
-  "offline",
-  "ipnetwork",
-  "bigdecimal",
+  "time",
   "uuid",
 ] }
 tokio = { version = "1", features = ["full"] }
