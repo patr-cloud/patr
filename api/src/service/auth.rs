@@ -919,6 +919,14 @@ pub async fn join_user(
 				.status(500)
 				.body(error!(SERVER_ERROR).to_string()));
 		}
+
+		create_chargebee_user(
+			&workspace_id,
+			&user_data.first_name,
+			&user_data.last_name,
+			config,
+		)
+		.await?;
 	} else {
 		if let Some((email_local, domain_id)) = user_data
 			.backup_email_local

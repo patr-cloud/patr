@@ -1131,6 +1131,7 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports.as_ref(),
 		environment_variables.as_ref(),
+		&config,
 		&request_id,
 	)
 	.await?;

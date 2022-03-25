@@ -231,6 +231,20 @@ pub struct Subscription {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSubscription {
+	#[serde(
+		rename = "subscription_items[item_price_id][0]",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub item_price_id: Option<String>,
+	#[serde(
+		rename = "subscription_items[quantity][0]",
+		skip_serializing_if = "Option::is_none"
+	)]
+	pub quantity: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromotionalCreditList {
 	pub list: Vec<PromotionalCredit>,
 }
