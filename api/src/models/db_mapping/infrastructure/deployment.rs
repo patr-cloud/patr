@@ -6,7 +6,7 @@ use api_models::{
 };
 use eve_rs::AsError;
 
-use crate::{db, error, service, utils::Error, Database};
+use crate::{error, utils::Error};
 
 pub struct DockerRepository {
 	pub id: Uuid,
@@ -28,50 +28,6 @@ pub struct Deployment {
 	pub max_horizontal_scale: i16,
 	pub machine_type: Uuid,
 	pub deploy_on_push: bool,
-}
-
-impl Deployment {
-	pub async fn get_full_image(
-		&self,
-		connection: &mut <Database as sqlx::Database>::Connection,
-	) -> Result<String, Error> {
-		if self.registry == "registry.patr.cloud" {
-			let docker_repository = db::get_docker_repository_by_id(
-				&mut *connection,
-				self.repository_id
-					.as_ref()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?,
-			)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-			let workspace = db::get_workspace_info(
-				&mut *connection,
-				&docker_repository.workspace_id,
-			)
-			.await?
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string())?;
-
-			Ok(format!(
-				"{}/{}/{}",
-				service::get_settings().docker_registry.registry_url,
-				workspace.name,
-				docker_repository.name
-			))
-		} else {
-			Ok(format!(
-				"{}/{}",
-				self.registry,
-				self.image_name
-					.as_ref()
-					.status(500)
-					.body(error!(SERVER_ERROR).to_string())?
-			))
-		}
-	}
 }
 
 pub struct DeploymentMachineType {

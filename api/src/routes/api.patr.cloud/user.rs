@@ -450,10 +450,10 @@ async fn update_user_info(
 	// If no parameters to update
 	first_name
 		.as_ref()
-		.or_else(|| last_name.as_ref())
-		.or_else(|| dob_string.as_ref())
-		.or_else(|| bio.as_ref())
-		.or_else(|| location.as_ref())
+		.or(last_name.as_ref())
+		.or(dob_string.as_ref())
+		.or(bio.as_ref())
+		.or(location.as_ref())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -1198,8 +1198,7 @@ async fn get_login_info(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
-		.map(|param| Uuid::parse_str(param).ok())
-		.flatten()
+		.and_then(|param| Uuid::parse_str(param).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -1225,8 +1224,7 @@ async fn delete_user_login(
 ) -> Result<EveContext, Error> {
 	let login_id = context
 		.get_param(request_keys::LOGIN_ID)
-		.map(|param| Uuid::parse_str(param).ok())
-		.flatten()
+		.and_then(|param| Uuid::parse_str(param).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 

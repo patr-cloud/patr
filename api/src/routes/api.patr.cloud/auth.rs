@@ -1,5 +1,5 @@
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
 use crate::{
@@ -444,8 +444,7 @@ async fn get_access_token(
 		.get_request()
 		.get_query()
 		.get(request_keys::LOGIN_ID)
-		.map(|value| Uuid::parse_str(value).ok())
-		.flatten()
+		.and_then(|value| Uuid::parse_str(value).ok())
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -777,10 +776,15 @@ async fn resend_otp(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
-	context: EveContext,
+	mut context: EveContext,
 	next: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query();
+
+	if context.get_method() == &HttpMethod::Post {
+		context.status(405);
+		return Ok(context);
+	}
 
 	if query.get(request_keys::SCOPE).is_some() {
 		// Authenticating an existing login
@@ -899,8 +903,7 @@ async fn docker_registry_login(
 		.map(|value| {
 			base64::decode(value)
 				.ok()
-				.map(|value| String::from_utf8(value).ok())
-				.flatten()
+				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)
 				.body(
 					json!({
@@ -1032,8 +1035,7 @@ async fn docker_registry_authenticate(
 		.map(|value| {
 			base64::decode(value)
 				.ok()
-				.map(|value| String::from_utf8(value).ok())
-				.flatten()
+				.and_then(|value| String::from_utf8(value).ok())
 				.status(400)
 				.body(
 					json!({

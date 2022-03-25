@@ -63,8 +63,8 @@ impl RegistryToken {
 		public_key: &[u8],
 	) -> Result<String, JWTError> {
 		let hash: Vec<u8> = Sha256::digest(public_key)
-			.to_vec()
-			.into_iter()
+			.iter()
+			.copied()
 			.take(30)
 			.collect();
 		let encoded =
@@ -89,15 +89,12 @@ impl RegistryToken {
 
 	pub fn parse(token: &str, public_key: &[u8]) -> Result<Self, JWTError> {
 		let decode_key = DecodingKey::from_ec_pem(public_key)?;
-		let TokenData { header: _, claims } = jsonwebtoken::decode(
-			token,
-			&decode_key,
-			&Validation {
-				validate_exp: false,
-				algorithms: vec![Algorithm::ES256],
-				..Default::default()
-			},
-		)?;
+		let TokenData { header: _, claims } =
+			jsonwebtoken::decode(token, &decode_key, &{
+				let mut validation = Validation::new(Algorithm::ES256);
+				validation.validate_exp = false;
+				validation
+			})?;
 		Ok(claims)
 	}
 }
