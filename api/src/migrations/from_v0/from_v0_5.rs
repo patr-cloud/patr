@@ -40,6 +40,7 @@ use kube::{
 	Api,
 	Config,
 };
+use reqwest::Client;
 use semver::Version;
 use sqlx::Row;
 
@@ -748,6 +749,7 @@ async fn migrate_from_v0_5_7(
 ) -> Result<(), sqlx::Error> {
 	rabbitmq(connection, config).await?;
 	audit_logs(connection).await?;
+	chargebee(connection, config).await?;
 	Ok(())
 }
 
@@ -957,6 +959,143 @@ async fn audit_logs(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn chargebee(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let workspaces = query!(
+		r#"
+		SELECT
+			id,
+			super_admin_id
+		FROM
+			workspace;
+		"#
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("super_admin_id"),
+		)
+	})
+	.collect::<Vec<_>>();
+
+	if workspaces.is_empty() {
+		return Ok(());
+	}
+
+	for (workspace_id, user_id) in workspaces {
+		let user_data = query!(
+			r#"
+			SELECT
+				first_name,
+				last_name
+			FROM
+				"user"
+			WHERE
+				id=$1;
+			"#,
+			user_id
+		)
+		.fetch_optional(&mut *connection)
+		.await?;
+
+		let (first_name, last_name) = if let Some(user_data) = user_data {
+			(
+				user_data.get::<String, _>("first_name"),
+				user_data.get::<String, _>("last_name"),
+			)
+		} else {
+			return Ok(());
+		};
+
+		let client = Client::new();
+
+		let password: Option<String> = None;
+
+		client
+			.post(format!("{}/customers", config.chargebee.url))
+			.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
+			.query(&[
+				("first_name", first_name),
+				("last_name", last_name),
+				("id", workspace_id.to_string()),
+			])
+			.send()
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+		client
+			.post(format!("{}/promotional_credits/set", config.chargebee.url))
+			.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
+			.query(&[
+				("customer_id", workspace_id.as_str()),
+				("amount", &config.chargebee.credit_amount),
+				("description", &config.chargebee.description),
+			])
+			.send()
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+		let deployments = query!(
+			r#"
+			SELECT
+				id,
+				min_horizontal_scale,
+				machine_type,
+			FROM
+				deployment
+			WHERE
+				workspace_id=$1;
+			"#,
+			&workspace_id
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.map(|row| {
+			(
+				row.get::<Uuid, _>("id"),
+				row.get::<i16, _>("min_horizontal_scale"),
+				row.get::<String, _>("machine_type"),
+			)
+		})
+		.collect::<Vec<_>>();
+
+		for (deployment_id, min_horizontal_scale, machine_type) in deployments {
+			let client = Client::new();
+
+			let password: Option<String> = None;
+
+			client
+				.post(format!(
+					"{}/customers/{}/subscription_for_items",
+					config.chargebee.url, workspace_id
+				))
+				.basic_auth(&config.chargebee.api_key, password)
+				.query(&[
+					("id", deployment_id.to_string()),
+					(
+						"subscription_items[item_price_id][0]",
+						machine_type.to_string(),
+					),
+					(
+						"subscription_items[quantity][0]",
+						min_horizontal_scale.to_string(),
+					),
+				])
+				.send()
+				.await
+				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		}
+	}
 
 	Ok(())
 }
