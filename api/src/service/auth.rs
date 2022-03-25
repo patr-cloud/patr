@@ -850,7 +850,7 @@ pub async fn join_user(
 	if user_data.account_type.is_business() {
 		let workspace_id = service::create_workspace(
 			connection,
-			&user_data.business_name.unwrap(),
+			user_data.business_name.as_ref().unwrap(),
 			&user_id,
 			false,
 			config,
@@ -922,8 +922,8 @@ pub async fn join_user(
 
 		create_chargebee_user(
 			&workspace_id,
-			&user_data.first_name,
-			&user_data.last_name,
+			user_data.business_name.as_ref().unwrap(),
+			"",
 			config,
 		)
 		.await?;

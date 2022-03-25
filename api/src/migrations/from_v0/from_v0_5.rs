@@ -1004,17 +1004,13 @@ async fn chargebee(
 			"#,
 			user_id
 		)
-		.fetch_optional(&mut *connection)
+		.fetch_one(&mut *connection)
 		.await?;
 
-		let (first_name, last_name) = if let Some(user_data) = user_data {
-			(
-				user_data.get::<String, _>("first_name"),
-				user_data.get::<String, _>("last_name"),
-			)
-		} else {
-			return Ok(());
-		};
+		let (first_name, last_name) = (
+			user_data.get::<String, _>("first_name"),
+			user_data.get::<String, _>("last_name"),
+		);
 
 		let client = Client::new();
 
@@ -1053,7 +1049,8 @@ async fn chargebee(
 			FROM
 				deployment
 			WHERE
-				workspace_id=$1;
+				workspace_id=$1 AND
+				status != 'deleted';
 			"#,
 			&workspace_id
 		)

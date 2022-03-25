@@ -538,8 +538,6 @@ pub async fn add_card_details(
 
 	let password: Option<String> = None;
 
-	// https://vicara-test.chargebee.com/api/v2/hosted_pages/manage_payment_sources
-
 	client
 		.post(format!(
 			"{}/hosted_pages/manage_payment_sources",
