@@ -1052,7 +1052,11 @@ pub async fn create_chargebee_user(
 	client
 		.post(format!("{}/customers", config.chargebee.url))
 		.basic_auth(config.chargebee.api_key.as_str(), password.as_ref())
-		.query(&[("first_name", first_name), ("last_name", last_name)])
+		.query(&[
+			("first_name", first_name),
+			("last_name", last_name),
+			("id", workspace_id.as_str()),
+		])
 		.send()
 		.await?;
 

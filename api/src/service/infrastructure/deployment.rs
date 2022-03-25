@@ -448,7 +448,7 @@ async fn start_subscription(
 		.basic_auth(&config.chargebee.api_key, password)
 		.query(&Subscription {
 			id: deployment_id.to_string(),
-			item_price_id: format!("{}-USD-monthly", item_price_id),
+			item_price_id: format!("{}-USD-Monthly", item_price_id),
 			quantity,
 		})
 		.send()
