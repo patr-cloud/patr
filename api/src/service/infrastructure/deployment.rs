@@ -485,10 +485,14 @@ pub async fn cancel_subscription(
 
 	let status = client
 		.post(format!(
-			"{}/subscription/{}/cancel_for_items",
+			"{}/subscriptions/{}/cancel_for_items",
 			config.chargebee.url, deployment_id
 		))
 		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("end_of_term", "false"),
+			("credit_option_for_current_term_charges", "prorate"),
+		])
 		.send()
 		.await?
 		.status();
