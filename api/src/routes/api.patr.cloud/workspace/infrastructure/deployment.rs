@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::{
@@ -1129,7 +1131,14 @@ async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		ports.as_ref(),
+		ports
+			.map(|ports| {
+				ports
+					.into_iter()
+					.map(|(k, v)| (k.value(), v))
+					.collect::<BTreeMap<_, _>>()
+			})
+			.as_ref(),
 		environment_variables.as_ref(),
 		&config,
 		&request_id,
