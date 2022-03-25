@@ -1,7 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{models::workspace::get_github_info::*, utils::Uuid};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use octocrab::{models::repos::GitUser, Octocrab};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -236,126 +235,16 @@ async fn configure_github_build_steps_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let octocrab = Octocrab::builder()
-		.personal_token(access_token.clone())
-		.build()?;
-	let client = reqwest::Client::new();
-
-	let response = client
-		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
-		.header("AUTHORIZATION", format!("token {}", access_token))
-		.send()
-		.await?;
-
-	println!("{:#?}", response);
-
 	if framework == "node" {
-		if response.status() == 404 {
-			octocrab
-				.repos(owner_name, repo_name)
-				.create_file(
-					".github/workflows/build.yaml",
-					"created: build.yaml",
-					format!(
-						r#"
-name: Github action for your deployment
-
-on:
-    push:
-    branch: [main]
-
-jobs:
-    build:
-
-    runs-on: ubuntu-latest
-
-    strategy:
-        matrix: 
-        node-version: {node_version}
-	
-steps:
-- uses: actions/checkout@v2
-- name: using node ${{matrix.node-version}}
-    uses: actions/setup-node@v2
-    with: 
-    node-version: ${{matrix.node-version}}
-    cache: 'npm'
-- run: npm install
-- run: {build_command}
-- run: npm run test --if-present
-
-- name: build docker image from Dockerfile
-    run: |
-    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-    echo TODO
-"#
-					),
-				)
-				.branch("main")
-				.commiter(GitUser {
-					name: "Patr Configuration".to_string(),
-					email: "hello@patr.cloud".to_string(),
-				})
-				.author(GitUser {
-					name: "Patr Configuration".to_string(),
-					email: "hello@patr.cloud".to_string(),
-				})
-				.send()
-				.await?;
-		} else if response.status() == 200 {
-			octocrab
-				.repos(owner_name, repo_name)
-				.create_file(
-					".github/workflows/build.yaml",
-					"updated: build.yaml",
-					format!(
-						r#"
-name: Github action for your deployment
-
-on:
-    push:
-    branch: [main]
-
-jobs:
-    build:
-
-    runs-on: ubuntu-latest
-
-    strategy:
-        matrix: 
-        node-version: {node_version}
-	
-steps:
-- uses: actions/checkout@v2
-- name: using node ${{matrix.node-version}}
-    uses: actions/setup-node@v2
-    with: 
-    node-version: ${{matrix.node-version}}
-    cache: 'npm'
-- run: npm install
-- run: {build_command}
-- run: npm run test --if-present
-
-- name: build docker image from Dockerfile
-    run: |
-    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-    echo TODO
-"#
-					),
-				)
-				.branch("main")
-				.commiter(GitUser {
-					name: "Patr Configuration".to_string(),
-					email: "hello@patr.cloud".to_string(),
-				})
-				.author(GitUser {
-					name: "Patr Configuration".to_string(),
-					email: "hello@patr.cloud".to_string(),
-				})
-				.send()
-				.await?;
-		}
+		service::github_actions_for_node_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			node_version,
+		)
+		.await?;
 	}
-
 	Ok(context)
 }
