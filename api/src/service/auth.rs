@@ -238,11 +238,9 @@ pub async fn create_user_join_request(
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
-
-	let response: UserToSignUp;
 	// If backup email is given, extract the local and domain id from it
-	let backup_email_local;
-	let backup_email_domain_id;
+	let recovery_email_local;
+	let recovery_email_domain_id;
 	let phone_country_code;
 	let phone_number;
 
@@ -265,8 +263,8 @@ pub async fn create_user_join_request(
 			}
 			phone_country_code = Some(recovery_phone_country_code.clone());
 			phone_number = Some(recovery_phone_number.clone());
-			backup_email_local = None;
-			backup_email_domain_id = None;
+			recovery_email_local = None;
+			recovery_email_domain_id = None;
 		}
 		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
@@ -285,8 +283,8 @@ pub async fn create_user_join_request(
 
 			phone_country_code = None;
 			phone_number = None;
-			backup_email_local = Some(email_local);
-			backup_email_domain_id = Some(domain_id);
+			recovery_email_local = Some(email_local);
+			recovery_email_domain_id = Some(domain_id);
 		}
 	}
 
@@ -297,7 +295,7 @@ pub async fn create_user_join_request(
 	let password = service::hash(password.as_bytes())?;
 	let token_hash = service::hash(otp.as_bytes())?;
 
-	match account_type {
+	let response: UserToSignUp = match account_type {
 		SignUpAccountType::Business {
 			account_type: _,
 			workspace_name,
@@ -361,8 +359,8 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local.as_deref(),
-				backup_email_domain_id.as_ref(),
+				recovery_email_local.as_deref(),
+				recovery_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				business_email_local,
@@ -374,14 +372,14 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 
-			response = UserToSignUp {
+			UserToSignUp {
 				username: username.to_string(),
 				account_type: ResourceType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local,
-				backup_email_domain_id,
+				backup_email_local: recovery_email_local,
+				backup_email_domain_id: recovery_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
@@ -397,8 +395,8 @@ pub async fn create_user_join_request(
 				username,
 				&password,
 				(first_name, last_name),
-				backup_email_local.as_deref(),
-				backup_email_domain_id.as_ref(),
+				recovery_email_local.as_deref(),
+				recovery_email_domain_id.as_ref(),
 				phone_country_code.as_deref(),
 				phone_number.as_deref(),
 				&token_hash,
@@ -406,14 +404,14 @@ pub async fn create_user_join_request(
 			)
 			.await?;
 
-			response = UserToSignUp {
+			UserToSignUp {
 				username: username.to_string(),
 				account_type: ResourceType::Business,
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local,
-				backup_email_domain_id,
+				backup_email_local: recovery_email_local,
+				backup_email_domain_id: recovery_email_domain_id,
 				backup_phone_country_code: phone_country_code,
 				backup_phone_number: phone_number,
 				business_email_local: None,
@@ -423,7 +421,7 @@ pub async fn create_user_join_request(
 				otp_expiry: token_expiry,
 			}
 		}
-	}
+	};
 
 	Ok((response, otp))
 }

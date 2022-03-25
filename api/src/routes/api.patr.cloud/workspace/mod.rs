@@ -3,12 +3,14 @@ use api_models::{
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
 		GetAddUserToWorkspaceRequest,
+		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
 		IsWorkspaceNameAvailableResponse,
 		UpdateWorkspaceInfoRequest,
 		UpdateWorkspaceInfoResponse,
 		Workspace,
+		WorkspaceAuditLog,
 	},
 	utils::Uuid,
 };
@@ -210,6 +212,67 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.get(
+		"/audit-log",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT_INFO,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_workspace_audit_log)),
+		],
+	);
+
+	sub_app.get(
+		"audit-log/:resourceId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT_INFO,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_resource_audit_log)),
+		],
+	);
 	sub_app
 }
 
@@ -492,7 +555,6 @@ async fn add_user_to_workspace(
 		.await?;
 	}
 
-	context.success({});
 	Ok(context)
 }
 
@@ -513,7 +575,6 @@ async fn delete_user_from_workspace(
 	)
 	.await?;
 
-	context.success({});
 	Ok(context)
 }
 
@@ -593,8 +654,128 @@ async fn delete_workspace(
 		context.success(UpdateWorkspaceInfoResponse {});
 		Ok(context)
 	} else {
-		return Error::as_result()
+		Error::as_result()
 			.status(500)
-			.body(error!(CANNOT_DELETE_WORKSPACE).to_string());
+			.body(error!(CANNOT_DELETE_WORKSPACE).to_string())
 	}
+}
+
+/// # Description
+/// This function is used to retrieve the list of workspace audit logs
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    workspaceAuditLogs: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_workspace_audit_log(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let workspace_audit_logs = db::get_workspace_audit_logs(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.into_iter()
+	.map(|log| WorkspaceAuditLog {
+		id: log.id,
+		date: log.date,
+		ip_address: log.ip_address,
+		workspace_id: log.workspace_id,
+		user_id: log.user_id,
+		login_id: log.login_id,
+		resource_id: log.resource_id,
+		action: log.action,
+		request_id: log.request_id,
+		metadata: log.metadata,
+		patr_action: log.patr_action,
+		request_success: log.success,
+	})
+	.collect();
+
+	context.success(GetWorkspaceAuditLogResponse {
+		audit_logs: workspace_audit_logs,
+	});
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to retrieve the list resource audit logs
+/// required inputs:
+/// auth token in the authorization headers
+/// workspace id in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+///    workspaceAuditLogs: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_resource_audit_log(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let resource_id = context.get_param(request_keys::RESOURCE_ID).unwrap();
+	let resource_id = Uuid::parse_str(resource_id).unwrap();
+
+	let workspace_audit_logs = db::get_resource_audit_logs(
+		context.get_database_connection(),
+		&resource_id,
+	)
+	.await?
+	.into_iter()
+	.map(|log| WorkspaceAuditLog {
+		id: log.id,
+		date: log.date,
+		ip_address: log.ip_address,
+		workspace_id: log.workspace_id,
+		user_id: log.user_id,
+		login_id: log.login_id,
+		resource_id: log.resource_id,
+		action: log.action,
+		request_id: log.request_id,
+		metadata: log.metadata,
+		patr_action: log.patr_action,
+		request_success: log.success,
+	})
+	.collect();
+
+	context.success(GetWorkspaceAuditLogResponse {
+		audit_logs: workspace_audit_logs,
+	});
+	Ok(context)
 }

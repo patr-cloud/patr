@@ -171,8 +171,7 @@ async fn update_database_cluster_credentials(
 				// update credentials
 				let (host, port) = database
 					.master_endpoint
-					.map(|endpoint| endpoint.address.zip(endpoint.port))
-					.flatten()
+					.and_then(|endpoint| endpoint.address.zip(endpoint.port))
 					.status(500)
 					.body(error!(SERVER_ERROR).to_string())?;
 				break (host, port);

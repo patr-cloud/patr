@@ -10,9 +10,18 @@ mod domain;
 mod infrastructure;
 mod metrics;
 mod notifier;
+mod rabbitmq;
 mod user;
 mod utils;
 mod workspace;
+
+use api_models::utils::Uuid;
+use lapin::{
+	options::ConfirmSelectOptions,
+	Channel,
+	Connection,
+	ConnectionProperties,
+};
 
 pub use self::{
 	auth::*,
@@ -21,11 +30,15 @@ pub use self::{
 	infrastructure::*,
 	metrics::*,
 	notifier::*,
+	rabbitmq::*,
 	user::*,
 	utils::*,
 	workspace::*,
 };
-use crate::{app::App, utils::settings::Settings};
+use crate::{
+	app::App,
+	utils::{settings::Settings, Error},
+};
 
 /// stores the configuration and database of the whole API
 static APP: once_cell::sync::OnceCell<App> = once_cell::sync::OnceCell::new();
@@ -62,4 +75,27 @@ pub(super) fn get_settings() -> &'static Settings {
 /// [`APP`]: APP
 pub(super) fn get_app() -> &'static App {
 	APP.get().expect("unable to get app")
+}
+
+pub(super) async fn get_rabbitmq_connection_channel(
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(Channel, Connection), Error> {
+	log::trace!("request_id: {} - Connecting to rabbitmq", request_id);
+	let connection = Connection::connect(
+		&format!(
+			"amqp://{}:{}/%2f",
+			config.rabbit_mq.host, config.rabbit_mq.port
+		),
+		ConnectionProperties::default(),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - Creating channel", request_id);
+	let channel = connection.create_channel().await?;
+	channel
+		.confirm_select(ConfirmSelectOptions::default())
+		.await?;
+
+	Ok((channel, connection))
 }

@@ -20,7 +20,7 @@ use kube::{
 		NamedCluster,
 		NamedContext,
 	},
-	core::{ApiResource, DynamicObject},
+	core::{ApiResource, DynamicObject, ErrorResponse},
 	Api,
 	Config,
 	Error as KubeError,
@@ -58,7 +58,7 @@ async fn get_kubernetes_config(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],
@@ -93,15 +93,11 @@ async fn service_exists(
 	let service = Api::<Service>::namespaced(kubernetes_client, namespace)
 		.get(&format!("service-{}", service_id))
 		.await;
-	if let Err(KubeError::Api(error)) = service {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
+	match service {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
 	}
-
-	Ok(true)
 }
 
 async fn deployment_exists(
@@ -113,16 +109,11 @@ async fn deployment_exists(
 		Api::<K8sDeployment>::namespaced(kubernetes_client, namespace)
 			.get(&format!("deployment-{}", deployment_id))
 			.await;
-
-	if let Err(KubeError::Api(error)) = deployment_app {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
+	match deployment_app {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
 	}
-
-	Ok(true)
 }
 
 async fn ingress_exists(
@@ -133,15 +124,11 @@ async fn ingress_exists(
 	let ingress = Api::<Ingress>::namespaced(kubernetes_client, namespace)
 		.get(&format!("ingress-{}", managed_url_id))
 		.await;
-	if let Err(KubeError::Api(error)) = ingress {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
+	match ingress {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
 	}
-
-	Ok(true)
 }
 
 async fn certificate_exists(
@@ -164,15 +151,11 @@ async fn certificate_exists(
 	)
 	.get(certificate_name)
 	.await;
-	if let Err(KubeError::Api(error)) = certificate {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
+	match certificate {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
 	}
-
-	Ok(true)
 }
 
 async fn secret_exists(
@@ -183,13 +166,9 @@ async fn secret_exists(
 	let secret = Api::<Secret>::namespaced(kubernetes_client, namespace)
 		.get(secret_name)
 		.await;
-	if let Err(KubeError::Api(error)) = secret {
-		if error.code == 404 {
-			return Ok(false);
-		} else {
-			return Err(KubeError::Api(error));
-		}
+	match secret {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
 	}
-
-	Ok(true)
 }
