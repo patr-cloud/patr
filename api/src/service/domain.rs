@@ -671,7 +671,7 @@ pub async fn verify_external_domain(
 
 	let response = response.take_answers().into_iter().find(|record| {
 		let expected_txt = RData::TXT(TXT::new(vec![domain_id.to_string()]));
-		record.rdata() == &expected_txt
+		record.data() == Some(&expected_txt)
 	});
 
 	handle.abort();

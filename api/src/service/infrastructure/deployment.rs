@@ -6,7 +6,6 @@ use api_models::{
 		DeploymentMetrics,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
-		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
 		Metric,
@@ -20,11 +19,11 @@ use reqwest::Client;
 use crate::{
 	db,
 	error,
-	models::{deployment::PrometheusResponse, rbac},
-	service::{
-		self,
-		infrastructure::{digitalocean, kubernetes},
+	models::{
+		deployment::{PrometheusResponse, Subscription},
+		rbac,
 	},
+	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -58,6 +57,7 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -192,145 +192,17 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	// TODO UPDATE ENTRY POINTS
+	start_subscription(
+		connection,
+		&deployment_id,
+		machine_type.as_str(),
+		deployment_running_details.min_horizontal_scale,
+		config,
+		request_id,
+	)
+	.await?;
 
 	Ok(deployment_id)
-}
-
-pub async fn start_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-	let (deployment, workspace_id, full_image, running_details) =
-		service::get_full_deployment_config(
-			connection,
-			deployment_id,
-			request_id,
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - Updating kubernetes deployment",
-		request_id
-	);
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
-	kubernetes::update_kubernetes_deployment(
-		&workspace_id,
-		&deployment,
-		&full_image,
-		&running_details,
-		config,
-		request_id,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn stop_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"Stopping the deployment with id: {} and request_id: {}",
-		deployment_id,
-		request_id
-	);
-	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} - deleting the deployment from digitalocean kubernetes",
-		request_id
-	);
-	kubernetes::delete_kubernetes_deployment(
-		&deployment.workspace_id,
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
-
-	// TODO: implement logic for handling domains of the stopped deployment
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Stopped,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn delete_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Deleting the deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!("deleting the image from DO registry");
-	digitalocean::delete_image_from_digitalocean_registry(
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Stopping the deployment", request_id);
-	service::stop_deployment(connection, deployment_id, config, request_id)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - Updating the deployment name in the database",
-		request_id
-	);
-	db::update_deployment_name(
-		connection,
-		deployment_id,
-		&format!("patr-deleted: {}-{}", deployment.name, deployment_id),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
-
-	Ok(())
 }
 
 pub async fn get_deployment_container_logs(
@@ -373,6 +245,7 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -440,6 +313,8 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
+
+	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -833,4 +708,147 @@ pub async fn get_deployment_metrics(
 		});
 
 	Ok(metric_response)
+}
+
+pub async fn cancel_subscription(
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Stopping subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/cancel_for_items",
+			config.chargebee.url, deployment_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("end_of_term", "false"),
+			("credit_option_for_current_term_charges", "prorate"),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
+}
+
+async fn start_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	item_price_id: &str,
+	quantity: u16,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Starting subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let client = Client::new();
+	let password: Option<String> = None;
+	let status = client
+		.post(format!(
+			"{}/customers/{}/subscription_for_items",
+			config.chargebee.url, deployment.workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&Subscription {
+			id: deployment_id.to_string(),
+			item_price_id: format!("{}-USD-Monthly", item_price_id),
+			quantity,
+		})
+		.send()
+		.await?
+		.status();
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+	Ok(())
+}
+
+async fn update_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/update_for_items",
+			config.chargebee.url, deployment.id,
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			(
+				"subscription_items[item_price_id][0]",
+				&format!("{}-USD-Monthly", deployment.machine_type),
+			),
+			(
+				"subscription_items[quantity][0]",
+				&format!("{}", deployment.min_horizontal_scale),
+			),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
 }

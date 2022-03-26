@@ -58,7 +58,7 @@ async fn get_kubernetes_config(
 				name: config.kubernetes.auth_name.clone(),
 				auth_info: AuthInfo {
 					username: Some(config.kubernetes.auth_username.clone()),
-					token: Some(config.kubernetes.auth_token.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
 					..Default::default()
 				},
 			}],

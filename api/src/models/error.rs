@@ -47,12 +47,14 @@ pub mod id {
 		"cannotDeleteBackupPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
+	pub const INVALID_STATIC_SITE_NAME: &str = "invalidStaticSiteName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
 	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 	pub const INVALID_DNS_RECORD_NAME: &str = "invalidDnsRecordName";
 	pub const MAX_LIMIT_REACHED: &str = "maxLimitReached";
+	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
 }
 
 #[allow(dead_code)]
@@ -154,6 +156,8 @@ pub mod message {
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
+	pub const INVALID_STATIC_SITE_NAME: &str =
+		"Static site can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain has nameservers outside of Patr";
@@ -161,4 +165,6 @@ pub mod message {
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 	pub const INVALID_DNS_RECORD_NAME: &str = "The DNS record name is invalid";
 	pub const MAX_LIMIT_REACHED: &str = "You have reached the limit of the maximum number resources allowed for your workspace";
+	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
+		"Address line 3 is not allowed if address line 2 is not provided";
 }

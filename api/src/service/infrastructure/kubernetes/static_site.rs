@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
 use api_models::{
-	models::workspace::infrastructure::static_site::{
-		StaticSite,
-		StaticSiteDetails,
-	},
+	models::workspace::infrastructure::static_site::StaticSiteDetails,
 	utils::Uuid,
 };
 use eve_rs::AsError;
@@ -39,7 +36,7 @@ use crate::{
 
 pub async fn update_kubernetes_static_site(
 	workspace_id: &Uuid,
-	static_site: &StaticSite,
+	static_site_id: &Uuid,
 	_static_site_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
@@ -67,7 +64,7 @@ pub async fn update_kubernetes_static_site(
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
-			name: Some(format!("service-{}", static_site.id)),
+			name: Some(format!("service-{}", static_site_id)),
 			..ObjectMeta::default()
 		},
 		spec: Some(ServiceSpec {
@@ -93,8 +90,8 @@ pub async fn update_kubernetes_static_site(
 		Api::namespaced(kubernetes_client.clone(), namespace);
 	service_api
 		.patch(
-			&format!("service-{}", static_site.id),
-			&PatchParams::apply(&format!("service-{}", static_site.id)),
+			&format!("service-{}", static_site_id),
+			&PatchParams::apply(&format!("service-{}", static_site_id)),
 			&Patch::Apply(kubernetes_service),
 		)
 		.await?
@@ -109,7 +106,7 @@ pub async fn update_kubernetes_static_site(
 	);
 	annotations.insert(
 		"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-		format!("{}.patr.cloud", static_site.id),
+		format!("{}.patr.cloud", static_site_id),
 	);
 
 	annotations.insert(
@@ -117,12 +114,12 @@ pub async fn update_kubernetes_static_site(
 		config.kubernetes.cert_issuer_dns.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
-		host: Some(format!("{}.patr.cloud", static_site.id)),
+		host: Some(format!("{}.patr.cloud", static_site_id)),
 		http: Some(HTTPIngressRuleValue {
 			paths: vec![HTTPIngressPath {
 				backend: IngressBackend {
 					service: Some(IngressServiceBackend {
-						name: format!("service-{}", static_site.id),
+						name: format!("service-{}", static_site_id),
 						port: Some(ServiceBackendPort {
 							number: Some(80),
 							..ServiceBackendPort::default()
@@ -150,7 +147,7 @@ pub async fn update_kubernetes_static_site(
 	);
 	let kubernetes_ingress = Ingress {
 		metadata: ObjectMeta {
-			name: Some(format!("ingress-{}", static_site.id)),
+			name: Some(format!("ingress-{}", static_site_id)),
 			annotations: Some(annotations),
 			..ObjectMeta::default()
 		},
@@ -167,8 +164,8 @@ pub async fn update_kubernetes_static_site(
 		Api::namespaced(kubernetes_client, namespace);
 	ingress_api
 		.patch(
-			&format!("ingress-{}", static_site.id),
-			&PatchParams::apply(&format!("ingress-{}", static_site.id)),
+			&format!("ingress-{}", static_site_id),
+			&PatchParams::apply(&format!("ingress-{}", static_site_id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
 		.await?
@@ -179,7 +176,7 @@ pub async fn update_kubernetes_static_site(
 	log::trace!(
 		"request_id: {} - App ingress is at {}.patr.cloud",
 		request_id,
-		static_site.id
+		static_site_id
 	);
 	Ok(())
 }

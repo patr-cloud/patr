@@ -1,5 +1,5 @@
 use api_models::{models::auth::*, utils::Uuid, ErrorType};
-use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use eve_rs::{App as EveApp, AsError, Context, HttpMethod, NextHandler};
 use serde_json::json;
 
 use crate::{
@@ -776,10 +776,15 @@ async fn resend_otp(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 async fn docker_registry_token_endpoint(
-	context: EveContext,
+	mut context: EveContext,
 	next: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let query = context.get_request().get_query();
+
+	if context.get_method() == &HttpMethod::Post {
+		context.status(405);
+		return Ok(context);
+	}
 
 	if query.get(request_keys::SCOPE).is_some() {
 		// Authenticating an existing login
