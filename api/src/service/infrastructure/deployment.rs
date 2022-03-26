@@ -12,11 +12,12 @@ use api_models::{
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
+	models::{deployment::Subscription, rbac},
 	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -51,6 +52,7 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -185,6 +187,16 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
+	start_subscription(
+		connection,
+		&deployment_id,
+		machine_type.as_str(),
+		deployment_running_details.min_horizontal_scale,
+		config,
+		request_id,
+	)
+	.await?;
+
 	Ok(deployment_id)
 }
 
@@ -228,6 +240,7 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -295,6 +308,8 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
+
+	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -403,4 +418,153 @@ pub async fn get_full_deployment_config(
 			environment_variables,
 		},
 	))
+}
+
+async fn start_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	item_price_id: &str,
+	quantity: u16,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Starting subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/customers/{}/subscription_for_items",
+			config.chargebee.url, deployment.workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&Subscription {
+			id: deployment_id.to_string(),
+			item_price_id: format!("{}-USD-Monthly", item_price_id),
+			quantity,
+		})
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
+}
+
+async fn update_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/update_for_items",
+			config.chargebee.url, deployment.id,
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			(
+				"subscription_items[item_price_id][0]",
+				&format!("{}-USD-Monthly", deployment.machine_type),
+			),
+			(
+				"subscription_items[quantity][0]",
+				&format!("{}", deployment.min_horizontal_scale),
+			),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
+}
+
+pub async fn cancel_subscription(
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Stopping subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/cancel_for_items",
+			config.chargebee.url, deployment_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("end_of_term", "false"),
+			("credit_option_for_current_term_charges", "prorate"),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
 }

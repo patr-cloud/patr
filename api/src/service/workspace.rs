@@ -122,6 +122,18 @@ pub async fn create_workspace(
 	)
 	.await?;
 
+	let user = db::get_user_by_user_id(connection, super_admin_id)
+		.await?
+		.status(500)?;
+
+	super::create_chargebee_user(
+		&resource_id,
+		&user.first_name,
+		&user.last_name,
+		config,
+	)
+	.await?;
+
 	Ok(resource_id)
 }
 
