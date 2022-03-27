@@ -31,6 +31,7 @@ use crate::{
 	},
 };
 
+mod billing;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -104,6 +105,7 @@ pub fn create_sub_app(
 		docker_registry::create_sub_app(app),
 	);
 	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 
 	sub_app.get(
@@ -177,6 +179,7 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_resource_audit_log)),
 		],
 	);
+
 	sub_app
 }
 

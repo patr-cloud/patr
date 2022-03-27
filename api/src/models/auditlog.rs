@@ -7,7 +7,7 @@ use api_models::{
 		EnvironmentVariableValue,
 		ExposedPortType,
 	},
-	utils::Uuid,
+	utils::{StringifiedU16, Uuid},
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ pub enum DeploymentMetadata {
 		#[serde(skip_serializing_if = "Option::is_none")]
 		max_horizontal_scale: Option<u16>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		ports: Option<BTreeMap<u16, ExposedPortType>>,
+		ports: Option<BTreeMap<StringifiedU16, ExposedPortType>>,
 		#[serde(skip_serializing_if = "Option::is_none")]
 		environment_variables:
 			Option<BTreeMap<String, EnvironmentVariableValue>>,
