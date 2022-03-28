@@ -13,12 +13,10 @@ use crate::{
 		ManagedDatabaseStatus,
 	},
 	error,
-	models::{
-		deployment::cloud_providers::digitalocean::{
-			DatabaseConfig,
-			DatabaseResponse,
-			Db,
-		},
+	models::deployment::cloud_providers::digitalocean::{
+		DatabaseConfig,
+		DatabaseResponse,
+		Db,
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},

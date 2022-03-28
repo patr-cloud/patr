@@ -3,7 +3,7 @@ use api_models::{
 	utils::{ResourceType, Uuid},
 };
 
-use crate::{query, query_as, Database, db::Workspace};
+use crate::{db::Workspace, query, query_as, Database};
 
 pub struct User {
 	pub id: Uuid,

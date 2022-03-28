@@ -11,7 +11,7 @@ use super::kubernetes;
 use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::{rbac},
+	models::rbac,
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,

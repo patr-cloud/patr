@@ -11,9 +11,7 @@ use crate::{
 		ManagedDatabaseStatus,
 	},
 	error,
-	models::{
-		rbac,
-	},
+	models::rbac,
 	service::{
 		self,
 		infrastructure::{aws, digitalocean},
