@@ -1,4 +1,4 @@
-FROM rust:latest as build
+FROM rust:1 as build
 
 RUN rustup target add x86_64-unknown-linux-gnu
 
