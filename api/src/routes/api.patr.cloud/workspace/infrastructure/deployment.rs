@@ -1339,16 +1339,14 @@ async fn get_deployment_metrics(
 		.get_request()
 		.get_query()
 		.get(request_keys::START_TIME)
-		.unwrap_or(&String::from("hour"))
-		.parse::<Interval>()
+		.and_then(|value| value.parse::<Interval>().ok())
 		.unwrap_or(Interval::Hour);
 
 	let step = context
 		.get_request()
 		.get_query()
 		.get(request_keys::INTERVAL)
-		.unwrap_or(&String::from("10m"))
-		.parse::<Step>()
+		.and_then(|value| value.parse::<Step>().ok())
 		.unwrap_or(Step::TenMinutes);
 
 	let config = context.get_state().config.clone();
