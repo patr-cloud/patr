@@ -120,7 +120,7 @@ pub fn create_sub_app(
 		],
 	);
 	sub_app.get(
-		"/audit-log",
+		"/:workspaceId/audit-log",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -150,7 +150,7 @@ pub fn create_sub_app(
 		],
 	);
 	sub_app.get(
-		"audit-log/:resourceId",
+		"/:workspaceId/audit-log/:resourceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,

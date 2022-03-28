@@ -7,7 +7,7 @@ use crate::{
 	Database,
 };
 
-pub async fn get_deployment_metrics(
+pub async fn get_internal_metrics(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	event: &str,
 ) -> Result<(), Error> {
