@@ -1,4 +1,3 @@
-pub mod db_mapping;
 pub mod deployment;
 pub mod error;
 pub mod rabbitmq;

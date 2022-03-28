@@ -3,18 +3,15 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db,
+	db::{self, User},
 	error,
-	models::{
-		db_mapping::User,
-		deployment::{
-			BillingAddress,
-			Customer,
-			PaymentSourceList,
-			PromotionalCreditList,
-			SubscriptionList,
-			UpdatePaymentMethod,
-		},
+	models::deployment::{
+		BillingAddress,
+		Customer,
+		PaymentSourceList,
+		PromotionalCreditList,
+		SubscriptionList,
+		UpdatePaymentMethod,
 	},
 	service,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},

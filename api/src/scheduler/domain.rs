@@ -13,9 +13,8 @@ use eve_rs::AsError;
 use sqlx::Connection;
 
 use crate::{
-	db,
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::db_mapping::ManagedUrlType as DbManagedUrlType,
 	scheduler::Job,
 	service,
 	utils::{validator, Error},

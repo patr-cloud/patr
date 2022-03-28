@@ -2,12 +2,8 @@ use std::collections::{BTreeMap, HashMap};
 
 use api_models::utils::Uuid;
 
-use crate::{
-	models::db_mapping::{Permission, Role, User},
-	query,
-	query_as,
-	Database,
-};
+use super::{Permission, Role};
+use crate::{db::User, query, query_as, Database};
 
 pub async fn generate_new_role_id(
 	connection: &mut <Database as sqlx::Database>::Connection,

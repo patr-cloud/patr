@@ -9,9 +9,9 @@ use eve_rs::AsError;
 
 use super::kubernetes;
 use crate::{
-	db,
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::{db_mapping::ManagedUrlType as DbManagedUrlType, rbac},
+	models::{rbac},
 	service,
 	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,

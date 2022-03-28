@@ -7,7 +7,7 @@ use tokio::{task, time};
 
 use crate::{
 	error,
-	models::db_mapping::{
+	db::{
 		ManagedDatabaseEngine,
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,

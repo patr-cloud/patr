@@ -19,7 +19,7 @@ pub use self::{
 	secret::*,
 	static_site::*,
 };
-use crate::{db, models::db_mapping::ManagedDatabaseStatus, service};
+use crate::{db::{self, ManagedDatabaseStatus}, service};
 
 async fn update_managed_database_status(
 	database_id: &Uuid,

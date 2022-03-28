@@ -4,14 +4,14 @@ use api_models::utils::Uuid;
 use eve_rs::AsError;
 
 use crate::{
-	db,
+	db::{
+		self,
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
 	error,
 	models::{
-		db_mapping::{
-			ManagedDatabaseEngine,
-			ManagedDatabasePlan,
-			ManagedDatabaseStatus,
-		},
 		rbac,
 	},
 	service::{

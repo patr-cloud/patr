@@ -36,10 +36,9 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
-		db_mapping::ManagedUrlType as DbManagedUrlType,
 		deployment::{Interval, Step},
 		rbac::{self, permissions},
 		DeploymentMetadata,
@@ -719,7 +718,7 @@ async fn create_deployment(
 		&audit_log_id,
 		&workspace_id,
 		&ip_address,
-		Utc::now(),
+		Utc::now().into(),
 		Some(&user_id),
 		Some(&login_id),
 		&id,

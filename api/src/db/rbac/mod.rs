@@ -3,10 +3,8 @@ use std::collections::HashMap;
 use api_models::utils::Uuid;
 
 use crate::{
-	models::{
-		db_mapping::{Permission, Resource, ResourceType, Workspace},
-		rbac::{self, WorkspacePermissions},
-	},
+	db::Workspace,
+	models::rbac::{self, WorkspacePermissions},
 	query,
 	query_as,
 	Database,
@@ -16,6 +14,39 @@ mod role;
 mod user;
 
 pub use self::{role::*, user::*};
+
+pub struct ResourceType {
+	pub id: Uuid,
+	pub name: String,
+	pub description: String,
+}
+
+pub struct Resource {
+	pub id: Uuid,
+	pub name: String,
+	pub resource_type_id: Uuid,
+	pub owner_id: Uuid,
+	pub created: u64,
+}
+
+pub struct Role {
+	pub id: Uuid,
+	pub name: String,
+	pub description: String,
+	pub owner_id: Uuid,
+}
+
+pub struct Permission {
+	pub id: Uuid,
+	pub name: String,
+	pub description: String,
+}
+
+pub struct WorkspaceUser {
+	pub user_id: Uuid,
+	pub workspace_id: Uuid,
+	pub role_id: Uuid,
+}
 
 pub async fn initialize_rbac_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

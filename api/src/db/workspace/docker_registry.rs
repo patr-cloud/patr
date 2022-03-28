@@ -7,7 +7,13 @@ use api_models::{
 };
 use num_traits::ToPrimitive;
 
-use crate::{models::db_mapping::DockerRepository, query, query_as, Database};
+use crate::{query, query_as, Database};
+
+pub struct DockerRepository {
+	pub id: Uuid,
+	pub workspace_id: Uuid,
+	pub name: String,
+}
 
 pub async fn initialize_docker_registry_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

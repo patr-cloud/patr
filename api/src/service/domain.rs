@@ -41,14 +41,11 @@ use trust_dns_client::{
 
 use super::infrastructure;
 use crate::{
-	db,
+	db::{self, DnsRecordType},
 	error,
-	models::{
-		db_mapping::DnsRecordType,
-		rbac::{self, resource_types},
-	},
+	models::rbac::{self, resource_types},
 	utils::{
-		constants::{self},
+		constants,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
