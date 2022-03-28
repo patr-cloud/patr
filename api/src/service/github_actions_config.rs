@@ -1,12 +1,8 @@
+use api_models::models::workspace::get_github_info::GithubResponseBody;
 use octocrab::{models::repos::GitUser, Octocrab};
-use serde::Deserialize;
+use reqwest::header::{AUTHORIZATION, USER_AGENT};
 
 use crate::utils::Error;
-
-#[derive(Deserialize)]
-pub struct GithubResponseBody {
-	pub sha: String,
-}
 
 pub async fn github_actions_for_node_static_site(
 	access_token: String,
@@ -15,6 +11,7 @@ pub async fn github_actions_for_node_static_site(
 	build_command: String,
 	publish_dir: String,
 	node_version: String,
+	user_agent: String,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -22,19 +19,24 @@ pub async fn github_actions_for_node_static_site(
 	let client = reqwest::Client::new();
 
 	let response = client
-		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
-		.header("AUTHORIZATION", format!("token {}", access_token))
+		.get(format!(
+			"https://api.github.com/repos/{}/{}/contents/.github/workflows/build.yaml",
+			owner_name, repo_name
+		))
+		.header(AUTHORIZATION, format!("token {}", access_token))
+		.header(USER_AGENT, user_agent)
 		.send()
 		.await?;
 
-	if response.status() == 404 {
-		octocrab
-			.repos(&owner_name, &repo_name)
-			.create_file(
-				".github/workflows/build.yaml",
-				"created: build.yaml",
-				format!(
-					r#"
+	match response.status() {
+		reqwest::StatusCode::NOT_FOUND => {
+			octocrab
+				.repos(&owner_name, &repo_name)
+				.create_file(
+					".github/workflows/build.yaml",
+					"created: build.yaml",
+					format!(
+						r#"
 name: Github action for your static site
 
 on:
@@ -49,7 +51,6 @@ jobs:
     strategy:
         matrix: 
         node-version: {node_version}
-	
 steps:
 - uses: actions/checkout@v2
 - name: using node ${{matrix.node-version}}
@@ -61,29 +62,33 @@ steps:
 - run: {build_command}
 - run: npm run test --if-present
 "#
-				),
-			)
-			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
-	} else if response.status() == 200 {
-		let body = response.json::<GithubResponseBody>().await?;
-		let sha = body.sha;
-		octocrab
-			.repos(&owner_name, &repo_name)
-			.update_file(
-				".github/workflows/build.yaml",
-				"updated: build.yaml",
-				format!(
-					r#"
+					),
+				)
+				.branch("master")
+				.commiter(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.author(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.send()
+				.await?;
+			return Ok(());
+		}
+		reqwest::StatusCode::OK => {
+			let body = response.json::<GithubResponseBody>().await?;
+			let sha = body.sha;
+			println!("all ok already exists");
+			println!("sha - {}", sha);
+			octocrab
+				.repos(&owner_name, &repo_name)
+				.update_file(
+					".github/workflows/build.yaml",
+					"updated: build.yaml",
+					format!(
+						r#"
 name: Github action for your static site
 
 on:
@@ -98,7 +103,6 @@ jobs:
     strategy:
         matrix: 
         node-version: {node_version}
-	
 steps:
 - uses: actions/checkout@v2
 - name: using node ${{matrix.node-version}}
@@ -110,34 +114,38 @@ steps:
 - run: {build_command}
 - run: npm run test --if-present
 "#
-				),
-				sha,
-			)
-			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
+					),
+					sha,
+				)
+				.branch("master")
+				.commiter(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.author(GitUser {
+					name: "Patr Configuration".to_string(),
+					email: "hello@patr.cloud".to_string(),
+				})
+				.send()
+				.await?;
+			return Ok(());
+		}
+		_ => return Ok(()),
 	}
-	Ok(())
 }
 
 pub async fn github_actions_for_vanilla_static_site(
 	access_token: String,
 	owner_name: String,
 	repo_name: String,
+	user_agent: String,
 ) -> Result<(), Error> {
 	let client = reqwest::Client::new();
 
 	let response = client
 		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
 		.header("AUTHORIZATION", format!("token {}", access_token))
+		.header(USER_AGENT, user_agent)
 		.send()
 		.await?;
 
@@ -236,23 +244,18 @@ pub async fn github_actions_for_node_deployment(
 	build_command: String,
 	publish_dir: String,
 	node_version: String,
+	user_agent: String,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
 		.build()?;
-	let client = reqwest::Client::new();
-
-	let response = client
-		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
-		.header("AUTHORIZATION", format!("token {}", access_token))
-		.send()
-		.await?;
 
 	let client = reqwest::Client::new();
 
 	let response = client
 		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
 		.header("AUTHORIZATION", format!("token {}", access_token))
+		.header(USER_AGENT, user_agent)
 		.send()
 		.await?;
 
@@ -297,7 +300,7 @@ steps:
 "#
 				),
 			)
-			.branch("main")
+			.branch("master")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -308,6 +311,7 @@ steps:
 			})
 			.send()
 			.await?;
+		return Ok(());
 	} else if response.status() == 200 {
 		let body = response.json::<GithubResponseBody>().await?;
 		let sha = body.sha;
@@ -352,7 +356,7 @@ steps:
 				),
 				sha,
 			)
-			.branch("main")
+			.branch("master")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -363,6 +367,7 @@ steps:
 			})
 			.send()
 			.await?;
+		return Ok(());
 	}
 	Ok(())
 }

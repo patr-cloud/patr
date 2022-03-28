@@ -1,6 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{models::workspace::get_github_info::*, utils::Uuid};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use reqwest::header::{AUTHORIZATION, USER_AGENT};
 
 use crate::{
 	app::{create_eve_app, App},
@@ -44,7 +45,8 @@ pub fn create_sub_app(
 				permissions::workspace::github::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+						"a66fde8c0c7246559ac12e4f43e9c953";
+					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -74,7 +76,7 @@ pub fn create_sub_app(
 				permissions::workspace::github::action::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						"ed413db9bc214a84a273874c487a3b23";
+						"a66fde8c-0c72-4655-9ac1-2e4f43e9c953";
 					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
@@ -140,9 +142,6 @@ async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	log::trace!("request_id: {} - requested to get repo", request_id,);
-
 	let GetGithubRepoRequest {
 		access_token,
 		owner_name,
@@ -151,16 +150,20 @@ async fn list_github_repos(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_agent = context.get_header("User-Agent").unwrap_or(owner_name);
+
 	let client = reqwest::Client::new();
 
 	let response = client
-		.get(format!("https://api.github.com/users/{}/repos", owner_name))
-		.header("AUTHORIZATION", format!("token {}", access_token))
+		.get("https://api.github.com/user/repos")
+		.header(AUTHORIZATION, format!("Token {}", access_token))
+		.header(USER_AGENT, user_agent)
 		.send()
 		.await?;
 
-	// TODO - send response.body as a response
-	println!("{:#?}", response);
+	let response = response.json::<Vec<GithubResponse>>().await?;
+
+	context.success(GetGithubRepoResponse { response });
 
 	Ok(context)
 }
@@ -169,12 +172,6 @@ async fn configure_github_build_steps_static_site(
 	context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	log::trace!(
-		"request_id: {} - requested config build steps using github actions",
-		request_id,
-	);
-
 	let GetGithubStaticSiteBuildStepRequest {
 		access_token,
 		owner_name,
@@ -188,6 +185,10 @@ async fn configure_github_build_steps_static_site(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_agent = context
+		.get_header("User-Agent")
+		.unwrap_or(owner_name.clone());
+
 	// for now only going forward with node and vanilla
 	// will add other frameworks support
 	if framework == "node" {
@@ -198,6 +199,7 @@ async fn configure_github_build_steps_static_site(
 			build_command,
 			publish_dir,
 			node_version,
+			user_agent,
 		)
 		.await?;
 	} else {
@@ -205,6 +207,7 @@ async fn configure_github_build_steps_static_site(
 			access_token,
 			owner_name,
 			repo_name,
+			user_agent,
 		)
 		.await?
 	}
@@ -235,6 +238,10 @@ async fn configure_github_build_steps_deployment(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let user_agent = context
+		.get_header("User-Agent")
+		.unwrap_or(owner_name.clone());
+
 	if framework == "node" {
 		service::github_actions_for_node_deployment(
 			access_token,
@@ -243,6 +250,7 @@ async fn configure_github_build_steps_deployment(
 			build_command,
 			publish_dir,
 			node_version,
+			user_agent,
 		)
 		.await?;
 	}
