@@ -457,6 +457,7 @@ pub async fn get_deployment_metrics(
 		async {
 			log::trace!("request_id: {} - Getting cpu metrics", request_id);
 			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -468,6 +469,7 @@ pub async fn get_deployment_metrics(
 				request_id
 			);
 			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -479,6 +481,7 @@ pub async fn get_deployment_metrics(
 				request_id
 			);
 			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()
@@ -490,6 +493,7 @@ pub async fn get_deployment_metrics(
 				request_id
 			);
 			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
 				.send()
 				.await?
 				.json::<PrometheusResponse>()

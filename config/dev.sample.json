@@ -80,7 +80,9 @@
 		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
 	},
 	"prometheus": {
-		"host": "prometheus.samyakgangwal.com"
+		"host": "prometheus.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
 	},
 	"chargebee": {
 		"apiKey": "key",

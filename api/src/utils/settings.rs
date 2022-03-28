@@ -198,6 +198,8 @@ where
 #[serde(rename_all = "camelCase")]
 pub struct PrometheusSettings {
 	pub host: String,
+	pub username: String,
+	pub password: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
