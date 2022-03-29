@@ -750,8 +750,8 @@ async fn migrate_from_v0_5_7(
 	rabbitmq(connection, config).await?;
 	audit_logs(connection).await?;
 	chargebee(connection, config).await?;
-
-	Ok(())
+	change_backup_to_revocery_keyword(connection).await?;
+	Ok(())	
 }
 
 async fn rabbitmq(
