@@ -19,14 +19,14 @@ pub struct User {
 	pub created: u64,
 
 	#[serde(skip)]
-	pub backup_email_local: Option<String>,
+	pub recovery_email_local: Option<String>,
 	#[serde(skip)]
-	pub backup_email_domain_id: Option<Uuid>,
+	pub recovery_email_domain_id: Option<Uuid>,
 
 	#[serde(skip)]
-	pub backup_phone_country_code: Option<String>,
+	pub recovery_phone_country_code: Option<String>,
 	#[serde(skip)]
-	pub backup_phone_number: Option<String>,
+	pub recovery_phone_number: Option<String>,
 }
 
 pub struct UserLogin {
@@ -53,11 +53,11 @@ pub struct UserToSignUp {
 	pub first_name: String,
 	pub last_name: String,
 
-	pub backup_email_local: Option<String>,
-	pub backup_email_domain_id: Option<Uuid>,
+	pub recovery_email_local: Option<String>,
+	pub recovery_email_domain_id: Option<Uuid>,
 
-	pub backup_phone_country_code: Option<String>,
-	pub backup_phone_number: Option<String>,
+	pub recovery_phone_country_code: Option<String>,
+	pub recovery_phone_number: Option<String>,
 
 	pub business_email_local: Option<String>,
 	pub business_domain_name: Option<String>,
@@ -100,6 +100,6 @@ pub struct JoinUser {
 	pub login_id: Uuid,
 	pub refresh_token: Uuid,
 	pub welcome_email_to: Option<String>,
-	pub backup_email_to: Option<String>,
-	pub backup_phone_number_to: Option<String>,
+	pub recovery_email_to: Option<String>,
+	pub recovery_phone_number_to: Option<String>,
 }

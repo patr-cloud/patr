@@ -750,6 +750,7 @@ async fn migrate_from_v0_5_7(
 	rabbitmq(connection, config).await?;
 	audit_logs(connection).await?;
 	chargebee(connection, config).await?;
+
 	Ok(())
 }
 
@@ -1093,6 +1094,175 @@ async fn chargebee(
 				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 		}
 	}
+
+	Ok(())
+}
+
+async fn change_backup_to_revocery_keyword(
+	connection: &mut sqlx::PgConnection,
+) -> Result<(), sqlx::Error> {
+	//  "user" table
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME COLUMN backup_email_local
+		TO recovery_email_local;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME COLUMN backup_email_domain_id
+		TO recovery_email_domain_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME COLUMN backup_phone_country_code
+		TO recovery_phone_country_code;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME COLUMN backup_phone_number
+		TO recovery_phone_number;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_uq_backup_email_local_backup_email_domain_id
+		TO user_uq_recovery_email_local_recovery_email_domain_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number
+		TO user_uq_recovery_phone_country_code_recovery_phone_number;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present
+		TO user_chk_rcvry_eml_or_rcvry_phn_present;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// "user_to_sign_up" table
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN backup_email_local
+		TO recovery_email_local;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN backup_email_domain_id
+		TO recovery_email_domain_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN backup_phone_country_code
+		TO recovery_phone_country_code;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME COLUMN backup_phone_number
+		TO recovery_phone_number;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case
+		TO user_to_sign_up_chk_recovery_email_is_lower_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME CONSTRAINT user_to_sign_up_fk_backup_email_domain_id
+		TO user_to_sign_up_fk_recovery_email_domain_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME CONSTRAINT user_to_sign_up_fk_backup_phone_country_code
+		TO user_to_sign_up_fk_recovery_phone_country_code;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case
+		TO user_to_sign_up_chk_recovery_phone_country_code_upper_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_to_sign_up
+		RENAME CONSTRAINT user_to_sign_up_chk_backup_details
+		TO user_to_sign_up_chk_recovery_details;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

@@ -46,31 +46,31 @@ pub async fn initialize_users_pre(
 			created BIGINT NOT NULL
 				CONSTRAINT user_chk_created_unsigned CHECK(created >= 0),
 			/* Recovery options */
-			backup_email_local VARCHAR(64)
-				CONSTRAINT user_chk_backup_email_is_lower_case CHECK(
-					backup_email_local = LOWER(backup_email_local)
+			recovery_email_local VARCHAR(64)
+				CONSTRAINT user_chk_recovery_email_is_lower_case CHECK(
+					recovery_email_local = LOWER(recovery_email_local)
 				),
-			backup_email_domain_id UUID,
-			backup_phone_country_code CHAR(2)
-				CONSTRAINT user_chk_backup_phone_country_code_is_upper_case CHECK(
-					backup_phone_country_code = UPPER(backup_phone_country_code)
+			recovery_email_domain_id UUID,
+			recovery_phone_country_code CHAR(2)
+				CONSTRAINT user_chk_recovery_phone_country_code_is_upper_case CHECK(
+					recovery_phone_country_code = UPPER(recovery_phone_country_code)
 				),
-			backup_phone_number VARCHAR(15),
+			recovery_phone_number VARCHAR(15),
 
-			CONSTRAINT user_uq_backup_email_local_backup_email_domain_id
-				UNIQUE(backup_email_local, backup_email_domain_id),
+			CONSTRAINT user_uq_recovery_email_local_recovery_email_domain_id
+				UNIQUE(recovery_email_local, recovery_email_domain_id),
 
-			CONSTRAINT user_uq_backup_phone_country_code_backup_phone_number
-				UNIQUE(backup_phone_country_code, backup_phone_number),
+			CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number
+				UNIQUE(recovery_phone_country_code, recovery_phone_number),
 
 			CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK(
 				(
-					backup_email_local IS NOT NULL AND
-					backup_email_domain_id IS NOT NULL
+					recovery_email_local IS NOT NULL AND
+					recovery_email_domain_id IS NOT NULL
 				) OR
 				(
-					backup_phone_country_code IS NOT NULL AND
-					backup_phone_number IS NOT NULL
+					recovery_phone_country_code IS NOT NULL AND
+					recovery_phone_number IS NOT NULL
 				)
 			)
 		);
@@ -360,26 +360,26 @@ pub async fn initialize_users_post(
 			first_name VARCHAR(100) NOT NULL,
 			last_name VARCHAR(100) NOT NULL,
 			
-			/* Personal email address OR backup email */
-			backup_email_local VARCHAR(64)
-				CONSTRAINT user_to_sign_up_chk_backup_email_is_lower_case CHECK(
-					backup_email_local = LOWER(backup_email_local)
+			/* Personal email address OR recovery email */
+			recovery_email_local VARCHAR(64)
+				CONSTRAINT user_to_sign_up_chk_recovery_email_is_lower_case CHECK(
+					recovery_email_local = LOWER(recovery_email_local)
 				),
-			backup_email_domain_id UUID
-				CONSTRAINT user_to_sign_up_fk_backup_email_domain_id
+			recovery_email_domain_id UUID
+				CONSTRAINT user_to_sign_up_fk_recovery_email_domain_id
 					REFERENCES personal_domain(id),
 
-			backup_phone_country_code CHAR(2)
-				CONSTRAINT user_to_sign_up_fk_backup_phone_country_code
+			recovery_phone_country_code CHAR(2)
+				CONSTRAINT user_to_sign_up_fk_recovery_phone_country_code
 					REFERENCES phone_number_country_code(country_code)
-				CONSTRAINT user_to_sign_up_chk_backup_phone_country_code_upper_case CHECK(
-					backup_phone_country_code = UPPER(backup_phone_country_code)
+				CONSTRAINT user_to_sign_up_chk_recovery_phone_country_code_upper_case CHECK(
+					recovery_phone_country_code = UPPER(recovery_phone_country_code)
 				),
-			backup_phone_number VARCHAR(15)
+			recovery_phone_number VARCHAR(15)
 				CONSTRAINT user_to_sign_up_chk_phone_number_valid CHECK(
-					LENGTH(backup_phone_number) >= 7 AND
-					LENGTH(backup_phone_number) <= 15 AND
-					CAST(backup_phone_number AS BIGINT) > 0
+					LENGTH(recovery_phone_number) >= 7 AND
+					LENGTH(recovery_phone_number) <= 15 AND
+					CAST(recovery_phone_number AS BIGINT) > 0
 				),
 
 			/* Workspace email address */
@@ -440,18 +440,18 @@ pub async fn initialize_users_post(
 					)
 				)
 			),
-			CONSTRAINT user_to_sign_up_chk_backup_details CHECK(
+			CONSTRAINT user_to_sign_up_chk_recovery_details CHECK(
 				(
-					backup_email_local IS NOT NULL AND
-					backup_email_domain_id IS NOT NULL AND
-					backup_phone_country_code IS NULL AND
-					backup_phone_number IS NULL
+					recovery_email_local IS NOT NULL AND
+					recovery_email_domain_id IS NOT NULL AND
+					recovery_phone_country_code IS NULL AND
+					recovery_phone_number IS NULL
 				) OR
 				(
-					backup_email_local IS NULL AND
-					backup_email_domain_id IS NULL AND
-					backup_phone_country_code IS NOT NULL AND
-					backup_phone_number IS NOT NULL
+					recovery_email_local IS NULL AND
+					recovery_email_domain_id IS NULL AND
+					recovery_phone_country_code IS NOT NULL AND
+					recovery_phone_number IS NOT NULL
 				)
 			)
 		);
@@ -487,11 +487,11 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		ALTER TABLE "user"
-		ADD CONSTRAINT user_fk_id_backup_email_local_backup_email_domain_id
+		ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id
 		FOREIGN KEY (
 			id,
-			backup_email_local,
-			backup_email_domain_id
+			recovery_email_local,
+			recovery_email_domain_id
 		)
 		REFERENCES personal_email (
 			user_id,
@@ -508,11 +508,11 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		ALTER TABLE "user"
-		ADD CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number
+		ADD CONSTRAINT user_fk_id_recovery_phone_country_code_recovery_phone_number
 		FOREIGN KEY (
 			id,
-			backup_phone_country_code,
-			backup_phone_number
+			recovery_phone_country_code,
+			recovery_phone_number
 		)
 		REFERENCES user_phone_number (
 			user_id,
@@ -806,10 +806,10 @@ pub async fn get_user_by_username_email_or_phone_number(
 			"user".bio,
 			"user".location,
 			"user".created,
-			"user".backup_email_local,
-			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
-			"user".backup_phone_country_code,
-			"user".backup_phone_number
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -869,10 +869,10 @@ pub async fn get_user_by_username_email_or_phone_number(
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	});
 
 	Ok(user)
@@ -894,10 +894,10 @@ pub async fn get_user_by_email(
 			"user".bio,
 			"user".location,
 			"user".created,
-			"user".backup_email_local,
-			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
-			"user".backup_phone_country_code,
-			"user".backup_phone_number
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
 			"user"
 		LEFT JOIN
@@ -943,10 +943,10 @@ pub async fn get_user_by_email(
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	});
 
 	Ok(user)
@@ -969,10 +969,10 @@ pub async fn get_user_by_phone_number(
 			"user".bio,
 			"user".location,
 			"user".created,
-			"user".backup_email_local,
-			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
-			"user".backup_phone_country_code,
-			"user".backup_phone_number
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
 			"user"
 		INNER JOIN
@@ -998,10 +998,10 @@ pub async fn get_user_by_phone_number(
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	});
 
 	Ok(user)
@@ -1023,10 +1023,10 @@ pub async fn get_user_by_username(
 			"user".bio,
 			"user".location,
 			"user".created,
-			"user".backup_email_local,
-			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
-			"user".backup_phone_country_code,
-			"user".backup_phone_number
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
 			"user"
 		WHERE
@@ -1046,10 +1046,10 @@ pub async fn get_user_by_username(
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	});
 
 	Ok(user)
@@ -1071,10 +1071,10 @@ pub async fn get_user_by_user_id(
 			"user".bio,
 			"user".location,
 			"user".created,
-			"user".backup_email_local,
-			"user".backup_email_domain_id as "backup_email_domain_id: Uuid",
-			"user".backup_phone_country_code,
-			"user".backup_phone_number
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
 			"user"
 		WHERE
@@ -1094,10 +1094,10 @@ pub async fn get_user_by_user_id(
 		bio: row.bio,
 		location: row.location,
 		created: row.created as u64,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	});
 
 	Ok(user)
@@ -1159,8 +1159,8 @@ pub async fn set_personal_user_to_be_signed_up(
 
 	email_local: Option<&str>,
 	email_domain_id: Option<&Uuid>,
-	backup_phone_country_code: Option<&str>,
-	backup_phone_number: Option<&str>,
+	recovery_phone_country_code: Option<&str>,
+	recovery_phone_number: Option<&str>,
 
 	otp_hash: &str,
 	otp_expiry: u64,
@@ -1199,11 +1199,11 @@ pub async fn set_personal_user_to_be_signed_up(
 			first_name = EXCLUDED.first_name,
 			last_name = EXCLUDED.last_name,
 			
-			backup_email_local = EXCLUDED.backup_email_local,
-			backup_email_domain_id = EXCLUDED.backup_email_domain_id,
+			recovery_email_local = EXCLUDED.recovery_email_local,
+			recovery_email_domain_id = EXCLUDED.recovery_email_domain_id,
 
-			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
-			backup_phone_number = EXCLUDED.backup_phone_number,
+			recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
+			recovery_phone_number = EXCLUDED.recovery_phone_number,
 			
 			business_email_local = NULL,
 			business_domain_name = NULL,
@@ -1218,8 +1218,8 @@ pub async fn set_personal_user_to_be_signed_up(
 		last_name,
 		email_local,
 		email_domain_id as _,
-		backup_phone_country_code,
-		backup_phone_number,
+		recovery_phone_country_code,
+		recovery_phone_number,
 		otp_hash,
 		otp_expiry as i64
 	)
@@ -1235,10 +1235,10 @@ pub async fn set_business_user_to_be_signed_up(
 	password: &str,
 	(first_name, last_name): (&str, &str),
 
-	backup_email_local: Option<&str>,
-	backup_email_domain_id: Option<&Uuid>,
-	backup_phone_country_code: Option<&str>,
-	backup_phone_number: Option<&str>,
+	recovery_email_local: Option<&str>,
+	recovery_email_domain_id: Option<&Uuid>,
+	recovery_phone_country_code: Option<&str>,
+	recovery_phone_number: Option<&str>,
 
 	business_email_local: &str,
 	business_domain_name: &str,
@@ -1282,11 +1282,11 @@ pub async fn set_business_user_to_be_signed_up(
 			first_name = EXCLUDED.first_name,
 			last_name = EXCLUDED.last_name,
 			
-			backup_email_local = EXCLUDED.backup_email_local,
-			backup_email_domain_id = EXCLUDED.backup_email_domain_id,
+			recovery_email_local = EXCLUDED.recovery_email_local,
+			recovery_email_domain_id = EXCLUDED.recovery_email_domain_id,
 
-			backup_phone_country_code = EXCLUDED.backup_phone_country_code,
-			backup_phone_number = EXCLUDED.backup_phone_number,
+			recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
+			recovery_phone_number = EXCLUDED.recovery_phone_number,
 			
 			business_email_local = EXCLUDED.business_email_local,
 			business_domain_name = EXCLUDED.business_domain_name,
@@ -1300,10 +1300,10 @@ pub async fn set_business_user_to_be_signed_up(
 		password,
 		first_name,
 		last_name,
-		backup_email_local,
-		backup_email_domain_id as _,
-		backup_phone_country_code,
-		backup_phone_number,
+		recovery_email_local,
+		recovery_email_domain_id as _,
+		recovery_phone_country_code,
+		recovery_phone_number,
 		business_email_local,
 		business_domain_name,
 		business_domain_tld,
@@ -1329,10 +1329,10 @@ pub async fn get_user_to_sign_up_by_username(
 			password,
 			first_name,
 			last_name,
-			backup_email_local,
-			backup_email_domain_id as "backup_email_domain_id: Uuid",
-			backup_phone_country_code,
-			backup_phone_number,
+			recovery_email_local,
+			recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			recovery_phone_country_code,
+			recovery_phone_number,
 			business_email_local,
 			CASE WHEN business_domain_name IS NULL
 			THEN
@@ -1358,10 +1358,10 @@ pub async fn get_user_to_sign_up_by_username(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 		business_email_local: row.business_email_local,
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
@@ -1385,10 +1385,10 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			password,
 			first_name,
 			last_name,
-			backup_email_local,
-			backup_email_domain_id as "backup_email_domain_id: Uuid",
-			backup_phone_country_code,
-			backup_phone_number,
+			recovery_email_local,
+			recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			recovery_phone_country_code,
+			recovery_phone_number,
 			business_email_local,
 			CASE WHEN business_domain_name IS NULL
 			THEN
@@ -1402,8 +1402,8 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		FROM
 			user_to_sign_up
 		WHERE
-			backup_phone_country_code = $1 AND
-			backup_phone_number = $2;
+			recovery_phone_country_code = $1 AND
+			recovery_phone_number = $2;
 		"#,
 		country_code,
 		phone_number
@@ -1416,10 +1416,10 @@ pub async fn get_user_to_sign_up_by_phone_number(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 		business_email_local: row.business_email_local,
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
@@ -1442,10 +1442,10 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.password,
 			user_to_sign_up.first_name,
 			user_to_sign_up.last_name,
-			user_to_sign_up.backup_email_local,
-			user_to_sign_up.backup_email_domain_id as "backup_email_domain_id: Uuid",
-			user_to_sign_up.backup_phone_country_code,
-			user_to_sign_up.backup_phone_number,
+			user_to_sign_up.recovery_email_local,
+			user_to_sign_up.recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			user_to_sign_up.recovery_phone_country_code,
+			user_to_sign_up.recovery_phone_number,
 			user_to_sign_up.business_email_local,
 			CASE WHEN user_to_sign_up.business_domain_name IS NULL
 			THEN
@@ -1465,10 +1465,10 @@ pub async fn get_user_to_sign_up_by_email(
 		INNER JOIN
 			domain
 		ON
-			domain.id = user_to_sign_up.backup_email_domain_id
+			domain.id = user_to_sign_up.recovery_email_domain_id
 		WHERE
 			CONCAT(
-				user_to_sign_up.backup_email_local,
+				user_to_sign_up.recovery_email_local,
 				'@',
 				domain.name,
 				'.',
@@ -1485,10 +1485,10 @@ pub async fn get_user_to_sign_up_by_email(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 		business_email_local: row.business_email_local,
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
@@ -1511,10 +1511,10 @@ pub async fn get_user_to_sign_up_by_business_name(
 			password,
 			first_name,
 			last_name,
-			backup_email_local,
-			backup_email_domain_id as "backup_email_domain_id: Uuid",
-			backup_phone_country_code,
-			backup_phone_number,
+			recovery_email_local,
+			recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			recovery_phone_country_code,
+			recovery_phone_number,
 			business_email_local,
 			CASE WHEN business_domain_name IS NULL
 			THEN
@@ -1540,10 +1540,10 @@ pub async fn get_user_to_sign_up_by_business_name(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 		business_email_local: row.business_email_local,
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
@@ -1566,10 +1566,10 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			password,
 			first_name,
 			last_name,
-			backup_email_local,
-			backup_email_domain_id as "backup_email_domain_id: Uuid",
-			backup_phone_country_code,
-			backup_phone_number,
+			recovery_email_local,
+			recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			recovery_phone_country_code,
+			recovery_phone_number,
 			business_email_local,
 			CASE WHEN business_domain_name IS NULL
 			THEN
@@ -1595,10 +1595,10 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 		password: row.password,
 		first_name: row.first_name,
 		last_name: row.last_name,
-		backup_email_local: row.backup_email_local,
-		backup_email_domain_id: row.backup_email_domain_id,
-		backup_phone_country_code: row.backup_phone_country_code,
-		backup_phone_number: row.backup_phone_number,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 		business_email_local: row.business_email_local,
 		business_domain_name: row.business_domain_name,
 		business_name: row.business_name,
@@ -1971,11 +1971,11 @@ pub async fn create_user(
 	(first_name, last_name): (&str, &str),
 	created: u64,
 
-	backup_email_local: Option<&str>,
-	backup_email_domain_id: Option<&Uuid>,
+	recovery_email_local: Option<&str>,
+	recovery_email_domain_id: Option<&Uuid>,
 
-	backup_phone_country_code: Option<&str>,
-	backup_phone_number: Option<&str>,
+	recovery_phone_country_code: Option<&str>,
+	recovery_phone_number: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -2006,10 +2006,10 @@ pub async fn create_user(
 		first_name,
 		last_name,
 		created as i64,
-		backup_email_local,
-		backup_email_domain_id as _,
-		backup_phone_country_code,
-		backup_phone_number
+		recovery_email_local,
+		recovery_email_domain_id as _,
+		recovery_phone_country_code,
+		recovery_phone_number
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -2380,7 +2380,7 @@ pub async fn update_user_password(
 	Ok(())
 }
 
-pub async fn update_backup_email_for_user(
+pub async fn update_recovery_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	email_local: &str,
@@ -2391,8 +2391,8 @@ pub async fn update_backup_email_for_user(
 		UPDATE
 			"user"
 		SET
-			backup_email_local = $1,
-			backup_email_domain_id = $2
+			recovery_email_local = $1,
+			recovery_email_domain_id = $2
 		WHERE
 			id = $3;
 		"#,
@@ -2406,7 +2406,7 @@ pub async fn update_backup_email_for_user(
 	Ok(())
 }
 
-pub async fn update_backup_phone_number_for_user(
+pub async fn update_recovery_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	country_code: &str,
@@ -2417,8 +2417,8 @@ pub async fn update_backup_phone_number_for_user(
 		UPDATE
 			"user"
 		SET
-			backup_phone_country_code = $1,
-			backup_phone_number = $2
+			recovery_phone_country_code = $1,
+			recovery_phone_number = $2
 		WHERE
 			id = $3;
 		"#,
@@ -2650,21 +2650,21 @@ pub async fn get_phone_numbers_for_user(
 	.await
 }
 
-pub async fn get_backup_phone_number_for_user(
+pub async fn get_recovery_phone_number_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Option<UserPhoneNumber>, sqlx::Error> {
 	query!(
 		r#"
 		SELECT
-			"user".backup_phone_country_code as "backup_phone_country_code!",
-			"user".backup_phone_number as "backup_phone_number!"
+			"user".recovery_phone_country_code as "recovery_phone_country_code!",
+			"user".recovery_phone_number as "recovery_phone_number!"
 		FROM
 			"user"
 		WHERE
 			"user".id = $1 AND
-			"user".backup_phone_number IS NOT NULL AND
-			"user".backup_phone_country_code IS NOT NULL;
+			"user".recovery_phone_number IS NOT NULL AND
+			"user".recovery_phone_country_code IS NOT NULL;
 		"#,
 		user_id as _,
 	)
@@ -2672,13 +2672,13 @@ pub async fn get_backup_phone_number_for_user(
 	.await
 	.map(|row| {
 		row.map(|row| UserPhoneNumber {
-			country_code: row.backup_phone_country_code,
-			phone_number: row.backup_phone_number,
+			country_code: row.recovery_phone_country_code,
+			phone_number: row.recovery_phone_number,
 		})
 	})
 }
 
-pub async fn get_backup_email_for_user(
+pub async fn get_recovery_email_for_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 ) -> Result<Option<String>, sqlx::Error> {
@@ -2686,7 +2686,7 @@ pub async fn get_backup_email_for_user(
 		r#"
 		SELECT
 			CONCAT(
-				"user".backup_email_local,
+				"user".recovery_email_local,
 				'@',
 				domain.name,
 				'.',
@@ -2697,7 +2697,7 @@ pub async fn get_backup_email_for_user(
 		INNER JOIN
 			domain
 		ON
-			"user".backup_email_domain_id = domain.id
+			"user".recovery_email_domain_id = domain.id
 		WHERE
 			"user".id = $1;
 		"#,
