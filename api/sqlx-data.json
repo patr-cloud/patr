@@ -578,14 +578,14 @@
     "query": "SELECT \"user\".*, CONCAT(domain.name, '.', domain.tld) as \"name!\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id INNER JOIN resource ON workspace_domain.id = resource.id INNER JOIN workspace ON resource.owner_id = workspace.id INNER JOIN \"user\" ON workspace.super_admin_id = \"user\".id WHERE workspace_domain.id = $1;"
   },
   "144f726fa812daa0a68d84a79ce6dde25308df488a580e6c610fd1c3e6fab790": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_resource_id FOREIGN KEY(resource_id) REFERENCES resource(id);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_resource_id FOREIGN KEY(resource_id) REFERENCES resource(id);"
   },
   "1478e049e620cdd3592a2f14e0f25a668c95e62854c5facb14517c62d6210275": {
     "describe": {
@@ -1101,14 +1101,14 @@
     "query": "SELECT country_code, number as \"phone_number\" FROM user_phone_number WHERE user_id = $1;"
   },
   "1d05ab27fbc6052a09fe32569ad75b5041f02c31ea8e7fcb880c557da0db666f": {
-    "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL CONSTRAINT workspace_audit_log_fk_workspace_id REFERENCES workspace(id), user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "CREATE TABLE workspace_audit_log ( id UUID NOT NULL CONSTRAINT workspace_audit_log_pk PRIMARY KEY, date TIMESTAMPTZ NOT NULL, ip_address TEXT NOT NULL, workspace_id UUID NOT NULL CONSTRAINT workspace_audit_log_fk_workspace_id REFERENCES workspace(id), user_id UUID, login_id UUID, resource_id UUID NOT NULL, action UUID NOT NULL, request_id UUID NOT NULL, metadata JSON NOT NULL, patr_action BOOL NOT NULL, success BOOL NOT NULL, CONSTRAINT workspace_audit_log_chk_patr_action CHECK( ( patr_action = true AND user_id IS NULL AND login_id IS NULL ) OR ( patr_action = false AND user_id IS NOT NULL AND login_id IS NOT NULL ) ) );"
   },
   "1d060e8f1c3d2ddbc982c7006b489a10007b4e6dd2eed4ff01c2200912301c2f": {
     "describe": {
@@ -2266,14 +2266,14 @@
     "query": "INSERT INTO docker_registry_repository_manifest VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;"
   },
   "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);"
   },
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "describe": {
@@ -2572,14 +2572,14 @@
     "query": "INSERT INTO password_reset_request VALUES ($1, $2, $3) ON CONFLICT(user_id) DO UPDATE SET token = EXCLUDED.token, token_expiry = EXCLUDED.token_expiry;"
   },
   "5f1d0325462a97c5165fdae1c672a40d3589e067a8785b7b2da2e1256010aae9": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_login_id FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id);"
   },
   "5f4da81e11690f78c860744212e2d92c210d50982c52e97afe27b96c070caa27": {
     "describe": {
@@ -2997,75 +2997,69 @@
     "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE username = $3;"
   },
   "6d073aee1779702ca055d61d249600c11148f6df419ae1221b3030279f364539": {
-    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id: _",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "date: _",
+          "ordinal": 1,
           "type_info": "Timestamptz"
         },
         {
-          "ordinal": 2,
           "name": "ip_address",
+          "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "ordinal": 3,
           "name": "workspace_id: _",
+          "ordinal": 3,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 4,
           "name": "user_id: _",
+          "ordinal": 4,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 5,
           "name": "login_id: _",
+          "ordinal": 5,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 6,
           "name": "resource_id: _",
+          "ordinal": 6,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 7,
           "name": "action",
+          "ordinal": 7,
           "type_info": "Varchar"
         },
         {
-          "ordinal": 8,
           "name": "request_id: _",
+          "ordinal": 8,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 9,
           "name": "metadata: _",
+          "ordinal": 9,
           "type_info": "Json"
         },
         {
-          "ordinal": 10,
           "name": "patr_action: _",
+          "ordinal": 10,
           "type_info": "Bool"
         },
         {
-          "ordinal": 11,
           "name": "success",
+          "ordinal": 11,
           "type_info": "Bool"
         }
       ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
       "nullable": [
         false,
         false,
@@ -3079,8 +3073,14 @@
         false,
         false,
         false
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;"
   },
   "6f7f9061d9b0ef20410537f9f662cc3a501d0a3ec931a68f7ef6c0891bfa4a06": {
     "describe": {
@@ -3122,35 +3122,33 @@
     "query": "SELECT id as \"id: _\", name, provider as \"cloud_provider: _\" FROM deployment_region;"
   },
   "72ac7bbce66b7ce6bf31c659da6b9c2b4f396b0a1738bdf2ccf4ef98e3ae61eb": {
-    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id: _",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "sub_domain",
+          "ordinal": 1,
           "type_info": "Text"
         },
         {
-          "ordinal": 2,
           "name": "domain_id: _",
+          "ordinal": 2,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 3,
           "name": "path",
+          "ordinal": 3,
           "type_info": "Text"
         },
         {
-          "ordinal": 4,
           "name": "url_type: _",
+          "ordinal": 4,
           "type_info": {
             "Custom": {
-              "name": "managed_url_type",
               "kind": {
                 "Enum": [
                   "proxy_to_deployment",
@@ -3158,39 +3156,37 @@
                   "proxy_url",
                   "redirect"
                 ]
-              }
+              },
+              "name": "managed_url_type"
             }
           }
         },
         {
-          "ordinal": 5,
           "name": "deployment_id: _",
+          "ordinal": 5,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 6,
           "name": "port",
+          "ordinal": 6,
           "type_info": "Int4"
         },
         {
-          "ordinal": 7,
           "name": "static_site_id: _",
+          "ordinal": 7,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 8,
           "name": "url",
+          "ordinal": 8,
           "type_info": "Text"
         },
         {
-          "ordinal": 9,
           "name": "workspace_id: _",
+          "ordinal": 9,
           "type_info": "Uuid"
         }
       ],
-      "parameters": {
-        "Left": []
-      },
       "nullable": [
         false,
         false,
@@ -3202,8 +3198,12 @@
         true,
         true,
         false
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
   "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
     "describe": {
@@ -3580,75 +3580,69 @@
     "query": "INSERT INTO deployment_environment_variable VALUES ($1, $2, $3);"
   },
   "8057f865467d08afd62b9994d49d52f2149f106585bbfa5f790918ed9eedfb55": {
-    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1 AND ( metadata ->> 'deploymentStatus' = 'created' OR metadata ->> 'deploymentStatus' = 'running' OR metadata ->> 'deploymentStatus' = 'stopped' );",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id: _",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "date: _",
+          "ordinal": 1,
           "type_info": "Timestamptz"
         },
         {
-          "ordinal": 2,
           "name": "ip_address",
+          "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "ordinal": 3,
           "name": "workspace_id: _",
+          "ordinal": 3,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 4,
           "name": "user_id: _",
+          "ordinal": 4,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 5,
           "name": "login_id: _",
+          "ordinal": 5,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 6,
           "name": "resource_id: _",
+          "ordinal": 6,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 7,
           "name": "action",
+          "ordinal": 7,
           "type_info": "Varchar"
         },
         {
-          "ordinal": 8,
           "name": "request_id: _",
+          "ordinal": 8,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 9,
           "name": "metadata: _",
+          "ordinal": 9,
           "type_info": "Json"
         },
         {
-          "ordinal": 10,
           "name": "patr_action: _",
+          "ordinal": 10,
           "type_info": "Bool"
         },
         {
-          "ordinal": 11,
           "name": "success",
+          "ordinal": 11,
           "type_info": "Bool"
         }
       ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
       "nullable": [
         false,
         false,
@@ -3662,8 +3656,14 @@
         false,
         false,
         false
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1 AND ( metadata ->> 'deploymentStatus' = 'created' OR metadata ->> 'deploymentStatus' = 'running' OR metadata ->> 'deploymentStatus' = 'stopped' );"
   },
   "80fa0cff43932600e815f32385f983ff6c643e04f261fd5df7ff43b8ca98a9cf": {
     "describe": {
@@ -3686,75 +3686,69 @@
     "query": "CREATE TABLE role( id UUID CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id UUID NOT NULL CONSTRAINT role_fk_owner_id REFERENCES workspace(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );"
   },
   "8318ccd0ab8b84917e77f226fca33304a5d4df55b5fd0dda1eec1449aa63a4f4": {
-    "query": "SELECT * FROM workspace_audit_log WHERE id = $1;",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "date",
+          "ordinal": 1,
           "type_info": "Timestamptz"
         },
         {
-          "ordinal": 2,
           "name": "ip_address",
+          "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "ordinal": 3,
           "name": "workspace_id",
+          "ordinal": 3,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 4,
           "name": "user_id",
+          "ordinal": 4,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 5,
           "name": "login_id",
+          "ordinal": 5,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 6,
           "name": "resource_id",
+          "ordinal": 6,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 7,
           "name": "action",
+          "ordinal": 7,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 8,
           "name": "request_id",
+          "ordinal": 8,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 9,
           "name": "metadata",
+          "ordinal": 9,
           "type_info": "Json"
         },
         {
-          "ordinal": 10,
           "name": "patr_action",
+          "ordinal": 10,
           "type_info": "Bool"
         },
         {
-          "ordinal": 11,
           "name": "success",
+          "ordinal": 11,
           "type_info": "Bool"
         }
       ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
       "nullable": [
         false,
         false,
@@ -3768,8 +3762,14 @@
         false,
         false,
         false
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
   },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
@@ -4033,9 +4033,9 @@
     "query": "SELECT port, port_type as \"port_type: ExposedPortType\" FROM deployment_exposed_port WHERE deployment_id = $1;"
   },
   "8c6a4e030071f978cb91d0da4797bb95251c8abe6a95383c748b9317380a271a": {
-    "query": "INSERT INTO workspace_audit_log VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
@@ -4051,9 +4051,9 @@
           "Bool",
           "Bool"
         ]
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "INSERT INTO workspace_audit_log VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
   },
   "8d0a4c011fc58624c93d87270ff0cc7db7a41927801b42f826871cc11a37ce02": {
     "describe": {
@@ -4132,14 +4132,14 @@
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id);"
   },
   "8e8442a69038da41e5966a479775fb1d9dbe1408096ccc93695d0c4713eb59b1": {
     "describe": {
@@ -4942,75 +4942,69 @@
     "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE );"
   },
   "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19": {
-    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id: _",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "date: _",
+          "ordinal": 1,
           "type_info": "Timestamptz"
         },
         {
-          "ordinal": 2,
           "name": "ip_address",
+          "ordinal": 2,
           "type_info": "Text"
         },
         {
-          "ordinal": 3,
           "name": "workspace_id: _",
+          "ordinal": 3,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 4,
           "name": "user_id: _",
+          "ordinal": 4,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 5,
           "name": "login_id: _",
+          "ordinal": 5,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 6,
           "name": "resource_id: _",
+          "ordinal": 6,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 7,
           "name": "action",
+          "ordinal": 7,
           "type_info": "Varchar"
         },
         {
-          "ordinal": 8,
           "name": "request_id: _",
+          "ordinal": 8,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 9,
           "name": "metadata: _",
+          "ordinal": 9,
           "type_info": "Json"
         },
         {
-          "ordinal": 10,
           "name": "patr_action: _",
+          "ordinal": 10,
           "type_info": "Bool"
         },
         {
-          "ordinal": 11,
           "name": "success",
+          "ordinal": 11,
           "type_info": "Bool"
         }
       ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
       "nullable": [
         false,
         false,
@@ -5024,8 +5018,14 @@
         false,
         false,
         false
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;"
   },
   "ac1034b956efa62c01ba79bff480479ba4614fa20e9fb63304173b92b3dbe01d": {
     "describe": {

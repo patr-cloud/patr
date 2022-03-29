@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
 
@@ -407,29 +409,31 @@ pub async fn get_resource_audit_logs(
 
 pub async fn add_user_to_workspace_with_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	user_id: &Uuid,
+	user_roles: &BTreeMap<Uuid, Vec<Uuid>>,
 	workspace_id: &Uuid,
-	role_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			workspace_user
-			(
-				user_id,
-				workspace_id,
-				role_id
+	for (user_id, roles) in user_roles {
+		for role_id in roles {
+			query!(
+				r#"
+				INSERT INTO
+					workspace_user
+					(
+						user_id,
+						workspace_id,
+						role_id
+					)
+				VALUES 
+					($1, $2, $3);	
+				"#,
+				user_id as _,
+				workspace_id as _,
+				role_id as _,
 			)
-		VALUES 
-			($1, $2, $3);	
-		"#,
-		user_id as _,
-		workspace_id as _,
-		role_id as _,
-	)
-	.execute(&mut *connection)
-	.await?;
-
+			.execute(&mut *connection)
+			.await?;
+		}
+	}
 	Ok(())
 }
 
