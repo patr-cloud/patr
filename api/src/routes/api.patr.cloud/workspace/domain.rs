@@ -126,6 +126,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::VERIFY,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -158,6 +176,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::VIEW_DETAILS,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -191,6 +227,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -222,6 +276,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::dns_record::LIST,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -253,6 +325,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::dns_record::ADD,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::DOMAIN_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -283,6 +373,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::dns_record::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::RECORD_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
@@ -312,6 +420,24 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::domain::dns_record::DELETE,
 				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let workspace = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if workspace.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
 					let domain_id_string =
 						context.get_param(request_keys::RECORD_ID).unwrap();
 					let domain_id = Uuid::parse_str(domain_id_string)
