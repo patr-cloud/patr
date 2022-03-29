@@ -161,17 +161,6 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
-					let workspace = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if workspace.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
 					let resource_id = context
 						.get_param(request_keys::MANAGED_URL_ID)
 						.unwrap();
@@ -189,6 +178,12 @@ pub fn create_sub_app(
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					if let Some(resource_info) = resource.as_ref() {
+						if resource_info.owner_id != workspace_id {
+							context.status(401).json(error!(UNAUTHORIZED));
+						}
 					}
 
 					Ok((context, resource))
