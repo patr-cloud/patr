@@ -63,7 +63,7 @@ pub async fn initialize_users_pre(
 			CONSTRAINT user_uq_recovery_phone_country_code_recovery_phone_number
 				UNIQUE(recovery_phone_country_code, recovery_phone_number),
 
-			CONSTRAINT user_chk_bckp_eml_or_bckp_phn_present CHECK(
+			CONSTRAINT user_chk_rcvry_eml_or_rcvry_phn_present CHECK(
 				(
 					recovery_email_local IS NOT NULL AND
 					recovery_email_domain_id IS NOT NULL
