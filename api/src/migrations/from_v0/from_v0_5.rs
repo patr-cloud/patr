@@ -1172,6 +1172,46 @@ async fn change_backup_to_recovery_keyword(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_chk_backup_email_is_lower_case
+		TO user_chk_recovery_email_is_lower_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_chk_backup_phone_country_code_is_upper_case
+		TO user_chk_recovery_phone_country_code_is_upper_case;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_fk_id_backup_email_local_backup_email_domain_id
+		TO user_fk_id_recovery_email_local_recovery_email_domain_id;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE "user"
+		RENAME CONSTRAINT user_fk_id_backup_phone_country_code_backup_phone_number
+		TO user_fk_id_recovery_phone_country_code_recovery_phone_number;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// "user_to_sign_up" table
 
 	query!(
