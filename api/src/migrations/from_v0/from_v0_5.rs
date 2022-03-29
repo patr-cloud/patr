@@ -751,7 +751,7 @@ async fn migrate_from_v0_5_7(
 	audit_logs(connection).await?;
 	chargebee(connection, config).await?;
 	change_backup_to_recovery_keyword(connection).await?;
-	Ok(())	
+	Ok(())
 }
 
 async fn rabbitmq(
