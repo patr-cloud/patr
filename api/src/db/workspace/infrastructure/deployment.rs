@@ -999,9 +999,10 @@ pub async fn get_build_events_for_deployment(
 		WHERE
 			resource_id = $1 AND 
 			(
-				metadata ->> 'deploymentStatus' = 'created' OR
-				metadata ->> 'deploymentStatus' = 'running' OR
-				metadata ->> 'deploymentStatus' = 'stopped'
+				metadata ->> 'action' = 'create' OR
+				metadata ->> 'action' = 'start' OR
+				metadata ->> 'action' = 'stop' OR
+				metadata ->> 'action' = 'updateImage'
 			);
 		"#,
 		deployment_id as _
