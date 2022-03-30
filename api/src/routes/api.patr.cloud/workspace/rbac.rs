@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use api_models::utils::Uuid;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::{json, Map, Value};
@@ -10,6 +8,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -667,92 +666,18 @@ async fn create_role(
 	let role_id =
 		db::generate_new_role_id(context.get_database_connection()).await?;
 
-	let resource_permissions_map = if let Some(Value::Object(permissions)) =
-		body.get(request_keys::RESOURCE_PERMISSIONS)
-	{
-		permissions
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let resource_type_permissions_map =
-		if let Some(Value::Object(permissions)) =
-			body.get(request_keys::RESOURCE_TYPE_PERMISSIONS)
-		{
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let resource_permissions_body =
+		body.get(request_keys::RESOURCE_PERMISSIONS);
+	let resource_type_permissions_body =
+		body.get(request_keys::RESOURCE_TYPE_PERMISSIONS);
 
-	let mut resource_permissions = HashMap::new();
-	let mut resource_type_permissions = HashMap::new();
+	let (resource_permissions, resource_type_permissions) =
+		service::patch_role_permissions(
+			resource_permissions_body,
+			resource_type_permissions_body,
+		)
+		.await?;
 
-	for (resource_id, permissions) in resource_permissions_map {
-		let resource_id = if let Ok(resource_id) = Uuid::parse_str(resource_id)
-		{
-			resource_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let permissions = if let Value::Array(permissions) = permissions {
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let mut permissions_values = Vec::with_capacity(permissions.len());
-		for permission_id in permissions {
-			let permission_id = if let Value::String(permission) = permission_id
-			{
-				permission
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
-				permissions_values.push(permission_id);
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-		}
-		resource_permissions.insert(resource_id, permissions_values);
-	}
-	for (resource_type_id, permissions) in resource_type_permissions_map {
-		let resource_type_id =
-			if let Ok(resource_type_id) = Uuid::parse_str(resource_type_id) {
-				resource_type_id
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-		let permissions = if let Value::Array(permissions) = permissions {
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let mut permissions_values = Vec::with_capacity(permissions.len());
-		for permission_id in permissions {
-			let permission_id = if let Value::String(permission) = permission_id
-			{
-				permission
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
-				permissions_values.push(permission_id);
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-		}
-		resource_type_permissions.insert(resource_type_id, permissions_values);
-	}
-	
 	db::create_role(
 		context.get_database_connection(),
 		&role_id,
@@ -823,91 +748,17 @@ async fn update_role_permissions(
 
 	let body = context.get_body_object().clone();
 
-	let resource_permissions_map = if let Some(Value::Object(permissions)) =
-		body.get(request_keys::RESOURCE_PERMISSIONS)
-	{
-		permissions
-	} else {
-		context.status(400).json(error!(WRONG_PARAMETERS));
-		return Ok(context);
-	};
-	let resource_type_permissions_map =
-		if let Some(Value::Object(permissions)) =
-			body.get(request_keys::RESOURCE_TYPE_PERMISSIONS)
-		{
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
+	let resource_permissions_body =
+		body.get(request_keys::RESOURCE_PERMISSIONS);
+	let resource_type_permissions_body =
+		body.get(request_keys::RESOURCE_TYPE_PERMISSIONS);
 
-	let mut resource_permissions = HashMap::new();
-	let mut resource_type_permissions = HashMap::new();
-
-	for (resource_id, permissions) in resource_permissions_map {
-		let resource_id = if let Ok(resource_id) = Uuid::parse_str(resource_id)
-		{
-			resource_id
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let permissions = if let Value::Array(permissions) = permissions {
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let mut permissions_values = Vec::with_capacity(permissions.len());
-		for permission_id in permissions {
-			let permission_id = if let Value::String(permission) = permission_id
-			{
-				permission
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
-				permissions_values.push(permission_id);
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-		}
-		resource_permissions.insert(resource_id, permissions_values);
-	}
-	for (resource_type_id, permissions) in resource_type_permissions_map {
-		let resource_type_id =
-			if let Ok(resource_type_id) = Uuid::parse_str(resource_type_id) {
-				resource_type_id
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-		let permissions = if let Value::Array(permissions) = permissions {
-			permissions
-		} else {
-			context.status(400).json(error!(WRONG_PARAMETERS));
-			return Ok(context);
-		};
-		let mut permissions_values = Vec::with_capacity(permissions.len());
-		for permission_id in permissions {
-			let permission_id = if let Value::String(permission) = permission_id
-			{
-				permission
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			};
-			if let Ok(permission_id) = Uuid::parse_str(permission_id) {
-				permissions_values.push(permission_id);
-			} else {
-				context.status(400).json(error!(WRONG_PARAMETERS));
-				return Ok(context);
-			}
-		}
-		resource_type_permissions.insert(resource_type_id, permissions_values);
-	}
+	let (resource_permissions, resource_type_permissions) =
+		service::patch_role_permissions(
+			resource_permissions_body,
+			resource_type_permissions_body,
+		)
+		.await?;
 
 	db::remove_all_permissions_for_role(
 		context.get_database_connection(),

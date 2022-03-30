@@ -4,10 +4,12 @@ use api_models::{
 		AddUserToWorkspaceResponse,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
+		DeleteWorkspaceInfoRequest,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
 		IsWorkspaceNameAvailableResponse,
+		UpdateUserToWorkspaceRequest,
 		UpdateWorkspaceInfoRequest,
 		UpdateWorkspaceInfoResponse,
 		Workspace,
@@ -587,7 +589,7 @@ async fn update_user_role_for_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let AddUserToWorkspaceRequest { user_role, .. } = context
+	let UpdateUserToWorkspaceRequest { user_role, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -639,7 +641,7 @@ async fn delete_workspace(
 
 	log::trace!("request_id: {} - requested to delete workspace", request_id);
 
-	let UpdateWorkspaceInfoRequest { name, .. } = context
+	let DeleteWorkspaceInfoRequest { name, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -708,7 +710,7 @@ async fn delete_workspace(
 		Ok(context)
 	} else {
 		Error::as_result()
-			.status(500)
+			.status(424)
 			.body(error!(CANNOT_DELETE_WORKSPACE).to_string())
 	}
 }
