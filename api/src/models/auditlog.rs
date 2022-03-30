@@ -12,7 +12,7 @@ use api_models::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "action")]
 pub enum DeploymentMetadata {
 	Create {
 		deployment: Deployment,
