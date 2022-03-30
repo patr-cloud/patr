@@ -750,7 +750,8 @@ async fn migrate_from_v0_5_7(
 	rabbitmq(connection, config).await?;
 	audit_logs(connection).await?;
 	chargebee(connection, config).await?;
-	change_backup_to_recovery_keyword(connection).await?;
+	rename_backup_email_to_recovery_email(connection).await?;
+
 	Ok(())
 }
 
@@ -1098,7 +1099,7 @@ async fn chargebee(
 	Ok(())
 }
 
-async fn change_backup_to_recovery_keyword(
+async fn rename_backup_email_to_recovery_email(
 	connection: &mut sqlx::PgConnection,
 ) -> Result<(), sqlx::Error> {
 	//  "user" table
