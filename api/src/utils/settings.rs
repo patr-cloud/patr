@@ -17,11 +17,11 @@ pub fn parse_config() -> Settings {
 
 	match env.as_ref() {
 		"prod" | "production" => Config::builder()
-			.add_source(File::with_name("config/prod"))
+			.add_source(File::with_name("config/prod").required(false))
 			.set_default("environment", "production")
 			.expect("unable to set environment to develop"),
 		"dev" | "development" => Config::builder()
-			.add_source(File::with_name("config/dev"))
+			.add_source(File::with_name("config/dev").required(false))
 			.set_default("environment", "development")
 			.expect("unable to set environment to develop"),
 		_ => {
@@ -54,6 +54,8 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
+	pub prometheus: PrometheusSettings,
+	pub chargebee: ChargebeeSettings,
 	pub rabbit_mq: RabbitMqSettings,
 }
 
@@ -190,6 +192,25 @@ where
 	let string = String::deserialize(value)?;
 	Ok(base64::decode(&string)
 		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusSettings {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChargebeeSettings {
+	pub api_key: String,
+	pub url: String,
+	pub credit_amount: String,
+	pub description: String,
+	pub gateway_id: String,
+	pub redirect_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

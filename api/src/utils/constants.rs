@@ -76,4 +76,6 @@ pub mod request_keys {
 	pub const DIGEST: &str = "digest";
 	pub const TAG: &str = "tag";
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
+	pub const START_TIME: &str = "startTime";
+	pub const INTERVAL: &str = "interval";
 }
