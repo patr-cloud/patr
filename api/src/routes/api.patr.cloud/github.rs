@@ -39,13 +39,21 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.get(
+		"/access-token/:code",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_access_token)),
+		],
+	);
+
+	app.get(
 		"/get-repository",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::github::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						"a66fde8c0c7246559ac12e4f43e9c953";
+						"ae12345d473649a3bee026a5a4e84525";
 					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
@@ -138,6 +146,41 @@ pub fn create_sub_app(
 	app
 }
 
+async fn get_access_token(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let code = context.get_param(request_keys::CODE).unwrap();
+	let config = context.get_state().config.clone();
+	let client_id = config.github.client_id;
+	let client_secret = config.github.client_secret;
+
+	let url = format!("https://github.com/login/oauth/access_token?client_id={}&client_secret={}&code={}", client_id, client_secret, code);
+
+	let client = reqwest::Client::new();
+
+	let response = client.post(url).send().await?.text().await?;
+
+	if response.contains("access_token") {
+		let access_token_raw: Vec<&str> = response.split('&').collect();
+		let token: Vec<&str> = access_token_raw[0].split('=').collect();
+
+		context.success(GithubAccessToken {
+			access_token: token[1].to_string(),
+		});
+
+		Ok(context)
+	} else {
+		// Cannot tell the user about the message
+		// As user has no power to do anything with this message
+		// Therefore sending 500 error
+		log::error!("verification error : {}", response);
+		Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())
+	}
+}
+
 async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -150,7 +193,9 @@ async fn list_github_repos(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let user_agent = context.get_header("User-Agent").unwrap_or(owner_name);
+	let user_agent = context
+		.get_header("User-Agent")
+		.unwrap_or_else(|| owner_name.clone());
 
 	let client = reqwest::Client::new();
 
@@ -187,7 +232,7 @@ async fn configure_github_build_steps_static_site(
 
 	let user_agent = context
 		.get_header("User-Agent")
-		.unwrap_or(owner_name.clone());
+		.unwrap_or_else(|| owner_name.clone());
 
 	// for now only going forward with node and vanilla
 	// will add other frameworks support
@@ -240,7 +285,7 @@ async fn configure_github_build_steps_deployment(
 
 	let user_agent = context
 		.get_header("User-Agent")
-		.unwrap_or(owner_name.clone());
+		.unwrap_or_else(|| owner_name.clone());
 
 	if framework == "node" {
 		service::github_actions_for_node_deployment(

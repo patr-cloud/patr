@@ -57,6 +57,7 @@ pub struct Settings {
 	pub prometheus: PrometheusSettings,
 	pub chargebee: ChargebeeSettings,
 	pub rabbit_mq: RabbitMqSettings,
+	pub github: Github,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,4 +220,11 @@ pub struct RabbitMqSettings {
 	pub host: String,
 	pub port: u16,
 	pub queue: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Github {
+	pub client_id: String,
+	pub client_secret: String,
 }

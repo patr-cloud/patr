@@ -9,7 +9,7 @@ pub async fn github_actions_for_node_static_site(
 	owner_name: String,
 	repo_name: String,
 	build_command: String,
-	publish_dir: String,
+	_publish_dir: String,
 	node_version: String,
 	user_agent: String,
 ) -> Result<(), Error> {
@@ -75,7 +75,7 @@ steps:
 				})
 				.send()
 				.await?;
-			return Ok(());
+			Ok(())
 		}
 		reqwest::StatusCode::OK => {
 			let body = response.json::<GithubResponseBody>().await?;
@@ -128,9 +128,9 @@ steps:
 				})
 				.send()
 				.await?;
-			return Ok(());
+			Ok(())
 		}
-		_ => return Ok(()),
+		_ => Ok(()),
 	}
 }
 
@@ -242,7 +242,7 @@ pub async fn github_actions_for_node_deployment(
 	owner_name: String,
 	repo_name: String,
 	build_command: String,
-	publish_dir: String,
+	_publish_dir: String,
 	node_version: String,
 	user_agent: String,
 ) -> Result<(), Error> {
