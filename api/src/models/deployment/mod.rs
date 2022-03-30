@@ -1,11 +1,16 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use api_models::utils::Uuid;
 use chrono::{DateTime, Utc};
+use eve_rs::AsError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 use super::db_mapping::DeploymentCloudProvider;
+use crate::{
+	error,
+	utils::{get_current_time, Error},
+};
 
 pub mod cloud_providers;
 
@@ -148,6 +153,120 @@ pub struct DefaultDeploymentRegion {
 	pub child_regions: Vec<DefaultDeploymentRegion>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusResponse {
+	pub status: String,
+	pub data: PrometheusData,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusData {
+	pub result_type: String,
+	pub result: Vec<PrometheusMetrics>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusMetrics {
+	pub metric: PodName,
+	pub values: Vec<Metric>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PodName {
+	pub pod: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Metric {
+	pub timestamp: u64,
+	pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum Interval {
+	Hour,
+	Day,
+	Week,
+	Month,
+	Year,
+}
+
+impl Interval {
+	pub fn as_u64(&self) -> u64 {
+		match self {
+			Interval::Hour => get_current_time().as_secs() - 3600,
+			Interval::Day => get_current_time().as_secs() - 86400,
+			Interval::Week => get_current_time().as_secs() - 604800,
+			Interval::Month => get_current_time().as_secs() - 2628000,
+			Interval::Year => get_current_time().as_secs() - 31556952,
+		}
+	}
+}
+
+impl FromStr for Interval {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let s = s.to_lowercase();
+		match s.as_str() {
+			"hour" | "hr" | "h" => Ok(Self::Hour),
+			"day" | "d" => Ok(Self::Day),
+			"week" | "w" => Ok(Self::Week),
+			"month" | "mnth" | "m" => Ok(Self::Month),
+			"year" | "yr" | "y" => Ok(Self::Year),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+#[derive(Debug, Clone)]
+pub enum Step {
+	OneMinute,
+	TwoMinutes,
+	FiveMinutes,
+	TenMinutes,
+	FifteenMinutes,
+	ThirtyMinutes,
+	OneHour,
+}
+
+impl Display for Step {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::OneMinute => write!(f, "1m"),
+			Self::TwoMinutes => write!(f, "2m"),
+			Self::FiveMinutes => write!(f, "5m"),
+			Self::TenMinutes => write!(f, "10m"),
+			Self::FifteenMinutes => write!(f, "15m"),
+			Self::ThirtyMinutes => write!(f, "30m"),
+			Self::OneHour => write!(f, "1h"),
+		}
+	}
+}
+
+impl FromStr for Step {
+	type Err = String;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let s = s.to_lowercase();
+		match s.as_str() {
+			"1m" => Ok(Self::OneMinute),
+			"2m" => Ok(Self::TwoMinutes),
+			"5m" => Ok(Self::FiveMinutes),
+			"10m" => Ok(Self::TenMinutes),
+			"15m" => Ok(Self::FifteenMinutes),
+			"30m" => Ok(Self::ThirtyMinutes),
+			"1h" => Ok(Self::OneHour),
+			_ => Err(s),
+		}
+	}
+}
 #[derive(Debug, Clone)]
 pub struct DeploymentAuditLog {
 	pub user_id: Option<Uuid>,
