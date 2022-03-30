@@ -181,7 +181,7 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(
-				update_user_role_to_workspace
+				update_user_role_for_workspace
 			)),
 		],
 	);
@@ -576,11 +576,11 @@ async fn add_user_to_workspace(
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse{});
+	context.success(AddUserToWorkspaceResponse {});
 	Ok(context)
 }
 
-async fn update_user_role_to_workspace(
+async fn update_user_role_for_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -607,7 +607,7 @@ async fn update_user_role_to_workspace(
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse{});
+	context.success(AddUserToWorkspaceResponse {});
 	Ok(context)
 }
 

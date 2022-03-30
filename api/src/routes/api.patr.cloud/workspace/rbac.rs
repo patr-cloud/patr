@@ -752,9 +752,7 @@ async fn create_role(
 		}
 		resource_type_permissions.insert(resource_type_id, permissions_values);
 	}
-
-	println!("{:#?}", resource_permissions);
-
+	
 	db::create_role(
 		context.get_database_connection(),
 		&role_id,
