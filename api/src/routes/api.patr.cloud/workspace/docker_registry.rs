@@ -141,18 +141,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
@@ -185,18 +180,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
@@ -231,18 +221,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
@@ -275,18 +260,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
@@ -319,18 +299,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
@@ -365,18 +340,13 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&repository_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
 							.status(404)
 							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					if let Some(resource_info) = resource.as_ref() {
-						if resource_info.owner_id != workspace_id {
-							context.status(401).json(error!(UNAUTHORIZED));
-						}
 					}
 
 					Ok((context, resource))
