@@ -161,11 +161,19 @@ pub fn create_sub_app(
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
+					let resource_id = context
+						.get_param(request_keys::MANAGED_URL_ID)
+						.unwrap();
+					let resource_id = Uuid::parse_str(resource_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&resource_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
