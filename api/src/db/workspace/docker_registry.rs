@@ -158,14 +158,46 @@ pub async fn get_docker_repository_by_name(
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-) -> Result<Vec<(DockerRepository, u64)>, sqlx::Error> {
+) -> Result<Vec<(DockerRepository, u64, u64)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			id as "id: Uuid",
-			workspace_id as "workspace_id: Uuid",
-			name::TEXT as "name!: String",
-			COALESCE(size, 0) as "size!"
+			docker_registry_repository.id as "id: Uuid",
+			docker_registry_repository.workspace_id as "workspace_id: Uuid",
+			docker_registry_repository.name::TEXT as "name!: String",
+			COALESCE(size, 0) as "size!",
+			(
+				SELECT
+					GREATEST(
+						resource.created,
+						(
+							SELECT
+								COALESCE(created, 0)
+							FROM
+								docker_registry_repository_manifest
+							WHERE
+								repository_id = docker_registry_repository.id
+							ORDER BY
+								created DESC
+							LIMIT 1
+						),
+						(
+							SELECT
+								COALESCE(last_updated, 0)
+							FROM
+								docker_registry_repository_tag
+							WHERE
+								repository_id = docker_registry_repository.id
+							ORDER BY
+								created DESC
+							LIMIT 1
+						)
+					) as "last_updated!"
+				FROM
+					resource
+				WHERE
+					resource.id = docker_registry_repository.id
+			) as "last_updated!"
 		FROM
 			docker_registry_repository
 		LEFT JOIN (
@@ -190,18 +222,14 @@ pub async fn get_docker_repositories_for_workspace(
 	.await?
 	.into_iter()
 	.map(|row| {
-		let size = if let Some(size) = row.size.to_u64() {
-			size
-		} else {
-			0
-		};
 		(
 			DockerRepository {
 				id: row.id,
 				name: row.name,
 				workspace_id: row.workspace_id,
 			},
-			size,
+			row.size.to_u64().unwrap_or(0),
+			row.last_updated.to_u64().unwrap_or(0),
 		)
 	})
 	.collect();
