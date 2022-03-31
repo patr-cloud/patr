@@ -532,10 +532,11 @@ async fn list_docker_repositories(
 	)
 	.await?
 	.into_iter()
-	.map(|(repository, size)| DockerRepository {
+	.map(|(repository, size, last_updated)| DockerRepository {
 		id: repository.id,
 		name: repository.name,
 		size,
+		last_updated,
 	})
 	.collect::<Vec<_>>();
 
@@ -614,9 +615,9 @@ async fn get_docker_repository_info(
 			id: repository_id,
 			name: repository.name,
 			size,
+			last_updated,
 		},
 		images,
-		last_updated,
 	});
 	Ok(context)
 }
