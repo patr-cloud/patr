@@ -42,14 +42,14 @@ impl Debug for App {
 	}
 }
 
-pub async fn start_server(app: App) {
+pub async fn start_server(app: &App) {
 	let port = app.config.port;
 
-	let mut eve_app = create_eve_app(&app);
+	let mut eve_app = create_eve_app(app);
 
 	eve_app.set_error_handler(eve_error_handler);
 	eve_app.use_middleware("/", get_basic_middlewares());
-	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(&app));
+	eve_app.use_sub_app(&app.config.base_path, routes::create_sub_app(app));
 
 	log::info!(
 		"Listening for connections on {}:{}",

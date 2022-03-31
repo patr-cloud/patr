@@ -1,12 +1,23 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::billing::Address, utils::Uuid};
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::db_mapping::User,
+	models::{
+		db_mapping::User,
+		deployment::{
+			BillingAddress,
+			Customer,
+			PaymentSourceList,
+			PromotionalCreditList,
+			SubscriptionList,
+			UpdatePaymentMethod,
+		},
+	},
 	service,
-	utils::{get_current_time_millis, validator, Error},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -176,7 +187,7 @@ pub async fn change_password_for_user(
 	Ok(user)
 }
 
-pub async fn update_user_backup_email(
+pub async fn update_user_recovery_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	email_address: &str,
@@ -191,7 +202,7 @@ pub async fn update_user_backup_email(
 		service::split_email_with_domain_id(connection, email_address).await?;
 
 	// finally if everything checks out then change the personal email
-	db::update_backup_email_for_user(
+	db::update_recovery_email_for_user(
 		connection,
 		user_id,
 		&email_local,
@@ -204,7 +215,7 @@ pub async fn update_user_backup_email(
 	Ok(())
 }
 
-pub async fn update_user_backup_phone_number(
+pub async fn update_user_recovery_phone_number(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user_id: &Uuid,
 	country_code: &str,
@@ -222,7 +233,7 @@ pub async fn update_user_backup_phone_number(
 			.status(400)
 			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	db::update_backup_phone_number_for_user(
+	db::update_recovery_phone_number_for_user(
 		connection,
 		user_id,
 		&country_code.country_code,
@@ -253,14 +264,16 @@ pub async fn delete_personal_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((backup_email_local, backup_domain_id)) = user_data
-		.backup_email_local
-		.zip(user_data.backup_email_domain_id)
+	if let Some((recovery_email_local, recovery_domain_id)) = user_data
+		.recovery_email_local
+		.zip(user_data.recovery_email_domain_id)
 	{
-		if backup_email_local == email_local && backup_domain_id == domain_id {
+		if recovery_email_local == email_local &&
+			recovery_domain_id == domain_id
+		{
 			return Error::as_result()
 				.status(400)
-				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
+				.body(error!(CANNOT_DELETE_RECOVERY_EMAIL).to_string())?;
 		}
 	}
 
@@ -303,16 +316,16 @@ pub async fn delete_phone_number(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((backup_country_code, backup_phone_number)) = user_data
-		.backup_phone_country_code
-		.zip(user_data.backup_phone_number)
+	if let Some((recovery_country_code, recovery_phone_number)) = user_data
+		.recovery_phone_country_code
+		.zip(user_data.recovery_phone_number)
 	{
-		if backup_country_code == country_code &&
-			backup_phone_number == phone_number
+		if recovery_country_code == country_code &&
+			recovery_phone_number == phone_number
 		{
-			return Error::as_result()
-				.status(400)
-				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
+			return Error::as_result().status(400).body(
+				error!(CANNOT_DELETE_RECOVERY_PHONE_NUMBER).to_string(),
+			)?;
 		}
 	}
 
@@ -412,4 +425,154 @@ pub async fn verify_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn update_billing_info(
+	workspace_id: &Uuid,
+	first_name: Option<String>,
+	last_name: Option<String>,
+	email: Option<String>,
+	phone: Option<String>,
+	address_details: Option<Address>,
+	config: &Settings,
+) -> Result<(), Error> {
+	if let Some(address_details) = address_details.clone() {
+		if address_details.address_line2.is_none() &&
+			address_details.address_line3.is_some()
+		{
+			return Error::as_result()
+				.status(400)
+				.body(error!(ADDRESS_LINE_3_NOT_ALLOWED).to_string())?;
+		}
+	}
+
+	let client = Client::new();
+
+	let address_details = if let Some(address) = address_details {
+		Some(BillingAddress {
+			address_line1: address.address_line1,
+			address_line2: address.address_line2,
+			address_line3: address.address_line3,
+			city: address.city,
+			state: address.state,
+			zip: address.zip,
+			country: address.country,
+		})
+	} else {
+		None
+	};
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/customers/{}",
+			config.chargebee.url, workspace_id
+		))
+		.basic_auth(config.chargebee.api_key.as_str(), password)
+		.query(&Customer {
+			id: Some(workspace_id.to_string()),
+			first_name,
+			last_name,
+			email,
+			phone,
+			address: address_details,
+		})
+		.send()
+		.await?
+		.status();
+
+	if !status.is_success() {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
+
+	Ok(())
+}
+
+pub async fn get_credit_balance(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<PromotionalCreditList, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!("{}/promotional_credits", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[("customer_id[is]", workspace_id.as_str())])
+		.send()
+		.await?
+		.json::<PromotionalCreditList>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_card_details(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<PaymentSourceList, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!("{}/payment_sources", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("customer_id[is]", workspace_id.as_str()),
+			("type[is]", "card"),
+		])
+		.send()
+		.await?
+		.json::<PaymentSourceList>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn add_card_details(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<UpdatePaymentMethod, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.post(format!(
+			"{}/hosted_pages/manage_payment_sources",
+			config.chargebee.url
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("customer[id]", workspace_id.as_str()),
+			("card[gateway_account_id]", &config.chargebee.gateway_id),
+			("redirect_url", &config.chargebee.redirect_url),
+		])
+		.send()
+		.await?
+		.json::<UpdatePaymentMethod>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_subscriptions(
+	config: &Settings,
+	workspace_id: &Uuid,
+) -> Result<SubscriptionList, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!("{}/subscriptions", config.chargebee.url))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[("customer_id[is]", workspace_id.as_str())])
+		.send()
+		.await?
+		.json::<SubscriptionList>()
+		.await
+		.map_err(|e| e.into())
 }

@@ -112,7 +112,7 @@ pub async fn send_user_reset_password_notification(
 
 /// # Description
 /// This function is used to send registration sms to the user's
-/// backup phone number
+/// recovery phone number
 ///
 /// # Arguments
 /// * `phone_number` - a string containing user's phone number
@@ -122,14 +122,14 @@ pub async fn send_user_reset_password_notification(
 /// error
 ///
 /// [`Transaction`]: Transaction
-pub async fn send_backup_registration_sms(
+pub async fn send_recovery_registration_sms(
 	phone_number: &str,
 ) -> Result<(), Error> {
 	send_sms(
 		phone_number,
 		format!(
 			"{}{}{}",
-			"This phone number is now set as the backup phone ",
+			"This phone number is now set as the recovery phone ",
 			"for the Patr. ",
 			"If this was not you, please login or contact support immediately"
 		),

@@ -3,25 +3,27 @@ use std::{collections::BTreeMap, str};
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentMetrics,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
-		DeploymentStatus,
 		EnvironmentVariableValue,
 		ExposedPortType,
+		Metric,
 		PatrRegistry,
 	},
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
-	service::{
-		self,
-		infrastructure::{digitalocean, kubernetes},
+	models::{
+		deployment::{PrometheusResponse, Subscription},
+		rbac,
 	},
+	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -55,6 +57,7 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -189,145 +192,17 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	// TODO UPDATE ENTRY POINTS
+	start_subscription(
+		connection,
+		&deployment_id,
+		machine_type.as_str(),
+		deployment_running_details.min_horizontal_scale,
+		config,
+		request_id,
+	)
+	.await?;
 
 	Ok(deployment_id)
-}
-
-pub async fn start_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-	let (deployment, workspace_id, full_image, running_details) =
-		service::get_full_deployment_config(
-			connection,
-			deployment_id,
-			request_id,
-		)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - Updating kubernetes deployment",
-		request_id
-	);
-
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deploying,
-	)
-	.await?;
-
-	kubernetes::update_kubernetes_deployment(
-		&workspace_id,
-		&deployment,
-		&full_image,
-		&running_details,
-		config,
-		request_id,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn stop_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"Stopping the deployment with id: {} and request_id: {}",
-		deployment_id,
-		request_id
-	);
-	log::trace!("request_id: {} - Getting deployment id from db", request_id);
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!(
-		"request_id: {} - deleting the deployment from digitalocean kubernetes",
-		request_id
-	);
-	kubernetes::delete_kubernetes_deployment(
-		&deployment.workspace_id,
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
-
-	// TODO: implement logic for handling domains of the stopped deployment
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Stopped,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn delete_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Deleting the deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(404)
-		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-
-	log::trace!("deleting the image from DO registry");
-	digitalocean::delete_image_from_digitalocean_registry(
-		deployment_id,
-		config,
-		request_id,
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Stopping the deployment", request_id);
-	service::stop_deployment(connection, deployment_id, config, request_id)
-		.await?;
-
-	log::trace!(
-		"request_id: {} - Updating the deployment name in the database",
-		request_id
-	);
-	db::update_deployment_name(
-		connection,
-		deployment_id,
-		&format!("patr-deleted: {}-{}", deployment.name, deployment_id),
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Updating deployment status", request_id);
-	db::update_deployment_status(
-		connection,
-		deployment_id,
-		&DeploymentStatus::Deleted,
-	)
-	.await?;
-
-	Ok(())
 }
 
 pub async fn get_deployment_container_logs(
@@ -370,6 +245,7 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -437,6 +313,8 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
+
+	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -545,4 +423,436 @@ pub async fn get_full_deployment_config(
 			environment_variables,
 		},
 	))
+}
+
+pub async fn get_deployment_metrics(
+	deployment_id: &Uuid,
+	config: &Settings,
+	start_time: u64,
+	end_time: u64,
+	step: &str,
+	request_id: &Uuid,
+) -> Result<Vec<DeploymentMetrics>, Error> {
+	log::trace!(
+		"request_id: {} - Getting deployment metrics for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	// TODO: make this as a hashmap
+	let mut metric_response = Vec::<DeploymentMetrics>::new();
+	let client = Client::new();
+
+	let (
+		cpu_usage_response,
+		memory_usage_response,
+		network_usage_tx_response,
+		network_usage_rx_response,
+	): (
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+		Result<_, reqwest::Error>,
+	) = tokio::join!(
+		async {
+			log::trace!("request_id: {} - Getting cpu metrics", request_id);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_cpu_usage_seconds_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			log::trace!(
+				"request_id: {} - Getting memory usage metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_memory_usage_bytes{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			log::trace!(
+				"request_id: {} - Getting network usage transmit metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_transmit_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		},
+		async {
+			log::trace!(
+				"request_id: {} - Getting network usage recieve metrics",
+				request_id
+			);
+			client.post(format!("https://{}/api/v1/query_range?query=sum(rate(container_network_receive_bytes_total{{pod=~\"deployment-{}-(.*)\"}}[{step}])) by (pod)&start={}&end={}&step={step}", config.prometheus.host, deployment_id, start_time, end_time))
+				.basic_auth(&config.prometheus.username, Some(&config.prometheus.password))
+				.send()
+				.await?
+				.json::<PrometheusResponse>()
+				.await
+		}
+	);
+
+	// TODO: this part handles error, however it is not handled properly
+	// there is a possibility that the error that we get from prometheus is not
+	// a reqwest error but a prometheus error, in that case we should handle it
+	// properly and show it to the user
+	let (
+		cpu_usage_response,
+		memory_usage_response,
+		network_usage_tx_response,
+		network_usage_rx_response,
+	) = (
+		cpu_usage_response?,
+		memory_usage_response?,
+		network_usage_tx_response?,
+		network_usage_rx_response?,
+	);
+
+	log::trace!(
+		"request_id: {} - mapping cpu usage metrics on to response struct",
+		request_id
+	);
+	cpu_usage_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					let new_item = Metric {
+						timestamp: value.timestamp,
+						cpu_usage: "0".to_string(),
+						memory_usage: "0".to_string(),
+						network_usage_tx: "0".to_string(),
+						network_usage_rx: "0".to_string(),
+					};
+
+					let pod_item_size = pod_item.metrics.len();
+
+					pod_item.metrics.push(new_item);
+					if let Some(item) = pod_item.metrics.get_mut(pod_item_size)
+					{
+						item
+					} else {
+						return;
+					}
+				};
+				metric_item.cpu_usage = value.value;
+			});
+		});
+
+	log::trace!(
+		"request_id: {} - mapping memory usage metrics on to response struct",
+		request_id
+	);
+	memory_usage_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.memory_usage = value.value;
+			});
+		});
+
+	log::trace!("request_id: {} - mapping network usage transmit metrics on to response struct", request_id);
+	network_usage_tx_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.network_usage_tx = value.value;
+			});
+		});
+
+	log::trace!("request_id: {} - mapping network usage receive metrics on to response struct", request_id);
+	network_usage_rx_response
+		.data
+		.result
+		.into_iter()
+		.for_each(|prom_metric| {
+			let pod_item = if let Some(item) = metric_response
+				.iter_mut()
+				.find(|item| item.pod_name == prom_metric.metric.pod)
+			{
+				item
+			} else {
+				let new_item = DeploymentMetrics {
+					pod_name: prom_metric.metric.pod,
+					metrics: vec![],
+				};
+
+				let metric_response_size = metric_response.len();
+
+				metric_response.push(new_item);
+				if let Some(item) =
+					metric_response.get_mut(metric_response_size)
+				{
+					item
+				} else {
+					return;
+				}
+			};
+
+			prom_metric.values.into_iter().for_each(|value| {
+				let metric_item = if let Some(item) = pod_item
+					.metrics
+					.iter_mut()
+					.find(|item| item.timestamp == value.timestamp)
+				{
+					item
+				} else {
+					return;
+				};
+				metric_item.network_usage_rx = value.value;
+			});
+		});
+
+	Ok(metric_response)
+}
+
+pub async fn cancel_subscription(
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Stopping subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/cancel_for_items",
+			config.chargebee.url, deployment_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			("end_of_term", "false"),
+			("credit_option_for_current_term_charges", "prorate"),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
+}
+
+async fn start_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	item_price_id: &str,
+	quantity: u16,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Starting subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+	let client = Client::new();
+	let password: Option<String> = None;
+	let status = client
+		.post(format!(
+			"{}/customers/{}/subscription_for_items",
+			config.chargebee.url, deployment.workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&Subscription {
+			id: deployment_id.to_string(),
+			item_price_id: format!("{}-USD-Monthly", item_price_id),
+			quantity,
+		})
+		.send()
+		.await?
+		.status();
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+	Ok(())
+}
+
+async fn update_subscription(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating subscription for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+
+	let deployment = db::get_deployment_by_id(connection, deployment_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	let status = client
+		.post(format!(
+			"{}/subscriptions/{}/update_for_items",
+			config.chargebee.url, deployment.id,
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.query(&[
+			(
+				"subscription_items[item_price_id][0]",
+				&format!("{}-USD-Monthly", deployment.machine_type),
+			),
+			(
+				"subscription_items[quantity][0]",
+				&format!("{}", deployment.min_horizontal_scale),
+			),
+		])
+		.send()
+		.await?
+		.status();
+
+	if status.is_client_error() || status.is_server_error() {
+		log::error!(
+			"request_id: {} - Error with the deployment: {}",
+			request_id,
+			status,
+		);
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	Ok(())
 }

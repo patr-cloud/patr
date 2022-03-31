@@ -9,7 +9,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 pub fn parse_config() -> Settings {
 	println!("[TRACE]: Reading config data...");
-	let mut settings = Config::new();
 	let env = if cfg!(debug_assertions) {
 		"dev".to_string()
 	} else {
@@ -17,32 +16,23 @@ pub fn parse_config() -> Settings {
 	};
 
 	match env.as_ref() {
-		"prod" | "production" => {
-			settings
-				.merge(File::with_name("config/prod"))
-				.expect("unable to find prod config");
-			settings
-				.set("environment", "production")
-				.expect("unable to set running environment");
-		}
-		"dev" | "development" => {
-			settings
-				.merge(File::with_name("config/dev"))
-				.expect("unable to find dev config");
-			settings
-				.set("environment", "development")
-				.expect("unable to set running environment");
-		}
+		"prod" | "production" => Config::builder()
+			.add_source(File::with_name("config/prod").required(false))
+			.set_default("environment", "production")
+			.expect("unable to set environment to develop"),
+		"dev" | "development" => Config::builder()
+			.add_source(File::with_name("config/dev").required(false))
+			.set_default("environment", "development")
+			.expect("unable to set environment to develop"),
 		_ => {
 			panic!("Unknown running environment found!");
 		}
 	}
-
-	settings
-		.merge(Environment::with_prefix("APP").separator("_"))
-		.expect("unable to merge with environment variables");
-
-	settings.try_into().expect("unable to parse settings")
+	.add_source(Environment::with_prefix("APP").separator("_"))
+	.build()
+	.expect("unable to merge with environment variables")
+	.try_deserialize()
+	.expect("unable to parse settings")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +54,9 @@ pub struct Settings {
 	pub docker_registry: DockerRegistrySettings,
 	pub digitalocean: Digitalocean,
 	pub kubernetes: KubernetesSettings,
+	pub prometheus: PrometheusSettings,
+	pub chargebee: ChargebeeSettings,
+	pub rabbit_mq: RabbitMqSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,4 +192,31 @@ where
 	let string = String::deserialize(value)?;
 	Ok(base64::decode(&string)
 		.unwrap_or_else(|_| panic!("Unable to decode {} as base64", string)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrometheusSettings {
+	pub host: String,
+	pub username: String,
+	pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChargebeeSettings {
+	pub api_key: String,
+	pub url: String,
+	pub credit_amount: String,
+	pub description: String,
+	pub gateway_id: String,
+	pub redirect_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RabbitMqSettings {
+	pub host: String,
+	pub port: u16,
+	pub queue: String,
 }

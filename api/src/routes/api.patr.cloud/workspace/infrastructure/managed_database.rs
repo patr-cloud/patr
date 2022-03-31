@@ -92,16 +92,23 @@ pub fn create_sub_app(
 				permissions::workspace::infrastructure::managed_database::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
-						context.get_param(request_keys::DATABASE_ID).unwrap();
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let database_id =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
+					let database_id_string = Uuid::parse_str(database_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&database_id_string,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -123,16 +130,23 @@ pub fn create_sub_app(
 				permissions::workspace::infrastructure::managed_database::DELETE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
-						context.get_param(request_keys::DATABASE_ID).unwrap();
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let database_id =
+						context.get_param(request_keys::DATABASE_ID).unwrap();
+					let database_id_string = Uuid::parse_str(database_id)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
 					let resource = db::get_resource_by_id(
 						context.get_database_connection(),
-						&workspace_id,
+						&database_id_string,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -284,7 +298,7 @@ async fn create_database_cluster(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A database instance has been created",
 	)
@@ -359,7 +373,7 @@ async fn delete_managed_database(
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A database instance has been deleted",
 	)

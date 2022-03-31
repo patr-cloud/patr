@@ -1,29 +1,38 @@
+use std::collections::BTreeMap;
+
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::{
-			CreateDeploymentRequest,
-			CreateDeploymentResponse,
-			DeleteDeploymentResponse,
-			Deployment,
-			DeploymentRegistry,
-			DeploymentStatus,
-			GetDeploymentInfoResponse,
-			GetDeploymentLogsResponse,
-			ListDeploymentsResponse,
-			ListLinkedURLsResponse,
-			PatrRegistry,
-			StartDeploymentResponse,
-			StopDeploymentResponse,
-			UpdateDeploymentRequest,
-			UpdateDeploymentResponse,
+	models::workspace::{
+		infrastructure::{
+			deployment::{
+				CreateDeploymentRequest,
+				CreateDeploymentResponse,
+				DeleteDeploymentResponse,
+				Deployment,
+				DeploymentBuildLog,
+				DeploymentRegistry,
+				DeploymentStatus,
+				GetDeploymentBuildLogsResponse,
+				GetDeploymentEventsResponse,
+				GetDeploymentInfoResponse,
+				GetDeploymentLogsResponse,
+				GetDeploymentMetricsResponse,
+				ListDeploymentsResponse,
+				ListLinkedURLsResponse,
+				PatrRegistry,
+				StartDeploymentResponse,
+				StopDeploymentResponse,
+				UpdateDeploymentRequest,
+				UpdateDeploymentResponse,
+			},
+			managed_urls::{ManagedUrl, ManagedUrlType},
 		},
-		managed_urls::{ManagedUrl, ManagedUrlType},
+		WorkspaceAuditLog,
 	},
 	utils::{constants, Uuid},
 };
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use tokio::task;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -31,12 +40,16 @@ use crate::{
 	error,
 	models::{
 		db_mapping::ManagedUrlType as DbManagedUrlType,
-		rbac::permissions,
+		deployment::{Interval, Step},
+		rbac::{self, permissions},
+		DeploymentMetadata,
 	},
 	pin_fn,
+	routes::api_patr_cloud,
 	service,
 	utils::{
 		constants::request_keys,
+		get_current_time,
 		Error,
 		ErrorData,
 		EveContext,
@@ -134,6 +147,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -144,7 +163,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -166,6 +186,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -176,7 +202,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -198,6 +225,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -208,7 +241,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -230,6 +264,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -240,7 +280,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -262,6 +303,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::DELETE,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -272,7 +319,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -294,6 +342,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -304,7 +358,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -326,6 +381,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -336,7 +397,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -348,6 +410,121 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_linked_urls)),
+		],
+	);
+
+	// get all deployment metrics
+	app.get(
+		"/:deploymentId/metrics",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::INFO,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_deployment_metrics)),
+		],
+	);
+
+	app.get(
+		"/:deploymentId/build-logs",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_build_logs)),
+		],
+	);
+
+	app.get(
+		"/:deploymentId/events",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::deployment::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id_string =
+						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
+					let deployment_id = Uuid::parse_str(deployment_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&deployment_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_build_events)),
 		],
 	);
 
@@ -476,6 +653,12 @@ async fn create_deployment(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	let CreateDeploymentRequest {
 		workspace_id: _,
 		name,
@@ -483,7 +666,7 @@ async fn create_deployment(
 		image_tag,
 		region,
 		machine_type,
-		running_details,
+		running_details: deployment_running_details,
 		deploy_on_create,
 	} = context
 		.get_body_as()
@@ -498,6 +681,7 @@ async fn create_deployment(
 		"request_id: {} - Creating the deployment in workspace",
 		request_id
 	);
+
 	let id = service::create_deployment_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
@@ -506,164 +690,71 @@ async fn create_deployment(
 		image_tag,
 		&region,
 		&machine_type,
-		&running_details,
+		&deployment_running_details,
+		&config,
 		&request_id,
 	)
 	.await?;
 
-	// Check if image exists
-	// If it does, push to docr.
-	// Can't check for image existence for non-patr registry
-	log::trace!("request_id: {} - Checking if image exists", request_id);
-	if let DeploymentRegistry::PatrRegistry {
-		registry: _,
-		repository_id,
-	} = &registry
-	{
-		log::trace!(
-			"request_id: {} - Getting tag details from database",
-			request_id
-		);
-		let tag_details = db::get_docker_repository_tag_details(
+	let audit_log_id = db::generate_new_workspace_audit_log_id(
+		context.get_database_connection(),
+	)
+	.await?;
+
+	let metadata = serde_json::to_value(DeploymentMetadata::Create {
+		deployment: Deployment {
+			id: id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Created,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+		},
+		running_details: deployment_running_details.clone(),
+	})?;
+
+	db::create_workspace_audit_log(
+		context.get_database_connection(),
+		&audit_log_id,
+		&workspace_id,
+		&ip_address,
+		Utc::now(),
+		Some(&user_id),
+		Some(&login_id),
+		&id,
+		rbac::PERMISSIONS
+			.get()
+			.unwrap()
+			.get(permissions::workspace::infrastructure::deployment::CREATE)
+			.unwrap(),
+		&request_id,
+		&metadata,
+		false,
+		true,
+	)
+	.await?;
+
+	context.commit_database_transaction().await?;
+
+	if deploy_on_create {
+		service::queue_create_deployment(
 			context.get_database_connection(),
-			repository_id,
+			&workspace_id,
+			&id,
+			name,
+			&registry,
 			image_tag,
+			&region,
+			&machine_type,
+			&deployment_running_details,
+			&config,
+			&request_id,
 		)
 		.await?;
-
-		log::trace!(
-			"request_id: {} - Getting repository details from the database",
-			request_id
-		);
-		let repository_details = db::get_docker_repository_by_id(
-			context.get_database_connection(),
-			repository_id,
-		)
-		.await?
-		.status(500)?;
-
-		log::trace!(
-			"request_id: {} - Getting workspace details from the database",
-			request_id
-		);
-		let workspace_details = db::get_workspace_info(
-			context.get_database_connection(),
-			&repository_details.workspace_id,
-		)
-		.await?
-		.status(500)?;
-
-		log::trace!(
-			"request_id: {} - Checking if the image exists",
-			request_id
-		);
-		if let Some((_, digest)) = tag_details {
-			log::trace!("request_id: {} - Image exists", request_id);
-			// Push to docr
-			let id = id.clone();
-			let workspace_id = workspace_details.id.clone();
-			let name = name.to_string();
-			let image_tag = image_tag.to_string();
-			let full_image = format!(
-				"{}/{}/{}@{}",
-				config.docker_registry.registry_url,
-				workspace_details.name,
-				repository_details.name,
-				digest
-			);
-			let request_id = request_id.clone();
-
-			db::update_deployment_status(
-				context.get_database_connection(),
-				&id,
-				&DeploymentStatus::Pushed,
-			)
-			.await?;
-
-			task::spawn(async move {
-				log::trace!(
-					"request_id: {} - Acquiring database connection",
-					request_id
-				);
-				let mut connection = if let Ok(connection) =
-					service::get_app().database.acquire().await
-				{
-					connection
-				} else {
-					log::error!("request_id: {} - Unable to acquire a database connection", request_id);
-					return;
-				};
-				log::trace!(
-					"request_id: {} - Acquired database connection",
-					request_id
-				);
-
-				let result = service::push_to_docr(
-					&mut connection,
-					&id,
-					&full_image,
-					&config,
-					&request_id,
-				)
-				.await;
-
-				if let Err(e) = result {
-					log::error!(
-						"Error pushing image to docr: {}",
-						e.get_error()
-					);
-					return;
-				}
-
-				// If deploy_on_create is false, then return
-				if !deploy_on_create {
-					return;
-				}
-
-				let update_kubernetes_result =
-					service::update_kubernetes_deployment(
-						&workspace_id,
-						&Deployment {
-							id: id.clone(),
-							name,
-							registry,
-							image_tag,
-							status: DeploymentStatus::Deploying,
-							region,
-							machine_type,
-						},
-						&full_image,
-						&running_details,
-						&config,
-						&request_id,
-					)
-					.await;
-
-				if let Err(error) = update_kubernetes_result {
-					log::error!(
-						"request_id: {} - Error updating k8s deployment: {}",
-						request_id,
-						error.get_error()
-					);
-					let _ = db::update_deployment_status(
-						&mut connection,
-						&id,
-						&DeploymentStatus::Errored,
-					)
-					.await
-					.map_err(|e| {
-						log::error!(
-							"request_id: {} - Error updating db status: {}",
-							request_id,
-							e
-						);
-					});
-				}
-			});
-		}
 	}
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A new deployment has been created",
 	)
@@ -802,6 +893,13 @@ async fn start_deployment(
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
+
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -809,9 +907,29 @@ async fn start_deployment(
 
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
-	service::start_deployment(
+	log::trace!(
+		"request_id: {} - Starting deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let (deployment, workspace_id, _, deployment_running_details) =
+		service::get_full_deployment_config(
+			context.get_database_connection(),
+			&deployment_id,
+			&request_id,
+		)
+		.await?;
+
+	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
+	service::queue_start_deployment(
 		context.get_database_connection(),
+		&workspace_id,
 		&deployment_id,
+		&deployment,
+		&deployment_running_details,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
@@ -854,12 +972,33 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
-	log::trace!("request_id: {} - Stopping deployment", request_id);
-	// stop the running container, if it exists
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
 	let config = context.get_state().config.clone();
-	service::stop_deployment(
+	log::trace!("request_id: {} - Getting deployment id from db", request_id);
+	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} - queuing stop the deployment request",
+		request_id
+	);
+	service::queue_stop_deployment(
+		context.get_database_connection(),
+		&deployment.workspace_id,
+		&deployment_id,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
@@ -902,6 +1041,7 @@ async fn get_logs(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
 	.unwrap();
+
 	let config = context.get_state().config.clone();
 
 	log::trace!("request_id: {} - Getting logs", request_id);
@@ -951,27 +1091,76 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
-	log::trace!("request_id: {} - Deleting deployment", request_id);
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
+	log::trace!(
+		"request_id: {} - Deleting the deployment with id: {}",
+		request_id,
+		deployment_id
+	);
 	// stop and delete the container running the image, if it exists
 	let config = context.get_state().config.clone();
-	service::delete_deployment(
+	let deployment = db::get_deployment_by_id(
 		context.get_database_connection(),
 		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!("request_id: {} - Queuing delete deployment", request_id);
+	service::queue_delete_deployment(
+		context.get_database_connection(),
+		&deployment.workspace_id,
+		&deployment_id,
+		&deployment.name,
+		&user_id,
+		&login_id,
+		&ip_address,
 		&config,
 		&request_id,
 	)
 	.await?;
 
-	let _ = service::get_deployment_metrics(
+	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A deployment has been deleted",
 	)
 	.await;
 
+	service::cancel_subscription(&deployment_id, &config, &request_id).await?;
+
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to update deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn update_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1004,6 +1193,12 @@ async fn update_deployment(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 	let name = name.as_ref().map(|name| name.trim());
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let login_id = context.get_token_data().unwrap().login_id.clone();
+
+	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+
 	// Is any one value present?
 	if name.is_none() &&
 		region.is_none() &&
@@ -1021,6 +1216,17 @@ async fn update_deployment(
 
 	let config = context.get_state().config.clone();
 
+	let metadata = DeploymentMetadata::Update {
+		name: name.map(|n| n.to_string()),
+		region: region.clone(),
+		machine_type: machine_type.clone(),
+		deploy_on_push,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		ports: ports.clone(),
+		environment_variables: environment_variables.clone(),
+	};
+
 	service::update_deployment(
 		context.get_database_connection(),
 		&deployment_id,
@@ -1030,15 +1236,23 @@ async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		ports.as_ref(),
+		ports
+			.map(|ports| {
+				ports
+					.into_iter()
+					.map(|(k, v)| (k.value(), v))
+					.collect::<BTreeMap<_, _>>()
+			})
+			.as_ref(),
 		environment_variables.as_ref(),
+		&config,
 		&request_id,
 	)
 	.await?;
 
 	context.commit_database_transaction().await?;
 
-	let (deployment, workspace_id, full_image, running_details) =
+	let (deployment, workspace_id, _, deployment_running_details) =
 		service::get_full_deployment_config(
 			context.get_database_connection(),
 			&deployment_id,
@@ -1053,18 +1267,20 @@ async fn update_deployment(
 			// Don't update deployments that are explicitly stopped or deleted
 		}
 		_ => {
-			db::update_deployment_status(
+			service::queue_update_deployment(
 				context.get_database_connection(),
-				&deployment_id,
-				&DeploymentStatus::Deploying,
-			)
-			.await?;
-
-			service::update_kubernetes_deployment(
 				&workspace_id,
-				&deployment,
-				&full_image,
-				&running_details,
+				&deployment_id,
+				&deployment.name,
+				&deployment.registry,
+				&deployment.image_tag,
+				&deployment.region,
+				&deployment.machine_type,
+				&deployment_running_details,
+				&user_id,
+				&login_id,
+				&ip_address,
+				&metadata,
 				&config,
 				&request_id,
 			)
@@ -1076,6 +1292,29 @@ async fn update_deployment(
 	Ok(context)
 }
 
+/// # Description
+/// This function is used to list linked urls for the deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
 async fn list_linked_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
@@ -1125,5 +1364,211 @@ async fn list_linked_urls(
 	.collect();
 
 	context.success(ListLinkedURLsResponse { urls });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to fetch all deployment metrics (cpu usage, memory
+/// usage, etc) required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_deployment_metrics(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	log::trace!(
+		"request_id: {} - Getting deployment metrics for deployment: {}",
+		request_id,
+		deployment_id
+	);
+	let start_time = context
+		.get_request()
+		.get_query()
+		.get(request_keys::START_TIME)
+		.and_then(|value| value.parse::<Interval>().ok())
+		.unwrap_or(Interval::Hour);
+
+	let step = context
+		.get_request()
+		.get_query()
+		.get(request_keys::INTERVAL)
+		.and_then(|value| value.parse::<Step>().ok())
+		.unwrap_or(Step::TenMinutes);
+
+	let config = context.get_state().config.clone();
+
+	let deployment_metrics = service::get_deployment_metrics(
+		&deployment_id,
+		&config,
+		start_time.as_u64(),
+		get_current_time().as_secs(),
+		&step.to_string(),
+		&request_id,
+	)
+	.await?;
+
+	context.success(GetDeploymentMetricsResponse {
+		metrics: deployment_metrics,
+	});
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the build logs for a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_build_logs(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+	let config = context.get_state().config.clone();
+	log::trace!("request_id: {} - Getting build logs", request_id);
+	// stop the running container, if it exists
+	let logs = service::get_deployment_build_logs(
+		context.get_database_connection(),
+		&workspace_id,
+		&deployment_id,
+		&config,
+		&request_id,
+	)
+	.await?
+	.into_iter()
+	.map(|b_log| DeploymentBuildLog {
+		pod: b_log.pod,
+		logs: b_log.logs,
+	})
+	.collect();
+	context.success(GetDeploymentBuildLogsResponse { logs });
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to get the build events for a deployment
+/// required inputs:
+/// deploymentId in the url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success: true or false
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn get_build_events(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let deployment_id = Uuid::parse_str(
+		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
+	)
+	.unwrap();
+
+	log::trace!(
+		"request_id: {} - Checking if the deployment exists or not",
+		request_id
+	);
+	let _ = db::get_deployment_by_id(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	log::trace!(
+		"request_id: {} - Getting the build events from the database",
+		request_id
+	);
+	let build_events = db::get_build_events_for_deployment(
+		context.get_database_connection(),
+		&deployment_id,
+	)
+	.await?
+	.into_iter()
+	.map(|event| WorkspaceAuditLog {
+		id: event.id,
+		date: event.date,
+		ip_address: event.ip_address,
+		workspace_id: event.workspace_id,
+		user_id: event.user_id,
+		login_id: event.login_id,
+		resource_id: event.resource_id,
+		action: event.action,
+		request_id: event.request_id,
+		metadata: event.metadata,
+		patr_action: event.patr_action,
+		request_success: event.success,
+	})
+	.collect();
+
+	log::trace!(
+		"request_id: {} - Build events successfully retreived",
+		request_id
+	);
+	context.success(GetDeploymentEventsResponse { logs: build_events });
 	Ok(context)
 }

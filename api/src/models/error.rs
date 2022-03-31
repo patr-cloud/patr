@@ -42,17 +42,19 @@ pub mod id {
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
 	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str = "domainBelongsToWorkspace";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
-	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
-	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
-		"cannotDeleteBackupPhoneNumber";
+	pub const CANNOT_DELETE_RECOVERY_EMAIL: &str = "cannotDeleteRecoveryEmail";
+	pub const CANNOT_DELETE_RECOVERY_PHONE_NUMBER: &str =
+		"cannotDeleteRecoveryPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
+	pub const INVALID_STATIC_SITE_NAME: &str = "invalidStaticSiteName";
 	pub const RESOURCE_IN_USE: &str = "resourceInUse";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str = "domainNotPatrControlled";
 	pub const INVALID_IP_ADDRESS: &str = "invalidIpAddress";
 	pub const DNS_RECORD_NOT_FOUND: &str = "dnsRecordNotFound";
 	pub const INVALID_DNS_RECORD_NAME: &str = "invalidDnsRecordName";
 	pub const MAX_LIMIT_REACHED: &str = "maxLimitReached";
+	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
 }
 
 #[allow(dead_code)]
@@ -149,11 +151,13 @@ pub mod message {
 		"That domain seems to belong to an workspace. Please choose a personal domain instead. If this problem persists, please contact us";
 	pub const NO_RECOVERY_OPTIONS: &str =
 		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
-	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
-	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
+	pub const CANNOT_DELETE_RECOVERY_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a recovery email. Please update the recovery email first.";
+	pub const CANNOT_DELETE_RECOVERY_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a recovery phone number. Please update the recovery phone number first.";
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
+	pub const INVALID_STATIC_SITE_NAME: &str =
+		"Static site can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
 	pub const RESOURCE_IN_USE: &str = "The resource is currently in use, please delete all the resources connected to it and try again";
 	pub const DOMAIN_NOT_PATR_CONTROLLED: &str =
 		"The domain has nameservers outside of Patr";
@@ -161,4 +165,6 @@ pub mod message {
 	pub const DNS_RECORD_NOT_FOUND: &str = "The DNS record does not exist";
 	pub const INVALID_DNS_RECORD_NAME: &str = "The DNS record name is invalid";
 	pub const MAX_LIMIT_REACHED: &str = "You have reached the limit of the maximum number resources allowed for your workspace";
+	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
+		"Address line 3 is not allowed if address line 2 is not provided";
 }

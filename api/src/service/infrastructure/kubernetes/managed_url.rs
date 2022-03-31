@@ -35,7 +35,7 @@ use kube::{
 use crate::{
 	db,
 	error,
-	service,
+	service::{self, infrastructure::kubernetes},
 	utils::{settings::Settings, Error},
 };
 
@@ -52,12 +52,34 @@ pub async fn update_kubernetes_managed_url(
 		"request_id: {} - generating deployment configuration",
 		request_id
 	);
+
 	let domain = db::get_workspace_domain_by_id(
 		service::get_app().database.acquire().await?.deref_mut(),
 		&managed_url.domain_id,
 	)
 	.await?
 	.status(500)?;
+
+	let secret_name = format!(
+		"tls-{}",
+		if domain.is_ns_internal() {
+			&domain.id
+		} else {
+			&managed_url.id
+		}
+	);
+
+	if !kubernetes::secret_exists(
+		&secret_name,
+		kubernetes_client.clone(),
+		namespace,
+	)
+	.await?
+	{
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?;
+	}
 
 	let (ingress, annotations) = match &managed_url.url_type {
 		ManagedUrlType::ProxyDeployment {

@@ -142,8 +142,8 @@ pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 }
 
 #[derive(EmailTemplate, Serialize)]
-#[template_path = "assets/emails/backup-email-notification/template.json"]
-struct BackupNotificationEmail {}
+#[template_path = "assets/emails/recovery-email-notification/template.json"]
+struct RecoveryNotificationEmail {}
 
 /// # Description
 /// This function is used to send the registration info to back up email of the
@@ -156,10 +156,11 @@ struct BackupNotificationEmail {}
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
-pub async fn send_backup_registration_mail(
+pub async fn send_recovery_registration_mail(
 	email: Mailbox,
 ) -> Result<(), Error> {
-	send_email(BackupNotificationEmail {}, email, None, "Welcome to Patr").await
+	send_email(RecoveryNotificationEmail {}, email, None, "Welcome to Patr")
+		.await
 }
 
 #[derive(EmailTemplate, Serialize)]
