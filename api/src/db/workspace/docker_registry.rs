@@ -162,9 +162,9 @@ pub async fn get_docker_repositories_for_workspace(
 	let rows = query!(
 		r#"
 		SELECT
-			docker_registry_repository.id as "id: Uuid",
-			docker_registry_repository.workspace_id as "workspace_id: Uuid",
-			docker_registry_repository.name::TEXT as "name!: String",
+			id as "id: Uuid",
+			workspace_id as "workspace_id: Uuid",
+			name::TEXT as "name!: String",
 			COALESCE(size, 0) as "size!",
 			(
 				SELECT
@@ -192,7 +192,7 @@ pub async fn get_docker_repositories_for_workspace(
 								created DESC
 							LIMIT 1
 						)
-					) as "last_updated!"
+					)
 				FROM
 					resource
 				WHERE
