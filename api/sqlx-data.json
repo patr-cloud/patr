@@ -1194,6 +1194,50 @@
       "nullable": []
     }
   },
+  "1ef94e3c3f5a248ff4a1ecc20b34f230398e3c4fd31c055a9666c9f794814dca": {
+    "query": "SELECT docker_registry_repository.id as \"id: Uuid\", docker_registry_repository.workspace_id as \"workspace_id: Uuid\", docker_registry_repository.name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\", ( SELECT GREATEST( resource.created, ( SELECT COALESCE(created, 0) FROM docker_registry_repository_manifest WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ), ( SELECT COALESCE(last_updated, 0) FROM docker_registry_repository_tag WHERE repository_id = docker_registry_repository.id ORDER BY created DESC LIMIT 1 ) ) as \"last_updated!\" FROM resource WHERE resource.id = docker_registry_repository.id ) as \"last_updated!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id: Uuid",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "name!: String",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "size!",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "last_updated!",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        null,
+        null,
+        null
+      ]
+    }
+  },
   "1f6ff6cf661a6007d78b7a30f0f8599c0ad2accd42912eb3f28d45c411f23674": {
     "query": "SELECT user_id as \"user_id: Uuid\", token, token_expiry FROM password_reset_request WHERE user_id = $1;",
     "describe": {
@@ -6477,44 +6521,6 @@
         ]
       },
       "nullable": [
-        null
-      ]
-    }
-  },
-  "d8025ea32bd00497ab2e0b817f283edaac5f41d132887ce359f758fb7ff689a8": {
-    "query": "SELECT id as \"id: Uuid\", workspace_id as \"workspace_id: Uuid\", name::TEXT as \"name!: String\", COALESCE(size, 0) as \"size!\" FROM docker_registry_repository LEFT JOIN ( SELECT SUM(size) as size, repository_id FROM docker_registry_repository_manifest GROUP BY repository_id ) docker_registry_repository_manifest ON docker_registry_repository_manifest.repository_id = docker_registry_repository.id WHERE workspace_id = $1 AND name NOT LIKE 'patr-deleted:%';",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "workspace_id: Uuid",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 2,
-          "name": "name!: String",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 3,
-          "name": "size!",
-          "type_info": "Numeric"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        null,
         null
       ]
     }
