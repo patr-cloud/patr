@@ -200,10 +200,10 @@ pub async fn is_phone_number_allowed(
 /// * `password` - A string which contains password of the user
 /// * `first_name` - A string which contains first name of the user
 /// * `last_name` - A string which contains last name of the user
-/// * `backup_email` - A string which contains recovery email of the user
-/// * `backup_phone_country_code` - A string which contains phone number country
-///   code
-/// * `backup_phone_number` - A string which contains phone number of of user
+/// * `recovery_email` - A string which contains recovery email of the user
+/// * `recovery_phone_country_code` - A string which contains phone number
+///   country code
+/// * `recovery_phone_number` - A string which contains phone number of of user
 /// * `business_email_local` - A string which contains a pre-existing
 ///   email_local of the user's
 /// business email
@@ -239,7 +239,7 @@ pub async fn create_user_join_request(
 			.status(200)
 			.body(error!(PASSWORD_TOO_WEAK).to_string())?;
 	}
-	// If backup email is given, extract the local and domain id from it
+	// If recovery email is given, extract the local and domain id from it
 	let recovery_email_local;
 	let recovery_email_domain_id;
 	let phone_country_code;
@@ -269,7 +269,7 @@ pub async fn create_user_join_request(
 		}
 		// If recovery_email is only provided
 		RecoveryMethod::Email { recovery_email } => {
-			// Check if backup_email is allowed and valid
+			// Check if recovery_email is allowed and valid
 			if !is_email_allowed(connection, recovery_email).await? {
 				Error::as_result()
 					.status(200)
@@ -379,10 +379,10 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: recovery_email_local,
-				backup_email_domain_id: recovery_email_domain_id,
-				backup_phone_country_code: phone_country_code,
-				backup_phone_number: phone_number,
+				recovery_email_local,
+				recovery_email_domain_id,
+				recovery_phone_country_code: phone_country_code,
+				recovery_phone_number: phone_number,
 				business_email_local: Some(business_email_local.to_string()),
 				business_domain_name: Some(format!("{}.{}", domain_name, tld)),
 				business_name: Some(workspace_name.to_string()),
@@ -411,10 +411,10 @@ pub async fn create_user_join_request(
 				password,
 				first_name: first_name.to_string(),
 				last_name: last_name.to_string(),
-				backup_email_local: recovery_email_local,
-				backup_email_domain_id: recovery_email_domain_id,
-				backup_phone_country_code: phone_country_code,
-				backup_phone_number: phone_number,
+				recovery_email_local,
+				recovery_email_domain_id,
+				recovery_phone_country_code: phone_country_code,
+				recovery_phone_number: phone_number,
 				business_email_local: None,
 				business_domain_name: None,
 				business_name: None,
@@ -726,8 +726,8 @@ pub async fn reset_password(
 ///     3. account_type
 ///     4. first_name
 ///     5. last_name
-///     6. (backup_email_local, backup_email_domain_id) OR
-///     7. (backup_phone_country_code, backup_phone_number)
+///     6. (recovery_email_local, recovery_email_domain_id) OR
+///     7. (recovery_phone_country_code, recovery_phone_number)
 /// extra parameters required for business account:
 ///     1. business_domain_name
 ///     2. business_name
@@ -773,7 +773,7 @@ pub async fn join_user(
 	// Then create an workspace if a business account,
 	// Then add the domain if business account,
 	// Then create personal workspace regardless,
-	// Then set email to backup email if personal account,
+	// Then set email to recovery email if personal account,
 	// And finally send the token, along with the email to the user
 
 	let user_id = db::generate_new_user_id(connection).await?;
@@ -785,17 +785,17 @@ pub async fn join_user(
 			.expect("GOD_USER_ID was already set");
 	}
 
-	let backup_email_local = user_data.backup_email_local.as_deref();
-	let backup_email_domain_id = user_data.backup_email_domain_id.as_ref();
-	let backup_phone_country_code =
-		user_data.backup_phone_country_code.as_deref();
-	let backup_phone_number = user_data.backup_phone_number.as_deref();
+	let recovery_email_local = user_data.recovery_email_local.as_deref();
+	let recovery_email_domain_id = user_data.recovery_email_domain_id.as_ref();
+	let recovery_phone_country_code =
+		user_data.recovery_phone_country_code.as_deref();
+	let recovery_phone_number = user_data.recovery_phone_number.as_deref();
 	db::begin_deferred_constraints(connection).await?;
 
 	if let Some((email_local, domain_id)) = user_data
-		.backup_email_local
+		.recovery_email_local
 		.as_ref()
-		.zip(user_data.backup_email_domain_id.as_ref())
+		.zip(user_data.recovery_email_domain_id.as_ref())
 	{
 		db::add_personal_email_for_user(
 			connection,
@@ -805,9 +805,9 @@ pub async fn join_user(
 		)
 		.await?;
 	} else if let Some((phone_country_code, phone_number)) = user_data
-		.backup_phone_country_code
+		.recovery_phone_country_code
 		.as_ref()
-		.zip(user_data.backup_phone_number.as_ref())
+		.zip(user_data.recovery_phone_number.as_ref())
 	{
 		db::add_phone_number_for_user(
 			connection,
@@ -818,7 +818,7 @@ pub async fn join_user(
 		.await?;
 	} else {
 		log::error!(
-			"Got neither backup email, nor backup phone number while signing up user: {}",
+			"Got neither recovery email, nor recovery phone number while signing up user: {}",
 			user_data.username
 		);
 
@@ -834,17 +834,17 @@ pub async fn join_user(
 		&user_data.password,
 		(&user_data.first_name, &user_data.last_name),
 		created,
-		backup_email_local,
-		backup_email_domain_id,
-		backup_phone_country_code,
-		backup_phone_number,
+		recovery_email_local,
+		recovery_email_domain_id,
+		recovery_phone_country_code,
+		recovery_phone_number,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
 
 	let welcome_email_to; // Send the "welcome to patr" email here
-	let backup_email_to; // Send "this email is a backup email for ..." here
-	let backup_phone_number_to; // Notify this phone that it's a backup phone number
+	let recovery_email_to; // Send "this email is a recovery email for ..." here
+	let recovery_phone_number_to; // Notify this phone that it's a recovery phone number
 
 	// For an business, create the workspace and domain
 	if user_data.account_type.is_business() {
@@ -883,11 +883,11 @@ pub async fn join_user(
 			user_data.business_domain_name.unwrap()
 		));
 		if let Some((email_local, domain_id)) = user_data
-			.backup_email_local
+			.recovery_email_local
 			.as_ref()
-			.zip(user_data.backup_email_domain_id.as_ref())
+			.zip(user_data.recovery_email_domain_id.as_ref())
 		{
-			backup_email_to = Some(format!(
+			recovery_email_to = Some(format!(
 				"{}@{}",
 				email_local,
 				db::get_personal_domain_by_id(connection, domain_id)
@@ -895,11 +895,11 @@ pub async fn join_user(
 					.status(500)?
 					.name
 			));
-			backup_phone_number_to = None;
+			recovery_phone_number_to = None;
 		} else if let Some((phone_country_code, phone_number)) = user_data
-			.backup_phone_country_code
+			.recovery_phone_country_code
 			.as_ref()
-			.zip(user_data.backup_phone_number.as_ref())
+			.zip(user_data.recovery_phone_number.as_ref())
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
@@ -907,12 +907,12 @@ pub async fn join_user(
 			)
 			.await?
 			.status(500)?;
-			backup_phone_number_to =
+			recovery_phone_number_to =
 				Some(format!("+{}{}", country.phone_code, phone_number));
-			backup_email_to = None;
+			recovery_email_to = None;
 		} else {
 			log::error!(
-				"Got neither backup email, nor backup phone number while signing up user: {}",
+				"Got neither recovery email, nor recovery phone number while signing up user: {}",
 				user_data.username
 			);
 			return Err(Error::empty()
@@ -929,9 +929,9 @@ pub async fn join_user(
 		.await?;
 	} else {
 		if let Some((email_local, domain_id)) = user_data
-			.backup_email_local
+			.recovery_email_local
 			.as_ref()
-			.zip(user_data.backup_email_domain_id.as_ref())
+			.zip(user_data.recovery_email_domain_id.as_ref())
 		{
 			welcome_email_to = Some(format!(
 				"{}@{}",
@@ -941,11 +941,11 @@ pub async fn join_user(
 					.status(500)?
 					.name
 			));
-			backup_phone_number_to = None;
+			recovery_phone_number_to = None;
 		} else if let Some((phone_country_code, phone_number)) = user_data
-			.backup_phone_country_code
+			.recovery_phone_country_code
 			.as_ref()
-			.zip(user_data.backup_phone_number.as_ref())
+			.zip(user_data.recovery_phone_number.as_ref())
 		{
 			let country = db::get_phone_country_by_country_code(
 				connection,
@@ -953,12 +953,12 @@ pub async fn join_user(
 			)
 			.await?
 			.status(500)?;
-			backup_phone_number_to =
+			recovery_phone_number_to =
 				Some(format!("+{}{}", country.phone_code, phone_number));
 			welcome_email_to = None;
 		} else {
 			log::error!(
-				"Got neither backup email, nor backup phone number while signing up user: {}",
+				"Got neither recovery email, nor recovery phone number while signing up user: {}",
 				user_data.username
 			);
 			return Err(Error::empty()
@@ -966,7 +966,7 @@ pub async fn join_user(
 				.body(error!(SERVER_ERROR).to_string()));
 		}
 
-		backup_email_to = None;
+		recovery_email_to = None;
 	}
 
 	// add personal workspace
@@ -990,8 +990,8 @@ pub async fn join_user(
 		login_id,
 		refresh_token,
 		welcome_email_to,
-		backup_email_to,
-		backup_phone_number_to,
+		recovery_email_to,
+		recovery_phone_number_to,
 	};
 
 	create_chargebee_user(

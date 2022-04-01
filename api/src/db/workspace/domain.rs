@@ -574,7 +574,7 @@ pub async fn get_notification_email_for_domain(
 	.fetch_optional(&mut *connection)
 	.await?
 	.map(|row| {
-		if let Some(email_local) = row.backup_email_local {
+		if let Some(email_local) = row.recovery_email_local {
 			Ok(format!("{}@{}", email_local, row.name))
 		} else {
 			Err(sqlx::Error::RowNotFound)

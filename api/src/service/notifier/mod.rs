@@ -21,27 +21,27 @@ mod sms;
 /// * `welcome_email` - an Option<String> containing either String which has
 /// user's personal or business email to send a welcome notification to or
 /// `None`
-/// * `backup_email` - an Option<String> containing either String which has
-/// user's backup email to send a verification email to or `None`
-/// * `backup_phone_number` - an Option<String> containing either String which
-/// has user's backup phone number to send a verification sms to or `None`
+/// * `recovery_email` - an Option<String> containing either String which has
+/// user's recovery email to send a verification email to or `None`
+/// * `recovery_phone_number` - an Option<String> containing either String which
+/// has user's recovery phone number to send a verification sms to or `None`
 ///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
 /// error
 pub async fn send_sign_up_complete_notification(
 	welcome_email: Option<String>,
-	backup_email: Option<String>,
-	backup_phone_number: Option<String>,
+	recovery_email: Option<String>,
+	recovery_phone_number: Option<String>,
 ) -> Result<(), Error> {
 	if let Some(welcome_email) = welcome_email {
 		email::send_sign_up_completed_email(welcome_email.parse()?).await?;
 	}
-	if let Some(backup_email) = backup_email {
-		email::send_backup_registration_mail(backup_email.parse()?).await?;
+	if let Some(recovery_email) = recovery_email {
+		email::send_recovery_registration_mail(recovery_email.parse()?).await?;
 	}
-	if let Some(phone_number) = backup_phone_number {
-		sms::send_backup_registration_sms(&phone_number).await?;
+	if let Some(phone_number) = recovery_phone_number {
+		sms::send_recovery_registration_sms(&phone_number).await?;
 	}
 	Ok(())
 }
@@ -111,25 +111,25 @@ pub async fn send_user_sign_up_otp(
 	user: &UserToSignUp,
 	otp: &str,
 ) -> Result<(), Error> {
-	// chcek if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) = user
-		.backup_email_domain_id
+	// chcek if email is given as a recovery option
+	if let Some((recovery_email_domain_id, recovery_email_local)) = user
+		.recovery_email_domain_id
 		.as_ref()
-		.zip(user.backup_email_local.as_ref())
+		.zip(user.recovery_email_local.as_ref())
 	{
 		let email = get_user_email(
 			connection,
-			backup_email_domain_id,
-			backup_email_local,
+			recovery_email_domain_id,
+			recovery_email_local,
 		)
 		.await?;
 		email::send_user_verification_otp(email.parse()?, otp).await
 	} else if let Some((phone_country_code, phone_number)) = user
-		.backup_phone_country_code
+		.recovery_phone_country_code
 		.as_ref()
-		.zip(user.backup_phone_number.as_ref())
+		.zip(user.recovery_phone_number.as_ref())
 	{
-		// check if phone number is given as a backup
+		// check if phone number is given as a recovery
 		let phone_number =
 			get_user_phone_number(connection, phone_country_code, phone_number)
 				.await?;
@@ -142,7 +142,7 @@ pub async fn send_user_sign_up_otp(
 }
 
 /// # Description
-/// This function is used to notify the user on all the backup options that
+/// This function is used to notify the user on all the recovery options that
 /// their password has been changed
 ///
 /// # Arguments
@@ -158,21 +158,22 @@ pub async fn send_password_changed_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	// check if email is given as a backup option
-	if let Some((backup_email_domain_id, backup_email_local)) =
-		user.backup_email_domain_id.zip(user.backup_email_local)
+	// check if email is given as a recovery option
+	if let Some((recovery_email_domain_id, recovery_email_local)) =
+		user.recovery_email_domain_id.zip(user.recovery_email_local)
 	{
 		let email = get_user_email(
 			connection,
-			&backup_email_domain_id,
-			&backup_email_local,
+			&recovery_email_domain_id,
+			&recovery_email_local,
 		)
 		.await?;
 		email::send_password_changed_notification(email.parse()?).await?;
 	}
-	// check if phone number is given as a backup
-	if let Some((phone_country_code, phone_number)) =
-		user.backup_phone_country_code.zip(user.backup_phone_number)
+	// check if phone number is given as a recovery
+	if let Some((phone_country_code, phone_number)) = user
+		.recovery_phone_country_code
+		.zip(user.recovery_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -201,8 +202,9 @@ pub async fn send_user_reset_password_notification(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	user: User,
 ) -> Result<(), Error> {
-	if let Some((phone_country_code, phone_number)) =
-		user.backup_phone_country_code.zip(user.backup_phone_number)
+	if let Some((phone_country_code, phone_number)) = user
+		.recovery_phone_country_code
+		.zip(user.recovery_phone_number)
 	{
 		let phone_number = get_user_phone_number(
 			connection,
@@ -212,13 +214,13 @@ pub async fn send_user_reset_password_notification(
 		.await?;
 		sms::send_user_reset_password_notification(&phone_number).await?;
 	}
-	if let Some((backup_email_domain_id, backup_email_local)) =
-		user.backup_email_domain_id.zip(user.backup_email_local)
+	if let Some((recovery_email_domain_id, recovery_email_local)) =
+		user.recovery_email_domain_id.zip(user.recovery_email_local)
 	{
 		let email = get_user_email(
 			connection,
-			&backup_email_domain_id,
-			&backup_email_local,
+			&recovery_email_domain_id,
+			&recovery_email_local,
 		)
 		.await?;
 		email::send_user_reset_password_notification(email.parse()?).await?;
@@ -252,11 +254,11 @@ pub async fn send_forgot_password_otp(
 		PreferredRecoveryOption::RecoveryEmail => {
 			let email = get_user_email(
 				connection,
-				user.backup_email_domain_id
+				user.recovery_email_domain_id
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				user.backup_email_local
+				user.recovery_email_local
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
@@ -268,11 +270,11 @@ pub async fn send_forgot_password_otp(
 		PreferredRecoveryOption::RecoveryPhoneNumber => {
 			let phone_number = get_user_phone_number(
 				connection,
-				user.backup_phone_country_code
+				user.recovery_phone_country_code
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,
-				user.backup_phone_number
+				user.recovery_phone_number
 					.as_ref()
 					.status(400)
 					.body(error!(WRONG_PARAMETERS).to_string())?,

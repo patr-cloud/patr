@@ -136,7 +136,7 @@ async fn create_user_account(
 	client: &Client,
 	config: &Settings,
 ) {
-	let response = client
+	let response: ApiResponse<CreateAccountResponse> = client
 		.post(format!("http://localhost:{}/auth/sign-up", config.port))
 		.json(&CreateAccountRequest {
 			username: user.username.clone(),

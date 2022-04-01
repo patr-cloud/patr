@@ -42,9 +42,9 @@ pub mod id {
 	pub const DOMAIN_IS_PERSONAL: &str = "domainIsPersonal";
 	pub const DOMAIN_BELONGS_TO_WORKSPACE: &str = "domainBelongsToWorkspace";
 	pub const NO_RECOVERY_OPTIONS: &str = "noRecoveryOptions";
-	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "cannotDeleteBackupEmail";
-	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str =
-		"cannotDeleteBackupPhoneNumber";
+	pub const CANNOT_DELETE_RECOVERY_EMAIL: &str = "cannotDeleteRecoveryEmail";
+	pub const CANNOT_DELETE_RECOVERY_PHONE_NUMBER: &str =
+		"cannotDeleteRecoveryPhoneNumber";
 	pub const DOMAIN_EXISTS: &str = "domainExists";
 	pub const INVALID_DEPLOYMENT_NAME: &str = "invalidDeploymentName";
 	pub const INVALID_STATIC_SITE_NAME: &str = "invalidStaticSiteName";
@@ -151,8 +151,8 @@ pub mod message {
 		"That domain seems to belong to an workspace. Please choose a personal domain instead. If this problem persists, please contact us";
 	pub const NO_RECOVERY_OPTIONS: &str =
 		"You seem to have no recovery options set for your account. Please add either a backup email or a backup phone number";
-	pub const CANNOT_DELETE_BACKUP_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a backup email. Please update the backup email first.";
-	pub const CANNOT_DELETE_BACKUP_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a backup phone number. Please update the backup phone number first.";
+	pub const CANNOT_DELETE_RECOVERY_EMAIL: &str = "The email address sent by the client cannot be deleted because it is assigned as a recovery email. Please update the recovery email first.";
+	pub const CANNOT_DELETE_RECOVERY_PHONE_NUMBER: &str = "The phone number sent by the client cannot be deleted because it is assigned as a recovery phone number. Please update the recovery phone number first.";
 	pub const DOMAIN_EXISTS: &str = "That domain name is already taken.";
 	pub const INVALID_DEPLOYMENT_NAME: &str =
 		"Deployment can only consist of alphanumeric characters, spaces, dots, dashes and underscores, and cannot begin or end with a space";
