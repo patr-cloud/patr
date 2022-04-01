@@ -747,7 +747,7 @@ async fn migrate_from_v0_5_7(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	rabbitmq(connection, config).await?;
+	migrate_from_docr_to_pcr(connection, config).await?;
 	audit_logs(connection).await?;
 	chargebee(connection, config).await?;
 	rename_backup_email_to_recovery_email(connection).await?;
@@ -755,7 +755,7 @@ async fn migrate_from_v0_5_7(
 	Ok(())
 }
 
-async fn rabbitmq(
+async fn migrate_from_docr_to_pcr(
 	connection: &mut sqlx::PgConnection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -764,8 +764,8 @@ async fn rabbitmq(
 		SELECT
 			deployment.id,
 			deployment.workspace_id,
-			workspace.name,
-			docker_registry_repository.name as "repository",
+			workspace.name::TEXT as "name",
+			docker_registry_repository.name::TEXT as "repository",
 			deployment.image_tag,
 			deployment.region
 		FROM
@@ -792,7 +792,7 @@ async fn rabbitmq(
 			row.get::<String, _>("name"),
 			row.get::<String, _>("repository"),
 			row.get::<String, _>("image_tag"),
-			row.get::<String, _>("region"),
+			row.get::<Uuid, _>("region"),
 		)
 	})
 	.collect::<Vec<_>>();
@@ -864,6 +864,10 @@ async fn rabbitmq(
 		.collect::<BTreeMap<_, _>>();
 
 		let kubernetes_deployment = Deployment {
+			metadata: ObjectMeta {
+				name: Some(format!("deployment-{}", deployment_id)),
+				..ObjectMeta::default()
+			},
 			spec: Some(DeploymentSpec {
 				selector: LabelSelector {
 					match_labels: Some(labels.clone()),
