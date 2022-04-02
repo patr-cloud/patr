@@ -1014,12 +1014,10 @@ async fn migrate_from_docr_to_pcr(
 							env: Some(
 								env_vars
 									.into_iter()
-									.filter_map(|(name, value)| {
-										Some(EnvVar {
-											name: name.to_string(),
-											value: Some(value),
-											..EnvVar::default()
-										})
+									.map(|(name, value)| EnvVar {
+										name,
+										value: Some(value),
+										..EnvVar::default()
 									})
 									.chain([
 										EnvVar {
