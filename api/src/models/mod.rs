@@ -19,5 +19,6 @@ pub use self::{
 	auditlog::*,
 	docker_registry::*,
 	email_template::*,
+	rbac::*,
 	twilio_sms::*,
 };

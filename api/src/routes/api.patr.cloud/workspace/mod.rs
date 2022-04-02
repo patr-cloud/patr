@@ -34,6 +34,7 @@ use crate::{
 mod billing;
 mod docker_registry;
 mod domain;
+mod github;
 mod infrastructure;
 #[path = "./rbac.rs"]
 mod rbac_routes;
@@ -107,6 +108,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/github", github::create_sub_app(app));
 
 	sub_app.get(
 		"/is-name-available",

@@ -53,8 +53,7 @@ pub fn create_sub_app(
 				permissions::workspace::github::repo::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						"ae12345d473649a3bee026a5a4e84525";
-					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -84,8 +83,7 @@ pub fn create_sub_app(
 				permissions::workspace::github::action::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
-						"a66fde8c-0c72-4655-9ac1-2e4f43e9c953";
-					// context.get_param(request_keys::WORKSPACE_ID).unwrap();
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
 					let workspace_id = Uuid::parse_str(workspace_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
