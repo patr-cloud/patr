@@ -117,29 +117,29 @@ pub async fn create_new_secret_in_workspace(
 	.map(|_| ())
 }
 
-pub async fn create_new_secret_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	secret_id: &Uuid,
-	name: &str,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			secret
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		secret_id as _,
-		name as _,
-		workspace_id as _,
-		deployment_id as _,
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
-}
+// pub async fn create_new_secret_for_deployment(
+// 	connection: &mut <Database as sqlx::Database>::Connection,
+// 	secret_id: &Uuid,
+// 	name: &str,
+// 	workspace_id: &Uuid,
+// 	deployment_id: &Uuid,
+// ) -> Result<(), sqlx::Error> {
+// 	query!(
+// 		r#"
+// 		INSERT INTO
+// 			secret
+// 		VALUES
+// 			($1, $2, $3, $4);
+// 		"#,
+// 		secret_id as _,
+// 		name as _,
+// 		workspace_id as _,
+// 		deployment_id as _,
+// 	)
+// 	.execute(&mut *connection)
+// 	.await
+// 	.map(|_| ())
+// }
 
 pub async fn update_secret_name(
 	connection: &mut <Database as sqlx::Database>::Connection,

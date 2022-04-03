@@ -17,6 +17,7 @@ use api_models::{
 				GetDeploymentInfoResponse,
 				GetDeploymentLogsResponse,
 				GetDeploymentMetricsResponse,
+				ListDeploymentSecretsResponse,
 				ListDeploymentsResponse,
 				ListLinkedURLsResponse,
 				PatrRegistry,

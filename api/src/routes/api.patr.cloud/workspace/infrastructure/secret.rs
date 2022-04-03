@@ -170,7 +170,7 @@ async fn create_secret(
 			.unwrap();
 	let CreateSecretRequest {
 		name,
-		deployment_id,
+		// deployment_id,
 		secret,
 		..
 	} = context
@@ -184,7 +184,7 @@ async fn create_secret(
 	let id = service::create_new_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		deployment_id.as_ref(),
+		// deployment_id.as_ref(),
 		&name,
 		&secret,
 		&config,
