@@ -1,5 +1,5 @@
 use api_macros::closure_as_pinned_box;
-use api_models::{models::workspace::get_github_info::*, utils::Uuid};
+use api_models::{models::workspace::github::*, utils::Uuid};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
 
@@ -161,7 +161,7 @@ async fn get_access_token(
 		let access_token_raw: Vec<&str> = response.split('&').collect();
 		let token: Vec<&str> = access_token_raw[0].split('=').collect();
 
-		context.success(GithubAccessToken {
+		context.success(GithubAccessTokenResponse {
 			access_token: token[1].to_string(),
 		});
 
@@ -181,9 +181,10 @@ async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GetGithubRepoRequest {
+	let ListGithubRepoRequest {
 		access_token,
 		owner_name,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -202,7 +203,7 @@ async fn list_github_repos(
 		.send()
 		.await?;
 
-	let response = response.json::<Vec<GithubResponse>>().await?;
+	let response = response.json::<Vec<ListGithubRepoResponse>>().await?;
 
 	context.success(GetGithubRepoResponse { response });
 
@@ -210,7 +211,7 @@ async fn list_github_repos(
 }
 
 async fn configure_github_build_steps_static_site(
-	context: EveContext,
+	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let GetGithubStaticSiteBuildStepRequest {
@@ -221,6 +222,7 @@ async fn configure_github_build_steps_static_site(
 		build_command,
 		publish_dir,
 		node_version,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -252,12 +254,12 @@ async fn configure_github_build_steps_static_site(
 		)
 		.await?
 	}
-
+	context.success(GetGithubStaticSiteBuildStepResponse {});
 	Ok(context)
 }
 
 async fn configure_github_build_steps_deployment(
-	context: EveContext,
+	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
@@ -274,6 +276,7 @@ async fn configure_github_build_steps_deployment(
 		publish_dir,
 		node_version,
 		framework,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -295,5 +298,7 @@ async fn configure_github_build_steps_deployment(
 		)
 		.await?;
 	}
+
+	context.success(GetGithubDeploymentBuildStepResponse {});
 	Ok(context)
 }

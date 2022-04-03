@@ -1,4 +1,4 @@
-use api_models::models::workspace::get_github_info::GithubResponseBody;
+use api_models::models::workspace::github::*;
 use eve_rs::AsError;
 use octocrab::{models::repos::GitUser, Octocrab};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
