@@ -39,7 +39,7 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.get(
-		"/access-token/:code",
+		"/accessToken/:code",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_access_token)),
@@ -47,7 +47,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/get-repository",
+		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::github::repo::LIST,
@@ -77,7 +77,7 @@ pub fn create_sub_app(
 		],
 	);
 	app.post(
-		"/config-static-build",
+		"/configure-static-build",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::github::action::CREATE,
@@ -109,7 +109,7 @@ pub fn create_sub_app(
 		],
 	);
 	app.post(
-		"/config-deployment-build",
+		"/configure-deployment-build",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::github::action::CREATE,
@@ -153,11 +153,9 @@ async fn get_access_token(
 	let client_id = config.github.client_id;
 	let client_secret = config.github.client_secret;
 
-	let url = format!("https://github.com/login/oauth/access_token?client_id={}&client_secret={}&code={}", client_id, client_secret, code);
-
 	let client = reqwest::Client::new();
 
-	let response = client.post(url).send().await?.text().await?;
+	let response = client.post(format!("https://github.com/login/oauth/access_token?client_id={}&client_secret={}&code={}", client_id, client_secret, code)).send().await?.text().await?;
 
 	if response.contains("access_token") {
 		let access_token_raw: Vec<&str> = response.split('&').collect();
