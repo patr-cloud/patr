@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use api_macros::closure_as_pinned_box;
 use api_models::{models::workspace::github::*, utils::Uuid};
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -158,11 +160,27 @@ async fn get_access_token(
 	let response = client.post(format!("https://github.com/login/oauth/access_token?client_id={}&client_secret={}&code={}", client_id, client_secret, code)).send().await?.text().await?;
 
 	if response.contains("access_token") {
-		let access_token_raw: Vec<&str> = response.split('&').collect();
-		let token: Vec<&str> = access_token_raw[0].split('=').collect();
+		let token_response = match serde_urlencoded::from_str::<
+			HashMap<String, String>,
+		>(&response)
+		{
+			Ok(token) => token,
+			Err(_e) => {
+				return Error::as_result()
+					.status(500)
+					.body(error!(SERVER_ERROR).to_string())
+			}
+		};
+		let token = if let Some(token) = token_response.get("access_token") {
+			token
+		} else {
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string());
+		};
 
 		context.success(GithubAccessTokenResponse {
-			access_token: token[1].to_string(),
+			access_token: token.to_string(),
 		});
 
 		Ok(context)

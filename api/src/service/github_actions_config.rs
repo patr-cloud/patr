@@ -37,7 +37,8 @@ pub async fn github_actions_for_node_static_site(
 					".github/workflows/build.yaml",
 					"created: build.yaml",
 					format!(
-						// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+						// Change the ubuntu-latest to specifc version later
+						// when we support other versions and frameworks
 						r#"
 name: Github action for your static site
 
@@ -90,7 +91,8 @@ steps:
 					".github/workflows/build.yaml",
 					"updated: build.yaml",
 					format!(
-						// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+						// Change the ubuntu-latest to specifc version later
+						// when we support other versions and frameworks
 						r#"
 name: Github action for your static site
 
@@ -162,7 +164,8 @@ pub async fn github_actions_for_vanilla_static_site(
 				".github/workflows/build.yaml",
 				"created: build.yaml",
 				format!(
-					// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+					// Change the ubuntu-latest to specifc version later when
+					// we support other versions and frameworks
 					r#"
 name: Github action for your static site
 
@@ -196,7 +199,7 @@ jobs:
 			})
 			.send()
 			.await?;
-			return Ok(())
+		return Ok(());
 	} else if response.status() == 200 {
 		let body = response.json::<GithubResponseBody>().await?;
 		let sha = body.sha;
@@ -206,7 +209,8 @@ jobs:
 				".github/workflows/build.yaml",
 				"created: build.yaml",
 				format!(
-					// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+					// Change the ubuntu-latest to specifc version later when
+					// we support other versions and frameworks
 					r#"
 name: Github action for your static site
 
@@ -241,12 +245,11 @@ jobs:
 			})
 			.send()
 			.await?;
-			return Ok(())
-	} 
-	return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-
+		return Ok(());
+	}
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())
 }
 
 pub async fn github_actions_for_node_deployment(
@@ -278,7 +281,8 @@ pub async fn github_actions_for_node_deployment(
 				".github/workflows/build.yaml",
 				"created: build.yaml",
 				format!(
-					// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+					// Change the ubuntu-latest to specifc version later when
+					// we support other versions and frameworks
 					r#"
 name: Github action for your deployment
 
@@ -334,7 +338,8 @@ steps:
 				".github/workflows/build.yaml",
 				"updated: build.yaml",
 				format!(
-					// Change the ubuntu-latest to specifc version later when we support other versions and frameworks
+					// Change the ubuntu-latest to specifc version later when
+					// we support other versions and frameworks
 					r#"
 name: Github action for your deployment
 
@@ -383,7 +388,7 @@ steps:
 			.await?;
 		return Ok(());
 	}
-	return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
+	Error::as_result()
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())
 }
