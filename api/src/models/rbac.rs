@@ -157,5 +157,5 @@ pub mod resource_types {
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const MANAGED_URL: &str = "managedUrl";
-	pub const SECRET_ID: &str = "secretId";
+	pub const SECRET: &str = "secret";
 }
