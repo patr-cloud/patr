@@ -6,9 +6,12 @@ use k8s_openapi::{
 		apps::v1::{Deployment, DeploymentSpec},
 		core::v1::{
 			Container,
+			ContainerPort,
+			EnvVar,
 			LocalObjectReference,
 			PodSpec,
 			PodTemplateSpec,
+			ResourceRequirements,
 			Secret,
 		},
 		networking::v1::{
@@ -23,7 +26,10 @@ use k8s_openapi::{
 			ServiceBackendPort,
 		},
 	},
-	apimachinery::pkg::apis::meta::v1::LabelSelector,
+	apimachinery::pkg::{
+		api::resource::Quantity,
+		apis::meta::v1::LabelSelector,
+	},
 };
 use kube::{
 	api::{ListParams, Patch, PatchParams},
@@ -747,27 +753,32 @@ async fn migrate_from_v0_5_7(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	rabbitmq(connection, config).await?;
+	migrate_from_docr_to_pcr(connection, config).await?;
 	audit_logs(connection).await?;
-	chargebee(connection, config).await?;
 	rename_backup_email_to_recovery_email(connection).await?;
+	chargebee(connection, config).await?;
 
 	Ok(())
 }
 
-async fn rabbitmq(
+async fn migrate_from_docr_to_pcr(
 	connection: &mut sqlx::PgConnection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	let deployment_list = query!(
+	let mut deployment_list = vec![];
+
+	let db_items = query!(
 		r#"
 		SELECT
 			deployment.id,
+			deployment.name::TEXT as "name",
 			deployment.workspace_id,
-			workspace.name,
-			docker_registry_repository.name as "repository",
+			workspace.name::TEXT as "workspace_name",
+			docker_registry_repository.name::TEXT as "repository",
 			deployment.image_tag,
-			deployment.region
+			deployment.region,
+			deployment.min_horizontal_scale,
+			deployment.machine_type
 		FROM
 			deployment
 		INNER JOIN
@@ -788,17 +799,118 @@ async fn rabbitmq(
 	.map(|row| {
 		(
 			row.get::<Uuid, _>("id"),
-			row.get::<Uuid, _>("workspace_id"),
 			row.get::<String, _>("name"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<String, _>("workspace_name"),
 			row.get::<String, _>("repository"),
 			row.get::<String, _>("image_tag"),
-			row.get::<String, _>("region"),
+			row.get::<Uuid, _>("region"),
+			row.get::<i16, _>("min_horizontal_scale"),
+			row.get::<Uuid, _>("machine_type"),
 		)
 	})
 	.collect::<Vec<_>>();
-	if deployment_list.is_empty() {
+
+	if db_items.is_empty() {
 		return Ok(());
 	}
+
+	for (
+		deployment_id,
+		deployment_name,
+		workspace_id,
+		workspace_name,
+		repository,
+		image_tag,
+		region,
+		min_horizontal_scale,
+		machine_type,
+	) in db_items
+	{
+		let ports = query!(
+			r#"
+			SELECT
+				port
+			FROM
+				deployment_exposed_port
+			WHERE
+				deployment_id = $1 AND
+				port_type = 'http';
+			"#,
+			&deployment_id
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.map(|row| row.get::<i32, _>("port"))
+		.collect::<Vec<_>>();
+
+		let env_vars = query!(
+			r#"
+			SELECT
+				name,
+				value
+			FROM
+				deployment_environment_variable
+			WHERE
+				deployment_id = $1;
+			"#,
+			&deployment_id
+		)
+		.fetch_all(&mut *connection)
+		.await?
+		.into_iter()
+		.map(|row| {
+			(row.get::<String, _>("name"), row.get::<String, _>("value"))
+		})
+		.collect::<Vec<_>>();
+
+		let (cpu, memory) = query!(
+			r#"
+			SELECT
+				cpu_count,
+				memory_count
+			FROM
+				deployment_machine_type
+			WHERE
+				id = $1;
+			"#,
+			machine_type
+		)
+		.fetch_one(&mut *connection)
+		.await
+		.map(|row| {
+			(
+				row.get::<i16, _>("cpu_count"),
+				row.get::<i32, _>("memory_count"),
+			)
+		})?;
+
+		let machine_type = [
+			(
+				"memory".to_string(),
+				Quantity(format!("{:.1}G", (memory as f64) / 4f64)),
+			),
+			("cpu".to_string(), Quantity(format!("{:.1}", cpu as f64))),
+		]
+		.into_iter()
+		.collect::<BTreeMap<_, _>>();
+
+		deployment_list.push((
+			deployment_id,
+			deployment_name,
+			workspace_id,
+			workspace_name,
+			repository,
+			image_tag,
+			region,
+			min_horizontal_scale,
+			ports,
+			env_vars,
+			machine_type,
+		));
+	}
+
 	let kubernetes_config = Config::from_custom_kubeconfig(
 		Kubeconfig {
 			preferences: None,
@@ -846,11 +958,16 @@ async fn rabbitmq(
 
 	for (
 		deployment_id,
+		deployment_name,
 		workspace_id,
 		workspace_name,
 		repository,
 		image_tag,
 		region,
+		min_horizontal_scale,
+		ports,
+		env_vars,
+		machine_type,
 	) in deployment_list
 	{
 		let namespace = workspace_id.as_str();
@@ -864,28 +981,88 @@ async fn rabbitmq(
 		.collect::<BTreeMap<_, _>>();
 
 		let kubernetes_deployment = Deployment {
+			metadata: ObjectMeta {
+				name: Some(format!("deployment-{}", deployment_id)),
+				namespace: Some(namespace.to_string()),
+				labels: Some(labels.clone()),
+				..ObjectMeta::default()
+			},
 			spec: Some(DeploymentSpec {
+				replicas: Some(min_horizontal_scale as i32),
 				selector: LabelSelector {
+					match_expressions: None,
 					match_labels: Some(labels.clone()),
-					..LabelSelector::default()
 				},
 				template: PodTemplateSpec {
-					metadata: Some(ObjectMeta {
-						labels: Some(labels),
-						..ObjectMeta::default()
-					}),
 					spec: Some(PodSpec {
 						containers: vec![Container {
+							name: format!("deployment-{}", deployment_id),
 							image: Some(format!(
 								"registry.patr.cloud/{}/{}:{}",
 								workspace_name, repository, image_tag
 							)),
+							image_pull_policy: Some("Always".to_string()),
+							ports: Some(
+								ports
+									.into_iter()
+									.map(|port| ContainerPort {
+										container_port: port,
+										..ContainerPort::default()
+									})
+									.collect::<Vec<_>>(),
+							),
+							env: Some(
+								env_vars
+									.into_iter()
+									.map(|(name, value)| EnvVar {
+										name,
+										value: Some(value),
+										..EnvVar::default()
+									})
+									.chain([
+										EnvVar {
+											name: "PATR".to_string(),
+											value: Some("true".to_string()),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "WORKSPACE_ID".to_string(),
+											value: Some(
+												workspace_id.to_string(),
+											),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "DEPLOYMENT_ID".to_string(),
+											value: Some(
+												deployment_id.to_string(),
+											),
+											..EnvVar::default()
+										},
+										EnvVar {
+											name: "DEPLOYMENT_NAME".to_string(),
+											value: Some(
+												deployment_name.clone(),
+											),
+											..EnvVar::default()
+										},
+									])
+									.collect::<Vec<_>>(),
+							),
+							resources: Some(ResourceRequirements {
+								limits: Some(machine_type.clone()),
+								requests: Some(machine_type),
+							}),
 							..Container::default()
 						}],
 						image_pull_secrets: Some(vec![LocalObjectReference {
 							name: Some("patr-regcred".to_string()),
 						}]),
 						..PodSpec::default()
+					}),
+					metadata: Some(ObjectMeta {
+						labels: Some(labels.clone()),
+						..ObjectMeta::default()
 					}),
 				},
 				..DeploymentSpec::default()
@@ -949,14 +1126,14 @@ async fn audit_logs(
 	query!(
 		r#"
 		ALTER TABLE workspace_audit_log
-		ADD CONSTRAINT workspace_audit_log_fk_user_id
-			FOREIGN KEY(user_id) REFERENCES "user"(id),
-		ADD CONSTRAINT workspace_audit_log_fk_login_id
-			FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id),
-		ADD CONSTRAINT workspace_audit_log_fk_resource_id
-			FOREIGN KEY(resource_id) REFERENCES resource(id),
-		ADD CONSTRAINT workspace_audit_log_fk_action
-			FOREIGN KEY(action) REFERENCES permission(id);
+			ADD CONSTRAINT workspace_audit_log_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id),
+			ADD CONSTRAINT workspace_audit_log_fk_login_id
+				FOREIGN KEY(user_id, login_id) REFERENCES user_login(user_id, login_id),
+			ADD CONSTRAINT workspace_audit_log_fk_resource_id
+				FOREIGN KEY(resource_id) REFERENCES resource(id),
+			ADD CONSTRAINT workspace_audit_log_fk_action
+				FOREIGN KEY(action) REFERENCES permission(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1002,7 +1179,7 @@ async fn chargebee(
 			FROM
 				"user"
 			WHERE
-				id=$1;
+				id = $1;
 			"#,
 			user_id
 		)
@@ -1047,11 +1224,11 @@ async fn chargebee(
 			SELECT
 				id,
 				min_horizontal_scale,
-				machine_type,
+				machine_type
 			FROM
 				deployment
 			WHERE
-				workspace_id=$1 AND
+				workspace_id = $1 AND
 				status != 'deleted';
 			"#,
 			&workspace_id
@@ -1063,7 +1240,7 @@ async fn chargebee(
 			(
 				row.get::<Uuid, _>("id"),
 				row.get::<i16, _>("min_horizontal_scale"),
-				row.get::<String, _>("machine_type"),
+				row.get::<Uuid, _>("machine_type"),
 			)
 		})
 		.collect::<Vec<_>>();
@@ -1083,7 +1260,7 @@ async fn chargebee(
 					("id", deployment_id.to_string()),
 					(
 						"subscription_items[item_price_id][0]",
-						machine_type.to_string(),
+						format!("{}-USD-Monthly", machine_type),
 					),
 					(
 						"subscription_items[quantity][0]",
