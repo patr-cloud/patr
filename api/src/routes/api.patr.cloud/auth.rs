@@ -382,8 +382,8 @@ async fn join(
 
 	service::send_sign_up_complete_notification(
 		join_user.welcome_email_to,
-		join_user.backup_email_to,
-		join_user.backup_phone_number_to,
+		join_user.recovery_email_to,
+		join_user.recovery_phone_number_to,
 	)
 	.await?;
 
@@ -1430,7 +1430,7 @@ async fn list_recovery_options(
 
 	let recovery_email =
 		if let (Some(recovery_email_local), Some(recovery_email_domain_id)) =
-			(user.backup_email_local, user.backup_email_domain_id)
+			(user.recovery_email_local, user.recovery_email_domain_id)
 		{
 			Some(format!(
 				"{}@{}",
@@ -1448,12 +1448,12 @@ async fn list_recovery_options(
 		};
 
 	let recovery_phone_number = if let Some(recovery_phone_number) =
-		user.backup_phone_number
+		user.recovery_phone_number
 	{
 		let phone_number = service::mask_phone_number(&recovery_phone_number);
 		let country_code = db::get_phone_country_by_country_code(
 			context.get_database_connection(),
-			&user.backup_phone_country_code.unwrap(),
+			&user.recovery_phone_country_code.unwrap(),
 		)
 		.await?
 		.status(500)

@@ -267,7 +267,7 @@ async fn get_user_info(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	let recovery_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_recovery_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -288,7 +288,7 @@ async fn get_user_info(
 	})
 	.collect::<Vec<_>>();
 
-	let recovery_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_recovery_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -558,7 +558,7 @@ async fn list_email_addresses(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let recovery_email = db::get_backup_email_for_user(
+	let recovery_email = db::get_recovery_email_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)
@@ -621,7 +621,7 @@ async fn list_phone_numbers(
 ) -> Result<EveContext, Error> {
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let recovery_phone_number = db::get_backup_phone_number_for_user(
+	let recovery_phone_number = db::get_recovery_phone_number_for_user(
 		context.get_database_connection(),
 		&user_id,
 	)

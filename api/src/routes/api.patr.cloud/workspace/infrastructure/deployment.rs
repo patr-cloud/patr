@@ -147,6 +147,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -157,7 +163,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -179,6 +186,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -189,7 +202,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -211,6 +225,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -221,7 +241,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -243,6 +264,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -253,7 +280,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -275,6 +303,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::DELETE,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -285,7 +319,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -307,6 +342,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::EDIT,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -317,7 +358,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -339,6 +381,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -349,7 +397,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -371,6 +420,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -381,7 +436,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -402,6 +458,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::LIST,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -412,7 +474,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -433,6 +496,12 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::deployment::LIST,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
 					let deployment_id = Uuid::parse_str(deployment_id_string)
@@ -443,7 +512,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context

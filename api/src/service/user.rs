@@ -202,7 +202,7 @@ pub async fn update_user_recovery_email(
 		service::split_email_with_domain_id(connection, email_address).await?;
 
 	// finally if everything checks out then change the personal email
-	db::update_backup_email_for_user(
+	db::update_recovery_email_for_user(
 		connection,
 		user_id,
 		&email_local,
@@ -233,7 +233,7 @@ pub async fn update_user_recovery_phone_number(
 			.status(400)
 			.body(error!(INVALID_COUNTRY_CODE).to_string())?;
 
-	db::update_backup_phone_number_for_user(
+	db::update_recovery_phone_number_for_user(
 		connection,
 		user_id,
 		&country_code.country_code,
@@ -264,14 +264,16 @@ pub async fn delete_personal_email_address(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((backup_email_local, backup_domain_id)) = user_data
-		.backup_email_local
-		.zip(user_data.backup_email_domain_id)
+	if let Some((recovery_email_local, recovery_domain_id)) = user_data
+		.recovery_email_local
+		.zip(user_data.recovery_email_domain_id)
 	{
-		if backup_email_local == email_local && backup_domain_id == domain_id {
+		if recovery_email_local == email_local &&
+			recovery_domain_id == domain_id
+		{
 			return Error::as_result()
 				.status(400)
-				.body(error!(CANNOT_DELETE_BACKUP_EMAIL).to_string())?;
+				.body(error!(CANNOT_DELETE_RECOVERY_EMAIL).to_string())?;
 		}
 	}
 
@@ -314,16 +316,16 @@ pub async fn delete_phone_number(
 			.body(error!(WRONG_PARAMETERS).to_string()));
 	};
 
-	if let Some((backup_country_code, backup_phone_number)) = user_data
-		.backup_phone_country_code
-		.zip(user_data.backup_phone_number)
+	if let Some((recovery_country_code, recovery_phone_number)) = user_data
+		.recovery_phone_country_code
+		.zip(user_data.recovery_phone_number)
 	{
-		if backup_country_code == country_code &&
-			backup_phone_number == phone_number
+		if recovery_country_code == country_code &&
+			recovery_phone_number == phone_number
 		{
-			return Error::as_result()
-				.status(400)
-				.body(error!(CANNOT_DELETE_BACKUP_PHONE_NUMBER).to_string())?;
+			return Error::as_result().status(400).body(
+				error!(CANNOT_DELETE_RECOVERY_PHONE_NUMBER).to_string(),
+			)?;
 		}
 	}
 
