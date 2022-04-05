@@ -44,7 +44,6 @@ pub async fn delete_kubernetes_namespace(
 
 	// deleting the kubernetes namespace deletes
 	// all the resources automatically that are present inside that namespace
-
 	let namespace_api = Api::<Namespace>::all(client);
 	namespace_api
 		.delete(namespace_name, &DeleteParams::default())
