@@ -138,6 +138,9 @@ pub async fn update_kubernetes_deployment(
 			request_keys::REGION.to_string(),
 			deployment.region.to_string(),
 		),
+		( 	"app.kubernetes.io/name".to_string(),
+			"vault".to_string()
+		),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();
@@ -146,6 +149,31 @@ pub async fn update_kubernetes_deployment(
 		"request_id: {} - generating deployment configuration",
 		request_id
 	);
+
+	let annotations = [
+		(
+			"vault.security.banzaicloud.io/vault-addr".to_string(),
+			"https://vault.samyakgangwal.com".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-role".to_string(),
+			"vault".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-agent".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-path".to_string(),
+			"kubernetes".to_string(),
+		),
+	]
+	.into_iter()
+	.collect();
 
 	let kubernetes_deployment = K8sDeployment {
 		metadata: ObjectMeta {
@@ -186,8 +214,12 @@ pub async fn update_kubernetes_deployment(
 										name: name.to_string(),
 										value: Some(match value {
 											String(value) => value.to_string(),
-											Secret { .. } => {
-												return None;
+											Secret { from_secret } => {
+												let secret = format!(
+													"vault:secret/{}/{}",
+													workspace_id, from_secret
+												);
+												secret
 											}
 										}),
 										..EnvVar::default()
@@ -230,6 +262,7 @@ pub async fn update_kubernetes_deployment(
 				}),
 				metadata: Some(ObjectMeta {
 					labels: Some(labels.clone()),
+					annotations: Some(annotations),
 					..ObjectMeta::default()
 				}),
 			},
