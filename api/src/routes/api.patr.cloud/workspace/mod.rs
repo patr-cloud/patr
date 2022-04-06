@@ -4,7 +4,8 @@ use api_models::{
 		AddUserToWorkspaceResponse,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
-		DeleteWorkspaceInfoRequest,
+		DeleteWorkspaceRequest,
+		DeleteWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
@@ -71,7 +72,7 @@ pub fn create_sub_app(
 		],
 	);
 	sub_app.post(
-		"/:workspaceId/info",
+		"/:workspaceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::EDIT_INFO,
@@ -125,7 +126,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.post(
-		"/:workspaceId/add-user",
+		"/:workspaceId/user",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::CREATE_USER,
@@ -156,7 +157,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.put(
-		"/:workspaceId/update-user",
+		"/:workspaceId/user",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::UPDATE_USER,
@@ -189,7 +190,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.delete(
-		"/:workspaceId/delete-user/:userId",
+		"/:workspaceId/user/:userId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::DELETE_USER,
@@ -594,8 +595,15 @@ async fn update_user_role_for_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	log::trace!(
+		"request_id: {} - requested to update user for workspace",
+		request_id,
+	);
 
 	let UpdateUserToWorkspaceRequest { user_role, .. } = context
 		.get_body_as()
@@ -625,8 +633,16 @@ async fn delete_user_from_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let user_id = context.get_param(request_keys::USER_ID).unwrap();
+
+	log::trace!(
+		"request_id: {} - requested to delete user - {} from workspace",
+		request_id,
+		user_id
+	);
 
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 	let user_id = Uuid::parse_str(user_id).unwrap();
@@ -637,6 +653,12 @@ async fn delete_user_from_workspace(
 		&workspace_id,
 	)
 	.await?;
+
+	log::trace!(
+		"request_id: {} - deleted user - {} from workspace",
+		request_id,
+		user_id
+	);
 
 	Ok(context)
 }
@@ -649,7 +671,7 @@ async fn delete_workspace(
 
 	log::trace!("request_id: {} - requested to delete workspace", request_id);
 
-	let DeleteWorkspaceInfoRequest { name, .. } = context
+	let DeleteWorkspaceRequest { name, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -659,7 +681,7 @@ async fn delete_workspace(
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let name = format!("patr-deleted-{}-{}", workspace_id, name);
-	let namespace_name = workspace_id.as_str();
+	let namespace = workspace_id.as_str();
 
 	let config = context.get_state().config.clone();
 
@@ -699,12 +721,8 @@ async fn delete_workspace(
 		domains.is_empty() &&
 		managed_database.is_empty()
 	{
-		service::delete_kubernetes_namespace(
-			namespace_name,
-			&config,
-			&request_id,
-		)
-		.await?;
+		service::delete_kubernetes_namespace(namespace, &config, &request_id)
+			.await?;
 
 		db::update_workspace_name(
 			context.get_database_connection(),
@@ -714,7 +732,7 @@ async fn delete_workspace(
 		.await?;
 
 		log::trace!("request_id: {} - deleted the workspace", request_id);
-		context.success(UpdateWorkspaceInfoResponse {});
+		context.success(DeleteWorkspaceResponse {});
 		Ok(context)
 	} else {
 		Error::as_result()
