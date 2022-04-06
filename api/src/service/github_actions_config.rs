@@ -1,9 +1,8 @@
-use api_models::models::workspace::github::*;
 use eve_rs::AsError;
 use octocrab::{models::repos::GitUser, Octocrab};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
 
-use crate::{error, utils::Error};
+use crate::{error, models::db_mapping::GithubResponseBody, utils::Error};
 
 pub async fn github_actions_for_node_static_site(
 	access_token: String,

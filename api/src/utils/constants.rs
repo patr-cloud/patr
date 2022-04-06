@@ -77,4 +77,6 @@ pub mod request_keys {
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
 	pub const START_TIME: &str = "startTime";
 	pub const INTERVAL: &str = "interval";
+	pub const ACCESS_TOKEN: &str = "accessToken";
+	pub const OWNER_NAME: &str = "ownerName";
 }

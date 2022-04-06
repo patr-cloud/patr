@@ -199,14 +199,8 @@ async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let ListGithubRepoRequest {
-		access_token,
-		owner_name,
-		..
-	} = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let access_token = context.get_param(request_keys::ACCESS_TOKEN).unwrap();
+	let owner_name = context.get_param(request_keys::OWNER_NAME).unwrap();
 
 	let user_agent = context
 		.get_header("User-Agent")
@@ -232,7 +226,7 @@ async fn configure_github_build_steps_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let GetGithubStaticSiteBuildStepRequest {
+	let ConfigureStaticSiteBuildStepRequest {
 		access_token,
 		owner_name,
 		repo_name,
@@ -272,7 +266,7 @@ async fn configure_github_build_steps_static_site(
 		)
 		.await?
 	}
-	context.success(GetGithubStaticSiteBuildStepResponse {});
+	context.success(ConfigureStaticSiteBuildStepResponse {});
 	Ok(context)
 }
 
@@ -286,7 +280,7 @@ async fn configure_github_build_steps_deployment(
 		request_id,
 	);
 
-	let GetGithubDeploymentBuildStepRequest {
+	let ConfigureDeploymentBuildStepRequest {
 		access_token,
 		owner_name,
 		repo_name,
@@ -317,6 +311,6 @@ async fn configure_github_build_steps_deployment(
 		.await?;
 	}
 
-	context.success(GetGithubDeploymentBuildStepResponse {});
+	context.success(ConfigureDeploymentBuildStepResponse {});
 	Ok(context)
 }
