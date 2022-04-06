@@ -41,6 +41,18 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
+		CREATE INDEX
+			domain_tld_idx_tld
+		ON
+			domain_tld
+		USING HASH(tld);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE domain(
 			id UUID CONSTRAINT domain_pk PRIMARY KEY,
 			name TEXT NOT NULL

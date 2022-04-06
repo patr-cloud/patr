@@ -757,8 +757,27 @@ async fn migrate_from_v0_5_7(
 	audit_logs(connection).await?;
 	rename_backup_email_to_recovery_email(connection).await?;
 	chargebee(connection, config).await?;
+	add_hash_index_for_domain_tlds(connection, config).await?;
 
 	Ok(())
+}
+
+async fn add_hash_index_for_domain_tlds(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		CREATE INDEX
+			domain_tld_idx_tld
+		ON
+			domain_tld
+		USING HASH(tld);
+		"#,
+	)
+	.execute(connection)
+	.await
+	.map(|_| ())
 }
 
 async fn migrate_from_docr_to_pcr(

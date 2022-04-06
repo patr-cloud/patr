@@ -83,7 +83,7 @@ pub async fn refresh_domain_tld_list() -> Result<(), Error> {
 
 	if god_user_id.is_none() {
 		// No users have ever signed up. Do CI stuff here
-		// Remove all TLDs and add then again to reset the order
+		// Remove all TLDs and add them again to reset the order
 		db::remove_from_domain_tld_list(&mut connection, &tlds).await?;
 	}
 

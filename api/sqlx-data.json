@@ -3996,6 +3996,16 @@
       ]
     }
   },
+  "85b0496f32f59d870543fbcc4323722a65c7d0b74e47125be0f6293f89278fe0": {
+    "query": "CREATE INDEX domain_tld_idx_tld ON domain_tld USING HASH(tld);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "query": "SELECT * FROM resource_type WHERE id = $1;",
     "describe": {
