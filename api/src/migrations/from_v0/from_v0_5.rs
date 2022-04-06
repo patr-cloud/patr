@@ -773,11 +773,31 @@ async fn add_hash_index_for_domain_tlds(
 		ON
 			domain_tld
 		USING HASH(tld);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE domain_tld
+		DROP CONSTRAINT domain_tld_pk;
 		"#,
 	)
-	.execute(connection)
-	.await
-	.map(|_| ())
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE domain_tld
+		ADD CONSTRAINT domain_tld_pk PRIMARY KEY
+		USING INDEX domain_tld_idx_tld;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
 }
 
 async fn migrate_from_docr_to_pcr(

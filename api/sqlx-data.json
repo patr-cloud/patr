@@ -2026,6 +2026,16 @@
       "nullable": []
     }
   },
+  "375a5944e5070c4c0d7cd7dbaf5739a63603c61e55911dfe579ef5e9bba7d0dd": {
+    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);",
     "describe": {
@@ -6386,6 +6396,16 @@
       ]
     }
   },
+  "ce0f08baae9d00fe42dd29dc3b999f86ca479d0eb6b8acdeb982351d3b639d78": {
+    "query": "ALTER TABLE domain_tld ADD CONSTRAINT domain_tld_pk PRIMARY KEY USING INDEX domain_tld_idx_tld;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "ce5f94c07e5c7f5f624f8f47a1d02c75ed66c92eb9b8b32fcc05c107f9e1ad0f": {
     "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority), CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK( ( (type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND proxied IS NOT NULL ) OR ( (type = 'MX' OR type = 'TXT') AND proxied IS NULL ) ) );",
     "describe": {
@@ -7855,16 +7875,6 @@
   },
   "f6fd226a2dbddcdaa814f0e47874e447b759180761627cdc941cbe554a07abe5": {
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
-    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );",
     "describe": {
       "columns": [],
       "parameters": {
