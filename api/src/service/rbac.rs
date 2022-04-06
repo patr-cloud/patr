@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::{error, utils::Error};
 
-pub async fn patch_role_permissions(
+pub async fn extract_role_permissions(
 	resource_permissions_body: Option<&Value>,
 	resource_type_permissions_body: Option<&Value>,
 ) -> Result<(HashMap<Uuid, Vec<Uuid>>, HashMap<Uuid, Vec<Uuid>>), Error> {

@@ -4,7 +4,6 @@ use api_models::{
 		AddUserToWorkspaceResponse,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
-		DeleteWorkspaceRequest,
 		DeleteWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
@@ -671,16 +670,18 @@ async fn delete_workspace(
 
 	log::trace!("request_id: {} - requested to delete workspace", request_id);
 
-	let DeleteWorkspaceRequest { name, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let name = name.trim().to_lowercase();
-
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	let name = format!("patr-deleted-{}-{}", workspace_id, name);
+	let workspace = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	let name = format!("patr-deleted-{}-{}", workspace_id, workspace.name);
 	let namespace = workspace_id.as_str();
 
 	let config = context.get_state().config.clone();

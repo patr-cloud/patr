@@ -672,7 +672,7 @@ async fn create_role(
 		body.get(request_keys::RESOURCE_TYPE_PERMISSIONS);
 
 	let (resource_permissions, resource_type_permissions) =
-		service::patch_role_permissions(
+		service::extract_role_permissions(
 			resource_permissions_body,
 			resource_type_permissions_body,
 		)
@@ -754,7 +754,7 @@ async fn update_role_permissions(
 		body.get(request_keys::RESOURCE_TYPE_PERMISSIONS);
 
 	let (resource_permissions, resource_type_permissions) =
-		service::patch_role_permissions(
+		service::extract_role_permissions(
 			resource_permissions_body,
 			resource_type_permissions_body,
 		)
