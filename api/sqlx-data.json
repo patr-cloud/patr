@@ -2444,6 +2444,16 @@
       "nullable": []
     }
   },
+  "4d9bf53a3154ad47c118220956565f5616f56b681abec1073481b26fc4997f1f": {
+    "query": "CREATE UNIQUE INDEX domain_tld_idx_tld ON domain_tld USING HASH(tld);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "4e0cdb9cdbfb4d2360aa8eff5c49dfa18da9969f601ae2532cc2c13588d2011c": {
     "query": "CREATE TABLE user_unverified_personal_email( local VARCHAR(64) NOT NULL CONSTRAINT user_unverified_personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_domain_id REFERENCES personal_domain(id), user_id UUID NOT NULL CONSTRAINT user_unverified_personal_email_fk_user_id REFERENCES \"user\"(id), verification_token_hash TEXT NOT NULL, verification_token_expiry BIGINT NOT NULL CONSTRAINT user_unverified_personal_email_chk_token_expiry_unsigned CHECK(verification_token_expiry >= 0), CONSTRAINT user_unverified_personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT user_unverified_personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
     "describe": {
@@ -4004,16 +4014,6 @@
         false,
         false
       ]
-    }
-  },
-  "85b0496f32f59d870543fbcc4323722a65c7d0b74e47125be0f6293f89278fe0": {
-    "query": "CREATE INDEX domain_tld_idx_tld ON domain_tld USING HASH(tld);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {

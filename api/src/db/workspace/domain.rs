@@ -40,7 +40,7 @@ pub async fn initialize_domain_pre(
 
 	query!(
 		r#"
-		CREATE INDEX
+		CREATE UNIQUE INDEX
 			domain_tld_idx_tld
 		ON
 			domain_tld

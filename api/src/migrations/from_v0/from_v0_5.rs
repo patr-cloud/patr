@@ -768,7 +768,7 @@ async fn add_hash_index_for_domain_tlds(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		CREATE INDEX
+		CREATE UNIQUE INDEX
 			domain_tld_idx_tld
 		ON
 			domain_tld
