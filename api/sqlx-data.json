@@ -220,14 +220,14 @@
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active FROM workspace WHERE name = $1;"
   },
   "07341d8b9887f3bdabaee7d54cf9fe672c2624065eed24580ad383e411fef384": {
-    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );"
   },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
@@ -987,6 +987,38 @@
       }
     },
     "query": "SELECT user_unverified_phone_number.country_code, user_unverified_phone_number.phone_number, user_unverified_phone_number.user_id as \"user_id: Uuid\", user_unverified_phone_number.verification_token_hash, user_unverified_phone_number.verification_token_expiry FROM user_unverified_phone_number INNER JOIN phone_number_country_code ON user_unverified_phone_number.country_code = phone_number_country_code.country_code WHERE user_id = $1 AND user_unverified_phone_number.country_code = $2 AND user_unverified_phone_number.phone_number = $3;"
+  },
+  "1a38781f65e4110259d87dfbd32e22fa70ae545ddfd608ce5c48cb5820dc8c1b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "description",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT resource_type.id as \"id: _\", resource_type.name, resource_type.description FROM resource_type INNER JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = $1;"
   },
   "1a3b8e1bff241f2560652afe203c892e15868c7c48da74963afeccc550d90a9d": {
     "describe": {
@@ -1981,6 +2013,19 @@
     },
     "query": "SELECT * FROM role WHERE id = $1;"
   },
+  "3617769bafd7eadca0d9e2f748b3c3a1c25d49edab4425862ed1ef69652b9e6f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO permission VALUES ($1, $2, NULL);"
+  },
   "36a07994042c7ad6bc93e25b0d951c244168fb2df7c6ce76101d979d956f1641": {
     "describe": {
       "columns": [],
@@ -1990,6 +2035,16 @@
       }
     },
     "query": "CREATE TABLE deployment_machine_type( id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY, cpu_count SMALLINT NOT NULL, memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */ );"
+  },
+  "36e2cd3a54f2c51567701855c0d88510ff581f4e7ee1278ac9134eaf2b289806": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );"
   },
   "3713185c5c72bd0fd61b9ebd90fec4a7f9e0b6174bead0fb494bea34117e701a": {
     "describe": {
@@ -2224,6 +2279,44 @@
       }
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id!: Uuid\", workspace_domain.domain_type as \"domain_type!: ResourceType\", workspace_domain.is_verified as \"is_verified!\", workspace_domain.nameserver_type as \"nameserver_type!: DomainNameserverType\", patr_controlled_domain.zone_identifier as \"zone_identifier?\" FROM workspace_domain INNER JOIN domain ON domain.id = workspace_domain.id LEFT JOIN patr_controlled_domain ON patr_controlled_domain.domain_id = workspace_domain.id WHERE is_verified = FALSE AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
+  },
+  "41d09235a58b1d11032c177b7f00cb474afbddb891fecc9f75a8cb6cc1b2947a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name!: _",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "super_admin_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "active",
+          "ordinal": 3,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE workspace.super_admin_id = $1 OR workspace_user.user_id = $1;"
   },
   "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
     "describe": {
@@ -2738,24 +2831,24 @@
     "query": "SELECT username, account_type as \"account_type: ResourceType\", password, first_name, last_name, recovery_email_local, recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", recovery_phone_country_code, recovery_phone_number, business_email_local, CASE WHEN business_domain_name IS NULL THEN NULL ELSE CONCAT(business_domain_name, '.', business_domain_tld) END as \"business_domain_name: String\", business_name, otp_hash, otp_expiry FROM user_to_sign_up WHERE business_name = $1;"
   },
   "588c097427908262512e5387eeaa52072ae40d907f0544294306728b10d6aec2": {
-    "query": "INSERT INTO secret VALUES ($1, $2, $3, $4);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
           {
             "Custom": {
-              "name": "citext",
-              "kind": "Simple"
+              "kind": "Simple",
+              "name": "citext"
             }
           },
           "Uuid",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "INSERT INTO secret VALUES ($1, $2, $3, $4);"
   },
   "5b11baccc8d40205e1054eb75997aea9d3c398b6ec3cfe6fb75811da2915f2ee": {
     "describe": {
@@ -3462,6 +3555,19 @@
     },
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );"
   },
+  "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO resource_type VALUES ($1, $2, NULL);"
+  },
   "737d2bec853fc049071993d090838da713f3f24ca972cba74b45aa0318ccdf7d": {
     "describe": {
       "columns": [
@@ -3767,6 +3873,21 @@
     },
     "query": "INSERT INTO user_controlled_domain VALUES ($1, 'external');"
   },
+  "7c14e5eaca37122ba524b45948eca8761e55475ea264b27c77f25af4cca89e11": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_environment_variable VALUES ($1, $2, $3, $4);"
+  },
   "7c8582745f948c36a597434e40fb7f9679e9d35f06b2bbac3bb58d7fd8707098": {
     "describe": {
       "columns": [
@@ -4059,38 +4180,6 @@
     },
     "query": "SELECT * FROM resource_type WHERE id = $1;"
   },
-  "86b65641c9298e4ee92844aef07c16d79fd401584f2a84b30361efa91114e24c": {
-    "query": "SELECT \"user\".backup_phone_country_code as \"backup_phone_country_code!\", \"user\".backup_phone_number as \"backup_phone_number!\" FROM \"user\" WHERE \"user\".id = $1 AND \"user\".backup_phone_number IS NOT NULL AND \"user\".backup_phone_country_code IS NOT NULL;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "description",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "860c561776aaf1f078eb0392b11b2be437f2cf6847a00b4d7214a158514664c4": {
     "describe": {
       "columns": [],
@@ -4297,6 +4386,49 @@
     },
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
+  "8e58571e7a074c306a39347ead215173ac107b1894850d293b061cbb2b1d8daf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1"
+  },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
       "columns": [],
@@ -4386,6 +4518,16 @@
       }
     },
     "query": "SELECT name, value FROM deployment_environment_variable WHERE deployment_id = $1;"
+  },
+  "927bf61ea95f553c57c6baf13b645a0d62e1b3c61c082e9f424dae2d534d44b0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) );"
   },
   "9354bef44024be196abb0a45c596031609b49d3f39ebaba9d2986f0e0763b7c1": {
     "describe": {
@@ -6314,14 +6456,14 @@
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
   },
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
-    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": []
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);"
   },
   "c2168dee8b571e2ba37850fbd940c0cd9289c07e58853cce055c86b05a4b0ca1": {
     "describe": {
@@ -6495,48 +6637,48 @@
     "query": "CREATE TABLE patr_domain_dns_record( id UUID CONSTRAINT patr_domain_dns_record_pk PRIMARY KEY, record_identifier TEXT NOT NULL, domain_id UUID NOT NULL, name TEXT NOT NULL CONSTRAINT patr_domain_dns_record_chk_name_is_valid CHECK( name ~ '^(\\*)|((\\*\\.)?(([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_])\\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\\-]*[a-z0-9_]))$' OR name = '@' ), type DNS_RECORD_TYPE NOT NULL, value TEXT NOT NULL, priority INTEGER, ttl BIGINT NOT NULL, proxied BOOLEAN, CONSTRAINT patr_domain_dns_record_fk_domain_id FOREIGN KEY(domain_id) REFERENCES patr_controlled_domain(domain_id), CONSTRAINT patr_domain_dns_record_chk_values_valid CHECK( ( type = 'MX' AND priority IS NOT NULL ) OR ( type != 'MX' AND priority IS NULL ) ), CONSTRAINT patr_domain_dns_record_uq_domain_id_name_type_value_priority UNIQUE(domain_id, name, type, value, priority), CONSTRAINT patr_domain_dns_record_chk_proxied_is_valid CHECK( ( (type = 'A' OR type = 'AAAA' OR type = 'CNAME') AND proxied IS NOT NULL ) OR ( (type = 'MX' OR type = 'TXT') AND proxied IS NULL ) ) );"
   },
   "ceab307e6e2c98e012b68cf8f425fef3a1befa1ebd073c24a1195d57a452bcf8": {
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1 AND deployment_id = $2;",
     "describe": {
       "columns": [
         {
-          "ordinal": 0,
           "name": "id: _",
+          "ordinal": 0,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 1,
           "name": "name: _",
+          "ordinal": 1,
           "type_info": {
             "Custom": {
-              "name": "citext",
-              "kind": "Simple"
+              "kind": "Simple",
+              "name": "citext"
             }
           }
         },
         {
-          "ordinal": 2,
           "name": "workspace_id: _",
+          "ordinal": 2,
           "type_info": "Uuid"
         },
         {
-          "ordinal": 3,
           "name": "deployment_id: _",
+          "ordinal": 3,
           "type_info": "Uuid"
         }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": [
           "Uuid",
           "Uuid"
         ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ]
-    }
+      }
+    },
+    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1 AND deployment_id = $2;"
   },
   "cf89fc51ab1464b12fc7e5f4add548647aac5c811c10851239fa91bbb95ec319": {
     "describe": {
@@ -6634,48 +6776,90 @@
     },
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;"
   },
-  "d4f63ceb9c6eed601b3f80bf4e17f67b030c3d0f976876f0494355ad73ab7af4": {
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1;",
+  "d2d8468280def3ef5920cbe67665fd046e4a50a408454c78442fa6015fbf03af": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port), ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
+  },
+  "d3bf49b9bd7f4988019bcd7cb8ee4c35ddf1bbb93acc6622c9ef56a6a8fe29e3": {
     "describe": {
       "columns": [
         {
+          "name": "name",
           "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
+          "type_info": "Varchar"
         },
         {
+          "name": "value",
           "ordinal": 1,
-          "name": "name: _",
-          "type_info": {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          }
+          "type_info": "Text"
         },
         {
+          "name": "secret_id",
           "ordinal": 2,
-          "name": "workspace_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "deployment_id: _",
           "type_info": "Uuid"
         }
+      ],
+      "nullable": [
+        false,
+        false,
+        true
       ],
       "parameters": {
         "Left": [
           "Uuid"
         ]
-      },
+      }
+    },
+    "query": "SELECT name, value, secret_id FROM deployment_environment_variable WHERE deployment_id = $1;"
+  },
+  "d4f63ceb9c6eed601b3f80bf4e17f67b030c3d0f976876f0494355ad73ab7af4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name: _",
+          "ordinal": 1,
+          "type_info": {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          }
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "deployment_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
       "nullable": [
         false,
         false,
         false,
         true
-      ]
-    }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE workspace_id = $1;"
   },
   "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
     "describe": {
@@ -6754,23 +6938,23 @@
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
   },
   "d8e78daab8ed67d721cf715ff31080fb8f2f04df5ad629bf0fa3e38030204eb4": {
-    "query": "INSERT INTO secret VALUES ($1, $2, $3, NULL);",
     "describe": {
       "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
           {
             "Custom": {
-              "name": "citext",
-              "kind": "Simple"
+              "kind": "Simple",
+              "name": "citext"
             }
           },
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
+      }
+    },
+    "query": "INSERT INTO secret VALUES ($1, $2, $3, NULL);"
   },
   "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
     "describe": {

@@ -632,7 +632,8 @@ pub async fn get_environment_variables_for_deployment(
 		r#"
 		SELECT
 			name,
-			value
+			value,
+			secret_id
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -653,18 +654,20 @@ pub async fn add_environment_variable_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	key: &str,
-	value: &str,
+	value: Option<&str>,
+	secret_id: Option<&Uuid>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO 
 			deployment_environment_variable
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		deployment_id as _,
 		key,
-		value
+		value,
+		secret_id as _
 	)
 	.execute(&mut *connection)
 	.await

@@ -177,19 +177,29 @@ pub async fn create_deployment_in_workspace(
 			"request_id: {} - Adding environment variable entry to database",
 			request_id
 		);
+
+		let (value, secret_id) = match value {
+			EnvironmentVariableValue::String(value) => {
+				(Some(value.as_str()), None)
+			}
+			EnvironmentVariableValue::Secret { from_secret } => {
+				(None, Some(from_secret))
+			}
+			_ => {
+				return Err(Error::empty()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string()))
+			}
+		};
+
 		db::add_environment_variable_for_deployment(
 			connection,
 			&deployment_id,
 			key,
-			if let EnvironmentVariableValue::String(value) = value {
-				value
-			} else {
-				return Err(Error::empty()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string()));
-			},
+			value,
+			secret_id,
 		)
-		.await?;
+		.await?
 	}
 
 	start_subscription(
@@ -296,19 +306,28 @@ pub async fn update_deployment(
 		)
 		.await?;
 		for (key, value) in environment_variables {
-			db::add_environment_variable_for_deployment(
-				connection,
-				deployment_id,
-				key,
-				if let EnvironmentVariableValue::String(value) = value {
-					value
-				} else {
+			let (value, secret_id) = match value {
+				EnvironmentVariableValue::String(value) => {
+					(Some(value.as_str()), None)
+				}
+				EnvironmentVariableValue::Secret { from_secret } => {
+					(None, Some(from_secret))
+				}
+				_ => {
 					return Err(Error::empty()
 						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string()));
-				},
+						.body(error!(WRONG_PARAMETERS).to_string()))
+				}
+			};
+
+			db::add_environment_variable_for_deployment(
+				connection,
+				&deployment_id,
+				key,
+				value,
+				secret_id,
 			)
-			.await?;
+			.await?
 		}
 	}
 	log::trace!(
