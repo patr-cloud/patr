@@ -206,9 +206,9 @@ pub async fn update_kubernetes_deployment(
 							running_details
 								.environment_variables
 								.iter()
-								.filter_map(|(name, value)| {
+								.map(|(name, value)| {
 									use EnvironmentVariableValue::*;
-									Some(EnvVar {
+									EnvVar {
 										name: name.to_string(),
 										value: Some(match value {
 											String(value) => value.to_string(),
@@ -221,7 +221,7 @@ pub async fn update_kubernetes_deployment(
 											}
 										}),
 										..EnvVar::default()
-									})
+									}
 								})
 								.chain([
 									EnvVar {
