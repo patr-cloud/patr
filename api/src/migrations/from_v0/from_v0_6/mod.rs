@@ -4,7 +4,6 @@ use crate::{utils::settings::Settings, Database};
 
 mod from_v0_6_0;
 
-
 /// # Description
 /// The function is used to migrate the database from one version to another
 ///
@@ -26,7 +25,7 @@ pub async fn migrate(
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
 		(0, 6, 0) => {
-			from_v0_6_0::migrate_from_v0_6_0(&mut *connection, config).await;
+			from_v0_6_0::migrate_from_v0_6_0(&mut *connection, config).await
 		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
@@ -34,9 +33,10 @@ pub async fn migrate(
 	}
 }
 
-
 /// # Description
 /// The function is used to get a list of all 0.6.0 migrations to migrate the
+/// # Description
+/// The function is used to get a list of all 0.6.x migrations to migrate the
 /// database from
 ///
 /// # Return

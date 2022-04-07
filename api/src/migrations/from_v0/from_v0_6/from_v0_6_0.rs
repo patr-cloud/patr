@@ -1,14 +1,8 @@
 use api_models::utils::Uuid;
-use semver::Version;
 
-use crate::{
-	migrate_query as query,
-	models::rbac,
-	utils::settings::Settings,
-	Database,
-};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
-async fn migrate_from_v0_6_0(
+pub async fn migrate_from_v0_6_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -19,12 +13,11 @@ async fn migrate_from_v0_6_0(
 
 pub async fn github_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-
 	for &permission in [
 		"workspace::github:repo::list",
-		"workspace::github::action::create"
+		"workspace::github::action::create",
 	]
 	.iter()
 	{

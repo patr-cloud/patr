@@ -19,7 +19,6 @@ api_models = { path = "../api-models", package = "patr-api-dto", features = [
 argon2 = "0.4.0"
 askama = "0.11.1"
 async-trait = "0.1.36"
-async_zip = "0.0.3"
 aws-config = "0.3.0"
 aws-sdk-s3 = "0.3.0"
 aws-types = { version = "0.3.0", features = ["hardcoded-credentials"] }
@@ -87,6 +86,8 @@ tokio = { version = "1", features = ["full"] }
 octocrab = "0.15.4"
 trust-dns-client = "0.21.1"
 serde_urlencoded = "0.7.1"
+zip = "0.5.13"
+
 
 [dependencies.log4rs]
 default-features = false
