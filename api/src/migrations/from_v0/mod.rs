@@ -5,6 +5,7 @@ use crate::{utils::settings::Settings, Database};
 mod from_v0_3;
 mod from_v0_4;
 mod from_v0_5;
+mod from_v0_6;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -35,6 +36,9 @@ pub async fn migrate(
 		(0, 5, _) => {
 			from_v0_5::migrate(&mut *connection, version, config).await
 		}
+		(0, 6, _) => {
+			from_v0_6::migrate(&mut *connection, version, config).await
+		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -53,6 +57,7 @@ pub fn get_migrations() -> Vec<&'static str> {
 		from_v0_3::get_migrations(),
 		from_v0_4::get_migrations(),
 		from_v0_5::get_migrations(),
+		from_v0_6::get_migrations(),
 	]
 	.into_iter()
 	.flatten()

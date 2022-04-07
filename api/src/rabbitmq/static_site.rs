@@ -27,6 +27,8 @@ pub(super) async fn process_request(
 			static_site_details,
 			request_id,
 		} => {
+			log::trace!("request_id: {} - Received create request", request_id);
+
 			db::update_static_site_status(
 				connection,
 				&static_site_id,
@@ -51,6 +53,10 @@ pub(super) async fn process_request(
 			static_site_details,
 			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} - Received a start request",
+				request_id
+			);
 			update_static_site_and_db_status(
 				connection,
 				&workspace_id,
@@ -67,7 +73,10 @@ pub(super) async fn process_request(
 			static_site_id,
 			request_id,
 		} => {
-			log::trace!("Received a delete static site request");
+			log::trace!(
+				"request_id: {} - Received a delete static site request",
+				request_id
+			);
 			service::delete_kubernetes_static_site(
 				&workspace_id,
 				&static_site_id,
@@ -82,6 +91,10 @@ pub(super) async fn process_request(
 			file,
 			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} - Received a upload static site request",
+				request_id
+			);
 			service::upload_static_site_files_to_s3(
 				connection,
 				&file,
@@ -96,6 +109,10 @@ pub(super) async fn process_request(
 			static_site_id,
 			request_id,
 		} => {
+			log::trace!(
+				"request_id: {} - Received a delete static site request",
+				request_id
+			);
 			service::delete_kubernetes_static_site(
 				&workspace_id,
 				&static_site_id,
@@ -116,6 +133,10 @@ async fn update_static_site_and_db_status(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	log::trace!(
+		"request_id: {} - Updating kubernetes static site",
+		request_id
+	);
 	let result = service::update_kubernetes_static_site(
 		workspace_id,
 		static_site_id,
@@ -126,6 +147,10 @@ async fn update_static_site_and_db_status(
 	.await;
 
 	if let Some(file) = file {
+		log::trace!(
+			"request_id: {} - Uploading static site files to S3",
+			request_id
+		);
 		service::upload_static_site_files_to_s3(
 			connection,
 			file,
@@ -153,6 +178,13 @@ async fn update_static_site_and_db_status(
 
 		Err(err)
 	} else {
+		db::update_static_site_status(
+			connection,
+			static_site_id,
+			&DeploymentStatus::Running,
+		)
+		.await?;
+
 		Ok(())
 	}
 }

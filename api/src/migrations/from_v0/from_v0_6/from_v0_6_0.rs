@@ -1,27 +1,20 @@
 use api_models::utils::Uuid;
-use semver::Version;
 
-use crate::{
-	migrate_query as query,
-	models::rbac,
-	utils::settings::Settings,
-	Database,
-};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
-async fn migrate_from_v0_6_0(
+pub async fn migrate_from_v0_6_0(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	user_to_workspace_permissions(connection, config).await?;
-	
+
 	Ok(())
 }
 
 pub async fn user_to_workspace_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-
 	for &permission in [
 		"workspace::delete",
 		"workspace::user::createUser",
