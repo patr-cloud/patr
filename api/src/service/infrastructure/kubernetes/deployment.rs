@@ -138,9 +138,7 @@ pub async fn update_kubernetes_deployment(
 			request_keys::REGION.to_string(),
 			deployment.region.to_string(),
 		),
-		( 	"app.kubernetes.io/name".to_string(),
-			"vault".to_string()
-		),
+		("app.kubernetes.io/name".to_string(), "vault".to_string()),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();

@@ -201,8 +201,11 @@ pub async fn initialize_deployment_pre(
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
 			value TEXT NOT NULL,
+			secret_id UUID,
 			CONSTRAINT deployment_environment_variable_pk
-				PRIMARY KEY(deployment_id, name)
+				PRIMARY KEY(deployment_id, name),
+			CONSTRAINT deployment_environment_variable_fk_secret_id
+				FOREIGN KEY(secret_id) REFERENCES secret(id)
 		);
 		"#
 	)
