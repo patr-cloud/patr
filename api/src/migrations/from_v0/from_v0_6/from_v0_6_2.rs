@@ -301,7 +301,7 @@ async fn migrate_to_secret(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ALTER COLUMN value NULL;
+			ALTER COLUMN value DROP NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)

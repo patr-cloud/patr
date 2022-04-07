@@ -418,7 +418,18 @@ pub async fn get_full_deployment_config(
 		db::get_environment_variables_for_deployment(connection, deployment_id)
 			.await?
 			.into_iter()
-			.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
+			.filter_map(|env| match (env.value, env.secret_id) {
+				(Some(value), None) => {
+					Some((env.name, EnvironmentVariableValue::String(value)))
+				}
+				(None, Some(secret_id)) => Some((
+					env.name,
+					EnvironmentVariableValue::Secret {
+						from_secret: secret_id,
+					},
+				)),
+				_ => None,
+			})
 			.collect();
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 

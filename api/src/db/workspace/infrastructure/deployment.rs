@@ -13,6 +13,7 @@ use crate::{
 			Deployment,
 			DeploymentMachineType,
 			DeploymentRegion,
+			EnvVariable,
 			WorkspaceAuditLog,
 		},
 		deployment::{
@@ -630,13 +631,15 @@ pub async fn update_deployment_name(
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<(String, String)>, sqlx::Error> {
-	let rows = query!(
+) -> Result<Vec<EnvVariable>, sqlx::Error> {
+	query_as!(
+		EnvVariable,
 		r#"
 		SELECT
+		    deployment_id as "deployment_id: _",
 			name,
 			value,
-			secret_id
+			secret_id as "secret_id: _" 
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -645,12 +648,7 @@ pub async fn get_environment_variables_for_deployment(
 		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.name, row.value))
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn add_environment_variable_for_deployment(

@@ -68,3 +68,10 @@ pub struct DeploymentRegion {
 	pub name: String,
 	pub cloud_provider: Option<DeploymentCloudProvider>,
 }
+
+pub struct EnvVariable {
+	pub deployment_id: Uuid,
+	pub name: String,
+	pub value: Option<String>,
+	pub secret_id: Option<Uuid>,
+}
