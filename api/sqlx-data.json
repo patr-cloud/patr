@@ -2091,6 +2091,16 @@
     },
     "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );"
   },
+  "375a5944e5070c4c0d7cd7dbaf5739a63603c61e55911dfe579ef5e9bba7d0dd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
+  },
   "3965581880bfbe752b776a4c3b8cd706b08ab342b24781170ad0025fd8133a5f": {
     "describe": {
       "columns": [],
@@ -4148,6 +4158,16 @@
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
   },
+  "85b0496f32f59d870543fbcc4323722a65c7d0b74e47125be0f6293f89278fe0": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE INDEX domain_tld_idx_tld ON domain_tld USING HASH(tld);"
+  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
       "columns": [
@@ -4385,49 +4405,6 @@
       }
     },
     "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;"
-  },
-  "8e58571e7a074c306a39347ead215173ac107b1894850d293b061cbb2b1d8daf": {
-    "describe": {
-      "columns": [
-        {
-          "name": "id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "name: _",
-          "ordinal": 1,
-          "type_info": {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          }
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "deployment_id: _",
-          "ordinal": 3,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT id as \"id: _\", name as \"name: _\", workspace_id as \"workspace_id: _\", deployment_id as \"deployment_id: _\" FROM secret WHERE id = $1"
   },
   "8e7433b1af4c66de9bc7eba31cb2639190f235a410264641ba86b0cd6890c736": {
     "describe": {
@@ -4807,16 +4784,6 @@
       }
     },
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);"
-  },
-  "9cb75ca4350e85d7f64c67ae910c92754cf9931fc4a3bacefb9794190a2ca926": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT NOT NULL, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name) );"
   },
   "9d12957af2506956a6c245b5822233f06bb1b51740cc77867c9269d16d53c635": {
     "describe": {
@@ -6626,6 +6593,16 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", personal_domain.id as \"id: _\", personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;"
   },
+  "ce0f08baae9d00fe42dd29dc3b999f86ca479d0eb6b8acdeb982351d3b639d78": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE domain_tld ADD CONSTRAINT domain_tld_pk PRIMARY KEY USING INDEX domain_tld_idx_tld;"
+  },
   "ce5f94c07e5c7f5f624f8f47a1d02c75ed66c92eb9b8b32fcc05c107f9e1ad0f": {
     "describe": {
       "columns": [],
@@ -6723,6 +6700,16 @@
       }
     },
     "query": "DELETE FROM patr_domain_dns_record WHERE id = $1;"
+  },
+  "d1ffbbbe840772d9afbcfaa07621c59fbb82190ca9a154721b815d5dcda05cf2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id) );"
   },
   "d281ec88c77a2da5f1e9711a9c332d20afbca4755b1b3b4d67ee42557fe26db3": {
     "describe": {
@@ -8267,16 +8254,6 @@
       }
     },
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );"
-  },
-  "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
     "describe": {
