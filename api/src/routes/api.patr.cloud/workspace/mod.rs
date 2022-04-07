@@ -9,7 +9,7 @@ use api_models::{
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
 		IsWorkspaceNameAvailableResponse,
-		UpdateUserToWorkspaceRequest,
+		UpdateUserInWorkspaceRequest,
 		UpdateWorkspaceInfoRequest,
 		UpdateWorkspaceInfoResponse,
 		Workspace,
@@ -604,7 +604,7 @@ async fn update_user_role_for_workspace(
 		request_id,
 	);
 
-	let UpdateUserToWorkspaceRequest { user_role, .. } = context
+	let UpdateUserInWorkspaceRequest { user_role, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
