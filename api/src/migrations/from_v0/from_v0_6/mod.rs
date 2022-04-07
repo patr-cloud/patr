@@ -26,8 +26,7 @@ pub async fn migrate(
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
 		(0, 6, 0) => {
-			from_v0_6_0::migrate_to_secret(&mut *connection, config).await;
-			from_v0_6_0::github_permissions(&mut *connection, config).await
+			from_v0_6_0::migrate_from_v0_6_0(&mut *connection, config).await;
 		}
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)

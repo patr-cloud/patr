@@ -41,7 +41,7 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.get(
-		"/accessToken/:code",
+		"/accessToken",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(get_access_token)),
@@ -150,7 +150,11 @@ async fn get_access_token(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let code = context.get_param(request_keys::CODE).unwrap();
+	let code = context
+		.get_request()
+		.get_query()
+		.get(request_keys::CODE)
+		.unwrap();
 	let config = context.get_state().config.clone();
 	let client_id = config.github.client_id;
 	let client_secret = config.github.client_secret;
@@ -199,8 +203,17 @@ async fn list_github_repos(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let access_token = context.get_param(request_keys::ACCESS_TOKEN).unwrap();
-	let owner_name = context.get_param(request_keys::OWNER_NAME).unwrap();
+	let access_token = context
+		.get_request()
+		.get_query()
+		.get(request_keys::ACCESS_TOKEN)
+		.unwrap();
+
+	let owner_name = context
+		.get_request()
+		.get_query()
+		.get(request_keys::OWNER_NAME)
+		.unwrap();
 
 	let user_agent = context
 		.get_header("User-Agent")
