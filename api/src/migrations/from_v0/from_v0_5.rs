@@ -757,6 +757,36 @@ async fn migrate_from_v0_5_7(
 	audit_logs(connection).await?;
 	rename_backup_email_to_recovery_email(connection).await?;
 	chargebee(connection, config).await?;
+	remove_domain_tlds_in_ci(connection, config).await?;
+
+	Ok(())
+}
+
+async fn remove_domain_tlds_in_ci(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let users = query!(
+		r#"
+		SELECT
+			COUNT(*) as "users"
+		FROM
+			"user";
+		"#
+	)
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<i64, _>("users");
+
+	if users == 0 {
+		query!(
+			r#"
+			DELETE FROM domain_tld;
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }
