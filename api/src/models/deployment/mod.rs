@@ -251,7 +251,7 @@ impl Display for Step {
 }
 
 impl FromStr for Step {
-	type Err = String;
+	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let s = s.to_lowercase();
@@ -263,7 +263,9 @@ impl FromStr for Step {
 			"15m" => Ok(Self::FifteenMinutes),
 			"30m" => Ok(Self::ThirtyMinutes),
 			"1h" => Ok(Self::OneHour),
-			_ => Err(s),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
 		}
 	}
 }
