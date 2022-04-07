@@ -402,6 +402,44 @@
     },
     "query": "SELECT id FROM domain WHERE id = $1;"
   },
+  "1183d69cdd90c6788ef1338ef8dac1be068320acf7603ab4cbd3362975280ff5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "secret_id: _",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: _\", name, value, secret_id as \"secret_id: _\" FROM deployment_environment_variable WHERE deployment_id = $1;"
+  },
   "1367b2c0bb8700daf488f62964c8c1396fb2a3a5a2f33577c4d0c1be8806507c": {
     "describe": {
       "columns": [
@@ -4158,16 +4196,6 @@
     },
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;"
   },
-  "85b0496f32f59d870543fbcc4323722a65c7d0b74e47125be0f6293f89278fe0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE INDEX domain_tld_idx_tld ON domain_tld USING HASH(tld);"
-  },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "describe": {
       "columns": [
@@ -6593,16 +6621,6 @@
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", personal_domain.id as \"id: _\", personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;"
   },
-  "ce0f08baae9d00fe42dd29dc3b999f86ca479d0eb6b8acdeb982351d3b639d78": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE domain_tld ADD CONSTRAINT domain_tld_pk PRIMARY KEY USING INDEX domain_tld_idx_tld;"
-  },
   "ce5f94c07e5c7f5f624f8f47a1d02c75ed66c92eb9b8b32fcc05c107f9e1ad0f": {
     "describe": {
       "columns": [],
@@ -6772,38 +6790,6 @@
       }
     },
     "query": "ALTER TABLE managed_url ADD CONSTRAINT managed_url_fk_domain_id FOREIGN KEY(domain_id) REFERENCES workspace_domain(id), ADD CONSTRAINT managed_url_fk_domain_id_workspace_id FOREIGN KEY(domain_id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT managed_url_fk_deployment_id_port FOREIGN KEY(deployment_id, port) REFERENCES deployment_exposed_port(deployment_id, port), ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id FOREIGN KEY(static_site_id, workspace_id) REFERENCES deployment_static_site(id, workspace_id), ADD CONSTRAINT managed_url_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);"
-  },
-  "d3bf49b9bd7f4988019bcd7cb8ee4c35ddf1bbb93acc6622c9ef56a6a8fe29e3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "name",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "value",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "secret_id",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT name, value, secret_id FROM deployment_environment_variable WHERE deployment_id = $1;"
   },
   "d4f63ceb9c6eed601b3f80bf4e17f67b030c3d0f976876f0494355ad73ab7af4": {
     "describe": {
@@ -8254,6 +8240,16 @@
       }
     },
     "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ) );"
+  },
+  "f8b70ccc8687361430f17086e79357a1d2d97c79f40fabd3f39d44ffe7d95cba": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
     "describe": {
