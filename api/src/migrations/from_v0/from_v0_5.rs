@@ -757,45 +757,36 @@ async fn migrate_from_v0_5_7(
 	audit_logs(connection).await?;
 	rename_backup_email_to_recovery_email(connection).await?;
 	chargebee(connection, config).await?;
-	add_hash_index_for_domain_tlds(connection, config).await?;
+	remove_domain_tlds_in_ci(connection, config).await?;
 
 	Ok(())
 }
 
-async fn add_hash_index_for_domain_tlds(
+async fn remove_domain_tlds_in_ci(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
-	query!(
+	let users = query!(
 		r#"
-		CREATE UNIQUE INDEX
-			domain_tld_idx_tld
-		ON
-			domain_tld
-		USING HASH(tld);
+		SELECT
+			COUNT(*) as "users"
+		FROM
+			"user";
 		"#
 	)
-	.execute(&mut *connection)
-	.await?;
+	.fetch_one(&mut *connection)
+	.await?
+	.get::<i64, _>("users");
 
-	query!(
-		r#"
-		ALTER TABLE domain_tld
-		DROP CONSTRAINT domain_tld_pk;
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE domain_tld
-		ADD CONSTRAINT domain_tld_pk PRIMARY KEY
-		USING INDEX domain_tld_idx_tld;
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
+	if users == 0 {
+		query!(
+			r#"
+			DELETE FROM domain_tld;
+			"#
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
 
 	Ok(())
 }

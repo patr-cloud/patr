@@ -26,6 +26,7 @@ pub async fn initialize_domain_pre(
 		r#"
 		CREATE TABLE domain_tld(
 			tld TEXT
+				CONSTRAINT domain_tld_pk PRIMARY KEY
 				CONSTRAINT domain_tld_chk_is_length_valid CHECK(
 					LENGTH(tld) >= 2 AND LENGTH(tld) <= 63
 				)
@@ -34,28 +35,6 @@ pub async fn initialize_domain_pre(
 				)
 		);
 		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE UNIQUE INDEX
-			domain_tld_idx_tld
-		ON
-			domain_tld
-		USING HASH(tld);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE domain_tld
-		ADD CONSTRAINT domain_tld_pk PRIMARY KEY
-		USING INDEX domain_tld_idx_tld;
-		"#,
 	)
 	.execute(&mut *connection)
 	.await?;
