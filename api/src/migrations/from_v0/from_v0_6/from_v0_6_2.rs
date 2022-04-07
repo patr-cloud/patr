@@ -122,82 +122,6 @@ async fn update_roles_permissions(
 	Ok(())
 }
 
-async fn add_rbac_user_permissions(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	for &permission in [
-		"workspace::rbac::user::list",
-		"workspace::rbac::user::add",
-		"workspace::rbac::user::remove",
-		"workspace::rbac::user::updateRoles",
-	]
-	.iter()
-	{
-		let uuid = loop {
-			let uuid = Uuid::new_v4();
-
-			let exists = query!(
-				r#"
-				SELECT
-					*
-				FROM
-					permission
-				WHERE
-					id = $1;
-				"#,
-				&uuid
-			)
-			.fetch_optional(&mut *connection)
-			.await?
-			.is_some();
-
-			if !exists {
-				// That particular resource ID doesn't exist. Use it
-				break uuid;
-			}
-		};
-
-		query!(
-			r#"
-			INSERT INTO
-				permission
-			VALUES
-				($1, $2, $3);
-			"#,
-			&uuid,
-			permission,
-			"",
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	Ok(())
-}
-
-async fn update_edit_workspace_permission(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	_config: &Settings,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		UPDATE
-			permission
-		SET
-			name = $1
-		WHERE
-			name = $2;
-		"#,
-		"workspace::edit",
-		"workspace::editInfo",
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
 async fn add_delete_workspace_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -307,6 +231,7 @@ async fn migrate_to_secret(
 			}
 		};
 		let uuid = uuid.as_bytes().as_ref();
+
 		query!(
 			r#"
 			INSERT INTO
@@ -350,6 +275,7 @@ async fn migrate_to_secret(
 		.as_bytes()
 		.to_vec(),
 	);
+
 	query!(
 		r#"
 		INSERT INTO
@@ -359,6 +285,37 @@ async fn migrate_to_secret(
 		"#,
 		uuid,
 		resource_type,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_environment_variable
+			ADD COLUMN secret_id UUID;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_environment_variable
+			ALTER COLUMN value NULL;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_environment_variable
+			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
+				FOREIGN KEY(secret_id) REFERENCES secret(id),
+			ADD CONSTRAINT deployment_environment_variable_chk_value_secret_id_both_not_null
+				CHECK((value IS NULL OR secret_id IS NULL) 
+				AND NOT (value IS NULL AND secret_id IS NULL));
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

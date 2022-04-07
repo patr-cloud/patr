@@ -200,7 +200,7 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
-			value TEXT NOT NULL,
+			value TEXT,
 			secret_id UUID,
 			CONSTRAINT deployment_environment_variable_pk
 				PRIMARY KEY(deployment_id, name),

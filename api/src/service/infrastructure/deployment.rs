@@ -185,11 +185,6 @@ pub async fn create_deployment_in_workspace(
 			EnvironmentVariableValue::Secret { from_secret } => {
 				(None, Some(from_secret))
 			}
-			_ => {
-				return Err(Error::empty()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string()))
-			}
 		};
 
 		db::add_environment_variable_for_deployment(
@@ -313,16 +308,11 @@ pub async fn update_deployment(
 				EnvironmentVariableValue::Secret { from_secret } => {
 					(None, Some(from_secret))
 				}
-				_ => {
-					return Err(Error::empty()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string()))
-				}
 			};
 
 			db::add_environment_variable_for_deployment(
 				connection,
-				&deployment_id,
+				deployment_id,
 				key,
 				value,
 				secret_id,
