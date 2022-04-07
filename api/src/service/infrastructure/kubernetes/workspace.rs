@@ -40,7 +40,7 @@ pub async fn delete_kubernetes_namespace(
 ) -> Result<(), Error> {
 	let client = super::get_kubernetes_config(config).await?;
 
-	log::trace!("request_id: {} - creating namespace", request_id);
+	log::trace!("request_id: {} - deleting namespace", request_id);
 
 	// deleting the kubernetes namespace deletes
 	// all the resources automatically that are present inside that namespace
