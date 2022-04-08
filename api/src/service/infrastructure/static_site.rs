@@ -1,15 +1,15 @@
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
-use async_zip::read::seek::ZipFileReader;
 use aws_config::RetryConfig;
 use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
 use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
 use eve_rs::AsError;
 use http::Uri;
+use zip::ZipArchive;
 
 use crate::{
 	db,
@@ -206,60 +206,55 @@ pub async fn upload_static_site_files_to_s3(
 	let aws_s3_client = get_s3_client(config.clone()).await?;
 	log::trace!("request_id: {} - got the s3 client", request_id);
 
-	let mut file_data = Cursor::new(file_data);
+	let file_data = Cursor::new(file_data);
 
-	let archive = ZipFileReader::new(&mut file_data).await;
-
-	let mut archive = match archive {
-		Ok(archive) => archive,
-		Err(e) => {
-			log::error!(
-				"request_id: {} - error while reading the archive: {:#?}",
-				request_id,
-				e
-			);
-			return Err(Error::empty());
-		}
-	};
+	let mut archive = ZipArchive::new(file_data).map_err(|err| {
+		log::error!(
+			"request_id: {} - error while reading the archive: {:#?}",
+			request_id,
+			err
+		);
+		err
+	})?;
 
 	log::trace!(
 		"request_id: {} - archive file successfully read",
 		request_id
 	);
 
-	for i in 0..archive.entries().len() {
-		let file_info = match archive.entry_reader(i).await {
-			Ok(file_info) => file_info,
-			Err(e) => {
-				log::error!(
-					"request_id: {} - error while reading the archive: {:#?}",
-					request_id,
-					e
-				);
-				return Err(Error::empty());
-			}
+	for i in 0..archive.len() {
+		let mut file = archive.by_index(i).map_err(|err| {
+			log::error!(
+				"request_id: {} - error while reading the archive: {:#?}",
+				request_id,
+				err
+			);
+			err
+		})?;
+
+		let file_name = if let Some(path) = file.enclosed_name() {
+			path.to_string_lossy().to_string()
+		} else {
+			continue;
 		};
 
-		let file_name = file_info.entry().name().to_string();
+		let mut file_content = Vec::with_capacity(file.size() as usize);
 
-		let file_info = match file_info.read_to_end_crc().await {
-			Ok(file_info) => file_info,
-			Err(e) => {
-				log::error!(
-					"request_id: {} - error while reading the archive: {:#?}",
-					request_id,
-					e
-				);
-				return Err(Error::empty());
-			}
-		};
+		file.read_to_end(&mut file_content).map_err(|err| {
+			log::error!(
+				"request_id: {} - error while reading the archive: {:#?}",
+				request_id,
+				err
+			);
+			err
+		})?;
+
 		log::trace!(
 			"request_id: {} - file_name: {}/{}",
 			request_id,
 			static_site_id,
 			file_name
 		);
-		// TODO: change file_name to file.enclosed_name()
 		let file_extension = file_name
 			.split('.')
 			.last()
@@ -271,7 +266,7 @@ pub async fn upload_static_site_files_to_s3(
 			.put_object()
 			.bucket(config.s3.bucket.clone())
 			.key(format!("{}/{}", static_site_id, file_name))
-			.body(file_info.into())
+			.body(file_content.into())
 			.acl(ObjectCannedAcl::PublicRead)
 			.content_type(mime_string)
 			.send()
