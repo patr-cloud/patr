@@ -176,7 +176,6 @@ async fn list_secrets(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-
 	let secrets = db::get_all_secrets_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,

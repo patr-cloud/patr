@@ -214,7 +214,7 @@ pub async fn update_kubernetes_deployment(
 											String(value) => value.to_string(),
 											Secret { from_secret } => {
 												let secret = format!(
-													"vault:secret/{}/{}",
+													"vault:secret/data/{}/{}",
 													workspace_id, from_secret
 												);
 												secret

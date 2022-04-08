@@ -278,7 +278,7 @@ async fn migrate_to_secret(
 
 	query!(
 		r#"
-		INSERT INTO
+		INSERT INTO,
 			resource_type
 		VALUES
 			($1, $2, NULL);
@@ -289,6 +289,13 @@ async fn migrate_to_secret(
 	.execute(&mut *connection)
 	.await?;
 
+	Ok(())
+}
+
+async fn add_secret_id_column_to_deployment_environment_variable(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
@@ -319,35 +326,6 @@ async fn migrate_to_secret(
 	)
 	.execute(&mut *connection)
 	.await?;
-
-	Ok(())
-}
-
-async fn add_secret_id_column_to_deployment_environment_variable(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		ALTER TABLE deployment_environment_variable
-			ADD COLUMN secret_id UUID;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
-				FOREIGN KEY(secret_id) REFERENCES secret(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	// TODO - add nullable to value and secret_id column
-	// But also check that both should not be empty
 
 	Ok(())
 }

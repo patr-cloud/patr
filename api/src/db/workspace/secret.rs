@@ -55,7 +55,7 @@ pub async fn get_all_secrets_in_workspace(
 		r#"
 		SELECT
 			id as "id: _",
-			name as "name: _",
+			name::TEXT as "name!: _",
 			workspace_id as "workspace_id: _",
 			deployment_id as "deployment_id: _"
 		FROM

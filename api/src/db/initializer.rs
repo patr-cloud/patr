@@ -55,11 +55,13 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 		db::initialize_users_pre(&mut transaction).await?;
 		db::initialize_workspaces_pre(&mut transaction).await?;
 		db::initialize_rbac_pre(&mut transaction).await?;
+		db::initialize_secret_pre(&mut transaction).await?;
 
 		db::initialize_rbac_post(&mut transaction).await?;
 		db::initialize_workspaces_post(&mut transaction).await?;
 		db::initialize_users_post(&mut transaction).await?;
 		db::initialize_meta_post(&mut transaction).await?;
+		db::initialize_secret_post(&mut transaction).await?;
 
 		// Set the database schema version
 		set_database_version(&mut transaction, &constants::DATABASE_VERSION)
