@@ -28,6 +28,8 @@ cloudflare = { git = "https://github.com/vicara-hq/cloudflare-rs" }
 colored = "2.0.0"
 config_rs = { version = "0.13.1", package = "config" }
 cron = "0.11.0"
+deadpool = "0.9.2"
+deadpool-lapin = "0.10.0"
 eve-rs = { git = "https://github.com/vicara-hq/eve-rs", branch = "develop" }
 futures = "0.3.8"
 handlebars = "4.0.0"
@@ -80,9 +82,9 @@ sqlx = { version = "0.5", features = [
 ] }
 tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.21.1"
-zip = "0.6.2"
 vaultrs = "0.6.0"
 zeroize = "1.5.4"
+zip = "0.6.2"
 
 [dependencies.log4rs]
 default-features = false
