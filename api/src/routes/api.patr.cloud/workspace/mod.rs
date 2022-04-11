@@ -4,6 +4,7 @@ use api_models::{
 		AddUserToWorkspaceResponse,
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
+		DeleteUserFromWorkspaceResponse,
 		DeleteWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
@@ -125,7 +126,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.post(
-		"/:workspaceId/user",
+		"/:workspaceId/user/:userId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::CREATE_USER,
@@ -156,7 +157,7 @@ pub fn create_sub_app(
 	);
 
 	sub_app.put(
-		"/:workspaceId/user",
+		"/:workspaceId/user/:userId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::UPDATE_USER,
@@ -574,6 +575,9 @@ async fn add_user_to_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
+	let user_id = context.get_param(request_keys::USER_ID).unwrap();
+	let user_id = Uuid::parse_str(user_id).unwrap();
+
 	let AddUserToWorkspaceRequest { user_role, .. } = context
 		.get_body_as()
 		.status(400)
@@ -581,6 +585,7 @@ async fn add_user_to_workspace(
 
 	db::add_user_to_workspace_with_role(
 		context.get_database_connection(),
+		&user_id,
 		&user_role,
 		&workspace_id,
 	)
@@ -599,6 +604,9 @@ async fn update_user_role_for_workspace(
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
+	let user_id = context.get_param(request_keys::USER_ID).unwrap();
+	let user_id = Uuid::parse_str(user_id).unwrap();
+
 	log::trace!(
 		"request_id: {} - requested to update user for workspace",
 		request_id,
@@ -609,16 +617,16 @@ async fn update_user_role_for_workspace(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	for user_id in user_role.keys() {
-		db::delete_user_from_workspace(
-			context.get_database_connection(),
-			user_id,
-			&workspace_id,
-		)
-		.await?;
-	}
+	db::delete_user_from_workspace(
+		context.get_database_connection(),
+		&user_id,
+		&workspace_id,
+	)
+	.await?;
+
 	db::add_user_to_workspace_with_role(
 		context.get_database_connection(),
+		&user_id,
 		&user_role,
 		&workspace_id,
 	)
@@ -658,6 +666,7 @@ async fn delete_user_from_workspace(
 		request_id,
 		user_id
 	);
+	context.success(DeleteUserFromWorkspaceResponse {});
 
 	Ok(context)
 }
