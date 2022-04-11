@@ -1,16 +1,18 @@
 use api_models::{
 	models::workspace::{
-		AddUserToWorkspaceRequest,
-		AddUserToWorkspaceResponse,
+		user::{
+			AddUserToWorkspaceRequest,
+			AddUserToWorkspaceResponse,
+			RemoveUserFromWorkspaceResponse,
+			UpdateUserRolesInWorkspaceRequest,
+		},
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
-		DeleteUserFromWorkspaceResponse,
 		DeleteWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
 		IsWorkspaceNameAvailableResponse,
-		UpdateUserInWorkspaceRequest,
 		UpdateWorkspaceInfoRequest,
 		UpdateWorkspaceInfoResponse,
 		Workspace,
@@ -578,7 +580,7 @@ async fn add_user_to_workspace(
 	let user_id = context.get_param(request_keys::USER_ID).unwrap();
 	let user_id = Uuid::parse_str(user_id).unwrap();
 
-	let AddUserToWorkspaceRequest { user_role, .. } = context
+	let AddUserToWorkspaceRequest { roles, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -586,7 +588,7 @@ async fn add_user_to_workspace(
 	db::add_user_to_workspace_with_role(
 		context.get_database_connection(),
 		&user_id,
-		&user_role,
+		&roles,
 		&workspace_id,
 	)
 	.await?;
@@ -612,7 +614,7 @@ async fn update_user_role_for_workspace(
 		request_id,
 	);
 
-	let UpdateUserInWorkspaceRequest { user_role, .. } = context
+	let UpdateUserRolesInWorkspaceRequest { roles, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -627,7 +629,7 @@ async fn update_user_role_for_workspace(
 	db::add_user_to_workspace_with_role(
 		context.get_database_connection(),
 		&user_id,
-		&user_role,
+		&roles,
 		&workspace_id,
 	)
 	.await?;
@@ -666,7 +668,7 @@ async fn delete_user_from_workspace(
 		request_id,
 		user_id
 	);
-	context.success(DeleteUserFromWorkspaceResponse {});
+	context.success(RemoveUserFromWorkspaceResponse {});
 
 	Ok(context)
 }
