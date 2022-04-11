@@ -30,7 +30,7 @@ mod static_site;
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
-	let (channel, connection) = get_rabbitmq_connection_channel(&app)
+	let (channel, connection) = get_rabbitmq_connection_channel(app)
 		.await
 		.expect("unable to get rabbitmq connection");
 	// Create Queue
