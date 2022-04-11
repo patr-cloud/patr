@@ -146,11 +146,13 @@ pub(super) async fn create_rabbitmq_pool(
 ) -> Result<Pool, Error> {
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Connecting to rabbitmq", request_id);
-	let mut cfg = Config::default();
-	cfg.url = Some(format!(
-		"amqp://{}:{}/%2f",
-		config.rabbit_mq.host, config.rabbit_mq.port
-	));
+	let cfg = Config {
+		url: Some(format!(
+			"amqp://{}:{}/%2f",
+			config.rabbit_mq.host, config.rabbit_mq.port
+		)),
+		..Config::default()
+	};
 	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
 
 	Ok(pool)
