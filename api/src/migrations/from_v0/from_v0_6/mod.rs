@@ -3,6 +3,7 @@ use semver::Version;
 use crate::{utils::settings::Settings, Database};
 
 mod from_v0_6_0;
+mod from_v0_6_1;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -24,9 +25,8 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 6, 0) => {
-			from_v0_6_0::migrate_from_v0_6_0(&mut *connection, config).await
-		}
+		(0, 6, 0) => from_v0_6_0::migrate(&mut *connection, config).await,
+		(0, 6, 1) => from_v0_6_1::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
