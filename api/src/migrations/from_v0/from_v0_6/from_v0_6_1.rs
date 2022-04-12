@@ -97,7 +97,7 @@ async fn update_roles_permissions(
 			SET
 				name = $1
 			WHERE
-				name = #2;
+				name = $2;
 			"#,
 			new_permission,
 			old_permission,
