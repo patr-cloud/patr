@@ -1,8 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::infrastructure::secret::{
-		CreateSecretForDeploymentRequest,
-		CreateSecretForDeploymentResponse,
 		CreateSecretRequest,
 		CreateSecretResponse,
 		DeleteSecretResponse,
@@ -98,46 +96,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.post(
-		"/:deploymentId",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::secret::CREATE,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let deployment_id_string =
-						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = Uuid::parse_str(deployment_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&deployment_id,
-					)
-					.await?
-					.filter(|value| value.owner_id == workspace_id);
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(
-				create_secret_for_deployment
-			)),
-		],
-	);
-
 	// delete secret
 	app.delete(
 		"/:secretId",
@@ -216,7 +174,12 @@ async fn create_secret(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let CreateSecretRequest { name, secret, .. } = context
+	let CreateSecretRequest {
+		name,
+		secret,
+		deployment_id,
+		..
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -227,6 +190,7 @@ async fn create_secret(
 	let id = service::create_new_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		deployment_id.as_ref(),
 		&name,
 		&secret,
 		&config,
@@ -236,48 +200,6 @@ async fn create_secret(
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
 	context.success(CreateSecretResponse { id });
-	Ok(context)
-}
-
-async fn create_secret_for_deployment(
-	mut context: EveContext,
-	_: NextHandler<EveContext, ErrorData>,
-) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
-	let workspace_id =
-		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
-			.unwrap();
-	let deployment_id = Uuid::parse_str(
-		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
-	)
-	.unwrap();
-
-	log::trace!(
-		"{} - Creating new secret in deployment - {}",
-		request_id,
-		deployment_id
-	);
-
-	let CreateSecretForDeploymentRequest { name, secret, .. } = context
-		.get_body_as()
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let config = context.get_state().config.clone();
-
-	let id = service::create_new_secret_for_deployment(
-		context.get_database_connection(),
-		&workspace_id,
-		&deployment_id,
-		&name,
-		&secret,
-		&config,
-		&request_id,
-	)
-	.await?;
-
-	log::trace!("request_id: {} - Returning new secret", request_id);
-	context.success(CreateSecretForDeploymentResponse { id });
 	Ok(context)
 }
 
@@ -296,11 +218,7 @@ async fn delete_secret(
 
 	let config = context.get_state().config.clone();
 
-	log::trace!(
-		"request_id: {} - Deleting managed URL {}",
-		request_id,
-		secret_id
-	);
+	log::trace!("request_id: {} - Deleting secret {}", request_id, secret_id);
 	service::delete_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
