@@ -148,10 +148,12 @@ pub async fn update_kubernetes_deployment(
 		request_id
 	);
 
+	let config = config.clone();
+
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			"https://vault.samyakgangwal.com".to_string(),
+			config.vault.address,
 		),
 		(
 			"vault.security.banzaicloud.io/vault-role".to_string(),

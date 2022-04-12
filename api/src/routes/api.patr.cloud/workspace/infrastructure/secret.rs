@@ -104,9 +104,15 @@ pub fn create_sub_app(
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::secret::CREATE,
 				closure_as_pinned_box!(|mut context| {
-					let deployment_id =
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let deployment_id_string =
 						context.get_param(request_keys::DEPLOYMENT_ID).unwrap();
-					let deployment_id = Uuid::parse_str(deployment_id)
+					let deployment_id = Uuid::parse_str(deployment_id_string)
 						.status(400)
 						.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -114,7 +120,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&deployment_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -132,12 +139,18 @@ pub fn create_sub_app(
 	);
 
 	// delete secret
-	app.post(
+	app.delete(
 		"/:secretId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::infrastructure::secret::DELETE,
 				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
 					let secret_id =
 						context.get_param(request_keys::SECRET_ID).unwrap();
 					let secret_id = Uuid::parse_str(secret_id)
@@ -148,7 +161,8 @@ pub fn create_sub_app(
 						context.get_database_connection(),
 						&secret_id,
 					)
-					.await?;
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -213,7 +227,6 @@ async fn create_secret(
 	let id = service::create_new_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		// deployment_id.as_ref(),
 		&name,
 		&secret,
 		&config,

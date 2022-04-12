@@ -34,7 +34,8 @@ pub async fn initialize_secret_post(
 		r#"
 		ALTER TABLE secret
 			ADD CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+				FOREIGN KEY(id, workspace_id) 
+					REFERENCES resource(id, owner_id),
 			ADD CONSTRAINT secret_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
 					REFERENCES deployment(id, workspace_id);
@@ -94,29 +95,6 @@ pub async fn get_secrets_for_deployment(
 	.fetch_all(connection)
 	.await
 }
-
-// pub async fn get_secrets_by_secret_id(
-// 	connection: &mut <Database as sqlx::Database>::Connection,
-// 	secret_id: &Uuid,
-// ) -> Result<Option<Secret>, sqlx::Error> {
-// 	query_as!(
-// 		Secret,
-// 		r#"
-// 		SELECT
-// 			id as "id: _",
-// 			name as "name: _",
-// 			workspace_id as "workspace_id: _",
-// 			deployment_id as "deployment_id: _"
-// 		FROM
-// 			secret
-// 		WHERE
-// 			id = $1
-// 		"#,
-// 		secret_id as _,
-// 	)
-// 	.fetch_optional(&mut *connection)
-// 	.await
-// }
 
 pub async fn create_new_secret_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,

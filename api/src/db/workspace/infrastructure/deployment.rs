@@ -208,7 +208,10 @@ pub async fn initialize_deployment_pre(
 			CONSTRAINT deployment_environment_variable_fk_secret_id
 				FOREIGN KEY(secret_id) REFERENCES secret(id),
 			CONSTRAINT deployment_environment_variable_chk_value_secret_id_both_not_null
-				CHECK(value IS NOT NULL OR secret_id IS NOT NULL)
+				CHECK(
+					value IS NOT NULL OR
+					secret_id IS NOT NULL
+				)
 		);
 		"#
 	)

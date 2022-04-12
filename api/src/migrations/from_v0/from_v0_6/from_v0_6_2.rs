@@ -16,7 +16,7 @@ pub async fn migrate(
 	add_rbac_user_permissions(&mut *connection, config).await?;
 	update_edit_workspace_permission(&mut *connection, config).await?;
 	add_delete_workspace_permission(&mut *connection, config).await?;
-	migrate_to_secret(&mut *connection, config).await;
+	add_secrets(&mut *connection, config).await;
 	add_secret_id_column_to_deployment_environment_variable(
 		&mut *connection,
 		config,
@@ -237,7 +237,7 @@ async fn add_delete_workspace_permission(
 	Ok(())
 }
 
-async fn migrate_to_secret(
+async fn add_secrets(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
@@ -249,29 +249,15 @@ async fn migrate_to_secret(
 				CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			workspace_id UUID NOT NULL,
 			deployment_id UUID, /* For deployment specific secrets */
-			CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name)
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE secret
-			ADD CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE secret
-			ADD CONSTRAINT secret_fk_deployment_id_workspace_id
+			CONSTRAINT secret_uq_workspace_id_name 
+				UNIQUE(workspace_id, name),
+			CONSTRAINT secret_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) 
+					REFERENCES resource(id, owner_id),
+			CONSTRAINT secret_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
-					REFERENCES deployment(id, workspace_id);
+					REFERENCES deployment(id, workspace_id)
+		);
 		"#
 	)
 	.execute(&mut *connection)

@@ -147,22 +147,65 @@ pub async fn create_new_secret_for_deployment(
 
 pub async fn delete_secret_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	_workspace_id: &Uuid,
+	workspace_id: &Uuid,
 	secret_id: &Uuid,
-	_config: &Settings,
+	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
-	log::trace!("request_id: {} - Deleting secret with id: {} on database with request_id: {}",
+	log::trace!(
+		"request_id: {} - Deleting secret with id: {}",
 		request_id,
 		secret_id,
-		request_id
 	);
+
+	let config = config.clone();
+
+	let client = VaultClient::new(
+		VaultClientSettingsBuilder::default()
+			.address(config.vault.address)
+			.token(config.vault.token)
+			.build()
+			.unwrap(),
+	)
+	.unwrap();
+
+	log::trace!(
+		"request_id: {} - Deleting secret with id: {} from vault",
+		request_id,
+		secret_id,
+	);
+
+	kv2::delete_latest(
+		&client,
+		"secret",
+		&format!("{}/{}", workspace_id.as_str(), secret_id.as_str()),
+	)
+	.await?;
+
+	log::trace!(
+		"request_id: {} - Deleted secret with id: {} from vault",
+		request_id,
+		secret_id,
+	);
+
+	log::trace!(
+		"request_id: {} - Deleting secret with id: {} from database",
+		request_id,
+		secret_id,
+	);
+
 	db::update_secret_name(
 		connection,
 		secret_id,
 		&format!("patr-deleted-{}", secret_id),
 	)
 	.await?;
+
+	log::trace!(
+		"request_id: {} - Deleted secret with id: {} from databae",
+		request_id,
+		secret_id,
+	);
 
 	Ok(())
 }
