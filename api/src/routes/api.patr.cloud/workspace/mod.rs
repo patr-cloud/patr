@@ -82,7 +82,7 @@ pub fn create_sub_app(
 		"/:workspaceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -155,7 +155,7 @@ pub fn create_sub_app(
 		"/:workspaceId/audit-log",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -186,7 +186,7 @@ pub fn create_sub_app(
 		"/:workspaceId/audit-log/:resourceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

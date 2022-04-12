@@ -9,6 +9,8 @@ pub async fn migrate(
 	make_rbac_descriptions_non_nullable(&mut *connection, config).await?;
 	update_roles_permissions(&mut *connection, config).await?;
 	add_rbac_user_permissions(&mut *connection, config).await?;
+	update_edit_workspace_permission(&mut *connection, config).await?;
+	add_delete_workspace_permission(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -160,6 +162,73 @@ async fn add_rbac_user_permissions(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	Ok(())
+}
+
+async fn update_edit_workspace_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = $1
+		WHERE
+			name = $2;
+		"#,
+		"workspace::edit",
+		"workspace::editInfo",
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn add_delete_workspace_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	let uuid = loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				permission
+			WHERE
+				id = $1;
+			"#,
+			&uuid
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			// That particular resource ID doesn't exist. Use it
+			break uuid;
+		}
+	};
+
+	query!(
+		r#"
+		INSERT INTO
+			permission
+		VALUES
+			($1, $2, $3);
+		"#,
+		&uuid,
+		"workspace::delete",
+		"",
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

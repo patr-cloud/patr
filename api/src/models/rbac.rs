@@ -131,7 +131,7 @@ pub mod permissions {
 			}
 		}
 
-		pub const EDIT_INFO: &str = "workspace::editInfo";
+		pub const EDIT: &str = "workspace::edit";
 		pub const DELETE: &str = "workspace::delete";
 	}
 }
