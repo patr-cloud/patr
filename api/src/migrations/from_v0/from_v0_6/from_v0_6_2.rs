@@ -280,7 +280,6 @@ async fn migrate_to_secret(
 	for &permission in [
 		"workspace::infrastructure::secret::create",
 		"workspace::infrastructure::secret::delete",
-		"workspace::infrastructure::secret::info",
 		"workspace::infrastructure::secret::list",
 	]
 	.iter()
