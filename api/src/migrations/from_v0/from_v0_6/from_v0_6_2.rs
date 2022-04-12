@@ -260,7 +260,15 @@ async fn migrate_to_secret(
 		r#"
 		ALTER TABLE secret
 			ADD CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id),
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE secret
 			ADD CONSTRAINT secret_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
 					REFERENCES deployment(id, workspace_id);
