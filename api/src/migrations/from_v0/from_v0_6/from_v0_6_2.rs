@@ -356,7 +356,7 @@ async fn migrate_to_secret(
 
 	query!(
 		r#"
-		INSERT INTO,
+		INSERT INTO
 			resource_type
 		VALUES
 			($1, $2, NULL);
