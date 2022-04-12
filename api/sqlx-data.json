@@ -4548,6 +4548,16 @@
     },
     "query": "INSERT INTO role_permissions_resource VALUES ($1, $2, $3);"
   },
+  "955a7f934619cb52e524793d27575eb6d83e596ce93bba9a2cda5fccdbcf1aa9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id), CONSTRAINT deplo_env_var_chk_value_secret_id_both_not_null CHECK( value IS NOT NULL OR secret_id IS NOT NULL ) );"
+  },
   "9581388fb7bb98001ffa0a401a9b5e263bea871ef4cb5f1305b65af163ed3205": {
     "describe": {
       "columns": [],
@@ -6526,16 +6536,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;"
   },
-  "c752d5b7299d02f5d0bd901e8b465dd759f18be344f5c32a630ecff04247dfa1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_environment_variable( deployment_id UUID CONSTRAINT deployment_environment_variable_fk_deployment_id REFERENCES deployment(id), name VARCHAR(256) NOT NULL, value TEXT, secret_id UUID, CONSTRAINT deployment_environment_variable_pk PRIMARY KEY(deployment_id, name), CONSTRAINT deployment_environment_variable_fk_secret_id FOREIGN KEY(secret_id) REFERENCES secret(id), CONSTRAINT deployment_environment_variable_chk_value_secret_id_both_not_null CHECK(value IS NOT NULL OR secret_id IS NOT NULL) );"
-  },
   "c7726ad0cf307f6f0f8e321f914f7caeafbed517d7c3968ed3f17ee82803a720": {
     "describe": {
       "columns": [],
@@ -6866,25 +6866,6 @@
       }
     },
     "query": "CREATE INDEX workspace_idx_super_admin_id ON workspace (super_admin_id);"
-  },
-  "d8e78daab8ed67d721cf715ff31080fb8f2f04df5ad629bf0fa3e38030204eb4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO secret VALUES ($1, $2, $3, NULL);"
   },
   "d9ab542f26064cd3798be53f2c1c85e109ef352cbd69f38ada8f317426cd404c": {
     "describe": {
