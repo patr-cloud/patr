@@ -2524,8 +2524,15 @@ pub async fn get_all_workspaces_for_user(
 		ON
 			workspace.id = workspace_user.workspace_id
 		WHERE
-			workspace.super_admin_id = $1 OR
-			workspace_user.user_id = $1;
+			(
+				workspace.super_admin_id = $1 OR
+				workspace_user.user_id = $1
+			) AND
+			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		user_id as _,
 	)

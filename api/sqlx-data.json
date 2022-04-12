@@ -2215,44 +2215,6 @@
       ]
     }
   },
-  "41d09235a58b1d11032c177b7f00cb474afbddb891fecc9f75a8cb6cc1b2947a": {
-    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE workspace.super_admin_id = $1 OR workspace_user.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "super_admin_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "active",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        false
-      ]
-    }
-  },
   "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
     "query": "UPDATE workspace_domain SET is_verified = $2 WHERE id = $1;",
     "describe": {
@@ -3048,6 +3010,44 @@
         "Left": []
       },
       "nullable": []
+    }
+  },
+  "665a817ea7ecc401873e1d54ad0a8e44bca423cf433e92a6156405c9521ffe44": {
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
     }
   },
   "69511f3caefa1932954750f0e2e3e4ce23462a41d4fd6fa636a3373ca1cde309": {

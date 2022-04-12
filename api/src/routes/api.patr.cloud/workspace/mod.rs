@@ -487,10 +487,22 @@ async fn delete_workspace(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let name = format!("patr-deleted-{}-{}", workspace_id, workspace.name);
+	let name = format!("patr-deleted: {}@{}", workspace_id, workspace.name);
 	let namespace = workspace_id.as_str();
 
 	let config = context.get_state().config.clone();
+
+	let domains = db::get_domains_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let managed_database = db::get_all_database_clusters_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
 
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
@@ -510,42 +522,37 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let domains = db::get_domains_for_workspace(
+	let docker_repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?;
 
-	let managed_database = db::get_all_database_clusters_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
-
-	if deployments.is_empty() &&
-		static_site.is_empty() &&
-		managed_url.is_empty() &&
-		domains.is_empty() &&
-		managed_database.is_empty()
+	if !domains.is_empty() ||
+		!docker_repositories.is_empty() ||
+		!managed_database.is_empty() ||
+		!deployments.is_empty() ||
+		!static_site.is_empty() ||
+		!managed_url.is_empty()
 	{
-		service::delete_kubernetes_namespace(namespace, &config, &request_id)
-			.await?;
+		return Err(Error::empty()
+			.status(424)
+			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
+	}
 
-		db::update_workspace_name(
-			context.get_database_connection(),
-			&workspace_id,
-			&name,
-		)
+	service::delete_kubernetes_namespace(namespace, &config, &request_id)
 		.await?;
 
-		log::trace!("request_id: {} - deleted the workspace", request_id);
-		context.success(DeleteWorkspaceResponse {});
-		Ok(context)
-	} else {
-		Error::as_result()
-			.status(424)
-			.body(error!(CANNOT_DELETE_WORKSPACE).to_string())
-	}
+	db::update_workspace_name(
+		context.get_database_connection(),
+		&workspace_id,
+		&name,
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleted the workspace", request_id);
+	context.success(DeleteWorkspaceResponse {});
+	Ok(context)
 }
 
 /// # Description
