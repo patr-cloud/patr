@@ -203,7 +203,7 @@ async fn migrate_to_secret(
 		"workspace::infrastructure::secret::create",
 		"workspace::infrastructure::secret::delete",
 		"workspace::infrastructure::secret::info",
-		"workspace::infrastructure::secret::list",
+		"workspace::infrastructure::secret::list"
 	]
 	.iter()
 	{
