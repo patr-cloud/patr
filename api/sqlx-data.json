@@ -1971,19 +1971,6 @@
       ]
     }
   },
-  "3617769bafd7eadca0d9e2f748b3c3a1c25d49edab4425862ed1ef69652b9e6f": {
-    "query": "INSERT INTO permission VALUES ($1, $2, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "36a07994042c7ad6bc93e25b0d951c244168fb2df7c6ce76101d979d956f1641": {
     "query": "CREATE TABLE deployment_machine_type( id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY, cpu_count SMALLINT NOT NULL, memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */ );",
     "describe": {
@@ -2537,6 +2524,20 @@
         false,
         false
       ]
+    }
+  },
+  "528ecee15a9b06dcb5a9fed81b5865dd4e3d50217b07a6a1c208c144d9b0f56a": {
+    "query": "INSERT INTO resource_type VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
     }
   },
   "52ac62f4e8c8f6a6938d445572ac9c6e11cd6320407226bc575bf667f438e6c9": {
@@ -3419,19 +3420,6 @@
         true,
         false
       ]
-    }
-  },
-  "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
-    "query": "INSERT INTO resource_type VALUES ($1, $2, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
-      },
-      "nullable": []
     }
   },
   "737d2bec853fc049071993d090838da713f3f24ca972cba74b45aa0318ccdf7d": {
@@ -8124,6 +8112,20 @@
         "Left": [
           "Int2",
           "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fc444cc03cf1dad1c0b2c2d4aa8b27e01becf0b34463b41a7d8f6de93ddf0ace": {
+    "query": "INSERT INTO permission VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar"
         ]
       },
       "nullable": []

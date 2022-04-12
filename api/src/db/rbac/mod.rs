@@ -243,10 +243,11 @@ pub async fn initialize_rbac_post(
 			INSERT INTO
 				permission
 			VALUES
-				($1, $2, NULL);
+				($1, $2, $3);
 			"#,
 			uuid as _,
 			permission,
+			"",
 		)
 		.execute(&mut *connection)
 		.await?;
@@ -261,10 +262,11 @@ pub async fn initialize_rbac_post(
 			INSERT INTO
 				resource_type
 			VALUES
-				($1, $2, NULL);
+				($1, $2, $3);
 			"#,
 			uuid as _,
 			resource_type,
+			"",
 		)
 		.execute(&mut *connection)
 		.await?;
