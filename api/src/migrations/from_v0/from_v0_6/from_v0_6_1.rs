@@ -120,7 +120,6 @@ async fn add_rbac_user_permissions(
 		"workspace::rbac::user::add",
 		"workspace::rbac::user::remove",
 		"workspace::rbac::user::updateRoles",
-		"workspace::delete",
 	]
 	.iter()
 	{
