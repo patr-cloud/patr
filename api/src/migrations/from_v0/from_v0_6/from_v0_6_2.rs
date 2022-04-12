@@ -406,8 +406,7 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 		r#"
 		ALTER TABLE deployment_environment_variable
 			ADD CONSTRAINT deployment_environment_variable_chk_value_secret_id_both_not_null
-				CHECK((value IS NULL OR secret_id IS NULL) 
-				AND NOT (value IS NULL AND secret_id IS NULL));
+				CHECK(value IS NOT NULL OR secret_id IS NOT NULL);
 		"#
 	)
 	.execute(&mut *connection)
