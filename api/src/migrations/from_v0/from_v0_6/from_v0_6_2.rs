@@ -122,6 +122,76 @@ async fn update_roles_permissions(
 	Ok(())
 }
 
+async fn add_rbac_user_permissions(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	for &permission in [
+		"workspace::rbac::user::list",
+		"workspace::rbac::user::add",
+		"workspace::rbac::user::remove",
+		"workspace::rbac::user::updateRoles",
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		};
+		query!(
+			r#"
+			INSERT INTO
+				permission
+			VALUES
+				($1, $2, $3);
+			"#,
+			&uuid,
+			permission,
+			"",
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+	Ok(())
+}
+async fn update_edit_workspace_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			permission
+		SET
+			name = $1
+		WHERE
+			name = $2;
+		"#,
+		"workspace::edit",
+		"workspace::editInfo",
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
 async fn add_delete_workspace_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -203,7 +273,7 @@ async fn migrate_to_secret(
 		"workspace::infrastructure::secret::create",
 		"workspace::infrastructure::secret::delete",
 		"workspace::infrastructure::secret::info",
-		"workspace::infrastructure::secret::list"
+		"workspace::infrastructure::secret::list",
 	]
 	.iter()
 	{
