@@ -4,13 +4,18 @@ use api_models::utils::Uuid;
 
 use crate::{
 	models::{
-		db_mapping::{Permission, Resource, ResourceType, Role, Workspace},
+		db_mapping::{Permission, Resource, ResourceType, Workspace},
 		rbac::{self, WorkspacePermissions},
 	},
 	query,
 	query_as,
 	Database,
 };
+
+mod role;
+mod user;
+
+pub use self::{role::*, user::*};
 
 pub async fn initialize_rbac_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -23,7 +28,7 @@ pub async fn initialize_rbac_pre(
 		CREATE TABLE resource_type(
 			id UUID CONSTRAINT resource_type_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE,
-			description VARCHAR(500)
+			description VARCHAR(500) NOT NULL
 		);
 		"#
 	)
@@ -69,7 +74,7 @@ pub async fn initialize_rbac_pre(
 		CREATE TABLE role(
 			id UUID CONSTRAINT role_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL,
-			description VARCHAR(500),
+			description VARCHAR(500) NOT NULL,
 			owner_id UUID NOT NULL
 				CONSTRAINT role_fk_owner_id REFERENCES workspace(id),
 			CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id)
@@ -84,7 +89,7 @@ pub async fn initialize_rbac_pre(
 		CREATE TABLE permission(
 			id UUID CONSTRAINT permission_pk PRIMARY KEY,
 			name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE,
-			description VARCHAR(500)
+			description VARCHAR(500) NOT NULL
 		);
 		"#
 	)
@@ -438,33 +443,6 @@ pub async fn get_all_workspace_roles_for_user(
 	Ok(workspaces)
 }
 
-pub async fn generate_new_role_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<Uuid, sqlx::Error> {
-	loop {
-		let uuid = Uuid::new_v4();
-
-		let exists = query!(
-			r#"
-			SELECT
-				*
-			FROM
-				role
-			WHERE
-				id = $1;
-			"#,
-			uuid as _
-		)
-		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break Ok(uuid);
-		}
-	}
-}
-
 pub async fn generate_new_permission_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
@@ -553,56 +531,6 @@ pub async fn get_all_permissions(
 	)
 	.fetch_all(&mut *connection)
 	.await
-}
-
-pub async fn get_resource_type_for_resource(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	resource_id: &Uuid,
-) -> Result<Option<ResourceType>, sqlx::Error> {
-	query_as!(
-		ResourceType,
-		r#"
-		SELECT
-			resource_type.id as "id: _",
-			resource_type.name,
-			resource_type.description
-		FROM
-			resource_type
-		INNER JOIN
-			resource
-		ON
-			resource.resource_type_id = resource_type.id
-		WHERE
-			resource.id = $1;
-		"#,
-		resource_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-pub async fn create_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-	name: &str,
-	description: Option<&str>,
-	owner_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		INSERT INTO
-			role
-		VALUES
-			($1, $2, $3, $4);
-		"#,
-		role_id as _,
-		name,
-		description,
-		owner_id as _
-	)
-	.execute(&mut *connection)
-	.await
-	.map(|_| ())
 }
 
 pub async fn create_resource(
@@ -730,257 +658,5 @@ pub async fn delete_resource(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
-}
-
-pub async fn get_all_workspace_roles(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-) -> Result<Vec<Role>, sqlx::Error> {
-	query_as!(
-		Role,
-		r#"
-		SELECT
-			id as "id: _",
-			name,
-			description,
-			owner_id as "owner_id: _"
-		FROM
-			role
-		WHERE
-			owner_id = $1;
-		"#,
-		workspace_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await
-}
-
-pub async fn get_role_by_id(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<Option<Role>, sqlx::Error> {
-	query_as!(
-		Role,
-		r#"
-		SELECT
-			id as "id: _",
-			name,
-			description,
-			owner_id as "owner_id: _"
-		FROM
-			role
-		WHERE
-			id = $1;
-		"#,
-		role_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
-/// For a given role, what permissions does it have and on what resources?
-/// Returns a HashMap of Resource -> Permission[]
-pub async fn get_permissions_on_resources_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
-	let rows = query!(
-		r#"
-		SELECT
-			permission_id as "permission_id: Uuid",
-			resource_id as "resource_id: Uuid",
-			name,
-			description
-		FROM
-			role_permissions_resource
-		INNER JOIN
-			permission
-		ON
-			role_permissions_resource.permission_id = permission.id
-		WHERE
-			role_permissions_resource.role_id = $1;
-		"#,
-		role_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	for row in rows {
-		let permission = Permission {
-			id: row.permission_id,
-			name: row.name,
-			description: row.description,
-		};
-		permissions
-			.entry(row.resource_id)
-			.or_insert_with(Vec::new)
-			.push(permission);
-	}
-
-	Ok(permissions)
-}
-
-/// For a given role, what permissions does it have and on what resources types?
-/// Returns a HashMap of ResourceType -> Permission[]
-pub async fn get_permissions_on_resource_types_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<HashMap<Uuid, Vec<Permission>>, sqlx::Error> {
-	let mut permissions = HashMap::<Uuid, Vec<Permission>>::new();
-	let rows = query!(
-		r#"
-		SELECT
-			permission_id as "permission_id: Uuid",
-			resource_type_id as "resource_type_id: Uuid",
-			name,
-			description
-		FROM
-			role_permissions_resource_type
-		INNER JOIN
-			permission
-		ON
-			role_permissions_resource_type.permission_id = permission.id
-		WHERE
-			role_permissions_resource_type.role_id = $1;
-		"#,
-		role_id as _
-	)
-	.fetch_all(&mut *connection)
-	.await?;
-
-	for row in rows {
-		let permission = Permission {
-			id: row.permission_id,
-			name: row.name,
-			description: row.description,
-		};
-		permissions
-			.entry(row.resource_type_id)
-			.or_insert_with(Vec::new)
-			.push(permission);
-	}
-
-	Ok(permissions)
-}
-
-pub async fn remove_all_permissions_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			role_permissions_resource
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			role_permissions_resource_type
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn insert_resource_permissions_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-	resource_permissions: &HashMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
-	for (resource_id, permissions) in resource_permissions {
-		for permission_id in permissions {
-			query!(
-				r#"
-				INSERT INTO
-					role_permissions_resource
-				VALUES
-					($1, $2, $3);
-				"#,
-				role_id as _,
-				permission_id as _,
-				resource_id as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-	Ok(())
-}
-
-pub async fn insert_resource_type_permissions_for_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-	resource_type_permissions: &HashMap<Uuid, Vec<Uuid>>,
-) -> Result<(), sqlx::Error> {
-	for (resource_id, permissions) in resource_type_permissions {
-		for permission_id in permissions {
-			query!(
-				r#"
-				INSERT INTO
-					role_permissions_resource_type
-				VALUES
-					($1, $2, $3);
-				"#,
-				role_id as _,
-				permission_id as _,
-				resource_id as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
-	}
-	Ok(())
-}
-
-pub async fn delete_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	remove_all_permissions_for_role(&mut *connection, role_id).await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			role
-		WHERE
-			id = $1;
-		"#,
-		role_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn remove_all_users_from_role(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	role_id: &Uuid,
-) -> Result<(), sqlx::Error> {
-	query!(
-		r#"
-		DELETE FROM
-			workspace_user
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
 	Ok(())
 }

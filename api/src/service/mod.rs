@@ -11,7 +11,6 @@ mod infrastructure;
 mod metrics;
 mod notifier;
 mod rabbitmq;
-mod rbac;
 mod user;
 mod utils;
 mod workspace;
@@ -32,7 +31,6 @@ pub use self::{
 	metrics::*,
 	notifier::*,
 	rabbitmq::*,
-	rbac::*,
 	user::*,
 	utils::*,
 	workspace::*,

@@ -34,7 +34,7 @@ pub async fn migrate(
 }
 
 /// # Description
-/// The function is used to get a list of all 0.6.0 migrations to migrate the
+/// The function is used to get a list of all 0.6.x migrations to migrate the
 /// database from
 ///
 /// # Return
