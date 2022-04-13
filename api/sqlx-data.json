@@ -672,7 +672,7 @@
       "nullable": [
         false,
         false,
-        true
+        false
       ]
     }
   },
@@ -975,38 +975,6 @@
         false,
         false,
         false
-      ]
-    }
-  },
-  "1a38781f65e4110259d87dfbd32e22fa70ae545ddfd608ce5c48cb5820dc8c1b": {
-    "query": "SELECT resource_type.id as \"id: _\", resource_type.name, resource_type.description FROM resource_type INNER JOIN resource ON resource.resource_type_id = resource_type.id WHERE resource.id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name",
-          "type_info": "Varchar"
-        },
-        {
-          "ordinal": 2,
-          "name": "description",
-          "type_info": "Varchar"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        true
       ]
     }
   },
@@ -1486,6 +1454,38 @@
       ]
     }
   },
+  "265d098fb12a72689196f941ca78205cdf6d8d45bfcbacbd2cc1f637da0baa4e": {
+    "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "user_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "role_id: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );",
     "describe": {
@@ -1502,6 +1502,19 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2a338d8661b637bcd06f1f98e6fb4128d9d922f739630f04204c7817dd6071b4": {
+    "query": "UPDATE role SET name = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
       },
       "nullable": []
     }
@@ -1953,36 +1966,13 @@
       "nullable": [
         false,
         false,
-        true,
+        false,
         false
       ]
     }
   },
-  "3617769bafd7eadca0d9e2f748b3c3a1c25d49edab4425862ed1ef69652b9e6f": {
-    "query": "INSERT INTO permission VALUES ($1, $2, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "36a07994042c7ad6bc93e25b0d951c244168fb2df7c6ce76101d979d956f1641": {
     "query": "CREATE TABLE deployment_machine_type( id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY, cpu_count SMALLINT NOT NULL, memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */ );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "36e2cd3a54f2c51567701855c0d88510ff581f4e7ee1278ac9134eaf2b289806": {
-    "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2018,6 +2008,16 @@
   },
   "373f49a79215c14fff9b20f486d990ad59e47d670c7c95e11b2a205a3ff891cf": {
     "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "37fda78be3fc16338fc75ea255eae29b98d91a1d3a1ca38e09eec11c7948bbee": {
+    "query": "CREATE TABLE resource_type( id UUID CONSTRAINT resource_type_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT resource_type_uq_name UNIQUE, description VARCHAR(500) NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -2211,44 +2211,6 @@
         true,
         true,
         true,
-        false
-      ]
-    }
-  },
-  "41d09235a58b1d11032c177b7f00cb474afbddb891fecc9f75a8cb6cc1b2947a": {
-    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE workspace.super_admin_id = $1 OR workspace_user.user_id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "super_admin_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "active",
-          "type_info": "Bool"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
         false
       ]
     }
@@ -2522,8 +2484,22 @@
       "nullable": [
         false,
         false,
-        true
+        false
       ]
+    }
+  },
+  "528ecee15a9b06dcb5a9fed81b5865dd4e3d50217b07a6a1c208c144d9b0f56a": {
+    "query": "INSERT INTO resource_type VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
     }
   },
   "52ac62f4e8c8f6a6938d445572ac9c6e11cd6320407226bc575bf667f438e6c9": {
@@ -3036,6 +3012,44 @@
       "nullable": []
     }
   },
+  "665a817ea7ecc401873e1d54ad0a8e44bca423cf433e92a6156405c9521ffe44": {
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+  },
   "69511f3caefa1932954750f0e2e3e4ce23462a41d4fd6fa636a3373ca1cde309": {
     "query": "INSERT INTO docker_registry_repository_tag VALUES ($1, $2, $3, $4) ON CONFLICT (repository_id, tag) DO UPDATE SET manifest_digest = $3, last_updated = $4;",
     "describe": {
@@ -3406,19 +3420,6 @@
         true,
         false
       ]
-    }
-  },
-  "72c096aa3b93c9ff181107d858a3f414083391d839451f7acf0e5fe828acbdc0": {
-    "query": "INSERT INTO resource_type VALUES ($1, $2, NULL);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Varchar"
-        ]
-      },
-      "nullable": []
     }
   },
   "737d2bec853fc049071993d090838da713f3f24ca972cba74b45aa0318ccdf7d": {
@@ -3900,16 +3901,6 @@
       "nullable": []
     }
   },
-  "81d934904f34511090bc755c227dbc456c2f93c00de1ad2c3ac6b1921d48214f": {
-    "query": "CREATE TABLE role( id UUID CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500), owner_id UUID NOT NULL CONSTRAINT role_fk_owner_id REFERENCES workspace(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "8318ccd0ab8b84917e77f226fca33304a5d4df55b5fd0dda1eec1449aa63a4f4": {
     "query": "SELECT * FROM workspace_audit_log WHERE id = $1;",
     "describe": {
@@ -4024,7 +4015,7 @@
       "nullable": [
         false,
         false,
-        true
+        false
       ]
     }
   },
@@ -4284,16 +4275,6 @@
       "nullable": [
         null
       ]
-    }
-  },
-  "927bf61ea95f553c57c6baf13b645a0d62e1b3c61c082e9f424dae2d534d44b0": {
-    "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
     }
   },
   "92b0392819d776b7f7f829b44a8f9c1ab3be7b05599518d662ee53e8155d42a8": {
@@ -4629,6 +4610,16 @@
       ]
     }
   },
+  "9d805b746f71afeaa409450ca91c0ae52f6ff41e82fdd9610a4ff702bb4c36e7": {
+    "query": "CREATE TABLE permission( id UUID CONSTRAINT permission_pk PRIMARY KEY, name VARCHAR(100) NOT NULL CONSTRAINT permission_uq_name UNIQUE, description VARCHAR(500) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9e3736b6e5d9a9db4281d8ce42a2fa507275cbb428769ab441069341dc304212": {
     "query": "CREATE TABLE role_permissions_resource( role_id UUID CONSTRAINT role_permissions_resource_fk_role_id REFERENCES role(id), permission_id UUID CONSTRAINT role_permissions_resource_fk_permission_id REFERENCES permission(id), resource_id UUID CONSTRAINT role_permissions_resource_fk_resource_id REFERENCES resource(id), CONSTRAINT role_permissions_resource_pk PRIMARY KEY(role_id, permission_id, resource_id) );",
     "describe": {
@@ -4871,7 +4862,7 @@
       "nullable": [
         false,
         false,
-        true
+        false
       ]
     }
   },
@@ -6177,6 +6168,29 @@
       "nullable": []
     }
   },
+  "bd73926c46a303ad6d336a7586c5d3511a55bad99885d3aa77c7273a55f115cb": {
+    "query": "DELETE FROM workspace_user WHERE workspace_id = $1 AND user_id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "bd8ba3216d930577a5a5c3b3094e7ca23e0585dc678c8357809b3a4ca616e493": {
+    "query": "CREATE TABLE role( id UUID CONSTRAINT role_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL, owner_id UUID NOT NULL CONSTRAINT role_fk_owner_id REFERENCES workspace(id), CONSTRAINT role_uq_name_owner_id UNIQUE(name, owner_id) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "bdaeb51981c627273df25d9f429211412a10aecdf420ea483c71fa45c480a52f": {
     "query": "CREATE TYPE MANAGED_DATABASE_ENGINE AS ENUM( 'postgres', 'mysql' );",
     "describe": {
@@ -6276,7 +6290,7 @@
       "nullable": [
         false,
         false,
-        true,
+        false,
         false
       ]
     }
@@ -6861,6 +6875,19 @@
       "nullable": []
     }
   },
+  "de52e22ada9f97bf2ba83615fd4a10e00069984fe10de0ffc5c6d36fd1d4e121": {
+    "query": "UPDATE role SET description = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "de74ae7f29c027a8f87b7ddea32144fd590d3e4591e17fdc8f5fc80afcf1f299": {
     "query": "ALTER TABLE docker_registry_repository ADD CONSTRAINT docker_registry_repository_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id);",
     "describe": {
@@ -6882,6 +6909,20 @@
           "Uuid",
           "Text",
           "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "deeb5ac6620a16041f76fdbc16d40d8d468d5275d16c74a22d684ab79215a599": {
+    "query": "INSERT INTO workspace_user( user_id, workspace_id, role_id ) VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
         ]
       },
       "nullable": []
@@ -6942,7 +6983,7 @@
       "nullable": [
         false,
         false,
-        true,
+        false,
         false
       ]
     }
@@ -7839,7 +7880,7 @@
         false,
         false,
         false,
-        true
+        false
       ]
     }
   },
@@ -7897,7 +7938,7 @@
         false,
         false,
         false,
-        true
+        false
       ]
     }
   },
@@ -8071,6 +8112,20 @@
         "Left": [
           "Int2",
           "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "fc444cc03cf1dad1c0b2c2d4aa8b27e01becf0b34463b41a7d8f6de93ddf0ace": {
+    "query": "INSERT INTO permission VALUES ($1, $2, $3);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Varchar",
+          "Varchar"
         ]
       },
       "nullable": []

@@ -25,14 +25,12 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 6, 0) => from_v0_6_0::migrate(&mut *connection, config).await?,
-		(0, 6, 1) => from_v0_6_1::migrate(&mut *connection, config).await?,
+		(0, 6, 0) => from_v0_6_0::migrate(&mut *connection, config).await,
+		(0, 6, 1) => from_v0_6_1::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
 	}
-
-	Ok(())
 }
 
 /// # Description

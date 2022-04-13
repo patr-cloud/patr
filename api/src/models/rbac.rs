@@ -114,11 +114,25 @@ pub mod permissions {
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
 		}
 
-		pub const VIEW_ROLES: &str = "workspace::viewRoles";
-		pub const CREATE_ROLE: &str = "workspace::createRole";
-		pub const EDIT_ROLE: &str = "workspace::editRole";
-		pub const DELETE_ROLE: &str = "workspace::deleteRole";
-		pub const EDIT_INFO: &str = "workspace::editInfo";
+		pub mod rbac {
+			pub mod roles {
+				pub const LIST: &str = "workspace::rbac::role::list";
+				pub const CREATE: &str = "workspace::rbac::role::create";
+				pub const EDIT: &str = "workspace::rbac::role::edit";
+				pub const DELETE: &str = "workspace::rbac::role::delete";
+			}
+
+			pub mod user {
+				pub const LIST: &str = "workspace::rbac::user::list";
+				pub const ADD: &str = "workspace::rbac::user::add";
+				pub const REMOVE: &str = "workspace::rbac::user::remove";
+				pub const UPDATE_ROLES: &str =
+					"workspace::rbac::user::updateRoles";
+			}
+		}
+
+		pub const EDIT: &str = "workspace::edit";
+		pub const DELETE: &str = "workspace::delete";
 	}
 }
 
