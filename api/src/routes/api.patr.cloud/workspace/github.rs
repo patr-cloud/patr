@@ -246,7 +246,7 @@ async fn configure_github_build_steps_static_site(
 		framework, // node, or for now nothing else
 		build_command,
 		publish_dir,
-		node_version,
+		version,
 		..
 	} = context
 		.get_body_as()
@@ -266,7 +266,7 @@ async fn configure_github_build_steps_static_site(
 			repo_name,
 			build_command,
 			publish_dir,
-			node_version,
+			version,
 			user_agent,
 		)
 		.await?;
@@ -299,7 +299,7 @@ async fn configure_github_build_steps_deployment(
 		repo_name,
 		build_command,
 		publish_dir,
-		node_version,
+		version,
 		framework,
 		..
 	} = context
@@ -318,7 +318,29 @@ async fn configure_github_build_steps_deployment(
 			repo_name,
 			build_command,
 			publish_dir,
-			node_version,
+			version,
+			user_agent,
+		)
+		.await?;
+	} else if framework == "django" {
+		service::github_actions_for_django_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			version,
+			user_agent,
+		)
+		.await?;
+	} else if framework == "flask" {
+		service::github_actions_for_flask_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			version,
 			user_agent,
 		)
 		.await?;
