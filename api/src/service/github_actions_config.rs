@@ -804,7 +804,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     name: Build with Maven
-    run: mvn -B package --file pom.xml
+    run: mvn clean install
 **********************************************************************************************************
 - run: echo 
 "
