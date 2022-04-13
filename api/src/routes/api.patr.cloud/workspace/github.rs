@@ -243,7 +243,7 @@ async fn configure_github_build_steps_static_site(
 		access_token,
 		owner_name,
 		repo_name,
-		framework, // node, or for now nothing else
+		framework,
 		build_command,
 		publish_dir,
 		version,
@@ -335,6 +335,39 @@ async fn configure_github_build_steps_deployment(
 		.await?;
 	} else if framework == "flask" {
 		service::github_actions_for_flask_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			version,
+			user_agent,
+		)
+		.await?;
+	} else if framework == "spring" {
+		service::github_actions_for_spring_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			version,
+			user_agent,
+		)
+		.await?;
+	} else if framework == "angular" {
+		service::github_actions_for_angular_deployment(
+			access_token,
+			owner_name,
+			repo_name,
+			build_command,
+			publish_dir,
+			version,
+			user_agent,
+		)
+		.await?;
+	} else if framework == "ruby on rails" {
+		service::github_actions_for_ror_deployment(
 			access_token,
 			owner_name,
 			repo_name,
