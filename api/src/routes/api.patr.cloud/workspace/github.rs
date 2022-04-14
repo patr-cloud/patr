@@ -356,7 +356,7 @@ async fn configure_github_build_steps_deployment(
 		)
 		.await?;
 	} else if framework == "angular" {
-		service::github_actions_for_angular_deployment(
+		service::github_actions_for_angular_static_site(
 			access_token,
 			owner_name,
 			repo_name,
@@ -366,8 +366,8 @@ async fn configure_github_build_steps_deployment(
 			user_agent,
 		)
 		.await?;
-	} else if framework == "ruby on rails" {
-		service::github_actions_for_ror_deployment(
+	} else if framework == "rust" {
+		service::github_actions_for_rust_deployment(
 			access_token,
 			owner_name,
 			repo_name,
