@@ -921,7 +921,7 @@ pub async fn github_actions_for_angular_deployment(
 	repo_name: String,
 	_build_command: String,
 	_publish_dir: String,
-	_version: String,
+	version: String,
 	user_agent: String,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
@@ -951,34 +951,31 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+        branch: [main]
 
 jobs:
     build:
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-steps:
-- uses: actions/checkout@v3
-- run: echo 
-"
-FROM python3
+        strategy:
+        matrix: 
+            node-version: {version}
 
-WORKDIR /app
+        steps:
+        - uses: actions/checkout@v3
+        - name: using node ${{matrix.node-version}}
+          uses: actions/setup-node@v2
+          with: 
+              node-version: ${{matrix.node-version}}
+              cache: 'npm'
+        - run: npm install
+        - run: npm run test --if-present
 
-COPY . .
-
-RUN pip install -r requirements.txt
-
-COPY . .
-
-CMD ["python3", "app.py"]
-" > Dockerfile
-
-- name: build docker image from Dockerfile
-    run: |
-    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-    echo TODO
+        - name: build docker image from Dockerfile
+	      run: |
+	      docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
+	      echo TODO
 "#
 				),
 			)
@@ -1010,34 +1007,31 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+        branch: [main]
 
-jobs:
-    build:
+    jobs:
+        build:
 
-    runs-on: ubuntu-latest
-	
-steps:
-- uses: actions/checkout@v3
-- run: echo 
-"
-FROM python3
+        runs-on: ubuntu-latest
 
-WORKDIR /app
+        strategy:
+            matrix: 
+                node-version: {version}
 
-COPY . .
+        steps:
+        - uses: actions/checkout@v3
+        - name: using node ${{matrix.node-version}}
+          uses: actions/setup-node@v2
+          with: 
+              node-version: ${{matrix.node-version}}
+              cache: 'npm'
+        - run: npm install
+        - run: npm run test --if-present
 
-RUN pip install -r requirements.txt
-
-COPY . .
-
-CMD ["python3", "app.py"]
-" > Dockerfile
-
-- name: build docker image from Dockerfile
-    run: |
-    docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-    echo TODO
+        - name: build docker image from Dockerfile
+          run: |
+            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
+            echo TODO
 "#
 				),
 				sha,
