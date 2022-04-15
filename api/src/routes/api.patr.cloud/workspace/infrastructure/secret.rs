@@ -1,8 +1,8 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::infrastructure::secret::{
-		CreateSecretRequest,
-		CreateSecretResponse,
+		CreateSecretInWorkspaceRequest,
+		CreateSecretInWorkspaceResponse,
 		DeleteSecretResponse,
 		ListSecretsResponse,
 		Secret,
@@ -157,7 +157,6 @@ async fn list_secrets(
 	.map(|secret| Secret {
 		id: secret.id,
 		name: secret.name,
-		deployment_id: secret.deployment_id,
 	})
 	.collect();
 
@@ -174,12 +173,7 @@ async fn create_secret(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let CreateSecretRequest {
-		name,
-		secret,
-		deployment_id,
-		..
-	} = context
+	let CreateSecretInWorkspaceRequest { name, value, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -190,16 +184,16 @@ async fn create_secret(
 	let id = service::create_new_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		deployment_id.as_ref(),
+		None,
 		&name,
-		&secret,
+		&value,
 		&config,
 		&request_id,
 	)
 	.await?;
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
-	context.success(CreateSecretResponse { id });
+	context.success(CreateSecretInWorkspaceResponse { id });
 	Ok(context)
 }
 

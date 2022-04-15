@@ -16,12 +16,12 @@ pub async fn migrate(
 	add_rbac_user_permissions(&mut *connection, config).await?;
 	update_edit_workspace_permission(&mut *connection, config).await?;
 	add_delete_workspace_permission(&mut *connection, config).await?;
-	add_secrets(&mut *connection, config).await;
+	add_secrets(&mut *connection, config).await?;
 	add_secret_id_column_to_deployment_environment_variable(
 		&mut *connection,
 		config,
 	)
-	.await;
+	.await?;
 
 	Ok(())
 }
@@ -357,7 +357,7 @@ async fn add_secrets(
 
 async fn add_secret_id_column_to_deployment_environment_variable(
 	connection: &mut <Database as sqlx::Database>::Connection,
-	config: &Settings,
+	_config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

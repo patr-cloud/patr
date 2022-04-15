@@ -70,32 +70,6 @@ pub async fn get_all_secrets_in_workspace(
 	.await
 }
 
-pub async fn get_secrets_for_deployment(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-) -> Result<Vec<Secret>, sqlx::Error> {
-	query_as!(
-		Secret,
-		r#"
-		SELECT
-			id as "id: _",
-			name as "name: _",
-			workspace_id as "workspace_id: _",
-			deployment_id as "deployment_id: _"
-		FROM
-			secret
-		WHERE
-			workspace_id = $1 AND
-			deployment_id = $2;
-		"#,
-		workspace_id as _,
-		deployment_id as _,
-	)
-	.fetch_all(connection)
-	.await
-}
-
 pub async fn create_new_secret_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	secret_id: &Uuid,
