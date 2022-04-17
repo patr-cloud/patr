@@ -293,6 +293,11 @@ async fn configure_github_build_steps_deployment(
 		request_id,
 	);
 
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let ConfigureDeploymentBuildStepRequest {
 		access_token,
 		owner_name,
@@ -301,6 +306,10 @@ async fn configure_github_build_steps_deployment(
 		publish_dir,
 		version,
 		framework,
+		username,
+		deployment_id,
+		docker_repo_name,
+		tag,
 		..
 	} = context
 		.get_body_as()
@@ -311,48 +320,74 @@ async fn configure_github_build_steps_deployment(
 		.get_header("User-Agent")
 		.unwrap_or_else(|| owner_name.clone());
 
+	let workspace = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	let workspace_name = workspace.name;
+
 	if framework == "node" {
 		service::github_actions_for_node_deployment(
 			access_token,
 			owner_name,
-			repo_name,
+			&repo_name,
 			build_command,
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			&tag,
+			&workspace_name,
+			&docker_repo_name,
 		)
 		.await?;
 	} else if framework == "django" {
 		service::github_actions_for_django_deployment(
 			access_token,
 			owner_name,
-			repo_name,
+			&repo_name,
 			build_command,
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			&tag,
+			&workspace_name,
+			&docker_repo_name,
 		)
 		.await?;
 	} else if framework == "flask" {
 		service::github_actions_for_flask_deployment(
 			access_token,
 			owner_name,
-			repo_name,
+			&repo_name,
 			build_command,
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			&tag,
+			&workspace_name,
+			&docker_repo_name,
 		)
 		.await?;
 	} else if framework == "spring" {
 		service::github_actions_for_spring_deployment(
 			access_token,
 			owner_name,
-			repo_name,
+			&repo_name,
 			build_command,
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			&tag,
+			&workspace_name,
+			&docker_repo_name,
 		)
 		.await?;
 	} else if framework == "angular" {
@@ -370,11 +405,15 @@ async fn configure_github_build_steps_deployment(
 		service::github_actions_for_rust_deployment(
 			access_token,
 			owner_name,
-			repo_name,
+			&repo_name,
 			build_command,
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			&tag,
+			&workspace_name,
+			&docker_repo_name,
 		)
 		.await?;
 	}

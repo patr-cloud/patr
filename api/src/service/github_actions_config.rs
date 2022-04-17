@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use octocrab::{models::repos::GitUser, Octocrab};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
@@ -404,11 +405,15 @@ on:
 pub async fn github_actions_for_node_deployment(
 	access_token: String,
 	owner_name: String,
-	repo_name: String,
-	build_command: String,
+	repo_name: &str,
+	_build_command: String,
 	_publish_dir: String,
 	version: String,
 	user_agent: String,
+	username: String,
+	tag: &str,
+	workspace_name: &str,
+	docker_repo_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -436,7 +441,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -445,36 +450,36 @@ jobs:
 
         strategy:
             matrix: 
-            node-version: {version}
-	
+                node-version: [{version}]
+
         steps:
         - uses: actions/checkout@v3
         - name: Using node ${{matrix.node-version}}
-              uses: actions/setup-node@v2
-              with: 
-              node-version: ${{matrix.node-version}}
-              cache: 'npm'
+          uses: actions/setup-node@v2
+          with: 
+            node-version: ${{matrix.node-version}}
+            cache: 'npm'
         - run: npm install
-        - run: npm run test --if-present
-
         - name: Creating a Dockerfile
-          run: |
+        - run: |
             echo "
-FROM node
-WORKDIR /app
-COPY package*.json .
-RUN npm install
-COPY . .
-EXPOSE 8000
-CMD ["node", "server"]
-" > Dockerfile
+            FROM node
+            WORKDIR /app
+            COPY package*.json .
+            RUN npm install
+            COPY . .
+            EXPOSE 8000
+            CMD ["node", "server"]
+            " > Dockerfile
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-		  run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+        - run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
@@ -514,21 +519,20 @@ jobs:
 
         strategy:
             matrix: 
-            node-version: {version}
-	
+            node-version: [{version}]
+
         steps:
         - uses: actions/checkout@v3
         - name: using node ${{matrix.node-version}}
               uses: actions/setup-node@v2
               with: 
-              node-version: ${{matrix.node-version}}
-              cache: 'npm'
+                node-version: ${{matrix.node-version}}
+                cache: 'npm'
         - run: npm install
-        - run: {build_command}
         - run: npm run test --if-present
 
         - name: Creating a Dockerfile
-          run: |
+        - run: |
             echo "
 FROM node
 WORKDIR /app
@@ -539,12 +543,14 @@ EXPOSE 8000
 CMD ["node", "server"]
 " > Dockerfile
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+        - run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 				sha,
@@ -570,11 +576,15 @@ CMD ["node", "server"]
 pub async fn github_actions_for_django_deployment(
 	access_token: String,
 	owner_name: String,
-	repo_name: String,
+	repo_name: &str,
 	_build_command: String,
 	_publish_dir: String,
 	version: String,
 	user_agent: String,
+	username: String,
+	tag: &str,
+	workspace_name: &str,
+	docker_repo_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -641,12 +651,14 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+          run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-         run: | 
-           docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-           echo TODO
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 			)
@@ -715,13 +727,15 @@ EXPOSE 8888
 CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
 
-      - name: Installing patr-cli
-        run: apt install patr-cli -y
+        - name: Installing patr-cli
+          run: snap install patr -y
 
-      - name: Build image from Dockerfile and push to patr-registry
-        run: | 
-          docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-          echo TODO
+        - name: Build image from Dockerfile and push to patr-registry
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 				sha,
@@ -747,11 +761,15 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 pub async fn github_actions_for_flask_deployment(
 	access_token: String,
 	owner_name: String,
-	repo_name: String,
+	repo_name: &str,
 	_build_command: String,
 	_publish_dir: String,
 	version: String,
 	user_agent: String,
+	username: String,
+	tag: &str,
+	workspace_name: &str,
+	docker_repo_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -813,12 +831,14 @@ CMD ["python3", "app.py"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: apt install patr-cli -y
-        
+          run: snap install patr -y
+
         - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 			)
@@ -883,12 +903,14 @@ CMD ["python3", "app.py"]
 " > Dockerfile
   
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+          run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 				sha,
@@ -914,11 +936,15 @@ CMD ["python3", "app.py"]
 pub async fn github_actions_for_spring_deployment(
 	access_token: String,
 	owner_name: String,
-	repo_name: String,
+	repo_name: &str,
 	_build_command: String,
 	_publish_dir: String,
 	version: String,
 	user_agent: String,
+	username: String,
+	tag: &str,
+	workspace_name: &str,
+	docker_repo_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -975,12 +1001,14 @@ ENTRYPOINT ["java", "-jar", "<build-name>"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+          run: snap install patr -y
 
-        - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+	  - name: Build image from Dockerfile and push to patr-registry
+        run: |
+          docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          docker build . -t {username}/deployment
+          docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+          docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 			)
@@ -1031,20 +1059,22 @@ jobs:
           run: mvn package
         - name: Create a Dockerfile
           run: echo 
-  "
-  FROM openjdk
-  WORKDIR .
-  ADD target/<build-name>
-  ENTRYPOINT ["java", "-jar", "<build-name>"]
-  " > Dockerfile
+"
+FROM openjdk
+WORKDIR .
+ADD target/<build-name>
+ENTRYPOINT ["java", "-jar", "<build-name>"]
+" > Dockerfile
   
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+          run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 				sha,
@@ -1070,11 +1100,15 @@ jobs:
 pub async fn github_actions_for_rust_deployment(
 	access_token: String,
 	owner_name: String,
-	repo_name: String,
+	repo_name: &str,
 	_build_command: String,
 	_publish_dir: String,
 	_version: String,
 	user_agent: String,
+	username: String,
+	tag: &str,
+	workspace_name: &str,
+	docker_repo_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -1123,12 +1157,15 @@ jobs:
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: apt install patr-cli -y
-
+          run: snap install patr -y
+	  
         - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+          run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            cd /app
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 			)
@@ -1180,12 +1217,15 @@ jobs:
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: apt install patr-cli -y
+          run: snap install patr -y
 
-        - name: Build image from Dockerfile and push to patr-registry
-          run: | 
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
+          - name: Build image from Dockerfile and push to patr-registry
+          run: |
+          docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          cd /app
+          docker build . -t {username}/deployment
+          docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
+          docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
 "#
 				),
 				sha,
