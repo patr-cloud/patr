@@ -247,6 +247,8 @@ async fn configure_github_build_steps_static_site(
 		build_command,
 		publish_dir,
 		version,
+		username,
+		static_site_id,
 		..
 	} = context
 		.get_body_as()
@@ -257,8 +259,6 @@ async fn configure_github_build_steps_static_site(
 		.get_header("User-Agent")
 		.unwrap_or_else(|| owner_name.clone());
 
-	// for now only going forward with node and vanilla
-	// will add other frameworks support
 	if framework == "node" {
 		service::github_actions_for_node_static_site(
 			access_token,
@@ -268,6 +268,8 @@ async fn configure_github_build_steps_static_site(
 			publish_dir,
 			version,
 			user_agent,
+			username,
+			static_site_id,
 		)
 		.await?;
 	} else {

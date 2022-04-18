@@ -1,3 +1,4 @@
+use api_models::utils::Uuid;
 use eve_rs::AsError;
 use octocrab::{models::repos::GitUser, Octocrab};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
@@ -11,9 +12,11 @@ pub async fn github_actions_for_node_static_site(
 	owner_name: String,
 	repo_name: String,
 	build_command: String,
-	_publish_dir: String,
+	publish_dir: String,
 	version: String,
 	user_agent: String,
+	username: String,
+	static_site_id: Uuid,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -45,34 +48,37 @@ name: Github action for your static site
 
 on:
     push:
-    branch: [main]
+        branches: [master]
 
 jobs:
     build:
 
         runs-on: ubuntu-latest
 
-        strategy:
-        matrix: 
-          node-version: {version}
-
         steps:
         - uses: actions/checkout@v3
-        - name: using node ${{matrix.node-version}}
-            uses: actions/setup-node@v2
-            with: 
-            node-version: ${{matrix.node-version}}
+        - name: using node {version}
+          uses: actions/setup-node@v2
+          with: 
+            node-version: {version}
             cache: 'npm'
         - run: npm install
-        - run: npm run test --if-present
         - run: {build_command}
 
         - name: Zip build folder
-          run: <todo>
+          run: |
+            cd {publish_dir}
+            zip -r static_build.zip *
+
+        - name: Install patr-cli and push zip file to patr
+          run: |
+            sudo snap install --edge patr
+            patr login -u {username} -p ${{{{ secrets.PATR_PASSWORD }}}}
+            patr site upload --name {static_site_id} --file static_build.zip
 "#
 					),
 				)
-				.branch("main")
+				.branch("master")
 				.commiter(GitUser {
 					name: "Patr Configuration".to_string(),
 					email: "hello@patr.cloud".to_string(),
@@ -124,10 +130,15 @@ jobs:
         - run: {build_command}
         
         - name: Zip build folder
-          run: <todo>
+          run: |
+            cd {publish_dir}
+            zip -r static_build.zip *
 
-        - name: Ship
-		  run: <ship zip folder>
+        - name: Install patr-cli and push zip file to patr
+          run: |
+            sudo snap install --edge patr
+            patr login -u {username} -p ${{{{ secrets.PATR_PASSWORD }}}}
+            patr site upload --name {static_site_id} --file static_build.zip
 "#
 					),
 					sha,
