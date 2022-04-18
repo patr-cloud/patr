@@ -201,10 +201,10 @@ pub fn create_sub_app(
 		],
 	);
 	app.get(
-		"/:username/info",
+		"/:userId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
 	app
@@ -327,11 +327,11 @@ async fn get_user_info(
 }
 
 /// # Description
-/// This function is used to get user info through username
+/// This function is used to get user info through userId
 /// required inputs:
 /// ```
 /// {
-///    username:
+///    userId:
 /// }
 /// ```
 ///
@@ -363,15 +363,15 @@ async fn get_user_info(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_user_info_by_username(
+async fn get_user_info_by_user_id(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let username = context
-		.get_param(request_keys::USERNAME)
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let User {
 		id,
@@ -381,7 +381,7 @@ async fn get_user_info_by_username(
 		location,
 		bio,
 		..
-	} = db::get_user_by_username(context.get_database_connection(), &username)
+	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
 		.status(400)
 		.body(error!(PROFILE_NOT_FOUND).to_string())?;
