@@ -72,7 +72,7 @@ jobs:
 "#
 					),
 				)
-				.branch("master")
+				.branch("main")
 				.commiter(GitUser {
 					name: "Patr Configuration".to_string(),
 					email: "hello@patr.cloud".to_string(),
@@ -132,7 +132,7 @@ jobs:
 					),
 					sha,
 				)
-				.branch("master")
+				.branch("main")
 				.commiter(GitUser {
 					name: "Patr Configuration".to_string(),
 					email: "hello@patr.cloud".to_string(),
@@ -298,50 +298,50 @@ pub async fn github_actions_for_node_deployment(
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
-      branches: [main]
+      branches: main
 
 jobs:
     build:
 
         runs-on: ubuntu-latest
-
         strategy:
             matrix: 
                 node-version: [{version}]
-
         steps:
         - uses: actions/checkout@v3
-        - name: Using node ${{matrix.node-version}}
+        - name: Using node {version}
           uses: actions/setup-node@v2
           with: 
-          node-version: ${{matrix.node-version}}
-          cache: 'npm'
+            node-version: {version}
         - run: npm install
         - name: Creating a Dockerfile
-        - run: |
+          run: |
             echo "
-            FROM node
+            FROM node:{version}
             WORKDIR /app
-            COPY package*.json .
-            RUN npm install
             COPY . .
-            EXPOSE 8000
+            RUN npm install
             CMD ["node", "server"]
             " > Dockerfile
 
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
+
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
 "#
 				),
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -355,6 +355,7 @@ jobs:
 		return Ok(());
 	} else if response.status() == 200 {
 		let body = response.json::<GithubResponseBody>().await?;
+		println!("{:#?}", body);
 		let sha = body.sha;
 		octocrab
 			.repos(owner_name, repo_name)
@@ -365,53 +366,51 @@ jobs:
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
-      branches: [main]
+        branches: main
 
 jobs:
     build:
 
-        runs-on: ubuntu-latest
-
-        strategy:
+         runs-on: ubuntu-latest
+         strategy:
             matrix: 
-              node-version: [{version}]
-
-        steps:
-        - uses: actions/checkout@v3
-        - name: using node ${{matrix.node-version}}
-            uses: actions/setup-node@v2
-            with: 
-            node-version: ${{matrix.node-version}}
-            cache: 'npm'
-        - run: npm install
-        - run: npm run test --if-present
-
-        - name: Creating a Dockerfile
-        - run: |
+                node-version: [{version}]
+         steps:
+         - uses: actions/checkout@v3
+         - name: Using node {version}
+           uses: actions/setup-node@v2
+           with: 
+            node-version: {version}
+         - run: npm install
+         - name: Creating a Dockerfile
+           run: |
             echo "
-            FROM node
+            FROM node:{version}
             WORKDIR /app
-            COPY package*.json .
-            RUN npm install
             COPY . .
-            EXPOSE 8000
+            RUN npm install
             CMD ["node", "server"]
             " > Dockerfile
 
-        - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+         - name: Docker login
+           uses: docker/login-action@v1 
+           with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
+
+         - name: Build image from Dockerfile and push to patr-registry
+           run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
 "#
 				),
 				sha,
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -515,7 +514,7 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 "#
 				),
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -590,7 +589,7 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 				),
 				sha,
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -644,52 +643,54 @@ pub async fn github_actions_for_flask_deployment(
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
       branches: [main]
 
 jobs:
     build:
-
         runs-on: ubuntu-latest
-	    strategy:
-            max-parallel: 4
-            matrix:
-                python-version: {version}
-	
+
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python-version }}
-            uses: actions/setup-python@v3
-            with:
-            python-version: ${{ matrix.python-version }}
+        - name: Set up Python {version}
+          uses: actions/setup-python@v3
+          with:
+            python-version: {version}
         - name: Install Dependencies
-        - run: |
+          run: |
             python -m pip install --upgrade pip
-            pip install -r requirements.txt
-        
+            if [ -f requirements.txt ]; then
+                pip install -r requirements.txt
+            else 
+                pip freeze > requirements.txt
+            fi
         - name: Creting a Dockerfile
-        - run: echo
-"
-FROM python3
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["python3", "app.py"]
-" > Dockerfile
+          run: |
+            echo "
+              FROM python:{version}
+              WORKDIR /app
+              COPY . .
+              RUN pip3 install -r requirements.txt
+              CMD ["python3", "app.py"]
+              " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
             docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -713,45 +714,48 @@ CMD ["python3", "app.py"]
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
 
         runs-on: ubuntu-latest
-        strategy:
-            max-parallel: 4
-            matrix:
-                python-version: {version}
 
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python-version }}
-            uses: actions/setup-python@v3
-            with:
-            python-version: ${{ matrix.python-version }}
+        - name: Set up Python {version}
+          uses: actions/setup-python@v3
+          with:
+            python-version: {version}
         - name: Install Dependencies
-        - run: |
+          run: |
             python -m pip install --upgrade pip
-            pip install -r requirements.txt
-            
+            if [ -f requirements.txt ]; then
+                pip install -r requirements.txt
+            else 
+                pip freeze > requirements.txt
+            fi
         - name: Creting a Dockerfile
-        - run: echo
-"
-FROM python3
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["python3", "app.py"]
-" > Dockerfile
+          run: |
+            echo "
+              FROM python:{version}
+              WORKDIR /app
+              COPY . .
+              RUN pip3 install -r requirements.txt
+              CMD ["python3", "src/app.py"]
+              " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
             docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
@@ -759,7 +763,7 @@ CMD ["python3", "app.py"]
 				),
 				sha,
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -853,7 +857,7 @@ ENTRYPOINT ["java", "-jar", "<build-name>"]
 "#
 				),
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -917,7 +921,7 @@ ENTRYPOINT ["java", "-jar", "<build-name>"]
 				),
 				sha,
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -1003,7 +1007,7 @@ jobs:
 "#
 				),
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -1060,7 +1064,7 @@ jobs:
 				),
 				sha,
 			)
-			.branch("master")
+			.branch("main")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
