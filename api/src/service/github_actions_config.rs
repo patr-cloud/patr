@@ -464,50 +464,45 @@ pub async fn github_actions_for_django_deployment(
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
       branches: [main]
 
 jobs:
     build:
-
         runs-on: ubuntu-latest
-	    strategy:
-            max-parallel: 4
-            matrix:
-                python-version: {version}
-	
+
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python-version }}
-            uses: actions/setup-python@v3
-            with:
-            python-version: ${{ matrix.python-version }}
+        - name: Set up Python {version}
+          uses: actions/setup-python@v3
+          with:
+            python-version: {version}
         - name: Install Dependencies
-        - run: |
+          run: |
             python -m pip install --upgrade pip
-            pip install -r requirements.txt
-        - name: Run Tests
-        - run: |
-            python manage.py test
-
+            if [ -f requirements.txt ]; then
+            	pip install -r requirements.txt
+            else 
+            	pip freeze > requirements.txt
+            fi
         - name: Creting a Dockerfile
-        - run: echo
-"
-FROM python3
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-WORKDIR .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8888
-CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
-" > Dockerfile
-
+          run: |
+            echo "
+              FROM python:{version}
+              WORKDIR /app
+              COPY . .
+              RUN pip3 install -r requirements.txt
+              CMD ["python3", "manage.py", "runserver"]
+              " > Dockerfile
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
             docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
@@ -538,50 +533,47 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
-    branch: [main]
+        branches: [main]
 
 jobs:
     build:
-
         runs-on: ubuntu-latest
-        strategy:
-	        max-parallel: 4
-	        matrix:
-		        python-version: {version}
 
         steps:
         - uses: actions/checkout@v3
-        - name: Set up Python ${{ matrix.python-version }}
-            uses: actions/setup-python@v3
-            with:
-            python-version: ${{ matrix.python-version }}
+        - name: Set up Python {version}
+          uses: actions/setup-python@v3
+          with:
+            python-version: {version}
         - name: Install Dependencies
-        run: |
-	        python -m pip install --upgrade pip
-	        pip install -r requirements.txt
-        - name: Run Tests
-        - run: |
-		    python manage.py test
-
+          run: |
+            python -m pip install --upgrade pip
+            if [ -f requirements.txt ]; then
+            	pip install -r requirements.txt
+            else 
+            	pip freeze > requirements.txt
+            fi
         - name: Creting a Dockerfile
-        - run: echo
-"
-FROM python3
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-WORKDIR .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8888
-CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
-" > Dockerfile
+          run: |
+            echo "
+              FROM python:{version}
+              WORKDIR /app
+              COPY . .
+              RUN pip3 install -r requirements.txt
+              CMD ["python3", "manage.py", "runserver"]
+              " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
             docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
