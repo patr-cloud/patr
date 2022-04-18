@@ -307,7 +307,7 @@ async fn configure_github_build_steps_deployment(
 		version,
 		framework,
 		username,
-		deployment_id,
+		deployment_id: _,
 		docker_repo_name,
 		tag,
 		..
@@ -388,17 +388,6 @@ async fn configure_github_build_steps_deployment(
 			&tag,
 			&workspace_name,
 			&docker_repo_name,
-		)
-		.await?;
-	} else if framework == "angular" {
-		service::github_actions_for_angular_static_site(
-			access_token,
-			owner_name,
-			repo_name,
-			build_command,
-			publish_dir,
-			version,
-			user_agent,
 		)
 		.await?;
 	} else if framework == "rust" {

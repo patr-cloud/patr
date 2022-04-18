@@ -1,4 +1,3 @@
-use api_models::utils::Uuid;
 use eve_rs::AsError;
 use octocrab::{models::repos::GitUser, Octocrab};
 use reqwest::header::{AUTHORIZATION, USER_AGENT};
@@ -103,7 +102,7 @@ name: Github action for your static site
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -188,14 +187,14 @@ jobs:
     build:
     runs-on: ubuntu-latest
     steps:
-	- uses: actions/checkout@master
+	- uses: actions/checkout@v3
 	- name: Archive Release
         uses: {owner_name}/{repo_name}@master
         with:
         type: 'zip'
         filename: 'release.zip'
 	- name: push to patr
-        run: echo TODO
+    - run: echo TODO
 "#
 				),
 			)
@@ -232,157 +231,19 @@ jobs:
     build:
     runs-on: ubuntu-latest
     steps:
-	- uses: actions/checkout@master
-	- name: Archive Release
+    - uses: actions/checkout@v3
+    - name: Archive Release
         uses: {owner_name}/{repo_name}@master
         with:
         type: 'zip'
         filename: 'release.zip'
-	- name: push to patr
-        run: echo TODO
+    - name: push to patr
+    - run: echo TODO
 "#
 				),
 				sha,
 			)
 			.branch("main")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
-		return Ok(());
-	}
-	Error::as_result()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())
-}
-
-// Todo
-pub async fn github_actions_for_angular_static_site(
-	access_token: String,
-	owner_name: String,
-	repo_name: String,
-	_build_command: String,
-	_publish_dir: String,
-	version: String,
-	user_agent: String,
-) -> Result<(), Error> {
-	let octocrab = Octocrab::builder()
-		.personal_token(access_token.clone())
-		.build()?;
-
-	let client = reqwest::Client::new();
-
-	let response = client
-		.get(format!("https://api.github.com/repos/{}/{}/contents/.github/workflow/build.yaml", owner_name, repo_name))
-		.header("AUTHORIZATION", format!("token {}", access_token))
-		.header(USER_AGENT, user_agent)
-		.send()
-		.await?;
-
-	if response.status() == 404 {
-		octocrab
-			.repos(owner_name, repo_name)
-			.create_file(
-				".github/workflows/build.yaml",
-				"created: build.yaml",
-				format!(
-					// Change the ubuntu-latest to specifc version later
-					r#"
-name: Github action for your deployment
-
-on:
-    push:
-        branch: [main]
-
-jobs:
-    build:
-
-        runs-on: ubuntu-latest
-
-        strategy:
-        matrix: 
-            node-version: {version}
-
-        steps:
-        - uses: actions/checkout@v3
-        - name: using node ${{matrix.node-version}}
-          uses: actions/setup-node@v2
-          with: 
-              node-version: ${{matrix.node-version}}
-              cache: 'npm'
-        - run: npm install
-        - run: npm run test --if-present
-
-        - name: build docker image from Dockerfile
-	      run: |
-	      docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-	      echo TODO
-"#
-				),
-			)
-			.branch("master")
-			.commiter(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.author(GitUser {
-				name: "Patr Configuration".to_string(),
-				email: "hello@patr.cloud".to_string(),
-			})
-			.send()
-			.await?;
-		return Ok(());
-	} else if response.status() == 200 {
-		let body = response.json::<GithubResponseBody>().await?;
-		let sha = body.sha;
-		octocrab
-			.repos(owner_name, repo_name)
-			.update_file(
-				".github/workflows/build.yaml",
-				"updated: build.yaml",
-				format!(
-					// Change the ubuntu-latest to specifc version later
-					r#"
-name: Github action for your deployment
-
-on:
-    push:
-        branch: [main]
-
-    jobs:
-        build:
-
-        runs-on: ubuntu-latest
-
-        strategy:
-            matrix: 
-                node-version: {version}
-
-        steps:
-        - uses: actions/checkout@v3
-        - name: using node ${{matrix.node-version}}
-          uses: actions/setup-node@v2
-          with: 
-              node-version: ${{matrix.node-version}}
-              cache: 'npm'
-        - run: npm install
-        - run: npm run test --if-present
-
-        - name: build docker image from Dockerfile
-          run: |
-            docker build ./ -t <tag-todo-ideally-should-be-commit-hash-8-char>
-            echo TODO
-"#
-				),
-				sha,
-			)
-			.branch("master")
 			.commiter(GitUser {
 				name: "Patr Configuration".to_string(),
 				email: "hello@patr.cloud".to_string(),
@@ -457,8 +318,8 @@ jobs:
         - name: Using node ${{matrix.node-version}}
           uses: actions/setup-node@v2
           with: 
-            node-version: ${{matrix.node-version}}
-            cache: 'npm'
+          node-version: ${{matrix.node-version}}
+          cache: 'npm'
         - run: npm install
         - name: Creating a Dockerfile
         - run: |
@@ -510,7 +371,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -519,15 +380,15 @@ jobs:
 
         strategy:
             matrix: 
-            node-version: [{version}]
+              node-version: [{version}]
 
         steps:
         - uses: actions/checkout@v3
         - name: using node ${{matrix.node-version}}
-              uses: actions/setup-node@v2
-              with: 
-                node-version: ${{matrix.node-version}}
-                cache: 'npm'
+            uses: actions/setup-node@v2
+            with: 
+            node-version: ${{matrix.node-version}}
+            cache: 'npm'
         - run: npm install
         - run: npm run test --if-present
 
@@ -612,7 +473,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -626,19 +487,19 @@ jobs:
         steps:
         - uses: actions/checkout@v3
         - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v3
-              with:
-                  python-version: ${{ matrix.python-version }}
+            uses: actions/setup-python@v3
+            with:
+            python-version: ${{ matrix.python-version }}
         - name: Install Dependencies
-          run: |
-              python -m pip install --upgrade pip
-              pip install -r requirements.txt
+        - run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
         - name: Run Tests
-          run: |
-              python manage.py test
+        - run: |
+            python manage.py test
 
         - name: Creting a Dockerfile
-          run: echo
+        - run: echo
 "
 FROM python3
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -651,14 +512,14 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: |
+        - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
@@ -703,19 +564,19 @@ jobs:
         steps:
         - uses: actions/checkout@v3
         - name: Set up Python ${{ matrix.python-version }}
-		        uses: actions/setup-python@v3
-		        with:
-			        python-version: ${{ matrix.python-version }}
+            uses: actions/setup-python@v3
+            with:
+            python-version: ${{ matrix.python-version }}
         - name: Install Dependencies
         run: |
 	        python -m pip install --upgrade pip
 	        pip install -r requirements.txt
         - name: Run Tests
-	        run: |
-		        python manage.py test
+        - run: |
+		    python manage.py test
 
         - name: Creting a Dockerfile
-		  run: echo
+        - run: echo
 "
 FROM python3
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -728,14 +589,14 @@ CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: |
+        - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 				sha,
@@ -797,7 +658,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -813,14 +674,14 @@ jobs:
         - name: Set up Python ${{ matrix.python-version }}
             uses: actions/setup-python@v3
             with:
-                python-version: ${{ matrix.python-version }}
+            python-version: ${{ matrix.python-version }}
         - name: Install Dependencies
-          run: |
+        - run: |
             python -m pip install --upgrade pip
             pip install -r requirements.txt
         
         - name: Creting a Dockerfile
-          run: echo
+        - run: echo
 "
 FROM python3
 WORKDIR /app
@@ -831,14 +692,14 @@ CMD ["python3", "app.py"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: |
+        - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
@@ -885,14 +746,14 @@ jobs:
         - name: Set up Python ${{ matrix.python-version }}
             uses: actions/setup-python@v3
             with:
-                python-version: ${{ matrix.python-version }}
+            python-version: ${{ matrix.python-version }}
         - name: Install Dependencies
-        run: |
+        - run: |
             python -m pip install --upgrade pip
             pip install -r requirements.txt
             
         - name: Creting a Dockerfile
-          run: echo
+        - run: echo
 "
 FROM python3
 WORKDIR /app
@@ -903,14 +764,14 @@ CMD ["python3", "app.py"]
 " > Dockerfile
   
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
-          run: |
+        - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 				sha,
@@ -972,7 +833,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+      branches: [main]
 
 jobs:
     build:
@@ -988,11 +849,11 @@ jobs:
             distribution: 'temurin'
             cache: maven
         - name: Build with Maven
-          run: mvn clean install
-          run: mvn package
+        - run: mvn clean install
+        - run: mvn package
 
         - name: Create a Dockerfile
-          run: echo 
+        - run: echo 
 "
 FROM openjdk
 WORKDIR .
@@ -1001,14 +862,14 @@ ENTRYPOINT ["java", "-jar", "<build-name>"]
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
-	  - name: Build image from Dockerfile and push to patr-registry
-        run: |
-          docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
-          docker build . -t {username}/deployment
-          docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-          docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+        - name: Build image from Dockerfile and push to patr-registry
+        - run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
@@ -1073,8 +934,8 @@ ENTRYPOINT ["java", "-jar", "<build-name>"]
           run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 				sha,
@@ -1136,7 +997,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+    branches: [main]
 
 jobs:
     build:
@@ -1151,21 +1012,20 @@ jobs:
             cargo build
 
         - name: Create Dockerfile
-- run: echo 
+        - run: echo 
 "
-
+<todo>
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 	  
         - name: Build image from Dockerfile and push to patr-registry
-          run: |
+        - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
-            cd /app
             docker build . -t {username}/deployment
-            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 			)
@@ -1196,7 +1056,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branch: [main]
+    branches: [main]
 
 jobs:
     build:
@@ -1213,19 +1073,18 @@ jobs:
         - name: Create Dockerfile
           run: echo 
 "
-
+<todo>
 " > Dockerfile
 
         - name: Installing patr-cli
-          run: snap install patr -y
+        - run: snap install patr -y
 
-          - name: Build image from Dockerfile and push to patr-registry
-          run: |
-          docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
-          cd /app
-          docker build . -t {username}/deployment
-          docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{repo_name}:{tag} 
-          docker push registry.patr.cloud/{workspace_name}/{repo_name}:{tag}
+        - name: Build image from Dockerfile and push to patr-registry
+        - run: |
+            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+            docker build . -t {username}/deployment
+            docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
 "#
 				),
 				sha,
