@@ -331,8 +331,6 @@ jobs:
             EXPOSE 8000
             CMD ["node", "server"]
             " > Dockerfile
-        - name: Installing patr-cli
-        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
@@ -394,16 +392,14 @@ jobs:
         - name: Creating a Dockerfile
         - run: |
             echo "
-FROM node
-WORKDIR /app
-COPY package*.json .
-RUN npm install
-COPY . .
-EXPOSE 8000
-CMD ["node", "server"]
-" > Dockerfile
-        - name: Installing patr-cli
-        - run: snap install patr -y
+            FROM node
+            WORKDIR /app
+            COPY package*.json .
+            RUN npm install
+            COPY . .
+            EXPOSE 8000
+            CMD ["node", "server"]
+            " > Dockerfile
 
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
@@ -510,9 +506,6 @@ EXPOSE 8888
 CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
 
-        - name: Installing patr-cli
-        - run: snap install patr -y
-
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
@@ -586,9 +579,6 @@ COPY . .
 EXPOSE 8888
 CMD ["python3", "manage.py", "runserver", "0.0.0.0:8888"]
 " > Dockerfile
-
-        - name: Installing patr-cli
-        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
@@ -690,9 +680,6 @@ COPY . .
 CMD ["python3", "app.py"]
 " > Dockerfile
 
-        - name: Installing patr-cli
-        - run: snap install patr -y
-
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
@@ -761,9 +748,6 @@ RUN pip install -r requirements.txt
 COPY . .
 CMD ["python3", "app.py"]
 " > Dockerfile
-  
-        - name: Installing patr-cli
-        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
@@ -860,9 +844,6 @@ ADD target/<build-name>
 ENTRYPOINT ["java", "-jar", "<build-name>"]
 " > Dockerfile
 
-        - name: Installing patr-cli
-        - run: snap install patr -y
-
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
@@ -925,9 +906,6 @@ WORKDIR .
 ADD target/<build-name>
 ENTRYPOINT ["java", "-jar", "<build-name>"]
 " > Dockerfile
-  
-        - name: Installing patr-cli
-          run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
           run: |
@@ -1016,9 +994,6 @@ jobs:
 <todo>
 " > Dockerfile
 
-        - name: Installing patr-cli
-        - run: snap install patr -y
-	  
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
@@ -1074,9 +1049,6 @@ jobs:
 "
 <todo>
 " > Dockerfile
-
-        - name: Installing patr-cli
-        - run: snap install patr -y
 
         - name: Build image from Dockerfile and push to patr-registry
         - run: |
