@@ -243,7 +243,7 @@ async fn configure_github_build_steps_static_site(
 		access_token,
 		owner_name,
 		repo_name,
-		framework,
+		framework: _,
 		build_command,
 		publish_dir,
 		version,
@@ -259,28 +259,19 @@ async fn configure_github_build_steps_static_site(
 		.get_header("User-Agent")
 		.unwrap_or_else(|| owner_name.clone());
 
-	if framework == "node" {
-		service::github_actions_for_node_static_site(
-			access_token,
-			owner_name,
-			repo_name,
-			build_command,
-			publish_dir,
-			version,
-			user_agent,
-			username,
-			static_site_id,
-		)
-		.await?;
-	} else {
-		service::github_actions_for_vanilla_static_site(
-			access_token,
-			owner_name,
-			repo_name,
-			user_agent,
-		)
-		.await?
-	}
+	service::github_actions_for_node_static_site(
+		access_token,
+		owner_name,
+		&repo_name,
+		build_command,
+		publish_dir,
+		version,
+		user_agent,
+		username,
+		static_site_id,
+	)
+	.await?;
+
 	context.success(ConfigureStaticSiteBuildStepResponse {});
 	Ok(context)
 }
