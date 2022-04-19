@@ -1,4 +1,4 @@
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{utils::settings::Settings, Database, migrate_query as query};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
