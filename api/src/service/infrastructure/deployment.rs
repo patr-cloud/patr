@@ -270,6 +270,7 @@ pub async fn update_deployment(
 			"request_id: {} - Updating deployment ports in the database",
 			request_id
 		);
+		db::begin_deferred_constraints(connection).await?;
 		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
 			.await?;
 		for (port, exposed_port_type) in ports {
@@ -281,6 +282,7 @@ pub async fn update_deployment(
 			)
 			.await?;
 		}
+		db::end_deferred_constraints(connection).await?;
 	}
 
 	if let Some(environment_variables) = environment_variables {
