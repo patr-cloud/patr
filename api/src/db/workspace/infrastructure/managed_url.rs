@@ -106,7 +106,8 @@ pub async fn initialize_managed_url_post(
 					REFERENCES resource(id, owner_id),
 			ADD CONSTRAINT managed_url_fk_deployment_id_port
 				FOREIGN KEY(deployment_id, port)
-					REFERENCES deployment_exposed_port(deployment_id, port),
+					REFERENCES deployment_exposed_port(deployment_id, port)
+					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
 					REFERENCES deployment(id, workspace_id),
