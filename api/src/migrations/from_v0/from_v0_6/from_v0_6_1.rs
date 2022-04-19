@@ -8,7 +8,7 @@ pub async fn migrate(
 		r#"
 		ALTER TABLE managed_url
 		ALTER CONSTRAINT managed_url_fk_deployment_id_port
-		SET DEFERRABLE INITIALLY IMMEDIATE;
+		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
