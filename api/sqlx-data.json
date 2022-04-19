@@ -7110,6 +7110,19 @@
     },
     "query": "DELETE FROM domain WHERE id = $1;"
   },
+  "e35ed129acf987dfdfc82522eca202c00f16058bf9b0e385f50a6028f38a6adb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE user_login SET token_expiry = 0 WHERE login_id = $1 AND user_id = $2;"
+  },
   "e44c154107c5fb3d88b9c38b24ac19303760e8d8fde96510bb66ea9932b29e22": {
     "describe": {
       "columns": [
@@ -7369,19 +7382,6 @@
       }
     },
     "query": "CREATE INDEX personal_email_idx_user_id ON personal_email (user_id);"
-  },
-  "e91e543e8d8395c1862678749ecbb1a23ae3d2df055111d862745c8c7cb165e3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "DELETE FROM user_login WHERE login_id = $1 AND user_id = $2;"
   },
   "e9d0764903c5d929f560f8069e0e610181f2724a5642fe65ba3a94dcba724460": {
     "describe": {

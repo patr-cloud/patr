@@ -2224,8 +2224,10 @@ pub async fn delete_user_login_by_id(
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
-		DELETE FROM
+		UPDATE
 			user_login
+		SET
+			token_expiry = 0
 		WHERE
 			login_id = $1 AND
 			user_id = $2;
