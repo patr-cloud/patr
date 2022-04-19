@@ -67,33 +67,50 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			EveMiddleware::Compression(compression_level) => {
 				let mut compressor =
 					CompressionHandler::create(*compression_level);
-
 				context = next(context).await?;
 				compressor.compress(&mut context);
-
 				Ok(context)
 			}
+
 			EveMiddleware::JsonParser => {
 				if let Some(value) = json_parser(&context)? {
 					context.set_body_object(value);
 				}
-
 				next(context).await
 			}
+
 			EveMiddleware::UrlEncodedParser => {
 				if let Some(value) = url_encoded_parser(&context)? {
 					context.set_body_object(value);
 				}
-
 				next(context).await
 			}
+
 			EveMiddleware::CookieParser => {
 				cookie_parser(&mut context);
 				next(context).await
 			}
+
 			EveMiddleware::StaticHandler(static_file_server) => {
 				static_file_server.run_middleware(context, next).await
 			}
+
+			EveMiddleware::CustomFunction(function) => {
+				function(context, next).await
+			}
+
+			EveMiddleware::DomainRouter(domain, app) => {
+				let localhost =
+					format!("localhost:{}", app.get_state().config.port);
+				if &context.get_host() == domain
+					|| context.get_host() == localhost
+				{
+					app.resolve(context).await
+				} else {
+					next(context).await
+				}
+			}
+
 			EveMiddleware::PlainTokenAuthenticator => {
 				let access_data =
 					if let Some(token) = decode_access_token(&context) {
@@ -110,6 +127,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				context.set_token_data(access_data);
 				next(context).await
 			}
+
 			EveMiddleware::ResourceTokenAuthenticator(
 				permission_required,
 				resource_in_question,
@@ -186,20 +204,6 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				} else {
 					context.status(401).json(error!(UNPRIVILEGED));
 					Ok(context)
-				}
-			}
-			EveMiddleware::CustomFunction(function) => {
-				function(context, next).await
-			}
-			EveMiddleware::DomainRouter(domain, app) => {
-				let localhost =
-					format!("localhost:{}", app.get_state().config.port);
-				if &context.get_host() == domain ||
-					context.get_host() == localhost
-				{
-					app.resolve(context).await
-				} else {
-					next(context).await
 				}
 			}
 		}
