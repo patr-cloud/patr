@@ -4,18 +4,12 @@ use async_trait::async_trait;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser,
-		json::parser as json_parser,
+		cookie_parser::parser as cookie_parser, json::parser as json_parser,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	App as EveApp,
-	AsError,
-	Context,
-	Middleware,
-	NextHandler,
+	App as EveApp, AsError, Context, Middleware, NextHandler,
 };
-use redis::AsyncCommands;
 
 use crate::{
 	app::App,
@@ -25,8 +19,10 @@ use crate::{
 		rbac::{self, GOD_USER_ID},
 		AccessTokenData,
 	},
-	utils::{get_current_time_millis, Error, ErrorData, EveContext},
+	utils::{Error, ErrorData, EveContext},
 };
+
+use super::token_expiry_handler::TokenExpiryHandler;
 
 pub type MiddlewareHandlerFunction =
 	fn(
@@ -107,12 +103,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						return Ok(context);
 					};
 
-				is_access_token_valid(
-					&access_data,
-					&context.get_header("Authorization").unwrap(),
-					context.get_state_mut(),
-				)
-				.await?;
+				TokenExpiryHandler::new(context.get_state().redis.clone())
+					.validate_access_token(&access_data)
+					.await?;
 
 				context.set_token_data(access_data);
 				next(context).await
@@ -125,12 +118,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
-				is_access_token_valid(
-					&access_data,
-					&context.get_header("Authorization").unwrap(),
-					context.get_state_mut(),
-				)
-				.await?;
+				TokenExpiryHandler::new(context.get_state().redis.clone())
+					.validate_access_token(&access_data)
+					.await?;
 
 				// check if the access token has access to the resource
 				let (mut context, resource) =
@@ -229,55 +219,4 @@ fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
 	}
 	let access_data = result.unwrap();
 	Some(access_data)
-}
-
-async fn is_access_token_valid(
-	token: &AccessTokenData,
-	token_string: &str,
-	app: &mut App,
-) -> Result<(), Error> {
-	// token banning goes here
-	// Different types of banned tokens:
-	// - Specific tokens
-	// - User IDs whose tokens after a given timestamp is invalid
-	// - Global timestamp after which all tokens are invalid
-	if token.exp < get_current_time_millis() {
-		// If current time is more than expiry, return false
-		return Error::as_result()
-			.status(401)
-			.body(error!(EXPIRED).to_string())?;
-	}
-
-	let token_banned: Option<String> = app.redis.get(token_string).await?;
-	if token_banned.is_some() {
-		// This token is banned. Invalidate it
-		return Error::as_result()
-			.status(401)
-			.body(error!(UNAUTHORIZED).to_string())?;
-	}
-
-	let user_exp: Option<u64> = app
-		.redis
-		.get(format!("user-{}-exp", token.user.id.as_str()))
-		.await?;
-	if let Some(exp) = user_exp {
-		if exp < get_current_time_millis() {
-			// This user needs an exp greater than user-userid-exp
-			return Error::as_result()
-				.status(401)
-				.body(error!(EXPIRED).to_string())?;
-		}
-	}
-
-	let global_exp: Option<u64> = app.redis.get("global-user-exp").await?;
-	if let Some(exp) = global_exp {
-		if exp < get_current_time_millis() {
-			// This user needs an exp greater than global-user-exp
-			return Error::as_result()
-				.status(401)
-				.body(error!(EXPIRED).to_string())?;
-		}
-	}
-
-	Ok(())
 }
