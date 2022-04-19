@@ -159,7 +159,7 @@ pub async fn update_kubernetes_managed_url(
 				),
 				(
 					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-					format!("{}.{}", managed_url.sub_domain, domain.name),
+					format!("{}.patr.cloud", static_site_id),
 				),
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
