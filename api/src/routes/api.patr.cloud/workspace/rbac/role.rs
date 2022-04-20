@@ -19,9 +19,9 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	redis::rbac::expire_tokens_for_user_id,
 	utils::{
 		constants::request_keys,
-		token_expiry_handler::TokenExpiryHandler,
 		Error,
 		ErrorData,
 		EveContext,
@@ -567,13 +567,9 @@ async fn update_role(
 
 	context.success(UpdateRoleResponse {});
 
-	// TODO: use batch update
-	let mut token_expiry_handler =
-		TokenExpiryHandler::new(context.get_state().redis.clone());
+	let redis_conn = &mut context.get_state_mut().redis;
 	for user_id in associated_user_ids {
-		token_expiry_handler
-			.expire_tokens_for_user_id(&user_id)
-			.await?;
+		expire_tokens_for_user_id(redis_conn, &user_id).await?;
 	}
 
 	Ok(context)
@@ -627,13 +623,9 @@ async fn delete_role(
 
 	context.success(DeleteRoleResponse {});
 
-	// TODO: use batch update
-	let mut token_expiry_handler =
-		TokenExpiryHandler::new(context.get_state().redis.clone());
+	let redis_conn = &mut context.get_state_mut().redis;
 	for user_id in associated_user_ids {
-		token_expiry_handler
-			.expire_tokens_for_user_id(&user_id)
-			.await?;
+		expire_tokens_for_user_id(redis_conn, &user_id).await?;
 	}
 
 	Ok(context)

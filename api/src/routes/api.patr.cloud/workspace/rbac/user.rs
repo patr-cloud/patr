@@ -16,9 +16,9 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	redis::rbac::expire_tokens_for_user_id,
 	utils::{
 		constants::request_keys,
-		token_expiry_handler::TokenExpiryHandler,
 		Error,
 		ErrorData,
 		EveContext,
@@ -221,8 +221,7 @@ async fn add_user_to_workspace(
 
 	context.success(AddUserToWorkspaceResponse {});
 
-	TokenExpiryHandler::new(context.get_state().redis.clone())
-		.expire_tokens_for_user_id(&user_id)
+	expire_tokens_for_user_id(&mut context.get_state_mut().redis, &user_id)
 		.await?;
 	Ok(context)
 }
@@ -265,9 +264,9 @@ async fn update_user_roles_for_workspace(
 
 	context.success(AddUserToWorkspaceResponse {});
 
-	TokenExpiryHandler::new(context.get_state().redis.clone())
-		.expire_tokens_for_user_id(&user_id)
+	expire_tokens_for_user_id(&mut context.get_state_mut().redis, &user_id)
 		.await?;
+
 	Ok(context)
 }
 
@@ -304,8 +303,7 @@ async fn remove_user_from_workspace(
 
 	context.success(RemoveUserFromWorkspaceResponse {});
 
-	TokenExpiryHandler::new(context.get_state().redis.clone())
-		.expire_tokens_for_user_id(&user_id)
+	expire_tokens_for_user_id(&mut context.get_state_mut().redis, &user_id)
 		.await?;
 	Ok(context)
 }

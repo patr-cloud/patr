@@ -16,7 +16,6 @@ use eve_rs::{
 	NextHandler,
 };
 
-use super::token_expiry_handler::TokenExpiryHandler;
 use crate::{
 	app::App,
 	error,
@@ -25,6 +24,7 @@ use crate::{
 		rbac::{self, GOD_USER_ID},
 		AccessTokenData,
 	},
+	redis::rbac::validate_access_token,
 	utils::{Error, ErrorData, EveContext},
 };
 
@@ -124,9 +124,11 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						return Ok(context);
 					};
 
-				TokenExpiryHandler::new(context.get_state().redis.clone())
-					.validate_access_token(&access_data)
-					.await?;
+				validate_access_token(
+					&mut context.get_state_mut().redis,
+					&access_data,
+				)
+				.await?;
 
 				context.set_token_data(access_data);
 				next(context).await
@@ -140,9 +142,11 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
-				TokenExpiryHandler::new(context.get_state().redis.clone())
-					.validate_access_token(&access_data)
-					.await?;
+				validate_access_token(
+					&mut context.get_state_mut().redis,
+					&access_data,
+				)
+				.await?;
 
 				// check if the access token has access to the resource
 				let (mut context, resource) =

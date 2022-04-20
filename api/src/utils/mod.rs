@@ -4,7 +4,6 @@ mod eve_middlewares;
 pub mod constants;
 pub mod logger;
 pub mod settings;
-pub mod token_expiry_handler;
 pub mod validator;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};

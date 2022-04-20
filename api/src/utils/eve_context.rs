@@ -46,8 +46,6 @@ impl EveContext {
 		&self.state
 	}
 
-	// TODO
-	#[allow(dead_code)]
 	pub fn get_state_mut(&mut self) -> &mut App {
 		&mut self.state
 	}

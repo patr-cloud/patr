@@ -1,3 +1,5 @@
+pub mod rbac;
+
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
 	Client,
