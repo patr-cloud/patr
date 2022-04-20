@@ -4,13 +4,19 @@ use async_trait::async_trait;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
-		cookie_parser::parser as cookie_parser, json::parser as json_parser,
+		cookie_parser::parser as cookie_parser,
+		json::parser as json_parser,
 		static_file_server::StaticFileServer,
 		url_encoded::parser as url_encoded_parser,
 	},
-	App as EveApp, AsError, Context, Middleware, NextHandler,
+	App as EveApp,
+	AsError,
+	Context,
+	Middleware,
+	NextHandler,
 };
 
+use super::token_expiry_handler::TokenExpiryHandler;
 use crate::{
 	app::App,
 	error,
@@ -21,8 +27,6 @@ use crate::{
 	},
 	utils::{Error, ErrorData, EveContext},
 };
-
-use super::token_expiry_handler::TokenExpiryHandler;
 
 pub type MiddlewareHandlerFunction =
 	fn(
@@ -102,8 +106,8 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			EveMiddleware::DomainRouter(domain, app) => {
 				let localhost =
 					format!("localhost:{}", app.get_state().config.port);
-				if &context.get_host() == domain
-					|| context.get_host() == localhost
+				if &context.get_host() == domain ||
+					context.get_host() == localhost
 				{
 					app.resolve(context).await
 				} else {

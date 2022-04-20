@@ -1,13 +1,13 @@
 use api_models::utils::Uuid;
 use eve_rs::AsError;
-use redis::aio::MultiplexedConnection as RedisConnection;
-use redis::{AsyncCommands, RedisError};
-
-use crate::error;
-use crate::models::AccessTokenData;
-use crate::service::get_access_token_expiry;
+use redis::{
+	aio::MultiplexedConnection as RedisConnection,
+	AsyncCommands,
+	RedisError,
+};
 
 use super::{get_current_time_millis, Error};
+use crate::{error, models::AccessTokenData, service::get_access_token_expiry};
 
 const GLOBAL_USER_EXP: &str = "token:global-user-exp";
 const USER_ID_EXP: &str = "token:user-{}-exp";

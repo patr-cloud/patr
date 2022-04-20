@@ -1,5 +1,7 @@
 use redis::{
-	aio::MultiplexedConnection as RedisConnection, Client, RedisError,
+	aio::MultiplexedConnection as RedisConnection,
+	Client,
+	RedisError,
 };
 use tokio::task;
 
@@ -10,7 +12,11 @@ pub async fn create_redis_connection(
 ) -> Result<RedisConnection, RedisError> {
 	log::trace!("Creating redis connection pool...");
 
-	let schema = if config.redis.secure { "rediss" } else { "redis" };
+	let schema = if config.redis.secure {
+		"rediss"
+	} else {
+		"redis"
+	};
 	let username = config.redis.user.as_deref().unwrap_or("");
 	let password = config
 		.redis
