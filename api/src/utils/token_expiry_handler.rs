@@ -65,6 +65,8 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
+	// TODO
+	#[allow(dead_code)]
 	pub async fn expire_tokens_for_user_id(
 		&mut self,
 		user_id: Uuid,
@@ -77,6 +79,8 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
+	// TODO
+	#[allow(dead_code)]
 	pub async fn expire_token_for_login_id(
 		&mut self,
 		login_id: Uuid,
@@ -89,6 +93,8 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
+	// TODO
+	#[allow(dead_code)]
 	pub async fn expire_all_tokens(&mut self) -> Result<(), RedisError> {
 		let ttl = (get_access_token_expiry() / 60) as usize + 60; // 60 sec buffer time
 		self.conn
