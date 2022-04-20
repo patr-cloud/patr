@@ -73,7 +73,7 @@ jobs:
             sudo snap install --edge patr
             cd {publish_dir}
             patr login -u {username} -p '${{{{ secrets.PATR_PASSWORD }}}}'
-            patr site upload {static_site_id} --file static_build.zip
+            patr site upload {static_site_id} --file static_build.zip && patr site start {static_site_id}
 "#
 				),
 			)
@@ -164,8 +164,6 @@ pub async fn github_actions_for_node_deployment(
 	access_token: String,
 	owner_name: String,
 	repo_name: &str,
-	_build_command: String,
-	_publish_dir: String,
 	version: String,
 	user_agent: String,
 	username: String,
@@ -328,8 +326,6 @@ pub async fn github_actions_for_django_deployment(
 	access_token: String,
 	owner_name: String,
 	repo_name: &str,
-	_build_command: String,
-	_publish_dir: String,
 	version: String,
 	user_agent: String,
 	username: String,
@@ -499,8 +495,6 @@ pub async fn github_actions_for_flask_deployment(
 	access_token: String,
 	owner_name: String,
 	repo_name: &str,
-	_build_command: String,
-	_publish_dir: String,
 	version: String,
 	user_agent: String,
 	username: String,
@@ -669,18 +663,17 @@ jobs:
 		.body(error!(SERVER_ERROR).to_string())
 }
 
-pub async fn github_actions_for_spring_deployment(
+pub async fn github_actions_for_spring_maven_deployment(
 	access_token: String,
 	owner_name: String,
 	repo_name: &str,
-	_build_command: String,
-	_publish_dir: String,
 	version: String,
 	user_agent: String,
 	username: String,
 	tag: &str,
 	workspace_name: &str,
 	docker_repo_name: &str,
+	build_name: String,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -717,27 +710,27 @@ jobs:
 
         steps:
         - uses: actions/checkout@v3
-        - name: Set up JDK 11
+        - name: Set up JDK {version}
           uses: actions/setup-java@v3
           with:
             java-version: {version}
             distribution: 'temurin'
             cache: maven
         - name: Build with Maven
-        - run: mvn clean install
-        - run: mvn package
+          run: mvn clean install
+          run: mvn package
 
         - name: Create a Dockerfile
-        - run: echo 
-"
-FROM openjdk
-WORKDIR .
-ADD target/<build-name>
-ENTRYPOINT ["java", "-jar", "<build-name>"]
-" > Dockerfile
+          run: |
+            echo 
+             "
+             FROM openjdk:{version}
+             ADD target/{build_name}.jar 
+             ENTRYPOINT ["java", "-jar", "build_name.jar"]
+             " > Dockerfile
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
+          run: |
             docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
@@ -831,14 +824,13 @@ pub async fn github_actions_for_rust_deployment(
 	access_token: String,
 	owner_name: String,
 	repo_name: &str,
-	_build_command: String,
-	_publish_dir: String,
-	_version: String,
+	version: String,
 	user_agent: String,
 	username: String,
 	tag: &str,
 	workspace_name: &str,
 	docker_repo_name: &str,
+	binary_name: &str,
 ) -> Result<(), Error> {
 	let octocrab = Octocrab::builder()
 		.personal_token(access_token.clone())
@@ -866,7 +858,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branches: [main]
+        branches: [main]
 
 jobs:
     build:
@@ -875,23 +867,34 @@ jobs:
         steps:
         - name: Checkout code
           uses: actions/checkout@v3
-        - name: Test and build
-          run: |
-            cargo test
-            cargo build
 
         - name: Create Dockerfile
-        - run: echo 
-"
-<todo>
-" > Dockerfile
+          run: |
+            echo "
+                FROM rust:{version} as build
+                WORKDIR /app
+                COPY . .
+                RUN cargo build --release
+                FROM ubuntu:latest
+                WORKDIR /app
+                RUN apt update
+                COPY --from=build /app/target/release/{binary_name} .
+                RUN chmod +x ./{binary_name}
+                CMD ["./{binary_name}"]
+                " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
 "#
 				),
 			)
@@ -922,7 +925,7 @@ name: Github action for your deployment
 
 on:
     push:
-    branches: [main]
+        branches: [main]
 
 jobs:
     build:
@@ -931,23 +934,34 @@ jobs:
         steps:
         - name: Checkout code
           uses: actions/checkout@v3
-        - name: Test and build
-          run: |
-            cargo test
-            cargo build
 
         - name: Create Dockerfile
-          run: echo 
-"
-<todo>
-" > Dockerfile
+          run: |
+            echo "
+              FROM rust:{version} as build
+              WORKDIR /app
+              COPY . .
+              RUN cargo build --release
+              FROM ubuntu:latest
+              WORKDIR /app
+              RUN apt update
+              COPY --from=build /app/target/release/{binary_name} .
+              RUN chmod +x ./{binary_name}
+              CMD ["./{binary_name}"]
+              " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
-        - run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
+          run: |
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
 "#
 				),
 				sha,

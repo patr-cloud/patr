@@ -295,14 +295,14 @@ async fn configure_github_build_steps_deployment(
 		access_token,
 		owner_name,
 		repo_name,
-		build_command,
-		publish_dir,
 		version,
 		framework,
 		username,
 		deployment_id: _,
 		docker_repo_name,
 		tag,
+		build_name,
+		binary_name,
 		..
 	} = context
 		.get_body_as()
@@ -322,14 +322,14 @@ async fn configure_github_build_steps_deployment(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	let workspace_name = workspace.name;
+	// let workspace_name =
+	// "personal-workspace-1424404d9fff474bba7f23825681f6a8".to_string();
 
 	if framework == "node" {
 		service::github_actions_for_node_deployment(
 			access_token,
 			owner_name,
 			&repo_name,
-			build_command,
-			publish_dir,
 			version,
 			user_agent,
 			username,
@@ -343,8 +343,6 @@ async fn configure_github_build_steps_deployment(
 			access_token,
 			owner_name,
 			&repo_name,
-			build_command,
-			publish_dir,
 			version,
 			user_agent,
 			username,
@@ -358,8 +356,6 @@ async fn configure_github_build_steps_deployment(
 			access_token,
 			owner_name,
 			&repo_name,
-			build_command,
-			publish_dir,
 			version,
 			user_agent,
 			username,
@@ -369,33 +365,45 @@ async fn configure_github_build_steps_deployment(
 		)
 		.await?;
 	} else if framework == "spring" {
-		service::github_actions_for_spring_deployment(
+		let build_name = if let Some(name) = build_name {
+			name
+		} else {
+			return Error::as_result()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+		};
+		service::github_actions_for_spring_maven_deployment(
 			access_token,
 			owner_name,
 			&repo_name,
-			build_command,
-			publish_dir,
 			version,
 			user_agent,
 			username,
 			&tag,
 			&workspace_name,
 			&docker_repo_name,
+			build_name,
 		)
 		.await?;
 	} else if framework == "rust" {
+		let binary_name = if let Some(name) = binary_name {
+			name
+		} else {
+			return Error::as_result()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+		};
 		service::github_actions_for_rust_deployment(
 			access_token,
 			owner_name,
 			&repo_name,
-			build_command,
-			publish_dir,
 			version,
 			user_agent,
 			username,
 			&tag,
 			&workspace_name,
 			&docker_repo_name,
+			&binary_name,
 		)
 		.await?;
 	}
