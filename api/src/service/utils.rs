@@ -72,7 +72,7 @@ pub fn hash(pwd: &[u8]) -> Result<String, Error> {
 }
 
 /// # Description
-/// This function is used to get join token expiry
+/// This function is used to get join token expiry in millisec.
 /// set to: `2 hours`
 ///
 /// # Returns
@@ -82,7 +82,7 @@ pub fn get_join_token_expiry() -> u64 {
 }
 
 /// # Description
-/// This function is used to get access token expiry
+/// This function is used to get access token expiry in millisec.
 /// set to: `3 days`
 ///
 /// # Returns
@@ -92,7 +92,7 @@ pub fn get_access_token_expiry() -> u64 {
 }
 
 /// # Description
-/// This function is used to get refresh token expiry
+/// This function is used to get refresh token expiry in millisec.
 /// set to: `30 days`
 ///
 /// # Returns
