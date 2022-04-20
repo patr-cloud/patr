@@ -36,18 +36,18 @@ impl TokenExpiryHandler {
 		}
 
 		// 2. check whether token has been expired due to expired user id
-		let user_id_key = USER_ID_EXP.replace("{}", token.user.id.as_str());
-		let user_id_expiry: Option<u64> = self.conn.get(&user_id_key).await?;
-		if user_id_expiry.map_or(false, |exp| token.iat < exp) {
+		let user_id = USER_ID_EXP.replace("{}", token.user.id.as_str());
+		let expiry: Option<u64> = self.conn.get(&user_id).await?;
+		if expiry.map_or(false, |exp| token.iat < exp) {
 			return Error::as_result()
 				.status(401)
 				.body(error!(UNAUTHORIZED).to_string())?;
 		}
 
 		// 3. check whether token has been expired due to expired login id
-		let login_id_key = LOGIN_ID_EXP.replace("{}", token.login_id.as_str());
-		let login_id_expiry: Option<u64> = self.conn.get(&login_id_key).await?;
-		if login_id_expiry.map_or(false, |exp| token.iat < exp) {
+		let login_id = LOGIN_ID_EXP.replace("{}", token.login_id.as_str());
+		let expiry: Option<u64> = self.conn.get(&login_id).await?;
+		if expiry.map_or(false, |exp| token.iat < exp) {
 			return Error::as_result()
 				.status(401)
 				.body(error!(UNAUTHORIZED).to_string())?;
@@ -65,11 +65,9 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
-	// TODO
-	#[allow(dead_code)]
 	pub async fn expire_tokens_for_user_id(
 		&mut self,
-		user_id: Uuid,
+		user_id: &Uuid,
 	) -> Result<(), RedisError> {
 		let key = USER_ID_EXP.replace("{}", user_id.as_str());
 		let ttl = (get_access_token_expiry() / 60) as usize + 60; // 60 sec buffer time
@@ -79,11 +77,9 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
-	// TODO
-	#[allow(dead_code)]
-	pub async fn expire_token_for_login_id(
+	pub async fn _expire_token_for_login_id(
 		&mut self,
-		login_id: Uuid,
+		login_id: &Uuid,
 	) -> Result<(), RedisError> {
 		let key = LOGIN_ID_EXP.replace("{}", login_id.as_str());
 		let ttl = (get_access_token_expiry() / 60) as usize + 60; // 60 sec buffer time
@@ -93,9 +89,7 @@ impl TokenExpiryHandler {
 		Ok(())
 	}
 
-	// TODO
-	#[allow(dead_code)]
-	pub async fn expire_all_tokens(&mut self) -> Result<(), RedisError> {
+	pub async fn _expire_all_tokens(&mut self) -> Result<(), RedisError> {
 		let ttl = (get_access_token_expiry() / 60) as usize + 60; // 60 sec buffer time
 		self.conn
 			.set_ex(GLOBAL_USER_EXP, get_current_time_millis(), ttl)

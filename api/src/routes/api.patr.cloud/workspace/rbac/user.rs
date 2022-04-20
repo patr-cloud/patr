@@ -18,6 +18,7 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
+		token_expiry_handler::TokenExpiryHandler,
 		Error,
 		ErrorData,
 		EveContext,
@@ -219,6 +220,10 @@ async fn add_user_to_workspace(
 	.await?;
 
 	context.success(AddUserToWorkspaceResponse {});
+
+	TokenExpiryHandler::new(context.get_state().redis.clone())
+		.expire_tokens_for_user_id(&user_id)
+		.await?;
 	Ok(context)
 }
 
@@ -259,6 +264,10 @@ async fn update_user_roles_for_workspace(
 	.await?;
 
 	context.success(AddUserToWorkspaceResponse {});
+
+	TokenExpiryHandler::new(context.get_state().redis.clone())
+		.expire_tokens_for_user_id(&user_id)
+		.await?;
 	Ok(context)
 }
 
@@ -294,5 +303,9 @@ async fn remove_user_from_workspace(
 	);
 
 	context.success(RemoveUserFromWorkspaceResponse {});
+
+	TokenExpiryHandler::new(context.get_state().redis.clone())
+		.expire_tokens_for_user_id(&user_id)
+		.await?;
 	Ok(context)
 }

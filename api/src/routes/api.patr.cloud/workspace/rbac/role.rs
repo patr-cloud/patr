@@ -21,6 +21,7 @@ use crate::{
 	pin_fn,
 	utils::{
 		constants::request_keys,
+		token_expiry_handler::TokenExpiryHandler,
 		Error,
 		ErrorData,
 		EveContext,
@@ -536,6 +537,12 @@ async fn update_role(
 	)
 	.await?;
 
+	let associated_user_ids = db::get_all_user_ids_with_role(
+		context.get_database_connection(),
+		&role_id,
+	)
+	.await?;
+
 	if let Some((resource_permissions, resource_type_permissions)) =
 		resource_permissions.zip(resource_type_permissions)
 	{
@@ -559,6 +566,16 @@ async fn update_role(
 	}
 
 	context.success(UpdateRoleResponse {});
+
+	// TODO: use batch update
+	let mut token_expiry_handler =
+		TokenExpiryHandler::new(context.get_state().redis.clone());
+	for user_id in associated_user_ids {
+		token_expiry_handler
+			.expire_tokens_for_user_id(&user_id)
+			.await?;
+	}
+
 	Ok(context)
 }
 
@@ -596,6 +613,12 @@ async fn delete_role(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let associated_user_ids = db::get_all_user_ids_with_role(
+		context.get_database_connection(),
+		&role_id,
+	)
+	.await?;
+
 	// Remove all users who belong to this role
 	db::remove_all_users_from_role(context.get_database_connection(), &role_id)
 		.await?;
@@ -603,5 +626,15 @@ async fn delete_role(
 	db::delete_role(context.get_database_connection(), &role_id).await?;
 
 	context.success(DeleteRoleResponse {});
+
+	// TODO: use batch update
+	let mut token_expiry_handler =
+		TokenExpiryHandler::new(context.get_state().redis.clone());
+	for user_id in associated_user_ids {
+		token_expiry_handler
+			.expire_tokens_for_user_id(&user_id)
+			.await?;
+	}
+
 	Ok(context)
 }
