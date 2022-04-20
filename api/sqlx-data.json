@@ -5461,6 +5461,38 @@
     },
     "query": "CREATE EXTENSION IF NOT EXISTS citext;"
   },
+  "addcf3e5d9d12a817e520a10e3298ad6b8f95ddf26ba064bdc143629d59d9d1b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "workspace_id: _",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "role_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE role_id = $1"
+  },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "describe": {
       "columns": [
