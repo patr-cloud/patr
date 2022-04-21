@@ -178,8 +178,6 @@ pub async fn delete_static_site(
 	Ok(())
 }
 
-// -----------------------------------------------------------------------
-
 pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	file: &str,
