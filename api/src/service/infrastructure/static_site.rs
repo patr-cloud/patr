@@ -286,7 +286,7 @@ pub async fn upload_static_site_files_to_s3(
 			.body(error!(SERVER_ERROR).to_string())?;
 		let mime_string = get_mime_type_from_file_name(file_extension);
 
-		let (_, _code) = bucket
+		let (_, code) = bucket
 			.put_object_with_content_type(
 				format!("{}/{}", static_site_id, file_name),
 				&file_content,
@@ -301,6 +301,15 @@ pub async fn upload_static_site_files_to_s3(
 				);
 				Error::empty()
 			})?;
+
+		if code < 200 || code >= 300 {
+			log::error!(
+				"request_id: {} - error pushing static site file to S3: {}",
+				request_id,
+				code
+			);
+			return Err(Error::empty());
+		}
 	}
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
