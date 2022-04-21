@@ -249,7 +249,6 @@ jobs:
 		return Ok(());
 	} else if response.status() == 200 {
 		let body = response.json::<GithubResponseBody>().await?;
-		println!("{:#?}", body);
 		let sha = body.sha;
 		octocrab
 			.repos(owner_name, repo_name)
@@ -716,25 +715,31 @@ jobs:
             java-version: {version}
             distribution: 'temurin'
             cache: maven
-        - name: Build with Maven
-          run: mvn clean install
-          run: mvn package
+        - name: install with Maven
+          run: |
+            mvn clean install
+            mvn -f pom.xml clean package
 
         - name: Create a Dockerfile
           run: |
-            echo 
-             "
+            echo "
              FROM openjdk:{version}
-             ADD target/{build_name}.jar 
-             ENTRYPOINT ["java", "-jar", "build_name.jar"]
+             ADD target/{build_name} {build_name}
+             ENTRYPOINT ["java","-jar","./{build_name}"]
              " > Dockerfile
+
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
 
         - name: Build image from Dockerfile and push to patr-registry
           run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
-            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}
+            docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
 "#
 				),
 			)
@@ -762,39 +767,41 @@ jobs:
 					// Change the ubuntu-latest to specifc version later
 					r#"
 name: Github action for your deployment
-
 on:
     push:
-    branch: [main]
+        branches: [main]
 
 jobs:
     build:
-    
+
         runs-on: ubuntu-latest
-    
         steps:
         - uses: actions/checkout@v3
-        - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
+        - name: Set up JDK {version}
+          uses: actions/setup-java@v3
+          with:
             java-version: {version}
             distribution: 'temurin'
             cache: maven
-        - name: Build with Maven
-          run: mvn clean install
-          run: mvn package
+        - name: install with Maven
+          run: |
+            mvn clean install
+            mvn -f pom.xml clean package
         - name: Create a Dockerfile
-          run: echo 
-"
-FROM openjdk
-WORKDIR .
-ADD target/<build-name>
-ENTRYPOINT ["java", "-jar", "<build-name>"]
-" > Dockerfile
-
+          run: |
+            echo "
+             FROM openjdk:{version}
+             ADD target/{build_name} {build_name}
+             ENTRYPOINT ["java","-jar","./{build_name}"]
+             " > Dockerfile
+        - name: Docker login
+          uses: docker/login-action@v1 
+          with:
+            registry: registry.patr.cloud
+            username: {username}
+            password: ${{{{ secrets.REGISTRY_PASSWORD }}}}
         - name: Build image from Dockerfile and push to patr-registry
           run: |
-            docker login -u {username} -p ${{REGISTRY_PASSWORD}} registry.patr.cloud
             docker build . -t {username}/deployment
             docker tag {username}/deployment registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag} 
             docker push registry.patr.cloud/{workspace_name}/{docker_repo_name}:{tag}

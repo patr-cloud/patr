@@ -322,92 +322,114 @@ async fn configure_github_build_steps_deployment(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	let workspace_name = workspace.name;
-	// let workspace_name =
-	// "personal-workspace-1424404d9fff474bba7f23825681f6a8".to_string();
 
-	if framework == "node" {
-		service::github_actions_for_node_deployment(
-			access_token,
-			owner_name,
-			&repo_name,
-			version,
-			user_agent,
-			username,
-			&tag,
-			&workspace_name,
-			&docker_repo_name,
-		)
-		.await?;
-	} else if framework == "django" {
-		service::github_actions_for_django_deployment(
-			access_token,
-			owner_name,
-			&repo_name,
-			version,
-			user_agent,
-			username,
-			&tag,
-			&workspace_name,
-			&docker_repo_name,
-		)
-		.await?;
-	} else if framework == "flask" {
-		service::github_actions_for_flask_deployment(
-			access_token,
-			owner_name,
-			&repo_name,
-			version,
-			user_agent,
-			username,
-			&tag,
-			&workspace_name,
-			&docker_repo_name,
-		)
-		.await?;
-	} else if framework == "spring" {
-		let build_name = if let Some(name) = build_name {
-			name
-		} else {
-			return Error::as_result()
+	match framework.as_str() {
+		"node" => {
+			service::github_actions_for_node_deployment(
+				access_token,
+				owner_name,
+				&repo_name,
+				version,
+				user_agent,
+				username,
+				&tag,
+				&workspace_name,
+				&docker_repo_name,
+			)
+			.await?;
+
+			context.success(ConfigureDeploymentBuildStepResponse {});
+			Ok(context)
+		}
+
+		"django" => {
+			service::github_actions_for_django_deployment(
+				access_token,
+				owner_name,
+				&repo_name,
+				version,
+				user_agent,
+				username,
+				&tag,
+				&workspace_name,
+				&docker_repo_name,
+			)
+			.await?;
+
+			context.success(ConfigureDeploymentBuildStepResponse {});
+			Ok(context)
+		}
+		"flask" => {
+			service::github_actions_for_flask_deployment(
+				access_token,
+				owner_name,
+				&repo_name,
+				version,
+				user_agent,
+				username,
+				&tag,
+				&workspace_name,
+				&docker_repo_name,
+			)
+			.await?;
+
+			context.success(ConfigureDeploymentBuildStepResponse {});
+			Ok(context)
+		}
+		"rust" => {
+			let binary_name = if let Some(name) = binary_name {
+				name
+			} else {
+				return Error::as_result()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+			};
+			service::github_actions_for_rust_deployment(
+				access_token,
+				owner_name,
+				&repo_name,
+				version,
+				user_agent,
+				username,
+				&tag,
+				&workspace_name,
+				&docker_repo_name,
+				&binary_name,
+			)
+			.await?;
+
+			context.success(ConfigureDeploymentBuildStepResponse {});
+			Ok(context)
+		}
+		"maven" => {
+			let build_name = if let Some(name) = build_name {
+				name
+			} else {
+				return Error::as_result()
+					.status(400)
+					.body(error!(WRONG_PARAMETERS).to_string())?;
+			};
+			service::github_actions_for_spring_maven_deployment(
+				access_token,
+				owner_name,
+				&repo_name,
+				version,
+				user_agent,
+				username,
+				&tag,
+				&workspace_name,
+				&docker_repo_name,
+				build_name,
+			)
+			.await?;
+
+			context.success(ConfigureDeploymentBuildStepResponse {});
+			Ok(context)
+		}
+		_ => {
+			Error::as_result()
 				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-		};
-		service::github_actions_for_spring_maven_deployment(
-			access_token,
-			owner_name,
-			&repo_name,
-			version,
-			user_agent,
-			username,
-			&tag,
-			&workspace_name,
-			&docker_repo_name,
-			build_name,
-		)
-		.await?;
-	} else if framework == "rust" {
-		let binary_name = if let Some(name) = binary_name {
-			name
-		} else {
-			return Error::as_result()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string())?;
-		};
-		service::github_actions_for_rust_deployment(
-			access_token,
-			owner_name,
-			&repo_name,
-			version,
-			user_agent,
-			username,
-			&tag,
-			&workspace_name,
-			&docker_repo_name,
-			&binary_name,
-		)
-		.await?;
+				.body(error!(WRONG_PARAMETERS).to_string())?
+		}
 	}
-
-	context.success(ConfigureDeploymentBuildStepResponse {});
-	Ok(context)
 }
