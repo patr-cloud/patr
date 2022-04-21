@@ -11,9 +11,9 @@ use crate::{
 	models::{
 		db_mapping::{
 			Deployment,
+			DeploymentEnvironmentVariable,
 			DeploymentMachineType,
 			DeploymentRegion,
-			DeploymentEnvironmentVariable,
 			WorkspaceAuditLog,
 		},
 		deployment::{

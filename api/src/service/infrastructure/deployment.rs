@@ -309,7 +309,7 @@ pub async fn update_deployment(
 				EnvironmentVariableValue::String(value) => {
 					db::add_environment_variable_for_deployment(
 						connection,
-						&deployment_id,
+						deployment_id,
 						key,
 						Some(value),
 						None,
@@ -319,7 +319,7 @@ pub async fn update_deployment(
 					from_secret: secret_id,
 				} => db::add_environment_variable_for_deployment(
 					connection,
-					&deployment_id,
+					deployment_id,
 					key,
 					None,
 					Some(secret_id),

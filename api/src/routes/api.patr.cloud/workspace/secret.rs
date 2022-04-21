@@ -256,9 +256,7 @@ async fn update_secret(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let UpdateWorkspaceSecretRequest {
-		name, value, ..
-	} = context
+	let UpdateWorkspaceSecretRequest { name, value, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
