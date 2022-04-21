@@ -1395,7 +1395,6 @@ async fn get_deployment_metrics(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
-
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)

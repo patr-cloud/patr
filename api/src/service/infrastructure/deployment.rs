@@ -178,23 +178,27 @@ pub async fn create_deployment_in_workspace(
 			request_id
 		);
 
-		let (value, secret_id) = match value {
+		match value {
 			EnvironmentVariableValue::String(value) => {
-				(Some(value.as_str()), None)
+				db::add_environment_variable_for_deployment(
+					connection,
+					&deployment_id,
+					key,
+					Some(value),
+					None,
+				)
 			}
-			EnvironmentVariableValue::Secret { from_secret } => {
-				(None, Some(from_secret))
-			}
-		};
-
-		db::add_environment_variable_for_deployment(
-			connection,
-			&deployment_id,
-			key,
-			value,
-			secret_id,
-		)
-		.await?
+			EnvironmentVariableValue::Secret {
+				from_secret: secret_id,
+			} => db::add_environment_variable_for_deployment(
+				connection,
+				&deployment_id,
+				key,
+				None,
+				Some(secret_id),
+			),
+		}
+		.await?;
 	}
 
 	start_subscription(
@@ -301,23 +305,27 @@ pub async fn update_deployment(
 		)
 		.await?;
 		for (key, value) in environment_variables {
-			let (value, secret_id) = match value {
+			match value {
 				EnvironmentVariableValue::String(value) => {
-					(Some(value.as_str()), None)
+					db::add_environment_variable_for_deployment(
+						connection,
+						&deployment_id,
+						key,
+						Some(value),
+						None,
+					)
 				}
-				EnvironmentVariableValue::Secret { from_secret } => {
-					(None, Some(from_secret))
-				}
-			};
-
-			db::add_environment_variable_for_deployment(
-				connection,
-				deployment_id,
-				key,
-				value,
-				secret_id,
-			)
-			.await?
+				EnvironmentVariableValue::Secret {
+					from_secret: secret_id,
+				} => db::add_environment_variable_for_deployment(
+					connection,
+					&deployment_id,
+					key,
+					None,
+					Some(secret_id),
+				),
+			}
+			.await?;
 		}
 	}
 	log::trace!(

@@ -83,6 +83,7 @@ tokio = { version = "1", features = ["full"] }
 trust-dns-client = "0.21.1"
 zip = "0.5.13"
 vaultrs = "0.6.0"
+zeroize = "1.5.4"
 
 [dependencies.log4rs]
 default-features = false

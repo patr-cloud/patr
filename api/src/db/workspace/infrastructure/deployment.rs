@@ -13,7 +13,7 @@ use crate::{
 			Deployment,
 			DeploymentMachineType,
 			DeploymentRegion,
-			EnvVariable,
+			DeploymentEnvironmentVariable,
 			WorkspaceAuditLog,
 		},
 		deployment::{
@@ -207,10 +207,16 @@ pub async fn initialize_deployment_pre(
 				PRIMARY KEY(deployment_id, name),
 			CONSTRAINT deployment_environment_variable_fk_secret_id
 				FOREIGN KEY(secret_id) REFERENCES secret(id),
-			CONSTRAINT deplo_env_var_chk_value_secret_id_both_not_null
+			CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null
 				CHECK(
-					value IS NOT NULL OR
-					secret_id IS NOT NULL
+					(
+						value IS NOT NULL AND
+						secret_id IS NULL
+					) OR
+					(
+						value IS NULL AND
+						secret_id IS NOT NULL
+					)
 				)
 		);
 		"#
@@ -636,9 +642,9 @@ pub async fn update_deployment_name(
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<EnvVariable>, sqlx::Error> {
+) -> Result<Vec<DeploymentEnvironmentVariable>, sqlx::Error> {
 	query_as!(
-		EnvVariable,
+		DeploymentEnvironmentVariable,
 		r#"
 		SELECT
 		    deployment_id as "deployment_id: _",

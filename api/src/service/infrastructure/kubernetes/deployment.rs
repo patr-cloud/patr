@@ -148,12 +148,10 @@ pub async fn update_kubernetes_deployment(
 		request_id
 	);
 
-	let config = config.clone();
-
 	let annotations = [
 		(
 			"vault.security.banzaicloud.io/vault-addr".to_string(),
-			config.vault.address,
+			config.vault.address.clone(),
 		),
 		(
 			"vault.security.banzaicloud.io/vault-role".to_string(),
@@ -211,15 +209,14 @@ pub async fn update_kubernetes_deployment(
 								.map(|(name, value)| {
 									use EnvironmentVariableValue::*;
 									EnvVar {
-										name: name.to_string(),
+										name: name.clone(),
 										value: Some(match value {
-											String(value) => value.to_string(),
+											String(value) => value.clone(),
 											Secret { from_secret } => {
-												let secret = format!(
+												format!(
 													"vault:secret/data/{}/{}",
 													workspace_id, from_secret
-												);
-												secret
+												)
 											}
 										}),
 										..EnvVar::default()

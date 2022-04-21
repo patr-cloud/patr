@@ -139,6 +139,7 @@ dependencies = [
  "tokio",
  "trust-dns-client",
  "vaultrs",
+ "zeroize",
  "zip",
 ]
 

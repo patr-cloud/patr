@@ -103,15 +103,6 @@ pub mod permissions {
 				pub const EDIT: &str =
 					"workspace::infrastructure::staticSite::edit";
 			}
-
-			pub mod secret {
-				pub const LIST: &str =
-					"workspace::infrastructure::secret::list";
-				pub const CREATE: &str =
-					"workspace::infrastructure::secret::create";
-				pub const DELETE: &str =
-					"workspace::infrastructure::secret::delete";
-			}
 		}
 
 		pub mod docker_registry {
@@ -138,6 +129,13 @@ pub mod permissions {
 				pub const UPDATE_ROLES: &str =
 					"workspace::rbac::user::updateRoles";
 			}
+		}
+
+		pub mod secret {
+			pub const LIST: &str = "workspace::secret::list";
+			pub const CREATE: &str = "workspace::secret::create";
+			pub const EDIT: &str = "workspace::secret::edit";
+			pub const DELETE: &str = "workspace::secret::delete";
 		}
 
 		pub const EDIT: &str = "workspace::edit";

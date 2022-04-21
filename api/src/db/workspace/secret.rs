@@ -28,7 +28,7 @@ pub async fn initialize_secret_post(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
 	log::info!("Finishing up secret tables initialization");
-	// TODO create all the necessarry indexes
+	// TODO create all the necessary indexes
 
 	query!(
 		r#"
@@ -45,6 +45,29 @@ pub async fn initialize_secret_post(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn get_secret_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	secret_id: &Uuid,
+) -> Result<Option<Secret>, sqlx::Error> {
+	query_as!(
+		Secret,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			workspace_id as "workspace_id: _",
+			deployment_id as "deployment_id: _"
+		FROM
+			secret
+		WHERE
+			id = $1;
+		"#,
+		secret_id as _
+	)
+	.fetch_optional(connection)
+	.await
 }
 
 pub async fn get_all_secrets_in_workspace(
@@ -75,7 +98,30 @@ pub async fn create_new_secret_in_workspace(
 	secret_id: &Uuid,
 	name: &str,
 	workspace_id: &Uuid,
-	deployment_id: Option<&Uuid>,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			secret
+		VALUES
+			($1, $2, $3, NULL);
+		"#,
+		secret_id as _,
+		name as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+#[allow(dead_code)]
+pub async fn create_new_secret_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	secret_id: &Uuid,
+	name: &str,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"

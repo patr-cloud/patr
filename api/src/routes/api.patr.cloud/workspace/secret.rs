@@ -1,15 +1,18 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
-	models::workspace::infrastructure::secret::{
+	models::workspace::secret::{
 		CreateSecretInWorkspaceRequest,
 		CreateSecretInWorkspaceResponse,
 		DeleteSecretResponse,
 		ListSecretsResponse,
 		Secret,
+		UpdateWorkspaceSecretRequest,
+		UpdateWorkspaceSecretResponse,
 	},
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use zeroize::Zeroize;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -37,7 +40,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::secret::LIST,
+				permissions::workspace::secret::LIST,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -69,7 +72,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::secret::CREATE,
+				permissions::workspace::secret::CREATE,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -96,12 +99,12 @@ pub fn create_sub_app(
 		],
 	);
 
-	// delete secret
-	app.delete(
+	// update secret
+	app.patch(
 		"/:secretId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::secret::DELETE,
+				permissions::workspace::secret::EDIT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -120,7 +123,46 @@ pub fn create_sub_app(
 						&secret_id,
 					)
 					.await?
-					.filter(|value| value.owner_id == workspace_id);
+					.filter(|resource| resource.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(update_secret)),
+		],
+	);
+
+	// delete secret
+	app.delete(
+		"/:secretId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::secret::DELETE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let secret_id =
+						context.get_param(request_keys::SECRET_ID).unwrap();
+					let secret_id = Uuid::parse_str(secret_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&secret_id,
+					)
+					.await?
+					.filter(|resource| resource.owner_id == workspace_id);
 
 					if resource.is_none() {
 						context
@@ -157,6 +199,7 @@ async fn list_secrets(
 	.map(|secret| Secret {
 		id: secret.id,
 		name: secret.name,
+		deployment_id: secret.deployment_id,
 	})
 	.collect();
 
@@ -173,7 +216,9 @@ async fn create_secret(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let CreateSecretInWorkspaceRequest { name, value, .. } = context
+	let CreateSecretInWorkspaceRequest {
+		name, mut value, ..
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -184,7 +229,6 @@ async fn create_secret(
 	let id = service::create_new_secret_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		None,
 		&name,
 		&value,
 		&config,
@@ -192,8 +236,52 @@ async fn create_secret(
 	)
 	.await?;
 
+	value.zeroize();
+
 	log::trace!("request_id: {} - Returning new secret", request_id);
 	context.success(CreateSecretInWorkspaceResponse { id });
+	Ok(context)
+}
+
+async fn update_secret(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	let secret_id =
+		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
+			.unwrap();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let UpdateWorkspaceSecretRequest {
+		name, value, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let config = context.get_state().config.clone();
+
+	log::trace!("request_id: {} - Deleting secret {}", request_id, secret_id);
+	service::update_workspace_secret(
+		context.get_database_connection(),
+		&workspace_id,
+		&secret_id,
+		name.as_deref(),
+		value.as_deref(),
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	if let Some(mut value) = value {
+		value.zeroize();
+	}
+
+	context.success(UpdateWorkspaceSecretResponse {});
 	Ok(context)
 }
 

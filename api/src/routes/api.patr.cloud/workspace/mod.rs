@@ -38,6 +38,7 @@ mod domain;
 mod infrastructure;
 #[path = "rbac/mod.rs"]
 mod rbac_routes;
+mod secret;
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
@@ -119,6 +120,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
 
 	sub_app.delete(
 		"/:workspaceId",
