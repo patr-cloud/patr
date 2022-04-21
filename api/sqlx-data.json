@@ -4955,6 +4955,98 @@
     },
     "query": "DELETE FROM domain_tld WHERE tld = $1;"
   },
+  "a1fc8e20cc2b4dffb0496fe29468b2bc7854e5a263d88d255ffb74761062438e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dob",
+          "ordinal": 5,
+          "type_info": "Int8"
+        },
+        {
+          "name": "bio",
+          "ordinal": 6,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created",
+          "ordinal": 8,
+          "type_info": "Int8"
+        },
+        {
+          "name": "recovery_email_local",
+          "ordinal": 9,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "recovery_email_domain_id: Uuid",
+          "ordinal": 10,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "recovery_phone_country_code",
+          "ordinal": 11,
+          "type_info": "Bpchar"
+        },
+        {
+          "name": "recovery_phone_number",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" INNER JOIN workspace_user ON \"user\".id = workspace_user.user_id WHERE workspace_user.role_id = $1;"
+  },
   "a3d44c2d7c66de013a3510d3f42bf75f60a71f34682522a2882471f9a1f4414e": {
     "describe": {
       "columns": [
@@ -5460,38 +5552,6 @@
       }
     },
     "query": "CREATE EXTENSION IF NOT EXISTS citext;"
-  },
-  "addcf3e5d9d12a817e520a10e3298ad6b8f95ddf26ba064bdc143629d59d9d1b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id: _",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "workspace_id: _",
-          "ordinal": 1,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "role_id: _",
-          "ordinal": 2,
-          "type_info": "Uuid"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      }
-    },
-    "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE role_id = $1"
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "describe": {

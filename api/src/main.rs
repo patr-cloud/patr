@@ -16,7 +16,7 @@ mod macros;
 mod migrations;
 mod models;
 mod rabbitmq;
-pub mod redis;
+mod redis;
 mod routes;
 mod scheduler;
 mod service;

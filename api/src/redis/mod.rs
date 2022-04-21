@@ -1,4 +1,4 @@
-pub mod rbac;
+mod rbac;
 
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
@@ -7,6 +7,7 @@ use redis::{
 };
 use tokio::task;
 
+pub use self::rbac::*;
 use crate::utils::settings::Settings;
 
 pub async fn create_redis_connection(

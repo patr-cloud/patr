@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use api_models::utils::Uuid;
 
 use crate::{
-	models::db_mapping::{Permission, Role, WorkspaceUser},
+	models::db_mapping::{Permission, Role, User},
 	query,
 	query_as,
 	Database,
@@ -294,28 +294,56 @@ pub async fn delete_role(
 	Ok(())
 }
 
-// TODO: how to fetch user_id alone
-pub async fn get_all_user_ids_with_role(
+pub async fn get_all_users_with_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
-) -> Result<Vec<Uuid>, sqlx::Error> {
-	let result = query_as!(
-		WorkspaceUser,
+) -> Result<Vec<User>, sqlx::Error> {
+	query!(
 		r#"
 		SELECT
-			user_id as "user_id: _",
-			workspace_id as "workspace_id: _",
-			role_id as "role_id: _"
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".password,
+			"user".first_name,
+			"user".last_name,
+			"user".dob,
+			"user".bio,
+			"user".location,
+			"user".created,
+			"user".recovery_email_local,
+			"user".recovery_email_domain_id as "recovery_email_domain_id: Uuid",
+			"user".recovery_phone_country_code,
+			"user".recovery_phone_number
 		FROM
-			workspace_user
-		WHERE 
-			role_id = $1
+			"user"
+		INNER JOIN workspace_user ON
+			"user".id = workspace_user.user_id
+		WHERE
+			workspace_user.role_id = $1;
 		"#,
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-	Ok(result.into_iter().map(|row| row.user_id).collect())
+	.await
+	.map(|rows| {
+		rows.into_iter()
+			.map(|row| User {
+				id: row.id,
+				username: row.username,
+				password: row.password,
+				first_name: row.first_name,
+				last_name: row.last_name,
+				dob: row.dob.map(|dob| dob as u64),
+				bio: row.bio,
+				location: row.location,
+				created: row.created as u64,
+				recovery_email_local: row.recovery_email_local,
+				recovery_email_domain_id: row.recovery_email_domain_id,
+				recovery_phone_country_code: row.recovery_phone_country_code,
+				recovery_phone_number: row.recovery_phone_number,
+			})
+			.collect()
+	})
 }
 
 pub async fn remove_all_users_from_role(

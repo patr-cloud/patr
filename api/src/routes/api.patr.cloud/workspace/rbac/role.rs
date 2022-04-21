@@ -19,7 +19,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	redis::rbac::expire_tokens_for_user_id,
+	redis::expire_tokens_for_user_id,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -537,7 +537,7 @@ async fn update_role(
 	)
 	.await?;
 
-	let associated_user_ids = db::get_all_user_ids_with_role(
+	let associated_users = db::get_all_users_with_role(
 		context.get_database_connection(),
 		&role_id,
 	)
@@ -568,8 +568,8 @@ async fn update_role(
 	context.success(UpdateRoleResponse {});
 
 	let redis_conn = &mut context.get_state_mut().redis;
-	for user_id in associated_user_ids {
-		expire_tokens_for_user_id(redis_conn, &user_id).await?;
+	for user in associated_users {
+		expire_tokens_for_user_id(redis_conn, &user.id).await?;
 	}
 
 	Ok(context)
@@ -609,7 +609,7 @@ async fn delete_role(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let associated_user_ids = db::get_all_user_ids_with_role(
+	let associated_users = db::get_all_users_with_role(
 		context.get_database_connection(),
 		&role_id,
 	)
@@ -624,8 +624,8 @@ async fn delete_role(
 	context.success(DeleteRoleResponse {});
 
 	let redis_conn = &mut context.get_state_mut().redis;
-	for user_id in associated_user_ids {
-		expire_tokens_for_user_id(redis_conn, &user_id).await?;
+	for user in associated_users {
+		expire_tokens_for_user_id(redis_conn, &user.id).await?;
 	}
 
 	Ok(context)

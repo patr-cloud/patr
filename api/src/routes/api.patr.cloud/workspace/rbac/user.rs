@@ -16,7 +16,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	redis::rbac::expire_tokens_for_user_id,
+	redis::expire_tokens_for_user_id,
 	utils::{
 		constants::request_keys,
 		Error,
