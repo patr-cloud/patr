@@ -1,22 +1,19 @@
 use api_models::utils::Uuid;
 
-use crate::{
-	migrate_query as query,
-	models::rbac,
-	utils::settings::Settings,
-	Database,
-};
+use crate::{migrate_query as query, utils::settings::Settings, Database};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), sqlx::Error> {
 	make_rbac_descriptions_non_nullable(&mut *connection, config).await?;
+	add_secrets(&mut *connection, config).await?;
+
 	update_roles_permissions(&mut *connection, config).await?;
 	add_rbac_user_permissions(&mut *connection, config).await?;
 	update_edit_workspace_permission(&mut *connection, config).await?;
 	add_delete_workspace_permission(&mut *connection, config).await?;
-	add_secrets(&mut *connection, config).await?;
+
 	add_secret_id_column_to_deployment_environment_variable(
 		&mut *connection,
 		config,
@@ -33,9 +30,8 @@ async fn make_rbac_descriptions_non_nullable(
 	query!(
 		r#"
 		UPDATE resource_type
-		SET description = $1;
+		SET description = '';
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -45,7 +41,6 @@ async fn make_rbac_descriptions_non_nullable(
 		ALTER TABLE resource_type
 		ALTER COLUMN description SET NOT NULL;
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -53,9 +48,8 @@ async fn make_rbac_descriptions_non_nullable(
 	query!(
 		r#"
 		UPDATE role
-		SET description = $1;
+		SET description = '';
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -65,7 +59,6 @@ async fn make_rbac_descriptions_non_nullable(
 		ALTER TABLE role
 		ALTER COLUMN description SET NOT NULL;
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -73,9 +66,8 @@ async fn make_rbac_descriptions_non_nullable(
 	query!(
 		r#"
 		UPDATE permission
-		SET description = $1;
+		SET description = '';
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -85,7 +77,6 @@ async fn make_rbac_descriptions_non_nullable(
 		ALTER TABLE permission
 		ALTER COLUMN description SET NOT NULL;
 		"#,
-		""
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -136,6 +127,7 @@ async fn add_rbac_user_permissions(
 	{
 		let uuid = loop {
 			let uuid = Uuid::new_v4();
+
 			let exists = query!(
 				r#"
 				SELECT
@@ -150,6 +142,7 @@ async fn add_rbac_user_permissions(
 			.fetch_optional(&mut *connection)
 			.await?
 			.is_some();
+
 			if !exists {
 				// That particular resource ID doesn't exist. Use it
 				break uuid;
@@ -171,6 +164,7 @@ async fn add_rbac_user_permissions(
 	}
 	Ok(())
 }
+
 async fn update_edit_workspace_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
@@ -189,6 +183,7 @@ async fn update_edit_workspace_permission(
 	)
 	.execute(&mut *connection)
 	.await?;
+
 	Ok(())
 }
 
@@ -249,11 +244,9 @@ async fn add_secrets(
 				CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			workspace_id UUID NOT NULL,
 			deployment_id UUID, /* For deployment specific secrets */
-			CONSTRAINT secret_uq_workspace_id_name 
-				UNIQUE(workspace_id, name),
-			CONSTRAINT secret_fk_id_workspace_id
-				FOREIGN KEY(id, workspace_id) 
-					REFERENCES resource(id, owner_id),
+			CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name),
+			CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id)
+				REFERENCES resource(id, owner_id),
 			CONSTRAINT secret_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id)
 					REFERENCES deployment(id, workspace_id)
@@ -264,9 +257,10 @@ async fn add_secrets(
 	.await?;
 
 	for &permission in [
-		"workspace::infrastructure::secret::create",
-		"workspace::infrastructure::secret::delete",
-		"workspace::infrastructure::secret::list",
+		"workspace::secret::list",
+		"workspace::secret::create",
+		"workspace::secret::edit",
+		"workspace::secret::delete",
 	]
 	.iter()
 	{
@@ -300,7 +294,7 @@ async fn add_secrets(
 			INSERT INTO
 				permission
 			VALUES
-				($1, $2, NULL);
+				($1, $2, '');
 			"#,
 			uuid,
 			permission
@@ -311,7 +305,7 @@ async fn add_secrets(
 
 	// Insert new resource type into the database for secrets
 	let (resource_type, uuid) = (
-		rbac::resource_types::SECRET.to_string(),
+		"secret",
 		loop {
 			let uuid = Uuid::new_v4();
 
@@ -334,9 +328,7 @@ async fn add_secrets(
 				// That particular resource ID doesn't exist. Use it
 				break uuid;
 			}
-		}
-		.as_bytes()
-		.to_vec(),
+		},
 	);
 
 	query!(
@@ -344,7 +336,7 @@ async fn add_secrets(
 		INSERT INTO
 			resource_type
 		VALUES
-			($1, $2, NULL);
+			($1, $2, '');
 		"#,
 		uuid,
 		resource_type,
@@ -362,7 +354,7 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD COLUMN secret_id UUID;
+		ADD COLUMN secret_id UUID;
 		"#
 	)
 	.execute(&mut *connection)
@@ -371,7 +363,7 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ALTER COLUMN value DROP NOT NULL;
+		ALTER COLUMN value DROP NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -380,8 +372,8 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
-				FOREIGN KEY(secret_id) REFERENCES secret(id);
+		ADD CONSTRAINT deployment_environment_variable_fk_secret_id
+		FOREIGN KEY(secret_id) REFERENCES secret(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -390,8 +382,17 @@ async fn add_secret_id_column_to_deployment_environment_variable(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT deplo_env_var_chk_value_secret_id_both_not_null
-				CHECK(value IS NOT NULL OR secret_id IS NOT NULL);
+		ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null
+		CHECK(
+			(
+				value IS NOT NULL AND
+				secret_id IS NULL
+			) OR
+			(
+				value IS NULL AND
+				secret_id IS NOT NULL
+			)
+		);
 		"#
 	)
 	.execute(&mut *connection)
