@@ -276,7 +276,7 @@ async fn add_secrets(
 				WHERE
 					id = $1;
 				"#,
-				uuid.as_bytes().as_ref()
+				&uuid
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -287,7 +287,6 @@ async fn add_secrets(
 				break uuid;
 			}
 		};
-		let uuid = uuid.as_bytes().as_ref();
 
 		query!(
 			r#"
@@ -296,16 +295,17 @@ async fn add_secrets(
 			VALUES
 				($1, $2, '');
 			"#,
-			uuid,
+			&uuid,
 			permission
 		)
 		.execute(&mut *connection)
 		.await?;
 	}
 
+	const SECRET: &str = "secret";
 	// Insert new resource type into the database for secrets
 	let (resource_type, uuid) = (
-		"secret",
+		SECRET,
 		loop {
 			let uuid = Uuid::new_v4();
 
@@ -318,7 +318,7 @@ async fn add_secrets(
 				WHERE
 					id = $1;
 				"#,
-				uuid.as_bytes().as_ref()
+				&uuid
 			)
 			.fetch_optional(&mut *connection)
 			.await?
@@ -338,7 +338,7 @@ async fn add_secrets(
 		VALUES
 			($1, $2, '');
 		"#,
-		uuid,
+		&uuid,
 		resource_type,
 	)
 	.execute(&mut *connection)
