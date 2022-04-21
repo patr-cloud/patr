@@ -302,7 +302,7 @@ pub async fn upload_static_site_files_to_s3(
 				Error::empty()
 			})?;
 
-		if code < 200 || code >= 300 {
+		if !(200..300).contains(&code) {
 			log::error!(
 				"request_id: {} - error pushing static site file to S3: {}",
 				request_id,
