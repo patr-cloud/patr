@@ -29,7 +29,12 @@ pub async fn get_join_count(
 		SELECT
 			COUNT(*) as "count!"
 		FROM
-			"user";
+			"user"
+		WHERE
+			id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -51,8 +56,16 @@ pub async fn get_created_deployment_count(
 			COUNT(*) as "count!"
 		FROM
 			deployment
+		INNER JOIN
+			workspace
+		ON
+			deployment.workspace_id = workspace.id
 		WHERE
-			status != 'deleted';
+			deployment.status != 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -74,8 +87,16 @@ pub async fn get_deployment_domain_count(
 			COUNT(*) as "count!"
 		FROM
 			managed_url
+		INNER JOIN
+			workspace
+		ON
+			managed_url.workspace_id = workspace.id
 		WHERE
-			url_type = 'proxy_to_deployment';
+			url_type = 'proxy_to_deployment' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -97,8 +118,16 @@ pub async fn get_deleted_deployment_count(
 			COUNT(*) "count!"
 		FROM
 			deployment
+		INNER JOIN
+			workspace
+		ON
+			deployment.workspace_id = workspace.id
 		WHERE
-			status = 'deleted';
+			deployment.status = 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -120,8 +149,16 @@ pub async fn get_created_database_count(
 			COUNT(*) as "count!"
 		FROM
 			managed_database
+		INNER JOIN
+			workspace
+		ON
+			managed_database.workspace_id = workspace.id
 		WHERE
-			status != 'deleted';
+			status != 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -143,8 +180,16 @@ pub async fn get_deleted_database_count(
 			COUNT(*) as "count!"
 		FROM
 			managed_database
+		INNER JOIN
+			workspace
+		ON
+			managed_database.workspace_id = workspace.id
 		WHERE
-			status = 'deleted';
+			status = 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -166,8 +211,16 @@ pub async fn get_created_static_site_count(
 			COUNT(*) as "count!"
 		FROM
 			deployment_static_site
+		INNER JOIN
+			workspace
+		ON
+			deployment_static_site.workspace_id = workspace.id
 		WHERE
-			status != 'deleted';
+			status != 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -189,8 +242,16 @@ pub async fn get_static_site_domain_count(
 			COUNT(*) as "count!"
 		FROM
 			managed_url
+		INNER JOIN
+			workspace
+		ON
+			managed_url.workspace_id = workspace.id
 		WHERE
-			url_type = 'proxy_to_static_site';
+			url_type = 'proxy_to_static_site' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
@@ -212,8 +273,16 @@ pub async fn get_deleted_static_site_count(
 			COUNT(*) as "count!"
 		FROM 
 			deployment_static_site
+		INNER JOIN
+			workspace
+		ON
+			deployment_static_site.workspace_id = workspace.id
 		WHERE 
-			status = 'deleted';
+			status = 'deleted' AND
+			workspace.super_admin_id NOT IN (
+				'543de4f5808f4a99b2ee96dbdf9afff7',
+				'b4560e9530904195a0999c6d26aa9c29'
+			);
 		"#
 	)
 	.fetch_all(&mut *connection)
