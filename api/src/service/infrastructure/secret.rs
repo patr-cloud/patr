@@ -126,7 +126,9 @@ pub async fn create_new_secret_for_deployment(
 		&client,
 		"secret",
 		&format!("{}/{}", workspace_id, resource_id),
-		&[("data", secret_value)],
+		&[("data", secret_value)]
+			.into_iter()
+			.collect::<BTreeMap<_, _>>(),
 	)
 	.await?;
 
@@ -175,7 +177,7 @@ pub async fn update_workspace_secret(
 			&client,
 			"secret",
 			&format!("{}/{}", workspace_id, secret_id),
-			&[("data", value)],
+			&[("data", value)].into_iter().collect::<BTreeMap<_, _>>(),
 		)
 		.await?;
 	}

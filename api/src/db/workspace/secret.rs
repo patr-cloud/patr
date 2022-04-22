@@ -85,7 +85,12 @@ pub async fn get_all_secrets_in_workspace(
 		FROM
 			secret
 		WHERE
-			workspace_id = $1;
+			workspace_id = $1 AND
+			name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		workspace_id as _,
 	)
