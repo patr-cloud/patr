@@ -19,7 +19,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	redis::expire_tokens_for_user_id,
+	redis::revoke_access_tokens_for_user,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -569,7 +569,7 @@ async fn update_role(
 
 	let redis_conn = &mut context.get_state_mut().redis;
 	for user in associated_users {
-		expire_tokens_for_user_id(redis_conn, &user.id).await?;
+		revoke_access_tokens_for_user(redis_conn, &user.id).await?;
 	}
 
 	Ok(context)
@@ -625,7 +625,7 @@ async fn delete_role(
 
 	let redis_conn = &mut context.get_state_mut().redis;
 	for user in associated_users {
-		expire_tokens_for_user_id(redis_conn, &user.id).await?;
+		revoke_access_tokens_for_user(redis_conn, &user.id).await?;
 	}
 
 	Ok(context)

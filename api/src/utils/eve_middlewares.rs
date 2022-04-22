@@ -15,7 +15,9 @@ use eve_rs::{
 	Middleware,
 	NextHandler,
 };
+use redis::aio::MultiplexedConnection as RedisConnection;
 
+use super::get_current_time_millis;
 use crate::{
 	app::App,
 	error,
@@ -24,7 +26,7 @@ use crate::{
 		rbac::{self, GOD_USER_ID},
 		AccessTokenData,
 	},
-	redis::validate_access_token,
+	redis::is_access_token_revoked,
 	utils::{Error, ErrorData, EveContext},
 };
 
@@ -223,4 +225,29 @@ fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
 	}
 	let access_data = result.unwrap();
 	Some(access_data)
+}
+
+async fn validate_access_token(
+	redis_conn: &mut RedisConnection,
+	access_token: &AccessTokenData,
+) -> Result<(), Error> {
+	// check whether access token has expired
+	if access_token.exp < get_current_time_millis() {
+		return Error::as_result()
+			.status(401)
+			.body(error!(EXPIRED).to_string())?;
+	}
+
+	// check whether access token has revoked
+	match is_access_token_revoked(redis_conn, access_token).await {
+		Ok(false) => (), // access token not revoked hence valid
+		_ => {
+			// either access token revoked or redis connection error
+			return Error::as_result()
+				.status(401)
+				.body(error!(UNAUTHORIZED).to_string());
+		}
+	}
+
+	Ok(())
 }

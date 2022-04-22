@@ -1,5 +1,4 @@
 use api_models::utils::Uuid;
-use eve_rs::AsError;
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
 	AsyncCommands,
@@ -7,104 +6,172 @@ use redis::{
 };
 
 use crate::{
-	error,
 	models::AccessTokenData,
 	service::get_access_token_expiry,
-	utils::{get_current_time_millis, Error},
+	utils::get_current_time_millis,
 };
 
-const GLOBAL_USER_EXP: &str = "token:global-user-exp";
-const USER_ID_EXP: &str = "token:user-{}-exp";
-const LOGIN_ID_EXP: &str = "token:login-{}-exp";
-const WORKSPACE_ID_EXP: &str = "token:workspace-{}-exp";
+fn get_key_for_user_revocation(user_id: &Uuid) -> String {
+	format!("token-revoked:user:{}", user_id.as_str())
+}
+fn get_key_for_login_revocation(login_id: &Uuid) -> String {
+	format!("token-revoked:login:{}", login_id.as_str())
+}
+fn get_key_for_workspace_revocation(workspace_id: &Uuid) -> String {
+	format!("token-revoked:workspace:{}", workspace_id.as_str())
+}
+fn get_key_for_global_revocation() -> String {
+	"token-revoked:global".to_string()
+}
 
-pub async fn validate_access_token(
-	conn: &mut RedisConnection,
+/// returns last set revocation timestamp (in millis) for the given user
+async fn get_token_revoked_timestamp_for_user(
+	redis_conn: &mut RedisConnection,
+	user_id: &Uuid,
+) -> Result<Option<u64>, RedisError> {
+	redis_conn.get(get_key_for_user_revocation(user_id)).await
+}
+
+/// returns last set revocation timestamp (in millis) for the given login
+async fn get_token_revoked_timestamp_for_login(
+	redis_conn: &mut RedisConnection,
+	login_id: &Uuid,
+) -> Result<Option<u64>, RedisError> {
+	redis_conn.get(get_key_for_login_revocation(login_id)).await
+}
+
+/// returns last set revocation timestamp (in millis) for the given
+/// workspace
+async fn get_token_revoked_timestamp_for_workspace(
+	redis_conn: &mut RedisConnection,
+	workspace_id: &Uuid,
+) -> Result<Option<u64>, RedisError> {
+	redis_conn
+		.get(get_key_for_workspace_revocation(workspace_id))
+		.await
+}
+
+/// returns last set revocation timestamp (in millis) for global tokens
+async fn get_global_token_revoked_timestamp(
+	redis_conn: &mut RedisConnection,
+) -> Result<Option<u64>, RedisError> {
+	redis_conn.get(get_key_for_global_revocation()).await
+}
+
+/// if ttl_in_secs is None, then key will live forever
+async fn revoke_user_tokens_created_before_timestamp(
+	redis_conn: &mut RedisConnection,
+	user_id: &Uuid,
+	timestamp_in_millis: u64,
+	ttl_in_secs: Option<usize>,
+) -> Result<(), RedisError> {
+	let key = get_key_for_user_revocation(user_id);
+	if let Some(ttl) = ttl_in_secs {
+		redis_conn.set_ex(key, timestamp_in_millis, ttl).await
+	} else {
+		redis_conn.set(key, timestamp_in_millis).await
+	}
+}
+
+/// if ttl_in_secs is None, then key will live forever
+async fn revoke_login_tokens_created_before_timestamp(
+	redis_conn: &mut RedisConnection,
+	login_id: &Uuid,
+	timestamp_in_millis: u64,
+	ttl_in_secs: Option<usize>,
+) -> Result<(), RedisError> {
+	let key = get_key_for_login_revocation(login_id);
+	if let Some(ttl) = ttl_in_secs {
+		redis_conn.set_ex(key, timestamp_in_millis, ttl).await
+	} else {
+		redis_conn.set(key, timestamp_in_millis).await
+	}
+}
+
+/// if ttl_in_secs is None, then key will live forever
+async fn revoke_workspace_tokens_created_before_timestamp(
+	redis_conn: &mut RedisConnection,
+	workspace_id: &Uuid,
+	timestamp_in_millis: u64,
+	ttl_in_secs: Option<usize>,
+) -> Result<(), RedisError> {
+	let key = get_key_for_workspace_revocation(workspace_id);
+	if let Some(ttl) = ttl_in_secs {
+		redis_conn.set_ex(key, timestamp_in_millis, ttl).await
+	} else {
+		redis_conn.set(key, timestamp_in_millis).await
+	}
+}
+
+/// if ttl_in_secs is None, then key will live forever
+async fn revoke_global_tokens_created_before_timestamp(
+	redis_conn: &mut RedisConnection,
+	timestamp_in_millis: u64,
+	ttl_in_secs: Option<usize>,
+) -> Result<(), RedisError> {
+	let key = get_key_for_global_revocation();
+	if let Some(ttl) = ttl_in_secs {
+		redis_conn.set_ex(key, timestamp_in_millis, ttl).await
+	} else {
+		redis_conn.set(key, timestamp_in_millis).await
+	}
+}
+
+pub async fn revoke_access_tokens_for_user(
+	redis_conn: &mut RedisConnection,
+	user_id: &Uuid,
+) -> Result<(), RedisError> {
+	let ttl = (get_access_token_expiry() / 60) as usize + 120; // 120 seconds buffer time
+	revoke_user_tokens_created_before_timestamp(
+		redis_conn,
+		user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await
+}
+
+pub async fn is_access_token_revoked(
+	redis_conn: &mut RedisConnection,
 	token: &AccessTokenData,
-) -> Result<(), Error> {
-	// 1. check whether token expired naturally
-	if token.exp < get_current_time_millis() {
-		return Error::as_result()
-			.status(401)
-			.body(error!(EXPIRED).to_string())?;
+) -> Result<bool, RedisError> {
+	// check user revocation
+	let revoked_timestamp =
+		get_token_revoked_timestamp_for_user(redis_conn, &token.user.id)
+			.await?;
+	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
+	{
+		return Ok(true);
 	}
 
-	// 2. check whether token has been expired due to expired user id
-	let user_id = USER_ID_EXP.replace("{}", token.user.id.as_str());
-	let expiry: Option<u64> = conn.get(&user_id).await?;
-	if expiry.map_or(false, |exp| token.iat < exp) {
-		return Error::as_result()
-			.status(401)
-			.body(error!(UNAUTHORIZED).to_string())?;
+	// check login revocation
+	let revoked_timestamp =
+		get_token_revoked_timestamp_for_login(redis_conn, &token.login_id)
+			.await?;
+	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
+	{
+		return Ok(true);
 	}
 
-	// 3. check whether token has been expired due to expired login id
-	let login_id = LOGIN_ID_EXP.replace("{}", token.login_id.as_str());
-	let expiry: Option<u64> = conn.get(&login_id).await?;
-	if expiry.map_or(false, |exp| token.iat < exp) {
-		return Error::as_result()
-			.status(401)
-			.body(error!(UNAUTHORIZED).to_string())?;
-	}
-
-	// 4. check whether token has been expired due to expired workspace id
+	// check workspace revocation
 	for workspace_id in token.workspaces.keys() {
-		let workspace_id =
-			WORKSPACE_ID_EXP.replace("{}", workspace_id.as_str());
-		let expiry: Option<u64> = conn.get(&workspace_id).await?;
-		if expiry.map_or(false, |exp| token.iat < exp) {
-			return Error::as_result()
-				.status(401)
-				.body(error!(UNAUTHORIZED).to_string())?;
+		let revoked_timestamp =
+			get_token_revoked_timestamp_for_workspace(redis_conn, workspace_id)
+				.await?;
+		if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
+		{
+			return Ok(true);
 		}
 	}
 
-	// 5. check whether token has been expired due to expired jwt key
-	let global_expiry: Option<u64> = conn.get(GLOBAL_USER_EXP).await?;
-	if global_expiry.map_or(false, |global_exp| token.iat < global_exp) {
-		return Error::as_result()
-			.status(401)
-			.body(error!(UNAUTHORIZED).to_string())?;
+	// check global revocation
+	let revoked_timestamp =
+		get_global_token_revoked_timestamp(redis_conn).await?;
+	if matches!(revoked_timestamp, Some(revoked_timestamp) if token.iat < revoked_timestamp)
+	{
+		return Ok(true);
 	}
 
-	// all checks are passed, hence a valid token
-	Ok(())
-}
-
-pub async fn expire_tokens_for_user_id(
-	conn: &mut RedisConnection,
-	user_id: &Uuid,
-) -> Result<(), RedisError> {
-	let key = USER_ID_EXP.replace("{}", user_id.as_str());
-	set_as_expired(conn, &key).await
-}
-
-pub async fn expire_token_for_login_id(
-	conn: &mut RedisConnection,
-	login_id: &Uuid,
-) -> Result<(), RedisError> {
-	let key = LOGIN_ID_EXP.replace("{}", login_id.as_str());
-	set_as_expired(conn, &key).await
-}
-
-pub async fn expire_tokens_for_workspace_id(
-	conn: &mut RedisConnection,
-	workspace_id: &Uuid,
-) -> Result<(), RedisError> {
-	let key = WORKSPACE_ID_EXP.replace("{}", workspace_id.as_str());
-	set_as_expired(conn, &key).await
-}
-
-pub async fn expire_all_tokens(
-	conn: &mut RedisConnection,
-) -> Result<(), RedisError> {
-	set_as_expired(conn, GLOBAL_USER_EXP).await
-}
-
-async fn set_as_expired(
-	conn: &mut RedisConnection,
-	key: &str,
-) -> Result<(), RedisError> {
-	let ttl = (get_access_token_expiry() / 60) as usize + 60; // 60 sec buffer time
-	conn.set_ex(key, get_current_time_millis(), ttl).await
+	// all checks are passed, hence token has not revoked
+	Ok(false)
 }
