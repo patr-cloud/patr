@@ -73,20 +73,24 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 			EveMiddleware::Compression(compression_level) => {
 				let mut compressor =
 					CompressionHandler::create(*compression_level);
+
 				context = next(context).await?;
 				compressor.compress(&mut context);
+
 				Ok(context)
 			}
 			EveMiddleware::JsonParser => {
 				if let Some(value) = json_parser(&context)? {
 					context.set_body_object(value);
 				}
+
 				next(context).await
 			}
 			EveMiddleware::UrlEncodedParser => {
 				if let Some(value) = url_encoded_parser(&context)? {
 					context.set_body_object(value);
 				}
+
 				next(context).await
 			}
 			EveMiddleware::CookieParser => {
