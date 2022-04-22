@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use api_models::utils::Uuid;
 use eve_rs::AsError;
 use vaultrs::{
 	client::{VaultClient, VaultClientSettingsBuilder},
+	error::ClientError,
 	kv2,
 };
 
@@ -23,7 +26,7 @@ pub async fn create_new_secret_in_workspace(
 ) -> Result<Uuid, Error> {
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
-	log::trace!("request_id: {} - Creating resource.", request_id);
+	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
 		&resource_id,
@@ -48,8 +51,7 @@ pub async fn create_new_secret_in_workspace(
 	)
 	.await?;
 
-	log::trace!("request_id: {} - Creating secret in vault", request_id);
-
+	log::trace!("request_id: {} - Getting vault client", request_id);
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
 			.address(&config.vault.address)
@@ -57,11 +59,14 @@ pub async fn create_new_secret_in_workspace(
 			.build()?,
 	)?;
 
+	log::trace!("request_id: {} - Creating secret in vault", request_id);
 	kv2::set(
 		&client,
 		"secret",
 		&format!("{}/{}", workspace_id.as_str(), resource_id.as_str()),
-		&[("data", secret_value)],
+		&[("data", secret_value)]
+			.into_iter()
+			.collect::<BTreeMap<_, _>>(),
 	)
 	.await?;
 
@@ -82,7 +87,7 @@ pub async fn create_new_secret_for_deployment(
 ) -> Result<Uuid, Error> {
 	let resource_id = db::generate_new_resource_id(connection).await?;
 
-	log::trace!("request_id: {} - Creating resource.", request_id);
+	log::trace!("request_id: {} - Creating resource", request_id);
 	db::create_resource(
 		connection,
 		&resource_id,
@@ -196,6 +201,8 @@ pub async fn delete_secret_in_workspace(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
+	//TODO: check if the secret is connected to a deployment or not
+
 	let client = VaultClient::new(
 		VaultClientSettingsBuilder::default()
 			.address(&config.vault.address)
@@ -214,20 +221,24 @@ pub async fn delete_secret_in_workspace(
 		"secret",
 		&format!("{}/{}", workspace_id, secret_id),
 	)
-	.await?;
+	.await;
 
-	kv2::destroy_versions(
-		&client,
-		"secret",
-		&format!("{}/{}", workspace_id.as_str(), secret_id.as_str()),
-		metadata
-			.versions
-			.keys()
-			.into_iter()
-			.filter_map(|version| version.parse::<u64>().ok())
-			.collect(),
-	)
-	.await?;
+	if let Err(ClientError::APIError { code: 404, .. }) = metadata {
+		// Secret does not exist in vault
+	} else {
+		kv2::destroy_versions(
+			&client,
+			"secret",
+			&format!("{}/{}", workspace_id.as_str(), secret_id.as_str()),
+			metadata?
+				.versions
+				.keys()
+				.into_iter()
+				.filter_map(|version| version.parse::<u64>().ok())
+				.collect(),
+		)
+		.await?;
+	}
 
 	log::trace!(
 		"request_id: {} - Deleted secret with id: {} from vault",

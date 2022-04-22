@@ -214,7 +214,7 @@ pub async fn update_kubernetes_deployment(
 											String(value) => value.clone(),
 											Secret { from_secret } => {
 												format!(
-													"vault:secret/data/{}/{}",
+													"vault:secret/data/{}/{}#data",
 													workspace_id, from_secret
 												)
 											}
@@ -253,6 +253,7 @@ pub async fn update_kubernetes_deployment(
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
+						// TODO: put this in config
 						name: Some("patr-regcred".to_string()),
 					}]),
 					..PodSpec::default()
