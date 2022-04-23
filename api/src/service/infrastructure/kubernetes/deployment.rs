@@ -138,6 +138,7 @@ pub async fn update_kubernetes_deployment(
 			request_keys::REGION.to_string(),
 			deployment.region.to_string(),
 		),
+		("app.kubernetes.io/name".to_string(), "vault".to_string()),
 	]
 	.into_iter()
 	.collect::<BTreeMap<_, _>>();
@@ -146,6 +147,31 @@ pub async fn update_kubernetes_deployment(
 		"request_id: {} - generating deployment configuration",
 		request_id
 	);
+
+	let annotations = [
+		(
+			"vault.security.banzaicloud.io/vault-addr".to_string(),
+			config.vault.address.clone(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-role".to_string(),
+			"vault".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-skip-verify".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-agent".to_string(),
+			"false".to_string(),
+		),
+		(
+			"vault.security.banzaicloud.io/vault-path".to_string(),
+			"kubernetes".to_string(),
+		),
+	]
+	.into_iter()
+	.collect();
 
 	let kubernetes_deployment = K8sDeployment {
 		metadata: ObjectMeta {
@@ -180,18 +206,21 @@ pub async fn update_kubernetes_deployment(
 							running_details
 								.environment_variables
 								.iter()
-								.filter_map(|(name, value)| {
+								.map(|(name, value)| {
 									use EnvironmentVariableValue::*;
-									Some(EnvVar {
-										name: name.to_string(),
+									EnvVar {
+										name: name.clone(),
 										value: Some(match value {
-											String(value) => value.to_string(),
-											Secret { .. } => {
-												return None;
+											String(value) => value.clone(),
+											Secret { from_secret } => {
+												format!(
+													"vault:secret/data/{}/{}#data",
+													workspace_id, from_secret
+												)
 											}
 										}),
 										..EnvVar::default()
-									})
+									}
 								})
 								.chain([
 									EnvVar {
@@ -224,12 +253,14 @@ pub async fn update_kubernetes_deployment(
 						..Container::default()
 					}],
 					image_pull_secrets: Some(vec![LocalObjectReference {
+						// TODO: put this in config
 						name: Some("patr-regcred".to_string()),
 					}]),
 					..PodSpec::default()
 				}),
 				metadata: Some(ObjectMeta {
 					labels: Some(labels.clone()),
+					annotations: Some(annotations),
 					..ObjectMeta::default()
 				}),
 			},

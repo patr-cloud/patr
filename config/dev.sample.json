@@ -96,5 +96,9 @@
 		"host": "localhost",
 		"port": 5672,
 		"queue": "infrastructure"
+	},
+	"vault": {
+		"address": "https://vault.example.com",
+		"token": "<vault token>"
 	}
 }

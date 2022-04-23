@@ -11,6 +11,7 @@ use crate::{
 	models::{
 		db_mapping::{
 			Deployment,
+			DeploymentEnvironmentVariable,
 			DeploymentMachineType,
 			DeploymentRegion,
 			WorkspaceAuditLog,
@@ -200,9 +201,23 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
-			value TEXT NOT NULL,
+			value TEXT,
+			secret_id UUID,
 			CONSTRAINT deployment_environment_variable_pk
-				PRIMARY KEY(deployment_id, name)
+				PRIMARY KEY(deployment_id, name),
+			CONSTRAINT deployment_environment_variable_fk_secret_id
+				FOREIGN KEY(secret_id) REFERENCES secret(id),
+			CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null
+				CHECK(
+					(
+						value IS NOT NULL AND
+						secret_id IS NULL
+					) OR
+					(
+						value IS NULL AND
+						secret_id IS NOT NULL
+					)
+				)
 		);
 		"#
 	)
@@ -627,12 +642,15 @@ pub async fn update_deployment_name(
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<(String, String)>, sqlx::Error> {
-	let rows = query!(
+) -> Result<Vec<DeploymentEnvironmentVariable>, sqlx::Error> {
+	query_as!(
+		DeploymentEnvironmentVariable,
 		r#"
 		SELECT
+		    deployment_id as "deployment_id: _",
 			name,
-			value
+			value,
+			secret_id as "secret_id: _" 
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -641,30 +659,27 @@ pub async fn get_environment_variables_for_deployment(
 		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.name, row.value))
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn add_environment_variable_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	key: &str,
-	value: &str,
+	value: Option<&str>,
+	secret_id: Option<&Uuid>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO 
 			deployment_environment_variable
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		deployment_id as _,
 		key,
-		value
+		value,
+		secret_id as _
 	)
 	.execute(&mut *connection)
 	.await

@@ -177,18 +177,27 @@ pub async fn create_deployment_in_workspace(
 			"request_id: {} - Adding environment variable entry to database",
 			request_id
 		);
-		db::add_environment_variable_for_deployment(
-			connection,
-			&deployment_id,
-			key,
-			if let EnvironmentVariableValue::String(value) = value {
-				value
-			} else {
-				return Err(Error::empty()
-					.status(400)
-					.body(error!(WRONG_PARAMETERS).to_string()));
-			},
-		)
+
+		match value {
+			EnvironmentVariableValue::String(value) => {
+				db::add_environment_variable_for_deployment(
+					connection,
+					&deployment_id,
+					key,
+					Some(value),
+					None,
+				)
+			}
+			EnvironmentVariableValue::Secret {
+				from_secret: secret_id,
+			} => db::add_environment_variable_for_deployment(
+				connection,
+				&deployment_id,
+				key,
+				None,
+				Some(secret_id),
+			),
+		}
 		.await?;
 	}
 
@@ -296,18 +305,26 @@ pub async fn update_deployment(
 		)
 		.await?;
 		for (key, value) in environment_variables {
-			db::add_environment_variable_for_deployment(
-				connection,
-				deployment_id,
-				key,
-				if let EnvironmentVariableValue::String(value) = value {
-					value
-				} else {
-					return Err(Error::empty()
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string()));
-				},
-			)
+			match value {
+				EnvironmentVariableValue::String(value) => {
+					db::add_environment_variable_for_deployment(
+						connection,
+						deployment_id,
+						key,
+						Some(value),
+						None,
+					)
+				}
+				EnvironmentVariableValue::Secret {
+					from_secret: secret_id,
+				} => db::add_environment_variable_for_deployment(
+					connection,
+					deployment_id,
+					key,
+					None,
+					Some(secret_id),
+				),
+			}
 			.await?;
 		}
 	}
@@ -409,7 +426,18 @@ pub async fn get_full_deployment_config(
 		db::get_environment_variables_for_deployment(connection, deployment_id)
 			.await?
 			.into_iter()
-			.map(|(key, value)| (key, EnvironmentVariableValue::String(value)))
+			.filter_map(|env| match (env.value, env.secret_id) {
+				(Some(value), None) => {
+					Some((env.name, EnvironmentVariableValue::String(value)))
+				}
+				(None, Some(secret_id)) => Some((
+					env.name,
+					EnvironmentVariableValue::Secret {
+						from_secret: secret_id,
+					},
+				)),
+				_ => None,
+			})
 			.collect();
 	log::trace!("request_id: {} - Full deployment config for deployment with id: {} successfully retreived", request_id, deployment_id);
 

@@ -114,6 +114,13 @@ pub mod permissions {
 			pub const PULL: &str = "workspace::dockerRegistry::pull";
 		}
 
+		pub mod secret {
+			pub const LIST: &str = "workspace::secret::list";
+			pub const CREATE: &str = "workspace::secret::create";
+			pub const EDIT: &str = "workspace::secret::edit";
+			pub const DELETE: &str = "workspace::secret::delete";
+		}
+
 		pub mod rbac {
 			pub mod roles {
 				pub const LIST: &str = "workspace::rbac::role::list";
@@ -148,4 +155,5 @@ pub mod resource_types {
 	pub const STATIC_SITE: &str = "staticSite";
 	pub const DEPLOYMENT_UPGRADE_PATH: &str = "deploymentUpgradePath";
 	pub const MANAGED_URL: &str = "managedUrl";
+	pub const SECRET: &str = "secret";
 }

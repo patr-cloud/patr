@@ -68,4 +68,5 @@ pub mod request_keys {
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
 	pub const START_TIME: &str = "startTime";
 	pub const INTERVAL: &str = "interval";
+	pub const SECRET_ID: &str = "secretId";
 }
