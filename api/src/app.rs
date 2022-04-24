@@ -6,6 +6,7 @@ use std::{
 };
 
 use colored::Colorize;
+use deadpool_lapin::Pool as RabbitmqPool;
 use eve_rs::{
 	handlebars::Handlebars,
 	listen,
@@ -34,6 +35,7 @@ pub struct App {
 	pub database: Pool<Database>,
 	pub redis: RedisConnection,
 	pub render_register: Arc<Handlebars<'static>>,
+	pub rabbitmq: RabbitmqPool,
 }
 
 impl Debug for App {

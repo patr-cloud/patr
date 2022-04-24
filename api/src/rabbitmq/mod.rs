@@ -1,4 +1,6 @@
 use api_models::utils::Uuid;
+use deadpool::managed::Object;
+use deadpool_lapin::{Config, Manager, Pool, Runtime};
 use futures::{
 	future::{self, Either},
 	StreamExt,
@@ -8,17 +10,18 @@ use lapin::{
 		BasicAckOptions,
 		BasicConsumeOptions,
 		BasicNackOptions,
+		ConfirmSelectOptions,
 		QueueDeclareOptions,
 	},
 	types::FieldTable,
+	Channel,
 };
 use tokio::{signal, task};
 
 use crate::{
 	app::App,
 	models::rabbitmq::RequestMessage,
-	service,
-	utils::Error,
+	utils::{settings::Settings, Error},
 };
 
 mod database;
@@ -27,11 +30,9 @@ mod static_site;
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
-	let (channel, connection) =
-		service::get_rabbitmq_connection_channel(&app.config, &Uuid::new_v4())
-			.await
-			.expect("unable to get rabbitmq connection");
-
+	let (channel, connection) = get_rabbitmq_connection_channel(&app.rabbitmq)
+		.await
+		.expect("unable to get rabbitmq connection");
 	// Create Queue
 	channel
 		.queue_declare(
@@ -138,4 +139,33 @@ async fn process_queue_payload(
 		log::error!("Error processing RabbitMQ message: {}", error.get_error());
 		error
 	})
+}
+
+pub(super) async fn create_rabbitmq_pool(
+	config: &Settings,
+) -> Result<Pool, Error> {
+	let request_id = Uuid::new_v4();
+	log::trace!("request_id: {} - Connecting to rabbitmq", request_id);
+	let cfg = Config {
+		url: Some(format!(
+			"amqp://{}:{}/%2f",
+			config.rabbit_mq.host, config.rabbit_mq.port
+		)),
+		..Config::default()
+	};
+	let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+
+	Ok(pool)
+}
+
+pub(super) async fn get_rabbitmq_connection_channel(
+	pool: &Pool,
+) -> Result<(Channel, Object<Manager>), Error> {
+	let connection = pool.get().await?;
+	let channel = connection.create_channel().await?;
+	channel
+		.confirm_select(ConfirmSelectOptions::default())
+		.await?;
+
+	Ok((channel, connection))
 }

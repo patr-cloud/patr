@@ -66,11 +66,15 @@ async fn async_main() -> Result<(), EveError> {
 	let render_register = create_render_registry("./assets/templates/").await?;
 	log::debug!("Render register initialised");
 
+	let rabbitmq = rabbitmq::create_rabbitmq_pool(&config).await?;
+	log::debug!("Rabbitmq pool initialised");
+
 	let app = App {
 		config,
 		database,
 		redis,
 		render_register,
+		rabbitmq,
 	};
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");
