@@ -780,11 +780,11 @@ async fn get_domain_dns_record(
 		};
 		let record_value = match record.r#type {
 			DnsRecordType::A => DnsRecordValue::A {
-				target: record.value,
+				target: record.value.parse().ok()?,
 				proxied,
 			},
 			DnsRecordType::AAAA => DnsRecordValue::AAAA {
-				target: record.value,
+				target: record.value.parse().ok()?,
 				proxied,
 			},
 			DnsRecordType::CNAME => DnsRecordValue::CNAME {
