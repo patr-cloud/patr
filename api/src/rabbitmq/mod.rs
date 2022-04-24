@@ -1,4 +1,3 @@
-use api_models::utils::Uuid;
 use deadpool::managed::Object;
 use deadpool_lapin::{Config, Manager, Pool, Runtime};
 use futures::{
@@ -144,12 +143,13 @@ async fn process_queue_payload(
 pub(super) async fn create_rabbitmq_pool(
 	config: &Settings,
 ) -> Result<Pool, Error> {
-	let request_id = Uuid::new_v4();
-	log::trace!("request_id: {} - Connecting to rabbitmq", request_id);
 	let cfg = Config {
 		url: Some(format!(
-			"amqp://{}:{}/%2f",
-			config.rabbit_mq.host, config.rabbit_mq.port
+			"amqp://{}:{}@{}:{}/%2f",
+			config.rabbit_mq.username,
+			config.rabbit_mq.password,
+			config.rabbit_mq.host,
+			config.rabbit_mq.port
 		)),
 		..Config::default()
 	};
@@ -163,6 +163,7 @@ pub(super) async fn get_rabbitmq_connection_channel(
 ) -> Result<(Channel, Object<Manager>), Error> {
 	let connection = pool.get().await?;
 	let channel = connection.create_channel().await?;
+
 	channel
 		.confirm_select(ConfirmSelectOptions::default())
 		.await?;
