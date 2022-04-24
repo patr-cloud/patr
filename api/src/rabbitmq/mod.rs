@@ -30,7 +30,7 @@ mod static_site;
 
 pub async fn start_consumer(app: &App) {
 	// Create connection
-	let (channel, connection) = get_rabbitmq_connection_channel(app)
+	let (channel, connection) = get_rabbitmq_connection_channel(&app.rabbitmq)
 		.await
 		.expect("unable to get rabbitmq connection");
 	// Create Queue
@@ -159,9 +159,9 @@ pub(super) async fn create_rabbitmq_pool(
 }
 
 pub(super) async fn get_rabbitmq_connection_channel(
-	app: &App,
+	pool: &Pool,
 ) -> Result<(Channel, Object<Manager>), Error> {
-	let connection = app.r_pool.get().await?;
+	let connection = pool.get().await?;
 	let channel = connection.create_channel().await?;
 	channel
 		.confirm_select(ConfirmSelectOptions::default())

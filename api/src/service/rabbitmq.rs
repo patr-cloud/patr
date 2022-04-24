@@ -417,7 +417,7 @@ async fn send_message_to_rabbit_mq(
 ) -> Result<(), Error> {
 	let app = service::get_app();
 	let (channel, rabbitmq_connection) =
-		rabbitmq::get_rabbitmq_connection_channel(app).await?;
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
 
 	let confirmation = channel
 		.basic_publish(
