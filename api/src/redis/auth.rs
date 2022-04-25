@@ -5,11 +5,7 @@ use redis::{
 	RedisError,
 };
 
-use crate::{
-	models::AccessTokenData,
-	service::get_access_token_expiry,
-	utils::get_current_time_millis,
-};
+use crate::models::AccessTokenData;
 
 fn get_key_for_user_revocation(user_id: &Uuid) -> String {
 	format!("token-revoked:user:{}", user_id.as_str())
@@ -25,7 +21,7 @@ fn get_key_for_global_revocation() -> String {
 }
 
 /// returns last set revocation timestamp (in millis) for the given user
-async fn get_token_revoked_timestamp_for_user(
+pub async fn get_token_revoked_timestamp_for_user(
 	redis_conn: &mut RedisConnection,
 	user_id: &Uuid,
 ) -> Result<Option<u64>, RedisError> {
@@ -33,7 +29,7 @@ async fn get_token_revoked_timestamp_for_user(
 }
 
 /// returns last set revocation timestamp (in millis) for the given login
-async fn get_token_revoked_timestamp_for_login(
+pub async fn get_token_revoked_timestamp_for_login(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
 ) -> Result<Option<u64>, RedisError> {
@@ -42,7 +38,7 @@ async fn get_token_revoked_timestamp_for_login(
 
 /// returns last set revocation timestamp (in millis) for the given
 /// workspace
-async fn get_token_revoked_timestamp_for_workspace(
+pub async fn get_token_revoked_timestamp_for_workspace(
 	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 ) -> Result<Option<u64>, RedisError> {
@@ -52,14 +48,14 @@ async fn get_token_revoked_timestamp_for_workspace(
 }
 
 /// returns last set revocation timestamp (in millis) for global tokens
-async fn get_global_token_revoked_timestamp(
+pub async fn get_global_token_revoked_timestamp(
 	redis_conn: &mut RedisConnection,
 ) -> Result<Option<u64>, RedisError> {
 	redis_conn.get(get_key_for_global_revocation()).await
 }
 
 /// if ttl_in_secs is None, then key will live forever
-async fn revoke_user_tokens_created_before_timestamp(
+pub async fn revoke_user_tokens_created_before_timestamp(
 	redis_conn: &mut RedisConnection,
 	user_id: &Uuid,
 	timestamp_in_millis: u64,
@@ -74,7 +70,7 @@ async fn revoke_user_tokens_created_before_timestamp(
 }
 
 /// if ttl_in_secs is None, then key will live forever
-async fn revoke_login_tokens_created_before_timestamp(
+pub async fn revoke_login_tokens_created_before_timestamp(
 	redis_conn: &mut RedisConnection,
 	login_id: &Uuid,
 	timestamp_in_millis: u64,
@@ -89,7 +85,7 @@ async fn revoke_login_tokens_created_before_timestamp(
 }
 
 /// if ttl_in_secs is None, then key will live forever
-async fn revoke_workspace_tokens_created_before_timestamp(
+pub async fn revoke_workspace_tokens_created_before_timestamp(
 	redis_conn: &mut RedisConnection,
 	workspace_id: &Uuid,
 	timestamp_in_millis: u64,
@@ -104,7 +100,8 @@ async fn revoke_workspace_tokens_created_before_timestamp(
 }
 
 /// if ttl_in_secs is None, then key will live forever
-async fn revoke_global_tokens_created_before_timestamp(
+#[allow(dead_code)]
+pub async fn revoke_global_tokens_created_before_timestamp(
 	redis_conn: &mut RedisConnection,
 	timestamp_in_millis: u64,
 	ttl_in_secs: Option<usize>,
@@ -115,20 +112,6 @@ async fn revoke_global_tokens_created_before_timestamp(
 	} else {
 		redis_conn.set(key, timestamp_in_millis).await
 	}
-}
-
-pub async fn revoke_access_tokens_for_user(
-	redis_conn: &mut RedisConnection,
-	user_id: &Uuid,
-) -> Result<(), RedisError> {
-	let ttl = (get_access_token_expiry() / 60) as usize + 120; // 120 seconds buffer time
-	revoke_user_tokens_created_before_timestamp(
-		redis_conn,
-		user_id,
-		get_current_time_millis(),
-		Some(ttl),
-	)
-	.await
 }
 
 pub async fn is_access_token_revoked(

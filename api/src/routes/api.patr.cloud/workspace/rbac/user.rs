@@ -16,9 +16,11 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	redis::revoke_access_tokens_for_user,
+	redis::revoke_user_tokens_created_before_timestamp,
+	service::get_access_token_expiry,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -219,10 +221,16 @@ async fn add_user_to_workspace(
 	)
 	.await?;
 
-	context.success(AddUserToWorkspaceResponse {});
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	revoke_user_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
 
-	revoke_access_tokens_for_user(&mut context.get_state_mut().redis, &user_id)
-		.await?;
+	context.success(AddUserToWorkspaceResponse {});
 	Ok(context)
 }
 
@@ -262,11 +270,16 @@ async fn update_user_roles_for_workspace(
 	)
 	.await?;
 
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	revoke_user_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
+
 	context.success(AddUserToWorkspaceResponse {});
-
-	revoke_access_tokens_for_user(&mut context.get_state_mut().redis, &user_id)
-		.await?;
-
 	Ok(context)
 }
 
@@ -301,9 +314,15 @@ async fn remove_user_from_workspace(
 		user_id
 	);
 
-	context.success(RemoveUserFromWorkspaceResponse {});
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	revoke_user_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
 
-	revoke_access_tokens_for_user(&mut context.get_state_mut().redis, &user_id)
-		.await?;
+	context.success(RemoveUserFromWorkspaceResponse {});
 	Ok(context)
 }

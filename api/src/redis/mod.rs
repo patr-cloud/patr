@@ -1,5 +1,4 @@
-#[allow(dead_code)]
-mod rbac;
+mod auth;
 
 use redis::{
 	aio::MultiplexedConnection as RedisConnection,
@@ -8,7 +7,7 @@ use redis::{
 };
 use tokio::task;
 
-pub use self::rbac::*;
+pub use self::auth::*;
 use crate::utils::settings::Settings;
 
 pub async fn create_redis_connection(

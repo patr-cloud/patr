@@ -19,9 +19,11 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	redis::revoke_access_tokens_for_user,
+	redis::revoke_user_tokens_created_before_timestamp,
+	service::get_access_token_expiry,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -565,13 +567,18 @@ async fn update_role(
 		.await?;
 	}
 
-	context.success(UpdateRoleResponse {});
-
-	let redis_conn = &mut context.get_state_mut().redis;
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
 	for user in associated_users {
-		revoke_access_tokens_for_user(redis_conn, &user.id).await?;
+		revoke_user_tokens_created_before_timestamp(
+			context.get_redis_connection(),
+			&user.id,
+			get_current_time_millis(),
+			Some(ttl),
+		)
+		.await?;
 	}
 
+	context.success(UpdateRoleResponse {});
 	Ok(context)
 }
 
@@ -621,12 +628,17 @@ async fn delete_role(
 	// Delete role
 	db::delete_role(context.get_database_connection(), &role_id).await?;
 
-	context.success(DeleteRoleResponse {});
-
-	let redis_conn = &mut context.get_state_mut().redis;
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
 	for user in associated_users {
-		revoke_access_tokens_for_user(redis_conn, &user.id).await?;
+		revoke_user_tokens_created_before_timestamp(
+			context.get_redis_connection(),
+			&user.id,
+			get_current_time_millis(),
+			Some(ttl),
+		)
+		.await?;
 	}
 
+	context.success(DeleteRoleResponse {});
 	Ok(context)
 }

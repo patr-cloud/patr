@@ -194,7 +194,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					context.set_token_data(access_data);
 					next(context).await
 				} else {
-					context.status(401).json(error!(UNPRIVILEGED));
+					context.status(401).json(error!(UNAUTHORIZED));
 					Ok(context)
 				}
 			}
@@ -249,7 +249,7 @@ async fn validate_access_token(
 			// either access token revoked or redis connection error
 			return Error::as_result()
 				.status(401)
-				.body(error!(UNAUTHORIZED).to_string());
+				.body(error!(EXPIRED).to_string());
 		}
 	}
 

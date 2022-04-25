@@ -14,10 +14,12 @@ use crate::{
 		RegistryTokenAccess,
 	},
 	pin_fn,
-	service,
+	redis,
+	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
 		get_current_time,
+		get_current_time_millis,
 		validator,
 		Error,
 		ErrorData,
@@ -322,6 +324,15 @@ async fn sign_out(
 		context.get_database_connection(),
 		&login_id,
 		&user_id,
+	)
+	.await?;
+
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_login_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&login_id,
+		get_current_time_millis(),
+		Some(ttl),
 	)
 	.await?;
 

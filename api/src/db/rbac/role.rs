@@ -316,7 +316,9 @@ pub async fn get_all_users_with_role(
 			"user".recovery_phone_number
 		FROM
 			"user"
-		INNER JOIN workspace_user ON
+		INNER JOIN
+			workspace_user
+		ON
 			"user".id = workspace_user.user_id
 		WHERE
 			workspace_user.role_id = $1;
