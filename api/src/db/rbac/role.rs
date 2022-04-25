@@ -298,7 +298,7 @@ pub async fn get_all_users_with_role(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	role_id: &Uuid,
 ) -> Result<Vec<User>, sqlx::Error> {
-	query!(
+	let rows = query!(
 		r#"
 		SELECT
 			"user".id as "id: Uuid",
@@ -326,26 +326,26 @@ pub async fn get_all_users_with_role(
 		role_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await
-	.map(|rows| {
-		rows.into_iter()
-			.map(|row| User {
-				id: row.id,
-				username: row.username,
-				password: row.password,
-				first_name: row.first_name,
-				last_name: row.last_name,
-				dob: row.dob.map(|dob| dob as u64),
-				bio: row.bio,
-				location: row.location,
-				created: row.created as u64,
-				recovery_email_local: row.recovery_email_local,
-				recovery_email_domain_id: row.recovery_email_domain_id,
-				recovery_phone_country_code: row.recovery_phone_country_code,
-				recovery_phone_number: row.recovery_phone_number,
-			})
-			.collect()
+	.await?
+	.into_iter()
+	.map(|row| User {
+		id: row.id,
+		username: row.username,
+		password: row.password,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		dob: row.dob.map(|dob| dob as u64),
+		bio: row.bio,
+		location: row.location,
+		created: row.created as u64,
+		recovery_email_local: row.recovery_email_local,
+		recovery_email_domain_id: row.recovery_email_domain_id,
+		recovery_phone_country_code: row.recovery_phone_country_code,
+		recovery_phone_number: row.recovery_phone_number,
 	})
+	.collect();
+
+	Ok(rows)
 }
 
 pub async fn remove_all_users_from_role(
