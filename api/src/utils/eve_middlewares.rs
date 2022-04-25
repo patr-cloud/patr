@@ -110,7 +110,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					};
 
 				validate_access_token(
-					&mut context.get_state_mut().redis,
+					context.get_redis_connection(),
 					&access_data,
 				)
 				.await?;
@@ -127,7 +127,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					.body(error!(UNAUTHORIZED).to_string())?;
 
 				validate_access_token(
-					&mut context.get_state_mut().redis,
+					context.get_redis_connection(),
 					&access_data,
 				)
 				.await?;
