@@ -29,12 +29,16 @@ use kube::{
 };
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -128,11 +132,9 @@ pub(super) async fn migrate(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
 
-	let kubernetes_client = kube::Client::try_from(kubernetes_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
 
 	let annotations = [
 		(
@@ -208,8 +210,7 @@ pub(super) async fn migrate(
 			&PatchParams::apply(&format!("ingress-{}", deployment_id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
-		.await
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		.await?;
 	}
 
 	Ok(())

@@ -1,11 +1,15 @@
 use api_models::utils::Uuid;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE docker_registry_repository_manifest(
@@ -75,7 +79,7 @@ pub async fn migrate(
 async fn add_docker_registry_info_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let permission_id = loop {
 		let uuid = Uuid::new_v4();
 
@@ -110,6 +114,7 @@ async fn add_docker_registry_info_permission(
 		"workspace::dockerRegistry::info"
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }

@@ -19,12 +19,16 @@ use kube::{
 };
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	update_patr_wildcard_certificates(connection, config).await?;
 	remove_empty_tags_for_deployments(connection, config).await?;
 	update_deployment_table_constraint(connection, config).await?;
@@ -35,7 +39,7 @@ pub(super) async fn migrate(
 async fn update_patr_wildcard_certificates(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -92,18 +96,15 @@ async fn update_patr_wildcard_certificates(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-	let client = kube::Client::try_from(kubernetes_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
+	let client = kube::Client::try_from(kubernetes_config)?;
 	let wild_card_secret = Api::<Secret>::namespaced(client.clone(), "default")
 		.get("tls-domain-wildcard-patr-cloud")
-		.await
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		.await?;
 	let annotations = wild_card_secret
 		.metadata
 		.annotations
-		.ok_or(sqlx::Error::WorkerCrashed)?
+		.ok_or_else(|| Error::empty())?
 		.into_iter()
 		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
@@ -111,12 +112,11 @@ async fn update_patr_wildcard_certificates(
 		let workspace_secret =
 			Api::<Secret>::namespaced(client.clone(), workspace.as_str())
 				.get("tls-domain-wildcard-patr-cloud")
-				.await
-				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+				.await?;
 		let mut secret_annotations = workspace_secret
 			.metadata
 			.annotations
-			.ok_or(sqlx::Error::WorkerCrashed)?
+			.ok_or_else(|| Error::empty())?
 			.into_iter()
 			.filter(|(key, _)| !key.starts_with("cert-manager.io/"))
 			.collect::<BTreeMap<String, String>>();
@@ -141,8 +141,7 @@ async fn update_patr_wildcard_certificates(
 				&PatchParams::apply("tls-domain-wildcard-patr-cloud").force(),
 				&Patch::Apply(workspace_secret),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 	}
 	Ok(())
 }
@@ -150,7 +149,7 @@ async fn update_patr_wildcard_certificates(
 async fn remove_empty_tags_for_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -170,7 +169,7 @@ async fn remove_empty_tags_for_deployments(
 async fn update_deployment_table_constraint(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE

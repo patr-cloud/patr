@@ -17,12 +17,16 @@ use kube::{
 };
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -82,15 +86,12 @@ pub(super) async fn migrate(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-	let client = kube::Client::try_from(kubernetes_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
+	let client = kube::Client::try_from(kubernetes_config)?;
 
 	let ingress_list = Api::<Ingress>::all(client.clone())
 		.list(&ListParams::default())
-		.await
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+		.await?;
 
 	for ingress in ingress_list {
 		let (default_backend, ingress_class_name, rules) =
@@ -138,8 +139,7 @@ pub(super) async fn migrate(
 				&PatchParams::apply(&name).force(),
 				&Patch::Apply(ingress),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 	}
 
 	Ok(())

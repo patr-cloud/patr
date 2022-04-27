@@ -1,4 +1,8 @@
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 mod bytea_to_uuid;
 mod docker_registry;
@@ -10,7 +14,7 @@ mod workspace_domain;
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	organisation_to_workspace::migrate(&mut *connection, config).await?;
 	bytea_to_uuid::migrate(&mut *connection, config).await?;
 	permission_names::migrate(&mut *connection).await?;
@@ -29,7 +33,7 @@ pub(super) async fn migrate(
 async fn fix_user_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE "user"
@@ -246,7 +250,7 @@ async fn fix_user_constraints(
 async fn make_permission_name_unique(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE permission
@@ -255,14 +259,15 @@ async fn make_permission_name_unique(
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }
 
 async fn rename_static_sites_to_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
@@ -318,7 +323,7 @@ async fn rename_static_sites_to_static_site(
 async fn reset_permission_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for permission in [
 		// Domain permissions
 		"workspace::domain::list",
@@ -408,7 +413,7 @@ async fn reset_permission_order(
 async fn reset_resource_types_order(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for resource_type in [
 		"workspace",
 		"domain",

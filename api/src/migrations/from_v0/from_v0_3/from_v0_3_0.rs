@@ -3,14 +3,14 @@ use api_models::utils::Uuid;
 use crate::{
 	migrate_query as query,
 	models::rbac,
-	utils::settings::Settings,
+	utils::{settings::Settings, Error},
 	Database,
 };
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	// Rename the unqiue constraint from uk to uq
 	query!(
 		r#"

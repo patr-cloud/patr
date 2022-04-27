@@ -1,11 +1,15 @@
 use sqlx::{postgres::PgRow, Row};
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	rename_organisation_account_type_to_business(&mut *connection, config)
 		.await?;
 	rename_organisation_email_to_business_email(&mut *connection, config)
@@ -41,7 +45,7 @@ pub(super) async fn migrate(
 async fn rename_organisation_account_type_to_business(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TYPE RESOURCE_OWNER_TYPE
@@ -58,7 +62,7 @@ async fn rename_organisation_account_type_to_business(
 async fn rename_organisation_email_to_business_email(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE organisation_email
@@ -123,7 +127,7 @@ async fn rename_organisation_email_to_business_email(
 async fn rename_user_to_sign_up_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE user_to_sign_up
@@ -200,7 +204,7 @@ async fn rename_user_to_sign_up_columns(
 async fn rename_organisation_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE organisation
@@ -284,7 +288,7 @@ async fn rename_organisation_to_workspace(
 async fn rename_organisation_domain_to_workspace_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE organisation_domain
@@ -358,7 +362,7 @@ async fn rename_organisation_domain_to_workspace_domain(
 async fn rename_docker_registry_repository_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
@@ -415,7 +419,7 @@ async fn rename_docker_registry_repository_columns(
 async fn rename_deployment_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -462,7 +466,7 @@ async fn rename_deployment_columns(
 async fn rename_managed_database_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE managed_database
@@ -509,7 +513,7 @@ async fn rename_managed_database_columns(
 async fn rename_static_sites_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
@@ -556,7 +560,7 @@ async fn rename_static_sites_columns(
 async fn rename_resource_columns(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE resource
@@ -573,7 +577,7 @@ async fn rename_resource_columns(
 async fn rename_organisation_user_to_workspace_user(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE organisation_user
@@ -657,7 +661,7 @@ async fn rename_organisation_user_to_workspace_user(
 async fn remove_application_tables(
 	connection: &mut sqlx::PgConnection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		DROP TABLE application_version_platform;
@@ -688,7 +692,7 @@ async fn remove_application_tables(
 async fn remove_application_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for permission in [
 		"organisation::application::list",
 		"organisation::application::add",
@@ -762,7 +766,7 @@ async fn remove_application_permissions(
 async fn remove_application_resource_type(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let resource_type_row = query!(
 		r#"
 		SELECT
@@ -813,7 +817,7 @@ async fn remove_application_resource_type(
 async fn remove_drive_tables(
 	connection: &mut sqlx::PgConnection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		DROP TABLE file;
@@ -828,7 +832,7 @@ async fn remove_drive_tables(
 async fn remove_portus_tables(
 	connection: &mut sqlx::PgConnection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		DROP INDEX portus_tunnel_idx_name;
@@ -851,7 +855,7 @@ async fn remove_portus_tables(
 async fn remove_portus_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for permission in [
 		"organisation::portus::add",
 		"organisation::portus::view",
@@ -924,7 +928,7 @@ async fn remove_portus_permissions(
 async fn remove_portus_resource_type(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let resource_type_row = query!(
 		r#"
 		SELECT
@@ -975,7 +979,7 @@ async fn remove_portus_resource_type(
 async fn rename_all_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -993,7 +997,7 @@ async fn rename_all_permissions(
 async fn rename_organisation_resource_type_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -1005,14 +1009,15 @@ async fn rename_organisation_resource_type_to_workspace(
 		"#,
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }
 
 async fn rename_organisation_resource_names_to_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -1030,7 +1035,7 @@ async fn rename_organisation_resource_names_to_workspace(
 async fn rename_personal_workspace_names(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE

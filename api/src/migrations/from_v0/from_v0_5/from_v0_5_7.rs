@@ -37,12 +37,16 @@ use kube::{
 use reqwest::Client;
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	migrate_from_docr_to_pcr(connection, config).await?;
 	audit_logs(connection, config).await?;
 	rename_backup_email_to_recovery_email(connection, config).await?;
@@ -55,7 +59,7 @@ pub(super) async fn migrate(
 async fn remove_domain_tlds_in_ci(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let users = query!(
 		r#"
 		SELECT
@@ -84,7 +88,7 @@ async fn remove_domain_tlds_in_ci(
 async fn migrate_from_docr_to_pcr(
 	connection: &mut sqlx::PgConnection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let mut deployment_list = vec![];
 
 	let db_items = query!(
@@ -271,10 +275,8 @@ async fn migrate_from_docr_to_pcr(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
-	let client = kube::Client::try_from(kubernetes_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
+	let client = kube::Client::try_from(kubernetes_config)?;
 
 	for (
 		deployment_id,
@@ -399,8 +401,7 @@ async fn migrate_from_docr_to_pcr(
 				&PatchParams::apply(&format!("deployment-{}", deployment_id)),
 				&Patch::Apply(kubernetes_deployment),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 	}
 	Ok(())
 }
@@ -408,7 +409,7 @@ async fn migrate_from_docr_to_pcr(
 async fn audit_logs(
 	connection: &mut sqlx::PgConnection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE workspace_audit_log (
@@ -466,7 +467,7 @@ async fn audit_logs(
 async fn chargebee(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -525,8 +526,7 @@ async fn chargebee(
 				("id", workspace_id.to_string()),
 			])
 			.send()
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 
 		client
 			.post(format!("{}/promotional_credits/set", config.chargebee.url))
@@ -537,8 +537,7 @@ async fn chargebee(
 				("description", &config.chargebee.description),
 			])
 			.send()
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 
 		let deployments = query!(
 			r#"
@@ -589,8 +588,7 @@ async fn chargebee(
 					),
 				])
 				.send()
-				.await
-				.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+				.await?;
 		}
 	}
 
@@ -600,7 +598,7 @@ async fn chargebee(
 async fn rename_backup_email_to_recovery_email(
 	connection: &mut sqlx::PgConnection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	//  "user" table
 	query!(
 		r#"
