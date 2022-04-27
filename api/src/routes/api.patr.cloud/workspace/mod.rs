@@ -22,9 +22,11 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	service,
+	redis,
+	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -394,6 +396,15 @@ async fn create_new_workspace(
 	)
 	.await?;
 
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_user_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
+
 	context.success(CreateNewWorkspaceResponse { workspace_id });
 	Ok(context)
 }
@@ -549,6 +560,15 @@ async fn delete_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		&name,
+	)
+	.await?;
+
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_workspace_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&workspace_id,
+		get_current_time_millis(),
+		Some(ttl),
 	)
 	.await?;
 

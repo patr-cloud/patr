@@ -19,8 +19,11 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	redis::revoke_user_tokens_created_before_timestamp,
+	service::get_access_token_expiry,
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -536,6 +539,12 @@ async fn update_role(
 	)
 	.await?;
 
+	let associated_users = db::get_all_users_with_role(
+		context.get_database_connection(),
+		&role_id,
+	)
+	.await?;
+
 	if let Some((resource_permissions, resource_type_permissions)) =
 		resource_permissions.zip(resource_type_permissions)
 	{
@@ -554,6 +563,17 @@ async fn update_role(
 			context.get_database_connection(),
 			&role_id,
 			&resource_type_permissions,
+		)
+		.await?;
+	}
+
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	for user in associated_users {
+		revoke_user_tokens_created_before_timestamp(
+			context.get_redis_connection(),
+			&user.id,
+			get_current_time_millis(),
+			Some(ttl),
 		)
 		.await?;
 	}
@@ -596,11 +616,28 @@ async fn delete_role(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let associated_users = db::get_all_users_with_role(
+		context.get_database_connection(),
+		&role_id,
+	)
+	.await?;
+
 	// Remove all users who belong to this role
 	db::remove_all_users_from_role(context.get_database_connection(), &role_id)
 		.await?;
 	// Delete role
 	db::delete_role(context.get_database_connection(), &role_id).await?;
+
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	for user in associated_users {
+		revoke_user_tokens_created_before_timestamp(
+			context.get_redis_connection(),
+			&user.id,
+			get_current_time_millis(),
+			Some(ttl),
+		)
+		.await?;
+	}
 
 	context.success(DeleteRoleResponse {});
 	Ok(context)

@@ -11,6 +11,7 @@ use eve_rs::{
 	Request,
 	Response,
 };
+use redis::aio::MultiplexedConnection as RedisConnection;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
@@ -46,6 +47,7 @@ impl EveContext {
 		&self.state
 	}
 
+	#[allow(dead_code)]
 	pub fn get_state_mut(&mut self) -> &mut App {
 		&mut self.state
 	}
@@ -76,6 +78,10 @@ impl EveContext {
 		connection: Transaction<'static, Database>,
 	) {
 		self.db_connection = Some(connection);
+	}
+
+	pub fn get_redis_connection(&mut self) -> &mut RedisConnection {
+		&mut self.state.redis
 	}
 
 	pub const fn get_body_object(&self) -> &Value {
