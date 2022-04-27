@@ -3,6 +3,7 @@ use std::time::Duration;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 	},
@@ -37,6 +38,21 @@ pub(super) async fn process_request(
 			running_details,
 			request_id,
 		} => {
+			if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+				&deployment.registry
+			{
+				if db::get_docker_repository_tag_details(
+					connection,
+					repository_id,
+					&deployment.image_tag,
+				)
+				.await?
+				.is_none()
+				{
+					return Ok(());
+				};
+			}
+
 			db::update_deployment_status(
 				connection,
 				&deployment.id,
