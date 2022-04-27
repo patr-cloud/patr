@@ -248,7 +248,7 @@ pub async fn update_kubernetes_deployment(
 						),
 						resources: Some(ResourceRequirements {
 							limits: Some(machine_type.clone()),
-							requests: Some(machine_type),
+							..ResourceRequirements::default()
 						}),
 						..Container::default()
 					}],
@@ -412,9 +412,15 @@ pub async fn update_kubernetes_deployment(
 	log::trace!("request_id: {} - deployment created", request_id);
 
 	log::trace!(
-		"request_id: {} - App ingress is at port-{}.patr.cloud",
+		"request_id: {} - App ingress is at {}",
 		request_id,
-		deployment.id
+		running_details
+			.ports
+			.iter()
+			.filter(|(_, port_type)| *port_type == &ExposedPortType::Http)
+			.map(|(port, _)| format!("{}-{}.patr.cloud", port, deployment.id))
+			.collect::<Vec<_>>()
+			.join(",")
 	);
 
 	Ok(())

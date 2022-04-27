@@ -99,6 +99,12 @@ pub async fn create_deployment_in_workspace(
 	log::trace!("request_id: {} - Generating new resource id", request_id);
 	let deployment_id = db::generate_new_resource_id(connection).await?;
 
+	if deployment_running_details.ports.is_empty() {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	}
+
 	db::create_resource(
 		connection,
 		&deployment_id,
