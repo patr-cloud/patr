@@ -301,7 +301,7 @@ async fn handle_release(
 		.bytes_stream();
 	while let Some(Ok(bytes)) = dump_file_stream.next().await {
 		local_dump_file
-			.write(bytes.as_ref())
+			.write_all(bytes.as_ref())
 			.await
 			.expect("unable to write data to database.sql");
 	}

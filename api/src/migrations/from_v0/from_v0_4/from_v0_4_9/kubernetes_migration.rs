@@ -1609,7 +1609,7 @@ async fn migrate_static_sites(
 			)
 			.await?
 			.status
-			.ok_or_else(|| Error::empty())?;
+			.ok_or_else(Error::empty)?;
 
 		let mut annotations: BTreeMap<String, String> = BTreeMap::new();
 		annotations.insert(
@@ -1674,7 +1674,7 @@ async fn migrate_static_sites(
 			)
 			.await?
 			.status
-			.ok_or_else(|| Error::empty())?;
+			.ok_or_else(Error::empty)?;
 	}
 	Ok(())
 }

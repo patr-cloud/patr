@@ -104,7 +104,7 @@ async fn update_patr_wildcard_certificates(
 	let annotations = wild_card_secret
 		.metadata
 		.annotations
-		.ok_or_else(|| Error::empty())?
+		.ok_or_else(Error::empty)?
 		.into_iter()
 		.filter(|(key, _)| key.starts_with("cert-manager.io/"))
 		.collect::<BTreeMap<String, String>>();
@@ -116,7 +116,7 @@ async fn update_patr_wildcard_certificates(
 		let mut secret_annotations = workspace_secret
 			.metadata
 			.annotations
-			.ok_or_else(|| Error::empty())?
+			.ok_or_else(Error::empty)?
 			.into_iter()
 			.filter(|(key, _)| !key.starts_with("cert-manager.io/"))
 			.collect::<BTreeMap<String, String>>();
