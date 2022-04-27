@@ -38,7 +38,11 @@ use kube::{
 };
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 #[derive(sqlx::Type, Debug, Clone, PartialEq)]
 #[sqlx(type_name = "DEPLOYMENT_CLOUD_PROVIDER", rename_all = "lowercase")]
@@ -175,7 +179,7 @@ struct DefaultDeploymentRegion {
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	migrate_regions(&mut *connection, config).await?;
 	add_exposed_port(&mut *connection, config).await?;
 	update_deployments_table(&mut *connection, config).await?;
@@ -197,7 +201,7 @@ pub async fn migrate(
 async fn migrate_regions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TYPE DEPLOYMENT_CLOUD_PROVIDER AS ENUM(
@@ -421,7 +425,7 @@ async fn populate_region(
 async fn add_exposed_port(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
@@ -476,7 +480,7 @@ async fn add_exposed_port(
 async fn update_deployments_table(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -534,7 +538,7 @@ async fn update_deployments_table(
 async fn migrate_machine_types(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE deployment_machine_type_new(
@@ -757,7 +761,7 @@ async fn migrate_machine_types(
 async fn add_deploy_on_push(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -765,14 +769,15 @@ async fn add_deploy_on_push(
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }
 
 async fn stop_all_running_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -793,7 +798,7 @@ async fn stop_all_running_deployments(
 async fn delete_all_do_apps(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let app_ids = query!(
 		r#"
 		SELECT
@@ -816,12 +821,11 @@ async fn delete_all_do_apps(
 			.delete(format!("https://api.digitalocean.com/v2/apps/{}", app_id))
 			.bearer_auth(&config.digitalocean.api_key)
 			.send()
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 		if !response.status().is_success() {
 			log::info!(
 				"failed to delete DO app: `{:#?}`",
-				response.text().await
+				response.text().await?
 			);
 		}
 	}
@@ -842,7 +846,7 @@ async fn delete_all_do_apps(
 async fn migrate_all_managed_urls(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -996,11 +1000,9 @@ async fn migrate_all_managed_urls(
 
 	let tld_list =
 		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
-			.await
-			.map_err(|_| sqlx::Error::WorkerCrashed)?
+			.await?
 			.text()
-			.await
-			.map_err(|_| sqlx::Error::WorkerCrashed)?
+			.await?
 			.split('\n')
 			.map(String::from)
 			.filter(|tld| {
@@ -1340,7 +1342,7 @@ async fn migrate_all_managed_urls(
 async fn remove_outdated_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	// Remove old tables.
 	query!(
 		r#"
@@ -1380,7 +1382,7 @@ async fn remove_outdated_tables(
 async fn rename_permissions_to_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -1392,14 +1394,15 @@ async fn rename_permissions_to_managed_url(
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }
 
 async fn rename_resource_type_to_managed_url(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -1411,14 +1414,15 @@ async fn rename_resource_type_to_managed_url(
 		"#
 	)
 	.execute(&mut *connection)
-	.await
-	.map(|_| ())
+	.await?;
+
+	Ok(())
 }
 
 async fn create_all_namespaces(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let workspaces = query!(
 		r#"
 		SELECT
@@ -1477,11 +1481,9 @@ async fn create_all_namespaces(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
 
-	let client = kube::Client::try_from(config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let client = kube::Client::try_from(config)?;
 
 	let namespace_api = Api::<Namespace>::all(client);
 
@@ -1496,8 +1498,7 @@ async fn create_all_namespaces(
 		};
 		namespace_api
 			.create(&PostParams::default(), &kubernetes_namespace)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 	}
 
 	Ok(())
@@ -1506,7 +1507,7 @@ async fn create_all_namespaces(
 async fn migrate_static_sites(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let static_sites = query!(
 		r#"
 		SELECT
@@ -1568,11 +1569,9 @@ async fn migrate_static_sites(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
 
-	let client = kube::Client::try_from(kube_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let client = kube::Client::try_from(kube_config)?;
 
 	for (static_site_id, workspace_id) in static_sites {
 		let namespace = workspace_id.as_str();
@@ -1608,10 +1607,9 @@ async fn migrate_static_sites(
 				&PatchParams::apply(&format!("service-{}", static_site_id)),
 				&Patch::Apply(kubernetes_service),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
+			.await?
 			.status
-			.ok_or(sqlx::Error::WorkerCrashed)?;
+			.ok_or_else(Error::empty)?;
 
 		let mut annotations: BTreeMap<String, String> = BTreeMap::new();
 		annotations.insert(
@@ -1674,10 +1672,9 @@ async fn migrate_static_sites(
 				&PatchParams::apply(&format!("ingress-{}", static_site_id)),
 				&Patch::Apply(kubernetes_ingress),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?
+			.await?
 			.status
-			.ok_or(sqlx::Error::WorkerCrashed)?;
+			.ok_or_else(Error::empty)?;
 	}
 	Ok(())
 }

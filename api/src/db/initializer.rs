@@ -92,7 +92,14 @@ pub async fn initialize(app: &App) -> Result<(), sqlx::Error> {
 					version,
 					&app.config,
 				)
-				.await?;
+				.await
+				.map_err(|err| {
+					log::error!(
+						"Error running migrations: {}",
+						err.get_error()
+					);
+					sqlx::Error::WorkerCrashed
+				})?;
 
 				transaction.commit().await?;
 				log::info!(

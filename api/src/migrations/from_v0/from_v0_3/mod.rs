@@ -5,9 +5,7 @@ use crate::{
 	Database,
 };
 
-mod from_v0_6_0;
-mod from_v0_6_1;
-mod from_v0_6_2;
+mod from_v0_3_0;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -29,9 +27,7 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 6, 0) => from_v0_6_0::migrate(&mut *connection, config).await,
-		(0, 6, 1) => from_v0_6_1::migrate(&mut *connection, config).await,
-		(0, 6, 2) => from_v0_6_2::migrate(&mut *connection, config).await,
+		(0, 3, 0) => from_v0_3_0::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -39,12 +35,12 @@ pub async fn migrate(
 }
 
 /// # Description
-/// The function is used to get a list of all 0.6.x migrations to migrate the
+/// The function is used to get a list of all 0.3.x migrations to migrate the
 /// database from
 ///
 /// # Return
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.6.0", "0.6.1", "0.6.2"]
+	vec!["0.3.0"]
 }

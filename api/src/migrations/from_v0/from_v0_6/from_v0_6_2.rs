@@ -36,12 +36,16 @@ use kube::{
 };
 use sqlx::Row;
 
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	make_rbac_descriptions_non_nullable(&mut *connection, config).await?;
 	add_secrets(&mut *connection, config).await?;
 
@@ -64,7 +68,7 @@ pub async fn migrate(
 async fn make_rbac_descriptions_non_nullable(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE resource_type
@@ -125,7 +129,7 @@ async fn make_rbac_descriptions_non_nullable(
 async fn update_roles_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for (old_permission, new_permission) in [
 		("workspace::viewRoles", "workspace::rbac::role::list"),
 		("workspace::createRole", "workspace::rbac::role::create"),
@@ -154,7 +158,7 @@ async fn update_roles_permissions(
 async fn add_rbac_user_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for &permission in [
 		"workspace::rbac::user::list",
 		"workspace::rbac::user::add",
@@ -206,7 +210,7 @@ async fn add_rbac_user_permissions(
 async fn update_edit_workspace_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		UPDATE
@@ -228,7 +232,7 @@ async fn update_edit_workspace_permission(
 async fn add_delete_workspace_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let uuid = loop {
 		let uuid = Uuid::new_v4();
 
@@ -273,7 +277,7 @@ async fn add_delete_workspace_permission(
 async fn add_secrets(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE secret(
@@ -388,7 +392,7 @@ async fn add_secrets(
 async fn add_secret_id_column_to_deployment_environment_variable(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable

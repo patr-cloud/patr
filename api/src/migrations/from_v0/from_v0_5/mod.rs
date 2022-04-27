@@ -5,9 +5,14 @@ use crate::{
 	Database,
 };
 
-mod from_v0_6_0;
-mod from_v0_6_1;
-mod from_v0_6_2;
+mod from_v0_5_0;
+mod from_v0_5_1;
+mod from_v0_5_2;
+mod from_v0_5_3;
+mod from_v0_5_4;
+mod from_v0_5_5;
+mod from_v0_5_6;
+mod from_v0_5_7;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -29,9 +34,14 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	match (version.major, version.minor, version.patch) {
-		(0, 6, 0) => from_v0_6_0::migrate(&mut *connection, config).await,
-		(0, 6, 1) => from_v0_6_1::migrate(&mut *connection, config).await,
-		(0, 6, 2) => from_v0_6_2::migrate(&mut *connection, config).await,
+		(0, 5, 0) => from_v0_5_0::migrate(&mut *connection, config).await,
+		(0, 5, 1) => from_v0_5_1::migrate(&mut *connection, config).await,
+		(0, 5, 2) => from_v0_5_2::migrate(&mut *connection, config).await,
+		(0, 5, 3) => from_v0_5_3::migrate(&mut *connection, config).await,
+		(0, 5, 4) => from_v0_5_4::migrate(&mut *connection, config).await,
+		(0, 5, 5) => from_v0_5_5::migrate(&mut *connection, config).await,
+		(0, 5, 6) => from_v0_5_6::migrate(&mut *connection, config).await,
+		(0, 5, 7) => from_v0_5_7::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -39,12 +49,14 @@ pub async fn migrate(
 }
 
 /// # Description
-/// The function is used to get a list of all 0.6.x migrations to migrate the
+/// The function is used to get a list of all 0.5.x migrations to migrate the
 /// database from
 ///
 /// # Return
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.6.0", "0.6.1", "0.6.2"]
+	vec![
+		"0.5.0", "0.5.1", "0.5.2", "0.5.3", "0.5.4", "0.5.5", "0.5.6", "0.5.7",
+	]
 }
