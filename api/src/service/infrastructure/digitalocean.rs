@@ -6,19 +6,17 @@ use reqwest::Client;
 use tokio::{task, time};
 
 use crate::{
-	db,
+	db::{
+		self,
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
 	error,
-	models::{
-		db_mapping::{
-			ManagedDatabaseEngine,
-			ManagedDatabasePlan,
-			ManagedDatabaseStatus,
-		},
-		deployment::cloud_providers::digitalocean::{
-			DatabaseConfig,
-			DatabaseResponse,
-			Db,
-		},
+	models::deployment::cloud_providers::digitalocean::{
+		DatabaseConfig,
+		DatabaseResponse,
+		Db,
 	},
 	service,
 	utils::{get_current_time, settings::Settings, Error},

@@ -3,12 +3,14 @@ use api_models::{
 	utils::Uuid,
 };
 
-use crate::{
-	models::db_mapping::DeploymentStaticSite,
-	query,
-	query_as,
-	Database,
-};
+use crate::{query, query_as, Database};
+
+pub struct DeploymentStaticSite {
+	pub id: Uuid,
+	pub name: String,
+	pub status: DeploymentStatus,
+	pub workspace_id: Uuid,
+}
 
 pub async fn initialize_static_site_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

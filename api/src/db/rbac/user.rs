@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use api_models::utils::Uuid;
 
-use crate::{models::db_mapping::WorkspaceUser, query, query_as, Database};
+use super::WorkspaceUser;
+use crate::{query, query_as, Database};
 
 pub async fn add_user_to_workspace_with_roles(
 	connection: &mut <Database as sqlx::Database>::Connection,

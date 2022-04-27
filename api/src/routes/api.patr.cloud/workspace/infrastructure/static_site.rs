@@ -23,12 +23,9 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::{
-		db_mapping::ManagedUrlType as DbManagedUrlType,
-		rbac::permissions,
-	},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{

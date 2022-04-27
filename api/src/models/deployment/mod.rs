@@ -6,8 +6,8 @@ use eve_rs::AsError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-use super::db_mapping::DeploymentCloudProvider;
 use crate::{
+	db::DeploymentCloudProvider,
 	error,
 	utils::{get_current_time, Error},
 };

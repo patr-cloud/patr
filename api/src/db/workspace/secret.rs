@@ -1,6 +1,13 @@
 use api_models::utils::Uuid;
 
-use crate::{models::db_mapping::Secret, query, query_as, Database};
+use crate::{query, query_as, Database};
+
+pub struct Secret {
+	pub id: Uuid,
+	pub name: String,
+	pub workspace_id: Uuid,
+	pub deployment_id: Option<Uuid>,
+}
 
 pub async fn initialize_secret_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

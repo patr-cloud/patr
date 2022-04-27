@@ -5,9 +5,9 @@ use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, ManagedDatabasePlan},
 	error,
-	models::{db_mapping::ManagedDatabasePlan, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -187,7 +187,7 @@ async fn list_all_database_clusters(
 			request_keys::ID: database.id,
 			request_keys::NAME: database.name,
 			request_keys::DATABASE_NAME: database.db_name,
-			request_keys::ENGINE: database.engine,
+			request_keys::ENGINE: database.engine.to_string(),
 			request_keys::VERSION: database.version,
 			request_keys::NUM_NODES: database.num_nodes,
 			request_keys::DATABASE_PLAN: database.database_plan.to_string(),
@@ -336,7 +336,7 @@ async fn get_managed_database_info(
 		request_keys::DATABASE_ID: database.id,
 		request_keys::NAME: database.name,
 		request_keys::DATABASE_NAME: database.db_name,
-		request_keys::ENGINE: database.engine,
+		request_keys::ENGINE: database.engine.to_string(),
 		request_keys::VERSION: database.version,
 		request_keys::NUM_NODES: database.num_nodes,
 		request_keys::DATABASE_PLAN: database.database_plan.to_string(),

@@ -3,21 +3,83 @@ use api_models::{
 	utils::{ResourceType, Uuid},
 };
 
-use crate::{
-	models::db_mapping::{
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		PhoneNumberToBeVerified,
-		User,
-		UserLogin,
-		UserToSignUp,
-		Workspace,
-	},
-	query,
-	query_as,
-	Database,
-};
+use crate::{db::Workspace, query, query_as, Database};
+
+pub struct User {
+	pub id: Uuid,
+	pub username: String,
+	pub password: String,
+	pub first_name: String,
+	pub last_name: String,
+	pub dob: Option<u64>,
+	pub bio: Option<String>,
+	pub location: Option<String>,
+	pub created: u64,
+	pub recovery_email_local: Option<String>,
+	pub recovery_email_domain_id: Option<Uuid>,
+	pub recovery_phone_country_code: Option<String>,
+	pub recovery_phone_number: Option<String>,
+}
+
+pub struct UserLogin {
+	pub login_id: Uuid,
+	/// Hashed refresh token
+	pub refresh_token: String,
+	pub token_expiry: u64,
+	pub user_id: Uuid,
+	pub last_login: u64,
+	pub last_activity: u64,
+}
+
+pub struct PasswordResetRequest {
+	pub user_id: Uuid,
+	pub token: String,
+	pub token_expiry: u64,
+}
+
+pub struct PhoneCountryCode {
+	pub country_code: String,
+	pub phone_code: String,
+	pub country_name: String,
+}
+
+pub struct PersonalEmailToBeVerified {
+	pub local: String,
+	pub domain_id: Uuid,
+	pub user_id: Uuid,
+	pub verification_token_hash: String,
+	pub verification_token_expiry: u64,
+}
+
+pub struct PhoneNumberToBeVerified {
+	pub country_code: String,
+	pub phone_number: String,
+	pub user_id: Uuid,
+	pub verification_token_hash: String,
+	pub verification_token_expiry: u64,
+}
+
+pub struct UserToSignUp {
+	pub username: String,
+	pub account_type: ResourceType,
+
+	pub password: String,
+	pub first_name: String,
+	pub last_name: String,
+
+	pub recovery_email_local: Option<String>,
+	pub recovery_email_domain_id: Option<Uuid>,
+
+	pub recovery_phone_country_code: Option<String>,
+	pub recovery_phone_number: Option<String>,
+
+	pub business_email_local: Option<String>,
+	pub business_domain_name: Option<String>,
+	pub business_name: Option<String>,
+
+	pub otp_hash: String,
+	pub otp_expiry: u64,
+}
 
 pub async fn initialize_users_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,

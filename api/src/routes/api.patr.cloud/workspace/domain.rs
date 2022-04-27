@@ -23,9 +23,9 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, DnsRecordType},
 	error,
-	models::{db_mapping::DnsRecordType, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{

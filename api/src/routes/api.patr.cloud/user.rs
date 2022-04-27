@@ -39,9 +39,8 @@ use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, User},
 	error,
-	models::db_mapping::User,
 	pin_fn,
 	redis,
 	service::{self, get_access_token_expiry},

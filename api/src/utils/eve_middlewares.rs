@@ -20,9 +20,9 @@ use redis::aio::MultiplexedConnection as RedisConnection;
 use super::get_current_time_millis;
 use crate::{
 	app::App,
+	db::Resource,
 	error,
 	models::{
-		db_mapping::Resource,
 		rbac::{self, GOD_USER_ID},
 		AccessTokenData,
 	},

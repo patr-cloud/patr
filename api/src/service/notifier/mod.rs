@@ -2,9 +2,8 @@ use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
 use eve_rs::AsError;
 
 use crate::{
-	db,
+	db::{self, User, UserToSignUp},
 	error,
-	models::db_mapping::{User, UserToSignUp},
 	utils::Error,
 	Database,
 };
