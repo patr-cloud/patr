@@ -2829,7 +2829,7 @@ pub async fn delete_phone_number_for_user(
 	Ok(())
 }
 
-pub async fn search_for_user_info(
+pub async fn search_for_users(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	query: &str,
 ) -> Result<Vec<BasicUserInfo>, sqlx::Error> {
