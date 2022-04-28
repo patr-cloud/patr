@@ -281,6 +281,12 @@ pub async fn update_deployment(
 	.await?;
 
 	if let Some(ports) = ports {
+		if ports.is_empty() {
+			return Err(Error::empty()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string()));
+		}
+
 		log::trace!(
 			"request_id: {} - Updating deployment ports in the database",
 			request_id
