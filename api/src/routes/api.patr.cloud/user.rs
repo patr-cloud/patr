@@ -1275,6 +1275,12 @@ async fn search_for_user(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	if query.is_empty() {
+		return Error::as_result()
+			.status(401)
+			.body(error!(WRONG_PARAMETERS).to_string());
+	}
+
 	let users =
 		db::search_for_users(context.get_database_connection(), &query).await?;
 
