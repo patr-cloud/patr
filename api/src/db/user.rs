@@ -590,7 +590,11 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		INSERT INTO
-			phone_number_country_code(country_code, phone_code, country_name)
+			phone_number_country_code(
+				country_code,
+				phone_code,
+				country_name
+			)
 		VALUES
 			($$AF$$, $$93$$, $$Afghanistan$$),
 			($$AX$$, $$358$$, $$Aland Islands$$),
@@ -2013,7 +2017,11 @@ pub async fn add_personal_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			personal_email(user_id, local, domain_id)
+			personal_email(
+				user_id,
+				local,
+				domain_id
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -2036,7 +2044,11 @@ pub async fn add_business_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			business_email(user_id, local, domain_id)
+			business_email(
+				user_id,
+				local,
+				domain_id
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -2572,7 +2584,11 @@ pub async fn add_password_reset_request(
 	query!(
 		r#"
 		INSERT INTO
-			password_reset_request(user_id, token, token_expiry)
+			password_reset_request(
+				user_id,
+				token,
+				token_expiry
+			)
 		VALUES
 			($1, $2, $3)
 		ON CONFLICT(user_id) DO UPDATE SET
@@ -2700,7 +2716,11 @@ pub async fn add_phone_number_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			user_phone_number(user_id, country_code, number)
+			user_phone_number(
+				user_id,
+				country_code,
+				number
+			)
 		VALUES
 			($1, $2, $3);
 		"#,

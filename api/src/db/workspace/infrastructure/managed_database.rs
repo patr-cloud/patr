@@ -269,8 +269,7 @@ pub async fn create_managed_database(
 		query!(
 			r#"
 			INSERT INTO
-				managed_database
-				(
+				managed_database(
 					id,
 					name,
 					db_name,
@@ -328,8 +327,7 @@ pub async fn create_managed_database(
 		query!(
 			r#"
 			INSERT INTO
-				managed_database
-				(
+				managed_database(
 					id,
 					name,
 					db_name,

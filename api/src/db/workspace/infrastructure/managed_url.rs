@@ -257,8 +257,7 @@ pub async fn create_new_managed_url_in_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			managed_url
-			(
+			managed_url(
 				id,
 				sub_domain,
 				domain_id,

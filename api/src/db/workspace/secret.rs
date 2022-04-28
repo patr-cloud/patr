@@ -114,7 +114,12 @@ pub async fn create_new_secret_in_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			secret
+			secret(
+				id,
+				name,
+				workspace_id,
+				deployment_id
+			)
 		VALUES
 			($1, $2, $3, NULL);
 		"#,
@@ -138,7 +143,12 @@ pub async fn create_new_secret_for_deployment(
 	query!(
 		r#"
 		INSERT INTO
-			secret
+			secret(
+				id,
+				name,
+				workspace_id,
+				deployment_id
+			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,

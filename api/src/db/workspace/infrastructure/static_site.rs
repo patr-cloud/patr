@@ -66,8 +66,7 @@ pub async fn create_static_site(
 	query!(
 		r#"
 		INSERT INTO
-			deployment_static_site
-			(
+			deployment_static_site(
 				id,
 				name,
 				status,

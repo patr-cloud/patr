@@ -121,7 +121,11 @@ pub async fn create_docker_repository(
 	query!(
 		r#"
 		INSERT INTO 
-			docker_registry_repository (id, workspace_id, name)
+			docker_registry_repository(
+				id,
+				workspace_id,
+				name
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -298,8 +302,7 @@ pub async fn create_docker_repository_digest(
 	query!(
 		r#"
 		INSERT INTO
-			docker_registry_repository_manifest 
-			(
+			docker_registry_repository_manifest(
 				repository_id,
 				manifest_digest,
 				size,
@@ -329,8 +332,7 @@ pub async fn set_docker_repository_tag_details(
 	query!(
 		r#"
 		INSERT INTO
-			docker_registry_repository_tag 
-			(
+			docker_registry_repository_tag(
 				repository_id,
 				tag,
 				manifest_digest,
@@ -338,7 +340,7 @@ pub async fn set_docker_repository_tag_details(
 			)
 		VALUES
 			($1, $2, $3, $4)
-		ON CONFLICT (repository_id, tag)
+		ON CONFLICT(repository_id, tag)
 		DO UPDATE SET
 			manifest_digest = $3,
 			last_updated = $4;

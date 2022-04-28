@@ -129,17 +129,17 @@ pub async fn initialize_deployment_pre(
 					REFERENCES deployment_region(id),
 			CONSTRAINT
 				deployment_region_chk_provider_location_parent_region_is_valid
-				CHECK(
-					(
-						location IS NULL AND
-						provider IS NULL
-					) OR
-					(
-						provider IS NOT NULL AND
-						location IS NOT NULL AND
-						parent_region_id IS NOT NULL
+					CHECK(
+						(
+							location IS NULL AND
+							provider IS NULL
+						) OR
+						(
+							provider IS NOT NULL AND
+							location IS NOT NULL AND
+							parent_region_id IS NOT NULL
+						)
 					)
-				)
 		);
 		"#
 	)
@@ -334,10 +334,9 @@ pub async fn initialize_deployment_post(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_machine_type 
-				(
-					id, 
-					cpu_count, 
+				deployment_machine_type(
+					id,
+					cpu_count,
 					memory_count
 				)
 			VALUES
@@ -384,19 +383,18 @@ pub async fn create_deployment_with_internal_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment 
-			(
-				id, 
-				name, 
-				registry, 
-				repository_id, 
-				image_name, 
-				image_tag, 
-				status, 
-				workspace_id, 
-				region, 
-				min_horizontal_scale, 
-				max_horizontal_scale, 
+			deployment(
+				id,
+				name,
+				registry,
+				repository_id,
+				image_name,
+				image_tag,
+				status,
+				workspace_id,
+				region,
+				min_horizontal_scale,
+				max_horizontal_scale,
 				machine_type,
 				deploy_on_push
 			)
@@ -450,20 +448,19 @@ pub async fn create_deployment_with_external_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment 
-			(
-				id, 
+			deployment(
+				id,
 				name,
-				registry, 
-				repository_id, 
-				image_name, 
-				image_tag, 
-				status, 
-				workspace_id, 
-				region, 
-				min_horizontal_scale, 
-				max_horizontal_scale, 
-				machine_type, 
+				registry,
+				repository_id,
+				image_name,
+				image_tag,
+				status,
+				workspace_id,
+				region,
+				min_horizontal_scale,
+				max_horizontal_scale,
+				machine_type,
 				deploy_on_push
 			)
 		VALUES
@@ -766,8 +763,8 @@ pub async fn add_environment_variable_for_deployment(
 		r#"
 		INSERT INTO 
 			deployment_environment_variable(
-				deployment_id, 
-				name, 
+				deployment_id,
+				name,
 				value,
 				secret_id
 			)
@@ -836,10 +833,9 @@ pub async fn add_exposed_port_for_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_exposed_port 
-			(
-				deployment_id, 
-				port, 
+			deployment_exposed_port(
+				deployment_id,
+				port,
 				port_type
 			)
 		VALUES
@@ -1037,12 +1033,11 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region 
-				(
-					id, 
-					name, 
-					provider, 
-					location, 
+				deployment_region(
+					id,
+					name,
+					provider,
+					location,
 					parent_region_id
 				)
 			VALUES
@@ -1062,12 +1057,11 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region 
-				(
-					id, 
-					name, 
-					provider, 
-					location, 
+				deployment_region(
+					id,
+					name,
+					provider,
+					location,
 					parent_region_id
 				)
 			VALUES

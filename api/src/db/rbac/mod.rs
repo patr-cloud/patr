@@ -272,7 +272,11 @@ pub async fn initialize_rbac_post(
 		query!(
 			r#"
 			INSERT INTO
-				permission(id, name, description)
+				permission(
+					id,
+					name,
+					description
+				)
 			VALUES
 				($1, $2, $3);
 			"#,
@@ -291,7 +295,11 @@ pub async fn initialize_rbac_post(
 		query!(
 			r#"
 			INSERT INTO
-				resource_type(id, name, description)
+				resource_type(
+					id,
+					name,
+					description
+				)
 			VALUES
 				($1, $2, $3);
 			"#,
@@ -577,7 +585,13 @@ pub async fn create_resource(
 	query!(
 		r#"
 		INSERT INTO
-			resource(id, name, resource_type_id, owner_id, created)
+			resource(
+				id,
+				name,
+				resource_type_id,
+				owner_id,
+				created
+			)
 		VALUES
 			($1, $2, $3, $4, $5);
 		"#,

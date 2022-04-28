@@ -388,7 +388,12 @@ pub async fn create_generic_domain(
 	query!(
 		r#"
 		INSERT INTO
-			domain (id, name, type, tld)
+			domain(
+				id,
+				name,
+				type,
+				tld
+			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
@@ -410,7 +415,12 @@ pub async fn add_to_workspace_domain(
 	query!(
 		r#"
 		INSERT INTO
-			workspace_domain (id, domain_type, is_verified, nameserver_type)
+			workspace_domain(
+				id,
+				domain_type,
+				is_verified,
+				nameserver_type
+			)
 		VALUES
 			($1, 'business', FALSE, $2);
 		"#,
@@ -429,7 +439,10 @@ pub async fn add_to_personal_domain(
 	query!(
 		r#"
 		INSERT INTO
-			personal_domain (id, domain_type)
+			personal_domain(
+				id,
+				domain_type
+			)
 		VALUES
 			($1, 'personal');
 		"#,
@@ -448,7 +461,11 @@ pub async fn add_patr_controlled_domain(
 	query!(
 		r#"
 		INSERT INTO
-			patr_controlled_domain (domain_id, zone_identifier, nameserver_type)
+			patr_controlled_domain(
+				domain_id,
+				zone_identifier,
+				nameserver_type
+			)
 		VALUES
 			($1, $2, 'internal');
 		"#,
@@ -467,7 +484,10 @@ pub async fn add_user_controlled_domain(
 	query!(
 		r#"
 		INSERT INTO
-			user_controlled_domain (domain_id, nameserver_type)
+			user_controlled_domain(
+				domain_id,
+				nameserver_type
+			)
 		VALUES
 			($1, 'external');
 		"#,
@@ -940,9 +960,8 @@ pub async fn create_patr_domain_dns_record(
 	query!(
 		r#"
 		INSERT INTO
-			patr_domain_dns_record
-			(
-				id, 
+			patr_domain_dns_record(
+				id,
 				record_identifier,
 				domain_id,
 				name,
@@ -1078,7 +1097,9 @@ pub async fn update_domain_tld_list(
 		query!(
 			r#"
 			INSERT INTO
-				domain_tld (tld)
+				domain_tld(
+					tld
+				)
 			VALUES
 				($1)
 			ON CONFLICT DO NOTHING;

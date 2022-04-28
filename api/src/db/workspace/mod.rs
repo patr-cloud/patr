@@ -211,7 +211,12 @@ pub async fn create_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			workspace (id, name, super_admin_id, active)
+			workspace(
+				id,
+				name,
+				super_admin_id,
+				active
+			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
@@ -312,7 +317,20 @@ pub async fn create_workspace_audit_log(
 	query!(
 		r#"
 		INSERT INTO
-			workspace_audit_log
+			workspace_audit_log(
+				id,
+				date,
+				ip_address,
+				workspace_id,
+				user_id,
+				login_id,
+				resource_id,
+				action,
+				request_id,
+				metadata,
+				patr_action,
+				success
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 		"#,

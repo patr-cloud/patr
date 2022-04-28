@@ -42,7 +42,12 @@ pub async fn create_role(
 	query!(
 		r#"
 		INSERT INTO
-			role
+			role(
+				id,
+				name,
+				description,
+				owner_id
+			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
@@ -229,7 +234,11 @@ pub async fn insert_resource_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource
+					role_permissions_resource(
+						role_id,
+						resource_id,
+						permission_id
+					)
 				VALUES
 					($1, $2, $3);
 				"#,
@@ -254,7 +263,11 @@ pub async fn insert_resource_type_permissions_for_role(
 			query!(
 				r#"
 				INSERT INTO
-					role_permissions_resource_type
+					role_permissions_resource_type(
+						role_id,
+						resource_type_id,
+						permission_id
+					)
 				VALUES
 					($1, $2, $3);
 				"#,
