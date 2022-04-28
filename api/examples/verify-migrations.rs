@@ -247,6 +247,7 @@ async fn get_release_details_of_releases(
 		.expect("unable to parse response as json")
 }
 
+#[allow(clippy::unused_io_amount)]
 async fn handle_release(
 	release: ReleaseResponse,
 	db_host: &str,

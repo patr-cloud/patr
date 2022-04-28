@@ -5,6 +5,7 @@ use api_models::{
 			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
 			AddPhoneNumberResponse,
+			BasicUserInfo,
 			ChangePasswordRequest,
 			ChangePasswordResponse,
 			DeletePersonalEmailRequest,
@@ -12,13 +13,15 @@ use api_models::{
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
 			DeleteUserLoginResponse,
-			GetUserInfoByUsernameResponse,
+			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			GetUserLoginInfoResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
+			SearchForUserRequest,
+			SearchForUserResponse,
 			UpdateRecoveryEmailRequest,
 			UpdateRecoveryEmailResponse,
 			UpdateRecoveryPhoneNumberRequest,
@@ -208,6 +211,14 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
+	app.get(
+		"/search",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
+		],
+	);
+
 	app
 }
 
@@ -311,13 +322,15 @@ async fn get_user_info(
 	.collect::<Vec<_>>();
 
 	context.success(GetUserInfoResponse {
-		id,
-		username,
-		first_name,
-		last_name,
+		basic_user_info: BasicUserInfo {
+			id,
+			username,
+			first_name,
+			last_name,
+			bio,
+			location,
+		},
 		birthday: dob,
-		bio,
-		location,
 		created,
 		recovery_email,
 		secondary_emails,
@@ -387,13 +400,15 @@ async fn get_user_info_by_user_id(
 		.status(400)
 		.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
-	context.success(GetUserInfoByUsernameResponse {
-		id,
-		username,
-		first_name,
-		last_name,
-		location,
-		bio,
+	context.success(GetUserInfoByUserIdResponse {
+		basic_user_info: BasicUserInfo {
+			id,
+			username,
+			first_name,
+			last_name,
+			location,
+			bio,
+		},
 	});
 	Ok(context)
 }
@@ -1248,5 +1263,24 @@ async fn delete_user_login(
 	.await?;
 
 	context.success(DeleteUserLoginResponse {});
+	Ok(context)
+}
+
+async fn search_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let SearchForUserRequest { query } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	log::info!("Search Query: {query}");
+
+	let users =
+		db::search_for_user_info(context.get_database_connection(), query)
+			.await?;
+
+	context.success(SearchForUserResponse { users });
 	Ok(context)
 }

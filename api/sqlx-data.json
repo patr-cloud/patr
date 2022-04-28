@@ -7356,6 +7356,56 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM managed_url WHERE url_type = 'proxy_to_static_site';"
   },
+  "e221588e2e305c77d4b210cf34630a0d6a003c7f23fa291998efd324f84931a3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "first_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "last_name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "bio",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "location",
+          "ordinal": 5,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".first_name, \"user\".last_name, \"user\".bio, \"user\".location FROM \"user\" WHERE username LIKE CONCAT('%', $1::TEXT, '%');"
+  },
   "e313defa3d63bb79a1b84bbac09a430197050238b4076f03a1d8b90f0788f769": {
     "describe": {
       "columns": [],

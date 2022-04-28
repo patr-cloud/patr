@@ -1,5 +1,5 @@
 use api_models::{
-	models::user::UserPhoneNumber,
+	models::user::{BasicUserInfo, UserPhoneNumber},
 	utils::{ResourceType, Uuid},
 };
 
@@ -2827,4 +2827,40 @@ pub async fn delete_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn search_for_user_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	query: String,
+) -> Result<Vec<BasicUserInfo>, sqlx::Error> {
+	let users = query!(
+		r#"
+		SELECT
+			"user".id as "id: Uuid",
+			"user".username,
+			"user".first_name,
+			"user".last_name,
+			"user".bio,
+			"user".location
+		FROM
+			"user"
+		WHERE
+			username LIKE CONCAT('%', $1::TEXT, '%');
+		"#,
+		query as _
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| BasicUserInfo {
+		id: row.id,
+		username: row.username,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		bio: row.bio,
+		location: row.location,
+	})
+	.collect();
+
+	Ok(users)
 }
