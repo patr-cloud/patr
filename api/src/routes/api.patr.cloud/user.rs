@@ -1275,10 +1275,8 @@ async fn search_for_user(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	log::info!("Search Query: {query}");
-
 	let users =
-		db::search_for_user_info(context.get_database_connection(), query)
+		db::search_for_user_info(context.get_database_connection(), &query)
 			.await?;
 
 	context.success(SearchForUserResponse { users });
