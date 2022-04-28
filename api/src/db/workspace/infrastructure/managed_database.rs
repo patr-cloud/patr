@@ -269,7 +269,23 @@ pub async fn create_managed_database(
 		query!(
 			r#"
 			INSERT INTO
-				managed_database
+				managed_database(
+					id,
+					name,
+					db_name,
+					engine,
+					version,
+					num_nodes,
+					database_plan,
+					region,
+					status,
+					host,
+					port,
+					username,
+					password,
+					workspace_id,
+					digitalocean_db_id
+				)
 			VALUES
 				(
 					$1,
@@ -311,7 +327,23 @@ pub async fn create_managed_database(
 		query!(
 			r#"
 			INSERT INTO
-				managed_database
+				managed_database(
+					id,
+					name,
+					db_name,
+					engine,
+					version,
+					num_nodes,
+					database_plan,
+					region,
+					status,
+					host,
+					port,
+					username,
+					password,
+					workspace_id,
+					digitalocean_db_id
+				)
 			VALUES
 				(
 					$1,
