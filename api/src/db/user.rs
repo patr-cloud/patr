@@ -1,5 +1,5 @@
 use api_models::{
-	models::user::UserPhoneNumber,
+	models::user::{BasicUserInfo, UserPhoneNumber},
 	utils::{ResourceType, Uuid},
 };
 
@@ -2827,4 +2827,233 @@ pub async fn delete_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn search_for_users(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	query: &str,
+) -> Result<Vec<BasicUserInfo>, sqlx::Error> {
+	let users = query!(
+		r#"
+		SELECT DISTINCT
+			(
+				CASE
+					WHEN LOWER("user".username) = LOWER($1) THEN 100 /* Exact username */
+					WHEN COALESCE(
+						CASE
+							WHEN personal_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									personal_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END,
+						CASE
+							WHEN business_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									business_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END
+					) = LOWER($1) THEN 100 /* Exact email */
+					WHEN CONCAT(
+						'+',
+						phone_number_country_code.phone_code,
+						user_phone_number.number
+					) = $1 THEN 100 /* Exact phone number */
+					WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */
+					WHEN LOWER(CONCAT(
+						"user".first_name,
+						' ',
+						"user".last_name
+					)) = LOWER($1) THEN 90 /* firstName lastName */
+					WHEN LOWER(CONCAT(
+						"user".last_name,
+						' ',
+						"user".first_name
+					)) = LOWER($1) THEN 90 /* lastName firstName */
+					WHEN LOWER("user".first_name) = LOWER($1) THEN 80 /* Only first name */
+					WHEN LOWER("user".last_name) = LOWER($1) THEN 80 /* Only last name */
+
+					/* If you search for a part of their username */
+					WHEN STARTS_WITH(
+						LOWER("user".username),
+						SUBSTR(LOWER($1), 0, LENGTH("user".username))
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH("user".username)::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".first_name, ' ', "user".last_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".first_name, ' ', "user".last_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".first_name, ' ', "user".last_name))::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name reversed */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".last_name, ' ', "user".first_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".last_name, ' ', "user".first_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".last_name, ' ', "user".first_name))::REAL
+						) * 20
+					)
+
+					ELSE 0
+				END
+			) AS "score",
+			"user".id as "id!: Uuid",
+			"user".username as "username!",
+			"user".first_name as "first_name!",
+			"user".last_name as "last_name!",
+			"user".bio as "bio",
+			"user".location as "location"
+		FROM
+			"user"
+		LEFT JOIN
+			personal_email
+		ON
+			"user".id = personal_email.user_id
+		LEFT JOIN
+			business_email
+		ON
+			"user".id = personal_email.user_id
+		LEFT JOIN
+			domain
+		ON
+			domain.id = personal_email.domain_id OR
+			domain.id = business_email.domain_id
+		LEFT JOIN
+			user_phone_number
+		ON
+			"user".id = user_phone_number.user_id
+		LEFT JOIN
+			phone_number_country_code
+		ON
+			user_phone_number.country_code = phone_number_country_code.country_code
+		WHERE
+			(
+				CASE
+					WHEN LOWER("user".username) = LOWER($1) THEN 100 /* Exact username */
+					WHEN COALESCE(
+						CASE
+							WHEN personal_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									personal_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END,
+						CASE
+							WHEN business_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									business_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END
+					) = LOWER($1) THEN 100 /* Exact email */
+					WHEN CONCAT(
+						'+',
+						phone_number_country_code.phone_code,
+						user_phone_number.number
+					) = $1 THEN 100 /* Exact phone number */
+					WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */
+					WHEN LOWER(CONCAT(
+						"user".first_name,
+						' ',
+						"user".last_name
+					)) = LOWER($1) THEN 90 /* firstName lastName */
+					WHEN LOWER(CONCAT(
+						"user".last_name,
+						' ',
+						"user".first_name
+					)) = LOWER($1) THEN 90 /* lastName firstName */
+					WHEN LOWER("user".first_name) = LOWER($1) THEN 80 /* Only first name */
+					WHEN LOWER("user".last_name) = LOWER($1) THEN 80 /* Only last name */
+
+					/* If you search for a part of their username */
+					WHEN STARTS_WITH(
+						LOWER("user".username),
+						SUBSTR(LOWER($1), 0, LENGTH("user".username))
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH("user".username)::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".first_name, ' ', "user".last_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".first_name, ' ', "user".last_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".first_name, ' ', "user".last_name))::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name reversed */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".last_name, ' ', "user".first_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".last_name, ' ', "user".first_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".last_name, ' ', "user".first_name))::REAL
+						) * 20
+					)
+
+					ELSE 0
+				END
+			) > 0
+		ORDER BY
+			1 DESC
+		LIMIT 10;
+		"#,
+		query
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| BasicUserInfo {
+		id: row.id,
+		username: row.username,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		bio: row.bio,
+		location: row.location,
+	})
+	.collect();
+
+	Ok(users)
 }
