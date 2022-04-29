@@ -675,11 +675,14 @@ async fn get_domain_info_in_workspace(
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	context.success(GetDomainInfoResponse {
-		domain: Domain {
-			id: domain.id,
-			name: domain.name,
+		workspace_domain: WorkspaceDomain {
+			domain: Domain {
+				id: domain.id,
+				name: domain.name,
+			},
+			is_verified: domain.is_verified,
+			nameserver_type: domain.nameserver_type,
 		},
-		is_verified: domain.is_verified,
 	});
 
 	log::trace!("request_id: {} - Got domain info in workspace", request_id);

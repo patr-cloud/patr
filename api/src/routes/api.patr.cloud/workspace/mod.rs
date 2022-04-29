@@ -286,6 +286,7 @@ async fn get_workspace_info(
 	.map(|workspace| Workspace {
 		id: workspace.id,
 		name: workspace.name,
+		super_admin_id: workspace.super_admin_id,
 		active: workspace.active,
 	})
 	.status(500)
