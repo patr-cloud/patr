@@ -7,6 +7,7 @@ use crate::{
 
 mod auth;
 mod permission;
+mod resource_type;
 mod user;
 mod webhook;
 mod workspace;
@@ -37,6 +38,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/workspace", workspace::create_sub_app(app));
 	sub_app.use_sub_app("/webhook", webhook::create_sub_app(app));
 	sub_app.use_sub_app("/permission", permission::create_sub_app(app));
+	sub_app.use_sub_app("/resource-type", resource_type::create_sub_app(app));
 
 	sub_app
 }
