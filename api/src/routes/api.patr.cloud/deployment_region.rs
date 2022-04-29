@@ -1,4 +1,7 @@
-use api_models::models::permission::{ListAllPermissionResponse, Permission};
+use api_models::models::deployment_region::{
+	DeploymentRegion,
+	ListAllDeploymentRegionResponse,
+};
 use eve_rs::{App as EveApp, NextHandler};
 
 use crate::{
@@ -17,28 +20,30 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_all_permissions)),
+			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
 		],
 	);
 
 	app
 }
 
-async fn get_all_permissions(
+async fn get_all_resource_types(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let permissions =
-		db::get_all_permissions(context.get_database_connection())
+	let deployment_regions =
+		db::get_all_deployment_regions(context.get_database_connection())
 			.await?
 			.into_iter()
-			.map(|permission| Permission {
-				id: permission.id,
-				name: permission.name,
-				description: permission.description,
+			.filter_map(|region| {
+				Some(DeploymentRegion {
+					id: region.id,
+					name: region.name,
+					provider: region.cloud_provider?.to_string(),
+				})
 			})
 			.collect();
-	context.success(ListAllPermissionResponse { permissions });
+	context.success(ListAllDeploymentRegionResponse { deployment_regions });
 
 	Ok(context)
 }
