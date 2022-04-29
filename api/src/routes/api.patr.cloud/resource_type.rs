@@ -1,5 +1,5 @@
 use api_models::models::resource_type::{
-	ListAllResourceTypesResponse,
+	ListAllResourceTypeResponse,
 	ResourceType,
 };
 use eve_rs::{App as EveApp, NextHandler};
@@ -41,7 +41,7 @@ async fn get_all_resource_types(
 				description: resource_type.description,
 			})
 			.collect();
-	context.success(ListAllResourceTypesResponse { resource_types });
+	context.success(ListAllResourceTypeResponse { resource_types });
 
 	Ok(context)
 }
