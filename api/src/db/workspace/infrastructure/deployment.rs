@@ -1,3 +1,5 @@
+use std::{fmt::Display, str::FromStr};
+
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		DeploymentStatus,
@@ -5,26 +7,83 @@ use api_models::{
 	},
 	utils::Uuid,
 };
+use eve_rs::AsError;
 
 use crate::{
-	db,
-	models::{
-		db_mapping::{
-			Deployment,
-			DeploymentMachineType,
-			DeploymentRegion,
-			WorkspaceAuditLog,
-		},
-		deployment::{
-			DefaultDeploymentRegion,
-			DEFAULT_DEPLOYMENT_REGIONS,
-			DEFAULT_MACHINE_TYPES,
-		},
+	db::{self, WorkspaceAuditLog},
+	error,
+	models::deployment::{
+		DefaultDeploymentRegion,
+		DEFAULT_DEPLOYMENT_REGIONS,
+		DEFAULT_MACHINE_TYPES,
 	},
 	query,
 	query_as,
+	utils::Error,
 	Database,
 };
+
+#[derive(sqlx::Type, Debug, Clone)]
+#[sqlx(type_name = "DEPLOYMENT_CLOUD_PROVIDER", rename_all = "lowercase")]
+pub enum DeploymentCloudProvider {
+	Digitalocean,
+}
+
+impl Display for DeploymentCloudProvider {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			DeploymentCloudProvider::Digitalocean => write!(f, "digitalocean"),
+		}
+	}
+}
+
+impl FromStr for DeploymentCloudProvider {
+	type Err = Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"digitalocean" => Ok(Self::Digitalocean),
+			_ => Error::as_result()
+				.status(500)
+				.body(error!(WRONG_PARAMETERS).to_string()),
+		}
+	}
+}
+
+pub struct DeploymentRegion {
+	pub id: Uuid,
+	pub name: String,
+	pub cloud_provider: Option<DeploymentCloudProvider>,
+}
+
+pub struct DeploymentMachineType {
+	pub id: Uuid,
+	pub cpu_count: i16,
+	pub memory_count: i32,
+}
+
+pub struct Deployment {
+	pub id: Uuid,
+	pub name: String,
+	pub registry: String,
+	pub repository_id: Option<Uuid>,
+	pub image_name: Option<String>,
+	pub image_tag: String,
+	pub status: DeploymentStatus,
+	pub workspace_id: Uuid,
+	pub region: Uuid,
+	pub min_horizontal_scale: i16,
+	pub max_horizontal_scale: i16,
+	pub machine_type: Uuid,
+	pub deploy_on_push: bool,
+}
+
+pub struct DeploymentEnvironmentVariable {
+	pub deployment_id: Uuid,
+	pub name: String,
+	pub value: Option<String>,
+	pub secret_id: Option<Uuid>,
+}
 
 pub async fn initialize_deployment_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -70,17 +129,17 @@ pub async fn initialize_deployment_pre(
 					REFERENCES deployment_region(id),
 			CONSTRAINT
 				deployment_region_chk_provider_location_parent_region_is_valid
-				CHECK(
-					(
-						location IS NULL AND
-						provider IS NULL
-					) OR
-					(
-						provider IS NOT NULL AND
-						location IS NOT NULL AND
-						parent_region_id IS NOT NULL
+					CHECK(
+						(
+							location IS NULL AND
+							provider IS NULL
+						) OR
+						(
+							provider IS NOT NULL AND
+							location IS NOT NULL AND
+							parent_region_id IS NOT NULL
+						)
 					)
-				)
 		);
 		"#
 	)
@@ -200,9 +259,23 @@ pub async fn initialize_deployment_pre(
 				CONSTRAINT deployment_environment_variable_fk_deployment_id
 					REFERENCES deployment(id),
 			name VARCHAR(256) NOT NULL,
-			value TEXT NOT NULL,
+			value TEXT,
+			secret_id UUID,
 			CONSTRAINT deployment_environment_variable_pk
-				PRIMARY KEY(deployment_id, name)
+				PRIMARY KEY(deployment_id, name),
+			CONSTRAINT deployment_environment_variable_fk_secret_id
+				FOREIGN KEY(secret_id) REFERENCES secret(id),
+			CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null
+				CHECK(
+					(
+						value IS NOT NULL AND
+						secret_id IS NULL
+					) OR
+					(
+						value IS NULL AND
+						secret_id IS NOT NULL
+					)
+				)
 		);
 		"#
 	)
@@ -261,7 +334,11 @@ pub async fn initialize_deployment_post(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_machine_type
+				deployment_machine_type(
+					id,
+					cpu_count,
+					memory_count
+				)
 			VALUES
 				($1, $2, $3);
 			"#,
@@ -306,7 +383,21 @@ pub async fn create_deployment_with_internal_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment
+			deployment(
+				id,
+				name,
+				registry,
+				repository_id,
+				image_name,
+				image_tag,
+				status,
+				workspace_id,
+				region,
+				min_horizontal_scale,
+				max_horizontal_scale,
+				machine_type,
+				deploy_on_push
+			)
 		VALUES
 			(
 				$1,
@@ -357,7 +448,21 @@ pub async fn create_deployment_with_external_registry(
 	query!(
 		r#"
 		INSERT INTO
-			deployment
+			deployment(
+				id,
+				name,
+				registry,
+				repository_id,
+				image_name,
+				image_tag,
+				status,
+				workspace_id,
+				region,
+				min_horizontal_scale,
+				max_horizontal_scale,
+				machine_type,
+				deploy_on_push
+			)
 		VALUES
 			(
 				$1,
@@ -627,12 +732,15 @@ pub async fn update_deployment_name(
 pub async fn get_environment_variables_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
-) -> Result<Vec<(String, String)>, sqlx::Error> {
-	let rows = query!(
+) -> Result<Vec<DeploymentEnvironmentVariable>, sqlx::Error> {
+	query_as!(
+		DeploymentEnvironmentVariable,
 		r#"
 		SELECT
+		    deployment_id as "deployment_id: _",
 			name,
-			value
+			value,
+			secret_id as "secret_id: _" 
 		FROM
 			deployment_environment_variable
 		WHERE
@@ -641,30 +749,32 @@ pub async fn get_environment_variables_for_deployment(
 		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.name, row.value))
-	.collect();
-
-	Ok(rows)
+	.await
 }
 
 pub async fn add_environment_variable_for_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
 	key: &str,
-	value: &str,
+	value: Option<&str>,
+	secret_id: Option<&Uuid>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_environment_variable
+			deployment_environment_variable(
+				deployment_id,
+				name,
+				value,
+				secret_id
+			)
 		VALUES
-			($1, $2, $3);
+			($1, $2, $3, $4);
 		"#,
 		deployment_id as _,
 		key,
-		value
+		value,
+		secret_id as _
 	)
 	.execute(&mut *connection)
 	.await
@@ -723,7 +833,11 @@ pub async fn add_exposed_port_for_deployment(
 	query!(
 		r#"
 		INSERT INTO 
-			deployment_exposed_port
+			deployment_exposed_port(
+				deployment_id,
+				port,
+				port_type
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -919,7 +1033,13 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region
+				deployment_region(
+					id,
+					name,
+					provider,
+					location,
+					parent_region_id
+				)
 			VALUES
 				($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);
 			"#,
@@ -937,7 +1057,13 @@ async fn populate_region(
 		query!(
 			r#"
 			INSERT INTO
-				deployment_region
+				deployment_region(
+					id,
+					name,
+					provider,
+					location,
+					parent_region_id
+				)
 			VALUES
 				($1, $2, NULL, NULL, $3);
 			"#,

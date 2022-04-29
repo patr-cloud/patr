@@ -22,6 +22,7 @@ use crate::{
 		},
 		DeploymentMetadata,
 	},
+	rabbitmq,
 	service,
 	utils::{settings::Settings, Error},
 	Database,
@@ -414,8 +415,9 @@ async fn send_message_to_rabbit_mq(
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
+	let app = service::get_app();
 	let (channel, rabbitmq_connection) =
-		service::get_rabbitmq_connection_channel(config, request_id).await?;
+		rabbitmq::get_rabbitmq_connection_channel(&app.rabbitmq).await?;
 
 	let confirmation = channel
 		.basic_publish(

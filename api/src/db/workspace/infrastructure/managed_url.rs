@@ -1,11 +1,28 @@
 use api_models::utils::Uuid;
 
-use crate::{
-	models::db_mapping::{ManagedUrl, ManagedUrlType},
-	query,
-	query_as,
-	Database,
-};
+use crate::{query, query_as, Database};
+
+#[derive(sqlx::Type)]
+#[sqlx(type_name = "MANAGED_URL_TYPE", rename_all = "snake_case")]
+pub enum ManagedUrlType {
+	ProxyToDeployment,
+	ProxyToStaticSite,
+	ProxyUrl,
+	Redirect,
+}
+
+pub struct ManagedUrl {
+	pub id: Uuid,
+	pub sub_domain: String,
+	pub domain_id: Uuid,
+	pub path: String,
+	pub url_type: ManagedUrlType,
+	pub deployment_id: Option<Uuid>,
+	pub port: Option<i32>,
+	pub static_site_id: Option<Uuid>,
+	pub url: Option<String>,
+	pub workspace_id: Uuid,
+}
 
 pub async fn initialize_managed_url_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -240,7 +257,18 @@ pub async fn create_new_managed_url_in_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			managed_url
+			managed_url(
+				id,
+				sub_domain,
+				domain_id,
+				path,
+				url_type,
+				deployment_id,
+				port,
+				static_site_id,
+				url,
+				workspace_id
+			)
 		VALUES
 			(
 				$1,

@@ -1,8 +1,8 @@
-use crate::{migrate_query as query, Database};
+use crate::{migrate_query as query, utils::Error, Database};
 
 pub(super) async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	let permission_names = [
 		// Deployments
 		(

@@ -16,12 +16,15 @@ use cloudflare::{
 };
 use sqlx::Row;
 
-use crate::{utils::settings::Settings, Database};
+use crate::{
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		CREATE TABLE domain_tld(
@@ -292,17 +295,9 @@ pub async fn migrate(
 	// Update domain TLD list
 	let data =
 		reqwest::get("https://data.iana.org/TLD/tlds-alpha-by-domain.txt")
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?
+			.await?
 			.text()
-			.await
-			.map_err(|e| {
-				log::error!("Failed to fetch TLD list as text: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?;
+			.await?;
 
 	let tlds = data
 		.split('\n')
@@ -456,11 +451,7 @@ pub async fn migrate(
 				..Default::default()
 			},
 		})
-		.await
-		.map_err(|e| {
-			log::error!("Failed to list domains: {}", e);
-			sqlx::Error::WorkerCrashed
-		})?
+		.await?
 		.result;
 
 	for zone in zones {
@@ -593,11 +584,7 @@ pub async fn migrate(
 					..Default::default()
 				},
 			})
-			.await
-			.map_err(|e| {
-				log::error!("Failed to list domains: {}", e);
-				sqlx::Error::WorkerCrashed
-			})?
+			.await?
 			.result;
 
 		for dns_record in dns_records {

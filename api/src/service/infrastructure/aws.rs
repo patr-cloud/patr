@@ -6,12 +6,8 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use tokio::{task, time};
 
 use crate::{
+	db::{ManagedDatabaseEngine, ManagedDatabasePlan, ManagedDatabaseStatus},
 	error,
-	models::db_mapping::{
-		ManagedDatabaseEngine,
-		ManagedDatabasePlan,
-		ManagedDatabaseStatus,
-	},
 	service::infrastructure::managed_database,
 	utils::{settings::Settings, Error},
 	Database,

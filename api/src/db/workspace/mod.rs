@@ -1,19 +1,43 @@
-use api_models::utils::Uuid;
-use chrono::{DateTime, Utc};
+use api_models::utils::{DateTime, Uuid};
+use chrono::Utc;
 
-use crate::{
-	models::db_mapping::{Workspace, WorkspaceAuditLog},
-	query,
-	query_as,
-	Database,
-};
+use crate::{query, query_as, Database};
 
 mod docker_registry;
 mod domain;
 mod infrastructure;
 mod metrics;
+mod secret;
 
-pub use self::{docker_registry::*, domain::*, infrastructure::*, metrics::*};
+pub use self::{
+	docker_registry::*,
+	domain::*,
+	infrastructure::*,
+	metrics::*,
+	secret::*,
+};
+
+pub struct Workspace {
+	pub id: Uuid,
+	pub name: String,
+	pub super_admin_id: Uuid,
+	pub active: bool,
+}
+
+pub struct WorkspaceAuditLog {
+	pub id: Uuid,
+	pub date: DateTime<Utc>,
+	pub ip_address: String,
+	pub workspace_id: Uuid,
+	pub user_id: Option<Uuid>,
+	pub login_id: Option<Uuid>,
+	pub resource_id: Uuid,
+	pub action: String,
+	pub request_id: Uuid,
+	pub metadata: serde_json::Value,
+	pub patr_action: bool,
+	pub success: bool,
+}
 
 pub async fn initialize_workspaces_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -109,6 +133,7 @@ pub async fn initialize_workspaces_pre(
 
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
+	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
 
 	Ok(())
@@ -171,6 +196,7 @@ pub async fn initialize_workspaces_post(
 
 	domain::initialize_domain_post(connection).await?;
 	docker_registry::initialize_docker_registry_post(connection).await?;
+	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
 
 	Ok(())
@@ -185,7 +211,12 @@ pub async fn create_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			workspace
+			workspace(
+				id,
+				name,
+				super_admin_id,
+				active
+			)
 		VALUES
 			($1, $2, $3, $4);
 		"#,
@@ -286,12 +317,25 @@ pub async fn create_workspace_audit_log(
 	query!(
 		r#"
 		INSERT INTO
-			workspace_audit_log
+			workspace_audit_log(
+				id,
+				date,
+				ip_address,
+				workspace_id,
+				user_id,
+				login_id,
+				resource_id,
+				action,
+				request_id,
+				metadata,
+				patr_action,
+				success
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 		"#,
 		id as _,
-		date,
+		date as _,
 		ip_address,
 		workspace_id as _,
 		user_id as _,

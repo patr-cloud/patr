@@ -16,6 +16,7 @@ mod macros;
 mod migrations;
 mod models;
 mod rabbitmq;
+mod redis;
 mod routes;
 mod scheduler;
 mod service;
@@ -60,17 +61,21 @@ async fn async_main() -> Result<(), EveError> {
 	let database = db::create_database_connection(&config).await?;
 	log::debug!("Database connection pool established");
 
-	let redis = db::create_redis_connection(&config).await?;
+	let redis = redis::create_redis_connection(&config).await?;
 	log::debug!("Redis connection pool established");
 
 	let render_register = create_render_registry("./assets/templates/").await?;
 	log::debug!("Render register initialised");
+
+	let rabbitmq = rabbitmq::create_rabbitmq_pool(&config).await?;
+	log::debug!("Rabbitmq pool initialised");
 
 	let app = App {
 		config,
 		database,
 		redis,
 		render_register,
+		rabbitmq,
 	};
 	db::initialize(&app).await?;
 	log::debug!("Database initialized");

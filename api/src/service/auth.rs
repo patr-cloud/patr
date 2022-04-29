@@ -14,18 +14,22 @@ use reqwest::Client;
 /// be supplied to the functions in this file, then the functions might
 /// connect with db and return what was required for the endpoint
 use crate::{
-	db,
+	db::{self, User, UserLogin, UserToSignUp},
 	error,
-	models::{
-		db_mapping::{JoinUser, User, UserLogin, UserToSignUp},
-		rbac,
-		AccessTokenData,
-		ExposedUserData,
-	},
+	models::{rbac, AccessTokenData, ExposedUserData},
 	service::{self, get_refresh_token_expiry},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
+
+pub struct JoinUser {
+	pub jwt: String,
+	pub login_id: Uuid,
+	pub refresh_token: Uuid,
+	pub welcome_email_to: Option<String>,
+	pub recovery_email_to: Option<String>,
+	pub recovery_phone_number_to: Option<String>,
+}
 
 /// # Description
 /// This function is used to check if the username already exists

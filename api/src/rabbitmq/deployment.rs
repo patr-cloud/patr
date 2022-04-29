@@ -3,6 +3,7 @@ use std::time::Duration;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentRegistry,
 		DeploymentRunningDetails,
 		DeploymentStatus,
 	},
@@ -37,6 +38,21 @@ pub(super) async fn process_request(
 			running_details,
 			request_id,
 		} => {
+			if let DeploymentRegistry::PatrRegistry { repository_id, .. } =
+				&deployment.registry
+			{
+				if db::get_docker_repository_tag_details(
+					connection,
+					repository_id,
+					&deployment.image_tag,
+				)
+				.await?
+				.is_none()
+				{
+					return Ok(());
+				};
+			}
+
 			db::update_deployment_status(
 				connection,
 				&deployment.id,
@@ -52,7 +68,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				"0.0.0.0",
-				Utc::now(),
+				Utc::now().into(),
 				None,
 				None,
 				&deployment.id,
@@ -96,7 +112,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				"0.0.0.0",
-				Utc::now(),
+				Utc::now().into(),
 				None,
 				None,
 				&deployment.id,
@@ -143,7 +159,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				&ip_address,
-				Utc::now(),
+				Utc::now().into(),
 				Some(&user_id),
 				Some(&login_id),
 				&deployment.id,
@@ -187,7 +203,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				&ip_address,
-				Utc::now(),
+				Utc::now().into(),
 				Some(&user_id),
 				Some(&login_id),
 				&deployment_id,
@@ -231,7 +247,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				&ip_address,
-				Utc::now(),
+				Utc::now().into(),
 				Some(&user_id),
 				Some(&login_id),
 				&deployment.id,
@@ -275,7 +291,7 @@ pub(super) async fn process_request(
 				&audit_log_id,
 				&workspace_id,
 				&ip_address,
-				Utc::now(),
+				Utc::now().into(),
 				Some(&user_id),
 				Some(&login_id),
 				&deployment_id,

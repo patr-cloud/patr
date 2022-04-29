@@ -23,9 +23,9 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, DnsRecordType},
 	error,
-	models::{db_mapping::DnsRecordType, rbac::permissions},
+	models::rbac::permissions,
 	pin_fn,
 	service,
 	utils::{
@@ -780,11 +780,11 @@ async fn get_domain_dns_record(
 		};
 		let record_value = match record.r#type {
 			DnsRecordType::A => DnsRecordValue::A {
-				target: record.value,
+				target: record.value.parse().ok()?,
 				proxied,
 			},
 			DnsRecordType::AAAA => DnsRecordValue::AAAA {
-				target: record.value,
+				target: record.value.parse().ok()?,
 				proxied,
 			},
 			DnsRecordType::CNAME => DnsRecordValue::CNAME {

@@ -15,17 +15,19 @@ use eve_rs::{
 	Middleware,
 	NextHandler,
 };
-use redis::AsyncCommands;
+use redis::aio::MultiplexedConnection as RedisConnection;
 
+use super::get_current_time_millis;
 use crate::{
 	app::App,
+	db::Resource,
 	error,
 	models::{
-		db_mapping::Resource,
 		rbac::{self, GOD_USER_ID},
 		AccessTokenData,
 	},
-	utils::{get_current_time_millis, Error, ErrorData, EveContext},
+	redis::is_access_token_revoked,
+	utils::{Error, ErrorData, EveContext},
 };
 
 pub type MiddlewareHandlerFunction =
@@ -107,10 +109,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 						return Ok(context);
 					};
 
-				is_access_token_valid(
+				validate_access_token(
+					context.get_redis_connection(),
 					&access_data,
-					&context.get_header("Authorization").unwrap(),
-					context.get_state_mut(),
 				)
 				.await?;
 
@@ -125,10 +126,9 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					.status(401)
 					.body(error!(UNAUTHORIZED).to_string())?;
 
-				is_access_token_valid(
+				validate_access_token(
+					context.get_redis_connection(),
 					&access_data,
-					&context.get_header("Authorization").unwrap(),
-					context.get_state_mut(),
 				)
 				.await?;
 
@@ -194,7 +194,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					context.set_token_data(access_data);
 					next(context).await
 				} else {
-					context.status(401).json(error!(UNPRIVILEGED));
+					context.status(401).json(error!(UNAUTHORIZED));
 					Ok(context)
 				}
 			}
@@ -231,51 +231,25 @@ fn decode_access_token(context: &EveContext) -> Option<AccessTokenData> {
 	Some(access_data)
 }
 
-async fn is_access_token_valid(
-	token: &AccessTokenData,
-	token_string: &str,
-	app: &mut App,
+async fn validate_access_token(
+	redis_conn: &mut RedisConnection,
+	access_token: &AccessTokenData,
 ) -> Result<(), Error> {
-	// token banning goes here
-	// Different types of banned tokens:
-	// - Specific tokens
-	// - User IDs whose tokens after a given timestamp is invalid
-	// - Global timestamp after which all tokens are invalid
-	if token.exp < get_current_time_millis() {
-		// If current time is more than expiry, return false
+	// check whether access token has expired
+	if access_token.exp < get_current_time_millis() {
 		return Error::as_result()
 			.status(401)
 			.body(error!(EXPIRED).to_string())?;
 	}
 
-	let token_banned: Option<String> = app.redis.get(token_string).await?;
-	if token_banned.is_some() {
-		// This token is banned. Invalidate it
-		return Error::as_result()
-			.status(401)
-			.body(error!(UNAUTHORIZED).to_string())?;
-	}
-
-	let user_exp: Option<u64> = app
-		.redis
-		.get(format!("user-{}-exp", token.user.id.as_str()))
-		.await?;
-	if let Some(exp) = user_exp {
-		if exp < get_current_time_millis() {
-			// This user needs an exp greater than user-userid-exp
+	// check whether access token has revoked
+	match is_access_token_revoked(redis_conn, access_token).await {
+		Ok(false) => (), // access token not revoked hence valid
+		_ => {
+			// either access token revoked or redis connection error
 			return Error::as_result()
 				.status(401)
-				.body(error!(EXPIRED).to_string())?;
-		}
-	}
-
-	let global_exp: Option<u64> = app.redis.get("global-user-exp").await?;
-	if let Some(exp) = global_exp {
-		if exp < get_current_time_millis() {
-			// This user needs an exp greater than global-user-exp
-			return Error::as_result()
-				.status(401)
-				.body(error!(EXPIRED).to_string())?;
+				.body(error!(EXPIRED).to_string());
 		}
 	}
 

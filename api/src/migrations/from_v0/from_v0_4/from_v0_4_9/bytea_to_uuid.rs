@@ -1,4 +1,8 @@
-use crate::{migrate_query as query, utils::settings::Settings, Database};
+use crate::{
+	migrate_query as query,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 /**
  * (
@@ -358,7 +362,7 @@ const ALL_FOREIGN_KEY_CONSTRAINTS: [ConstraintType; 45] = [
 pub async fn migrate(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	remove_all_foreign_key_constraints(&mut *connection, config).await?;
 	alter_user_tables(&mut *connection, config).await?;
 	alter_workspace_tables(&mut *connection, config).await?;
@@ -371,7 +375,7 @@ pub async fn migrate(
 async fn remove_all_foreign_key_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for (constraint_name, _, (table_name, ..)) in ALL_FOREIGN_KEY_CONSTRAINTS {
 		let query = format!(
 			"ALTER TABLE {} DROP CONSTRAINT {};",
@@ -387,7 +391,7 @@ async fn remove_all_foreign_key_constraints(
 async fn alter_rbac_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE resource_type
@@ -554,7 +558,7 @@ async fn alter_rbac_tables(
 async fn alter_user_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE "user"
@@ -701,7 +705,7 @@ async fn alter_user_tables(
 async fn alter_workspace_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE workspace
@@ -732,7 +736,7 @@ async fn alter_workspace_tables(
 async fn alter_domain_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE domain
@@ -769,7 +773,7 @@ async fn alter_domain_tables(
 async fn alter_docker_registry_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE docker_registry_repository
@@ -796,7 +800,7 @@ async fn alter_docker_registry_tables(
 async fn alter_infrastructure_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	alter_deployment_tables(&mut *connection, config).await?;
 	alter_managed_database_tables(&mut *connection, config).await?;
 	alter_static_site_tables(&mut *connection, config).await?;
@@ -807,7 +811,7 @@ async fn alter_infrastructure_tables(
 async fn alter_deployment_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment
@@ -884,7 +888,7 @@ async fn alter_deployment_tables(
 async fn alter_managed_database_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE managed_database
@@ -911,7 +915,7 @@ async fn alter_managed_database_tables(
 async fn alter_static_site_tables(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	query!(
 		r#"
 		ALTER TABLE deployment_static_sites
@@ -938,7 +942,7 @@ async fn alter_static_site_tables(
 async fn add_all_foreign_key_constraints(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	for (
 		constraint_name,
 		deferrable,

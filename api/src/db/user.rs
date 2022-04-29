@@ -1,23 +1,85 @@
 use api_models::{
-	models::user::UserPhoneNumber,
+	models::user::{BasicUserInfo, UserPhoneNumber},
 	utils::{ResourceType, Uuid},
 };
 
-use crate::{
-	models::db_mapping::{
-		PasswordResetRequest,
-		PersonalEmailToBeVerified,
-		PhoneCountryCode,
-		PhoneNumberToBeVerified,
-		User,
-		UserLogin,
-		UserToSignUp,
-		Workspace,
-	},
-	query,
-	query_as,
-	Database,
-};
+use crate::{db::Workspace, query, query_as, Database};
+
+pub struct User {
+	pub id: Uuid,
+	pub username: String,
+	pub password: String,
+	pub first_name: String,
+	pub last_name: String,
+	pub dob: Option<u64>,
+	pub bio: Option<String>,
+	pub location: Option<String>,
+	pub created: u64,
+	pub recovery_email_local: Option<String>,
+	pub recovery_email_domain_id: Option<Uuid>,
+	pub recovery_phone_country_code: Option<String>,
+	pub recovery_phone_number: Option<String>,
+}
+
+pub struct UserLogin {
+	pub login_id: Uuid,
+	/// Hashed refresh token
+	pub refresh_token: String,
+	pub token_expiry: u64,
+	pub user_id: Uuid,
+	pub last_login: u64,
+	pub last_activity: u64,
+}
+
+pub struct PasswordResetRequest {
+	pub user_id: Uuid,
+	pub token: String,
+	pub token_expiry: u64,
+}
+
+pub struct PhoneCountryCode {
+	pub country_code: String,
+	pub phone_code: String,
+	pub country_name: String,
+}
+
+pub struct PersonalEmailToBeVerified {
+	pub local: String,
+	pub domain_id: Uuid,
+	pub user_id: Uuid,
+	pub verification_token_hash: String,
+	pub verification_token_expiry: u64,
+}
+
+pub struct PhoneNumberToBeVerified {
+	pub country_code: String,
+	pub phone_number: String,
+	pub user_id: Uuid,
+	pub verification_token_hash: String,
+	pub verification_token_expiry: u64,
+}
+
+pub struct UserToSignUp {
+	pub username: String,
+	pub account_type: ResourceType,
+
+	pub password: String,
+	pub first_name: String,
+	pub last_name: String,
+
+	pub recovery_email_local: Option<String>,
+	pub recovery_email_domain_id: Option<Uuid>,
+
+	pub recovery_phone_country_code: Option<String>,
+	pub recovery_phone_number: Option<String>,
+
+	pub business_email_local: Option<String>,
+	pub business_domain_name: Option<String>,
+	pub business_name: Option<String>,
+
+	pub otp_hash: String,
+	pub otp_expiry: u64,
+}
 
 pub async fn initialize_users_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -488,12 +550,12 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE "user"
 		ADD CONSTRAINT user_fk_id_recovery_email_local_recovery_email_domain_id
-		FOREIGN KEY (
+		FOREIGN KEY(
 			id,
 			recovery_email_local,
 			recovery_email_domain_id
 		)
-		REFERENCES personal_email (
+		REFERENCES personal_email(
 			user_id,
 			local,
 			domain_id
@@ -509,12 +571,12 @@ pub async fn initialize_users_post(
 		r#"
 		ALTER TABLE "user"
 		ADD CONSTRAINT user_fk_id_recovery_phone_country_code_recovery_phone_number
-		FOREIGN KEY (
+		FOREIGN KEY(
 			id,
 			recovery_phone_country_code,
 			recovery_phone_number
 		)
-		REFERENCES user_phone_number (
+		REFERENCES user_phone_number(
 			user_id,
 			country_code,
 			number
@@ -528,7 +590,11 @@ pub async fn initialize_users_post(
 	query!(
 		r#"
 		INSERT INTO
-			phone_number_country_code
+			phone_number_country_code(
+				country_code,
+				phone_code,
+				country_name
+			)
 		VALUES
 			($$AF$$, $$93$$, $$Afghanistan$$),
 			($$AX$$, $$358$$, $$Aland Islands$$),
@@ -1168,7 +1234,23 @@ pub async fn set_personal_user_to_be_signed_up(
 	query!(
 		r#"
 		INSERT INTO
-			user_to_sign_up
+			user_to_sign_up(
+				username,
+				account_type,
+				password,
+				first_name,
+				last_name,
+				recovery_email_local,
+				recovery_email_domain_id,
+				recovery_phone_country_code,
+				recovery_phone_number,
+				business_email_local,
+				business_domain_name,
+				business_domain_tld,
+				business_name,
+				otp_hash,
+				otp_expiry
+			)
 		VALUES
 			(
 				$1,
@@ -1251,7 +1333,23 @@ pub async fn set_business_user_to_be_signed_up(
 	query!(
 		r#"
 		INSERT INTO
-			user_to_sign_up
+			user_to_sign_up(
+				username,
+				account_type,
+				password,
+				first_name,
+				last_name,
+				recovery_email_local,
+				recovery_email_domain_id,
+				recovery_phone_country_code,
+				recovery_phone_number,
+				business_email_local,
+				business_domain_name,
+				business_domain_tld,
+				business_name,
+				otp_hash,
+				otp_expiry
+			)
 		VALUES
 			(
 				$1,
@@ -1334,11 +1432,11 @@ pub async fn get_user_to_sign_up_by_username(
 			recovery_phone_country_code,
 			recovery_phone_number,
 			business_email_local,
-			CASE WHEN business_domain_name IS NULL
-			THEN
-				NULL
-			ELSE
-				CONCAT(business_domain_name, '.', business_domain_tld)
+			CASE
+				WHEN business_domain_name IS NULL THEN
+					NULL
+				ELSE
+					CONCAT(business_domain_name, '.', business_domain_tld)
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
@@ -1390,11 +1488,11 @@ pub async fn get_user_to_sign_up_by_phone_number(
 			recovery_phone_country_code,
 			recovery_phone_number,
 			business_email_local,
-			CASE WHEN business_domain_name IS NULL
-			THEN
-				NULL
-			ELSE
-				CONCAT(business_domain_name, '.', business_domain_tld)
+			CASE
+				WHEN business_domain_name IS NULL THEN
+					NULL
+				ELSE
+					CONCAT(business_domain_name, '.', business_domain_tld)
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
@@ -1447,15 +1545,15 @@ pub async fn get_user_to_sign_up_by_email(
 			user_to_sign_up.recovery_phone_country_code,
 			user_to_sign_up.recovery_phone_number,
 			user_to_sign_up.business_email_local,
-			CASE WHEN user_to_sign_up.business_domain_name IS NULL
-			THEN
-				NULL
-			ELSE
-				CONCAT(
-					user_to_sign_up.business_domain_name,
-					'.',
-					user_to_sign_up.business_domain_tld
-				)
+			CASE
+				WHEN user_to_sign_up.business_domain_name IS NULL THEN
+					NULL
+				ELSE
+					CONCAT(
+						user_to_sign_up.business_domain_name,
+						'.',
+						user_to_sign_up.business_domain_tld
+					)
 			END as "business_domain_name: String",
 			user_to_sign_up.business_name,
 			user_to_sign_up.otp_hash,
@@ -1516,11 +1614,11 @@ pub async fn get_user_to_sign_up_by_business_name(
 			recovery_phone_country_code,
 			recovery_phone_number,
 			business_email_local,
-			CASE WHEN business_domain_name IS NULL
-			THEN
-				NULL
-			ELSE
-				CONCAT(business_domain_name, '.', business_domain_tld)
+			CASE
+				WHEN business_domain_name IS NULL THEN
+					NULL
+				ELSE
+					CONCAT(business_domain_name, '.', business_domain_tld)
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
@@ -1571,11 +1669,11 @@ pub async fn get_user_to_sign_up_by_business_domain_name(
 			recovery_phone_country_code,
 			recovery_phone_number,
 			business_email_local,
-			CASE WHEN business_domain_name IS NULL
-			THEN
-				NULL
-			ELSE
-				CONCAT(business_domain_name, '.', business_domain_tld)
+			CASE
+				WHEN business_domain_name IS NULL THEN
+					NULL
+				ELSE
+					CONCAT(business_domain_name, '.', business_domain_tld)
 			END as "business_domain_name: String",
 			business_name,
 			otp_hash,
@@ -1645,7 +1743,13 @@ pub async fn add_personal_email_to_be_verified_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			user_unverified_personal_email
+			user_unverified_personal_email(
+				local,
+				domain_id,
+				user_id,
+				verification_token_hash,
+				verification_token_expiry
+			)
 		VALUES
 			($1, $2, $3, $4, $5)
 		ON CONFLICT(local, domain_id) DO UPDATE SET
@@ -1676,7 +1780,13 @@ pub async fn add_phone_number_to_be_verified_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			user_unverified_phone_number
+			user_unverified_phone_number(
+				country_code,
+				phone_number,
+				user_id,
+				verification_token_hash,
+				verification_token_expiry
+			)
 		VALUES
 			($1, $2, $3, $4, $5)
 		ON CONFLICT(country_code, phone_number) DO UPDATE SET
@@ -1907,7 +2017,11 @@ pub async fn add_personal_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			personal_email
+			personal_email(
+				user_id,
+				local,
+				domain_id
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -1930,7 +2044,11 @@ pub async fn add_business_email_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			business_email
+			business_email(
+				user_id,
+				local,
+				domain_id
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -1980,7 +2098,23 @@ pub async fn create_user(
 	query!(
 		r#"
 		INSERT INTO
-			"user"
+			"user"(
+				id,
+				username,
+				password,
+				first_name,
+				last_name,
+				dob,
+				bio,
+				location,
+				created,
+
+				recovery_email_local,
+				recovery_email_domain_id,
+
+				recovery_phone_country_code,
+				recovery_phone_number
+			)
 		VALUES
 			(
 				$1,
@@ -2029,7 +2163,14 @@ pub async fn add_user_login(
 	query!(
 		r#"
 		INSERT INTO
-			user_login
+			user_login(
+				login_id,
+				refresh_token, 
+				token_expiry, 
+				user_id, 
+				last_login, 
+				last_activity
+			)
 		VALUES
 			($1, $2, $3, $4, $5, $6);
 		"#,
@@ -2443,7 +2584,11 @@ pub async fn add_password_reset_request(
 	query!(
 		r#"
 		INSERT INTO
-			password_reset_request
+			password_reset_request(
+				user_id,
+				token,
+				token_expiry
+			)
 		VALUES
 			($1, $2, $3)
 		ON CONFLICT(user_id) DO UPDATE SET
@@ -2526,8 +2671,15 @@ pub async fn get_all_workspaces_for_user(
 		ON
 			workspace.id = workspace_user.workspace_id
 		WHERE
-			workspace.super_admin_id = $1 OR
-			workspace_user.user_id = $1;
+			(
+				workspace.super_admin_id = $1 OR
+				workspace_user.user_id = $1
+			) AND
+			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
 		"#,
 		user_id as _,
 	)
@@ -2564,7 +2716,11 @@ pub async fn add_phone_number_for_user(
 	query!(
 		r#"
 		INSERT INTO
-			user_phone_number
+			user_phone_number(
+				user_id,
+				country_code,
+				number
+			)
 		VALUES
 			($1, $2, $3);
 		"#,
@@ -2758,4 +2914,233 @@ pub async fn delete_phone_number_for_user(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn search_for_users(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	query: &str,
+) -> Result<Vec<BasicUserInfo>, sqlx::Error> {
+	let users = query!(
+		r#"
+		SELECT DISTINCT
+			(
+				CASE
+					WHEN LOWER("user".username) = LOWER($1) THEN 100 /* Exact username */
+					WHEN COALESCE(
+						CASE
+							WHEN personal_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									personal_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END,
+						CASE
+							WHEN business_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									business_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END
+					) = LOWER($1) THEN 100 /* Exact email */
+					WHEN CONCAT(
+						'+',
+						phone_number_country_code.phone_code,
+						user_phone_number.number
+					) = $1 THEN 100 /* Exact phone number */
+					WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */
+					WHEN LOWER(CONCAT(
+						"user".first_name,
+						' ',
+						"user".last_name
+					)) = LOWER($1) THEN 90 /* firstName lastName */
+					WHEN LOWER(CONCAT(
+						"user".last_name,
+						' ',
+						"user".first_name
+					)) = LOWER($1) THEN 90 /* lastName firstName */
+					WHEN LOWER("user".first_name) = LOWER($1) THEN 80 /* Only first name */
+					WHEN LOWER("user".last_name) = LOWER($1) THEN 80 /* Only last name */
+
+					/* If you search for a part of their username */
+					WHEN STARTS_WITH(
+						LOWER("user".username),
+						SUBSTR(LOWER($1), 0, LENGTH("user".username))
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH("user".username)::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".first_name, ' ', "user".last_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".first_name, ' ', "user".last_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".first_name, ' ', "user".last_name))::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name reversed */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".last_name, ' ', "user".first_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".last_name, ' ', "user".first_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".last_name, ' ', "user".first_name))::REAL
+						) * 20
+					)
+
+					ELSE 0
+				END
+			) AS "score",
+			"user".id as "id!: Uuid",
+			"user".username as "username!",
+			"user".first_name as "first_name!",
+			"user".last_name as "last_name!",
+			"user".bio as "bio",
+			"user".location as "location"
+		FROM
+			"user"
+		LEFT JOIN
+			personal_email
+		ON
+			"user".id = personal_email.user_id
+		LEFT JOIN
+			business_email
+		ON
+			"user".id = personal_email.user_id
+		LEFT JOIN
+			domain
+		ON
+			domain.id = personal_email.domain_id OR
+			domain.id = business_email.domain_id
+		LEFT JOIN
+			user_phone_number
+		ON
+			"user".id = user_phone_number.user_id
+		LEFT JOIN
+			phone_number_country_code
+		ON
+			user_phone_number.country_code = phone_number_country_code.country_code
+		WHERE
+			(
+				CASE
+					WHEN LOWER("user".username) = LOWER($1) THEN 100 /* Exact username */
+					WHEN COALESCE(
+						CASE
+							WHEN personal_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									personal_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END,
+						CASE
+							WHEN business_email.local IS NOT NULL THEN
+								LOWER(CONCAT(
+									business_email.local,
+									'@',
+									domain.name,
+									domain.tld
+								))
+							ELSE NULL
+						END
+					) = LOWER($1) THEN 100 /* Exact email */
+					WHEN CONCAT(
+						'+',
+						phone_number_country_code.phone_code,
+						user_phone_number.number
+					) = $1 THEN 100 /* Exact phone number */
+					WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */
+					WHEN LOWER(CONCAT(
+						"user".first_name,
+						' ',
+						"user".last_name
+					)) = LOWER($1) THEN 90 /* firstName lastName */
+					WHEN LOWER(CONCAT(
+						"user".last_name,
+						' ',
+						"user".first_name
+					)) = LOWER($1) THEN 90 /* lastName firstName */
+					WHEN LOWER("user".first_name) = LOWER($1) THEN 80 /* Only first name */
+					WHEN LOWER("user".last_name) = LOWER($1) THEN 80 /* Only last name */
+
+					/* If you search for a part of their username */
+					WHEN STARTS_WITH(
+						LOWER("user".username),
+						SUBSTR(LOWER($1), 0, LENGTH("user".username))
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH("user".username)::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".first_name, ' ', "user".last_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".first_name, ' ', "user".last_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".first_name, ' ', "user".last_name))::REAL
+						) * 20
+					)
+
+					/* If you search for a part of their name reversed */
+					WHEN STARTS_WITH(
+						LOWER(CONCAT("user".last_name, ' ', "user".first_name)),
+						SUBSTR(
+							LOWER($1),
+							0,
+							LENGTH(CONCAT("user".last_name, ' ', "user".first_name))
+						)
+					) THEN (
+						70 + (
+							LENGTH($1)::REAL / LENGTH(CONCAT("user".last_name, ' ', "user".first_name))::REAL
+						) * 20
+					)
+
+					ELSE 0
+				END
+			) > 0
+		ORDER BY
+			1 DESC
+		LIMIT 10;
+		"#,
+		query
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| BasicUserInfo {
+		id: row.id,
+		username: row.username,
+		first_name: row.first_name,
+		last_name: row.last_name,
+		bio: row.bio,
+		location: row.location,
+	})
+	.collect();
+
+	Ok(users)
 }

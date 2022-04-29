@@ -5,7 +5,7 @@ mod from_v0;
 /// This module is used to migrate the database to updated version
 use crate::{
 	db,
-	utils::{constants, settings::Settings},
+	utils::{constants, settings::Settings, Error},
 	Database,
 };
 
@@ -28,7 +28,7 @@ pub async fn run_migrations(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	current_db_version: Version,
 	config: &Settings,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
 	// Take a list of migrations available in the code.
 	// Skip elements on the list until your current version is the same as the
 	// migrating version
@@ -43,7 +43,7 @@ pub async fn run_migrations(
 	for version in migrations_from {
 		match (version.major, version.minor, version.patch) {
 			(0, ..) => {
-				from_v0::migrate(&mut *connection, version, config).await?
+				from_v0::migrate(&mut *connection, version, config).await?;
 			}
 			_ => panic!(
 				"Migration from version {} is not implemented yet!",

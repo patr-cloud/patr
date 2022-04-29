@@ -41,14 +41,11 @@ use trust_dns_client::{
 
 use super::infrastructure;
 use crate::{
-	db,
+	db::{self, DnsRecordType},
 	error,
-	models::{
-		db_mapping::DnsRecordType,
-		rbac::{self, resource_types},
-	},
+	models::rbac::{self, resource_types},
 	utils::{
-		constants::{self},
+		constants,
 		get_current_time_millis,
 		settings::Settings,
 		validator,
@@ -412,19 +409,22 @@ pub async fn create_patr_domain_dns_record(
 	log::trace!("request_id: {} - Getting dns record type", request_id);
 	let (record, priority, dns_record_type, proxied) = match dns_record {
 		DnsRecordValue::A { target, proxied } => {
-			(target, None, DnsRecordType::A, Some(*proxied))
+			(target.to_string(), None, DnsRecordType::A, Some(*proxied))
 		}
 		DnsRecordValue::MX { target, priority } => {
-			(target, Some(priority), DnsRecordType::MX, None)
+			(target.clone(), Some(priority), DnsRecordType::MX, None)
 		}
 		DnsRecordValue::TXT { target } => {
-			(target, None, DnsRecordType::TXT, None)
+			(target.clone(), None, DnsRecordType::TXT, None)
 		}
-		DnsRecordValue::AAAA { target, proxied } => {
-			(target, None, DnsRecordType::AAAA, Some(*proxied))
-		}
+		DnsRecordValue::AAAA { target, proxied } => (
+			target.to_string(),
+			None,
+			DnsRecordType::AAAA,
+			Some(*proxied),
+		),
 		DnsRecordValue::CNAME { target, proxied } => {
-			(target, None, DnsRecordType::CNAME, Some(*proxied))
+			(target.clone(), None, DnsRecordType::CNAME, Some(*proxied))
 		}
 	};
 
@@ -445,9 +445,7 @@ pub async fn create_patr_domain_dns_record(
 
 	log::trace!("request_id: {} - Parsing Dns record type", request_id);
 	let content = match dns_record {
-		DnsRecordValue::A { target, .. } => DnsContent::A {
-			content: target.parse::<Ipv4Addr>()?,
-		},
+		DnsRecordValue::A { target, .. } => DnsContent::A { content: *target },
 		DnsRecordValue::MX { target, priority } => DnsContent::MX {
 			priority: *priority,
 			content: target.clone(),
@@ -455,9 +453,9 @@ pub async fn create_patr_domain_dns_record(
 		DnsRecordValue::TXT { target } => DnsContent::TXT {
 			content: target.clone(),
 		},
-		DnsRecordValue::AAAA { target, .. } => DnsContent::AAAA {
-			content: target.parse::<Ipv6Addr>()?,
-		},
+		DnsRecordValue::AAAA { target, .. } => {
+			DnsContent::AAAA { content: *target }
+		}
 		DnsRecordValue::CNAME { target, .. } => DnsContent::CNAME {
 			content: target.clone(),
 		},
@@ -472,7 +470,7 @@ pub async fn create_patr_domain_dns_record(
 		domain_id,
 		name,
 		&dns_record_type,
-		record,
+		&record,
 		priority.map(|p| *p as i32),
 		ttl as i64,
 		proxied,

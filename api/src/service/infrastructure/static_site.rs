@@ -4,11 +4,8 @@ use api_models::{
 	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
-use aws_config::RetryConfig;
-use aws_sdk_s3::{model::ObjectCannedAcl, Endpoint, Region};
-use aws_types::credentials::{ProvideCredentials, SharedCredentialsProvider};
 use eve_rs::AsError;
-use http::Uri;
+use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
 use crate::{
@@ -181,8 +178,6 @@ pub async fn delete_static_site(
 	Ok(())
 }
 
-// -----------------------------------------------------------------------
-
 pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	file: &str,
@@ -203,7 +198,36 @@ pub async fn upload_static_site_files_to_s3(
 		"request_id: {} - logging into the s3 for uploading static site files",
 		request_id
 	);
-	let aws_s3_client = get_s3_client(config.clone()).await?;
+	let bucket = Bucket::new(
+		&config.s3.bucket,
+		Region::Custom {
+			endpoint: config.s3.endpoint.clone(),
+			region: config.s3.region.clone(),
+		},
+		Credentials::new(
+			Some(&config.s3.key),
+			Some(&config.s3.secret),
+			None,
+			None,
+			None,
+		)
+		.map_err(|err| {
+			log::error!(
+				"request_id: {} - error creating credentials: {}",
+				request_id,
+				err
+			);
+			Error::empty()
+		})?,
+	)
+	.map_err(|err| {
+		log::error!(
+			"request_id: {} - error creating bucket: {}",
+			request_id,
+			err
+		);
+		Error::empty()
+	})?;
 	log::trace!("request_id: {} - got the s3 client", request_id);
 
 	let file_data = Cursor::new(file_data);
@@ -262,48 +286,34 @@ pub async fn upload_static_site_files_to_s3(
 			.body(error!(SERVER_ERROR).to_string())?;
 		let mime_string = get_mime_type_from_file_name(file_extension);
 
-		let _ = aws_s3_client
-			.put_object()
-			.bucket(config.s3.bucket.clone())
-			.key(format!("{}/{}", static_site_id, file_name))
-			.body(file_content.into())
-			.acl(ObjectCannedAcl::PublicRead)
-			.content_type(mime_string)
-			.send()
-			.await?;
+		let (_, code) = bucket
+			.put_object_with_content_type(
+				format!("{}/{}", static_site_id, file_name),
+				&file_content,
+				mime_string,
+			)
+			.await
+			.map_err(|err| {
+				log::error!(
+					"request_id: {} - error pushing static site file to S3: {}",
+					request_id,
+					err
+				);
+				Error::empty()
+			})?;
+
+		if !(200..300).contains(&code) {
+			log::error!(
+				"request_id: {} - error pushing static site file to S3: {}",
+				request_id,
+				code
+			);
+			return Err(Error::empty());
+		}
 	}
 	log::trace!("request_id: {} - uploaded the files to s3", request_id);
 
 	Ok(())
-}
-
-async fn get_s3_client(config: Settings) -> Result<aws_sdk_s3::Client, Error> {
-	let s3_region = Region::new(config.s3.region.to_string());
-	let s3_creds = aws_types::Credentials::from_keys(
-		config.s3.key.to_string(),
-		config.s3.secret.to_string(),
-		None,
-	)
-	.provide_credentials()
-	.await?;
-
-	let s3_creds = SharedCredentialsProvider::new(s3_creds);
-
-	let shared_config = aws_config::Config::builder()
-		.credentials_provider(s3_creds)
-		.region(s3_region)
-		.retry_config(RetryConfig::disabled())
-		.build();
-
-	let s3_endpoint =
-		format!("https://{}", config.s3.endpoint).parse::<Uri>()?;
-
-	let s3_config = aws_sdk_s3::config::Builder::from(&shared_config)
-		.retry_config(RetryConfig::disabled())
-		.endpoint_resolver(Endpoint::immutable(s3_endpoint))
-		.build();
-
-	Ok(aws_sdk_s3::Client::from_conf(s3_config))
 }
 
 fn get_mime_type_from_file_name(file_extension: &str) -> &str {

@@ -2,6 +2,7 @@ use api_models::{
 	models::workspace::{
 		CreateNewWorkspaceRequest,
 		CreateNewWorkspaceResponse,
+		DeleteWorkspaceResponse,
 		GetWorkspaceAuditLogResponse,
 		GetWorkspaceInfoResponse,
 		IsWorkspaceNameAvailableRequest,
@@ -21,9 +22,11 @@ use crate::{
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
-	service,
+	redis,
+	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -35,8 +38,9 @@ mod billing;
 mod docker_registry;
 mod domain;
 mod infrastructure;
-#[path = "./rbac.rs"]
+#[path = "rbac/mod.rs"]
 mod rbac_routes;
+mod secret;
 
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
@@ -60,6 +64,17 @@ pub fn create_sub_app(
 	let mut sub_app = create_eve_app(app);
 
 	sub_app.get(
+		"/is-name-available",
+		[EveMiddleware::CustomFunction(pin_fn!(is_name_available))],
+	);
+	sub_app.post(
+		"/",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
+		],
+	);
+	sub_app.get(
 		"/:workspaceId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
@@ -67,10 +82,10 @@ pub fn create_sub_app(
 		],
 	);
 	sub_app.post(
-		"/:workspaceId/info",
+		"/:workspaceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -107,23 +122,44 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/domain", domain::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
 
-	sub_app.get(
-		"/is-name-available",
-		[EveMiddleware::CustomFunction(pin_fn!(is_name_available))],
-	);
-	sub_app.post(
-		"/",
+	sub_app.delete(
+		"/:workspaceId",
 		[
-			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::DELETE,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(delete_workspace)),
 		],
 	);
+
 	sub_app.get(
 		"/:workspaceId/audit-log",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -149,11 +185,12 @@ pub fn create_sub_app(
 			EveMiddleware::CustomFunction(pin_fn!(get_workspace_audit_log)),
 		],
 	);
+
 	sub_app.get(
 		"/:workspaceId/audit-log/:resourceId",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -359,6 +396,15 @@ async fn create_new_workspace(
 	)
 	.await?;
 
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_user_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&user_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
+
 	context.success(CreateNewWorkspaceResponse { workspace_id });
 	Ok(context)
 }
@@ -432,6 +478,102 @@ async fn update_workspace_info(
 	.await?;
 
 	context.success(UpdateWorkspaceInfoResponse {});
+	Ok(context)
+}
+
+async fn delete_workspace(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!("request_id: {} - requested to delete workspace", request_id);
+
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let workspace = db::get_workspace_info(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
+
+	let name = format!("patr-deleted: {}@{}", workspace_id, workspace.name);
+	let namespace = workspace_id.as_str();
+
+	let config = context.get_state().config.clone();
+
+	let domains = db::get_domains_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let managed_database = db::get_all_database_clusters_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let deployments = db::get_deployments_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let static_site = db::get_static_sites_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let managed_url = db::get_all_managed_urls_in_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	let docker_repositories = db::get_docker_repositories_for_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
+	if !domains.is_empty() ||
+		!docker_repositories.is_empty() ||
+		!managed_database.is_empty() ||
+		!deployments.is_empty() ||
+		!static_site.is_empty() ||
+		!managed_url.is_empty()
+	{
+		return Err(Error::empty()
+			.status(424)
+			.body(error!(CANNOT_DELETE_WORKSPACE).to_string()));
+	}
+
+	service::delete_kubernetes_namespace(namespace, &config, &request_id)
+		.await?;
+
+	db::update_workspace_name(
+		context.get_database_connection(),
+		&workspace_id,
+		&name,
+	)
+	.await?;
+
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_workspace_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&workspace_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
+
+	log::trace!("request_id: {} - deleted the workspace", request_id);
+	context.success(DeleteWorkspaceResponse {});
 	Ok(context)
 }
 

@@ -27,17 +27,7 @@ pub mod request_keys {
 	pub const ID: &str = "id";
 	pub const VERSION: &str = "version";
 	pub const ROLE_ID: &str = "roleId";
-	pub const ROLES: &str = "roles";
-	pub const DESCRIPTION: &str = "description";
-	pub const RESOURCE_PERMISSIONS: &str = "resourcePermissions";
-	pub const RESOURCE_TYPE_PERMISSIONS: &str = "resourceTypePermissions";
-	pub const PERMISSIONS: &str = "permissions";
-	pub const PERMISSION_ID: &str = "permissionId";
-	pub const RESOURCE: &str = "resource";
 	pub const RESOURCE_ID: &str = "resourceId";
-	pub const RESOURCE_TYPE_ID: &str = "resourceTypeId";
-	pub const RESOURCE_TYPES: &str = "resourceTypes";
-	pub const RESOURCE_TYPE: &str = "resourceType";
 	pub const LOGIN_ID: &str = "loginId";
 	pub const SCOPE: &str = "scope";
 	pub const SERVICE: &str = "service";
@@ -62,6 +52,7 @@ pub mod request_keys {
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
 	pub const USERS_TO_SIGN_UP: &str = "usersToSignUp";
 	pub const USERS: &str = "users";
+	pub const USER_ID: &str = "userId";
 	pub const CUSTOM_DOMAINS_FOR_DEPLOYMENTS: &str =
 		"customDomainsForDeployments";
 	pub const DELETED_DEPLOYMENTS: &str = "deletedDeployments";
@@ -77,4 +68,5 @@ pub mod request_keys {
 	pub const MANAGED_URL_ID: &str = "managedUrlId";
 	pub const START_TIME: &str = "startTime";
 	pub const INTERVAL: &str = "interval";
+	pub const SECRET_ID: &str = "secretId";
 }

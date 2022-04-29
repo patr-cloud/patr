@@ -58,7 +58,7 @@ pub fn create_sub_app(
 		"/update-billing-info",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -89,7 +89,7 @@ pub fn create_sub_app(
 		"/promotional-credits",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -120,7 +120,7 @@ pub fn create_sub_app(
 		"/card-details",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -151,7 +151,7 @@ pub fn create_sub_app(
 		"/card-details",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -182,7 +182,7 @@ pub fn create_sub_app(
 		"/subscriptions",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::EDIT_INFO,
+				permissions::workspace::EDIT,
 				api_macros::closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

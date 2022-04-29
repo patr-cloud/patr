@@ -5,6 +5,7 @@ use api_models::{
 			AddPersonalEmailResponse,
 			AddPhoneNumberRequest,
 			AddPhoneNumberResponse,
+			BasicUserInfo,
 			ChangePasswordRequest,
 			ChangePasswordResponse,
 			DeletePersonalEmailRequest,
@@ -12,13 +13,15 @@ use api_models::{
 			DeletePhoneNumberRequest,
 			DeletePhoneNumberResponse,
 			DeleteUserLoginResponse,
-			GetUserInfoByUsernameResponse,
+			GetUserInfoByUserIdResponse,
 			GetUserInfoResponse,
 			GetUserLoginInfoResponse,
 			ListPersonalEmailsResponse,
 			ListPhoneNumbersResponse,
 			ListUserLoginsResponse,
 			ListUserWorkspacesResponse,
+			SearchForUserRequest,
+			SearchForUserResponse,
 			UpdateRecoveryEmailRequest,
 			UpdateRecoveryEmailResponse,
 			UpdateRecoveryPhoneNumberRequest,
@@ -39,13 +42,14 @@ use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db,
+	db::{self, User},
 	error,
-	models::db_mapping::User,
 	pin_fn,
-	service,
+	redis,
+	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
+		get_current_time_millis,
 		Error,
 		ErrorData,
 		EveContext,
@@ -201,12 +205,20 @@ pub fn create_sub_app(
 		],
 	);
 	app.get(
-		"/:username/info",
+		"/:userId/info",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_username)),
+			EveMiddleware::CustomFunction(pin_fn!(get_user_info_by_user_id)),
 		],
 	);
+	app.get(
+		"/search",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(search_for_user)),
+		],
+	);
+
 	app
 }
 
@@ -310,13 +322,15 @@ async fn get_user_info(
 	.collect::<Vec<_>>();
 
 	context.success(GetUserInfoResponse {
-		id,
-		username,
-		first_name,
-		last_name,
+		basic_user_info: BasicUserInfo {
+			id,
+			username,
+			first_name,
+			last_name,
+			bio,
+			location,
+		},
 		birthday: dob,
-		bio,
-		location,
 		created,
 		recovery_email,
 		secondary_emails,
@@ -327,11 +341,11 @@ async fn get_user_info(
 }
 
 /// # Description
-/// This function is used to get user info through username
+/// This function is used to get user info through userId
 /// required inputs:
 /// ```
 /// {
-///    username:
+///    userId:
 /// }
 /// ```
 ///
@@ -363,15 +377,15 @@ async fn get_user_info(
 ///
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
-async fn get_user_info_by_username(
+async fn get_user_info_by_user_id(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let username = context
-		.get_param(request_keys::USERNAME)
+	let user_id = context
+		.get_param(request_keys::USER_ID)
+		.and_then(|user_id_str| Uuid::parse_str(user_id_str.trim()).ok())
 		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?
-		.to_lowercase();
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let User {
 		id,
@@ -381,18 +395,20 @@ async fn get_user_info_by_username(
 		location,
 		bio,
 		..
-	} = db::get_user_by_username(context.get_database_connection(), &username)
+	} = db::get_user_by_user_id(context.get_database_connection(), &user_id)
 		.await?
 		.status(400)
 		.body(error!(PROFILE_NOT_FOUND).to_string())?;
 
-	context.success(GetUserInfoByUsernameResponse {
-		id,
-		username,
-		first_name,
-		last_name,
-		location,
-		bio,
+	context.success(GetUserInfoByUserIdResponse {
+		basic_user_info: BasicUserInfo {
+			id,
+			username,
+			first_name,
+			last_name,
+			location,
+			bio,
+		},
 	});
 	Ok(context)
 }
@@ -1237,6 +1253,37 @@ async fn delete_user_login(
 	)
 	.await?;
 
+	let ttl = (get_access_token_expiry() / 1000) as usize + (2 * 60 * 60); // 2 hrs buffer time
+	redis::revoke_login_tokens_created_before_timestamp(
+		context.get_redis_connection(),
+		&login_id,
+		get_current_time_millis(),
+		Some(ttl),
+	)
+	.await?;
+
 	context.success(DeleteUserLoginResponse {});
+	Ok(context)
+}
+
+async fn search_for_user(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let SearchForUserRequest { query } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	if query.is_empty() {
+		return Error::as_result()
+			.status(401)
+			.body(error!(WRONG_PARAMETERS).to_string());
+	}
+
+	let users =
+		db::search_for_users(context.get_database_connection(), &query).await?;
+
+	context.success(SearchForUserResponse { users });
 	Ok(context)
 }
