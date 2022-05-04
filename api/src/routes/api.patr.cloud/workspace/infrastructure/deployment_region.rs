@@ -1,7 +1,8 @@
 use api_models::{
 	models::workspace::infrastructure::list_all_deployment_regions::{
+		DeploymentCloudProvider,
 		DeploymentRegion,
-		ListAllDeploymentRegionResponse,
+		ListAllDeploymentRegionsResponse,
 	},
 	utils::Uuid,
 };
@@ -67,11 +68,15 @@ async fn get_all_deployment_regions(
 				Some(DeploymentRegion {
 					id: region.id,
 					name: region.name,
-					provider: region.cloud_provider?.to_string(),
+					provider: match region.cloud_provider? {
+						db::DeploymentCloudProvider::Digitalocean => {
+							DeploymentCloudProvider::Digitalocean
+						}
+					},
 				})
 			})
 			.collect();
-	context.success(ListAllDeploymentRegionResponse { regions });
+	context.success(ListAllDeploymentRegionsResponse { regions });
 
 	Ok(context)
 }

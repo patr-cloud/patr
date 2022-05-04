@@ -1,7 +1,7 @@
 use api_models::{
 	models::workspace::infrastructure::list_all_deployment_machine_type::{
 		DeploymentMachineType,
-		ListAllDeploymentMachineTypeResponse,
+		ListAllDeploymentMachineTypesResponse,
 	},
 	utils::Uuid,
 };
@@ -71,7 +71,7 @@ async fn get_all_deployment_machine_types(
 				memory_count: machine_type.memory_count,
 			})
 			.collect();
-	context.success(ListAllDeploymentMachineTypeResponse { machine_types });
+	context.success(ListAllDeploymentMachineTypesResponse { machine_types });
 
 	Ok(context)
 }
