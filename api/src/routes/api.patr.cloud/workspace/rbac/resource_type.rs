@@ -1,15 +1,17 @@
 use api_models::{
-	models::workspace::rbac::resource_type::{
+	models::workspace::rbac::list_all_resource_types::{
 		ListAllResourceTypeResponse,
 		ResourceType,
 	},
 	utils::Uuid,
 };
-use eve_rs::{App as EveApp, NextHandler, AsError};
+use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
+	models::rbac,
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -17,7 +19,7 @@ use crate::{
 		ErrorData,
 		EveContext,
 		EveMiddleware,
-	}, error, models::rbac,
+	},
 };
 
 pub fn create_sub_app(
