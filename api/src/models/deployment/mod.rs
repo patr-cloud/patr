@@ -1,13 +1,15 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::DeploymentCloudProvider,
+	utils::Uuid,
+};
 use chrono::{DateTime, Utc};
 use eve_rs::AsError;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-	db::DeploymentCloudProvider,
 	error,
 	utils::{get_current_time, Error},
 };
