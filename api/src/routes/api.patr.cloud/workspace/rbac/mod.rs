@@ -1,12 +1,27 @@
-use eve_rs::App as EveApp;
+use api_models::{
+	models::workspace::rbac::{
+		list_all_permissions::{ListAllPermissionsResponse, Permission},
+		list_all_resource_types::{ListAllResourceTypesResponse, ResourceType},
+	},
+	utils::Uuid,
+};
+use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	utils::{ErrorData, EveContext, EveMiddleware},
+	db,
+	error,
+	models::rbac,
+	pin_fn,
+	utils::{
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
+	},
 };
 
-mod permission;
-mod resource_type;
 mod role;
 mod user;
 
@@ -31,8 +46,93 @@ pub fn create_sub_app(
 
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/role", role::create_sub_app(app));
-	sub_app.use_sub_app("/permission", permission::create_sub_app(app));
-	sub_app.use_sub_app("/resource-type", resource_type::create_sub_app(app));
+
+	sub_app.get(
+		"/permission",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_all_permissions)),
+		],
+	);
+	sub_app.get(
+		"/resource-type",
+		[
+			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
+		],
+	);
 
 	sub_app
+}
+
+async fn get_all_permissions(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context
+		.get_param(request_keys::WORKSPACE_ID)
+		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let access_token_data = context.get_token_data().unwrap();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+
+	if !access_token_data.workspaces.contains_key(&workspace_id) &&
+		&access_token_data.user.id != god_user_id
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let permissions =
+		db::get_all_permissions(context.get_database_connection())
+			.await?
+			.into_iter()
+			.map(|permission| Permission {
+				id: permission.id,
+				name: permission.name,
+				description: permission.description,
+			})
+			.collect();
+
+	context.success(ListAllPermissionsResponse { permissions });
+	Ok(context)
+}
+
+async fn get_all_resource_types(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context
+		.get_param(request_keys::WORKSPACE_ID)
+		.and_then(|workspace_id| Uuid::parse_str(workspace_id).ok())
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let access_token_data = context.get_token_data().unwrap();
+	let god_user_id = rbac::GOD_USER_ID.get().unwrap();
+
+	if !access_token_data.workspaces.contains_key(&workspace_id) &&
+		&access_token_data.user.id != god_user_id
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let resource_types =
+		db::get_all_resource_types(context.get_database_connection())
+			.await?
+			.into_iter()
+			.map(|resource_type| ResourceType {
+				id: resource_type.id,
+				name: resource_type.name,
+				description: resource_type.description,
+			})
+			.collect();
+
+	context.success(ListAllResourceTypesResponse { resource_types });
+	Ok(context)
 }
