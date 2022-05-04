@@ -1,15 +1,17 @@
 use api_models::{
-	models::workspace::infrastructure::deployment_region::{
+	models::workspace::infrastructure::list_all_deployment_regions::{
 		DeploymentRegion,
 		ListAllDeploymentRegionResponse,
 	},
 	utils::Uuid,
 };
-use eve_rs::{App as EveApp, NextHandler, AsError};
+use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
+	models::rbac,
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -17,7 +19,7 @@ use crate::{
 		ErrorData,
 		EveContext,
 		EveMiddleware,
-	}, error, models::rbac,
+	},
 };
 
 pub fn create_sub_app(
@@ -57,7 +59,7 @@ async fn get_all_deployment_regions(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	let deployment_regions =
+	let regions =
 		db::get_all_deployment_regions(context.get_database_connection())
 			.await?
 			.into_iter()
@@ -69,7 +71,7 @@ async fn get_all_deployment_regions(
 				})
 			})
 			.collect();
-	context.success(ListAllDeploymentRegionResponse { deployment_regions });
+	context.success(ListAllDeploymentRegionResponse { regions });
 
 	Ok(context)
 }

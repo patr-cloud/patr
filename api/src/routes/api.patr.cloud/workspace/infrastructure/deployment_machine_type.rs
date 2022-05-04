@@ -1,15 +1,17 @@
 use api_models::{
-	models::workspace::infrastructure::deployment_machine_type::{
+	models::workspace::infrastructure::list_all_deployment_machine_type::{
 		DeploymentMachineType,
 		ListAllDeploymentMachineTypeResponse,
 	},
 	utils::Uuid,
 };
-use eve_rs::{App as EveApp, NextHandler, AsError};
+use eve_rs::{App as EveApp, AsError, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
+	error,
+	models::rbac,
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -17,7 +19,7 @@ use crate::{
 		ErrorData,
 		EveContext,
 		EveMiddleware,
-	}, models::rbac, error,
+	},
 };
 
 pub fn create_sub_app(
@@ -59,7 +61,7 @@ async fn get_all_deployment_machine_types(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	let deployment_machine_types =
+	let machine_types =
 		db::get_all_deployment_machine_types(context.get_database_connection())
 			.await?
 			.into_iter()
@@ -69,9 +71,7 @@ async fn get_all_deployment_machine_types(
 				memory_count: machine_type.memory_count,
 			})
 			.collect();
-	context.success(ListAllDeploymentMachineTypeResponse {
-		deployment_machine_types,
-	});
+	context.success(ListAllDeploymentMachineTypeResponse { machine_types });
 
 	Ok(context)
 }

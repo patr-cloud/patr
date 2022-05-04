@@ -1,5 +1,5 @@
 use api_models::{
-	models::workspace::rbac::permission::{
+	models::workspace::rbac::list_all_permissions::{
 		ListAllPermissionResponse,
 		Permission,
 	},
