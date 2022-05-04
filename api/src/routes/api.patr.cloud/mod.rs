@@ -6,6 +6,7 @@ use crate::{
 };
 
 mod auth;
+mod deployment_machine_type;
 mod deployment_region;
 mod permission;
 mod resource_type;
@@ -43,6 +44,10 @@ pub fn create_sub_app(
 	sub_app.use_sub_app(
 		"/deployment-region",
 		deployment_region::create_sub_app(app),
+	);
+	sub_app.use_sub_app(
+		"/deployment-machine-type",
+		deployment_machine_type::create_sub_app(app),
 	);
 
 	sub_app
