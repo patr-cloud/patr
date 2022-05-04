@@ -20,14 +20,14 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
-			EveMiddleware::CustomFunction(pin_fn!(get_all_resource_types)),
+			EveMiddleware::CustomFunction(pin_fn!(get_all_deployment_regions)),
 		],
 	);
 
 	app
 }
 
-async fn get_all_resource_types(
+async fn get_all_deployment_regions(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
