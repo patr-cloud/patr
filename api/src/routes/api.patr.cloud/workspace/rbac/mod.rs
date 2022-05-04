@@ -5,6 +5,8 @@ use crate::{
 	utils::{ErrorData, EveContext, EveMiddleware},
 };
 
+mod permission;
+mod resource_type;
 mod role;
 mod user;
 
@@ -29,6 +31,8 @@ pub fn create_sub_app(
 
 	sub_app.use_sub_app("/user", user::create_sub_app(app));
 	sub_app.use_sub_app("/role", role::create_sub_app(app));
+	sub_app.use_sub_app("/permission", permission::create_sub_app(app));
+	sub_app.use_sub_app("/resource-type", resource_type::create_sub_app(app));
 
 	sub_app
 }
