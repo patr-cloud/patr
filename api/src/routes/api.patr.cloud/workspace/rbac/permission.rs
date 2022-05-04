@@ -1,6 +1,6 @@
 use api_models::{
 	models::workspace::rbac::list_all_permissions::{
-		ListAllPermissionResponse,
+		ListAllPermissionsResponse,
 		Permission,
 	},
 	utils::Uuid,
@@ -69,7 +69,7 @@ async fn get_all_permissions(
 				description: permission.description,
 			})
 			.collect();
-	context.success(ListAllPermissionResponse { permissions });
+	context.success(ListAllPermissionsResponse { permissions });
 
 	Ok(context)
 }

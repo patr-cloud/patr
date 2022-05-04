@@ -1,6 +1,6 @@
 use api_models::{
 	models::workspace::rbac::list_all_resource_types::{
-		ListAllResourceTypeResponse,
+		ListAllResourceTypesResponse,
 		ResourceType,
 	},
 	utils::Uuid,
@@ -69,7 +69,7 @@ async fn get_all_resource_types(
 				description: resource_type.description,
 			})
 			.collect();
-	context.success(ListAllResourceTypeResponse { resource_types });
+	context.success(ListAllResourceTypesResponse { resource_types });
 
 	Ok(context)
 }
