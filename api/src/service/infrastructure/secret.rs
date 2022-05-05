@@ -198,7 +198,7 @@ pub async fn delete_secret_in_workspace(
 		secret_id,
 	);
 
-	db::get_secret_by_id(connection, secret_id)
+	let secret = db::get_secret_by_id(connection, secret_id)
 		.await?
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
@@ -257,7 +257,7 @@ pub async fn delete_secret_in_workspace(
 	db::update_secret_name(
 		connection,
 		secret_id,
-		&format!("patr-deleted-{}", secret_id),
+		&format!("patr-deleted: {}@{}", secret_id, secret.name),
 	)
 	.await?;
 
