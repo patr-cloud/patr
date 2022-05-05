@@ -13,7 +13,7 @@ mod from_v0_7_0;
 /// # Arguments
 /// * `connection` - database save point, more details here: [`Transaction`]
 /// * `version` - A struct containing the version to upgrade from. Panics if the
-///   version is not 0.x.x, more info here: [`Version`]: Version
+///   version is not 0.7.x, more info here: [`Version`]: Version
 ///
 /// # Return
 /// This function returns Result<(), Error> containing an empty response or
@@ -35,7 +35,7 @@ pub async fn migrate(
 }
 
 /// # Description
-/// The function is used to get a list of all 0.6.x migrations to migrate the
+/// The function is used to get a list of all 0.7.x migrations to migrate the
 /// database from
 ///
 /// # Return
