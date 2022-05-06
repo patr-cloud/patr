@@ -36,7 +36,6 @@ pub mod request_keys {
 	pub const REPOSITORY: &str = "repository";
 	pub const REPOSITORY_ID: &str = "repositoryId";
 	pub const DEPLOYMENT_ID: &str = "deploymentId";
-	pub const DEPLOYMENTS: &str = "deployments";
 	pub const PORT: &str = "port";
 	pub const STATUS: &str = "status";
 	pub const ENGINE: &str = "engine";
@@ -48,20 +47,8 @@ pub mod request_keys {
 	pub const PUBLIC_CONNECTION: &str = "publicConnection";
 	pub const DATABASE_NAME: &str = "databaseName";
 	pub const DATABASE_ID: &str = "databaseId";
-	pub const STATIC_SITES: &str = "staticSites";
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
-	pub const USERS_TO_SIGN_UP: &str = "usersToSignUp";
-	pub const USERS: &str = "users";
 	pub const USER_ID: &str = "userId";
-	pub const CUSTOM_DOMAINS_FOR_DEPLOYMENTS: &str =
-		"customDomainsForDeployments";
-	pub const DELETED_DEPLOYMENTS: &str = "deletedDeployments";
-	pub const DELETED_DATABASES: &str = "deletedDatabases";
-	pub const CUSTOM_DOMAINS_FOR_STATIC_SITES: &str =
-		"customDomainsForStaticSites";
-	pub const DELETED_STATIC_SITES: &str = "deletedStaticSites";
-	pub const TOTAL_WEBSITES: &str = "totalWebsites";
-	pub const TOTAL_RESOURCES: &str = "totalResources";
 	pub const RECORD_ID: &str = "recordId";
 	pub const DIGEST: &str = "digest";
 	pub const TAG: &str = "tag";
