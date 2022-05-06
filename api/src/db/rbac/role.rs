@@ -236,8 +236,8 @@ pub async fn insert_resource_permissions_for_role(
 				INSERT INTO
 					role_permissions_resource(
 						role_id,
-						resource_id,
-						permission_id
+						permission_id,
+						resource_id
 					)
 				VALUES
 					($1, $2, $3);
@@ -258,22 +258,22 @@ pub async fn insert_resource_type_permissions_for_role(
 	role_id: &Uuid,
 	resource_type_permissions: &BTreeMap<Uuid, Vec<Uuid>>,
 ) -> Result<(), sqlx::Error> {
-	for (resource_id, permissions) in resource_type_permissions {
+	for (resource_type_id, permissions) in resource_type_permissions {
 		for permission_id in permissions {
 			query!(
 				r#"
 				INSERT INTO
 					role_permissions_resource_type(
 						role_id,
-						resource_type_id,
-						permission_id
+						permission_id,
+						resource_type_id
 					)
 				VALUES
 					($1, $2, $3);
 				"#,
 				role_id as _,
 				permission_id as _,
-				resource_id as _,
+				resource_type_id as _,
 			)
 			.execute(&mut *connection)
 			.await?;

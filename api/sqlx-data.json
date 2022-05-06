@@ -2098,20 +2098,6 @@
     },
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);"
   },
-  "3b0cdde932014621f805423068f654548e50e2ba34b8784adaa5569b4e5e42aa": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO role_permissions_resource( role_id, resource_id, permission_id ) VALUES ($1, $2, $3);"
-  },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "describe": {
       "columns": [
@@ -4814,6 +4800,20 @@
     },
     "query": "DELETE FROM personal_domain WHERE id = $1;"
   },
+  "9fbae237f57d2ec4e73a150869fbb399fb6f4906afae729c85f93002b27d894b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO role_permissions_resource_type( role_id, permission_id, resource_type_id ) VALUES ($1, $2, $3);"
+  },
   "9fd9a0789b91eb2be01664d4ce94d89303376e356cf1d188ba64b7b1b3ccf732": {
     "describe": {
       "columns": [
@@ -5117,6 +5117,20 @@
       }
     },
     "query": "SELECT * FROM permission WHERE id = $1;"
+  },
+  "a52af9e8867c7460b1f9958bed22d9164e0e57977225a2c94d4fb0dad48b595f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO role_permissions_resource( role_id, permission_id, resource_id ) VALUES ($1, $2, $3);"
   },
   "a69106420eb20523380486866b32d9b4d3c45c39b139274c4aeb9442bb823300": {
     "describe": {
@@ -8194,20 +8208,6 @@
       }
     },
     "query": "CREATE TABLE domain_tld( tld TEXT CONSTRAINT domain_tld_pk PRIMARY KEY CONSTRAINT domain_tld_chk_is_length_valid CHECK( LENGTH(tld) >= 2 AND LENGTH(tld) <= 63 ) CONSTRAINT domain_tld_chk_is_tld_valid CHECK( tld ~ '^(([a-z0-9])|([a-z0-9][a-z0-9\\-\\.]*[a-z0-9]))$' ) );"
-  },
-  "f8bebeca3bdc89380de7cda36b1d284b8092a71a524856fb7833d97562bd1e3c": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Uuid",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "INSERT INTO role_permissions_resource_type( role_id, resource_type_id, permission_id ) VALUES ($1, $2, $3);"
   },
   "f97a6aa74e29fce79cf925131c1d9600abb217529d44954f2044e5b11d43ef17": {
     "describe": {
