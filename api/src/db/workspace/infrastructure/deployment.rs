@@ -1,17 +1,13 @@
-use std::{fmt::Display, str::FromStr};
-
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		DeploymentStatus,
-		ExposedPortType,
+	models::workspace::infrastructure::{
+		deployment::{DeploymentStatus, ExposedPortType},
+		DeploymentCloudProvider,
 	},
 	utils::Uuid,
 };
-use eve_rs::AsError;
 
 use crate::{
 	db::{self, WorkspaceAuditLog},
-	error,
 	models::deployment::{
 		DefaultDeploymentRegion,
 		DEFAULT_DEPLOYMENT_REGIONS,
@@ -19,36 +15,8 @@ use crate::{
 	},
 	query,
 	query_as,
-	utils::Error,
 	Database,
 };
-
-#[derive(sqlx::Type, Debug, Clone)]
-#[sqlx(type_name = "DEPLOYMENT_CLOUD_PROVIDER", rename_all = "lowercase")]
-pub enum DeploymentCloudProvider {
-	Digitalocean,
-}
-
-impl Display for DeploymentCloudProvider {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			DeploymentCloudProvider::Digitalocean => write!(f, "digitalocean"),
-		}
-	}
-}
-
-impl FromStr for DeploymentCloudProvider {
-	type Err = Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"digitalocean" => Ok(Self::Digitalocean),
-			_ => Error::as_result()
-				.status(500)
-				.body(error!(WRONG_PARAMETERS).to_string()),
-		}
-	}
-}
 
 pub struct DeploymentRegion {
 	pub id: Uuid,
