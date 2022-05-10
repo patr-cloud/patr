@@ -345,6 +345,33 @@ pub struct BillingAddress {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerInfo {
+	pub customer: BillingInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingInfo {
+	pub billing_address: BillingInfoData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingInfoData {
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub first_name: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub last_name: Option<String>,
+	pub line1: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub line2: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub line3: Option<String>,
+	pub city: String,
+	pub state: String,
+	pub zip: String,
+	pub country: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Subscription {
 	pub id: String,
 	#[serde(rename = "subscription_items[item_price_id][0]")]

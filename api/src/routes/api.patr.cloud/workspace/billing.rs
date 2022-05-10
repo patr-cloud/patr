@@ -292,8 +292,6 @@ async fn update_billing_info(
 	let UpdateBillingInfoRequest {
 		first_name,
 		last_name,
-		email,
-		phone,
 		address_details,
 		..
 	} = context
@@ -310,8 +308,6 @@ async fn update_billing_info(
 		&workspace_id,
 		first_name,
 		last_name,
-		email,
-		phone,
 		address_details,
 		&config,
 	)
@@ -670,20 +666,21 @@ async fn get_billing_address(
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
 	let config = context.get_state().config.clone();
-	let billing_address = service::get_billing_address(&config, &workspace_id)
-		.await?
-		.map(|address| Address {
-			address_line1: address.address_line1,
-			address_line2: address.address_line2,
-			address_line3: address.address_line3,
-			city: address.city,
-			state: address.state,
-			zip: address.zip,
-			country: address.country,
-		});
+	let customer_info =
+		service::get_billing_address(&config, &workspace_id).await?;
+
+	let billing_address = Address {
+		address_line1: customer_info.customer.billing_address.line1,
+		address_line2: customer_info.customer.billing_address.line2,
+		address_line3: customer_info.customer.billing_address.line3,
+		city: customer_info.customer.billing_address.city,
+		state: customer_info.customer.billing_address.state,
+		zip: customer_info.customer.billing_address.zip,
+		country: customer_info.customer.billing_address.country,
+	};
 
 	context.success(GetBillingAddressResponse {
-		address: billing_address,
+		address: Some(billing_address),
 	});
 	Ok(context)
 }
