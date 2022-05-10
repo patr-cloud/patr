@@ -573,3 +573,25 @@ pub async fn get_subscriptions(
 		.await
 		.map_err(|e| e.into())
 }
+
+pub async fn get_billing_address(
+	config: &Settings,
+	workspace_id: &Uuid,
+) -> Result<Option<BillingAddress>, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!(
+			"{}/customers/{}",
+			config.chargebee.url, workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.send()
+		.await?
+		.json::<Customer>()
+		.await
+		.map(|customer| customer.address)
+		.map_err(|e| e.into())
+}

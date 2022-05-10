@@ -1,7 +1,9 @@
 use api_models::{
 	models::workspace::billing::{
 		AddPaymentSourceResponse,
+		Address,
 		Card,
+		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetSubscriptionsResponse,
@@ -206,6 +208,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_subscriptions)),
+		],
+	);
+
+	sub_app.get(
+		"/billing-address",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
 		],
 	);
 
@@ -625,6 +658,32 @@ async fn get_subscriptions(
 
 	context.success(GetSubscriptionsResponse {
 		list: subscriptions,
+	});
+	Ok(context)
+}
+
+async fn get_billing_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let config = context.get_state().config.clone();
+	let billing_address = service::get_billing_address(&config, &workspace_id)
+		.await?
+		.map(|address| Address {
+			address_line1: address.address_line1,
+			address_line2: address.address_line2,
+			address_line3: address.address_line3,
+			city: address.city,
+			state: address.state,
+			zip: address.zip,
+			country: address.country,
+		});
+
+	context.success(GetBillingAddressResponse {
+		address: billing_address,
 	});
 	Ok(context)
 }
