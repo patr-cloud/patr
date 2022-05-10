@@ -15,6 +15,7 @@ use api_models::{
 				GetDeploymentBuildLogsResponse,
 				GetDeploymentEventsResponse,
 				GetDeploymentInfoResponse,
+				GetDeploymentLogsRequest,
 				GetDeploymentLogsResponse,
 				GetDeploymentMetricsResponse,
 				ListDeploymentsResponse,
@@ -1034,6 +1035,11 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let GetDeploymentLogsRequest { start_time, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	let request_id = Uuid::new_v4();
 
 	let deployment_id = Uuid::parse_str(
@@ -1043,11 +1049,15 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
+	let start_time: Interval = start_time.unwrap_or(api_models::models::workspace::infrastructure::deployment::Interval::Hour).into();
+
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_container_logs(
 		context.get_database_connection(),
 		&deployment_id,
+		start_time.as_u64(),
+		get_current_time().as_secs(),
 		&config,
 		&request_id,
 	)

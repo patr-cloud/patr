@@ -48,7 +48,7 @@ use k8s_openapi::{
 	},
 };
 use kube::{
-	api::{DeleteParams, ListParams, LogParams, Patch, PatchParams},
+	api::{DeleteParams, ListParams, Patch, PatchParams},
 	core::{ErrorResponse, ObjectMeta},
 	Api,
 	Error as KubeError,
@@ -531,55 +531,6 @@ pub async fn delete_kubernetes_deployment(
 		request_id
 	);
 	Ok(())
-}
-
-pub async fn get_container_logs(
-	workspace_id: &Uuid,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<String, Error> {
-	// TODO: interact with prometheus to get the logs
-
-	let kubernetes_client = super::get_kubernetes_config(config).await?;
-
-	log::trace!(
-		"request_id: {} - retreiving deployment info from db",
-		request_id
-	);
-
-	// TODO: change log to stream_log when eve gets websockets
-	// TODO: change customise LogParams for different types of logs
-	// TODO: this is a temporary log retrieval method, use prometheus to get the
-	// logs
-	let pod_api =
-		Api::<Pod>::namespaced(kubernetes_client, workspace_id.as_str());
-
-	let pod_name = pod_api
-		.list(&ListParams {
-			label_selector: Some(format!(
-				"{}={}",
-				request_keys::DEPLOYMENT_ID,
-				deployment_id
-			)),
-			..ListParams::default()
-		})
-		.await?
-		.items
-		.into_iter()
-		.next()
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?
-		.metadata
-		.name
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let deployment_logs =
-		pod_api.logs(&pod_name, &LogParams::default()).await?;
-
-	log::trace!("request_id: {} - logs retreived successfully!", request_id);
-	Ok(deployment_logs)
 }
 
 pub async fn get_deployment_build_logs(

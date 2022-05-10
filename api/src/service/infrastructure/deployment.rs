@@ -23,7 +23,6 @@ use crate::{
 		deployment::{PrometheusResponse, Subscription},
 		rbac,
 	},
-	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -223,6 +222,8 @@ pub async fn create_deployment_in_workspace(
 pub async fn get_deployment_container_logs(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<String, Error> {
@@ -237,13 +238,16 @@ pub async fn get_deployment_container_logs(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let logs = kubernetes::get_container_logs(
+	let logs = get_container_logs(
 		&deployment.workspace_id,
 		deployment_id,
+		start_time,
+		end_time,
 		config,
 		request_id,
 	)
 	.await?;
+
 	log::trace!("request_id: {} - Logs retreived successfully", request_id);
 
 	Ok(logs)
@@ -897,4 +901,27 @@ async fn update_subscription(
 	}
 
 	Ok(())
+}
+
+async fn get_container_logs(
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<String, Error> {
+	log::trace!(
+		"request_id: {} - Getting container logs for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+	let logs = client.post(format!("https://{}/loki/api/v1/query_range?query={{app=\"deployment-{}\",namespace={}}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
+				.basic_auth(&config.loki.username, Some(&config.loki.password))
+				.send()
+				.await?
+				.text()
+				.await?;
+	Ok(logs)
 }

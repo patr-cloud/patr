@@ -103,6 +103,11 @@
 		"address": "https://vault.example.com",
 		"token": "<vault token>"
 	},
+	"loki": {
+		"host": "prometheus.samyakgangwal.com",
+		"username": "admin",
+		"password": "admin"
+	},
 	"mailchimp": {
 		"apiKey": "example-api-key",
 		"listId": "example-list-id"

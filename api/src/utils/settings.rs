@@ -58,6 +58,7 @@ pub struct Settings {
 	pub chargebee: ChargebeeSettings,
 	pub rabbit_mq: RabbitMqSettings,
 	pub vault: VaultSettings,
+	pub loki: LokiSettings,
 	pub mailchimp: MailchimpSettings,
 	pub github: GithubSettings,
 	pub drone: DroneSettings,
@@ -232,6 +233,14 @@ pub struct RabbitMqSettings {
 pub struct VaultSettings {
 	pub address: String,
 	pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LokiSettings {
+	pub host: String,
+	pub username: String,
+	pub password: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

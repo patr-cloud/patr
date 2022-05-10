@@ -227,6 +227,20 @@ impl FromStr for Interval {
 	}
 }
 
+impl Into<Interval>
+	for api_models::models::workspace::infrastructure::deployment::Interval
+{
+	fn into(self) -> Interval {
+		match self {
+			api_models::models::workspace::infrastructure::deployment::Interval::Hour => Interval::Hour,
+			api_models::models::workspace::infrastructure::deployment::Interval::Day => Interval::Day,
+			api_models::models::workspace::infrastructure::deployment::Interval::Week => Interval::Week,
+			api_models::models::workspace::infrastructure::deployment::Interval::Month => Interval::Month,
+			api_models::models::workspace::infrastructure::deployment::Interval::Year => Interval::Year,
+		}
+	}
+}
+
 #[derive(Debug, Clone)]
 pub enum Step {
 	OneMinute,
