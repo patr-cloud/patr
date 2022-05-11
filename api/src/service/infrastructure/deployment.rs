@@ -815,6 +815,7 @@ async fn start_subscription(
 		request_id,
 		deployment_id
 	);
+
 	let deployment = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.status(500)
@@ -917,7 +918,7 @@ async fn get_container_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.post(format!("https://{}/loki/api/v1/query_range?query={{app=\"deployment-{}\",namespace={}}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
+	let logs = client.get(format!("https://{}/loki/api/v1/query_range?query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
 				.basic_auth(&config.loki.username, Some(&config.loki.password))
 				.send()
 				.await?

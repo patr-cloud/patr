@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use api_models::{
 	models::workspace::infrastructure::DeploymentCloudProvider,
+	models::workspace::infrastructure::deployment::Interval as DTOInterval,
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -227,16 +228,15 @@ impl FromStr for Interval {
 	}
 }
 
-impl Into<Interval>
-	for api_models::models::workspace::infrastructure::deployment::Interval
-{
-	fn into(self) -> Interval {
-		match self {
-			api_models::models::workspace::infrastructure::deployment::Interval::Hour => Interval::Hour,
-			api_models::models::workspace::infrastructure::deployment::Interval::Day => Interval::Day,
-			api_models::models::workspace::infrastructure::deployment::Interval::Week => Interval::Week,
-			api_models::models::workspace::infrastructure::deployment::Interval::Month => Interval::Month,
-			api_models::models::workspace::infrastructure::deployment::Interval::Year => Interval::Year,
+impl From<DTOInterval> for Interval {
+
+	fn from(s: DTOInterval) -> Interval {
+		match s {
+			DTOInterval::Hour => Interval::Hour,
+			DTOInterval::Day => Interval::Day,
+			DTOInterval::Week => Interval::Week,
+			DTOInterval::Month => Interval::Month,
+			DTOInterval::Year => Interval::Year,
 		}
 	}
 }
