@@ -9,7 +9,6 @@ use api_models::{
 				CreateDeploymentResponse,
 				DeleteDeploymentResponse,
 				Deployment,
-				DeploymentBuildLog,
 				DeploymentRegistry,
 				DeploymentStatus,
 				GetDeploymentBuildLogsResponse,
@@ -1491,13 +1490,7 @@ async fn get_build_logs(
 		&config,
 		&request_id,
 	)
-	.await?
-	.into_iter()
-	.map(|b_log| DeploymentBuildLog {
-		pod: b_log.pod,
-		logs: b_log.logs,
-	})
-	.collect();
+	.await?;
 	context.success(GetDeploymentBuildLogsResponse { logs });
 	Ok(context)
 }

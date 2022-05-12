@@ -948,3 +948,13 @@ async fn get_container_logs(
 
 	Ok(logs)
 }
+
+pub async fn get_deployment_build_logs(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<String, Error> {
+	Ok("logs".to_string())
+}
