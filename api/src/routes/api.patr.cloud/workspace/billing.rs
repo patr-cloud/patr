@@ -1,7 +1,9 @@
 use api_models::{
 	models::workspace::billing::{
 		AddPaymentSourceResponse,
+		Address,
 		Card,
+		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetSubscriptionsResponse,
@@ -209,6 +211,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	sub_app.get(
+		"/billing-address",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
+		],
+	);
+
 	sub_app
 }
 
@@ -259,8 +292,6 @@ async fn update_billing_info(
 	let UpdateBillingInfoRequest {
 		first_name,
 		last_name,
-		email,
-		phone,
 		address_details,
 		..
 	} = context
@@ -277,8 +308,6 @@ async fn update_billing_info(
 		&workspace_id,
 		first_name,
 		last_name,
-		email,
-		phone,
 		address_details,
 		&config,
 	)
@@ -626,5 +655,35 @@ async fn get_subscriptions(
 	context.success(GetSubscriptionsResponse {
 		list: subscriptions,
 	});
+	Ok(context)
+}
+
+async fn get_billing_address(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let config = context.get_state().config.clone();
+	let customer_info =
+		service::get_billing_address(&config, &workspace_id).await?;
+
+	let address =
+		if let Some(billing_addr) = customer_info.customer.billing_address {
+			Some(Address {
+				address_line1: billing_addr.line1,
+				address_line2: billing_addr.line2,
+				address_line3: billing_addr.line3,
+				city: billing_addr.city,
+				state: billing_addr.state,
+				zip: billing_addr.zip,
+				country: billing_addr.country,
+			})
+		} else {
+			None
+		};
+
+	context.success(GetBillingAddressResponse { address });
 	Ok(context)
 }

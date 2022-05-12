@@ -8,6 +8,7 @@ use crate::{
 	models::deployment::{
 		BillingAddress,
 		Customer,
+		CustomerInfo,
 		PaymentSourceList,
 		PromotionalCreditList,
 		SubscriptionList,
@@ -428,8 +429,6 @@ pub async fn update_billing_info(
 	workspace_id: &Uuid,
 	first_name: Option<String>,
 	last_name: Option<String>,
-	email: Option<String>,
-	phone: Option<String>,
 	address_details: Option<Address>,
 	config: &Settings,
 ) -> Result<(), Error> {
@@ -463,16 +462,16 @@ pub async fn update_billing_info(
 
 	let status = client
 		.post(format!(
-			"{}/customers/{}",
+			"{}/customers/{}/update_billing_info",
 			config.chargebee.url, workspace_id
 		))
 		.basic_auth(config.chargebee.api_key.as_str(), password)
-		.query(&Customer {
-			id: Some(workspace_id.to_string()),
+		.form(&Customer {
+			id: None,
 			first_name,
 			last_name,
-			email,
-			phone,
+			email: None,
+			phone: None,
 			address: address_details,
 		})
 		.send()
@@ -570,6 +569,27 @@ pub async fn get_subscriptions(
 		.send()
 		.await?
 		.json::<SubscriptionList>()
+		.await
+		.map_err(|e| e.into())
+}
+
+pub async fn get_billing_address(
+	config: &Settings,
+	workspace_id: &Uuid,
+) -> Result<CustomerInfo, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.get(format!(
+			"{}/customers/{}",
+			config.chargebee.url, workspace_id
+		))
+		.basic_auth(&config.chargebee.api_key, password)
+		.send()
+		.await?
+		.json::<CustomerInfo>()
 		.await
 		.map_err(|e| e.into())
 }
