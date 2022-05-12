@@ -351,7 +351,7 @@ pub struct CustomerInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BillingInfo {
-	pub billing_address: BillingInfoData,
+	pub billing_address: Option<BillingInfoData>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
