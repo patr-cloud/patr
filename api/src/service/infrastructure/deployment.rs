@@ -20,7 +20,7 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{PrometheusResponse, Subscription},
+		deployment::{Logs, PrometheusResponse, Subscription},
 		rbac,
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
@@ -349,7 +349,8 @@ pub async fn update_deployment(
 		request_id
 	);
 
-	update_subscription(connection, deployment_id, config, request_id).await?;
+	update_subscription(connection, deployment_id, config,
+	request_id).await?;
 
 	Ok(())
 }
@@ -918,11 +919,32 @@ async fn get_container_logs(
 		deployment_id
 	);
 	let client = Client::new();
-	let logs = client.get(format!("https://{}/loki/api/v1/query_range?query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
+	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{container=\"deployment-{}\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, deployment_id, workspace_id, start_time, end_time))
 				.basic_auth(&config.loki.username, Some(&config.loki.password))
 				.send()
 				.await?
-				.text()
-				.await?;
+				.json::<Logs>()
+				.await?
+				.data
+				.result;
+
+	let mut combined_values = Vec::new();
+
+	for result in logs {
+		for value in result.values {
+			let (time_stamp, log) =
+				(value[0].parse::<u64>()?, value[1].clone());
+			combined_values.push((time_stamp, log));
+		}
+	}
+
+	combined_values.sort_by(|a, b| a.0.cmp(&b.0));
+
+	let mut logs = String::new();
+
+	for log in combined_values {
+		logs.push_str(format!("{}\n", log.1).as_str());
+	}
+
 	Ok(logs)
 }

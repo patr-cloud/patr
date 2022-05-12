@@ -1,8 +1,10 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use api_models::{
-	models::workspace::infrastructure::DeploymentCloudProvider,
-	models::workspace::infrastructure::deployment::Interval as DTOInterval,
+	models::workspace::infrastructure::{
+		deployment::Interval as DTOInterval,
+		DeploymentCloudProvider,
+	},
 	utils::Uuid,
 };
 use chrono::{DateTime, Utc};
@@ -189,6 +191,21 @@ pub struct Metric {
 	pub value: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Logs {
+	pub data: LokiData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LokiData {
+	pub result: Vec<LokiResult>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LokiResult {
+	pub values: Vec<Vec<String>>,
+}
+
 #[derive(Debug, Clone)]
 pub enum Interval {
 	Hour,
@@ -229,7 +246,6 @@ impl FromStr for Interval {
 }
 
 impl From<DTOInterval> for Interval {
-
 	fn from(s: DTOInterval) -> Interval {
 		match s {
 			DTOInterval::Hour => Interval::Hour,
