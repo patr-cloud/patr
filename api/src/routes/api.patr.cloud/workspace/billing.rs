@@ -1,10 +1,19 @@
 use api_models::{
 	models::workspace::billing::{
-		AddPaymentSourceResponse, Address, Card, GetBillingAddressResponse,
-		GetCardDetailsResponse, GetCreditBalanceResponse,
-		GetSubscriptionsResponse, HostedPage, PaymentSource,
-		PromotionalCredits, Subscription, SubscriptionItem,
-		UpdateBillingInfoRequest, UpdateBillingInfoResponse,
+		AddPaymentSourceResponse,
+		Address,
+		Card,
+		GetBillingAddressResponse,
+		GetCardDetailsResponse,
+		GetCreditBalanceResponse,
+		GetSubscriptionsResponse,
+		HostedPage,
+		PaymentSource,
+		PromotionalCredits,
+		Subscription,
+		SubscriptionItem,
+		UpdateBillingInfoRequest,
+		UpdateBillingInfoResponse,
 	},
 	utils::Uuid,
 };
@@ -12,11 +21,17 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db, error,
+	db,
+	error,
 	models::rbac::permissions,
-	pin_fn, service,
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -654,23 +669,21 @@ async fn get_billing_address(
 	let customer_info =
 		service::get_billing_address(&config, &workspace_id).await?;
 
-	if let Some(billing_addr) = customer_info.customer.billing_address {
-		let billing_address = Address {
-			address_line1: billing_addr.line1,
-			address_line2: billing_addr.line2,
-			address_line3: billing_addr.line3,
-			city: billing_addr.city,
-			state: billing_addr.state,
-			zip: billing_addr.zip,
-			country: billing_addr.country,
+	let address =
+		if let Some(billing_addr) = customer_info.customer.billing_address {
+			Some(Address {
+				address_line1: billing_addr.line1,
+				address_line2: billing_addr.line2,
+				address_line3: billing_addr.line3,
+				city: billing_addr.city,
+				state: billing_addr.state,
+				zip: billing_addr.zip,
+				country: billing_addr.country,
+			})
+		} else {
+			None
 		};
 
-		context.success(GetBillingAddressResponse {
-			address: Some(billing_address),
-		});
-	} else {
-		context.success(GetBillingAddressResponse { address: None });
-	}
-
+	context.success(GetBillingAddressResponse { address });
 	Ok(context)
 }
