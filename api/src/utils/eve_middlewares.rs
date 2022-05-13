@@ -1,6 +1,8 @@
 use std::{future::Future, pin::Pin};
 
+use api_models::utils::Uuid;
 use async_trait::async_trait;
+use chrono::Utc;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
@@ -16,11 +18,12 @@ use eve_rs::{
 	NextHandler,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
+use serde_json::json;
 
-use super::get_current_time_millis;
+use super::{constants::request_keys, get_current_time_millis};
 use crate::{
 	app::App,
-	db::Resource,
+	db::{self, Resource},
 	error,
 	models::{
 		rbac::{self, GOD_USER_ID},
@@ -60,6 +63,11 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
+	/// A middleware for adding eve context's audit log data to DB
+	///
+	/// NOTE: It should be used only on workspace endpoints where routes will
+	///       have workspace_id in their path
+	WorkspaceAuditLogger,
 }
 
 #[async_trait]
@@ -211,6 +219,54 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				} else {
 					next(context).await
 				}
+			}
+			EveMiddleware::WorkspaceAuditLogger => {
+				let mut context = next(context).await?;
+
+				let audit_log_data = match context.get_audit_log_data() {
+					Some(audit_log_data) => audit_log_data.clone(),
+					None => return Ok(context),
+				};
+
+				let request_id = context.get_request_id().clone();
+				let workspace_id = Uuid::parse_str(
+					context.get_param(request_keys::WORKSPACE_ID)
+						.expect("WorkspaceAuditLogger should be used on routes where workspace_id is present"),
+				)
+				.unwrap();
+				let ip_address = context.get_request_ip_address();
+				let user_id = context
+					.get_token_data()
+					.map(|token| token.user.id.clone())
+					.expect("user_id is missing");
+				let login_id = context
+					.get_token_data()
+					.map(|token| token.login_id.clone())
+					.expect("login_id is missing");
+
+				let audit_log_id = db::generate_new_workspace_audit_log_id(
+					context.get_database_connection(),
+				)
+				.await?;
+
+				db::create_workspace_audit_log(
+					context.get_database_connection(),
+					&audit_log_id,
+					&workspace_id,
+					&ip_address.to_string(),
+					Utc::now().into(),
+					Some(&user_id),
+					Some(&login_id),
+					&audit_log_data.resource_id,
+					&audit_log_data.action_id,
+					&request_id,
+					&audit_log_data.metadata.unwrap_or_else(|| json!({})),
+					false, // action done by the user thorough api
+					true,
+				)
+				.await?;
+
+				Ok(context)
 			}
 		}
 	}

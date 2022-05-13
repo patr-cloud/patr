@@ -1,9 +1,11 @@
 use std::{
 	fmt::{Debug, Formatter},
+	net::IpAddr,
+	str::FromStr,
 	sync::Arc,
 };
 
-use api_models::{ApiResponse, ErrorType};
+use api_models::{utils::Uuid, ApiResponse, ErrorType};
 use eve_rs::{
 	handlebars::Handlebars,
 	Context,
@@ -19,6 +21,19 @@ use sqlx::Transaction;
 use super::Error;
 use crate::{app::App, models::AccessTokenData, Database};
 
+/// Audit Log data used by WorkspaceAuditLog middleware
+#[derive(Debug, Clone)]
+pub struct AuditLogData {
+	/// The resource id on which the action is done,
+	/// refers to resourse table's id
+	pub resource_id: Uuid,
+	/// The action which is done on the resource,
+	/// refers to permission table's id
+	pub action_id: Uuid,
+	/// Optional action specific metadata that needs to be logged
+	pub metadata: Option<Value>,
+}
+
 pub struct EveContext {
 	request: Request,
 	response: Response,
@@ -27,6 +42,8 @@ pub struct EveContext {
 	state: App,
 	db_connection: Option<Transaction<'static, Database>>,
 	access_token_data: Option<AccessTokenData>,
+	request_id: Uuid,
+	audit_log_data: Option<AuditLogData>,
 }
 
 impl EveContext {
@@ -40,6 +57,8 @@ impl EveContext {
 			state: state.clone(),
 			db_connection: None,
 			access_token_data: None,
+			request_id: Uuid::new_v4(),
+			audit_log_data: None,
 		}
 	}
 
@@ -120,6 +139,12 @@ impl EveContext {
 		self.body_object = body;
 	}
 
+	/*
+	 * REFACTOR: BREAKING CHANGE
+	 * Split get_token_data(&mut self) into two
+	 * 		1. get_token_data(&self)
+	 *		2. get_mut_token_data(&mut self)
+	 */
 	pub fn get_token_data(&mut self) -> Option<&mut AccessTokenData> {
 		self.access_token_data.as_mut()
 	}
@@ -138,6 +163,47 @@ impl EveContext {
 	{
 		serde_qs::from_str(&self.get_query_string())
 			.map_err(|err| Error::new(Box::new(err)))
+	}
+
+	/// Get a reference to the unique request id created for current request.
+	pub fn get_request_id(&self) -> &Uuid {
+		&self.request_id
+	}
+
+	/// Get a reference to the audit log data if already set
+	pub fn get_audit_log_data(&self) -> Option<&AuditLogData> {
+		self.audit_log_data.as_ref()
+	}
+
+	/// Set the audit log data and
+	/// returns previously set audit log data if present
+	///
+	/// NOTE: For maintaining consistency, add audit log data to eve context
+	///       just before returing success reponse
+	pub fn set_audit_log_data(
+		&mut self,
+		metadata: AuditLogData,
+	) -> Option<AuditLogData> {
+		self.audit_log_data.replace(metadata)
+	}
+
+	/// Get a mutable reference to the audit log data.
+	#[allow(dead_code)]
+	pub fn get_mut_audit_log_data(&mut self) -> &mut Option<AuditLogData> {
+		&mut self.audit_log_data
+	}
+
+	/// Get the request IP address
+	pub fn get_request_ip_address(&self) -> IpAddr {
+		self.get_header("CF-Connecting-IP")
+			.or_else(|| self.get_header("X-Real-IP"))
+			.or_else(|| {
+				self.get_header("X-Forwarded-For").and_then(|value| {
+					value.split(',').next().map(|ip| ip.trim().to_string())
+				})
+			})
+			.and_then(|ip_str| IpAddr::from_str(&ip_str).ok())
+			.unwrap_or_else(|| self.get_ip())
 	}
 }
 

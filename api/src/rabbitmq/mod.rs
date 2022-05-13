@@ -122,7 +122,7 @@ async fn process_queue_payload(
 	app: &App,
 ) -> Result<(), Error> {
 	let config = &app.config;
-	let mut connection = app.database.acquire().await?;
+	let mut connection = app.database.begin().await?;
 	match content {
 		RequestMessage::Deployment(request_data) => {
 			deployment::process_request(&mut connection, request_data, config)
@@ -137,7 +137,9 @@ async fn process_queue_payload(
 	.map_err(|error| {
 		log::error!("Error processing RabbitMQ message: {}", error.get_error());
 		error
-	})
+	})?;
+	connection.commit().await?;
+	Ok(())
 }
 
 pub(super) async fn create_rabbitmq_pool(

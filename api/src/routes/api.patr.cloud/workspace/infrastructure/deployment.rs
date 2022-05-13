@@ -31,7 +31,6 @@ use api_models::{
 	},
 	utils::{constants, Uuid},
 };
-use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
@@ -44,11 +43,11 @@ use crate::{
 		DeploymentMetadata,
 	},
 	pin_fn,
-	routes::api_patr_cloud,
 	service,
 	utils::{
 		constants::request_keys,
 		get_current_time,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -135,6 +134,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_deployment)),
 		],
 	);
@@ -369,6 +369,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_deployment)),
 		],
 	);
@@ -647,16 +648,11 @@ async fn create_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Creating deployment", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
-
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let login_id = context.get_token_data().unwrap().login_id.clone();
 
 	let CreateDeploymentRequest {
 		workspace_id: _,
@@ -695,47 +691,6 @@ async fn create_deployment(
 	)
 	.await?;
 
-	let audit_log_id = db::generate_new_workspace_audit_log_id(
-		context.get_database_connection(),
-	)
-	.await?;
-
-	let metadata = serde_json::to_value(DeploymentMetadata::Create {
-		deployment: Deployment {
-			id: id.clone(),
-			name: name.to_string(),
-			registry: registry.clone(),
-			image_tag: image_tag.to_string(),
-			status: DeploymentStatus::Created,
-			region: region.clone(),
-			machine_type: machine_type.clone(),
-		},
-		running_details: deployment_running_details.clone(),
-	})?;
-
-	db::create_workspace_audit_log(
-		context.get_database_connection(),
-		&audit_log_id,
-		&workspace_id,
-		&ip_address,
-		Utc::now().into(),
-		Some(&user_id),
-		Some(&login_id),
-		&id,
-		rbac::PERMISSIONS
-			.get()
-			.unwrap()
-			.get(permissions::workspace::infrastructure::deployment::CREATE)
-			.unwrap(),
-		&request_id,
-		&metadata,
-		false,
-		true,
-	)
-	.await?;
-
-	context.commit_database_transaction().await?;
-
 	if deploy_on_create {
 		service::queue_create_deployment(
 			context.get_database_connection(),
@@ -759,6 +714,31 @@ async fn create_deployment(
 	)
 	.await;
 
+	let action_id = rbac::PERMISSIONS
+		.get()
+		.and_then(|map| {
+			map.get(permissions::workspace::infrastructure::deployment::CREATE)
+				.cloned()
+		})
+		.unwrap();
+	let metadata = serde_json::to_value(DeploymentMetadata::Create {
+		deployment: Deployment {
+			id: id.clone(),
+			name: name.to_string(),
+			registry: registry.clone(),
+			image_tag: image_tag.to_string(),
+			status: DeploymentStatus::Created,
+			region: region.clone(),
+			machine_type: machine_type.clone(),
+		},
+		running_details: deployment_running_details.clone(),
+	})?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: id.clone(),
+		action_id,
+		metadata: Some(metadata),
+	});
 	context.success(CreateDeploymentResponse { id });
 	Ok(context)
 }
@@ -893,7 +873,7 @@ async fn start_deployment(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Start deployment", request_id);
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = context.get_request_ip_address().to_string();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -971,7 +951,7 @@ async fn stop_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = context.get_request_ip_address().to_string();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -1090,7 +1070,7 @@ async fn delete_deployment(
 	)
 	.unwrap();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = context.get_request_ip_address().to_string();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
 
@@ -1196,7 +1176,7 @@ async fn update_deployment(
 
 	let login_id = context.get_token_data().unwrap().login_id.clone();
 
-	let ip_address = api_patr_cloud::get_request_ip_address(&context);
+	let ip_address = context.get_request_ip_address().to_string();
 
 	// Is any one value present?
 	if name.is_none() &&
