@@ -14,6 +14,7 @@ use api_models::{
 	utils::{constants, StringifiedU16, Uuid},
 };
 use eve_rs::AsError;
+use k8s_openapi::api::core::v1::Event;
 use reqwest::Client;
 
 use crate::{
@@ -349,8 +350,7 @@ pub async fn update_deployment(
 		request_id
 	);
 
-	update_subscription(connection, deployment_id, config,
-	request_id).await?;
+	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }
@@ -928,21 +928,21 @@ async fn get_container_logs(
 				.data
 				.result;
 
-	let mut combined_values = Vec::new();
+	let mut combined_build_logs = Vec::new();
 
 	for result in logs {
 		for value in result.values {
 			let (time_stamp, log) =
 				(value[0].parse::<u64>()?, value[1].clone());
-			combined_values.push((time_stamp, log));
+			combined_build_logs.push((time_stamp, log));
 		}
 	}
 
-	combined_values.sort_by(|a, b| a.0.cmp(&b.0));
+	combined_build_logs.sort_by(|a, b| a.0.cmp(&b.0));
 
 	let mut logs = String::new();
 
-	for log in combined_values {
+	for log in combined_build_logs {
 		logs.push_str(format!("{}\n", log.1).as_str());
 	}
 
@@ -950,11 +950,52 @@ async fn get_container_logs(
 }
 
 pub async fn get_deployment_build_logs(
-	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	deployment_id: &Uuid,
+	start_time: u64,
+	end_time: u64,
 	config: &Settings,
 	request_id: &Uuid,
-) -> Result<String, Error> {
-	Ok("logs".to_string())
+) -> Result<Vec<Event>, Error> {
+	log::trace!(
+		"request_id: {} - Getting build logs for deployment with id: {}",
+		request_id,
+		deployment_id
+	);
+	let client = Client::new();
+	let logs = client.get(format!("https://{}/loki/api/v1/query_range?direction=BACKWARD&query={{app=\"eventrouter\",namespace=\"{}\"}}&start={}&end={}", config.loki.host, workspace_id, start_time, end_time))
+				.basic_auth(&config.loki.username, Some(&config.loki.password))
+				.send()
+				.await?
+				.json::<Logs>()
+				.await?
+				.data
+				.result;
+
+	// TODO: you will get only one element in result array. From that result
+	// array get the element and parse that json and from that json filter the
+	// logs.
+
+	let result = logs.into_iter().next().status(500)?;
+
+	let mut combined_build_logs = Vec::new();
+
+	for value in result.values {
+		let kube_event = value.into_iter().next().status(500)?;
+
+		let kube_event: Event = serde_json::from_str(kube_event.as_str())?;
+
+		let namespace =
+			kube_event.clone().metadata.namespace.status(500)?.clone();
+		let deployment_name =
+			kube_event.clone().metadata.name.status(500)?.clone();
+
+		if namespace == workspace_id.to_string() &&
+			deployment_name == format!("deployment-{}", deployment_id)
+		{
+			combined_build_logs.push(kube_event);
+		}
+	}
+
+	Ok(combined_build_logs)
 }

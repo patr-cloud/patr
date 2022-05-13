@@ -5,12 +5,14 @@ use api_models::{
 	models::workspace::{
 		infrastructure::{
 			deployment::{
+				BuildLog,
 				CreateDeploymentRequest,
 				CreateDeploymentResponse,
 				DeleteDeploymentResponse,
 				Deployment,
 				DeploymentRegistry,
 				DeploymentStatus,
+				GetDeploymentBuildLogsRequest,
 				GetDeploymentBuildLogsResponse,
 				GetDeploymentEventsResponse,
 				GetDeploymentInfoResponse,
@@ -1481,16 +1483,35 @@ async fn get_build_logs(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 	let config = context.get_state().config.clone();
+
+	let GetDeploymentBuildLogsRequest { start_time, .. } = context
+		.get_query_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let start_time: Interval = start_time.unwrap_or(api_models::models::workspace::infrastructure::deployment::Interval::Hour).into();
+
 	log::trace!("request_id: {} - Getting build logs", request_id);
 	// stop the running container, if it exists
 	let logs = service::get_deployment_build_logs(
-		context.get_database_connection(),
 		&workspace_id,
 		&deployment_id,
+		start_time.as_u64(),
+		get_current_time().as_secs(),
 		&config,
 		&request_id,
 	)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|build_log| BuildLog {
+		timestamp: build_log
+			.metadata
+			.creation_timestamp
+			.map(|timestamp| timestamp.0.into()),
+		reason: build_log.reason,
+		message: build_log.message,
+	})
+	.collect();
 	context.success(GetDeploymentBuildLogsResponse { logs });
 	Ok(context)
 }
