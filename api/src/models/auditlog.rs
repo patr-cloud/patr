@@ -60,3 +60,18 @@ pub enum SecretMetaData {
 	Edit,
 	Delete,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum DomainMetaData {
+	Add { domain_name: String },
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DnsRecordMetaData {
+	Add { domain_id: Uuid, name: String },
+	Edit,
+	Delete,
+}

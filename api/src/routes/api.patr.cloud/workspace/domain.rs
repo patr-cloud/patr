@@ -25,11 +25,16 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, DnsRecordType},
 	error,
-	models::rbac::permissions,
+	models::{
+		rbac::{permissions, PERMISSIONS},
+		DnsRecordMetaData,
+		DomainMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -115,6 +120,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
 		],
 	);
@@ -232,6 +238,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_domain_in_workspace)),
 		],
 	);
@@ -308,6 +315,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
 		],
 	);
@@ -346,6 +354,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_dns_record)),
 		],
 	);
@@ -383,6 +392,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
 		],
 	);
@@ -521,6 +531,19 @@ async fn add_domain_to_workspace(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: domain_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::domain::ADD).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(DomainMetaData::Add {
+			domain_name: domain,
+		})?),
+	});
 
 	log::trace!(
 		"request_id: {} - Added the domain to the workspace",
@@ -748,6 +771,17 @@ async fn delete_domain_in_workspace(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: domain_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::domain::DELETE).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(DomainMetaData::Delete)?),
+	});
+
 	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
 	// TODO: add the info to patr metrics
 	context.success(DeleteDomainResponse {});
@@ -857,6 +891,21 @@ async fn add_dns_record(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: record_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::domain::dns_record::ADD)
+					.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(DnsRecordMetaData::Add {
+			domain_id,
+			name: name.to_lowercase(),
+		})?),
+	});
+
 	log::trace!("request_id: {} - Added dns record", request_id);
 	context.success(AddDnsRecordResponse { id: record_id });
 	Ok(context)
@@ -902,6 +951,18 @@ async fn update_dns_record(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: record_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::domain::dns_record::EDIT)
+					.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(DnsRecordMetaData::Edit)?),
+	});
+
 	log::trace!("request_id: {} - Updated dns record", request_id);
 	context.success(UpdateDomainDnsRecordResponse {});
 	Ok(context)
@@ -929,6 +990,18 @@ async fn delete_dns_record(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: record_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::domain::dns_record::DELETE)
+					.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(DnsRecordMetaData::Delete)?),
+	});
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
 	context.success(DeleteDnsRecordResponse {});
