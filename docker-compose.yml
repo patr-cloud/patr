@@ -1,0 +1,85 @@
+version: '3'
+
+networks:
+  vpc:
+
+services:
+  rabbitmq:
+    container_name: message-queue
+    image: rabbitmq:3-management
+    restart: always
+    hostname: ${RABBITMQ_HOST}
+    logging:
+      driver: none
+    networks:
+      - vpc
+    ports:
+      - ${RABBITMQ_MANAGEMENT_PORT}:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+
+  postgres:
+    container_name: database
+    image: postgres:13
+    restart: always
+    hostname: ${DATABASE_HOST}
+    logging:
+      driver: none
+    networks:
+      - vpc
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRSE_DB=${DATABASE_NAME}
+
+  redis:
+    container_name: cache
+    image: redis:7
+    restart: always
+    hostname: ${REDIS_HOST}
+    logging:
+      driver: none
+    networks:
+      - vpc
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USERNAME=${REDIS_USERNAME}
+
+  vault:
+    container_name: vault
+    image: vault:latest
+    restart: always
+    hostname: ${VAULT_HOST}
+    logging:
+      driver: none
+    networks:
+      - vpc
+    ports:
+      - ${VAULT_PORT}:${VAULT_PORT}
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}
+
+  api:
+    container_name: api
+    image: rust:1
+    restart: "no"
+    hostname: ${API_HOST}
+    command: bash -c "source .env && cargo run"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - rabbitmq
+      - postgres
+      - redis
+      - vault
+    networks:
+      - vpc
+    ports:
+      - ${API_PORT}:${API_PORT}
+    volumes:
+      - ${PWD}:/app
+      - ${HOME}/.cargo/:/user/local/cargo/
+    working_dir: /app
+    
