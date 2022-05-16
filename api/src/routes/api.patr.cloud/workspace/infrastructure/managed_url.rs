@@ -186,7 +186,7 @@ async fn list_all_managed_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	log::trace!("request_id: {} - Listing all managed URLs", request_id);
 	let workspace_id =
@@ -236,7 +236,7 @@ async fn create_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -279,7 +279,7 @@ async fn update_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),
 	)
@@ -320,7 +320,7 @@ async fn delete_managed_url(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let managed_url_id = Uuid::parse_str(
 		context.get_param(request_keys::MANAGED_URL_ID).unwrap(),

@@ -398,7 +398,7 @@ async fn create_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Creating docker repository in the workspace",
 		request_id
@@ -519,7 +519,7 @@ async fn list_docker_repositories(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
@@ -569,7 +569,7 @@ async fn get_docker_repository_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Getting docker repository info",
 		request_id
@@ -646,7 +646,7 @@ async fn get_repository_image_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Getting docker repository image details",
 		request_id
@@ -707,7 +707,7 @@ async fn get_list_of_repository_tags(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Getting docker repository tags",
 		request_id
@@ -762,7 +762,7 @@ async fn get_repository_tag_details(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Getting docker repository tag details",
 		request_id
@@ -826,7 +826,7 @@ async fn delete_docker_repository_image(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Deleting docker repository image",
 		request_id
@@ -890,7 +890,7 @@ async fn delete_docker_repository(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Deleting docker repository", request_id);
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();

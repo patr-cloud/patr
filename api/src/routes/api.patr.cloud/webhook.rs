@@ -1,7 +1,4 @@
-use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
-};
+use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -77,7 +74,7 @@ pub async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	log::trace!(
 		"request_id: {} - Received notification from docker registry",

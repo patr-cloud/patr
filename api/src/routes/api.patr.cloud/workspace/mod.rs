@@ -488,7 +488,7 @@ async fn delete_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	log::trace!("request_id: {} - requested to delete workspace", request_id);
 

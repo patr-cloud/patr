@@ -559,7 +559,7 @@ async fn list_deployments(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Listing deployments", request_id);
 
 	let workspace_id =
@@ -782,7 +782,7 @@ async fn get_deployment_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -870,7 +870,7 @@ async fn start_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Start deployment", request_id);
 
 	let ip_address = context.get_request_ip_address().to_string();
@@ -945,7 +945,7 @@ async fn stop_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1014,7 +1014,7 @@ async fn get_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
@@ -1064,7 +1064,7 @@ async fn delete_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1144,7 +1144,7 @@ async fn update_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1373,7 +1373,7 @@ async fn get_deployment_metrics(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1443,7 +1443,7 @@ async fn get_build_logs(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),
 	)
@@ -1499,7 +1499,7 @@ async fn get_build_events(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let deployment_id = Uuid::parse_str(
 		context.get_param(request_keys::DEPLOYMENT_ID).unwrap(),

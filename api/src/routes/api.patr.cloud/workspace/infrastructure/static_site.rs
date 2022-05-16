@@ -450,7 +450,7 @@ async fn list_static_sites(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -508,7 +508,7 @@ async fn create_static_site_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Creating a static site", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
@@ -586,7 +586,7 @@ async fn start_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -655,7 +655,7 @@ async fn update_static_site(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
 	.unwrap();
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"Uploading the file for static site with id: {} and request_id: {}",
 		static_site_id,
@@ -720,7 +720,7 @@ async fn stop_static_site(
 	)
 	.unwrap();
 
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Stopping a static site with id: {}",
 		request_id,
@@ -768,7 +768,7 @@ async fn delete_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
@@ -805,7 +805,7 @@ async fn list_linked_urls(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)

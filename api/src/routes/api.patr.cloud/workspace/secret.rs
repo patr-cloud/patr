@@ -184,7 +184,7 @@ async fn list_secrets(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	log::trace!("request_id: {} - Listing all secrets", request_id);
 	let workspace_id =
@@ -212,7 +212,7 @@ async fn create_secret(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
@@ -247,7 +247,7 @@ async fn update_secret(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let secret_id =
 		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
@@ -287,7 +287,7 @@ async fn delete_secret(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let request_id = Uuid::new_v4();
+	let request_id = context.get_request_id().clone();
 
 	let secret_id =
 		Uuid::parse_str(context.get_param(request_keys::SECRET_ID).unwrap())
