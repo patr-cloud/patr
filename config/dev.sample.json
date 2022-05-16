@@ -102,5 +102,9 @@
 	"vault": {
 		"address": "https://vault.example.com",
 		"token": "<vault token>"
+	},
+	"mailchimp": {
+		"apiKey": "example-api-key",
+		"listId": "example-list-id"
 	}
 }

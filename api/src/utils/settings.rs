@@ -57,7 +57,8 @@ pub struct Settings {
 	pub prometheus: PrometheusSettings,
 	pub chargebee: ChargebeeSettings,
 	pub rabbit_mq: RabbitMqSettings,
-	pub vault: Vault,
+	pub vault: VaultSettings,
+	pub mailchimp: MailchimpSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,7 +227,14 @@ pub struct RabbitMqSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Vault {
+pub struct VaultSettings {
 	pub address: String,
 	pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MailchimpSettings {
+	pub api_key: String,
+	pub list_id: String,
 }
