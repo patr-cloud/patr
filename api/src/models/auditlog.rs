@@ -44,3 +44,19 @@ pub enum DeploymentMetadata {
 		digest: String,
 	},
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum RepositoryMetaData {
+	Create { repo_name: String },
+	DeleteImage { image_digest: String },
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum SecretMetaData {
+	Create,
+	Edit,
+	Delete,
+}

@@ -21,13 +21,17 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions},
+		RepositoryMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
 		get_current_time_millis,
 		validator,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -82,6 +86,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_docker_repository)),
 		],
 	);
@@ -311,6 +316,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(
 				delete_docker_repository_image
 			)),
@@ -352,6 +358,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository)),
 		],
 	);
@@ -477,6 +484,21 @@ async fn create_docker_repository(
 		&workspace_id,
 	)
 	.await?;
+
+	let action_id = rbac::PERMISSIONS
+		.get()
+		.and_then(|map| {
+			map.get(permissions::workspace::docker_registry::CREATE)
+		})
+		.unwrap();
+	let metadata = serde_json::to_value(RepositoryMetaData::Create {
+		repo_name: repository,
+	})?;
+	context.set_audit_log_data(AuditLogData {
+		resource_id: resource_id.clone(),
+		action_id: action_id.clone(),
+		metadata: Some(metadata),
+	});
 
 	log::trace!("request_id: {} - Docker repository created", request_id);
 	context.success(CreateDockerRepositoryResponse { id: resource_id });
@@ -848,6 +870,24 @@ async fn delete_docker_repository_image(
 	)
 	.await?;
 
+	let action_id = rbac::PERMISSIONS
+		.get()
+		.and_then(|map| {
+			// TODO: Need to create a pemission for deleting docker registry
+			// image alone For now using the docker registry delete permission
+			map.get(permissions::workspace::docker_registry::DELETE)
+		})
+		.unwrap();
+	let metadata = serde_json::to_value(RepositoryMetaData::DeleteImage {
+		image_digest: digest,
+	})?;
+	context.set_audit_log_data(AuditLogData {
+		resource_id: repository_id, // repo id and resource id is same
+		action_id: action_id.clone(),
+		metadata: Some(metadata),
+	});
+	// TODO [TEST]: Delete a image in repo and check for audit log
+
 	log::trace!(
 		"request_id: {} - Docker repository image deleted",
 		request_id
@@ -916,6 +956,19 @@ async fn delete_docker_repository(
 		&request_id,
 	)
 	.await?;
+
+	let action_id = rbac::PERMISSIONS
+		.get()
+		.and_then(|map| {
+			map.get(permissions::workspace::docker_registry::DELETE)
+		})
+		.unwrap();
+	let metadata = serde_json::to_value(RepositoryMetaData::Delete)?;
+	context.set_audit_log_data(AuditLogData {
+		resource_id: repository_id, // repo id and resource id is same
+		action_id: action_id.clone(),
+		metadata: Some(metadata),
+	});
 
 	log::trace!("request_id: {} - Docker repository deleted", request_id);
 	context.success(DeleteDockerRepositoryResponse {});

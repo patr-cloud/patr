@@ -18,11 +18,15 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::permissions,
+	models::{
+		rbac::{self, permissions},
+		SecretMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -95,6 +99,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_secret)),
 		],
 	);
@@ -134,6 +139,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_secret)),
 		],
 	);
@@ -173,6 +179,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_secret)),
 		],
 	);
@@ -238,6 +245,17 @@ async fn create_secret(
 
 	value.zeroize();
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: id.clone(),
+		action_id: rbac::PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::secret::CREATE).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(SecretMetaData::Create)?),
+	});
+
 	log::trace!("request_id: {} - Returning new secret", request_id);
 	context.success(CreateSecretInWorkspaceResponse { id });
 	Ok(context)
@@ -279,6 +297,17 @@ async fn update_secret(
 		value.zeroize();
 	}
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: secret_id.clone(),
+		action_id: rbac::PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::secret::EDIT).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(SecretMetaData::Edit)?),
+	});
+
 	context.success(UpdateWorkspaceSecretResponse {});
 	Ok(context)
 }
@@ -307,6 +336,17 @@ async fn delete_secret(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: secret_id.clone(),
+		action_id: rbac::PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::secret::DELETE).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(SecretMetaData::Delete)?),
+	});
 
 	context.success(DeleteSecretResponse {});
 	Ok(context)
