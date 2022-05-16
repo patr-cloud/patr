@@ -1,11 +1,17 @@
 use std::collections::BTreeMap;
 
 use api_models::{
-	models::workspace::infrastructure::deployment::{
-		Deployment,
-		DeploymentRunningDetails,
-		EnvironmentVariableValue,
-		ExposedPortType,
+	models::workspace::{
+		domain::{DnsRecordValue, DomainNameserverType},
+		infrastructure::{
+			deployment::{
+				Deployment,
+				DeploymentRunningDetails,
+				EnvironmentVariableValue,
+				ExposedPortType,
+			},
+			managed_urls::ManagedUrlType,
+		},
 	},
 	utils::{StringifiedU16, Uuid},
 };
@@ -64,14 +70,81 @@ pub enum SecretMetaData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum DomainMetaData {
-	Add { domain_name: String },
+	Add {
+		domain_name: String,
+		domain_nameserver_type: DomainNameserverType,
+	},
 	Delete,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "action")]
 pub enum DnsRecordMetaData {
-	Add { domain_id: Uuid, name: String },
-	Edit,
+	Add {
+		domain_id: Uuid,
+		name: String,
+		r#type: DnsRecordValue,
+		ttl: u32,
+	},
+	Update {
+		#[serde(skip_serializing_if = "Option::is_none")]
+		ttl: Option<u32>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		target: Option<String>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		priority: Option<u16>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		proxied: Option<bool>,
+	},
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum ManagedDbMetaData {
+	Create {
+		name: String,
+		db_name: String,
+		engine: String,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		version: Option<String>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		num_nodes: Option<u64>,
+		database_plan: String,
+		region: String,
+	},
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum ManagedUrlMetaData {
+	Create {
+		sub_domain: String,
+		domain_id: Uuid,
+		path: String,
+		#[serde(flatten)]
+		url_type: ManagedUrlType,
+	},
+	Update {
+		path: String,
+		#[serde(flatten)]
+		url_type: ManagedUrlType,
+	},
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
+pub enum StaticSiteMetaData {
+	Create {
+		name: String,
+	},
+	Update {
+		is_site_name_updated: bool,
+		is_file_updated: bool,
+	},
+	Start,
+	Stop,
 	Delete,
 }

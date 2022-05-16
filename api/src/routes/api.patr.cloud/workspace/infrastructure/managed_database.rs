@@ -7,11 +7,15 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedDatabasePlan},
 	error,
-	models::rbac::permissions,
+	models::{
+		rbac::{permissions, PERMISSIONS},
+		ManagedDbMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -81,6 +85,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_database_cluster)),
 		],
 	);
@@ -157,6 +162,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_database)),
 		],
 	);
@@ -304,6 +310,26 @@ async fn create_database_cluster(
 	)
 	.await;
 
+	let metadata = ManagedDbMetaData::Create {
+		name: name.to_owned(),
+		db_name: db_name.to_owned(),
+		engine: engine.to_string(),
+		version: version.map(str::to_owned),
+		num_nodes,
+		database_plan: database_plan.to_string(),
+		region: region.to_owned(),
+	};
+	context.set_audit_log_data(AuditLogData {
+		resource_id: database_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::infrastructure::managed_database::CREATE).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(metadata)?),
+	});
+
 	context.json(json!({
 		request_keys::SUCCESS: true,
 		request_keys::DATABASE_ID: hex::encode(database_id.as_bytes())
@@ -378,6 +404,17 @@ async fn delete_managed_database(
 		"A database instance has been deleted",
 	)
 	.await;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: database_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(permissions::workspace::infrastructure::managed_database::DELETE).cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(ManagedDbMetaData::Delete)?),
+	});
 
 	context.json(json!({
 		request_keys::SUCCESS: true

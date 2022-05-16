@@ -18,11 +18,15 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::{
+		rbac::{permissions, PERMISSIONS},
+		ManagedUrlMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -95,6 +99,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_managed_url)),
 		],
 	);
@@ -135,6 +140,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_managed_url)),
 		],
 	);
@@ -175,6 +181,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_url)),
 		],
 	);
@@ -270,6 +277,25 @@ async fn create_managed_url(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::managed_url::CREATE,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(ManagedUrlMetaData::Create {
+			sub_domain,
+			domain_id,
+			path,
+			url_type,
+		})?),
+	});
+
 	log::trace!("request_id: {} - Returning new managed URL", request_id);
 	context.success(CreateNewManagedUrlResponse { id });
 	Ok(context)
@@ -312,6 +338,23 @@ async fn update_managed_url(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: managed_url_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::managed_url::EDIT,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(ManagedUrlMetaData::Update {
+			path,
+			url_type,
+		})?),
+	});
+
 	context.success(UpdateManagedUrlResponse {});
 	Ok(context)
 }
@@ -345,6 +388,20 @@ async fn delete_managed_url(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: managed_url_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::managed_url::DELETE,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(ManagedUrlMetaData::Delete)?),
+	});
 
 	context.success(DeleteManagedUrlResponse {});
 	Ok(context)

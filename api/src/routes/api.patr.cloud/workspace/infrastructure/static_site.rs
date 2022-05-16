@@ -25,11 +25,15 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::{
+		rbac::{permissions, PERMISSIONS},
+		StaticSiteMetaData,
+	},
 	pin_fn,
 	service,
 	utils::{
 		constants::request_keys,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -164,6 +168,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
 		],
 	);
@@ -204,6 +209,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
 		],
 	);
@@ -244,6 +250,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
 		],
 	);
@@ -276,6 +283,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(
 				create_static_site_deployment
 			)),
@@ -318,6 +326,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
 		],
 	);
@@ -555,6 +564,22 @@ async fn create_static_site_deployment(
 	)
 	.await;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::static_site::CREATE,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Create {
+			name: name.to_owned(),
+		})?),
+	});
+
 	context.success(CreateStaticSiteResponse { id });
 	Ok(context)
 }
@@ -615,6 +640,20 @@ async fn start_static_site(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: static_site_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::static_site::EDIT,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Start)?),
+	});
+
 	context.success(StartStaticSiteResponse {});
 	Ok(context)
 }
@@ -674,6 +713,7 @@ async fn update_static_site(
 
 	let config = context.get_state().config.clone();
 
+	let is_file_updated = file.is_some();
 	service::update_static_site(
 		context.get_database_connection(),
 		&static_site_id,
@@ -683,6 +723,23 @@ async fn update_static_site(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: static_site_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::static_site::EDIT,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Update {
+			is_site_name_updated: name.is_some(),
+			is_file_updated,
+		})?),
+	});
 
 	context.success(UpdateStaticSiteResponse {});
 	Ok(context)
@@ -736,6 +793,20 @@ async fn stop_static_site(
 		&request_id,
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: static_site_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::static_site::EDIT,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Stop)?),
+	});
 
 	context.success(StopStaticSiteResponse {});
 	Ok(context)
@@ -796,6 +867,20 @@ async fn delete_static_site(
 		"A static site has been deleted",
 	)
 	.await;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: static_site_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| {
+				map.get(
+					permissions::workspace::infrastructure::static_site::DELETE,
+				)
+				.cloned()
+			})
+			.unwrap(),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Delete)?),
+	});
 
 	context.success(DeleteStaticSiteResponse {});
 	Ok(context)

@@ -542,6 +542,7 @@ async fn add_domain_to_workspace(
 			.unwrap(),
 		metadata: Some(serde_json::to_value(DomainMetaData::Add {
 			domain_name: domain,
+			domain_nameserver_type: nameserver_type,
 		})?),
 	});
 
@@ -903,6 +904,8 @@ async fn add_dns_record(
 		metadata: Some(serde_json::to_value(DnsRecordMetaData::Add {
 			domain_id,
 			name: name.to_lowercase(),
+			r#type,
+			ttl,
 		})?),
 	});
 
@@ -960,7 +963,12 @@ async fn update_dns_record(
 					.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(DnsRecordMetaData::Edit)?),
+		metadata: Some(serde_json::to_value(DnsRecordMetaData::Update {
+			ttl,
+			target,
+			priority,
+			proxied,
+		})?),
 	});
 
 	log::trace!("request_id: {} - Updated dns record", request_id);
