@@ -288,6 +288,7 @@ async fn get_workspace_info(
 		name: workspace.name,
 		super_admin_id: workspace.super_admin_id,
 		active: workspace.active,
+		super_admin_id: workspace.super_admin_id,
 	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;

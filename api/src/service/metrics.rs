@@ -1,7 +1,11 @@
 use reqwest::Client;
 use serde_json::json;
 
-use crate::{db, utils::Error, Database};
+use crate::{
+	db,
+	utils::{settings::Settings, Error},
+	Database,
+};
 
 pub async fn get_internal_metrics(
 	connection: &mut <Database as sqlx::Database>::Connection,
@@ -51,6 +55,33 @@ pub async fn get_internal_metrics(
 				"event": "Metrics"
 			}
 		]))
+		.send()
+		.await;
+
+	Ok(())
+}
+
+pub async fn include_user_to_mailchimp(
+	email: &str,
+	first_name: &str,
+	last_name: &str,
+	config: &Settings,
+) -> Result<(), Error> {
+	let _ = Client::new()
+		.put(format!(
+			"https://us20.api.mailchimp.com/3.0/lists/{}/members/{}",
+			config.mailchimp.list_id, email
+		))
+		.basic_auth("anystring", Some(config.mailchimp.api_key.clone()))
+		.json(&json!({
+			"email_address": email,
+			"status": "subscribed",
+			"tags": ["patr-app-user"],
+			"merge_fields": {
+				"FNAME": first_name,
+				"LNAME": last_name
+			}
+		}))
 		.send()
 		.await;
 
