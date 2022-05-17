@@ -1117,6 +1117,7 @@ async fn get_workspaces_for_user(
 		id: workspace.id,
 		name: workspace.name,
 		active: workspace.active,
+		super_admin_id: workspace.super_admin_id,
 	})
 	.collect::<Vec<_>>();
 

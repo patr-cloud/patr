@@ -343,6 +343,33 @@ pub struct BillingAddress {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerInfo {
+	pub customer: BillingInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingInfo {
+	pub billing_address: Option<BillingInfoData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingInfoData {
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub first_name: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub last_name: Option<String>,
+	pub line1: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub line2: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub line3: Option<String>,
+	pub city: String,
+	pub state: String,
+	pub zip: String,
+	pub country: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Subscription {
 	pub id: String,
 	#[serde(rename = "subscription_items[item_price_id][0]")]
@@ -487,23 +514,6 @@ pub struct SubscriptionItem {
 	pub amount: u64,
 	pub object: String,
 }
-
-/*
-{
-	"hosted_page": {
-		"id": "5own0wCWwqY7HEaQcdhCES4sgEq6Ow3h9",
-		"type": "manage_payment_sources",
-		"url": "https://vicara-test.chargebee.com/pages/v3/5own0wCWwqY7HEaQcdhCES4sgEq6Ow3h9/",
-		"state": "created",
-		"embed": false,
-		"created_at": 1648127941,
-		"expires_at": 1648559941,
-		"object": "hosted_page",
-		"updated_at": 1648127941,
-		"resource_version": 1648127941174
-	}
-}
-*/
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

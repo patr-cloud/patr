@@ -403,6 +403,30 @@ async fn join(
 	)
 	.await;
 
+	let user =
+		db::get_user_by_username(context.get_database_connection(), &username)
+			.await?
+			.status(500)?;
+
+	if let Some((email_local, domain_id)) =
+		user.recovery_email_local.zip(user.recovery_email_domain_id)
+	{
+		let domain = db::get_personal_domain_by_id(
+			context.get_database_connection(),
+			&domain_id,
+		)
+		.await?
+		.status(500)?;
+
+		let _ = service::include_user_to_mailchimp(
+			&format!("{}@{}", email_local, domain.name),
+			&user.first_name,
+			&user.last_name,
+			&config,
+		)
+		.await;
+	}
+
 	context.success(CompleteSignUpResponse {
 		access_token: join_user.jwt,
 		login_id: join_user.login_id,
