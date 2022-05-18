@@ -19,6 +19,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
+pub enum WorkspaceMetadata {
+	Update { name: String },
+	Delete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "action")]
 pub enum DeploymentMetadata {
 	Create {
 		deployment: Deployment,
@@ -46,16 +53,14 @@ pub enum DeploymentMetadata {
 	},
 	Stop {},
 	Delete {},
-	UpdateImage {
-		digest: String,
-	},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum RepositoryMetaData {
 	Create { repo_name: String },
-	DeleteImage { image_digest: String },
+	UpdateImage { digest: String },
+	DeleteImage { digest: String },
 	Delete,
 }
 
@@ -63,7 +68,7 @@ pub enum RepositoryMetaData {
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum SecretMetaData {
 	Create,
-	Edit,
+	Update,
 	Delete,
 }
 

@@ -99,7 +99,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_managed_url)),
 		],
 	);
@@ -140,7 +140,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_managed_url)),
 		],
 	);
@@ -181,7 +181,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_url)),
 		],
 	);

@@ -20,13 +20,17 @@ use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::rbac::{self, permissions},
+	models::{
+		rbac::{self, permissions, PERMISSIONS},
+		WorkspaceMetadata,
+	},
 	pin_fn,
 	redis,
 	service::{self, get_access_token_expiry},
 	utils::{
 		constants::request_keys,
 		get_current_time_millis,
+		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -109,6 +113,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_workspace_info)),
 		],
 	);
@@ -153,6 +158,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_workspace)),
 		],
 	);
@@ -480,6 +486,17 @@ async fn update_workspace_info(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData {
+		resource_id: workspace_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| map.get(permissions::workspace::EDIT).cloned())
+			.unwrap(),
+		metadata: Some(serde_json::to_value(WorkspaceMetadata::Update {
+			name,
+		})?),
+	});
+
 	context.success(UpdateWorkspaceInfoResponse {});
 	Ok(context)
 }
@@ -574,6 +591,15 @@ async fn delete_workspace(
 		Some(ttl),
 	)
 	.await?;
+
+	context.set_audit_log_data(AuditLogData {
+		resource_id: workspace_id,
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| map.get(permissions::workspace::DELETE).cloned())
+			.unwrap(),
+		metadata: Some(serde_json::to_value(WorkspaceMetadata::Delete)?),
+	});
 
 	log::trace!("request_id: {} - deleted the workspace", request_id);
 	context.success(DeleteWorkspaceResponse {});

@@ -1,4 +1,5 @@
 use api_models::models::workspace::infrastructure::deployment::DeploymentStatus;
+use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use serde_json::json;
 
@@ -8,8 +9,10 @@ use crate::{
 	error,
 	models::{
 		error::{id as ErrorId, message as ErrorMessage},
+		rbac::{permissions, PERMISSIONS},
 		Action,
 		EventData,
+		RepositoryMetaData,
 	},
 	pin_fn,
 	service,
@@ -262,6 +265,35 @@ pub async fn notification_handler(
 			)
 			.await?;
 		}
+
+		let audit_log_id = db::generate_new_workspace_audit_log_id(
+			context.get_database_connection(),
+		)
+		.await?;
+		let ip_address = context.get_request_ip_address();
+		db::create_workspace_audit_log(
+			context.get_database_connection(),
+			&audit_log_id,
+			&workspace.id,
+			&ip_address.to_string(),
+			Utc::now().into(),
+			None,
+			None,
+			&repository.id,
+			PERMISSIONS
+				.get()
+				.and_then(|map| {
+					map.get(permissions::workspace::docker_registry::INFO)
+				})
+				.unwrap(),
+			&request_id,
+			&serde_json::to_value(RepositoryMetaData::UpdateImage {
+				digest: target.digest,
+			})?,
+			true, // action is done by patr as used has pushed the image
+			true,
+		)
+		.await?;
 	}
 
 	Ok(context)

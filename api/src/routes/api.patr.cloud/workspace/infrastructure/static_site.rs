@@ -168,7 +168,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
 		],
 	);
@@ -209,7 +209,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
 		],
 	);
@@ -250,7 +250,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
 		],
 	);
@@ -283,7 +283,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(
 				create_static_site_deployment
 			)),
@@ -326,7 +326,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
 		],
 	);

@@ -178,8 +178,10 @@ impl EveContext {
 	/// Set the audit log data and
 	/// returns previously set audit log data if present
 	///
-	/// NOTE: For maintaining consistency, add audit log data to eve context
-	///       just before returing success reponse
+	/// ### Note:
+	/// Set audit log data to EveContext just before returning success response
+	/// from endpoint handler so that audit logs will be added only if the whole
+	/// operation is success
 	pub fn set_audit_log_data(
 		&mut self,
 		metadata: AuditLogData,

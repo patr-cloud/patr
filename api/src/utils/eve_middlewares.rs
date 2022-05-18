@@ -63,11 +63,20 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
-	/// A middleware for adding eve context's audit log data to DB
+	/// A middleware for adding workspace resource audit log data to DB from
+	/// [EveContext].
 	///
-	/// NOTE: It should be used only on workspace endpoints where routes will
-	///       have workspace_id in their path
-	WorkspaceAuditLogger,
+	/// ### Note:
+	/// * This middleware should be used only on workspace routes based on
+	///   resource_id of DB.
+	/// * Add this middleware after the
+	///   [EveMiddleware::ResourceTokenAuthenticator] middlware as login_id and
+	///   user_id from ResourceTokenAuthenticator will be used.
+	///
+	/// ### Panics:
+	/// If the user_id, login_id and workspace_id are missing then it will
+	/// panic.
+	WorkspaceResourceAuditLogger,
 }
 
 #[async_trait]
@@ -220,12 +229,22 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					next(context).await
 				}
 			}
-			EveMiddleware::WorkspaceAuditLogger => {
+			EveMiddleware::WorkspaceResourceAuditLogger => {
 				let mut context = next(context).await?;
 
 				let audit_log_data = match context.get_audit_log_data() {
 					Some(audit_log_data) => audit_log_data.clone(),
-					None => return Ok(context),
+					None => {
+						if cfg!(debug_assertions) {
+							panic!("For route `{} {}`, AuditLogData is not set in the EveContext. \
+									Consider adding AuditLogData to EveContext or remove WorkspaceResourceAuditLogger middleware layer for this route.\
+									", context.get_method(), context.get_path());
+						} else {
+							return Error::as_result()
+								.status(500)
+								.body(error!(SERVER_ERROR).to_string())?;
+						}
+					}
 				};
 
 				let request_id = context.get_request_id().clone();

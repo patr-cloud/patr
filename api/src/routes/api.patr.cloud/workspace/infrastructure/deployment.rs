@@ -134,7 +134,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_deployment)),
 		],
 	);
@@ -369,7 +369,6 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_deployment)),
 		],
 	);

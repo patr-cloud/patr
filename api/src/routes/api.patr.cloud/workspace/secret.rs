@@ -99,7 +99,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_secret)),
 		],
 	);
@@ -139,7 +139,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_secret)),
 		],
 	);
@@ -179,7 +179,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceAuditLogger,
+			EveMiddleware::WorkspaceResourceAuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_secret)),
 		],
 	);
@@ -305,7 +305,7 @@ async fn update_secret(
 				map.get(permissions::workspace::secret::EDIT).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(SecretMetaData::Edit)?),
+		metadata: Some(serde_json::to_value(SecretMetaData::Update)?),
 	});
 
 	context.success(UpdateWorkspaceSecretResponse {});
