@@ -270,12 +270,11 @@ pub async fn notification_handler(
 			context.get_database_connection(),
 		)
 		.await?;
-		let ip_address = context.get_request_ip_address();
 		db::create_workspace_audit_log(
 			context.get_database_connection(),
 			&audit_log_id,
 			&workspace.id,
-			&ip_address.to_string(),
+			&event.request.addr,
 			Utc::now().into(),
 			None,
 			None,
@@ -288,9 +287,13 @@ pub async fn notification_handler(
 				.unwrap(),
 			&request_id,
 			&serde_json::to_value(RepositoryMetaData::UpdateImage {
+				updated_by: event.actor.name,
 				digest: target.digest,
 			})?,
-			true, // action is done by patr as used has pushed the image
+			// action is done by user by pushing the docker image, but for now
+			// consider it as patr action due to
+			// `workspace_audit_log_chk_patr_action` constrain
+			true,
 			true,
 		)
 		.await?;

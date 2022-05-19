@@ -60,7 +60,7 @@ pub enum DeploymentMetadata {
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum RepositoryMetaData {
 	Create { repo_name: String },
-	UpdateImage { digest: String },
+	UpdateImage { updated_by: String, digest: String },
 	DeleteImage { digest: String },
 	Delete,
 }

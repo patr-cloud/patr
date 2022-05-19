@@ -169,19 +169,32 @@ pub struct TargetReference {
 	pub digest: String,
 }
 
+/// Request covers the request that generated the event.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Request {
+	/// ID uniquely identifies the request that initiated the event.
 	pub id: String,
+	/// Addr contains the ip or hostname and possibly port of the client
+	/// connection that initiated the event. This is the RemoteAddr from
+	/// the standard http request.
 	pub addr: String,
+	/// Host is the externally accessible host name of the registry instance,
+	/// as specified by the http host header on incoming requests.
 	pub host: String,
+	/// Method has the request method that generated the event.
 	pub method: String,
+	/// UserAgent contains the user agent header of the request.
 	pub useragent: String,
 }
 
+/// Actor specifies the agent that initiated the event. For most situations,
+/// this could be from the authorization context of the request.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Actor {
+	/// Name corresponds to the subject or username associated with the
+	/// request context that generated the event.
 	#[serde(default, skip_serializing_if = "String::is_empty")]
 	pub name: String,
 }
