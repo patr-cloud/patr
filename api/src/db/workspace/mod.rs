@@ -56,6 +56,7 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
+			alert_emails VARCHAR(320) [],
 			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
 			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
 				CHECK(

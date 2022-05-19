@@ -567,3 +567,30 @@ pub struct HostedPage {
 	pub updated_at: u64,
 	pub resource_version: u64,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KubernetesEventData {
+	pub reason: String,
+	pub message: String,
+	pub involved_object: InvolvedObject,
+	pub r#type: String,
+	pub first_timestamp: DateTime<Utc>,
+	pub last_timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InvolvedObject {
+	pub kind: String,
+	pub namespace: String,
+	pub name: String,
+	pub labels: Labels,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Labels {
+	pub deployment_id: String,
+	pub workspace_id: String,
+}

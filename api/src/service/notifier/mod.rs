@@ -339,3 +339,49 @@ async fn get_user_phone_number(
 	let phone_number = format!("+{}{}", country_code.phone_code, phone_number);
 	Ok(phone_number)
 }
+
+/// # Description
+/// This function is used to send alert to the user
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `workspace_name` - a Uuid containing id of the workspace
+/// * `deployment_id` - a Uuid containing id of the deployment
+/// * `deployment_name` - a string containing name of the deployment
+/// * `message` - s tring containing message of the alert
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_alert_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	user: &User,
+	workspace_name: &str,
+	deployment_id: &Uuid,
+	deployment_name: &str,
+	message: &str,
+) -> Result<(), Error> {
+	let email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string())?,
+	)
+	.await?;
+	// send email
+	email::send_alert_email(
+		email.parse()?,
+		workspace_name,
+		deployment_id,
+		deployment_name,
+		message,
+	)
+	.await
+}

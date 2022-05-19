@@ -10,6 +10,7 @@ use crate::{
 	db,
 	error,
 	models::{
+		deployment::KubernetesEventData,
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
 		EventData,
@@ -50,11 +51,15 @@ pub fn create_sub_app(
 		[EveMiddleware::CustomFunction(pin_fn!(notification_handler))],
 	);
 
+	sub_app.post(
+		"/kubernetes-events",
+		[EveMiddleware::CustomFunction(pin_fn!(deployment_alert))],
+	);
+
 	sub_app
 }
 
 /// # Description
-/// This function is used to handle all the notifications of the API.
 /// This function will detect a push being made to a tag, and in case a
 /// deployment exists with the given tag, it will automatically update the
 /// `deployed_image` of the given [`Deployment`] in the database
@@ -73,7 +78,7 @@ pub fn create_sub_app(
 /// [`EveContext`]: EveContext
 /// [`NextHandler`]: NextHandler
 /// [`Deployment`]: Deployment
-pub async fn notification_handler(
+async fn notification_handler(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
@@ -265,6 +270,121 @@ pub async fn notification_handler(
 			)
 			.await?;
 		}
+	}
+
+	Ok(context)
+}
+
+/// # Description
+/// This function is used to catch the alerts coming from the kubernetes
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+/// [`Deployment`]: Deployment
+async fn deployment_alert(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
+
+	log::trace!(
+		"request_id: {} - Checking the content type of the request",
+		request_id
+	);
+
+	if context.get_content_type().as_str() != "application/json" {
+		return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+	}
+
+	log::trace!(
+		"request_id: {} - Checking the Authorization header",
+		request_id
+	);
+	let custom_header = context.get_header("Authorization").status(400).body(
+		json!({
+			request_keys::ERRORS: [{
+				request_keys::CODE: ErrorId::UNAUTHORIZED,
+				request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_NOT_FOUND,
+				request_keys::DETAIL: []
+			}]
+		})
+		.to_string(),
+	)?;
+
+	let config = context.get_state().config.clone();
+	log::trace!(
+		"request_id: {} - Parsing the Custom Authorization header",
+		request_id
+	);
+
+	if custom_header != config.kubernetes.authorization_header {
+		Error::as_result().status(400).body(
+			json!({
+				request_keys::ERRORS: [{
+					request_keys::CODE: ErrorId::UNAUTHORIZED,
+					request_keys::MESSAGE: ErrorMessage::AUTHORIZATION_PARSE_ERROR,
+					request_keys::DETAIL: []
+				}]
+			})
+			.to_string(),
+		)?;
+	}
+
+	let body = context.get_body()?;
+
+	let kube_events: KubernetesEventData = serde_json::from_str(&body)?;
+
+	if kube_events.message == *"Back-off restarting failed container".to_string()
+	{
+		let workspace_id =
+			Uuid::parse_str(&kube_events.involved_object.namespace)?;
+
+		let workspace = db::get_workspace_info(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+		.status(500)?;
+
+		let deployment_id =
+			Uuid::parse_str(&kube_events.involved_object.labels.deployment_id)?;
+
+		let deployment = db::get_deployment_by_id(
+			context.get_database_connection(),
+			&deployment_id,
+		)
+		.await?
+		.status(500)?;
+
+		let user = db::get_user_by_user_id(
+			context.get_database_connection(),
+			&workspace.super_admin_id,
+		)
+		.await?
+		.status(500)?;
+
+		service::send_alert_email(
+			context.get_database_connection(),
+			&user,
+			&workspace.name,
+			&deployment_id,
+			&deployment.name,
+			"The deployment encountered some errror please check logs to find out.",
+		)
+		.await?;
 	}
 
 	Ok(context)
