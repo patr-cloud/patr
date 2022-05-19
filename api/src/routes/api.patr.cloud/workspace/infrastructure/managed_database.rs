@@ -14,8 +14,8 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -85,7 +85,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_database_cluster)),
 		],
 	);
@@ -162,7 +162,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_database)),
 		],
 	);
@@ -319,7 +319,8 @@ async fn create_database_cluster(
 		database_plan: database_plan.to_string(),
 		region: region.to_owned(),
 	};
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: database_id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -384,7 +385,9 @@ async fn delete_managed_database(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = context.get_request_id().clone();
-
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let database_id =
 		Uuid::parse_str(context.get_param(request_keys::DATABASE_ID).unwrap())
 			.unwrap();
@@ -405,7 +408,8 @@ async fn delete_managed_database(
 	)
 	.await;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: database_id,
 		action_id: PERMISSIONS
 			.get()

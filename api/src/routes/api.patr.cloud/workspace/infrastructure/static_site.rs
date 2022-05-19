@@ -32,8 +32,8 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -168,7 +168,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(start_static_site)),
 		],
 	);
@@ -209,7 +209,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
 		],
 	);
@@ -250,7 +250,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(stop_static_site)),
 		],
 	);
@@ -283,7 +283,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(
 				create_static_site_deployment
 			)),
@@ -326,7 +326,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_static_site)),
 		],
 	);
@@ -564,7 +564,8 @@ async fn create_static_site_deployment(
 	)
 	.await;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -640,7 +641,8 @@ async fn start_static_site(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id: static_site.workspace_id,
 		resource_id: static_site_id,
 		action_id: PERMISSIONS
 			.get()
@@ -701,7 +703,7 @@ async fn update_static_site(
 		request_id
 	);
 	let UpdateStaticSiteRequest {
-		workspace_id: _,
+		workspace_id,
 		static_site_id: _,
 		name,
 		file,
@@ -724,7 +726,8 @@ async fn update_static_site(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: static_site_id,
 		action_id: PERMISSIONS
 			.get()
@@ -776,7 +779,9 @@ async fn stop_static_site(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
 	.unwrap();
-
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let request_id = context.get_request_id().clone();
 	log::trace!(
 		"request_id: {} - Stopping a static site with id: {}",
@@ -794,7 +799,8 @@ async fn stop_static_site(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: static_site_id,
 		action_id: PERMISSIONS
 			.get()
@@ -840,7 +846,9 @@ async fn delete_static_site(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = context.get_request_id().clone();
-
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -868,7 +876,8 @@ async fn delete_static_site(
 	)
 	.await;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: static_site_id,
 		action_id: PERMISSIONS
 			.get()

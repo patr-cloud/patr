@@ -45,9 +45,9 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
 		get_current_time,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -134,7 +134,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_deployment)),
 		],
 	);
@@ -733,7 +733,8 @@ async fn create_deployment(
 		running_details: deployment_running_details.clone(),
 	})?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: id.clone(),
 		action_id,
 		metadata: Some(metadata),

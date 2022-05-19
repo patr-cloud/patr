@@ -33,8 +33,8 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -120,7 +120,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(add_domain_to_workspace)),
 		],
 	);
@@ -238,7 +238,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_domain_in_workspace)),
 		],
 	);
@@ -315,7 +315,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(add_dns_record)),
 		],
 	);
@@ -354,7 +354,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_dns_record)),
 		],
 	);
@@ -392,7 +392,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_dns_record)),
 		],
 	);
@@ -532,7 +532,8 @@ async fn add_domain_to_workspace(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: domain_id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -772,7 +773,8 @@ async fn delete_domain_in_workspace(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: domain_id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -892,7 +894,8 @@ async fn add_dns_record(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: record_id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -920,6 +923,9 @@ async fn update_dns_record(
 ) -> Result<EveContext, Error> {
 	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Updating dns record", request_id);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
 
@@ -954,7 +960,8 @@ async fn update_dns_record(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: record_id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -982,6 +989,9 @@ async fn delete_dns_record(
 ) -> Result<EveContext, Error> {
 	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Deleting dns record", request_id);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let domain_id = context.get_param(request_keys::DOMAIN_ID).unwrap();
 	let domain_id = Uuid::parse_str(domain_id)?;
 
@@ -999,7 +1009,8 @@ async fn delete_dns_record(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: record_id.clone(),
 		action_id: PERMISSIONS
 			.get()

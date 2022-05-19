@@ -1,8 +1,6 @@
 use std::{future::Future, pin::Pin};
 
-use api_models::utils::Uuid;
 use async_trait::async_trait;
-use chrono::Utc;
 use eve_rs::{
 	default_middlewares::{
 		compression::CompressionHandler,
@@ -18,12 +16,11 @@ use eve_rs::{
 	NextHandler,
 };
 use redis::aio::MultiplexedConnection as RedisConnection;
-use serde_json::json;
 
-use super::{constants::request_keys, get_current_time_millis};
+use super::{audit_logger, get_current_time_millis};
 use crate::{
 	app::App,
-	db::{self, Resource},
+	db::Resource,
 	error,
 	models::{
 		rbac::{self, GOD_USER_ID},
@@ -63,20 +60,17 @@ pub enum EveMiddleware {
 		String,
 		Box<EveApp<EveContext, EveMiddleware, App, ErrorData>>,
 	),
-	/// A middleware for adding workspace resource audit log data to DB from
-	/// [EveContext].
+	/// A middleware for adding [AuditLogData] from [EveContext] to DB.
 	///
 	/// ### Note:
-	/// * This middleware should be used only on workspace routes based on
-	///   resource_id of DB.
-	/// * Add this middleware after the
-	///   [EveMiddleware::ResourceTokenAuthenticator] middlware as login_id and
-	///   user_id from ResourceTokenAuthenticator will be used.
+	/// * Add this middleware after [EveMiddleware::ResourceTokenAuthenticator]
+	///   or [EveMiddleware::PlainTokenAuthenticator] as this middleware
+	///   depends on login_id and user_id.
+	/// * This middleware should be added to a route only once.
 	///
 	/// ### Panics:
-	/// If the user_id, login_id and workspace_id are missing then it will
-	/// panic.
-	WorkspaceResourceAuditLogger,
+	/// If the user_id and login_id are missing then it will panic.
+	AuditLogger,
 }
 
 #[async_trait]
@@ -229,15 +223,15 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					next(context).await
 				}
 			}
-			EveMiddleware::WorkspaceResourceAuditLogger => {
+			EveMiddleware::AuditLogger => {
 				let mut context = next(context).await?;
 
-				let audit_log_data = match context.get_audit_log_data() {
-					Some(audit_log_data) => audit_log_data.clone(),
+				let audit_log_data = match context.take_audit_log_data() {
+					Some(audit_log_data) => audit_log_data,
 					None => {
 						if cfg!(debug_assertions) {
 							panic!("For route `{} {}`, AuditLogData is not set in the EveContext. \
-									Consider adding AuditLogData to EveContext or remove WorkspaceResourceAuditLogger middleware layer for this route.\
+									Consider adding AuditLogData to EveContext or remove AuditLogger middleware for this route.\
 									", context.get_method(), context.get_path());
 						} else {
 							return Error::as_result()
@@ -248,12 +242,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				};
 
 				let request_id = context.get_request_id().clone();
-				let workspace_id = Uuid::parse_str(
-					context.get_param(request_keys::WORKSPACE_ID)
-						.expect("WorkspaceAuditLogger should be used on routes where workspace_id is present"),
-				)
-				.unwrap();
-				let ip_address = context.get_request_ip_address();
+				let ip_addr = context.get_request_ip_address();
 				let user_id = context
 					.get_token_data()
 					.map(|token| token.user.id.clone())
@@ -263,25 +252,13 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					.map(|token| token.login_id.clone())
 					.expect("login_id is missing");
 
-				let audit_log_id = db::generate_new_workspace_audit_log_id(
+				audit_logger::add_audit_log(
 					context.get_database_connection(),
-				)
-				.await?;
-
-				db::create_workspace_audit_log(
-					context.get_database_connection(),
-					&audit_log_id,
-					&workspace_id,
-					&ip_address.to_string(),
-					Utc::now().into(),
-					Some(&user_id),
-					Some(&login_id),
-					&audit_log_data.resource_id,
-					&audit_log_data.action_id,
 					&request_id,
-					&audit_log_data.metadata.unwrap_or_else(|| json!({})),
-					false, // action done by the user thorough api
-					true,
+					&ip_addr,
+					&user_id,
+					&login_id,
+					audit_log_data,
 				)
 				.await?;
 

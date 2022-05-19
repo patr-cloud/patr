@@ -28,9 +28,9 @@ use crate::{
 	redis,
 	service::{self, get_access_token_expiry},
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
 		get_current_time_millis,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -76,6 +76,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_new_workspace)),
 		],
 	);
@@ -113,7 +114,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_workspace_info)),
 		],
 	);
@@ -158,7 +159,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_workspace)),
 		],
 	);
@@ -413,6 +414,18 @@ async fn create_new_workspace(
 	)
 	.await?;
 
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id: workspace_id.clone(),
+		resource_id: workspace_id.clone(),
+		action_id: PERMISSIONS
+			.get()
+			.and_then(|map| map.get(permissions::workspace::EDIT).cloned())
+			.unwrap(),
+		metadata: Some(serde_json::to_value(WorkspaceMetadata::Create {
+			name: workspace_name,
+		})?),
+	});
+
 	context.success(CreateNewWorkspaceResponse { workspace_id });
 	Ok(context)
 }
@@ -485,7 +498,8 @@ async fn update_workspace_info(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id: workspace_id.clone(),
 		resource_id: workspace_id,
 		action_id: PERMISSIONS
 			.get()
@@ -591,7 +605,8 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id: workspace_id.clone(),
 		resource_id: workspace_id,
 		action_id: PERMISSIONS
 			.get()

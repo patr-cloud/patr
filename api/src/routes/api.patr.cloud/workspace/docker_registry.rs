@@ -28,10 +28,10 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
 		get_current_time_millis,
 		validator,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -86,7 +86,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_docker_repository)),
 		],
 	);
@@ -316,7 +316,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(
 				delete_docker_repository_image
 			)),
@@ -358,7 +358,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_docker_repository)),
 		],
 	);
@@ -494,7 +494,8 @@ async fn create_docker_repository(
 	let metadata = serde_json::to_value(RepositoryMetaData::Create {
 		repo_name: repository,
 	})?;
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: resource_id.clone(),
 		action_id: action_id.clone(),
 		metadata: Some(metadata),
@@ -853,6 +854,9 @@ async fn delete_docker_repository_image(
 		"request_id: {} - Deleting docker repository image",
 		request_id
 	);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let repository_id_string = context
 		.get_param(request_keys::REPOSITORY_ID)
 		.unwrap()
@@ -876,7 +880,8 @@ async fn delete_docker_repository_image(
 		.unwrap();
 	let metadata =
 		serde_json::to_value(RepositoryMetaData::DeleteImage { digest })?;
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: repository_id, // repo id and resource id is same
 		action_id: action_id.clone(),
 		metadata: Some(metadata),
@@ -926,6 +931,9 @@ async fn delete_docker_repository(
 ) -> Result<EveContext, Error> {
 	let request_id = context.get_request_id().clone();
 	log::trace!("request_id: {} - Deleting docker repository", request_id);
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let repo_id_string =
 		context.get_param(request_keys::REPOSITORY_ID).unwrap();
 	let repository_id = Uuid::parse_str(repo_id_string).unwrap();
@@ -958,7 +966,8 @@ async fn delete_docker_repository(
 		})
 		.unwrap();
 	let metadata = serde_json::to_value(RepositoryMetaData::Delete)?;
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: repository_id, // repo id and resource id is same
 		action_id: action_id.clone(),
 		metadata: Some(metadata),

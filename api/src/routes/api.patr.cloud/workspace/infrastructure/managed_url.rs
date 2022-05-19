@@ -25,8 +25,8 @@ use crate::{
 	pin_fn,
 	service,
 	utils::{
+		audit_logger::AuditLogData,
 		constants::request_keys,
-		AuditLogData,
 		Error,
 		ErrorData,
 		EveContext,
@@ -99,7 +99,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(create_managed_url)),
 		],
 	);
@@ -140,7 +140,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(update_managed_url)),
 		],
 	);
@@ -181,7 +181,7 @@ pub fn create_sub_app(
 					Ok((context, resource))
 				}),
 			),
-			EveMiddleware::WorkspaceResourceAuditLogger,
+			EveMiddleware::AuditLogger,
 			EveMiddleware::CustomFunction(pin_fn!(delete_managed_url)),
 		],
 	);
@@ -277,7 +277,8 @@ async fn create_managed_url(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: id.clone(),
 		action_id: PERMISSIONS
 			.get()
@@ -318,7 +319,7 @@ async fn update_managed_url(
 	);
 	let UpdateManagedUrlRequest {
 		managed_url_id: _,
-		workspace_id: _,
+		workspace_id,
 		path,
 		url_type,
 	} = context
@@ -338,7 +339,8 @@ async fn update_managed_url(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: managed_url_id,
 		action_id: PERMISSIONS
 			.get()
@@ -389,7 +391,8 @@ async fn delete_managed_url(
 	)
 	.await?;
 
-	context.set_audit_log_data(AuditLogData {
+	context.set_audit_log_data(AuditLogData::WorkspaceResource {
+		workspace_id,
 		resource_id: managed_url_id,
 		action_id: PERMISSIONS
 			.get()

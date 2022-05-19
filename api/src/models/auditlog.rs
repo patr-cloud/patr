@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum WorkspaceMetadata {
+	Create { name: String },
 	Update { name: String },
 	Delete,
 }

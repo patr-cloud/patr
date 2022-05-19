@@ -18,21 +18,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::Transaction;
 
-use super::Error;
+use super::{audit_logger::AuditLogData, Error};
 use crate::{app::App, models::AccessTokenData, Database};
-
-/// Audit Log data used by WorkspaceAuditLog middleware
-#[derive(Debug, Clone)]
-pub struct AuditLogData {
-	/// The resource id on which the action is done,
-	/// refers to resourse table's id
-	pub resource_id: Uuid,
-	/// The action which is done on the resource,
-	/// refers to permission table's id
-	pub action_id: Uuid,
-	/// Optional action specific metadata that needs to be logged
-	pub metadata: Option<Value>,
-}
 
 pub struct EveContext {
 	request: Request,
@@ -171,6 +158,7 @@ impl EveContext {
 	}
 
 	/// Get a reference to the audit log data if already set
+	#[allow(dead_code)]
 	pub fn get_audit_log_data(&self) -> Option<&AuditLogData> {
 		self.audit_log_data.as_ref()
 	}
@@ -187,6 +175,12 @@ impl EveContext {
 		metadata: AuditLogData,
 	) -> Option<AuditLogData> {
 		self.audit_log_data.replace(metadata)
+	}
+
+	/// Takes the AuditLogData out of the EveContext, leaving a None in its
+	/// place.
+	pub fn take_audit_log_data(&mut self) -> Option<AuditLogData> {
+		self.audit_log_data.take()
 	}
 
 	/// Get a mutable reference to the audit log data.
