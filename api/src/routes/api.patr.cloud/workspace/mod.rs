@@ -290,6 +290,7 @@ async fn get_workspace_info(
 		name: workspace.name,
 		active: workspace.active,
 		super_admin_id: workspace.super_admin_id,
+		alert_emails: workspace.alert_emails,
 	})
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
@@ -381,7 +382,10 @@ async fn create_new_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let CreateNewWorkspaceRequest { workspace_name } = context
+	let CreateNewWorkspaceRequest {
+		workspace_name,
+		alert_emails,
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -395,6 +399,7 @@ async fn create_new_workspace(
 		&workspace_name,
 		&user_id,
 		false,
+		alert_emails.as_ref(),
 		&config,
 	)
 	.await?;
@@ -445,38 +450,45 @@ async fn update_workspace_info(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let UpdateWorkspaceInfoRequest { name, .. } = context
+	let UpdateWorkspaceInfoRequest {
+		name, alert_emails, ..
+	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let name = name.trim().to_lowercase();
 
 	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
 
-	if name.is_empty() {
-		// No parameters to update
-		Error::as_result()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?;
+	if let Some(ref workspace_name) = name {
+		let workspace_name = workspace_name.trim().to_lowercase();
+
+		if workspace_name.is_empty() {
+			// No parameters to update
+			Error::as_result()
+				.status(400)
+				.body(error!(WRONG_PARAMETERS).to_string())?;
+		}
+
+		let allowed = service::is_workspace_name_allowed(
+			context.get_database_connection(),
+			&workspace_name,
+			false,
+		)
+		.await?;
+
+		if !allowed {
+			Error::as_result()
+				.status(400)
+				.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
+		}
 	}
 
-	let allowed = service::is_workspace_name_allowed(
-		context.get_database_connection(),
-		&name,
-		false,
-	)
-	.await?;
-	if !allowed {
-		Error::as_result()
-			.status(400)
-			.body(error!(INVALID_WORKSPACE_NAME).to_string())?;
-	}
-
-	db::update_workspace_name(
+	db::update_workspace_info(
 		context.get_database_connection(),
 		&workspace_id,
-		&name,
+		name,
+		alert_emails,
 	)
 	.await?;
 

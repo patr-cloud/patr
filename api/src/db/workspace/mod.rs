@@ -222,6 +222,7 @@ pub async fn create_workspace(
 	workspace_id: &Uuid,
 	name: &str,
 	super_admin_id: &Uuid,
+	alert_emails: &[String],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -231,16 +232,18 @@ pub async fn create_workspace(
 				name,
 				super_admin_id,
 				active,
+				alert_emails,
 				drone_username,
 				drone_token
 			)
 		VALUES
-			($1, $2, $3, $4, NULL, NULL);
+			($1, $2, $3, $4, $5, NULL, NULL);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
+		alert_emails as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -316,6 +319,49 @@ pub async fn update_workspace_name(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn update_workspace_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	name: Option<String>,
+	alert_emails: Option<Vec<String>>,
+) -> Result<(), sqlx::Error> {
+	if let Some(name) = name {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				name = $1
+			WHERE
+				id = $2;
+			"#,
+			name as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(alert_emails) = alert_emails {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				alert_emails = $1
+			WHERE
+				id = $2;
+			"#,
+			alert_emails as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
 
 pub async fn create_workspace_audit_log(
