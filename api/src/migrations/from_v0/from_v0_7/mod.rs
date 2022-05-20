@@ -8,6 +8,7 @@ use crate::{
 mod from_v0_7_0;
 mod from_v0_7_1;
 mod from_v0_7_2;
+mod from_v0_7_3;
 
 /// # Description
 /// The function is used to migrate the database from one version to another
@@ -32,6 +33,7 @@ pub async fn migrate(
 		(0, 7, 0) => from_v0_7_0::migrate(&mut *connection, config).await,
 		(0, 7, 1) => from_v0_7_1::migrate(&mut *connection, config).await,
 		(0, 7, 2) => from_v0_7_2::migrate(&mut *connection, config).await,
+		(0, 7, 3) => from_v0_7_3::migrate(&mut *connection, config).await,
 		_ => {
 			panic!("Migration from version {} is not implemented yet!", version)
 		}
@@ -46,5 +48,5 @@ pub async fn migrate(
 /// This function returns [&'static str; _] containing a list of all migration
 /// versions
 pub fn get_migrations() -> Vec<&'static str> {
-	vec!["0.7.0", "0.7.1", "0.7.2"]
+	vec!["0.7.0", "0.7.1", "0.7.2", "0.7.3"]
 }
