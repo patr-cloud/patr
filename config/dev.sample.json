@@ -109,5 +109,9 @@
 	},
 	"drone": {
 		"url": "drone-ip"
+	},
+	"github": {
+		"client_id": "app-client-id",
+		"client_secret": "app-client-secret"
 	}
 }

@@ -1,6 +1,6 @@
 use api_models::models::workspace::ci::github::{
+	GithubAuthCallbackResponse,
 	GithubAuthResponse,
-	GithubOauthResponseUrl,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 use reqwest::header::COOKIE;
@@ -46,7 +46,7 @@ pub fn create_sub_app(
 	);
 
 	app.get(
-		"/",
+		"/auth",
 		[
 			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(connect_to_github)),
@@ -77,7 +77,7 @@ async fn connect_to_github(
 
 	let oauth_url = oauth_url.to_str()?;
 
-	context.success(GithubOauthResponseUrl {
+	context.success(GithubAuthResponse {
 		oauth_url: oauth_url.to_string(),
 	});
 	Ok(context)
@@ -118,7 +118,7 @@ async fn github_oauth_callback(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
-	context.success(GithubAuthResponse {});
+	context.success(GithubAuthCallbackResponse {});
 
 	Ok(context)
 }
