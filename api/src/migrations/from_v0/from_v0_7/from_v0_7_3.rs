@@ -18,12 +18,11 @@ async fn add_github_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	for &permission in ["workspace::github::auth::create"].iter() {
-		let uuid = loop {
-			let uuid = Uuid::new_v4();
+	let permission = "workspace::github::auth::create";
+	let uuid = Uuid::new_v4();
 
-			let exists = query!(
-				r#"
+	let exists = query!(
+		r#"
 				SELECT
 					*
 				FROM
@@ -31,23 +30,20 @@ async fn add_github_permissions(
 				WHERE
 					id = $1;
 				"#,
-				&uuid
-			)
-			.fetch_optional(&mut *connection)
-			.await?
-			.is_some();
+		&uuid
+	)
+	.fetch_optional(&mut *connection)
+	.await?
+	.is_some();
 
-			if !exists {
-				// That particular resource ID doesn't exist. Use it
-				break uuid;
-			}
-		};
+	if !exists {
+		// That particular resource ID doesn't exist. Use it
 		query!(
 			r#"
 			INSERT INTO
-				permission
+			permission
 			VALUES
-				($1, $2, $3);
+			($1, $2, $3);
 			"#,
 			&uuid,
 			permission,
