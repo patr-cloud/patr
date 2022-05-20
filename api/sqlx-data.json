@@ -1479,16 +1479,16 @@
     }
   },
   "266a1c952223fefd2a2e0fa2d9ea716b06e7f2a79829fd7bb129dc70f0bcaaa7": {
+    "query": "UPDATE workspace SET drone_username = NULL AND drone_token = NULL WHERE id = $1;",
     "describe": {
       "columns": [],
-      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid"
         ]
-      }
-    },
-    "query": "UPDATE workspace SET drone_username = NULL AND drone_token = NULL WHERE id = $1;"
+      },
+      "nullable": []
+    }
   },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );",
@@ -2030,30 +2030,30 @@
     }
   },
   "398b1a1b1dddce0dbc830251e983b322b76bccd24385a9484a398de91adece60": {
+    "query": "SELECT drone_username, drone_token FROM workspace WHERE id = $1;",
     "describe": {
       "columns": [
         {
-          "name": "drone_username",
           "ordinal": 0,
+          "name": "drone_username",
           "type_info": "Text"
         },
         {
-          "name": "drone_token",
           "ordinal": 1,
+          "name": "drone_token",
           "type_info": "Text"
         }
-      ],
-      "nullable": [
-        true,
-        true
       ],
       "parameters": {
         "Left": [
           "Uuid"
         ]
-      }
-    },
-    "query": "SELECT drone_username, drone_token FROM workspace WHERE id = $1;"
+      },
+      "nullable": [
+        true,
+        true
+      ]
+    }
   },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;",
@@ -2428,6 +2428,27 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4ed81997ccc37b07cd883568f279869a4ab76bd29ae84bd82c32636b205fd857": {
+    "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, drone_username, drone_token ) VALUES ($1, $2, $3, $4, $5, NULL, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Uuid",
+          "Bool",
+          "VarcharArray"
+        ]
       },
       "nullable": []
     }
@@ -3472,16 +3493,6 @@
       "nullable": []
     }
   },
-  "721a9f5b22ed07dd22c9c79e5ce1866ece1125f11cdac375c6a67d68b1e6eee5": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );"
-  },
   "72ac7bbce66b7ce6bf31c659da6b9c2b4f396b0a1738bdf2ccf4ef98e3ae61eb": {
     "query": "SELECT id as \"id: _\", sub_domain, domain_id as \"domain_id: _\", path, url_type as \"url_type: _\", deployment_id as \"deployment_id: _\", port, static_site_id as \"static_site_id: _\", url, workspace_id as \"workspace_id: _\" FROM managed_url WHERE sub_domain NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
     "describe": {
@@ -4421,16 +4432,6 @@
   },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "8ff11b4e85a2a2b0ed3f1a9145061421f9fe22f8bd055546541385712b56f435": {
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5529,15 +5530,9 @@
             }
           }
         ]
-<<<<<<< HEAD
-      }
-    },
-    "query": "UPDATE docker_registry_repository SET name = $2 WHERE id = $1;"
-=======
       },
       "nullable": []
     }
->>>>>>> 657a9849... WIP test remaining + sqlx prepare
   },
   "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19": {
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;",
@@ -6433,26 +6428,6 @@
       "nullable": []
     }
   },
-  "b97f7041c5a636b3c81cf9e1fc2634ed29032746879e24fcf1b3b3be3737e693": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Bool"
-        ]
-      }
-    },
-    "query": "INSERT INTO workspace( id, name, super_admin_id, active, drone_username, drone_token ) VALUES ($1, $2, $3, $4, NULL, NULL);"
-  },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
     "describe": {
@@ -6611,29 +6586,6 @@
       "nullable": []
     }
   },
-<<<<<<< HEAD
-=======
-  "c0b83f4997b71c2ce43623ab2a7027ad9f2b696e8b399ee823a2ec4ae8cb4ae3": {
-    "query": "INSERT INTO workspace( id, name, super_admin_id, active ) VALUES ($1, $2, $3, $4);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "name": "citext",
-              "kind": "Simple"
-            }
-          },
-          "Uuid",
-          "Bool"
-        ]
-      },
-      "nullable": []
-    }
-  },
->>>>>>> 657a9849... WIP test remaining + sqlx prepare
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
     "query": "ALTER TABLE secret ADD CONSTRAINT secret_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, owner_id), ADD CONSTRAINT secret_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id);",
     "describe": {
@@ -6722,6 +6674,16 @@
           "Bool",
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "c88bfea8ada925cd4b04dccf1eb677b123fd93fbab0a3532c9f020ced9a96a07": {
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [], drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -8068,6 +8030,19 @@
       ]
     }
   },
+  "f036e1661ba6aaabccab6b4a72a176f8ec7efa5a206f548fed7d7b34bc915fe4": {
+    "query": "UPDATE workspace SET alert_emails = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "VarcharArray",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "f09ba7816097607f7f07421f1d8fe5bfae9d0fee58b6fd2715448e069e98750f": {
     "query": "SELECT login_id as \"login_id: Uuid\", refresh_token, token_expiry, user_id as \"user_id: Uuid\", last_login, last_activity FROM user_login WHERE user_id = $1 AND refresh_token = $2;",
     "describe": {
@@ -8138,18 +8113,18 @@
     }
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
+    "query": "UPDATE workspace SET drone_username = $2, drone_token = $3 WHERE id = $1;",
     "describe": {
       "columns": [],
-      "nullable": [],
       "parameters": {
         "Left": [
           "Uuid",
           "Text",
           "Text"
         ]
-      }
-    },
-    "query": "UPDATE workspace SET drone_username = $2, drone_token = $3 WHERE id = $1;"
+      },
+      "nullable": []
+    }
   },
   "f3add12d973a1a460a8ee92f18cae2939b0f9bf515747eb082ff3f342951439d": {
     "query": "INSERT INTO deployment_exposed_port( deployment_id, port, port_type ) VALUES ($1, $2, $3);",
