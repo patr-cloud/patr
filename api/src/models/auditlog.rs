@@ -68,8 +68,13 @@ pub enum RepositoryMetaData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum SecretMetaData {
-	Create,
-	Update,
+	Create {
+		name: String,
+	},
+	Update {
+		#[serde(skip_serializing_if = "Option::is_none")]
+		name: Option<String>,
+	},
 	Delete,
 }
 

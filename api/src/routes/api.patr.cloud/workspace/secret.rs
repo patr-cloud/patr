@@ -254,7 +254,7 @@ async fn create_secret(
 				map.get(permissions::workspace::secret::CREATE).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(SecretMetaData::Create)?),
+		metadata: Some(serde_json::to_value(SecretMetaData::Create { name })?),
 	});
 
 	log::trace!("request_id: {} - Returning new secret", request_id);
@@ -307,7 +307,7 @@ async fn update_secret(
 				map.get(permissions::workspace::secret::EDIT).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(SecretMetaData::Update)?),
+		metadata: Some(serde_json::to_value(SecretMetaData::Update { name })?),
 	});
 
 	context.success(UpdateWorkspaceSecretResponse {});
