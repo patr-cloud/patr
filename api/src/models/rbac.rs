@@ -138,6 +138,12 @@ pub mod permissions {
 			}
 		}
 
+		pub mod github {
+			pub mod auth {
+				pub const CREATE: &str = "workspace::github::auth::create";
+			}
+		}
+
 		pub const EDIT: &str = "workspace::edit";
 		pub const DELETE: &str = "workspace::delete";
 	}
