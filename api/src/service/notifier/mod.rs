@@ -356,32 +356,23 @@ async fn get_user_phone_number(
 ///
 /// [`Transaction`]: Transaction
 pub async fn send_alert_email(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	user: &User,
 	workspace_name: &str,
 	deployment_id: &Uuid,
 	deployment_name: &str,
 	message: &str,
+	alert_emails: Vec<String>,
 ) -> Result<(), Error> {
-	let email = get_user_email(
-		connection,
-		user.recovery_email_domain_id
-			.as_ref()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?,
-		user.recovery_email_local
-			.as_ref()
-			.status(400)
-			.body(error!(WRONG_PARAMETERS).to_string())?,
-	)
-	.await?;
 	// send email
-	email::send_alert_email(
-		email.parse()?,
-		workspace_name,
-		deployment_id,
-		deployment_name,
-		message,
-	)
-	.await
+	for email in alert_emails {
+		email::send_alert_email(
+			email.parse()?,
+			workspace_name,
+			deployment_id,
+			deployment_name,
+			message,
+		)
+		.await?
+	}
+
+	Ok(())
 }

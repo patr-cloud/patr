@@ -24,6 +24,7 @@ pub struct Workspace {
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
+	pub alert_emails: Vec<String>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -258,7 +259,8 @@ pub async fn get_workspace_info(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails: _"
 		FROM
 			workspace
 		WHERE
@@ -281,7 +283,8 @@ pub async fn get_workspace_by_name(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails: _"
 		FROM
 			workspace
 		WHERE

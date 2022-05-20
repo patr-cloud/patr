@@ -345,10 +345,16 @@ async fn deployment_alert(
 
 	let body = context.get_body()?;
 
+	log::trace!("request_id: {} - Parsing the kubernetes events", request_id);
 	let kube_events: KubernetesEventData = serde_json::from_str(&body)?;
 
-	if kube_events.message == *"Back-off restarting failed container".to_string()
+	if kube_events.message ==
+		*"Back-off restarting failed container".to_string()
 	{
+		log::trace!(
+			"request_id: {} - getting deployment and user info",
+			request_id
+		);
 		let workspace_id =
 			Uuid::parse_str(&kube_events.involved_object.namespace)?;
 
@@ -369,20 +375,13 @@ async fn deployment_alert(
 		.await?
 		.status(500)?;
 
-		let user = db::get_user_by_user_id(
-			context.get_database_connection(),
-			&workspace.super_admin_id,
-		)
-		.await?
-		.status(500)?;
-
+		log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
 		service::send_alert_email(
-			context.get_database_connection(),
-			&user,
 			&workspace.name,
 			&deployment_id,
 			&deployment.name,
 			"The deployment encountered some errror please check logs to find out.",
+			workspace.alert_emails
 		)
 		.await?;
 	}
