@@ -146,7 +146,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
- "serde_urlencoded 0.7.1",
  "sha2 0.10.2",
  "shiplift",
  "sqlx",
