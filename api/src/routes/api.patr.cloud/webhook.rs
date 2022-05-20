@@ -348,42 +348,113 @@ async fn deployment_alert(
 	log::trace!("request_id: {} - Parsing the kubernetes events", request_id);
 	let kube_events: KubernetesEventData = serde_json::from_str(&body)?;
 
-	if kube_events.message ==
-		*"Back-off restarting failed container".to_string()
-	{
-		log::trace!(
-			"request_id: {} - getting deployment and user info",
-			request_id
-		);
-		let workspace_id =
-			Uuid::parse_str(&kube_events.involved_object.namespace)?;
+	match kube_events.message {
+		message
+			if message.contains("Back-off restarting failed container") ||
+				message.contains("CrashLoopBackOff") =>
+		{
+			log::trace!(
+				"request_id: {} - getting deployment and user info",
+				request_id
+			);
+			let workspace_id =
+				Uuid::parse_str(&kube_events.involved_object.namespace)?;
 
-		let workspace = db::get_workspace_info(
-			context.get_database_connection(),
-			&workspace_id,
-		)
-		.await?
-		.status(500)?;
+			let workspace = db::get_workspace_info(
+				context.get_database_connection(),
+				&workspace_id,
+			)
+			.await?
+			.status(500)?;
 
-		let deployment_id =
-			Uuid::parse_str(&kube_events.involved_object.labels.deployment_id)?;
+			let deployment_id = kube_events
+				.involved_object
+				.name
+				.split('-')
+				.collect::<Vec<&str>>()
+				.into_iter()
+				.nth(1)
+				.status(500)?;
 
-		let deployment = db::get_deployment_by_id(
-			context.get_database_connection(),
-			&deployment_id,
-		)
-		.await?
-		.status(500)?;
+			let deployment_id = Uuid::parse_str(deployment_id)?;
 
-		log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
-		service::send_alert_email(
-			&workspace.name,
-			&deployment_id,
-			&deployment.name,
-			"The deployment encountered some errror please check logs to find out.",
-			workspace.alert_emails
-		)
-		.await?;
+			let deployment = db::get_deployment_by_id(
+				context.get_database_connection(),
+				&deployment_id,
+			)
+			.await?
+			.status(500)?;
+
+			log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
+			service::send_alert_email(
+				&workspace.name,
+				&deployment_id,
+				&deployment.name,
+				"The deployment encountered some errror please check logs to find out.",
+				workspace.alert_emails
+			)
+			.await?;
+		}
+		message
+			if message.contains("Back-off pulling image") ||
+				message.contains("Failed to pull") ||
+				message.contains("ImagePullBackOff") =>
+		{
+			log::trace!(
+				"request_id: {} - getting deployment and user info",
+				request_id
+			);
+			let workspace_id =
+				Uuid::parse_str(&kube_events.involved_object.namespace)?;
+
+			let workspace = db::get_workspace_info(
+				context.get_database_connection(),
+				&workspace_id,
+			)
+			.await?
+			.status(500)?;
+
+			let deployment_id = kube_events
+				.involved_object
+				.name
+				.split('-')
+				.collect::<Vec<&str>>()
+				.into_iter()
+				.nth(1)
+				.status(500)?;
+
+			let deployment_id = Uuid::parse_str(deployment_id)?;
+
+			let deployment = db::get_deployment_by_id(
+				context.get_database_connection(),
+				&deployment_id,
+			)
+			.await?
+			.status(500)?;
+
+			let error_message = r#"
+					There was an issue regading your image. 
+					We are unable to pull your image. 
+					Please re-check your image url, repository and tag in the deployment and push the image again
+				"#;
+
+			log::trace!("request_id: {} - Sending the alert to the user's registered email address", request_id);
+			service::send_alert_email(
+				&workspace.name,
+				&deployment_id,
+				&deployment.name,
+				error_message,
+				workspace.alert_emails,
+			)
+			.await?;
+		}
+		_ => {
+			log::trace!(
+				"request_id: {} - Sending the alert to the patr alert email",
+				request_id
+			);
+			service::send_alert_email_to_patr(kube_events).await?;
+		}
 	}
 
 	Ok(context)

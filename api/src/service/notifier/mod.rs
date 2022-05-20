@@ -4,6 +4,7 @@ use eve_rs::AsError;
 use crate::{
 	db::{self, User, UserToSignUp},
 	error,
+	models::deployment::KubernetesEventData,
 	utils::Error,
 	Database,
 };
@@ -348,7 +349,7 @@ async fn get_user_phone_number(
 /// * `workspace_name` - a Uuid containing id of the workspace
 /// * `deployment_id` - a Uuid containing id of the deployment
 /// * `deployment_name` - a string containing name of the deployment
-/// * `message` - s tring containing message of the alert
+/// * `message` - a string containing message of the alert
 ///
 /// # Returns
 /// This function returns `Result<(), Error>` containing an empty response or an
@@ -371,8 +372,31 @@ pub async fn send_alert_email(
 			deployment_name,
 			message,
 		)
-		.await?
+		.await?;
 	}
 
 	Ok(())
+}
+
+/// # Description
+/// This function is used to send alert to the patr's support email
+///
+/// # Arguments
+/// * `connection` - database save point, more details here: [`Transaction`]
+/// * `workspace_name` - a Uuid containing id of the workspace
+/// * `deployment_id` - a Uuid containing id of the deployment
+/// * `deployment_name` - a string containing name of the deployment
+/// * `event_data` - an object containing all the details of the event
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Transaction`]: Transaction
+pub async fn send_alert_email_to_patr(
+	event_data: KubernetesEventData,
+) -> Result<(), Error> {
+	// send email
+	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
+		.await
 }

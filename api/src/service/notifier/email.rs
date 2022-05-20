@@ -2,7 +2,10 @@ use api_models::utils::Uuid;
 use lettre::message::Mailbox;
 use serde::Serialize;
 
-use crate::{models::EmailTemplate, utils::Error};
+use crate::{
+	models::{deployment::KubernetesEventData, EmailTemplate},
+	utils::Error,
+};
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/user-sign-up/template.json"]
@@ -243,6 +246,40 @@ pub async fn send_alert_email(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/send-kubernetes-patr-alert-notification/template.json"]
+pub struct KubernetesPatrAlertEmail {
+	event_data: String,
+}
+
+/// # Description
+/// This function is used to email alert to patr
+///
+/// # Arguments
+/// * `email` - Represents an email address with an optional name for the
+///   sender/recipient.
+/// More info here: [`Mailbox`]
+/// * `message` - The message to be sent to patr
+///
+/// # Returns
+/// This function returns `Result<(), Error>` containing an empty response or an
+/// error
+///
+/// [`Mailbox`]: Mailbox
+pub async fn send_alert_email_to_patr(
+	email: Mailbox,
+	event_data: KubernetesEventData,
+) -> Result<(), Error> {
+	let event_data = serde_json::to_string(&event_data)?;
+	send_email(
+		KubernetesPatrAlertEmail { event_data },
+		email,
+		None,
+		"Patr Kubernetes alert",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///
@@ -259,7 +296,7 @@ pub async fn send_alert_email(
 /// errors
 ///
 /// [`TEmail`]: TEmail
-#[cfg(not(debug_assertions))]
+#[cfg(debug_assertions)]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
@@ -326,7 +363,7 @@ where
 	Ok(())
 }
 
-#[cfg(debug_assertions)]
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	_body: TEmail,
 	to: Mailbox,

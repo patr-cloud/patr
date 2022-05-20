@@ -568,7 +568,7 @@ pub struct HostedPage {
 	pub resource_version: u64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KubernetesEventData {
 	pub reason: String,
@@ -579,18 +579,18 @@ pub struct KubernetesEventData {
 	pub last_timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InvolvedObject {
 	pub kind: String,
 	pub namespace: String,
 	pub name: String,
-	pub labels: Labels,
+	pub labels: Option<Labels>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Labels {
-	pub deployment_id: String,
-	pub workspace_id: String,
+	pub deployment_id: Option<String>,
+	pub workspace_id: Option<String>,
 }
