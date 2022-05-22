@@ -4,6 +4,12 @@ use api_models::{
 		GithubAuthCallbackRequest,
 		ActivateGithubRepoRequest,
 		ActivateGithubRepoResponse,
+		BuildInfo,
+		BuildList,
+		GetBuildInfoRequest,
+		GetBuildInfoResponse,
+		GetBuildListRequest,
+		GetBuildListResponse,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
 		GithubListRepos,
@@ -203,6 +209,68 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.get(
+		"/repo/build-list",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::auth::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_build_list)),
+		],
+	);
+
+	app.get(
+		"/repo/build-info",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::auth::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(get_build_info)),
+		],
+	);
+
 	app
 }
 
@@ -268,11 +336,11 @@ async fn list_repositories(
 	let config = context.get_state().config.clone();
 
 	let user_hash = context
-	.get_request()
-	.get_query()
-	.get(request_keys::TOKEN)
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 
@@ -302,12 +370,16 @@ async fn activate_repo(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
+	let _workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
 	let user_hash = context
-	.get_request()
-	.get_query()
-	.get(request_keys::TOKEN)
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let ActivateGithubRepoRequest { owner, name, .. } = context
 		.get_body_as()
@@ -331,7 +403,98 @@ async fn activate_repo(
 
 	let activated_repo = response.json::<ActivateGithubRepoResponse>().await?;
 
+	// TODO - add useful information to workspace table
+	// Like - repo_id, repo_name, repo_owner, repo_url, activated(bool)
+
 	context.success(activated_repo);
+
+	Ok(context)
+}
+
+async fn get_build_list(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.clone();
+
+	let user_hash = context
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
+
+	let GetBuildListRequest { owner, name, .. } = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let client = reqwest::Client::new();
+	let response = client
+		.get(format!(
+			"{}/api/repos/{}/{}/builds",
+			config.drone.url, owner, name
+		))
+		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
+		.send()
+		.await?;
+
+	if response.status() != 200 {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	let builds = response.json::<Vec<BuildList>>().await?;
+
+	context.success(GetBuildListResponse { builds });
+
+	Ok(context)
+}
+
+async fn get_build_info(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.clone();
+
+	let user_hash = context
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let GetBuildInfoRequest {
+		owner, name, build, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
+
+	let client = reqwest::Client::new();
+	let response = client
+		.get(format!(
+			"{}/api/repos/{}/{}/builds/{}",
+			config.drone.url, owner, name, build
+		))
+		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
+		.send()
+		.await?;
+
+	if response.status() != 200 {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	let build_info = response.json::<BuildInfo>().await?;
+
+	context.success(GetBuildInfoResponse { build_info });
 
 	Ok(context)
 }
@@ -343,11 +506,11 @@ async fn get_build_logs(
 	let config = context.get_state().config.clone();
 
 	let user_hash = context
-	.get_request()
-	.get_query()
-	.get(request_keys::TOKEN)
-	.status(400)
-	.body(error!(WRONG_PARAMETERS).to_string())?;
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 
