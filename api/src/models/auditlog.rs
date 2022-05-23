@@ -59,9 +59,17 @@ pub enum DeploymentMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "action")]
 pub enum RepositoryMetaData {
-	Create { repo_name: String },
-	UpdateImage { updated_by: String, digest: String },
-	DeleteImage { digest: String },
+	Create {
+		repo_name: String,
+	},
+	PushImage {
+		/// user_id of who pushed the image
+		pushed_by: Uuid,
+		digest: String,
+	},
+	DeleteImage {
+		digest: String,
+	},
 	Delete,
 }
 

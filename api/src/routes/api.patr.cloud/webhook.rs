@@ -159,6 +159,15 @@ pub async fn notification_handler(
 		} else {
 			continue;
 		};
+		let user = match db::get_user_by_username(
+			context.get_database_connection(),
+			&event.actor.name,
+		)
+		.await?
+		{
+			Some(user) => user,
+			None => continue,
+		};
 
 		log::trace!(
 			"request_id: {} - Getting the docker repository info",
@@ -286,8 +295,8 @@ pub async fn notification_handler(
 				})
 				.unwrap(),
 			&request_id,
-			&serde_json::to_value(RepositoryMetaData::UpdateImage {
-				updated_by: event.actor.name,
+			&serde_json::to_value(RepositoryMetaData::PushImage {
+				pushed_by: user.id,
 				digest: target.digest,
 			})?,
 			// action is done by user by pushing the docker image, but for now
