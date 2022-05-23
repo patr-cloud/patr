@@ -6,14 +6,20 @@ use api_models::{
 		ActivateGithubRepoResponse,
 		BuildInfo,
 		BuildList,
+		BuildLogs,
 		GetBuildInfoRequest,
 		GetBuildInfoResponse,
 		GetBuildListRequest,
 		GetBuildListResponse,
+		GetBuildLogRequest,
+		GetBuildLogResponse,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
 		GithubListRepos,
 		GithubListReposResponse,
+		RestartBuildInfo,
+		RestartBuildRequest,
+		RestartBuildResponse,
 	},
 	utils::Uuid,
 };
@@ -271,6 +277,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.get(
+		"/repo/restart-build",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::auth::CREATE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(restart_build)),
+		],
+	);
+
 	app
 }
 
@@ -512,11 +549,26 @@ async fn get_build_logs(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
+	let GetBuildLogRequest {
+		owner,
+		name,
+		build,
+		stage,
+		step,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
 	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 
 	let client = reqwest::Client::new();
 	let response = client
-		.get(format!("{}/api/user/repos", config.drone.url))
+		.get(format!(
+			"{}/api/repos/{}/{}/builds/{}/logs/{}/{}",
+			config.drone.url, owner, name, build, stage, step
+		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
 		.await?;
@@ -527,9 +579,53 @@ async fn get_build_logs(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
-	let repos = response.json::<Vec<GithubListRepos>>().await?;
+	let build_logs = response.json::<Vec<BuildLogs>>().await?;
 
-	context.success(GithubListReposResponse { repos });
+	context.success(GetBuildLogResponse { build_logs });
+
+	Ok(context)
+}
+
+async fn restart_build(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let config = context.get_state().config.clone();
+
+	let user_hash = context
+		.get_request()
+		.get_query()
+		.get(request_keys::TOKEN)
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
+	let RestartBuildRequest {
+		owner, name, build, ..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	let client = reqwest::Client::new();
+	let response = client
+		.get(format!(
+			"{}/api/repos/{}/{}/builds/{}",
+			config.drone.url, owner, name, build
+		))
+		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
+		.send()
+		.await?;
+
+	if response.status() != 200 {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	}
+
+	let restart_build_info = response.json::<RestartBuildInfo>().await?;
+
+	context.success(RestartBuildResponse { restart_build_info });
 
 	Ok(context)
 }
