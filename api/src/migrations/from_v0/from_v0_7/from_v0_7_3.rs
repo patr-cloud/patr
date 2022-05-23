@@ -11,6 +11,7 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	add_github_permissions(&mut *connection, config).await?;
+	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
@@ -53,6 +54,24 @@ async fn add_github_permissions(
 		"#,
 		&permission_id,
 		PERMISSION,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+async fn update_workspace_with_ci_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE
+			workspace
+		ADD COLUMN 
+			drone_username TEXT;
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

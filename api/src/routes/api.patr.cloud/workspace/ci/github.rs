@@ -32,6 +32,7 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -361,11 +362,12 @@ async fn github_oauth_callback(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string());
 	}
-
 	// TODO - get oauth_access_token and user_hash from the db and send it to
 	// frontend
+	// let app = service::get_app();
+	// let connection = app.database.acquire().await?;
+	// query database "users"
 
-	context.success(GithubAuthCallbackResponse {});
 	Ok(context)
 }
 
@@ -408,7 +410,7 @@ async fn activate_repo(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let _workspace_id =
+	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
@@ -437,10 +439,10 @@ async fn activate_repo(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
-	let activated_repo = response.json::<ActivateGithubRepoResponse>().await?;
+	db::add_ci_info(context.get_database_connection(), &owner, &workspace_id)
+		.await?;
 
-	// TODO - add useful information to workspace table
-	// Like - repo_id, repo_name, repo_owner, repo_url, activated(bool)
+	let activated_repo = response.json::<ActivateGithubRepoResponse>().await?;
 
 	context.success(activated_repo);
 

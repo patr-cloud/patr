@@ -3,6 +3,7 @@ use chrono::Utc;
 
 use crate::{query, query_as, Database};
 
+mod ci;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -10,6 +11,7 @@ mod metrics;
 mod secret;
 
 pub use self::{
+	ci::*,
 	docker_registry::*,
 	domain::*,
 	infrastructure::*,
@@ -53,7 +55,8 @@ pub async fn initialize_workspaces_pre(
 			super_admin_id UUID NOT NULL
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
-			active BOOLEAN NOT NULL DEFAULT FALSE
+			active BOOLEAN NOT NULL DEFAULT FALSE,
+			drone_username TEXT
 		);
 		"#
 	)
