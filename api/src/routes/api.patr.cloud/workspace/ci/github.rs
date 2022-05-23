@@ -153,7 +153,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.get(
+	app.post(
 		"/repo/activate",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -277,7 +277,7 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.get(
+	app.post(
 		"/repo/restart-build",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
@@ -362,6 +362,9 @@ async fn github_oauth_callback(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
+	// TODO - get oauth_access_token and user_hash from the db and send it to
+	// frontend
+
 	context.success(GithubAuthCallbackResponse {});
 	Ok(context)
 }
@@ -378,8 +381,6 @@ async fn list_repositories(
 		.get(request_keys::TOKEN)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 
 	let client = reqwest::Client::new();
 	let response = client
@@ -423,8 +424,6 @@ async fn activate_repo(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
-
 	let client = reqwest::Client::new();
 	let response = client
 		.post(format!("{}/api/repos/{}/{}", config.drone.url, owner, name))
@@ -460,8 +459,6 @@ async fn get_build_list(
 		.get(request_keys::TOKEN)
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 
 	let GetBuildListRequest { owner, name, .. } = context
 		.get_body_as()
@@ -511,8 +508,6 @@ async fn get_build_info(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
-
 	let client = reqwest::Client::new();
 	let response = client
 		.get(format!(
@@ -561,8 +556,6 @@ async fn get_build_logs(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
-
 	let client = reqwest::Client::new();
 	let response = client
 		.get(format!(
@@ -599,7 +592,6 @@ async fn restart_build(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	// let user_hash = "KSWLvpAgXXExejCdYF8KVjBbIzG8llMr";
 	let RestartBuildRequest {
 		owner, name, build, ..
 	} = context
@@ -609,7 +601,7 @@ async fn restart_build(
 
 	let client = reqwest::Client::new();
 	let response = client
-		.get(format!(
+		.post(format!(
 			"{}/api/repos/{}/{}/builds/{}",
 			config.drone.url, owner, name, build
 		))
