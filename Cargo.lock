@@ -124,6 +124,7 @@ dependencies = [
  "handlebars 4.2.2",
  "hex",
  "http",
+ "hyper",
  "jsonwebtoken",
  "k8s-openapi",
  "kube",

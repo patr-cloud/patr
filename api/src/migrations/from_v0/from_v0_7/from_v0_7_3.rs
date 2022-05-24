@@ -21,20 +21,45 @@ async fn add_github_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	const PERMISSION: &str = "workspace::ci::github::connect";
-	let permission_id = loop {
-		let uuid = Uuid::new_v4();
+	for &permission in [
+		"workspace::ci::github::connect",
+		"workspace::github::auth::delete",
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
 
-		let exists = query!(
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				// That particular resource ID doesn't exist. Use it
+				break uuid;
+			}
+		};
+
+		query!(
 			r#"
-			SELECT
-				*
-			FROM
+			INSERT INTO
 				permission
-			WHERE
-				id = $1;
+			VALUES
+				($1, $2, '');
 			"#,
-			&uuid
+			&uuid,
+			permission
 		)
 		.fetch_optional(&mut *connection)
 		.await?
@@ -70,7 +95,7 @@ async fn update_workspace_with_ci_columns(
 		ALTER TABLE
 			workspace
 		ADD COLUMN 
-			drone_username TEXT;
+			drone_username TEXT UNIQUE;
 		"#
 	)
 	.execute(&mut *connection)

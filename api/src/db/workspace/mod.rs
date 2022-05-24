@@ -56,7 +56,7 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
-			drone_username TEXT
+			drone_username TEXT UNIQUE
 		);
 		"#
 	)

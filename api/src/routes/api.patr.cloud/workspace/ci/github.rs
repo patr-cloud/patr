@@ -1,7 +1,6 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::ci::github::{
-		GithubAuthCallbackRequest,
 		ActivateGithubRepoRequest,
 		ActivateGithubRepoResponse,
 		BuildInfo,
@@ -13,10 +12,11 @@ use api_models::{
 		GetBuildListResponse,
 		GetBuildLogRequest,
 		GetBuildLogResponse,
-		GithubAuthCallbackResponse,
+		GithubAuthCallbackRequest,
 		GithubAuthResponse,
 		GithubListRepos,
 		GithubListReposResponse,
+		GithubSignOutResponse,
 		RestartBuildInfo,
 		RestartBuildRequest,
 		RestartBuildResponse,
@@ -24,7 +24,9 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
-use reqwest::header::{AUTHORIZATION, COOKIE};
+use hyper::{body::HttpBody, header::COOKIE, Request};
+use reqwest::header::AUTHORIZATION;
+use serde_json::Value;
 
 use crate::{
 	app::{create_eve_app, App},
@@ -32,7 +34,6 @@ use crate::{
 	error,
 	models::rbac::permissions,
 	pin_fn,
-	service,
 	utils::{
 		constants::request_keys,
 		Error,
@@ -41,7 +42,6 @@ use crate::{
 		EveMiddleware,
 	},
 };
-
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
 /// creates an eve app which binds the endpoint with functions.
@@ -309,6 +309,37 @@ pub fn create_sub_app(
 		],
 	);
 
+	app.delete(
+		"/sign-out",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::github::auth::DELETE,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(sign_out)),
+		],
+	);
+
 	app
 }
 
@@ -344,6 +375,10 @@ async fn github_oauth_callback(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
 	let GithubAuthCallbackRequest { code, state, .. } = context
 		.get_query_as()
 		.status(400)
@@ -362,11 +397,45 @@ async fn github_oauth_callback(
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string());
 	}
-	// TODO - get oauth_access_token and user_hash from the db and send it to
-	// frontend
-	// let app = service::get_app();
-	// let connection = app.database.acquire().await?;
-	// query database "users"
+
+	let session_cookie = response.headers().get_all("set-cookie");
+
+	let mut cookie = session_cookie.iter();
+	let _oauth = cookie.next();
+	let session = cookie.next().unwrap();
+	let session = session.to_str().unwrap();
+
+	let split = session.split(';');
+	let vec = split.collect::<Vec<&str>>();
+
+	let uri = format!("{}/api/user", config.drone.url);
+	let response = hyper::Client::new()
+		.request(
+			Request::builder()
+				.method("GET")
+				.uri(&uri)
+				.header(COOKIE, vec[0])
+				.body(hyper::Body::empty())
+				.unwrap(),
+		)
+		.await
+		.unwrap();
+	let mut body = response.into_body();
+	let mut buffer = String::new();
+
+	while let Some(chunk) = body.data().await {
+		buffer.push_str(&String::from_utf8(chunk.unwrap().to_vec()).unwrap());
+	}
+
+	let json_body: Value = serde_json::from_str(&buffer)?;
+	let drone_username = json_body["login"].as_str().unwrap();
+
+	db::add_drone_username_to_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+		drone_username,
+	)
+	.await?;
 
 	Ok(context)
 }
@@ -377,12 +446,26 @@ async fn list_repositories(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let client = reqwest::Client::new();
 	let response = client
@@ -414,12 +497,22 @@ async fn activate_repo(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let ActivateGithubRepoRequest { owner, name, .. } = context
 		.get_body_as()
@@ -439,9 +532,6 @@ async fn activate_repo(
 			.body(error!(SERVER_ERROR).to_string());
 	}
 
-	db::add_ci_info(context.get_database_connection(), &owner, &workspace_id)
-		.await?;
-
 	let activated_repo = response.json::<ActivateGithubRepoResponse>().await?;
 
 	context.success(activated_repo);
@@ -455,12 +545,26 @@ async fn get_build_list(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let GetBuildListRequest { owner, name, .. } = context
 		.get_body_as()
@@ -496,12 +600,26 @@ async fn get_build_info(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let GetBuildInfoRequest {
 		owner, name, build, ..
@@ -538,13 +656,26 @@ async fn get_build_logs(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 
 	let GetBuildLogRequest {
 		owner,
@@ -587,13 +718,26 @@ async fn restart_build(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let user_hash = context
-		.get_request()
-		.get_query()
-		.get(request_keys::TOKEN)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 
+	let drone_username = db::get_drone_username(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(USER_NOT_FOUND).to_string())?;
+
+	// acquire new connection
+	let user_hash = db::get_drone_access_token(
+		context.get_database_connection(),
+		&drone_username,
+	)
+	.await?
+	.status(500)
+	.body(error!(SERVER_ERROR).to_string())?;
 	let RestartBuildRequest {
 		owner, name, build, ..
 	} = context
@@ -620,6 +764,22 @@ async fn restart_build(
 	let restart_build_info = response.json::<RestartBuildInfo>().await?;
 
 	context.success(RestartBuildResponse { restart_build_info });
+
+	Ok(context)
+}
+
+async fn sign_out(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
+
+	db::delete_user_by_login(context.get_database_connection(), &workspace_id)
+		.await?;
+
+	context.success(GithubSignOutResponse {});
 
 	Ok(context)
 }

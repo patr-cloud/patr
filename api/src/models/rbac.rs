@@ -141,6 +141,7 @@ pub mod permissions {
 		pub mod ci {
 			pub mod github {
 				pub const CONNECT: &str = "workspace::ci::github::connect";
+				pub const DELETE: &str = "workspace::github::auth::delete";
 			}
 		}
 
