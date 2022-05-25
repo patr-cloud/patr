@@ -61,7 +61,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::LIST,
+				permissions::workspace::infrastructure::static_site::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

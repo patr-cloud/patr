@@ -91,7 +91,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::docker_registry::LIST,
+				permissions::workspace::docker_registry::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id_string =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();

@@ -43,8 +43,6 @@ pub mod permissions {
 
 		pub mod infrastructure {
 			pub mod deployment {
-				pub const LIST: &str =
-					"workspace::infrastructure::deployment::list";
 				pub const CREATE: &str =
 					"workspace::infrastructure::deployment::create";
 				pub const INFO: &str =
@@ -70,8 +68,8 @@ pub mod permissions {
 			}
 
 			pub mod managed_url {
-				pub const LIST: &str =
-					"workspace::infrastructure::managedUrl::list";
+				pub const INFO: &str =
+					"workspace::infrastructure::managedUrl::info";
 				pub const CREATE: &str =
 					"workspace::infrastructure::managedUrl::create";
 				pub const EDIT: &str =
@@ -92,8 +90,6 @@ pub mod permissions {
 			}
 
 			pub mod static_site {
-				pub const LIST: &str =
-					"workspace::infrastructure::staticSite::list";
 				pub const CREATE: &str =
 					"workspace::infrastructure::staticSite::create";
 				pub const INFO: &str =
@@ -107,7 +103,6 @@ pub mod permissions {
 
 		pub mod docker_registry {
 			pub const CREATE: &str = "workspace::dockerRegistry::create";
-			pub const LIST: &str = "workspace::dockerRegistry::list";
 			pub const DELETE: &str = "workspace::dockerRegistry::delete";
 			pub const INFO: &str = "workspace::dockerRegistry::info";
 			pub const PUSH: &str = "workspace::dockerRegistry::push";

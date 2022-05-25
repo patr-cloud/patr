@@ -80,7 +80,7 @@ pub fn create_sub_app(
 		"/",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -455,7 +455,7 @@ pub fn create_sub_app(
 		"/:deploymentId/build-logs",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -493,7 +493,7 @@ pub fn create_sub_app(
 		"/:deploymentId/events",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::deployment::LIST,
+				permissions::workspace::infrastructure::deployment::INFO,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
