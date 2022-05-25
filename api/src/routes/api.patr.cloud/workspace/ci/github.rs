@@ -402,8 +402,14 @@ async fn github_oauth_callback(
 
 	let mut cookie = session_cookie.iter();
 	let _oauth = cookie.next();
-	let session = cookie.next().unwrap();
-	let session = session.to_str().unwrap();
+	let session = cookie.next();
+	let session = if let Some(session) = session {
+		session.to_str()?
+	} else {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	};
 
 	let split = session.split(';');
 	let vec = split.collect::<Vec<&str>>();
@@ -415,25 +421,33 @@ async fn github_oauth_callback(
 				.method("GET")
 				.uri(&uri)
 				.header(COOKIE, vec[0])
-				.body(hyper::Body::empty())
-				.unwrap(),
+				.body(hyper::Body::empty())?,
 		)
-		.await
-		.unwrap();
+		.await?;
+
 	let mut body = response.into_body();
 	let mut buffer = String::new();
 
 	while let Some(chunk) = body.data().await {
-		buffer.push_str(&String::from_utf8(chunk.unwrap().to_vec()).unwrap());
+		buffer.push_str(&String::from_utf8(chunk?.to_vec())?);
 	}
 
 	let json_body: Value = serde_json::from_str(&buffer)?;
-	let drone_username = json_body["login"].as_str().unwrap();
+	let drone_username = json_body.get("login");
+	let drone_username = if let Some(drone_username) = drone_username {
+		drone_username.to_string()
+	} else {
+		return Error::as_result()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string());
+	};
+
+	println!("{}", drone_username);
 
 	db::add_drone_username_to_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		drone_username,
+		&drone_username,
 	)
 	.await?;
 
@@ -776,10 +790,21 @@ async fn sign_out(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	db::delete_user_by_login(context.get_database_connection(), &workspace_id)
+	if db::get_drone_username(context.get_database_connection(), &workspace_id)
+		.await?
+		.is_some()
+	{
+		db::delete_user_by_login(
+			context.get_database_connection(),
+			&workspace_id,
+		)
 		.await?;
 
-	context.success(GithubSignOutResponse {});
-
-	Ok(context)
+		context.success(GithubSignOutResponse {});
+		Ok(context)
+	} else {
+		Error::as_result()
+			.status(404)
+			.body(error!(USER_NOT_FOUND).to_string())
+	}
 }
