@@ -434,15 +434,14 @@ async fn github_oauth_callback(
 
 	let json_body: Value = serde_json::from_str(&buffer)?;
 	let drone_username = json_body.get("login");
-	let drone_username = if let Some(drone_username) = drone_username {
-		drone_username.to_string()
-	} else {
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	};
-
-	println!("{}", drone_username);
+	let drone_username =
+		if let Some(Value::String(drone_username)) = drone_username {
+			drone_username.clone()
+		} else {
+			return Error::as_result()
+				.status(500)
+				.body(error!(SERVER_ERROR).to_string());
+		};
 
 	db::add_drone_username_to_workspace(
 		context.get_database_connection(),
@@ -528,14 +527,17 @@ async fn activate_repo(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let ActivateGithubRepoRequest { owner, name, .. } = context
+	let ActivateGithubRepoRequest { repo_name, .. } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let client = reqwest::Client::new();
 	let response = client
-		.post(format!("{}/api/repos/{}/{}", config.drone.url, owner, name))
+		.post(format!(
+			"{}/api/repos/{}/{}",
+			config.drone.url, drone_username, repo_name
+		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
 		.await?;
@@ -580,8 +582,8 @@ async fn get_build_list(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 
-	let GetBuildListRequest { owner, name, .. } = context
-		.get_body_as()
+	let GetBuildListRequest { repo_name, .. } = context
+		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -589,7 +591,7 @@ async fn get_build_list(
 	let response = client
 		.get(format!(
 			"{}/api/repos/{}/{}/builds",
-			config.drone.url, owner, name
+			config.drone.url, drone_username, repo_name
 		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
@@ -636,9 +638,11 @@ async fn get_build_info(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	let GetBuildInfoRequest {
-		owner, name, build, ..
+		repo_name,
+		build_num,
+		..
 	} = context
-		.get_body_as()
+		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -646,7 +650,7 @@ async fn get_build_info(
 	let response = client
 		.get(format!(
 			"{}/api/repos/{}/{}/builds/{}",
-			config.drone.url, owner, name, build
+			config.drone.url, drone_username, repo_name, build_num
 		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
@@ -692,14 +696,13 @@ async fn get_build_logs(
 	.body(error!(SERVER_ERROR).to_string())?;
 
 	let GetBuildLogRequest {
-		owner,
-		name,
-		build,
+		repo_name,
+		build_num,
 		stage,
 		step,
 		..
 	} = context
-		.get_body_as()
+		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
@@ -707,7 +710,7 @@ async fn get_build_logs(
 	let response = client
 		.get(format!(
 			"{}/api/repos/{}/{}/builds/{}/logs/{}/{}",
-			config.drone.url, owner, name, build, stage, step
+			config.drone.url, drone_username, repo_name, build_num, stage, step
 		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
@@ -753,7 +756,9 @@ async fn restart_build(
 	.status(500)
 	.body(error!(SERVER_ERROR).to_string())?;
 	let RestartBuildRequest {
-		owner, name, build, ..
+		repo_name,
+		build_num,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -763,7 +768,7 @@ async fn restart_build(
 	let response = client
 		.post(format!(
 			"{}/api/repos/{}/{}/builds/{}",
-			config.drone.url, owner, name, build
+			config.drone.url, drone_username, repo_name, build_num
 		))
 		.header(AUTHORIZATION, format!("Bearer {}", user_hash))
 		.send()
