@@ -19,7 +19,7 @@ async fn remove_list_permission(
 		"workspace::infrastructure::deployment::list",
 		"workspace::dockerRegistry::list",
 		"workspace::infrastructure::staticSite::list",
-		"workspace::infrastructure::managedUrl::info",
+		"workspace::infrastructure::managedUrl::list",
 	]
 	.iter()
 	{
