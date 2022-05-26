@@ -56,7 +56,17 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
-			drone_username TEXT UNIQUE
+			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
+			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
+				CHECK(
+					(
+						drone_username IS NULL AND
+						drone_token IS NULL
+					) OR (
+						drone_username IS NOT NULL AND
+						drone_token IS NOT NULL
+					)
+				)
 		);
 		"#
 	)
@@ -218,10 +228,12 @@ pub async fn create_workspace(
 				id,
 				name,
 				super_admin_id,
-				active
+				active,
+				drone_username,
+				drone_token
 			)
 		VALUES
-			($1, $2, $3, $4);
+			($1, $2, $3, $4, NULL, NULL);
 		"#,
 		workspace_id as _,
 		name as _,

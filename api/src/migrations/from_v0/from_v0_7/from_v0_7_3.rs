@@ -23,7 +23,11 @@ async fn add_github_permissions(
 ) -> Result<(), Error> {
 	for &permission in [
 		"workspace::ci::github::connect",
-		"workspace::github::auth::delete",
+		"workspace::ci::github::activate",
+		"workspace::ci::github::deactivate",
+		"workspace::ci::github::viewBuilds",
+		"workspace::ci::github::restartBuilds",
+		"workspace::ci::github::disconnect",
 	]
 	.iter()
 	{
@@ -46,7 +50,6 @@ async fn add_github_permissions(
 			.is_some();
 
 			if !exists {
-				// That particular resource ID doesn't exist. Use it
 				break uuid;
 			}
 		};
@@ -62,26 +65,8 @@ async fn add_github_permissions(
 			permission
 		)
 		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
-
-		if !exists {
-			break uuid;
-		}
-	};
-
-	query!(
-		r#"
-		INSERT INTO
-			permission
-		VALUES
-			($1, $2, '');
-		"#,
-		&permission_id,
-		PERMISSION,
-	)
-	.execute(&mut *connection)
-	.await?;
+		.await?;
+	}
 
 	Ok(())
 }
@@ -92,10 +77,20 @@ async fn update_workspace_with_ci_columns(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		ALTER TABLE
-			workspace
-		ADD COLUMN 
-			drone_username TEXT UNIQUE;
+		ALTER TABLE workspace
+			ADD COLUMN drone_username TEXT
+				CONSTRAINT workspace_uq_drone_username UNIQUE,
+			ADD COLUMN drone_token TEXT
+				CONSTRAINT workspace_chk_drone_token_is_not_null
+					CHECK(
+						(
+							drone_username IS NULL AND
+							drone_token IS NULL
+						) OR (
+							drone_username IS NOT NULL AND
+							drone_token IS NOT NULL
+						)
+					);
 		"#
 	)
 	.execute(&mut *connection)
@@ -172,6 +167,11 @@ async fn reset_permission_order(
 		"workspace::rbac::user::updateRoles",
 		// CI permissions
 		"workspace::ci::github::connect",
+		"workspace::ci::github::activate",
+		"workspace::ci::github::deactivate",
+		"workspace::ci::github::viewBuilds",
+		"workspace::ci::github::restartBuilds",
+		"workspace::ci::github::disconnect",
 		// Workspace permissions
 		"workspace::edit",
 		"workspace::delete",

@@ -1559,6 +1559,18 @@
     },
     "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
   },
+  "266a1c952223fefd2a2e0fa2d9ea716b06e7f2a79829fd7bb129dc70f0bcaaa7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET drone_username = NULL AND drone_token = NULL WHERE id = $1;"
+  },
   "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
     "describe": {
       "columns": [],
@@ -2097,6 +2109,32 @@
       }
     },
     "query": "CREATE INDEX phone_number_country_code_idx_phone_code ON phone_number_country_code (phone_code);"
+  },
+  "398b1a1b1dddce0dbc830251e983b322b76bccd24385a9484a398de91adece60": {
+    "describe": {
+      "columns": [
+        {
+          "name": "drone_username",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "drone_token",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT drone_username, drone_token FROM workspace WHERE id = $1;"
   },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "describe": {
@@ -3464,6 +3502,16 @@
       }
     },
     "query": "INSERT INTO \"user\"( id, username, password, first_name, last_name, dob, bio, location, created, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number ) VALUES ( $1, $2, $3, $4, $5, NULL, NULL, NULL, $6, $7, $8, $9, $10 );"
+  },
+  "721a9f5b22ed07dd22c9c79e5ce1866ece1125f11cdac375c6a67d68b1e6eee5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );"
   },
   "72ac7bbce66b7ce6bf31c659da6b9c2b4f396b0a1738bdf2ccf4ef98e3ae61eb": {
     "describe": {
@@ -6331,6 +6379,26 @@
     },
     "query": "DELETE FROM docker_registry_repository_manifest WHERE repository_id = $1 AND manifest_digest = $2;"
   },
+  "b97f7041c5a636b3c81cf9e1fc2634ed29032746879e24fcf1b3b3be3737e693": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Bool"
+        ]
+      }
+    },
+    "query": "INSERT INTO workspace( id, name, super_admin_id, active, drone_username, drone_token ) VALUES ($1, $2, $3, $4, NULL, NULL);"
+  },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "describe": {
       "columns": [],
@@ -6488,26 +6556,6 @@
       }
     },
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );"
-  },
-  "c0b83f4997b71c2ce43623ab2a7027ad9f2b696e8b399ee823a2ec4ae8cb4ae3": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Bool"
-        ]
-      }
-    },
-    "query": "INSERT INTO workspace( id, name, super_admin_id, active ) VALUES ($1, $2, $3, $4);"
   },
   "c15c9714352f98ccb6ae73eb80f523db23e3f5381f3cb368ddac0743bfae3dcf": {
     "describe": {
@@ -6791,16 +6839,6 @@
       }
     },
     "query": "SELECT DISTINCT ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) AS \"score\", \"user\".id as \"id!: Uuid\", \"user\".username as \"username!\", \"user\".first_name as \"first_name!\", \"user\".last_name as \"last_name!\", \"user\".bio as \"bio\", \"user\".location as \"location\" FROM \"user\" LEFT JOIN personal_email ON \"user\".id = personal_email.user_id LEFT JOIN business_email ON \"user\".id = personal_email.user_id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON \"user\".id = user_phone_number.user_id LEFT JOIN phone_number_country_code ON user_phone_number.country_code = phone_number_country_code.country_code WHERE ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) > 0 ORDER BY 1 DESC LIMIT 10;"
-  },
-  "d5f0706e6dfa0c3947d6a601aa499dc1d9c25511badb5c99d1499feadba04554": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT );"
   },
   "d7547e8a9cba4b11e5c2cc4558ea436d609f0c4cdf65c06c70cf4f300e2dafce": {
     "describe": {
@@ -8005,6 +8043,20 @@
       }
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM user_to_sign_up;"
+  },
+  "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET drone_username = $2, drone_token = $3 WHERE id = $1;"
   },
   "f3add12d973a1a460a8ee92f18cae2939b0f9bf515747eb082ff3f342951439d": {
     "describe": {
