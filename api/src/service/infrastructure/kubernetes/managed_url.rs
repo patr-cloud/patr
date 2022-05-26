@@ -82,7 +82,7 @@ pub async fn update_kubernetes_managed_url(
 	}
 
 	let host = if managed_url.sub_domain == "@" {
-		String::from("domain.name")
+		domain.name.clone()
 	} else {
 		format!("{}.{}", managed_url.sub_domain, domain.name)
 	};
