@@ -1,3 +1,4 @@
+pub mod ci;
 pub mod deployment;
 pub mod error;
 pub mod rabbitmq;

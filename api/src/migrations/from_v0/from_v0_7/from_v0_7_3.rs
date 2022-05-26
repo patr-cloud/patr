@@ -11,6 +11,7 @@ pub async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	add_github_permissions(&mut *connection, config).await?;
+	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
@@ -20,39 +21,77 @@ async fn add_github_permissions(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
-	const PERMISSION: &str = "workspace::ci::github::connect";
-	let permission_id = loop {
-		let uuid = Uuid::new_v4();
+	for &permission in [
+		"workspace::ci::github::connect",
+		"workspace::ci::github::activate",
+		"workspace::ci::github::deactivate",
+		"workspace::ci::github::viewBuilds",
+		"workspace::ci::github::restartBuilds",
+		"workspace::ci::github::disconnect",
+	]
+	.iter()
+	{
+		let uuid = loop {
+			let uuid = Uuid::new_v4();
 
-		let exists = query!(
+			let exists = query!(
+				r#"
+				SELECT
+					*
+				FROM
+					permission
+				WHERE
+					id = $1;
+				"#,
+				&uuid
+			)
+			.fetch_optional(&mut *connection)
+			.await?
+			.is_some();
+
+			if !exists {
+				break uuid;
+			}
+		};
+
+		query!(
 			r#"
-			SELECT
-				*
-			FROM
+			INSERT INTO
 				permission
-			WHERE
-				id = $1;
+			VALUES
+				($1, $2, '');
 			"#,
-			&uuid
+			&uuid,
+			permission
 		)
 		.fetch_optional(&mut *connection)
-		.await?
-		.is_some();
+		.await?;
+	}
 
-		if !exists {
-			break uuid;
-		}
-	};
+	Ok(())
+}
 
+async fn update_workspace_with_ci_columns(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
 	query!(
 		r#"
-		INSERT INTO
-			permission
-		VALUES
-			($1, $2, '');
-		"#,
-		&permission_id,
-		PERMISSION,
+		ALTER TABLE workspace
+			ADD COLUMN drone_username TEXT
+				CONSTRAINT workspace_uq_drone_username UNIQUE,
+			ADD COLUMN drone_token TEXT
+				CONSTRAINT workspace_chk_drone_token_is_not_null
+					CHECK(
+						(
+							drone_username IS NULL AND
+							drone_token IS NULL
+						) OR (
+							drone_username IS NOT NULL AND
+							drone_token IS NOT NULL
+						)
+					);
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -128,6 +167,11 @@ async fn reset_permission_order(
 		"workspace::rbac::user::updateRoles",
 		// CI permissions
 		"workspace::ci::github::connect",
+		"workspace::ci::github::activate",
+		"workspace::ci::github::deactivate",
+		"workspace::ci::github::viewBuilds",
+		"workspace::ci::github::restartBuilds",
+		"workspace::ci::github::disconnect",
 		// Workspace permissions
 		"workspace::edit",
 		"workspace::delete",
