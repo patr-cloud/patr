@@ -1,6 +1,7 @@
 use api_macros::closure_as_pinned_box;
 use api_models::{
 	models::workspace::ci::github::{
+		GithubAuthCallbackRequest,
 		GithubAuthCallbackResponse,
 		GithubAuthResponse,
 	},
@@ -44,10 +45,41 @@ pub fn create_sub_app(
 	let mut app = create_eve_app(app);
 
 	app.get(
+		"/auth",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::ci::github::CONNECT,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(connect_to_github)),
+		],
+	);
+
+	app.get(
 		"/oauth-callback",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::github::auth::CREATE,
+				permissions::workspace::ci::github::CONNECT,
 				closure_as_pinned_box!(|mut context| {
 					let workspace_id =
 						context.get_param(request_keys::WORKSPACE_ID).unwrap();
@@ -74,36 +106,6 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.get(
-		"/auth",
-		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::github::auth::CREATE,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
-			EveMiddleware::CustomFunction(pin_fn!(connect_to_github)),
-		],
-	);
 	app
 }
 
@@ -116,17 +118,15 @@ async fn connect_to_github(
 	let client = reqwest::Client::builder()
 		.redirect(reqwest::redirect::Policy::none())
 		.build()?;
-
 	let response = client
 		.get(format!("{}/login", config.drone.url))
 		.send()
 		.await?;
 	let oauth_url = response
 		.headers()
-		.get("location")
+		.get(reqwest::header::LOCATION)
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
-
 	let oauth_url = oauth_url.to_str()?;
 
 	context.success(GithubAuthResponse {
@@ -141,22 +141,12 @@ async fn github_oauth_callback(
 ) -> Result<EveContext, Error> {
 	let config = context.get_state().config.clone();
 
-	let code = context
-		.get_request()
-		.get_query()
-		.get(request_keys::CODE)
+	let GithubAuthCallbackRequest { code, state, .. } = context
+		.get_query_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let state = context
-		.get_request()
-		.get_query()
-		.get(request_keys::STATE)
-		.status(400)
-		.body(error!(WRONG_PARAMETERS).to_string())?;
-
-	let client = reqwest::Client::new();
-	let response = client
+	let response = reqwest::Client::new()
 		.get(format!(
 			"{}/login?code={}&state={}",
 			config.drone.url, code, state
@@ -171,6 +161,5 @@ async fn github_oauth_callback(
 	}
 
 	context.success(GithubAuthCallbackResponse {});
-
 	Ok(context)
 }

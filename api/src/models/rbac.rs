@@ -138,9 +138,9 @@ pub mod permissions {
 			}
 		}
 
-		pub mod github {
-			pub mod auth {
-				pub const CREATE: &str = "workspace::github::auth::create";
+		pub mod ci {
+			pub mod github {
+				pub const CONNECT: &str = "workspace::ci::github::connect";
 			}
 		}
 

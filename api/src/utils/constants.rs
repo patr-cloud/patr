@@ -19,7 +19,6 @@ pub mod request_keys {
 	pub const ERRORS: &str = "errors";
 	pub const MESSAGE: &str = "message";
 	pub const CODE: &str = "code";
-	pub const STATE: &str = "state";
 	pub const DETAIL: &str = "detail";
 	pub const TOKEN: &str = "token";
 	pub const DOMAIN_ID: &str = "domainId";

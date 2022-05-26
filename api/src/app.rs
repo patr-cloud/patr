@@ -40,7 +40,7 @@ pub struct App {
 
 impl Debug for App {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{:#?}", self)
+		write!(f, "[App]")
 	}
 }
 
