@@ -155,21 +155,36 @@ pub async fn initialize_users_pre(
 
 	query!(
 		r#"
+		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
+			'website'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE user_login(
-			login_id UUID
-				CONSTRAINT user_login_uq_login_id UNIQUE,
-			refresh_token TEXT NOT NULL,
-			token_expiry BIGINT NOT NULL
-				CONSTRAINT user_login_chk_token_expiry_unsigned
-					CHECK(token_expiry >= 0),
+			login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE,
 			user_id UUID NOT NULL
 				CONSTRAINT user_login_fk_user_id REFERENCES "user"(id),
-			last_login BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_login_unsigned
-					CHECK(last_login >= 0),
-			last_activity BIGINT NOT NULL
-				CONSTRAINT user_login_chk_last_activity_unsigned
-					CHECK(last_activity >= 0),
+			login_type USER_LOGIN_TYPE NOT NULL,
+
+			created TIMESTAMPZ NOT NULL,
+			created_ip_address INET NOT NULL,
+			created_location GEOMETRY NOT NULL,
+			created_user_agent TEXT NOT NULL,
+			last_activity TIMESTAMPZ NOT NULL,
+			last_activity_ip_address INET NOT NULL,
+			last_activity_location GEOMETRY NOT NULL,
+			last_login TIMESTAMPZ NOT NULL,
+			last_login_ip_address INET NOT NULL,
+			last_login_location GEOMETRY NOT NULL,
+			last_login_user_agent TEXT NOT NULL,
+
+			refresh_token TEXT NOT NULL,
+			token_expiry TIMESTAMPZ NOT NULL,
 			CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id)
 		);
 		"#
