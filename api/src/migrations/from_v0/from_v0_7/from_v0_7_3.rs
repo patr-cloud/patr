@@ -116,16 +116,16 @@ async fn reset_permission_order(
 		"workspace::secret::create",
 		"workspace::secret::edit",
 		"workspace::secret::delete",
-		// RBAC User permissions
-		"workspace::rbac::user::list",
-		"workspace::rbac::user::add",
-		"workspace::rbac::user::remove",
-		"workspace::rbac::user::updateRoles",
 		// RBAC Role permissions
 		"workspace::rbac::role::list",
 		"workspace::rbac::role::create",
 		"workspace::rbac::role::edit",
 		"workspace::rbac::role::delete",
+		// RBAC User permissions
+		"workspace::rbac::user::list",
+		"workspace::rbac::user::add",
+		"workspace::rbac::user::remove",
+		"workspace::rbac::user::updateRoles",
 		// CI permissions
 		"workspace::ci::github::connect",
 		// Workspace permissions
