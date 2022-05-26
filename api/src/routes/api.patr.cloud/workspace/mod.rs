@@ -286,7 +286,6 @@ async fn get_workspace_info(
 	.map(|workspace| Workspace {
 		id: workspace.id,
 		name: workspace.name,
-		super_admin_id: workspace.super_admin_id,
 		active: workspace.active,
 		super_admin_id: workspace.super_admin_id,
 	})
@@ -519,9 +518,18 @@ async fn delete_workspace(
 	)
 	.await?;
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::DELETE)
+		.unwrap();
+
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		permission_id,
 	)
 	.await?;
 

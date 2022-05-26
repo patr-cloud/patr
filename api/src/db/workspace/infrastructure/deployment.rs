@@ -554,31 +554,50 @@ pub async fn get_deployments_by_repository_id(
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	user_id: &Uuid,
+	permission_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			registry,
-			repository_id as "repository_id: _",
-			image_name,
-			image_tag,
-			status as "status: _",
-			workspace_id as "workspace_id: _",
-			region as "region: _",
-			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type as "machine_type: _",
-			deploy_on_push
+			deployment.id as "id: _",
+			deployment.name::TEXT as "name!: _",
+			deployment.registry,
+			deployment.repository_id as "repository_id: _",
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.workspace_id as "workspace_id: _",
+			deployment.region as "region: _",
+			deployment.min_horizontal_scale,	
+			deployment.max_horizontal_scale,
+			deployment.machine_type as "machine_type: _",
+			deployment.deploy_on_push
 		FROM
 			deployment
+		LEFT JOIN 
+			workspace_user
+		ON
+			deployment.workspace_id = workspace_user.workspace_id
+		LEFT JOIN 
+			role_permissions_resource
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = deployment.id
+		LEFT JOIN 
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
 		WHERE
-			workspace_id = $1 AND
+			deployment.workspace_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
 			status != 'deleted';
 		"#,
-		workspace_id as _
+		workspace_id as _,
+		user_id as _,
+		permission_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
