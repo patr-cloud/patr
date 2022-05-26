@@ -596,7 +596,13 @@ pub async fn generate_access_token(
 		.status(500)
 		.body(error!(SERVER_ERROR).to_string())?;
 
-	db::set_login_expiry(connection, &user_login.login_id, iat, exp).await?;
+	db::set_login_expiry(
+		connection,
+		&user_login.login_id,
+		iat,
+		iat + service::get_refresh_token_expiry(),
+	)
+	.await?;
 
 	let user = ExposedUserData {
 		id,
