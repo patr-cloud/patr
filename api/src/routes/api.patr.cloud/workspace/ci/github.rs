@@ -33,6 +33,7 @@ use crate::{
 		EveMiddleware,
 	},
 };
+
 /// # Description
 /// This function is used to create a sub app for every endpoint listed. It
 /// creates an eve app which binds the endpoint with functions.
@@ -402,13 +403,9 @@ async fn github_oauth_callback(
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
 	let response = reqwest::Client::new()
-		.get(format!(
-			"{}/login?code={}&state={}",
-			context.get_state().config.drone.url,
-			code,
-			state
-		))
+		.get(format!("{}/login", context.get_state().config.drone.url))
 		.header(reqwest::header::COOKIE, format!("_oauth_state_={}", state))
+		.query(&[("code", code), ("state", state)])
 		.send()
 		.await?
 		.error_for_status()?;
