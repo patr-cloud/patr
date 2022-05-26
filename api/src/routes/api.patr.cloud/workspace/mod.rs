@@ -35,6 +35,7 @@ use crate::{
 };
 
 mod billing;
+mod ci;
 mod docker_registry;
 mod domain;
 mod infrastructure;
@@ -123,6 +124,7 @@ pub fn create_sub_app(
 	sub_app.use_sub_app("/:workspaceId/billing", billing::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/rbac", rbac_routes::create_sub_app(app));
 	sub_app.use_sub_app("/:workspaceId/secret", secret::create_sub_app(app));
+	sub_app.use_sub_app("/:workspaceId/ci", ci::create_sub_app(app));
 
 	sub_app.delete(
 		"/:workspaceId",

@@ -106,5 +106,12 @@
 	"mailchimp": {
 		"apiKey": "example-api-key",
 		"listId": "example-list-id"
+	},
+	"drone": {
+		"url": "drone-ip"
+	},
+	"github": {
+		"clientId": "app-client-id",
+		"clientSecret": "app-client-secret"
 	}
 }
