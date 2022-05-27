@@ -3,6 +3,7 @@ use chrono::Utc;
 
 use crate::{query, query_as, Database};
 
+mod billing;
 mod ci;
 mod docker_registry;
 mod domain;
@@ -11,6 +12,7 @@ mod metrics;
 mod secret;
 
 pub use self::{
+	billing::*,
 	ci::*,
 	docker_registry::*,
 	domain::*,
