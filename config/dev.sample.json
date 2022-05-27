@@ -77,7 +77,8 @@
 		"contextName": "",
 		"certIssuerHttp": "letsencrypt-staging",
 		"certIssuerDns": "letsencrypt-staging-dns",
-		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local"
+		"staticSiteProxyService": "proxy-static-site-service.default.svc.cluster.local",
+		"authorizationHeader": "<auth-header>"
 	},
 	"prometheus": {
 		"host": "prometheus.samyakgangwal.com",
