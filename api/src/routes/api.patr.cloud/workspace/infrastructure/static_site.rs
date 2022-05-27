@@ -25,7 +25,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -60,30 +60,7 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::static_site::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
+			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_static_sites)),
 		],
 	);
@@ -455,10 +432,32 @@ async fn list_static_sites(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::static_site::INFO)
+		.unwrap();
+
+	// Can check if permission exists in accessToken
+
+	if !context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.contains_key(&workspace_id)
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	log::trace!("request_id: {} - Getting the list of all static sites for the workspace", request_id);
 	let static_sites = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		permission_id,
 	)
 	.await?
 	.into_iter()

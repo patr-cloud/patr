@@ -145,32 +145,51 @@ pub async fn initialize_managed_url_post(
 pub async fn get_all_managed_urls_in_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	user_id: &Uuid,
+	permission_id: &Uuid,
 ) -> Result<Vec<ManagedUrl>, sqlx::Error> {
 	query_as!(
 		ManagedUrl,
 		r#"
 		SELECT
-			id as "id: _",
-			sub_domain,
-			domain_id as "domain_id: _",
-			path,
-			url_type as "url_type: _",
-			deployment_id as "deployment_id: _",
-			port,
-			static_site_id as "static_site_id: _",
-			url,
-			workspace_id as "workspace_id: _"
+			managed_url.id as "id: _",
+			managed_url.sub_domain,
+			managed_url.domain_id as "domain_id: _",
+			managed_url.path,
+			managed_url.url_type as "url_type: _",
+			managed_url.deployment_id as "deployment_id: _",
+			managed_url.port,
+			managed_url.static_site_id as "static_site_id: _",
+			managed_url.url,
+			managed_url.workspace_id as "workspace_id: _"
 		FROM
 			managed_url
+		LEFT JOIN
+			workspace_user
+		ON
+			managed_url.workspace_id = workspace_user.workspace_id
+		LEFT JOIN 
+			role_permissions_resource 
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = managed_url.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
 		WHERE
-			workspace_id = $1 AND
-			sub_domain NOT LIKE CONCAT(
+			managed_url.workspace_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
+			managed_url.sub_domain NOT LIKE CONCAT(
 				'patr-deleted: ',
-				REPLACE(id::TEXT, '-', ''),
+				REPLACE(managed_url.id::TEXT, '-', ''),
 				'@%'
 			);
 		"#,
-		workspace_id as _
+		workspace_id as _,
+		user_id as _,
+		permission_id as _
 	)
 	.fetch_all(connection)
 	.await

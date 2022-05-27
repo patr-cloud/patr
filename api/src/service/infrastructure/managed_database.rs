@@ -32,10 +32,16 @@ pub async fn create_managed_database_in_workspace(
 	workspace_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
+	user_id: &Uuid,
+	permission_id: &Uuid,
 ) -> Result<Uuid, Error> {
-	let databases =
-		db::get_all_database_clusters_for_workspace(connection, workspace_id)
-			.await?;
+	let databases = db::get_all_database_clusters_for_workspace(
+		connection,
+		workspace_id,
+		user_id,
+		permission_id,
+	)
+	.await?;
 
 	if databases.len() > 3 {
 		return Error::as_result()

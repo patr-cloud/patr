@@ -506,50 +506,88 @@ async fn delete_workspace(
 
 	let config = context.get_state().config.clone();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	// TODO - instead of multiple info permissions
+	// We should have a single superAdmin or something, had to figure out
+	let _domain_info_permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::domain::INFO)
+		.unwrap();
 	let domains = db::get_domains_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 	)
 	.await?;
 
+	let managed_db_info_permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::managed_database::INFO)
+		.unwrap();
+
 	let managed_database = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		managed_db_info_permission_id,
 	)
 	.await?;
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let permission_id = rbac::PERMISSIONS
+	let deployment_info_permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
-		.get(permissions::workspace::DELETE)
+		.get(permissions::workspace::infrastructure::deployment::INFO)
 		.unwrap();
 
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		&user_id,
-		permission_id,
+		deployment_info_permission_id,
 	)
 	.await?;
+
+	let static_site_info_permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::static_site::INFO)
+		.unwrap();
 
 	let static_site = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		static_site_info_permission_id,
 	)
 	.await?;
+
+	let managed_url_info_permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::managed_url::INFO)
+		.unwrap();
 
 	let managed_url = db::get_all_managed_urls_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		managed_url_info_permission_id,
 	)
 	.await?;
+
+	let docker_repo_info_permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::docker_registry::INFO)
+		.unwrap();
 
 	let docker_repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
 		&user_id,
-		permission_id,
+		docker_repo_info_permission_id,
 	)
 	.await?;
 

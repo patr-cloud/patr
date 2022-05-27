@@ -182,22 +182,42 @@ pub async fn update_static_site_name(
 pub async fn get_static_sites_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
+	user_id: &Uuid,
+	permission_id: &Uuid,
 ) -> Result<Vec<DeploymentStaticSite>, sqlx::Error> {
 	query_as!(
 		DeploymentStaticSite,
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			status as "status: _",
-			workspace_id as "workspace_id: _"
+			deployment_static_site.id as "id: _",
+			deployment_static_site.name::TEXT as "name!: _",
+			deployment_static_site.status as "status: _",
+			deployment_static_site.workspace_id as "workspace_id: _"
 		FROM
 			deployment_static_site
+		LEFT JOIN
+			workspace_user
+		ON
+			deployment_static_site.workspace_id = workspace_user.workspace_id
+		LEFT JOIN 
+			role_permissions_resource 
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id
+			AND
+			role_permissions_resource.resource_id = deployment_static_site.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
 		WHERE
-			workspace_id = $1 AND
-			status != 'deleted';
+			deployment_static_site.workspace_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
+			deployment_static_site.status != 'deleted';
 		"#,
 		workspace_id as _,
+		user_id as _,
+		permission_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

@@ -27,7 +27,7 @@ pub struct WorkspacePermissions {
 pub mod permissions {
 	pub mod workspace {
 		pub mod domain {
-			pub const LIST: &str = "workspace::domain::list";
+			pub const INFO: &str = "workspace::domain::info";
 			pub const ADD: &str = "workspace::domain::add";
 			pub const VIEW_DETAILS: &str = "workspace::domain::viewDetails";
 			pub const VERIFY: &str = "workspace::domain::verify";
@@ -81,8 +81,6 @@ pub mod permissions {
 			pub mod managed_database {
 				pub const CREATE: &str =
 					"workspace::infrastructure::managedDatabase::create";
-				pub const LIST: &str =
-					"workspace::infrastructure::managedDatabase::list";
 				pub const DELETE: &str =
 					"workspace::infrastructure::managedDatabase::delete";
 				pub const INFO: &str =

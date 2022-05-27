@@ -168,15 +168,15 @@ pub async fn get_docker_repository_by_name(
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	user_id: &Uuid,
-	permission_id: &Uuid,
+	_user_id: &Uuid,
+	_permission_id: &Uuid,
 ) -> Result<Vec<(DockerRepository, u64, u64)>, sqlx::Error> {
 	let rows = query!(
 		r#"
 		SELECT
-			docker_registry_repository.id as "id: Uuid",
-			docker_registry_repository.workspace_id as "workspace_id: Uuid",
-			docker_registry_repository.name::TEXT as "name!: String",
+			id as "id: Uuid",
+			workspace_id as "workspace_id: Uuid",
+			name::TEXT as "name!: String",
 			COALESCE(size, 0) as "size!",
 			(
 				SELECT
@@ -224,26 +224,11 @@ pub async fn get_docker_repositories_for_workspace(
 		ON
 			docker_registry_repository_manifest.repository_id =
 				docker_registry_repository.id
-		LEFT JOIN 
-			workspace_user 
-		ON 
-			docker_registry_repository.workspace_id = workspace_user.workspace_id
-		LEFT JOIN 
-			role_permissions_resource 
-		ON 
-			workspace_user.role_id = role_permissions_resource.role_id AND
-			role_permissions_resource.resource_id = docker_registry_repository.id
-		LEFT JOIN 
-			permission 
-		ON 
-			permission.id = role_permissions_resource.permission_id
 		WHERE
-			docker_registry_repository.workspace_id = $1 AND
-			workspace_user.user_id = $2 AND
-			permission.id = $3 AND
+			workspace_id = $1 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
-		workspace_id as _
+		workspace_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await?

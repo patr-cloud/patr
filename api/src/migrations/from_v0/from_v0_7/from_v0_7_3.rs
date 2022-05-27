@@ -17,9 +17,11 @@ async fn remove_list_permission(
 ) -> Result<(), Error> {
 	for &permission in [
 		"workspace::infrastructure::deployment::list",
-		"workspace::dockerRegistry::list",
 		"workspace::infrastructure::staticSite::list",
 		"workspace::infrastructure::managedUrl::list",
+		"workspace::infrastructure::managedDatabase::list",
+		"workspace::dockerRegistry::list",
+		"workspace::domain::list",
 	]
 	.iter()
 	{

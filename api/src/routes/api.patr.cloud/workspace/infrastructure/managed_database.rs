@@ -7,7 +7,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedDatabasePlan},
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -26,30 +26,7 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::infrastructure::managed_database::LIST,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
+			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_all_database_clusters)),
 		],
 	);
@@ -172,6 +149,27 @@ async fn list_all_database_clusters(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::managed_database::INFO)
+		.unwrap();
+
+	// Can check if permission exists in accessToken or check for superAdmin
+	// Else give 404 same as below
+
+	if !context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.contains_key(&workspace_id)
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	log::trace!(
 		"request_id: {} - Getting all database cluster info from db",
 		request_id
@@ -179,6 +177,8 @@ async fn list_all_database_clusters(
 	let database_clusters = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		permission_id,
 	)
 	.await?
 	.into_iter()
@@ -224,6 +224,29 @@ async fn create_database_cluster(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
+	// TODO - can be changed based on permission
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::infrastructure::managed_database::INFO)
+		.unwrap();
+
+	// Can check if permission exists in accessToken or check for superAdmin
+	// Else give 404 same as below
+
+	if !context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.contains_key(&workspace_id)
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	let body = context.get_body_object().clone();
 	let config = context.get_state().config.clone();
 
@@ -295,6 +318,8 @@ async fn create_database_cluster(
 		&workspace_id,
 		&config,
 		&request_id,
+		&user_id,
+		permission_id,
 	)
 	.await?;
 
