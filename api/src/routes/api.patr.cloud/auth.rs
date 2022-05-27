@@ -419,6 +419,7 @@ async fn join(
 		.status(500)?;
 
 		let _ = service::include_user_to_mailchimp(
+			context.get_database_connection(),
 			&format!("{}@{}", email_local, domain.name),
 			&user.first_name,
 			&user.last_name,
