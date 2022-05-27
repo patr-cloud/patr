@@ -19,11 +19,11 @@ pub fn parse_config() -> Settings {
 		"prod" | "production" => Config::builder()
 			.add_source(File::with_name("config/prod").required(false))
 			.set_default("environment", "production")
-			.expect("unable to set environment to develop"),
+			.expect("unable to set environment to production"),
 		"dev" | "development" => Config::builder()
 			.add_source(File::with_name("config/dev").required(false))
 			.set_default("environment", "development")
-			.expect("unable to set environment to develop"),
+			.expect("unable to set environment to development"),
 		_ => {
 			panic!("Unknown running environment found!");
 		}

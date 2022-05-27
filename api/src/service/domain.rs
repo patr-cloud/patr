@@ -667,10 +667,11 @@ pub async fn verify_external_domain(
 		)
 		.await?;
 
-	let response = response.take_answers().into_iter().find(|record| {
-		let expected_txt = RData::TXT(TXT::new(vec![domain_id.to_string()]));
-		record.data() == Some(&expected_txt)
-	});
+	let expected_txt = RData::TXT(TXT::new(vec![domain_id.to_string()]));
+	let response = response
+		.take_answers()
+		.into_iter()
+		.find(|record| record.data() == Some(&expected_txt));
 
 	handle.abort();
 	drop(handle);
