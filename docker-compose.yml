@@ -4,13 +4,66 @@ networks:
   vpc:
 
 services:
+  postgres:
+    container_name: database
+    image: postgis/postgis:13-master
+    restart: always
+    hostname: ${DATABASE_HOST}
+    networks:
+      - vpc
+    environment:
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - ./target/api-data/postgres:/var/lib/postgresql/data
+
+  redis:
+    container_name: cache
+    image: redis:7
+    restart: always
+    hostname: ${REDIS_HOST}
+    networks:
+      - vpc
+
+  docker-registry:
+    container_name: registry
+    image: registry:2
+    restart: always
+    hostname: ${REGISTRY_HOST}
+    networks:
+      - vpc
+    ports:
+      - ${REGISTRY_PORT}:5000
+    environment:
+      - REGISTRY_VERSION=0.1
+      - REGISTRY_LOG_FORMATTER=text
+      - REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis
+      - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/data
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_HTTP_ADDR="0.0.0.0:5000"
+      - REGISTRY_HTTP_SECRET="keyboard cat"
+      - REGISTRY_REDIS_ADDR=${REDIS_HOST}:6379
+      - REGISTRY_REDIS_DB=2
+      - REGISTRY_REDIS_POOL_MAXIDLE=16
+      - REGISTRY_REDIS_POOL_MAXACTIVE=64
+      - REGISTRY_REDIS_POOL_IDLETIMEOUT=300s
+      - REGISTRY_AUTH_TOKEN_REALM=http://${API_HOST}:${API_PORT}/auth/docker-registry-token
+      - REGISTRY_AUTH_TOKEN_SERVICE=${APP_DOCKERREGISTRY_SERVICENAME}
+      - REGISTRY_AUTH_TOKEN_ISSUER=${APP_DOCKERREGISTRY_ISSUER}
+      - REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/ecdsa.pubkey.crt
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
+      - REGISTRY_NOTIFICATIONS_ENDPOINTS=${REGISTRY_APP_ENDPOINT}
+    volumes:
+      - ./target/api-data/registry:/data
+      - ./assets/patr/certs:/certs
+
   rabbitmq:
     container_name: message-queue
     image: rabbitmq:3-management
     restart: always
     hostname: ${RABBITMQ_HOST}
-    logging:
-      driver: none
     networks:
       - vpc
     ports:
@@ -18,41 +71,14 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
-
-  postgres:
-    container_name: database
-    image: postgres:13
-    restart: always
-    hostname: ${DATABASE_HOST}
-    logging:
-      driver: none
-    networks:
-      - vpc
-    environment:
-      - POSTGRES_USER=${DATABASE_USERNAME}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - POSTGRSE_DB=${DATABASE_NAME}
-
-  redis:
-    container_name: cache
-    image: redis:7
-    restart: always
-    hostname: ${REDIS_HOST}
-    logging:
-      driver: none
-    networks:
-      - vpc
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_USERNAME=${REDIS_USERNAME}
+    volumes:
+      - ./target/api-data/rabbitmq:/var/lib/rabbitmq
 
   vault:
     container_name: vault
     image: vault:latest
     restart: always
     hostname: ${VAULT_HOST}
-    logging:
-      driver: none
     networks:
       - vpc
     ports:
@@ -66,20 +92,21 @@ services:
     image: rust:1
     restart: "no"
     hostname: ${API_HOST}
+    working_dir: /app
     command: bash -c "source .env && cargo run"
-    stdin_open: true
-    tty: true
+    env_file:
+      - .env
     depends_on:
-      - rabbitmq
       - postgres
       - redis
+      - docker-registry
+      - rabbitmq
       - vault
     networks:
       - vpc
     ports:
       - ${API_PORT}:${API_PORT}
     volumes:
-      - ${PWD}:/app
-      - ${HOME}/.cargo/:/user/local/cargo/
-    working_dir: /app
+      - .:/app
+      - ${HOME}/.cargo/:/usr/local/cargo/
     
