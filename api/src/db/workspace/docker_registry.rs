@@ -222,8 +222,23 @@ pub async fn get_docker_repositories_for_workspace(
 		ON
 			docker_registry_repository_manifest.repository_id =
 				docker_registry_repository.id
+		LEFT JOIN 
+			workspace_user 
+		ON 
+			docker_registry_repository.workspace_id = workspace_user.workspace_id
+		LEFT JOIN 
+			role_permissions_resource 
+		ON 
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = docker_registry_repository.id
+		LEFT JOIN 
+			permission 
+		ON 
+			permission.id = role_permissions_resource.permission_id
 		WHERE
-			workspace_id = $1 AND
+			docker_registry_repository.workspace_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
 			name NOT LIKE 'patr-deleted:%';
 		"#,
 		workspace_id as _
