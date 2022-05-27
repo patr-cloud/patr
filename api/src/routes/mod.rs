@@ -17,23 +17,27 @@ pub fn create_sub_app(
 ) -> EveApp<EveContext, EveMiddleware, App, ErrorData> {
 	let mut sub_app = create_eve_app(app);
 
-	sub_app.use_middleware(
-		"/",
-		[
-			EveMiddleware::DomainRouter(
-				String::from("api.patr.cloud"),
-				Box::new(api_patr_cloud::create_sub_app(app)),
-			),
-			EveMiddleware::DomainRouter(
-				String::from("assets.patr.cloud"),
-				Box::new(assets_patr_cloud::create_sub_app(app)),
-			),
-			EveMiddleware::DomainRouter(
-				String::from("auth.patr.cloud"),
-				Box::new(auth_patr_cloud::create_sub_app(app)),
-			),
-		],
-	);
+	if cfg!(debug_assertions) {
+		sub_app.use_sub_app("/", api_patr_cloud::create_sub_app(app));
+	} else {
+		sub_app.use_middleware(
+			"/",
+			[
+				EveMiddleware::DomainRouter(
+					String::from("api.patr.cloud"),
+					Box::new(api_patr_cloud::create_sub_app(app)),
+				),
+				EveMiddleware::DomainRouter(
+					String::from("assets.patr.cloud"),
+					Box::new(assets_patr_cloud::create_sub_app(app)),
+				),
+				EveMiddleware::DomainRouter(
+					String::from("auth.patr.cloud"),
+					Box::new(auth_patr_cloud::create_sub_app(app)),
+				),
+			],
+		);
+	}
 
 	sub_app
 }
