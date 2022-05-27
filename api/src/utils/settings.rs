@@ -281,19 +281,23 @@ pub struct LokiSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MailchimpSettings {
+	#[serde(alias = "apikey")]
 	pub api_key: String,
+	#[serde(alias = "listid")]
 	pub list_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GithubSettings {
-	pub client_id: String,
-	pub client_secret: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DroneSettings {
 	pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubSettings {
+	#[serde(alias = "clientid")]
+	pub client_id: String,
+	#[serde(alias = "clientsecret")]
+	pub client_secret: String,
 }
