@@ -81,16 +81,19 @@ pub async fn update_kubernetes_managed_url(
 			.body(error!(SERVER_ERROR).to_string())?;
 	}
 
+	let host = if managed_url.sub_domain == "@" {
+		domain.name.clone()
+	} else {
+		format!("{}.{}", managed_url.sub_domain, domain.name)
+	};
+
 	let (ingress, annotations) = match &managed_url.url_type {
 		ManagedUrlType::ProxyDeployment {
 			deployment_id,
 			port,
 		} => (
 			IngressRule {
-				host: Some(format!(
-					"{}.{}",
-					managed_url.sub_domain, domain.name
-				)),
+				host: Some(host.clone()),
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
@@ -115,7 +118,7 @@ pub async fn update_kubernetes_managed_url(
 				),
 				(
 					"nginx.ingress.kubernetes.io/upstream-vhost".to_string(),
-					format!("{}.{}", managed_url.sub_domain, domain.name),
+					host.clone(),
 				),
 				(
 					"cert-manager.io/cluster-issuer".to_string(),
@@ -131,10 +134,7 @@ pub async fn update_kubernetes_managed_url(
 		),
 		ManagedUrlType::ProxyStaticSite { static_site_id } => (
 			IngressRule {
-				host: Some(format!(
-					"{}.{}",
-					managed_url.sub_domain, domain.name
-				)),
+				host: Some(host.clone()),
 				http: Some(HTTPIngressRuleValue {
 					paths: vec![HTTPIngressPath {
 						backend: IngressBackend {
@@ -213,10 +213,7 @@ pub async fn update_kubernetes_managed_url(
 
 			(
 				IngressRule {
-					host: Some(format!(
-						"{}.{}",
-						managed_url.sub_domain, domain.name
-					)),
+					host: Some(host.clone()),
 					http: Some(HTTPIngressRuleValue {
 						paths: vec![HTTPIngressPath {
 							backend: IngressBackend {
@@ -301,10 +298,7 @@ pub async fn update_kubernetes_managed_url(
 				.body(error!(SERVER_ERROR).to_string())?;
 			(
 				IngressRule {
-					host: Some(format!(
-						"{}.{}",
-						managed_url.sub_domain, domain.name
-					)),
+					host: Some(host.clone()),
 					http: Some(HTTPIngressRuleValue {
 						paths: vec![HTTPIngressPath {
 							backend: IngressBackend {
@@ -378,10 +372,7 @@ pub async fn update_kubernetes_managed_url(
 							domain.name.clone(),
 						])
 					} else {
-						Some(vec![format!(
-							"{}.{}",
-							managed_url.sub_domain, domain.name
-						)])
+						Some(vec![host.clone()])
 					},
 					secret_name: Some(secret_name),
 				}])
