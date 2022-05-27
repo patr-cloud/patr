@@ -403,7 +403,7 @@ async fn delete_managed_url(
 				.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(ManagedUrlMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(ManagedUrlMetaData::Delete {})?),
 	});
 
 	context.success(DeleteManagedUrlResponse {});

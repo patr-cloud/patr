@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub enum WorkspaceMetadata {
 	Create { name: String },
 	Update { name: String },
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,7 +70,7 @@ pub enum RepositoryMetaData {
 	DeleteImage {
 		digest: String,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,7 +83,7 @@ pub enum SecretMetaData {
 		#[serde(skip_serializing_if = "Option::is_none")]
 		name: Option<String>,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +93,7 @@ pub enum DomainMetaData {
 		domain_name: String,
 		domain_nameserver_type: DomainNameserverType,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,7 +115,7 @@ pub enum DnsRecordMetaData {
 		#[serde(skip_serializing_if = "Option::is_none")]
 		proxied: Option<bool>,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,7 +132,7 @@ pub enum ManagedDbMetaData {
 		database_plan: String,
 		region: String,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,7 +150,7 @@ pub enum ManagedUrlMetaData {
 		#[serde(flatten)]
 		url_type: ManagedUrlType,
 	},
-	Delete,
+	Delete {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,7 +163,7 @@ pub enum StaticSiteMetaData {
 		is_site_name_updated: bool,
 		is_file_updated: bool,
 	},
-	Start,
-	Stop,
-	Delete,
+	Start {},
+	Stop {},
+	Delete {},
 }

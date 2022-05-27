@@ -291,7 +291,7 @@ pub async fn notification_handler(
 			PERMISSIONS
 				.get()
 				.and_then(|map| {
-					map.get(permissions::workspace::docker_registry::INFO)
+					map.get(permissions::workspace::docker_registry::PUSH)
 				})
 				.unwrap(),
 			&request_id,

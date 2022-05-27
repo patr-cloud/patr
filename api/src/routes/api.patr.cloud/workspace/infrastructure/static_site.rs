@@ -653,7 +653,7 @@ async fn start_static_site(
 				.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(StaticSiteMetaData::Start)?),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Start {})?),
 	});
 
 	context.success(StartStaticSiteResponse {});
@@ -811,7 +811,7 @@ async fn stop_static_site(
 				.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(StaticSiteMetaData::Stop)?),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Stop {})?),
 	});
 
 	context.success(StopStaticSiteResponse {});
@@ -888,7 +888,7 @@ async fn delete_static_site(
 				.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(StaticSiteMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(StaticSiteMetaData::Delete {})?),
 	});
 
 	context.success(DeleteStaticSiteResponse {});

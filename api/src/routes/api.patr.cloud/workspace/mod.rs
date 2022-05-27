@@ -612,7 +612,7 @@ async fn delete_workspace(
 			.get()
 			.and_then(|map| map.get(permissions::workspace::DELETE).cloned())
 			.unwrap(),
-		metadata: Some(serde_json::to_value(WorkspaceMetadata::Delete)?),
+		metadata: Some(serde_json::to_value(WorkspaceMetadata::Delete {})?),
 	});
 
 	log::trace!("request_id: {} - deleted the workspace", request_id);

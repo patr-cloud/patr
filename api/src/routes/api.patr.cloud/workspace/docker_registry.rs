@@ -965,7 +965,7 @@ async fn delete_docker_repository(
 			map.get(permissions::workspace::docker_registry::DELETE)
 		})
 		.unwrap();
-	let metadata = serde_json::to_value(RepositoryMetaData::Delete)?;
+	let metadata = serde_json::to_value(RepositoryMetaData::Delete {})?;
 	context.set_audit_log_data(AuditLogData::WorkspaceResource {
 		workspace_id,
 		resource_id: repository_id, // repo id and resource id is same

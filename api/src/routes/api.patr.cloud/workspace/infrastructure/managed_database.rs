@@ -417,7 +417,7 @@ async fn delete_managed_database(
 				map.get(permissions::workspace::infrastructure::managed_database::DELETE).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(ManagedDbMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(ManagedDbMetaData::Delete {})?),
 	});
 
 	context.json(json!({

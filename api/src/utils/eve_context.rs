@@ -157,12 +157,6 @@ impl EveContext {
 		&self.request_id
 	}
 
-	/// Get a reference to the audit log data if already set
-	#[allow(dead_code)]
-	pub fn get_audit_log_data(&self) -> Option<&AuditLogData> {
-		self.audit_log_data.as_ref()
-	}
-
 	/// Set the audit log data and
 	/// returns previously set audit log data if present
 	///
@@ -181,12 +175,6 @@ impl EveContext {
 	/// place.
 	pub fn take_audit_log_data(&mut self) -> Option<AuditLogData> {
 		self.audit_log_data.take()
-	}
-
-	/// Get a mutable reference to the audit log data.
-	#[allow(dead_code)]
-	pub fn get_mut_audit_log_data(&mut self) -> &mut Option<AuditLogData> {
-		&mut self.audit_log_data
 	}
 
 	/// Get the request IP address

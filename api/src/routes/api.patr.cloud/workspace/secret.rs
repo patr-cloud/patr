@@ -348,7 +348,7 @@ async fn delete_secret(
 				map.get(permissions::workspace::secret::DELETE).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(SecretMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(SecretMetaData::Delete {})?),
 	});
 
 	context.success(DeleteSecretResponse {});

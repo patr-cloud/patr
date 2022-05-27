@@ -782,7 +782,7 @@ async fn delete_domain_in_workspace(
 				map.get(permissions::workspace::domain::DELETE).cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(DomainMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(DomainMetaData::Delete {})?),
 	});
 
 	log::trace!("request_id: {} - Deleted domain in workspace", request_id);
@@ -1019,7 +1019,7 @@ async fn delete_dns_record(
 					.cloned()
 			})
 			.unwrap(),
-		metadata: Some(serde_json::to_value(DnsRecordMetaData::Delete)?),
+		metadata: Some(serde_json::to_value(DnsRecordMetaData::Delete {})?),
 	});
 
 	log::trace!("request_id: {} - Deleted dns record", request_id);
