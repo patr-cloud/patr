@@ -108,14 +108,6 @@ pub async fn create_workspace(
 	)
 	.await?;
 
-	for email in alert_emails {
-		if !validator::is_email_valid(email) {
-			Error::as_result()
-				.status(400)
-				.body(error!(INVALID_EMAIL).to_string())?;
-		}
-	}
-
 	db::create_workspace(
 		connection,
 		&resource_id,

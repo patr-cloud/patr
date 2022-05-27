@@ -1,4 +1,3 @@
-
 use crate::{
 	utils::{settings::Settings, Error},
 	Database,

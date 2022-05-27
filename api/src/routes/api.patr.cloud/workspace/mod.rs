@@ -382,10 +382,7 @@ async fn create_new_workspace(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	let CreateNewWorkspaceRequest {
-		workspace_name,
-		alert_emails,
-	} = context
+	let CreateNewWorkspaceRequest { workspace_name } = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
@@ -394,12 +391,25 @@ async fn create_new_workspace(
 	let config = context.get_state().config.clone();
 
 	let user_id = context.get_token_data().unwrap().user.id.clone();
+
+	let alert_emails = if let Some(recovery_email) =
+		db::get_recovery_email_for_user(
+			context.get_database_connection(),
+			&user_id,
+		)
+		.await?
+	{
+		vec![recovery_email]
+	} else {
+		vec![]
+	};
+
 	let workspace_id = service::create_workspace(
 		context.get_database_connection(),
 		&workspace_name,
 		&user_id,
 		false,
-		alert_emails.as_ref(),
+		&alert_emails,
 		&config,
 	)
 	.await?;
