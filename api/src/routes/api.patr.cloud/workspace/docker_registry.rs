@@ -90,30 +90,7 @@ pub fn create_sub_app(
 	app.get(
 		"/",
 		[
-			EveMiddleware::ResourceTokenAuthenticator(
-				permissions::workspace::docker_registry::INFO,
-				closure_as_pinned_box!(|mut context| {
-					let workspace_id_string =
-						context.get_param(request_keys::WORKSPACE_ID).unwrap();
-					let workspace_id = Uuid::parse_str(workspace_id_string)
-						.status(400)
-						.body(error!(WRONG_PARAMETERS).to_string())?;
-
-					let resource = db::get_resource_by_id(
-						context.get_database_connection(),
-						&workspace_id,
-					)
-					.await?;
-
-					if resource.is_none() {
-						context
-							.status(404)
-							.json(error!(RESOURCE_DOES_NOT_EXIST));
-					}
-
-					Ok((context, resource))
-				}),
-			),
+			EveMiddleware::PlainTokenAuthenticator,
 			EveMiddleware::CustomFunction(pin_fn!(list_docker_repositories)),
 		],
 	);
@@ -524,11 +501,31 @@ async fn list_docker_repositories(
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
 	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
+	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::docker_registry::INFO)
+		.unwrap();
+
+	if !context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.contains_key(&workspace_id)
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
 	log::trace!("request_id: {} - Listing docker repositories", request_id);
 
 	let repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		permission_id,
 	)
 	.await?
 	.into_iter()

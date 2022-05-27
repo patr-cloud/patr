@@ -548,6 +548,8 @@ async fn delete_workspace(
 	let docker_repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
+		&user_id,
+		permission_id,
 	)
 	.await?;
 
