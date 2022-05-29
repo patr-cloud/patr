@@ -36,7 +36,11 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db::{
+		self,
+		Deployment as DbDeploymentType,
+		ManagedUrlType as DbManagedUrlType,
+	},
 	error,
 	models::{
 		deployment::{Interval, Step},
@@ -541,7 +545,7 @@ async fn list_deployments(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let _user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -567,33 +571,89 @@ async fn list_deployments(
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		permission_id,
 	)
-	.await?
-	.into_iter()
-	.filter_map(|deployment| {
-		Some(Deployment {
-			id: deployment.id,
-			name: deployment.name,
-			registry: if deployment.registry == constants::PATR_REGISTRY {
-				DeploymentRegistry::PatrRegistry {
-					registry: PatrRegistry,
-					repository_id: deployment.repository_id?,
-				}
-			} else {
-				DeploymentRegistry::ExternalRegistry {
-					registry: deployment.registry,
-					image_name: deployment.image_name?,
-				}
-			},
-			image_tag: deployment.image_tag,
-			status: deployment.status,
-			region: deployment.region,
-			machine_type: deployment.machine_type,
+	.await?;
+
+	let workspace_permission = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id)
+		.unwrap();
+
+	let is_super_admin = workspace_permission.is_super_admin;
+	if is_super_admin {
+		let deployments = deployments
+			.into_iter()
+			.filter_map(|deployment| {
+				Some(Deployment {
+					id: deployment.id,
+					name: deployment.name,
+					registry: if deployment.registry == constants::PATR_REGISTRY
+					{
+						DeploymentRegistry::PatrRegistry {
+							registry: PatrRegistry,
+							repository_id: deployment.repository_id?,
+						}
+					} else {
+						DeploymentRegistry::ExternalRegistry {
+							registry: deployment.registry,
+							image_name: deployment.image_name?,
+						}
+					},
+					image_tag: deployment.image_tag,
+					status: deployment.status,
+					region: deployment.region,
+					machine_type: deployment.machine_type,
+				})
+			})
+			.collect();
+		log::trace!(
+			"request_id: {} - Deployments successfully retreived",
+			request_id
+		);
+
+		context.success(ListDeploymentsResponse { deployments });
+		return Ok(context);
+	}
+
+	let resources = workspace_permission.resources.clone();
+
+	let mut permitted_deployments: Vec<DbDeploymentType> = vec![];
+	for deployment in &deployments {
+		for (resource_id, permissions) in &resources {
+			if resource_id.clone() == deployment.id &&
+				permissions.contains(permission_id)
+			{
+				permitted_deployments.push(deployment.clone());
+			}
+		}
+	}
+
+	let deployments = permitted_deployments
+		.into_iter()
+		.filter_map(|deployment| {
+			Some(Deployment {
+				id: deployment.id,
+				name: deployment.name,
+				registry: if deployment.registry == constants::PATR_REGISTRY {
+					DeploymentRegistry::PatrRegistry {
+						registry: PatrRegistry,
+						repository_id: deployment.repository_id?,
+					}
+				} else {
+					DeploymentRegistry::ExternalRegistry {
+						registry: deployment.registry,
+						image_name: deployment.image_name?,
+					}
+				},
+				image_tag: deployment.image_tag,
+				status: deployment.status,
+				region: deployment.region,
+				machine_type: deployment.machine_type,
+			})
 		})
-	})
-	.collect();
+		.collect();
 	log::trace!(
 		"request_id: {} - Deployments successfully retreived",
 		request_id

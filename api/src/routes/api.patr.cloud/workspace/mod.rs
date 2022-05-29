@@ -535,17 +535,9 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let deployment_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::infrastructure::deployment::INFO)
-		.unwrap();
-
 	let deployments = db::get_deployments_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		deployment_info_permission_id,
 	)
 	.await?;
 

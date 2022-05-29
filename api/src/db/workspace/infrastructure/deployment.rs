@@ -30,6 +30,7 @@ pub struct DeploymentMachineType {
 	pub memory_count: i32,
 }
 
+#[derive(Clone)]
 pub struct Deployment {
 	pub id: Uuid,
 	pub name: String,
@@ -554,8 +555,6 @@ pub async fn get_deployments_by_repository_id(
 pub async fn get_deployments_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	user_id: &Uuid,
-	permission_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
 	query_as!(
 		Deployment,
@@ -576,28 +575,11 @@ pub async fn get_deployments_for_workspace(
 			deployment.deploy_on_push
 		FROM
 			deployment
-		LEFT JOIN 
-			workspace_user
-		ON
-			deployment.workspace_id = workspace_user.workspace_id
-		LEFT JOIN 
-			role_permissions_resource
-		ON
-			workspace_user.role_id = role_permissions_resource.role_id AND
-			role_permissions_resource.resource_id = deployment.id
-		LEFT JOIN 
-			permission
-		ON
-			permission.id = role_permissions_resource.permission_id
 		WHERE
 			deployment.workspace_id = $1 AND
-			workspace_user.user_id = $2 AND
-			permission.id = $3 AND
 			status != 'deleted';
 		"#,
 		workspace_id as _,
-		user_id as _,
-		permission_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
