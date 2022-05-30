@@ -293,6 +293,7 @@ async fn get_workspace_info(
 	)
 	.await?
 	.map(|workspace| Workspace {
+		super_admin_id: workspace.super_admin_id,
 		id: workspace.id,
 		name: workspace.name,
 		active: workspace.active,
