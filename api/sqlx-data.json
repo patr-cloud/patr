@@ -3270,6 +3270,16 @@
       "nullable": []
     }
   },
+  "6c69f8228039028a086d2c282989246cc3fd4a9fd375891daf781bd1aa62bcfd": {
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "6d073aee1779702ca055d61d249600c11148f6df419ae1221b3030279f364539": {
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;",
     "describe": {
@@ -4261,16 +4271,6 @@
       "nullable": []
     }
   },
-  "884696582e50a1c85c5fbb3c64e0805d96ee2313b5d72ca2b680918bf656162e": {
-    "query": "ALTER TABLE workspace ALTER COLUMN alert_emails DROP DEFAULT;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "8a7f673204b386ab84508b8bd966898a6fb940501f2caa676285b90295d9a7bf": {
     "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_permissions_resource WHERE role_id = $1;",
     "describe": {
@@ -4432,16 +4432,6 @@
   },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "9106a36efc1ac7ae7fbff7e2427bab7a27bd6cad640b379c8f2284db65721bce": {
-    "query": "ALTER TABLE workspace ADD COLUMN alert_emails VARCHAR(320) [] NOT NULL DEFAULT ARRAY[]::VARCHAR[];",
     "describe": {
       "columns": [],
       "parameters": {
@@ -6614,16 +6604,6 @@
       ]
     }
   },
-  "c60b73163f51b8d3ab82f4170cf8e0e77f951a2f0c8f5301e04a1413649722fc": {
-    "query": "UPDATE workspace w1 SET alert_emails = ( SELECT ARRAY_AGG(CONCAT(\"user\".recovery_email_local, '@', domain.name, '.', domain.tld)) FROM workspace w2 INNER JOIN \"user\" ON \"user\".id = w2.super_admin_id INNER JOIN domain ON \"user\".recovery_email_domain_id = domain.id WHERE w2.id = w1.id );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "c7266afd5fc274fcd6c5dd97631ce514cbdbcbe541c6f29c797e64cea66ddc09": {
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;",
     "describe": {
@@ -6674,16 +6654,6 @@
           "Bool",
           "Uuid"
         ]
-      },
-      "nullable": []
-    }
-  },
-  "c88bfea8ada925cd4b04dccf1eb677b123fd93fbab0a3532c9f020ced9a96a07": {
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [], drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
       },
       "nullable": []
     }
@@ -7888,50 +7858,6 @@
       ]
     }
   },
-  "eddf00a35e2dccec2386bede57f9870583bf5c2846e2f282c73aebfa8795280b": {
-    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\" FROM workspace WHERE id = $1;",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 1,
-          "name": "name!: _",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "super_admin_id: _",
-          "type_info": "Uuid"
-        },
-        {
-          "ordinal": 3,
-          "name": "active",
-          "type_info": "Bool"
-        },
-        {
-          "ordinal": 4,
-          "name": "alert_emails: _",
-          "type_info": "VarcharArray"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Uuid"
-        ]
-      },
-      "nullable": [
-        false,
-        null,
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "ee4ea18cebcb0c118054ebe00ae27cb609df953c788737ad02d1044c901d21a9": {
     "query": "INSERT INTO workspace_audit_log( id, date, ip_address, workspace_id, user_id, login_id, resource_id, action, request_id, metadata, patr_action, success ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
     "describe": {
@@ -8041,6 +7967,50 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "f08c1935127b39d06a2df59279291f3ba8409804eb7bd2bb7524478956df793d": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails!: _\" FROM workspace WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        },
+        {
+          "ordinal": 4,
+          "name": "alert_emails!: _",
+          "type_info": "VarcharArray"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false,
+        false
+      ]
     }
   },
   "f09ba7816097607f7f07421f1d8fe5bfae9d0fee58b6fd2715448e069e98750f": {

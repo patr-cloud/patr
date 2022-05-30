@@ -57,7 +57,7 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
-			alert_emails VARCHAR(320) [],
+			alert_emails VARCHAR(320) [] NOT NULL,
 			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
 			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
 				CHECK(
@@ -263,7 +263,7 @@ pub async fn get_workspace_info(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails: _"
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
