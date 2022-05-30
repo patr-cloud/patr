@@ -619,18 +619,23 @@ async fn list_deployments(
 
 	let resources = workspace_permission.resources.clone();
 
-	let mut permitted_deployments: Vec<DbDeploymentType> = vec![];
+	let mut permitted_deployments: Vec<DbDeploymentType> = Vec::new();
 	for deployment in &deployments {
-		for (resource_id, permissions) in &resources {
-			if resource_id.clone() == deployment.id &&
-				permissions.contains(permission_id)
-			{
-				permitted_deployments.push(deployment.clone());
-			}
+		if resources
+			.get(&deployment.id)
+			.map_or(false, |permissions| permissions.contains(permission_id))
+		{
+			permitted_deployments.push(deployment.clone());
 		}
 	}
 
-	let deployments = permitted_deployments
+	if permitted_deployments.is_empty() {
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let deployments: Vec<Deployment> = permitted_deployments
 		.into_iter()
 		.filter_map(|deployment| {
 			Some(Deployment {

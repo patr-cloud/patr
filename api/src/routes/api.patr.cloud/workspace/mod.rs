@@ -541,17 +541,9 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let static_site_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::infrastructure::static_site::INFO)
-		.unwrap();
-
 	let static_site = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		static_site_info_permission_id,
 	)
 	.await?;
 

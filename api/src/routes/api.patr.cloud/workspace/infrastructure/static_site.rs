@@ -23,7 +23,7 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, ManagedUrlType as DbManagedUrlType},
+	db::{self, DeploymentStaticSite, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
@@ -432,7 +432,7 @@ async fn list_static_sites(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
+	let _user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -456,17 +456,60 @@ async fn list_static_sites(
 	let static_sites = db::get_static_sites_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		permission_id,
 	)
-	.await?
-	.into_iter()
-	.map(|static_site| StaticSite {
-		id: static_site.id,
-		name: static_site.name,
-		status: static_site.status,
-	})
-	.collect::<Vec<_>>();
+	.await?;
+
+	let workspace_permission = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id)
+		.unwrap();
+
+	let is_super_admin = workspace_permission.is_super_admin;
+	if is_super_admin {
+		let static_sites = static_sites
+			.into_iter()
+			.map(|static_site| StaticSite {
+				id: static_site.id,
+				name: static_site.name,
+				status: static_site.status,
+			})
+			.collect::<Vec<_>>();
+		log::trace!(
+			"request_id: {} - Static site successfully retreived",
+			request_id
+		);
+
+		context.success(ListStaticSitesResponse { static_sites });
+		return Ok(context);
+	}
+
+	let resources = workspace_permission.resources.clone();
+
+	let mut permitted_static_sites: Vec<DeploymentStaticSite> = Vec::new();
+	for static_site in static_sites {
+		if resources
+			.get(&static_site.id)
+			.map_or(false, |permissions| permissions.contains(permission_id))
+		{
+			permitted_static_sites.push(static_site);
+		}
+	}
+
+	if permitted_static_sites.is_empty() {
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+	let static_sites: Vec<StaticSite> = permitted_static_sites
+		.into_iter()
+		.map(|static_site| StaticSite {
+			id: static_site.id,
+			name: static_site.name,
+			status: static_site.status,
+		})
+		.collect::<Vec<_>>();
 	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);
 
 	context.success(ListStaticSitesResponse { static_sites });
