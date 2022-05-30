@@ -739,7 +739,7 @@ async fn update_static_site(
 			})
 			.unwrap(),
 		metadata: Some(serde_json::to_value(StaticSiteMetaData::Update {
-			is_site_name_updated: name.is_some(),
+			name: name.map(Into::into),
 			is_file_updated,
 		})?),
 	});

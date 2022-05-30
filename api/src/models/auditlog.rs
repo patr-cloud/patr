@@ -160,7 +160,7 @@ pub enum StaticSiteMetaData {
 		name: String,
 	},
 	Update {
-		is_site_name_updated: bool,
+		name: Option<String>,
 		is_file_updated: bool,
 	},
 	Start {},
