@@ -506,10 +506,7 @@ async fn delete_workspace(
 
 	let config = context.get_state().config.clone();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-
-	// TODO - instead of multiple info permissions
-	// We should have a single superAdmin or something, had to figure out
+	
 	let _domain_info_permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -521,17 +518,9 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let managed_db_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::infrastructure::managed_database::INFO)
-		.unwrap();
-
 	let managed_database = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		managed_db_info_permission_id,
 	)
 	.await?;
 
@@ -547,31 +536,15 @@ async fn delete_workspace(
 	)
 	.await?;
 
-	let managed_url_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::infrastructure::managed_url::INFO)
-		.unwrap();
-
 	let managed_url = db::get_all_managed_urls_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		managed_url_info_permission_id,
 	)
 	.await?;
-
-	let docker_repo_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::docker_registry::INFO)
-		.unwrap();
 
 	let docker_repositories = db::get_docker_repositories_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		docker_repo_info_permission_id,
 	)
 	.await?;
 

@@ -149,15 +149,11 @@ async fn list_all_database_clusters(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
 		.get(permissions::workspace::infrastructure::managed_database::INFO)
 		.unwrap();
-
-	// Can check if permission exists in accessToken or check for superAdmin
-	// Else give 404 same as below
 
 	if !context
 		.get_token_data()
@@ -177,31 +173,92 @@ async fn list_all_database_clusters(
 	let database_clusters = db::get_all_database_clusters_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		permission_id,
 	)
-	.await?
-	.into_iter()
-	.map(|database| {
-		json!({
-			request_keys::ID: database.id,
-			request_keys::NAME: database.name,
-			request_keys::DATABASE_NAME: database.db_name,
-			request_keys::ENGINE: database.engine.to_string(),
-			request_keys::VERSION: database.version,
-			request_keys::NUM_NODES: database.num_nodes,
-			request_keys::DATABASE_PLAN: database.database_plan.to_string(),
-			request_keys::REGION: database.region,
-			request_keys::STATUS: database.status.to_string(),
-			request_keys::PUBLIC_CONNECTION: {
-				request_keys::HOST: database.host,
-				request_keys::PORT: database.port,
-				request_keys::USERNAME: database.username,
-				request_keys::PASSWORD: database.password,
-			}
+	.await?;
+
+	let workspace_permission = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id)
+		.unwrap();
+
+	let is_super_admin = workspace_permission.is_super_admin;
+	if is_super_admin {
+		let database_clusters = database_clusters
+			.into_iter()
+			.map(|database| {
+				json!({
+					request_keys::ID: database.id,
+					request_keys::NAME: database.name,
+					request_keys::DATABASE_NAME: database.db_name,
+					request_keys::ENGINE: database.engine.to_string(),
+					request_keys::VERSION: database.version,
+					request_keys::NUM_NODES: database.num_nodes,
+					request_keys::DATABASE_PLAN: database.database_plan.to_string(),
+					request_keys::REGION: database.region,
+					request_keys::STATUS: database.status.to_string(),
+					request_keys::PUBLIC_CONNECTION: {
+						request_keys::HOST: database.host,
+						request_keys::PORT: database.port,
+						request_keys::USERNAME: database.username,
+						request_keys::PASSWORD: database.password,
+					}
+				})
+			})
+			.collect::<Vec<_>>();
+		log::trace!(
+			"request_id: {} - Returning all database cluster info",
+			request_id
+		);
+
+		context.json(json!({
+			request_keys::SUCCESS: true,
+			request_keys::DATABASES: database_clusters
+		}));
+
+		return Ok(context);
+	}
+
+	let resources = workspace_permission.resources.clone();
+
+	let mut permitted_database_cluster = Vec::new();
+	for database in database_clusters {
+		if resources
+			.get(&database.id)
+			.map_or(false, |permissions| permissions.contains(permission_id))
+		{
+			permitted_database_cluster.push(database);
+		}
+	}
+
+	if permitted_database_cluster.is_empty() {
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+	let database_clusters = permitted_database_cluster
+		.into_iter()
+		.map(|database| {
+			json!({
+				request_keys::ID: database.id,
+				request_keys::NAME: database.name,
+				request_keys::DATABASE_NAME: database.db_name,
+				request_keys::ENGINE: database.engine.to_string(),
+				request_keys::VERSION: database.version,
+				request_keys::NUM_NODES: database.num_nodes,
+				request_keys::DATABASE_PLAN: database.database_plan.to_string(),
+				request_keys::REGION: database.region,
+				request_keys::STATUS: database.status.to_string(),
+				request_keys::PUBLIC_CONNECTION: {
+					request_keys::HOST: database.host,
+					request_keys::PORT: database.port,
+					request_keys::USERNAME: database.username,
+					request_keys::PASSWORD: database.password,
+				}
+			})
 		})
-	})
-	.collect::<Vec<_>>();
+		.collect::<Vec<_>>();
 
 	log::trace!(
 		"request_id: {} - Returning all database cluster info",
@@ -224,28 +281,6 @@ async fn create_database_cluster(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-
-	// TODO - can be changed based on permission
-	let user_id = context.get_token_data().unwrap().user.id.clone();
-	let permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::infrastructure::managed_database::INFO)
-		.unwrap();
-
-	// Can check if permission exists in accessToken or check for superAdmin
-	// Else give 404 same as below
-
-	if !context
-		.get_token_data()
-		.unwrap()
-		.workspaces
-		.contains_key(&workspace_id)
-	{
-		Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	}
 
 	let body = context.get_body_object().clone();
 	let config = context.get_state().config.clone();
@@ -318,8 +353,6 @@ async fn create_database_cluster(
 		&workspace_id,
 		&config,
 		&request_id,
-		&user_id,
-		permission_id,
 	)
 	.await?;
 

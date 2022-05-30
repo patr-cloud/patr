@@ -168,8 +168,6 @@ pub async fn get_docker_repository_by_name(
 pub async fn get_docker_repositories_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	_user_id: &Uuid,
-	_permission_id: &Uuid,
 ) -> Result<Vec<(DockerRepository, u64, u64)>, sqlx::Error> {
 	let rows = query!(
 		r#"

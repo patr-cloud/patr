@@ -430,52 +430,33 @@ pub async fn update_managed_database_name(
 pub async fn get_all_database_clusters_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	user_id: &Uuid,
-	permission_id: &Uuid,
 ) -> Result<Vec<ManagedDatabase>, sqlx::Error> {
 	query_as!(
 		ManagedDatabase,
 		r#"
 		SELECT
-			managed_database.id as "id: _",
-			managed_database.name::TEXT as "name!: _",
-			managed_database.db_name,
-			managed_database.engine as "engine: _",
-			managed_database.version,
-			managed_database.num_nodes,
-			managed_database.database_plan as "database_plan: _",
-			managed_database.region,
-			managed_database.status as "status: _",
-			managed_database.host,
-			managed_database.port,
-			managed_database.username,
-			managed_database.password,
-			managed_database.workspace_id as "workspace_id: _",
-			managed_database.digitalocean_db_id
+			id as "id: _",
+			name::TEXT as "name!: _",
+			db_name,
+			engine as "engine: _",
+			version,
+			num_nodes,
+			database_plan as "database_plan: _",
+			region,
+			status as "status: _",
+			host,
+			port,
+			username,
+			password,
+			workspace_id as "workspace_id: _",
+			digitalocean_db_id
 		FROM
 			managed_database
-		LEFT JOIN
-			workspace_user
-		ON
-			managed_database.workspace_id = workspace_user.workspace_id
-		LEFT JOIN 
-			role_permissions_resource 
-		ON
-			workspace_user.role_id = role_permissions_resource.role_id AND
-			role_permissions_resource.resource_id = managed_database.id
-		LEFT JOIN
-			permission
-		ON
-			permission.id = role_permissions_resource.permission_id
 		WHERE
-			managed_database.workspace_id = $1 AND
-			workspace_user.user_id = $2 AND
-			permission.id = $3 AND
-			managed_database.status != 'deleted';
+			workspace_id = $1 AND
+			status != 'deleted';
 		"#,
 		workspace_id as _,
-		user_id as _,
-		permission_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await

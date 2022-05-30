@@ -170,7 +170,6 @@ async fn list_all_managed_urls(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -187,42 +186,104 @@ async fn list_all_managed_urls(
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
+
+	log::trace!("request_id: {} - Getting the list of all managed urls for the workspace", request_id);
 	let urls = db::get_all_managed_urls_in_workspace(
 		context.get_database_connection(),
 		&workspace_id,
-		&user_id,
-		permission_id,
 	)
-	.await?
-	.into_iter()
-	.filter_map(|url| {
-		Some(ManagedUrl {
-			id: url.id,
-			sub_domain: url.sub_domain,
-			domain_id: url.domain_id,
-			path: url.path,
-			url_type: match url.url_type {
-				DbManagedUrlType::ProxyToDeployment => {
-					ManagedUrlType::ProxyDeployment {
-						deployment_id: url.deployment_id?,
-						port: url.port? as u16,
+	.await?;
+
+	let workspace_permission = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id)
+		.unwrap();
+
+	let is_super_admin = workspace_permission.is_super_admin;
+	if is_super_admin {
+		let urls = urls
+			.into_iter()
+			.filter_map(|url| {
+				Some(ManagedUrl {
+					id: url.id,
+					sub_domain: url.sub_domain,
+					domain_id: url.domain_id,
+					path: url.path,
+					url_type: match url.url_type {
+						DbManagedUrlType::ProxyToDeployment => {
+							ManagedUrlType::ProxyDeployment {
+								deployment_id: url.deployment_id?,
+								port: url.port? as u16,
+							}
+						}
+						DbManagedUrlType::ProxyToStaticSite => {
+							ManagedUrlType::ProxyStaticSite {
+								static_site_id: url.static_site_id?,
+							}
+						}
+						DbManagedUrlType::ProxyUrl => {
+							ManagedUrlType::ProxyUrl { url: url.url? }
+						}
+						DbManagedUrlType::Redirect => {
+							ManagedUrlType::Redirect { url: url.url? }
+						}
+					},
+				})
+			})
+			.collect();
+		log::trace!("request_id: {} - Returning managed URLs", request_id);
+		context.success(ListManagedUrlsResponse { urls });
+		return Ok(context);
+	}
+
+	let resources = workspace_permission.resources.clone();
+	let mut permitted_urls = Vec::new();
+	for url in urls {
+		if resources
+			.get(&url.id)
+			.map_or(false, |permissions| permissions.contains(permission_id))
+		{
+			permitted_urls.push(url);
+		}
+	}
+
+	if permitted_urls.is_empty() {
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+	let urls = permitted_urls
+		.into_iter()
+		.filter_map(|url| {
+			Some(ManagedUrl {
+				id: url.id,
+				sub_domain: url.sub_domain,
+				domain_id: url.domain_id,
+				path: url.path,
+				url_type: match url.url_type {
+					DbManagedUrlType::ProxyToDeployment => {
+						ManagedUrlType::ProxyDeployment {
+							deployment_id: url.deployment_id?,
+							port: url.port? as u16,
+						}
 					}
-				}
-				DbManagedUrlType::ProxyToStaticSite => {
-					ManagedUrlType::ProxyStaticSite {
-						static_site_id: url.static_site_id?,
+					DbManagedUrlType::ProxyToStaticSite => {
+						ManagedUrlType::ProxyStaticSite {
+							static_site_id: url.static_site_id?,
+						}
 					}
-				}
-				DbManagedUrlType::ProxyUrl => {
-					ManagedUrlType::ProxyUrl { url: url.url? }
-				}
-				DbManagedUrlType::Redirect => {
-					ManagedUrlType::Redirect { url: url.url? }
-				}
-			},
+					DbManagedUrlType::ProxyUrl => {
+						ManagedUrlType::ProxyUrl { url: url.url? }
+					}
+					DbManagedUrlType::Redirect => {
+						ManagedUrlType::Redirect { url: url.url? }
+					}
+				},
+			})
 		})
-	})
-	.collect();
+		.collect();
 
 	log::trace!("request_id: {} - Returning managed URLs", request_id);
 	context.success(ListManagedUrlsResponse { urls });
