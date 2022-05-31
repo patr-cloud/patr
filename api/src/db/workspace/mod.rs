@@ -287,7 +287,7 @@ pub async fn get_workspace_by_name(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails: _"
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
