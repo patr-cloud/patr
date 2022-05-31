@@ -859,7 +859,7 @@ pub async fn join_user(
 	let recovery_emails: Vec<String> = if let Some((email_local, domain_id)) =
 		recovery_email_local.zip(recovery_email_domain_id)
 	{
-		let domain = db::get_workspace_domain_by_id(connection, domain_id)
+		let domain = db::get_personal_domain_by_id(connection, domain_id)
 			.await?
 			.status(500)
 			.body(error!(SERVER_ERROR).to_string())?;
