@@ -296,7 +296,7 @@ pub async fn send_alert_email_to_patr(
 /// errors
 ///
 /// [`TEmail`]: TEmail
-#[cfg(debug_assertions)]
+#[cfg(not(debug_assertions))]
 async fn send_email<TEmail>(
 	body: TEmail,
 	to: Mailbox,
@@ -363,7 +363,7 @@ where
 	Ok(())
 }
 
-#[cfg(not(debug_assertions))]
+#[cfg(debug_assertions)]
 async fn send_email<TEmail>(
 	_body: TEmail,
 	to: Mailbox,
