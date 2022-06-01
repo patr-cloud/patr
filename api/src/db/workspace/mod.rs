@@ -70,7 +70,9 @@ pub async fn initialize_workspaces_pre(
 						drone_username IS NOT NULL AND
 						drone_token IS NOT NULL
 					)
-				)
+				),
+			address_id UUID,
+			resource_limit_id TEXT NOT NULL
 		);
 		"#
 	)
@@ -148,10 +150,30 @@ pub async fn initialize_workspaces_pre(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE TABLE address(
+			id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY,
+			first_name TEXT NOT NULL,
+			last_name TEXT NOT NULL,
+			address_line_1 TEXT NOT NULL,
+			address_line_2 TEXT,
+			address_line_3 TEXT,
+			city TEXT NOT NULL,
+			state TEXT NOT NULL,
+			zip TEXT NOT NULL,
+			country TEXT NOT NULL
+		);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	domain::initialize_domain_pre(connection).await?;
 	docker_registry::initialize_docker_registry_pre(connection).await?;
 	secret::initialize_secret_pre(connection).await?;
 	infrastructure::initialize_infrastructure_pre(connection).await?;
+	billing::initialize_billing_pre(connection).await?;
 
 	Ok(())
 }
@@ -165,6 +187,27 @@ pub async fn initialize_workspaces_post(
 		ALTER TABLE workspace
 		ADD CONSTRAINT workspace_fk_id
 		FOREIGN KEY(id) REFERENCES resource(id)
+		DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_fk_address_id
+		FOREIGN KEY(address_id) REFERENCES address(id);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_fk_resource_limit_id
+		FOREIGN KEY(resource_limit_id) REFERENCES resource_limits(id)
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
@@ -215,6 +258,7 @@ pub async fn initialize_workspaces_post(
 	docker_registry::initialize_docker_registry_post(connection).await?;
 	secret::initialize_secret_post(connection).await?;
 	infrastructure::initialize_infrastructure_post(connection).await?;
+	billing::initialize_billing_post(connection).await?;
 
 	Ok(())
 }

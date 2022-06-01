@@ -191,6 +191,52 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "06ca5256da1ca17a2676161d61f46265efdcf8beddcc03526a09045b3bf3ba21": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active FROM workspace WHERE name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          }
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "07341d8b9887f3bdabaee7d54cf9fe672c2624065eed24580ad383e411fef384": {
     "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );",
@@ -241,6 +287,19 @@
         null
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "091d1494bac7313356e2ae7d5866ae2ee9b4d7a7e91f7153c3aeb6c96001924a": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "query": "SELECT id as \"id: Uuid\", name, resource_type_id as \"resource_type_id: Uuid\", owner_id as \"owner_id: Uuid\", created FROM resource WHERE id = $1;",
@@ -352,8 +411,13 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
   "102ae14f2d65ea1b82c065b152f7ddcac5b4a45730487d829481831e0ec0c191": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails!: _\" FROM workspace WHERE name = $1;",
+=======
+  "109658541c3629fa2b93265b2ac5c6d6dd5d154161d45ef2293027f875ff27f6": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", status as \"status: _\", workspace_id as \"workspace_id: _\" FROM deployment_static_site WHERE name = $1 AND workspace_id = $2 AND status != 'deleted';",
+>>>>>>> 7575c309... Added schema for payment
     "describe": {
       "columns": [
         {
@@ -362,6 +426,7 @@
           "type_info": "Uuid"
         },
         {
+<<<<<<< HEAD
           "ordinal": 1,
           "name": "name!: _",
           "type_info": "Text"
@@ -411,6 +476,8 @@
           "type_info": "Uuid"
         },
         {
+=======
+>>>>>>> 7575c309... Added schema for payment
           "ordinal": 1,
           "name": "name!: _",
           "type_info": "Text"
@@ -665,6 +732,47 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "14fe047c524321987b68fee257dce36a85c67d1746a1ceb1737b8e93fda0aed0": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active FROM workspace WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "15d97c8249593f00516ac5b30598779bda9d6214d2341d0166ada2e5dbc4a9e5": {
     "query": "UPDATE managed_database SET status = $1 WHERE id = $2;",
@@ -1574,6 +1682,19 @@
   },
   "2a8531f5a4448c2d77be6b5353946591bf213407b9a58b0b342a03bef0acd99c": {
     "query": "CREATE TYPE MANAGED_URL_TYPE AS ENUM( 'proxy_to_deployment', 'proxy_to_static_site', 'proxy_url', 'redirect' );",
+<<<<<<< HEAD
+=======
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "2bf80c1d47bcdf4098cc49672d0534f53cb3c0272434f3ddbf07b9698bb9bc04": {
+    "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_product_id FOREIGN KEY(product_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
+>>>>>>> 7575c309... Added schema for payment
     "describe": {
       "columns": [],
       "parameters": {
@@ -1738,6 +1859,23 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
+  "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
+    "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM( 'created', /* Created, but nothing pushed to it yet */ 'pushed', /* Something is pushed, but the system has not deployed it yet */ 'deploying', /* Something is pushed, and the system is currently deploying it */ 'running', /* Deployment is running successfully */ 'stopped', /* Deployment is stopped by the user */ 'errored', /* Deployment is stopped because of too many errors */ 'deleted' /* Deployment is deleted by the user */ );",
+=======
+  "2ede8e9523b6ba2de4e6a58e162236bbde4c01cba4ed3c115c14455d7b86c34a": {
+    "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_resource_limit_id FOREIGN KEY(resource_limit_id) REFERENCES resource_limits(id) DEFERRABLE INITIALLY IMMEDIATE;",
+>>>>>>> 7575c309... Added schema for payment
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+<<<<<<< HEAD
+=======
   "30653640dbfdeb1e2caa666a9b85be290220813278ce2acad9cc3590b7198d18": {
     "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM( 'created', /* Created, but nothing pushed to it yet */ 'pushed', /* Something is pushed, but the system has not deployed it yet */ 'deploying', /* Something is pushed, and the system is currently deploying it */ 'running', /* Deployment is running successfully */ 'stopped', /* Deployment is stopped by the user */ 'errored', /* Deployment is stopped because of too many errors */ 'deleted' /* Deployment is deleted by the user */ );",
     "describe": {
@@ -1748,6 +1886,7 @@
       "nullable": []
     }
   },
+>>>>>>> 7575c309... Added schema for payment
   "307345f2a5c65e8f92e5e1efff4d6b9975d1405095cb5e31dc91bc4e58b9f783": {
     "query": "DELETE FROM resource WHERE id = $1;",
     "describe": {
@@ -2264,6 +2403,7 @@
         false
       ]
     }
+<<<<<<< HEAD
   },
   "42777471cc473557fb21e903c56db9b3759496bfebc29fac1bb568fd0c2182c6": {
     "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active, workspace.alert_emails FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
@@ -2308,6 +2448,8 @@
         false
       ]
     }
+=======
+>>>>>>> 7575c309... Added schema for payment
   },
   "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
     "query": "UPDATE workspace_domain SET is_verified = $2 WHERE id = $1;",
@@ -2334,6 +2476,19 @@
   },
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+<<<<<<< HEAD
+=======
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "44ff65872c5456028cefe3c2505c32a8ce26c056ccf1e0efbb3398d4334e5e62": {
+    "query": "CREATE TYPE TRANSACTION_TYPE AS ENUM( 'credits', 'one_time', 'fixed_monthly', 'dynamic_monthly' /* 'fixed_annually', */ /* 'dynamic_annually', */ /* 'fixed_resources', */ );",
+>>>>>>> 7575c309... Added schema for payment
     "describe": {
       "columns": [],
       "parameters": {
@@ -2368,6 +2523,19 @@
   },
   "4a5a68c97c5ca2cb9ec0155654d49074b63521bee0db502e8e479dbe6dbf40b9": {
     "query": "CREATE TYPE DOMAIN_NAMESERVER_TYPE AS ENUM( 'internal', 'external' );",
+<<<<<<< HEAD
+=======
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "4ba31bb2539cd746174cb31e6a73d3eaec2f04355f87ecf8c7aa3a7396b3409e": {
+    "query": "ALTER TABLE resource_limits ADD CONSTRAINT resource_limits_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+>>>>>>> 7575c309... Added schema for payment
     "describe": {
       "columns": [],
       "parameters": {
@@ -2480,6 +2648,7 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
   },
   "4ed81997ccc37b07cd883568f279869a4ab76bd29ae84bd82c32636b205fd857": {
     "query": "INSERT INTO workspace( id, name, super_admin_id, active, alert_emails, drone_username, drone_token ) VALUES ($1, $2, $3, $4, $5, NULL, NULL);",
@@ -2501,6 +2670,8 @@
       },
       "nullable": []
     }
+=======
+>>>>>>> 7575c309... Added schema for payment
   },
   "4f1a513b45750aa514a8928122a22edd728e7ae6bb07301dd58885e7ac3da3e4": {
     "query": "DELETE FROM role_permissions_resource WHERE role_id = $1;",
@@ -2686,6 +2857,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "53c7572b8ce9249337d6ebe6439bf4d36b67ee3ce0832585b1d8c8433f64f2e2": {
+    "query": "CREATE TABLE IF NOT EXISTS payment_method( id TEXT CONSTRAINT payment_method_pk PRIMARY KEY, method_type PAYMENT_METHOD_TYPE NOT NULL, workspace_id UUID NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "5571b74fc5da17a2cbb423295f3499aa3c3ef78fd04e659cf57acac7a2b88a18": {
     "query": "SELECT COUNT(*) as \"count!\" FROM deployment_static_site INNER JOIN workspace ON deployment_static_site.workspace_id = workspace.id WHERE status != 'deleted' AND workspace.super_admin_id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );",
@@ -3169,6 +3353,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "643bf11cca009f335bd2fefc21977ef06eb3876aeeb5d408cb4a5c49d94c4b23": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "6505122d8c40c26849eb3a6144e2de08388b087d10d049cdbba7a1742fefc5de": {
     "query": "CREATE INDEX role_permissions_resource_idx_role_id ON role_permissions_resource (role_id);",
@@ -3179,6 +3376,47 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "665a817ea7ecc401873e1d54ad0a8e44bca423cf433e92a6156405c9521ffe44": {
+    "query": "SELECT DISTINCT workspace.id as \"id: _\", workspace.name::TEXT as \"name!: _\", workspace.super_admin_id as \"super_admin_id: _\", workspace.active FROM workspace LEFT JOIN workspace_user ON workspace.id = workspace_user.workspace_id WHERE ( workspace.super_admin_id = $1 OR workspace_user.user_id = $1 ) AND workspace.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(id::TEXT, '-', ''), '@%' );",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "6684afded21a486e0b2246c1376483e58abfe453a4831dd2b84eb6a7ae16d252": {
     "query": "INSERT INTO deployment_region( id, name, provider, location, parent_region_id ) VALUES ($1, $2, $3, ST_SetSRID(POINT($4, $5)::GEOMETRY, 4326), $6);",
@@ -3279,6 +3517,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "6a0a99bf3b39d50e78fc460923c2fa6ea0afba79572a6255c3222467a717c45f": {
+    "query": "CREATE TABLE IF NOT EXISTS product_limits( id UUID CONSTRAINT resource_usage_pk PRIMARY KEY, product_id UUID NOT NULL, max_limit INTEGER NOT NULL, workspace_id UUID NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
@@ -3318,6 +3569,7 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
   },
   "6c69f8228039028a086d2c282989246cc3fd4a9fd375891daf781bd1aa62bcfd": {
     "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, alert_emails VARCHAR(320) [] NOT NULL, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ) );",
@@ -3328,6 +3580,8 @@
       },
       "nullable": []
     }
+=======
+>>>>>>> 7575c309... Added schema for payment
   },
   "6d073aee1779702ca055d61d249600c11148f6df419ae1221b3030279f364539": {
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE workspace_id = $1;",
@@ -3487,6 +3741,7 @@
       ]
     }
   },
+<<<<<<< HEAD
   "708a531906c5a9d680d024db1bd04ae511002fd927ef1bd2bebe3935a22a3a59": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails FROM workspace WHERE super_admin_id = $1;",
     "describe": {
@@ -3529,6 +3784,16 @@
         false,
         false
       ]
+=======
+  "7015ca1971b4bd5267ccd4c96e1d0f67c845e125c6cd11aa5e145a04c5c6dc8b": {
+    "query": "CREATE TYPE PLAN_TYPE AS ENUM( 'one_time', 'fixed_monthly', 'dynamic_monthly' /* 'fixed_annually', */ /* 'dynamic_annually', */ /* 'fixed_resources', */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+>>>>>>> 7575c309... Added schema for payment
     }
   },
   "716f9c60fafbfa79a2dd1eebd546e54e5abdde8c1cdc56c8b3f776f547f08625": {
@@ -4248,6 +4513,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "849c7ae7689252eb411c841da4655f6a3ff0f4304e29fa67871b3948dbdc00e6": {
+    "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "query": "SELECT * FROM resource_type WHERE id = $1;",
@@ -4380,6 +4658,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "8ca1bd27b0eb5bc89e6ae1221c63b3013ec436f46b9b987d898b206d882f884c": {
+    "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "8d0a4c011fc58624c93d87270ff0cc7db7a41927801b42f826871cc11a37ce02": {
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );",
@@ -4481,6 +4772,49 @@
   },
   "8f40c85c9a884c7baefc91aace67efcf5d1966aa9589f1b2d408e3f27cadd6e9": {
     "query": "CREATE TABLE resource( id UUID CONSTRAINT resource_pk PRIMARY KEY, name VARCHAR(100) NOT NULL, resource_type_id UUID NOT NULL CONSTRAINT resource_fk_resource_type_id REFERENCES resource_type(id), owner_id UUID NOT NULL CONSTRAINT resource_fk_owner_id REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE, created BIGINT NOT NULL CONSTRAINT resource_created_chk_unsigned CHECK(created >= 0), CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id) );",
+<<<<<<< HEAD
+=======
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "901f87b378c302b9ddb2126e8a2da0cba3eff97e29f04a78390eab786a007a11": {
+    "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "902eb1b77efa78c6fcb9b9ca53b1b37b6bc5f8b661d46294934b91a5a665942e": {
+    "query": "CREATE TABLE IF NOT EXISTS product_info( id UUID CONSTRAINT product_info_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "92cf5f31ae45eba6949e9201bbaf07455c974957f11140c4d1eebdcb427cee25": {
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), address_id UUID, resource_limit_id TEXT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "94754e687618da3960c58a3510202b7e9f408ff3b18edb9978f81948f77da63f": {
+    "query": "CREATE TYPE PAYMENT_METHOD_TYPE AS ENUM( 'credit_card', 'debit_card' );",
+>>>>>>> 7575c309... Added schema for payment
     "describe": {
       "columns": [],
       "parameters": {
@@ -4545,6 +4879,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "969935e79e1d00ec5a2ec715240a07dd5ba7f2eb6aa846500bac31473ec2d361": {
+    "query": "CREATE TABLE address( id UUID NOT NULL CONSTRAINT address_pk PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, address_line_1 TEXT NOT NULL, address_line_2 TEXT, address_line_3 TEXT, city TEXT NOT NULL, state TEXT NOT NULL, zip TEXT NOT NULL, country TEXT NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "96b3517ef88f76e14a7f25c2ee6c94502f52a8e72314b6ba8e5e2010e9c06965": {
     "query": "CREATE TABLE workspace_user( user_id UUID NOT NULL CONSTRAINT workspace_user_fk_user_id REFERENCES \"user\"(id), workspace_id UUID NOT NULL CONSTRAINT workspace_user_fk_workspace_id REFERENCES workspace(id), role_id UUID NOT NULL CONSTRAINT workspace_user_fk_role_id REFERENCES role(id), CONSTRAINT workspace_user_pk PRIMARY KEY(user_id, workspace_id, role_id) );",
@@ -4781,6 +5128,19 @@
         null
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "9bdfa463022aadafe5079554d6e75a40ee92a07bf7be483c3a5945c3a4009d45": {
+    "query": "CREATE MATERIALIZED VIEW credits AS SELECT SUM( CASE debit WHEN 'true' THEN -amount ELSE amount END ) AS credits FROM transactions WHERE billable_service_id IS NULL AND product_info_id IS NULL AND plan_id IS NULL GROUP BY workspace_id WITH NO DATA; /*This clause specifies whether or not the materialized view should be populated at creation time. If not, the materialized view will be flagged as unscannable and cannot be queried until REFRESH MATERIALIZED VIEW is used. */",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "9c3a8439eb72bacedd686bc01944398392c09f761ddc8fc7fac2fa3e97f74f3b": {
     "query": "CREATE INDEX role_permissions_resource_type_idx_role_id ON role_permissions_resource_type (role_id);",
@@ -5012,6 +5372,19 @@
         true
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "a1e74ed185e1f85ec095c685b53e52be7552c6d0ff19cfc39b745dbe9a4f70e8": {
+    "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;",
@@ -5193,6 +5566,7 @@
           "type_info": "Varchar"
         }
       ],
+<<<<<<< HEAD
       "parameters": {
         "Left": [
           "Uuid"
@@ -5203,6 +5577,28 @@
         false,
         false
       ]
+=======
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "a5198d9a132fc4f80202d5d1072a6684945fbc50f1c5dc9298f5a376acee0d5b": {
+    "query": "CREATE TABLE IF NOT EXISTS coupons( id UUID CONSTRAINT coupons_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT, credits DECIMAL(10, 2) NOT NULL, valid_from TIMESTAMPTZ NOT NULL, valid_till TIMESTAMPTZ NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+>>>>>>> 7575c309... Added schema for payment
     }
   },
   "a52af9e8867c7460b1f9958bed22d9164e0e57977225a2c94d4fb0dad48b595f": {
@@ -5218,6 +5614,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "a5c39b0bec94530a6bdd5d7e75e4b42a76dfb03908a6f64b2364fc189f73cfce": {
+    "query": "CREATE TABLE IF NOT EXISTS plans( id UUID CONSTRAINT plans_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT, plan_type PLAN_TYPE NOT NULL, product_info_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER NOT NULL, workspace_id UUID NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "a69106420eb20523380486866b32d9b4d3c45c39b139274c4aeb9442bb823300": {
     "query": "SELECT COUNT(personal_email.domain_id) as \"count!: i64\" FROM personal_email WHERE personal_email.domain_id = $1;",
@@ -5358,6 +5767,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "a79600e831f2627811e318ead3846bd3c9e716108c7f5cd66d94a87e22ab6c00": {
+    "query": "CREATE TABLE IF NOT EXISTS transactions( id UUID CONSTRAINT transactions_pk PRIMARY KEY, billable_service_id UUID, product_info_id UUID NOT NULL, transaction_type TRANSACTION_TYPE NOT NULL, plan_id UUID, amount DECIMAL(10, 2) NOT NULL, quantity INTEGER NOT NULL, workspace_id UUID NOT NULL, date TIMESTAMPTZ NOT NULL, coupon_id UUID, debit bool NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "a7e2c73b0f02390e207b0895a89dcb37d7a6d6e5c09fb225f340d10b403b268e": {
     "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push ) VALUES ( $1, $2, $3, NULL, $4, $5, 'created', $6, $7, $8, $9, $10, $11 );",
@@ -5523,6 +5945,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "a9fe9511abb4cff2d9be1ddb183457a0f87bd18dca653b6e12f4d39b25f8542d": {
+    "query": "CREATE TABLE IF NOT EXISTS billable_service( id UUID CONSTRAINT billable_service_pk PRIMARY KEY, plan_id UUId NOT NULL, workspace_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER NOT NULL, product_info_id UUID NOT NULL, total_price DECIMAL(10, 2) NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19": {
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;",
@@ -5619,6 +6054,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "add73441b6a3cfb4c4d3e8c34de64bff5d584e7466e5cac94c60415973ce936f": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_coupon_id FOREIGN KEY(coupon_id) REFERENCES coupons(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';",
@@ -6417,6 +6865,29 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "b97f7041c5a636b3c81cf9e1fc2634ed29032746879e24fcf1b3b3be3737e693": {
+    "query": "INSERT INTO workspace( id, name, super_admin_id, active, drone_username, drone_token ) VALUES ($1, $2, $3, $4, NULL, NULL);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "name": "citext",
+              "kind": "Simple"
+            }
+          },
+          "Uuid",
+          "Bool"
+        ]
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "b9d97701e22c7948c38793c3124de8a5e0224d85d918ea202ecc90bb1236a829": {
     "query": "CREATE INDEX deployment_idx_name ON deployment (name);",
@@ -6491,6 +6962,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "bbe95be22da7e76615382ef28f0167c48c280f1740d4eebfc9a91e091ca71c0d": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_billable_service_id FOREIGN KEY(billable_service_id) REFERENCES billable_service(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "query": "CREATE INDEX user_to_sign_up_idx_username_otp_expiry ON user_to_sign_up (username, otp_expiry);",
@@ -6769,6 +7253,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "d2862591b476f7d8c5f3c90d83a953c9afff08190ea8cb6cb8a217daaa91b899": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;",
@@ -6802,6 +7299,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "d2d2afb54f76f4581c1a6bfd2624638a8672f7e95b3d30380a29be5df646f03e": {
+    "query": "CREATE TABLE IF NOT EXISTS resource_limits( id UUID CONSTRAINT resource_limits_pk PRIMARY KEY, workspace_id UUID NOT NULL, max_resources INTEGER NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
     "query": "SELECT DISTINCT ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) AS \"score\", \"user\".id as \"id!: Uuid\", \"user\".username as \"username!\", \"user\".first_name as \"first_name!\", \"user\".last_name as \"last_name!\", \"user\".bio as \"bio\", \"user\".location as \"location\" FROM \"user\" LEFT JOIN personal_email ON \"user\".id = personal_email.user_id LEFT JOIN business_email ON \"user\".id = personal_email.user_id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON \"user\".id = user_phone_number.user_id LEFT JOIN phone_number_country_code ON user_phone_number.country_code = phone_number_country_code.country_code WHERE ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) > 0 ORDER BY 1 DESC LIMIT 10;",
@@ -6924,6 +7434,47 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "da00466a405deab718aa4aace88a0fdacbf06e051fb0b2ff17baa35b0cf10c89": {
+    "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active FROM workspace WHERE super_admin_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name!: _",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "super_admin_id: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        null,
+        false,
+        false
+      ]
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "da1189d39d4d092b648061fd074d1e847a2142cd3a13efd0bb18abd92978baca": {
     "query": "CREATE TABLE managed_database( id UUID CONSTRAINT managed_database_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT managed_database_chk_name_is_trimmed CHECK( name = TRIM(name) ), db_name VARCHAR(255) NOT NULL CONSTRAINT managed_database_chk_db_name_is_trimmed CHECK( db_name = TRIM(db_name) ), engine MANAGED_DATABASE_ENGINE NOT NULL, version TEXT NOT NULL, num_nodes INTEGER NOT NULL, database_plan MANAGED_DATABASE_PLAN NOT NULL, region TEXT NOT NULL, status MANAGED_DATABASE_STATUS NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, username TEXT NOT NULL, password TEXT NOT NULL, workspace_id UUID NOT NULL, digitalocean_db_id TEXT CONSTRAINT managed_database_uq_digitalocean_db_id UNIQUE, CONSTRAINT managed_database_uq_name_workspace_id UNIQUE(name, workspace_id) );",
@@ -7817,6 +8368,19 @@
       },
       "nullable": []
     }
+<<<<<<< HEAD
+=======
+  },
+  "ece0b5c9110deede9b4f81b82feb4a52d278fd279ed20e55b51bf2b0cf4a71cc": {
+    "query": "ALTER TABLE workspace ADD CONSTRAINT workspace_fk_address_id FOREIGN KEY(address_id) REFERENCES address(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "ed03b82d7f2dae1014156e82999b9804b120f50fbd13d06969daca39c47e3c88": {
     "query": "CREATE TABLE password_reset_request( user_id UUID CONSTRAINT password_reset_request_pk PRIMARY KEY CONSTRAINT password_reset_request_fk_user_id REFERENCES \"user\"(id), token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT password_reset_request_token_expiry_chk_unsigned CHECK(token_expiry >= 0) );",
@@ -7857,6 +8421,19 @@
         false
       ]
     }
+<<<<<<< HEAD
+=======
+  },
+  "edf8b910720f926f01c0fae18eb10d076d4ec712cbf255126d66cf8ddefbb64a": {
+    "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+>>>>>>> 7575c309... Added schema for payment
   },
   "ee4ea18cebcb0c118054ebe00ae27cb609df953c788737ad02d1044c901d21a9": {
     "query": "INSERT INTO workspace_audit_log( id, date, ip_address, workspace_id, user_id, login_id, resource_id, action, request_id, metadata, patr_action, success ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
@@ -7948,6 +8525,7 @@
           "type_info": "Int8"
         }
       ],
+<<<<<<< HEAD
       "parameters": {
         "Left": []
       },
@@ -8010,6 +8588,13 @@
         false,
         false,
         false
+=======
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+>>>>>>> 7575c309... Added schema for payment
       ]
     }
   },
@@ -8074,12 +8659,31 @@
           "type_info": "Int8"
         }
       ],
+<<<<<<< HEAD
       "parameters": {
         "Left": []
       },
       "nullable": [
         null
       ]
+=======
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "f14ea696cb3ce0e18f65040d083c1189c66d0f7ab92d3c373cf69276765b423e": {
+    "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+>>>>>>> 7575c309... Added schema for payment
     }
   },
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
