@@ -84,6 +84,7 @@ impl EveContext {
 		&mut self.state.redis
 	}
 
+	#[allow(dead_code)]
 	pub const fn get_body_object(&self) -> &Value {
 		&self.body_object
 	}

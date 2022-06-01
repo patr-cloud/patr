@@ -12,8 +12,6 @@ pub const APP_ABOUT: &str = crate_description!();
 pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
 pub mod request_keys {
-	pub const USERNAME: &str = "username";
-	pub const PASSWORD: &str = "password";
 	pub const SUCCESS: &str = "success";
 	pub const ERROR: &str = "error";
 	pub const ERRORS: &str = "errors";
@@ -23,9 +21,6 @@ pub mod request_keys {
 	pub const TOKEN: &str = "token";
 	pub const DOMAIN_ID: &str = "domainId";
 	pub const WORKSPACE_ID: &str = "workspaceId";
-	pub const NAME: &str = "name";
-	pub const ID: &str = "id";
-	pub const VERSION: &str = "version";
 	pub const ROLE_ID: &str = "roleId";
 	pub const RESOURCE_ID: &str = "resourceId";
 	pub const LOGIN_ID: &str = "loginId";
@@ -36,16 +31,8 @@ pub mod request_keys {
 	pub const REPOSITORY: &str = "repository";
 	pub const REPOSITORY_ID: &str = "repositoryId";
 	pub const DEPLOYMENT_ID: &str = "deploymentId";
-	pub const PORT: &str = "port";
-	pub const STATUS: &str = "status";
-	pub const ENGINE: &str = "engine";
-	pub const NUM_NODES: &str = "numNodes";
 	pub const REGION: &str = "region";
-	pub const HOST: &str = "host";
 	pub const DATABASES: &str = "databases";
-	pub const DATABASE_PLAN: &str = "databasePlan";
-	pub const PUBLIC_CONNECTION: &str = "publicConnection";
-	pub const DATABASE_NAME: &str = "databaseName";
 	pub const DATABASE_ID: &str = "databaseId";
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
 	pub const USER_ID: &str = "userId";

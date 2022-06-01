@@ -1,17 +1,19 @@
 use std::{str, time::Duration};
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::database::{
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
+	utils::Uuid,
+};
 use eve_rs::AsError;
 use reqwest::Client;
 use tokio::{task, time};
 
 use crate::{
-	db::{
-		self,
-		ManagedDatabaseEngine,
-		ManagedDatabasePlan,
-		ManagedDatabaseStatus,
-	},
+	db::{self},
 	error,
 	models::deployment::cloud_providers::digitalocean::{
 		DatabaseConfig,

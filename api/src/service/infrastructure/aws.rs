@@ -1,12 +1,18 @@
 use std::time::Duration;
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::database::{
+		ManagedDatabaseEngine,
+		ManagedDatabasePlan,
+		ManagedDatabaseStatus,
+	},
+	utils::Uuid,
+};
 use eve_rs::AsError;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use tokio::{task, time};
 
 use crate::{
-	db::{ManagedDatabaseEngine, ManagedDatabasePlan, ManagedDatabaseStatus},
 	error,
 	service::infrastructure::managed_database,
 	utils::{settings::Settings, Error},

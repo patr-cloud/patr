@@ -132,7 +132,10 @@ async fn process_queue_payload(
 			static_site::process_request(&mut connection, request_data, config)
 				.await
 		}
-		RequestMessage::Database {} => todo!(),
+		RequestMessage::Database(request_data) => {
+			database::process_request(&mut connection, request_data, config)
+				.await
+		}
 	}
 	.map_err(|error| {
 		log::error!("Error processing RabbitMQ message: {}", error.get_error());

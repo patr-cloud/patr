@@ -1,20 +1,22 @@
 use std::ops::DerefMut;
 
-use api_models::utils::Uuid;
-use eve_rs::AsError;
-
-use crate::{
-	db::{
-		self,
+use api_models::{
+	models::workspace::infrastructure::database::{
 		ManagedDatabaseEngine,
 		ManagedDatabasePlan,
 		ManagedDatabaseStatus,
 	},
+	utils::Uuid,
+};
+use eve_rs::AsError;
+
+use crate::{
+	db::{self},
 	error,
 	models::rbac,
 	service::{
 		self,
-		infrastructure::{aws, digitalocean},
+		infrastructure::{aws, digitalocean, kubernetes},
 	},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -144,6 +146,22 @@ pub async fn create_managed_database_in_workspace(
 			)
 			.await?;
 		}
+		"patr" => {
+			kubernetes::create_managed_database_cluster(
+				config,
+				request_id,
+				workspace_id,
+				&database_id,
+				name,
+				db_name,
+				engine,
+				version,
+				num_nodes,
+				database_plan,
+				region,
+			)
+			.await?;
+		}
 		_ => {
 			return Err(Error::empty()
 				.status(400)
@@ -197,6 +215,22 @@ pub async fn delete_managed_database(
 				request_id
 			);
 			aws::delete_database(database_id, region, request_id).await?;
+		}
+		"patr" => {
+			log::trace!(
+				"request_id: {} - deleting the deployment from patr k8s",
+				request_id
+			);
+			kubernetes::delete_database(
+				config,
+				request_id,
+				&database.workspace_id,
+				database_id,
+				&database.name,
+				database.num_nodes,
+				&database.engine,
+			)
+			.await?;
 		}
 		_ => {
 			return Err(Error::empty()

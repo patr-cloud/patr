@@ -9,7 +9,10 @@ mod static_site;
 
 use std::ops::DerefMut;
 
-use api_models::utils::Uuid;
+use api_models::{
+	models::workspace::infrastructure::database::ManagedDatabaseStatus,
+	utils::Uuid,
+};
 
 pub use self::{
 	deployment::*,
@@ -20,7 +23,7 @@ pub use self::{
 	static_site::*,
 };
 use crate::{
-	db::{self, ManagedDatabaseStatus},
+	db::{self},
 	service,
 };
 

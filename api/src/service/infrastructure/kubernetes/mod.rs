@@ -1,5 +1,6 @@
 mod certificate;
 mod deployment;
+mod managed_database;
 mod managed_url;
 mod static_site;
 mod workspace;
@@ -29,13 +30,14 @@ use kube::{
 pub use self::{
 	certificate::*,
 	deployment::*,
+	managed_database::*,
 	managed_url::*,
 	static_site::*,
 	workspace::*,
 };
 use crate::utils::{settings::Settings, Error};
 
-async fn get_kubernetes_config(
+pub async fn get_kubernetes_config(
 	config: &Settings,
 ) -> Result<kube::Client, Error> {
 	let config = Config::from_custom_kubeconfig(

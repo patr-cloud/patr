@@ -1,5 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::{
+		database::ManagedDatabasePlan,
 		deployment::{
 			Deployment,
 			DeploymentRegistry,
@@ -16,6 +17,7 @@ use crate::{
 	db,
 	models::{
 		rabbitmq::{
+			DatabaseRequestData,
 			DeploymentRequestData,
 			RequestMessage,
 			StaticSiteRequestData,
@@ -406,6 +408,56 @@ pub async fn queue_delete_static_site(
 		}),
 		config,
 		request_id,
+	)
+	.await
+}
+
+pub async fn queue_create_mysql_database(
+	config: &Settings,
+	request_id: Uuid,
+	workspace_id: Uuid,
+	database_id: Uuid,
+	cluster_name: String,
+	db_root_username: String,
+	db_root_password: String,
+	num_nodes: i32,
+	database_plan: ManagedDatabasePlan,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::Database(DatabaseRequestData::CreateMySQL {
+			request_id: request_id.to_owned(),
+			workspace_id,
+			database_id,
+			cluster_name,
+			db_root_username,
+			db_root_password,
+			num_nodes,
+			database_plan,
+		}),
+		config,
+		&request_id,
+	)
+	.await
+}
+
+pub async fn queue_delete_mysql_database(
+	config: &Settings,
+	request_id: Uuid,
+	workspace_id: Uuid,
+	database_id: Uuid,
+	cluster_name: String,
+	num_nodes: i32,
+) -> Result<(), Error> {
+	send_message_to_rabbit_mq(
+		&RequestMessage::Database(DatabaseRequestData::DeleteMySQL {
+			request_id: request_id.to_owned(),
+			workspace_id,
+			database_id,
+			cluster_name,
+			num_nodes,
+		}),
+		config,
+		&request_id,
 	)
 	.await
 }

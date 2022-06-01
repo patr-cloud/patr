@@ -1,5 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::{
+		database::ManagedDatabasePlan,
 		deployment::{Deployment, DeploymentRunningDetails},
 		static_site::StaticSiteDetails,
 	},
@@ -15,7 +16,7 @@ use super::DeploymentMetadata;
 pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	StaticSite(StaticSiteRequestData),
-	Database {},
+	Database(DatabaseRequestData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -110,5 +111,27 @@ pub enum StaticSiteRequestData {
 		workspace_id: Uuid,
 		static_site_id: Uuid,
 		request_id: Uuid,
+	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "camelCase")]
+pub enum DatabaseRequestData {
+	CreateMySQL {
+		request_id: Uuid,
+		workspace_id: Uuid,
+		database_id: Uuid,
+		cluster_name: String,
+		db_root_username: String,
+		db_root_password: String,
+		num_nodes: i32,
+		database_plan: ManagedDatabasePlan,
+	},
+	DeleteMySQL {
+		request_id: Uuid,
+		workspace_id: Uuid,
+		database_id: Uuid,
+		cluster_name: String,
+		num_nodes: i32,
 	},
 }
