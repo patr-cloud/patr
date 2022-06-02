@@ -14,6 +14,11 @@ use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
 		apps::v1::{Deployment as K8sDeployment, DeploymentSpec},
+		autoscaling::v1::{
+			CrossVersionObjectReference,
+			HorizontalPodAutoscaler,
+			HorizontalPodAutoscalerSpec,
+		},
 		core::v1::{
 			Container,
 			ContainerPort,
@@ -318,6 +323,46 @@ pub async fn update_kubernetes_deployment(
 			&format!("service-{}", deployment.id),
 			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
+		)
+		.await?
+		.status
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?;
+
+	// HPA - horizontal pod autoscaler
+	let kubernetes_hpa = HorizontalPodAutoscaler {
+		metadata: ObjectMeta {
+			name: Some(format!("hpa-{}", deployment.id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		spec: Some(HorizontalPodAutoscalerSpec {
+			scale_target_ref: CrossVersionObjectReference {
+				api_version: Some("apps/v1".to_string()),	
+				kind: "Deployment".to_string(),
+				name: format!("deployment-{}", deployment.id),
+			},
+			min_replicas: Some(running_details.min_horizontal_scale.into()),
+			max_replicas: running_details.max_horizontal_scale.into(),
+			target_cpu_utilization_percentage: Some(80),
+			..HorizontalPodAutoscalerSpec::default()
+		}),
+		..HorizontalPodAutoscaler::default()
+	};
+
+	// Create the HPA defined above
+	log::trace!(
+		"request_id: {} - creating horizontal pod autoscalar",
+		request_id
+	);
+	let hpa_api: Api<HorizontalPodAutoscaler> =
+		Api::namespaced(kubernetes_client.clone(), namespace);
+
+	hpa_api
+		.patch(
+			&format!("hpa-{}", deployment.id),
+			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+			&Patch::Apply(kubernetes_hpa),
 		)
 		.await?
 		.status
