@@ -11,8 +11,8 @@ pub(super) async fn migrate(
 	config: &Settings,
 ) -> Result<(), Error> {
 	add_github_permissions(&mut *connection, config).await?;
-	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	add_alert_emails(&mut *connection, config).await?;
+	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 
 	Ok(())
