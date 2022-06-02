@@ -24,6 +24,7 @@ pub struct Workspace {
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
+	pub alert_emails: Vec<String>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -56,6 +57,7 @@ pub async fn initialize_workspaces_pre(
 				CONSTRAINT workspace_fk_super_admin_id
 					REFERENCES "user"(id),
 			active BOOLEAN NOT NULL DEFAULT FALSE,
+			alert_emails VARCHAR(320) [] NOT NULL,
 			drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE,
 			drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null
 				CHECK(
@@ -220,6 +222,7 @@ pub async fn create_workspace(
 	workspace_id: &Uuid,
 	name: &str,
 	super_admin_id: &Uuid,
+	alert_emails: &[String],
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -229,16 +232,18 @@ pub async fn create_workspace(
 				name,
 				super_admin_id,
 				active,
+				alert_emails,
 				drone_username,
 				drone_token
 			)
 		VALUES
-			($1, $2, $3, $4, NULL, NULL);
+			($1, $2, $3, $4, $5, NULL, NULL);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
+		alert_emails as _
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -257,7 +262,8 @@ pub async fn get_workspace_info(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
@@ -280,7 +286,8 @@ pub async fn get_workspace_by_name(
 			id as "id: _",
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
-			active
+			active,
+			alert_emails as "alert_emails!: _"
 		FROM
 			workspace
 		WHERE
@@ -312,6 +319,49 @@ pub async fn update_workspace_name(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn update_workspace_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	name: Option<String>,
+	alert_emails: Option<Vec<String>>,
+) -> Result<(), sqlx::Error> {
+	if let Some(name) = name {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				name = $1
+			WHERE
+				id = $2;
+			"#,
+			name as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(alert_emails) = alert_emails {
+		query!(
+			r#"
+			UPDATE
+				workspace
+			SET
+				alert_emails = $1
+			WHERE
+				id = $2;
+			"#,
+			alert_emails as _,
+			workspace_id as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	Ok(())
 }
 
 pub async fn create_workspace_audit_log(
