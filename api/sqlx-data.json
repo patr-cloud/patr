@@ -290,6 +290,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "091d1494bac7313356e2ae7d5866ae2ee9b4d7a7e91f7153c3aeb6c96001924a": {
     "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -301,6 +302,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "0a99a795783bd682faac118e140bb40890bcecc424254bf651823cb42022b1ec": {
     "query": "SELECT id as \"id: Uuid\", name, resource_type_id as \"resource_type_id: Uuid\", owner_id as \"owner_id: Uuid\", created FROM resource WHERE id = $1;",
     "describe": {
@@ -1692,6 +1695,7 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
   "2bf80c1d47bcdf4098cc49672d0534f53cb3c0272434f3ddbf07b9698bb9bc04": {
     "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_product_id FOREIGN KEY(product_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
 >>>>>>> 7575c309... Added schema for payment
@@ -1703,6 +1707,8 @@
       "nullable": []
     }
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "2c79497ab37337c73fcde73f28078249266aaeeaf257f256d0e3897e4420fef1": {
     "query": "UPDATE \"user\" SET recovery_email_local = $1, recovery_email_domain_id = $2 WHERE id = $3;",
     "describe": {
@@ -2243,6 +2249,16 @@
       ]
     }
   },
+  "3bcc0a9c9e1dc446aacddfe8104737c113df526097f83daecc4a10d66d61674e": {
+    "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "3c88f9a6f62c223f1faa143eb4ec4ad07a8f538268ad5941c1895d2124108b4b": {
     "query": "SELECT COUNT(*) as \"count\" FROM patr_domain_dns_record WHERE domain_id = $1;",
     "describe": {
@@ -2755,6 +2771,16 @@
         false,
         false
       ]
+    }
+  },
+  "51f80b209104d17060b30ec82d7c4b48531062fc83dc9ec7a20e437dd945c413": {
+    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), address_id UUID, resource_limit_id UUID NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "523a50a5e2630a62b80a7d82c44b851c93d77c2e502dde3a5117dcdc55e0228e": {
@@ -3356,8 +3382,8 @@
 <<<<<<< HEAD
 =======
   },
-  "643bf11cca009f335bd2fefc21977ef06eb3876aeeb5d408cb4a5c49d94c4b23": {
-    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id) DEFERRABLE INITIALLY IMMEDIATE;",
+  "63439958aa9cecd9d6a798ec0cb6af18487e751bfd5bdb5f808f954b1d834f74": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id);",
     "describe": {
       "columns": [],
       "parameters": {
@@ -3520,6 +3546,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "6a0a99bf3b39d50e78fc460923c2fa6ea0afba79572a6255c3222467a717c45f": {
     "query": "CREATE TABLE IF NOT EXISTS product_limits( id UUID CONSTRAINT resource_usage_pk PRIMARY KEY, product_id UUID NOT NULL, max_limit INTEGER NOT NULL, workspace_id UUID NOT NULL );",
     "describe": {
@@ -3531,6 +3558,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
     "describe": {
@@ -4516,6 +4545,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "849c7ae7689252eb411c841da4655f6a3ff0f4304e29fa67871b3948dbdc00e6": {
     "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -4527,6 +4557,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "85c2b0a9bf48c5cc257af57e4ecf5b439153fe1b82d213953db1f10bdc14fd87": {
     "query": "SELECT * FROM resource_type WHERE id = $1;",
     "describe": {
@@ -4661,6 +4693,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "8ca1bd27b0eb5bc89e6ae1221c63b3013ec436f46b9b987d898b206d882f884c": {
     "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -4672,6 +4705,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "8d0a4c011fc58624c93d87270ff0cc7db7a41927801b42f826871cc11a37ce02": {
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", workspace_domain.id as \"id: _\", workspace_domain.domain_type as \"domain_type: _\", workspace_domain.is_verified, workspace_domain.nameserver_type as \"nameserver_type: _\" FROM domain INNER JOIN workspace_domain ON workspace_domain.id = domain.id INNER JOIN resource ON domain.id = resource.id WHERE resource.owner_id = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );",
     "describe": {
@@ -4782,28 +4817,8 @@
       "nullable": []
     }
   },
-  "901f87b378c302b9ddb2126e8a2da0cba3eff97e29f04a78390eab786a007a11": {
-    "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id) DEFERRABLE INITIALLY IMMEDIATE;",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
   "902eb1b77efa78c6fcb9b9ca53b1b37b6bc5f8b661d46294934b91a5a665942e": {
     "query": "CREATE TABLE IF NOT EXISTS product_info( id UUID CONSTRAINT product_info_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT );",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
-  "92cf5f31ae45eba6949e9201bbaf07455c974957f11140c4d1eebdcb427cee25": {
-    "query": "CREATE TABLE workspace( id UUID CONSTRAINT workspace_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT workspace_uq_name UNIQUE, super_admin_id UUID NOT NULL CONSTRAINT workspace_fk_super_admin_id REFERENCES \"user\"(id), active BOOLEAN NOT NULL DEFAULT FALSE, drone_username TEXT CONSTRAINT workspace_uq_drone_username UNIQUE, drone_token TEXT CONSTRAINT workspace_chk_drone_token_is_not_null CHECK( ( drone_username IS NULL AND drone_token IS NULL ) OR ( drone_username IS NOT NULL AND drone_token IS NOT NULL ) ), address_id UUID, resource_limit_id TEXT NOT NULL );",
     "describe": {
       "columns": [],
       "parameters": {
@@ -5049,6 +5064,16 @@
       "nullable": []
     }
   },
+  "993770c56d7df8ebefdac1486f71a352b963560884054a7e7a2ad90e4565c74b": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "9a3de7f88487616a70b025316dfa10b5ec412d40d7c15567e0dd9d19c369a3c1": {
     "query": "SELECT * FROM user_login WHERE login_id = $1;",
     "describe": {
@@ -5168,6 +5193,16 @@
       "nullable": [
         false
       ]
+    }
+  },
+  "9d4dc829149a21a54b86ebeecd1a45b402b19bb29f1e73ce6f9db96ff980a78a": {
+    "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "9d805b746f71afeaa409450ca91c0ae52f6ff41e82fdd9610a4ff702bb4c36e7": {
@@ -5375,6 +5410,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "a1e74ed185e1f85ec095c685b53e52be7552c6d0ff19cfc39b745dbe9a4f70e8": {
     "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -5386,6 +5422,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "a1ef5b3c2269453d465e5f47f7bd9a8d8e7cd237085cf1a59a4c55ddd093c269": {
     "query": "SELECT id as \"id: _\", cpu_count, memory_count FROM deployment_machine_type;",
     "describe": {
@@ -5808,6 +5846,16 @@
       "nullable": []
     }
   },
+  "a8dfd8f6a56f4c8e30c8f2facf3152ae085c3d63656f3d161eba35171e601221": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_coupon_id FOREIGN KEY(coupon_id) REFERENCES coupons(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "a96073b72c29dee2028e0e62e6896f294cd6e6aae843c2de17db78b35b7a3a6c": {
     "query": "UPDATE deployment SET max_horizontal_scale = $1 WHERE id = $2;",
     "describe": {
@@ -6057,6 +6105,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "add73441b6a3cfb4c4d3e8c34de64bff5d584e7466e5cac94c60415973ce936f": {
     "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_coupon_id FOREIGN KEY(coupon_id) REFERENCES coupons(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6068,6 +6117,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';",
     "describe": {
@@ -6609,6 +6660,16 @@
       ]
     }
   },
+  "b4cd7c5ec0aa9697c059363c78cce958e5e8652370b603228b4f61201abcc79b": {
+    "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "b4d2a52eacd8db7502f452aa9fddab45bd6f171581cd217c99b32a1727cf2155": {
     "query": "SELECT workspace_id as \"workspace_id: Uuid\", role_id as \"role_id: Uuid\" FROM workspace_user WHERE user_id = $1 ORDER BY workspace_id;",
     "describe": {
@@ -6965,6 +7026,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "bbe95be22da7e76615382ef28f0167c48c280f1740d4eebfc9a91e091ca71c0d": {
     "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_billable_service_id FOREIGN KEY(billable_service_id) REFERENCES billable_service(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6976,6 +7038,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "bc99fb8fb755978abf04e2db1da08b6236b07afd722505bd031cbc1e6a1f281e": {
     "query": "CREATE INDEX user_to_sign_up_idx_username_otp_expiry ON user_to_sign_up (username, otp_expiry);",
     "describe": {
@@ -7050,6 +7114,16 @@
       "nullable": []
     }
   },
+  "bebad8da7ad05f98982fc15d30b40dd1b6f22d5841e7e9e4cc80b4ed25baddda": {
+    "query": "ALTER TABLE billable_service ADD CONSTRAINT billable_service_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "bfe39187b7925d9987415d6f1430adb8ea31e32dbbf15528aaebf81923e1d1fe": {
     "query": "CREATE TABLE user_login( login_id UUID CONSTRAINT user_login_uq_login_id UNIQUE, refresh_token TEXT NOT NULL, token_expiry BIGINT NOT NULL CONSTRAINT user_login_chk_token_expiry_unsigned CHECK(token_expiry >= 0), user_id UUID NOT NULL CONSTRAINT user_login_fk_user_id REFERENCES \"user\"(id), last_login BIGINT NOT NULL CONSTRAINT user_login_chk_last_login_unsigned CHECK(last_login >= 0), last_activity BIGINT NOT NULL CONSTRAINT user_login_chk_last_activity_unsigned CHECK(last_activity >= 0), CONSTRAINT user_login_pk PRIMARY KEY(login_id, user_id) );",
     "describe": {
@@ -7086,6 +7160,26 @@
       "nullable": [
         null
       ]
+    }
+  },
+  "c4a24e5e84f7aa51cfc9b0d141b33166bcd84a9a51c2a2a9f2d2f355e5142cc9": {
+    "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "c63f519c5d32fe99b3bb2af905aa792cf428326adbe651dd0a5340fef8b0de59": {
+    "query": "ALTER TABLE product_limits ADD CONSTRAINT resource_usage_fk_product_id FOREIGN KEY(product_info_id) REFERENCES product_info(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
     }
   },
   "c7266afd5fc274fcd6c5dd97631ce514cbdbcbe541c6f29c797e64cea66ddc09": {
@@ -7138,6 +7232,26 @@
           "Bool",
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "c85ba2e71aa616c9e90edb0b918f4fe19c6238472bd9c1bd9de2228ff97a6507": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_plan_id FOREIGN KEY(plan_id) REFERENCES plans(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "ca172f25b92c70c88424a28b0465e8bd0a4fa1314638145cee558619107699b6": {
+    "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -7256,6 +7370,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "d2862591b476f7d8c5f3c90d83a953c9afff08190ea8cb6cb8a217daaa91b899": {
     "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -7267,6 +7382,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "d2ca892138dda0bf1f349785a946da0be3f47a06a3f22ffdd6c7607299ee9fb0": {
     "query": "SELECT tag, last_updated, manifest_digest FROM docker_registry_repository_tag WHERE repository_id = $1 AND tag = $2;",
     "describe": {
@@ -7506,6 +7623,16 @@
       "nullable": []
     }
   },
+  "dab23d78e0ba9567afd34a9031448f5194db35d038560f9f9dfb01bf3a16607d": {
+    "query": "CREATE TABLE IF NOT EXISTS product_limits( id UUID CONSTRAINT resource_usage_pk PRIMARY KEY, product_info_id UUID NOT NULL, max_limit INTEGER NOT NULL, workspace_id UUID NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "dc01aa3c8fa8fce5d3f7bb6096dbb5e6ebdc0038b54d3e281b7e0f8aa50c8bf2": {
     "query": "INSERT INTO user_to_sign_up( username, account_type, password, first_name, last_name, recovery_email_local, recovery_email_domain_id, recovery_phone_country_code, recovery_phone_number, business_email_local, business_domain_name, business_domain_tld, business_name, otp_hash, otp_expiry ) VALUES ( $1, 'personal', $2, $3, $4, $5, $6, $7, $8, NULL, NULL, NULL, NULL, $9, $10 ) ON CONFLICT(username) DO UPDATE SET account_type = 'personal', password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, recovery_email_local = EXCLUDED.recovery_email_local, recovery_email_domain_id = EXCLUDED.recovery_email_domain_id, recovery_phone_country_code = EXCLUDED.recovery_phone_country_code, recovery_phone_number = EXCLUDED.recovery_phone_number, business_email_local = NULL, business_domain_name = NULL, business_name = NULL, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry;",
     "describe": {
@@ -7690,6 +7817,16 @@
         "Left": [
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "de0673783e6b65ee28f606101d11b381d4fa95420a98cee993cf6046d0d5c2b3": {
+    "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_billable_service_id FOREIGN KEY(billable_service_id) REFERENCES billable_service(id);",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -8424,6 +8561,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "edf8b910720f926f01c0fae18eb10d076d4ec712cbf255126d66cf8ddefbb64a": {
     "query": "ALTER TABLE payment_method ADD CONSTRAINT payment_method_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -8435,6 +8573,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "ee4ea18cebcb0c118054ebe00ae27cb609df953c788737ad02d1044c901d21a9": {
     "query": "INSERT INTO workspace_audit_log( id, date, ip_address, workspace_id, user_id, login_id, resource_id, action, request_id, metadata, patr_action, success ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);",
     "describe": {
@@ -8675,6 +8815,7 @@
       ]
     }
   },
+<<<<<<< HEAD
   "f14ea696cb3ce0e18f65040d083c1189c66d0f7ab92d3c373cf69276765b423e": {
     "query": "ALTER TABLE plans ADD CONSTRAINT plans_fk_product_info_id FOREIGN KEY(product_info_id) REFERENCES product_info(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -8686,6 +8827,8 @@
 >>>>>>> 7575c309... Added schema for payment
     }
   },
+=======
+>>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
     "query": "UPDATE workspace SET drone_username = $2, drone_token = $3 WHERE id = $1;",
     "describe": {

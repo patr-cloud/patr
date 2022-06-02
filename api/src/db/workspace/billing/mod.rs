@@ -42,7 +42,7 @@ pub async fn initialize_billing_pre(
 		CREATE TYPE PAYMENT_METHOD_TYPE AS ENUM(
 			'credit_card',
 			'debit_card'
-	);
+		);
 	"#
 	)
 	.execute(&mut *connection)
@@ -144,7 +144,7 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS product_limits(
 			id UUID CONSTRAINT resource_usage_pk PRIMARY KEY,
-			product_id UUID NOT NULL,
+			product_info_id UUID NOT NULL,
 			max_limit INTEGER NOT NULL,
 			workspace_id UUID NOT NULL
 		);
@@ -177,8 +177,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE plans
 		ADD CONSTRAINT plans_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -188,8 +187,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE plans
 		ADD CONSTRAINT plans_fk_product_info_id
-		FOREIGN KEY(product_info_id) REFERENCES product_info(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(product_info_id) REFERENCES product_info(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -199,8 +197,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE billable_service
 		ADD CONSTRAINT billable_service_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -210,8 +207,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE billable_service
 		ADD CONSTRAINT billable_service_fk_plan_id
-		FOREIGN KEY(plan_id) REFERENCES plans(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(plan_id) REFERENCES plans(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -221,8 +217,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -232,8 +227,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_product_info_id
-		FOREIGN KEY(product_info_id) REFERENCES product_info(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(product_info_id) REFERENCES product_info(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -243,8 +237,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_plan_id
-		FOREIGN KEY(plan_id) REFERENCES plans(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(plan_id) REFERENCES plans(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -254,8 +247,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_billable_service_id
-		FOREIGN KEY(billable_service_id) REFERENCES billable_service(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(billable_service_id) REFERENCES billable_service(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -265,8 +257,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_coupon_id
-		FOREIGN KEY(coupon_id) REFERENCES coupons(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(coupon_id) REFERENCES coupons(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -287,8 +278,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE product_limits
 		ADD CONSTRAINT resource_usage_fk_product_id
-		FOREIGN KEY(product_id) REFERENCES product_info(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(product_info_id) REFERENCES product_info(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -298,8 +288,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE product_limits
 		ADD CONSTRAINT resource_usage_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 	"#
 	)
 	.execute(&mut *connection)
@@ -309,8 +298,7 @@ pub async fn initialize_billing_post(
 		r#"
 		ALTER TABLE payment_method
 		ADD CONSTRAINT payment_method_fk_workspace_id
-		FOREIGN KEY(workspace_id) REFERENCES workspace(id)
-		DEFERRABLE INITIALLY IMMEDIATE;
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 	"#
 	)
 	.execute(&mut *connection)

@@ -72,7 +72,7 @@ pub async fn initialize_workspaces_pre(
 					)
 				),
 			address_id UUID,
-			resource_limit_id TEXT NOT NULL
+			resource_limit_id UUID NOT NULL
 		);
 		"#
 	)
