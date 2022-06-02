@@ -330,7 +330,7 @@ async fn deployment_alert(
 		request_id
 	);
 
-	if custom_header != config.kubernetes.authorization_header {
+	if custom_header != config.kubernetes.alert_webhook_secret {
 		Error::as_result().status(400).body(
 			json!({
 				request_keys::ERRORS: [{
