@@ -1,10 +1,7 @@
 use std::io::{Cursor, Read};
 
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
-		static_site::StaticSite,
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
 	utils::Uuid,
 };
 use eve_rs::AsError;
@@ -12,9 +9,9 @@ use s3::{creds::Credentials, Bucket, Region};
 use zip::ZipArchive;
 
 use crate::{
-	db::{self, DeploymentStaticSite},
+	db,
 	error,
-	models::rbac::{self, WorkspacePermissions},
+	models::rbac,
 	service::{self},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
@@ -436,56 +433,4 @@ fn get_mime_type_from_file_name(file_extension: &str) -> &str {
 		"wmv" => "video/x-ms-wmv",
 		_ => "application/octet-stream",
 	}
-}
-
-pub async fn get_permitted_static_site_for_workspace(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	workspace_id: &Uuid,
-	permission_id: &Uuid,
-	workspace_permission: &WorkspacePermissions,
-) -> Result<Vec<StaticSite>, Error> {
-	let is_super_admin = workspace_permission.is_super_admin;
-
-	let static_sites =
-		db::get_static_sites_for_workspace(connection, &workspace_id).await?;
-
-	if is_super_admin {
-		let static_sites = parse_static_site(static_sites).await?;
-		return Ok(static_sites);
-	}
-
-	let resources = workspace_permission.resources.clone();
-	let mut permitted_static_sites: Vec<DeploymentStaticSite> = Vec::new();
-	for static_site in static_sites {
-		if resources
-			.get(&static_site.id)
-			.map_or(false, |permissions| permissions.contains(permission_id))
-		{
-			permitted_static_sites.push(static_site);
-		}
-	}
-
-	if permitted_static_sites.is_empty() {
-		return Error::as_result()
-			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
-	}
-
-	let permitted_static_sites =
-		parse_static_site(permitted_static_sites).await?;
-	Ok(permitted_static_sites)
-}
-
-async fn parse_static_site(
-	static_sites: Vec<DeploymentStaticSite>,
-) -> Result<Vec<StaticSite>, Error> {
-	let static_sites = static_sites
-		.into_iter()
-		.map(|static_site| StaticSite {
-			id: static_site.id,
-			name: static_site.name,
-			status: static_site.status,
-		})
-		.collect::<Vec<_>>();
-	Ok(static_sites)
 }

@@ -176,6 +176,59 @@ pub async fn get_all_managed_urls_in_workspace(
 	.await
 }
 
+pub async fn get_all_managed_urls_in_workspace_with_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	permission_id: &Uuid,
+	user_id: &Uuid,
+) -> Result<Vec<ManagedUrl>, sqlx::Error> {
+	query_as!(
+		ManagedUrl,
+		r#"
+		SELECT
+			managed_url.id as "id: _",
+			managed_url.sub_domain,
+			managed_url.domain_id as "domain_id: _",
+			managed_url.path,
+			managed_url.url_type as "url_type: _",
+			managed_url.deployment_id as "deployment_id: _",
+			managed_url.port,
+			managed_url.static_site_id as "static_site_id: _",
+			managed_url.url,
+			managed_url.workspace_id as "workspace_id: _"
+		FROM
+			managed_url
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.workspace_id = managed_url.workspace_id
+		LEFT JOIN
+			role_permissions_resource
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = managed_url.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
+		WHERE
+			managed_url.workspace_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
+			sub_domain NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(managed_url.id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		workspace_id as _,
+		user_id as _,
+		permission_id as _,
+	)
+	.fetch_all(connection)
+	.await
+}
+
 pub async fn get_all_managed_urls_for_domain(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	domain_id: &Uuid,

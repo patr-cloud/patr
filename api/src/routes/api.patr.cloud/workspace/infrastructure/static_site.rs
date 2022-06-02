@@ -23,7 +23,7 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{self, DeploymentStaticSite, ManagedUrlType as DbManagedUrlType},
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac::{self, permissions},
 	pin_fn,
@@ -432,14 +432,12 @@ async fn list_static_sites(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let _user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
 		.get(permissions::workspace::infrastructure::static_site::INFO)
 		.unwrap();
-
-	// Can check if permission exists in accessToken
 
 	if !context
 		.get_token_data()
@@ -457,14 +455,39 @@ async fn list_static_sites(
 		.and_then(|token| token.workspaces.get(&workspace_id).cloned())
 		.unwrap();
 
+	let is_super_admin = workspace_permission.is_super_admin;
+
 	log::trace!("request_id: {} - Getting the list of all static sites for the workspace", request_id);
-	let static_sites = service::get_permitted_static_site_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-		permission_id,
-		&workspace_permission,
-	)
-	.await?;
+	let static_sites_list = if is_super_admin {
+		db::get_static_sites_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+	} else {
+		db::get_static_sites_for_workspace_with_permission(
+			context.get_database_connection(),
+			&workspace_id,
+			permission_id,
+			&user_id,
+		)
+		.await?
+	};
+
+	if static_sites_list.is_empty() {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string());
+	}
+
+	let static_sites = static_sites_list
+		.into_iter()
+		.map(|static_site| StaticSite {
+			id: static_site.id,
+			name: static_site.name,
+			status: static_site.status,
+		})
+		.collect::<Vec<_>>();
 
 	log::trace!("request_id: {} - Returning the list of all static sites for the workspace", request_id);
 

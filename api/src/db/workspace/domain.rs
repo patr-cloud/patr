@@ -535,7 +535,7 @@ pub async fn get_domains_for_workspace(
 	.await
 }
 
-pub async fn get_permitted_domains_for_workspace(
+pub async fn get_domains_for_workspace_with_permission(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	user_id: &Uuid,

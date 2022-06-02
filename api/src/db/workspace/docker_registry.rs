@@ -247,6 +247,107 @@ pub async fn get_docker_repositories_for_workspace(
 	Ok(rows)
 }
 
+pub async fn get_docker_repositories_for_workspace_with_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	permission_id: &Uuid,
+	user_id: &Uuid,
+) -> Result<Vec<(DockerRepository, u64, u64)>, sqlx::Error> {
+	let rows = query!(
+		r#"
+		SELECT
+			docker_registry_repository.id as "id: Uuid",
+			docker_registry_repository.workspace_id as "workspace_id: Uuid",
+			docker_registry_repository.name::TEXT as "name!: String",
+			COALESCE(size, 0) as "size!",
+			(
+				SELECT
+					GREATEST(
+						resource.created,
+						(
+							SELECT
+								COALESCE(created, 0)
+							FROM
+								docker_registry_repository_manifest
+							WHERE
+								repository_id = docker_registry_repository.id
+							ORDER BY
+								created DESC
+							LIMIT 1
+						),
+						(
+							SELECT
+								COALESCE(last_updated, 0)
+							FROM
+								docker_registry_repository_tag
+							WHERE
+								repository_id = docker_registry_repository.id
+							ORDER BY
+								created DESC
+							LIMIT 1
+						)
+					)
+				FROM
+					resource
+				WHERE
+					resource.id = docker_registry_repository.id
+			) as "last_updated!"
+		FROM
+			docker_registry_repository
+		LEFT JOIN (
+			SELECT
+				SUM(size) as size,
+				repository_id
+			FROM
+				docker_registry_repository_manifest
+			GROUP BY
+				repository_id
+		) docker_registry_repository_manifest
+		ON
+			docker_registry_repository_manifest.repository_id =
+				docker_registry_repository.id
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.workspace_id = docker_registry_repository.workspace_id
+		LEFT JOIN
+			role_permissions_resource
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = docker_registry_repository.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
+		WHERE
+			docker_registry_repository.workspace_id = $1 AND
+			permission.id = $2 AND
+			workspace_user.user_id = $3 AND
+			docker_registry_repository.name NOT LIKE 'patr-deleted:%';
+		"#,
+		workspace_id as _,
+		permission_id as _,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			DockerRepository {
+				id: row.id,
+				name: row.name,
+				workspace_id: row.workspace_id,
+			},
+			row.size.to_u64().unwrap_or(0),
+			row.last_updated.to_u64().unwrap_or(0),
+		)
+	})
+	.collect();
+
+	Ok(rows)
+}
+
 pub async fn get_docker_repository_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,

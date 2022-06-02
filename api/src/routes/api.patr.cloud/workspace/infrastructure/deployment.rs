@@ -36,11 +36,7 @@ use eve_rs::{App as EveApp, AsError, Context, NextHandler};
 
 use crate::{
 	app::{create_eve_app, App},
-	db::{
-		self,
-		Deployment as DbDeploymentType,
-		ManagedUrlType as DbManagedUrlType,
-	},
+	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
 		deployment::{Interval, Step},
@@ -542,12 +538,10 @@ async fn list_deployments(
 	let request_id = Uuid::new_v4();
 	log::trace!("request_id: {} - Listing deployments", request_id);
 
-	let config = context.get_state().config.clone();
-
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-	let _user_id = context.get_token_data().unwrap().user.id.clone();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -570,20 +564,60 @@ async fn list_deployments(
 		.and_then(|token| token.workspaces.get(&workspace_id).cloned())
 		.unwrap();
 
+	let is_super_admin = workspace_permission.is_super_admin;
+
 	log::trace!(
 		"request_id: {} - Getting deployments from database",
 		request_id
 	);
 
-	let deployments = service::get_permitted_deployments_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-		permission_id,
-		&workspace_permission,
-		&config,
-		&request_id,
-	)
-	.await?;
+	let deployments_list = if is_super_admin {
+		db::get_deployments_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+	} else {
+		db::get_deployments_for_workspace_with_permission(
+			context.get_database_connection(),
+			&workspace_id,
+			permission_id,
+			&user_id,
+		)
+		.await?
+	};
+
+	if deployments_list.is_empty() {
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let deployments = deployments_list
+		.into_iter()
+		.filter_map(|deployment| {
+			Some(Deployment {
+				id: deployment.id,
+				name: deployment.name,
+				registry: if deployment.registry == constants::PATR_REGISTRY {
+					DeploymentRegistry::PatrRegistry {
+						registry: PatrRegistry,
+						repository_id: deployment.repository_id?,
+					}
+				} else {
+					DeploymentRegistry::ExternalRegistry {
+						registry: deployment.registry,
+						image_name: deployment.image_name?,
+					}
+				},
+				image_tag: deployment.image_tag,
+				status: deployment.status,
+				region: deployment.region,
+				machine_type: deployment.machine_type,
+			})
+		})
+		.collect();
+
 	log::trace!(
 		"request_id: {} - Deployments successfully retreived",
 		request_id

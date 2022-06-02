@@ -499,8 +499,9 @@ async fn list_docker_repositories(
 	let request_id = Uuid::new_v4();
 	let workspace_id_string =
 		context.get_param(request_keys::WORKSPACE_ID).unwrap();
-	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
 
+	let workspace_id = Uuid::parse_str(workspace_id_string).unwrap();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -518,14 +519,6 @@ async fn list_docker_repositories(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	log::trace!("request_id: {} - Listing docker repositories", request_id);
-
-	let repositories = db::get_docker_repositories_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
-
 	let workspace_permission = context
 		.get_token_data()
 		.unwrap()
@@ -534,41 +527,31 @@ async fn list_docker_repositories(
 		.unwrap();
 
 	let is_super_admin = workspace_permission.is_super_admin;
-	if is_super_admin {
-		let repositories = repositories
-			.into_iter()
-			.map(|(repository, size, last_updated)| DockerRepository {
-				id: repository.id,
-				name: repository.name,
-				size,
-				last_updated,
-			})
-			.collect::<Vec<_>>();
 
-		log::trace!("request_id: {} - Docker repositories listed", request_id);
+	log::trace!("request_id: {} - Listing docker repositories", request_id);
+	let repositories_list = if is_super_admin {
+		db::get_docker_repositories_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+	} else {
+		db::get_docker_repositories_for_workspace_with_permission(
+			context.get_database_connection(),
+			&workspace_id,
+			permission_id,
+			&user_id,
+		)
+		.await?
+	};
 
-		context.success(ListDockerRepositoriesResponse { repositories });
-		return Ok(context);
-	}
-
-	let resources = workspace_permission.resources.clone();
-
-	let mut permitted_repositories = Vec::new();
-	for (repo, size, last_updated) in repositories {
-		if resources
-			.get(&repo.id)
-			.map_or(false, |permissions| permissions.contains(permission_id))
-		{
-			permitted_repositories.push((repo, size, last_updated));
-		}
-	}
-
-	if permitted_repositories.is_empty() {
-		Error::as_result()
+	if repositories_list.is_empty() {
+		return Error::as_result()
 			.status(404)
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
-	let repositories = permitted_repositories
+
+	let repositories = repositories_list
 		.into_iter()
 		.map(|(repository, size, last_updated)| DockerRepository {
 			id: repository.id,

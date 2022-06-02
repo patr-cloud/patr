@@ -585,6 +585,58 @@ pub async fn get_deployments_for_workspace(
 	.await
 }
 
+pub async fn get_deployments_for_workspace_with_permission(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	permission_id: &Uuid,
+	user_id: &Uuid,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			deployment.id as "id: _",
+			deployment.name::TEXT as "name!: _",
+			deployment.registry,
+			deployment.repository_id as "repository_id: _",
+			deployment.image_name,
+			deployment.image_tag,
+			deployment.status as "status: _",
+			deployment.workspace_id as "workspace_id: _",
+			deployment.region as "region: _",
+			deployment.min_horizontal_scale,	
+			deployment.max_horizontal_scale,
+			deployment.machine_type as "machine_type: _",
+			deployment.deploy_on_push
+		FROM
+			deployment
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.workspace_id = deployment.workspace_id
+		LEFT JOIN
+			role_permissions_resource
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = deployment.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
+		WHERE
+			deployment.workspace_id = $1 AND
+			permission.id = $2 AND
+			workspace_user.user_id = $3 AND
+			status != 'deleted';
+		"#,
+		workspace_id as _,
+		permission_id as _,
+		user_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_deployment_by_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,

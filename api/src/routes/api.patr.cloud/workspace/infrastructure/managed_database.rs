@@ -148,7 +148,7 @@ async fn list_all_database_clusters(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
-
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 	let permission_id = rbac::PERMISSIONS
 		.get()
 		.unwrap()
@@ -166,16 +166,6 @@ async fn list_all_database_clusters(
 			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 	}
 
-	log::trace!(
-		"request_id: {} - Getting all database cluster info from db",
-		request_id
-	);
-	let database_clusters = db::get_all_database_clusters_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
-
 	let workspace_permission = context
 		.get_token_data()
 		.unwrap()
@@ -184,60 +174,35 @@ async fn list_all_database_clusters(
 		.unwrap();
 
 	let is_super_admin = workspace_permission.is_super_admin;
-	if is_super_admin {
-		let database_clusters = database_clusters
-			.into_iter()
-			.map(|database| {
-				json!({
-					request_keys::ID: database.id,
-					request_keys::NAME: database.name,
-					request_keys::DATABASE_NAME: database.db_name,
-					request_keys::ENGINE: database.engine.to_string(),
-					request_keys::VERSION: database.version,
-					request_keys::NUM_NODES: database.num_nodes,
-					request_keys::DATABASE_PLAN: database.database_plan.to_string(),
-					request_keys::REGION: database.region,
-					request_keys::STATUS: database.status.to_string(),
-					request_keys::PUBLIC_CONNECTION: {
-						request_keys::HOST: database.host,
-						request_keys::PORT: database.port,
-						request_keys::USERNAME: database.username,
-						request_keys::PASSWORD: database.password,
-					}
-				})
-			})
-			.collect::<Vec<_>>();
-		log::trace!(
-			"request_id: {} - Returning all database cluster info",
-			request_id
-		);
 
-		context.json(json!({
-			request_keys::SUCCESS: true,
-			request_keys::DATABASES: database_clusters
-		}));
+	log::trace!(
+		"request_id: {} - Getting all database cluster info from db",
+		request_id
+	);
 
-		return Ok(context);
-	}
+	let database_clusters_list = if is_super_admin {
+		db::get_all_database_clusters_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+	} else {
+		db::get_all_database_clusters_for_workspace_with_permission(
+			context.get_database_connection(),
+			&workspace_id,
+			permission_id,
+			&user_id,
+		)
+		.await?
+	};
 
-	let resources = workspace_permission.resources.clone();
-
-	let mut permitted_database_cluster = Vec::new();
-	for database in database_clusters {
-		if resources
-			.get(&database.id)
-			.map_or(false, |permissions| permissions.contains(permission_id))
-		{
-			permitted_database_cluster.push(database);
-		}
-	}
-
-	if permitted_database_cluster.is_empty() {
-		Error::as_result()
+	if database_clusters_list.is_empty() {
+		return Error::as_result()
 			.status(404)
-			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string());
 	}
-	let database_clusters = permitted_database_cluster
+
+	let database_clusters = database_clusters_list
 		.into_iter()
 		.map(|database| {
 			json!({
@@ -259,7 +224,6 @@ async fn list_all_database_clusters(
 			})
 		})
 		.collect::<Vec<_>>();
-
 	log::trace!(
 		"request_id: {} - Returning all database cluster info",
 		request_id

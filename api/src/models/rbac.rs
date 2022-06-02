@@ -32,12 +32,13 @@ pub mod permissions {
 			pub const VIEW_DETAILS: &str = "workspace::domain::viewDetails";
 			pub const VERIFY: &str = "workspace::domain::verify";
 			pub const DELETE: &str = "workspace::domain::delete";
+			pub const EDIT: &str = "workspace::domain::edit";
 
 			pub mod dns_record {
-				pub const LIST: &str = "workspace::domain::dnsRecord::list";
-				pub const ADD: &str = "workspace::domain::dnsRecord::add";
-				pub const EDIT: &str = "workspace::domain::dnsRecord::edit";
-				pub const DELETE: &str = "workspace::domain::dnsRecord::delete";
+				pub const _LIST: &str = "workspace::domain::dnsRecord::list";
+				pub const _ADD: &str = "workspace::domain::dnsRecord::add";
+				pub const _EDIT: &str = "workspace::domain::dnsRecord::edit";
+				pub const _DELETE: &str = "workspace::domain::dnsRecord::delete";
 			}
 		}
 
