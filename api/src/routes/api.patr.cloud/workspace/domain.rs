@@ -25,7 +25,7 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, DnsRecordType},
 	error,
-	models::rbac::permissions,
+	models::rbac::{self, permissions},
 	pin_fn,
 	service,
 	utils::{
@@ -412,22 +412,70 @@ async fn get_domains_for_workspace(
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+	let user_id = context.get_token_data().unwrap().user.id.clone();
 
-	let domains = db::get_domains_for_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?
-	.into_iter()
-	.map(|domain| WorkspaceDomain {
-		domain: Domain {
-			id: domain.id,
-			name: domain.name,
-		},
-		is_verified: domain.is_verified,
-		nameserver_type: domain.nameserver_type,
-	})
-	.collect();
+	let permission_id = rbac::PERMISSIONS
+		.get()
+		.unwrap()
+		.get(permissions::workspace::domain::INFO)
+		.unwrap();
+
+	if !context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.contains_key(&workspace_id)
+	{
+		Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let workspace_permission = context
+		.get_token_data()
+		.unwrap()
+		.workspaces
+		.get(&workspace_id)
+		.unwrap();
+
+	let is_super_admin = workspace_permission.is_super_admin;
+
+	log::trace!(
+		"request_id: {} - Getting the list of all domain for the workspace",
+		request_id
+	);
+	let domains = if is_super_admin {
+		db::get_domains_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+		)
+		.await?
+	} else {
+		db::get_permitted_domains_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			&user_id,
+			permission_id,
+		)
+		.await?
+	};
+
+	if domains.is_empty() {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string());
+	}
+	let domains = domains
+		.into_iter()
+		.map(|domain| WorkspaceDomain {
+			domain: Domain {
+				id: domain.id,
+				name: domain.name,
+			},
+			is_verified: domain.is_verified,
+			nameserver_type: domain.nameserver_type,
+		})
+		.collect();
 
 	log::trace!(
 		"request_id: {} - Returning domains for workspace",

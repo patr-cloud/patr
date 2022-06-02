@@ -535,6 +535,62 @@ pub async fn get_domains_for_workspace(
 	.await
 }
 
+pub async fn get_permitted_domains_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	user_id: &Uuid,
+	permission_id: &Uuid,
+) -> Result<Vec<WorkspaceDomain>, sqlx::Error> {
+	query_as!(
+		WorkspaceDomain,
+		r#"
+		SELECT
+			CONCAT(domain.name, '.', domain.tld) as "name!",
+			workspace_domain.id as "id: _",
+			workspace_domain.domain_type as "domain_type: _",
+			workspace_domain.is_verified,
+			workspace_domain.nameserver_type as "nameserver_type: _"
+		FROM
+			domain
+		INNER JOIN
+			workspace_domain
+		ON
+			workspace_domain.id = domain.id
+		LEFT JOIN
+			resource
+		ON
+			domain.id = resource.id
+		LEFT JOIN
+			workspace_user
+		ON
+			workspace_user.workspace_id = resource.owner_id
+		LEFT JOIN
+			role_permissions_resource
+		ON
+			workspace_user.role_id = role_permissions_resource.role_id AND
+			role_permissions_resource.resource_id = domain.id
+		LEFT JOIN
+			permission
+		ON
+			permission.id = role_permissions_resource.permission_id
+		WHERE
+			resource.owner_id = $1 AND
+			workspace_user.user_id = $2 AND
+			permission.id = $3 AND
+			domain.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(domain.id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+		workspace_id as _,
+		user_id as _,
+		permission_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn get_all_unverified_domains(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Vec<(WorkspaceDomain, Option<String>)>, sqlx::Error> {

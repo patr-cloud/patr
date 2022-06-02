@@ -17,11 +17,11 @@ use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db,
+	db::{self, Deployment as DbDeploymentType},
 	error,
 	models::{
 		deployment::{PrometheusResponse, Subscription},
-		rbac,
+		rbac::{self, WorkspacePermissions},
 	},
 	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
@@ -897,4 +897,73 @@ async fn update_subscription(
 	}
 
 	Ok(())
+}
+
+pub async fn get_permitted_deployments_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	permission_id: &Uuid,
+	workspace_permission: &WorkspacePermissions,
+	_config: &Settings,
+	_request_id: &Uuid,
+) -> Result<Vec<Deployment>, Error> {
+	let is_super_admin = workspace_permission.is_super_admin;
+
+	let deployments =
+		db::get_deployments_for_workspace(connection, &workspace_id).await?;
+
+	if is_super_admin {
+		let deployments = parse_deployments(deployments).await?;
+		return Ok(deployments);
+	}
+
+	let resources = workspace_permission.resources.clone();
+	let mut permitted_deployments: Vec<DbDeploymentType> = Vec::new();
+	for deployment in &deployments {
+		if resources
+			.get(&deployment.id)
+			.map_or(false, |permissions| permissions.contains(permission_id))
+		{
+			permitted_deployments.push(deployment.clone());
+		}
+	}
+
+	if permitted_deployments.is_empty() {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	}
+
+	let deployments = parse_deployments(permitted_deployments).await?;
+	Ok(deployments)
+}
+
+async fn parse_deployments(
+	deployments: Vec<DbDeploymentType>,
+) -> Result<Vec<Deployment>, Error> {
+	let deployments = deployments
+		.into_iter()
+		.filter_map(|deployment| {
+			Some(Deployment {
+				id: deployment.id,
+				name: deployment.name,
+				registry: if deployment.registry == constants::PATR_REGISTRY {
+					DeploymentRegistry::PatrRegistry {
+						registry: PatrRegistry,
+						repository_id: deployment.repository_id?,
+					}
+				} else {
+					DeploymentRegistry::ExternalRegistry {
+						registry: deployment.registry,
+						image_name: deployment.image_name?,
+					}
+				},
+				image_tag: deployment.image_tag,
+				status: deployment.status,
+				region: deployment.region,
+				machine_type: deployment.machine_type,
+			})
+		})
+		.collect();
+	Ok(deployments)
 }

@@ -506,12 +506,6 @@ async fn delete_workspace(
 
 	let config = context.get_state().config.clone();
 
-	
-	let _domain_info_permission_id = rbac::PERMISSIONS
-		.get()
-		.unwrap()
-		.get(permissions::workspace::domain::INFO)
-		.unwrap();
 	let domains = db::get_domains_for_workspace(
 		context.get_database_connection(),
 		&workspace_id,

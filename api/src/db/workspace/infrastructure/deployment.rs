@@ -560,23 +560,23 @@ pub async fn get_deployments_for_workspace(
 		Deployment,
 		r#"
 		SELECT
-			deployment.id as "id: _",
-			deployment.name::TEXT as "name!: _",
-			deployment.registry,
-			deployment.repository_id as "repository_id: _",
-			deployment.image_name,
-			deployment.image_tag,
-			deployment.status as "status: _",
-			deployment.workspace_id as "workspace_id: _",
-			deployment.region as "region: _",
-			deployment.min_horizontal_scale,	
-			deployment.max_horizontal_scale,
-			deployment.machine_type as "machine_type: _",
-			deployment.deploy_on_push
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,	
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push
 		FROM
 			deployment
 		WHERE
-			deployment.workspace_id = $1 AND
+			workspace_id = $1 AND
 			status != 'deleted';
 		"#,
 		workspace_id as _,
