@@ -391,7 +391,7 @@ async fn deployment_alert(
 				&deployment_id,
 				&deployment.name,
 				"The deployment encountered some errror please check logs to find out.",
-				workspace.alert_emails
+				&workspace.alert_emails
 			)
 			.await?;
 		}
@@ -444,7 +444,7 @@ async fn deployment_alert(
 				&deployment_id,
 				&deployment.name,
 				error_message,
-				workspace.alert_emails,
+				&workspace.alert_emails,
 			)
 			.await?;
 		}

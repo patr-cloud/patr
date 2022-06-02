@@ -19,10 +19,12 @@ use api_models::{
 				GetDeploymentLogsRequest,
 				GetDeploymentLogsResponse,
 				GetDeploymentMetricsResponse,
+				Interval,
 				ListDeploymentsResponse,
 				ListLinkedURLsResponse,
 				PatrRegistry,
 				StartDeploymentResponse,
+				Step,
 				StopDeploymentResponse,
 				UpdateDeploymentRequest,
 				UpdateDeploymentResponse,
@@ -41,7 +43,6 @@ use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::{
-		deployment::{Interval, Step},
 		rbac::{self, permissions},
 		DeploymentMetadata,
 	},
@@ -1050,7 +1051,7 @@ async fn get_logs(
 
 	let config = context.get_state().config.clone();
 
-	let start_time: Interval = start_time.unwrap_or(api_models::models::workspace::infrastructure::deployment::Interval::Hour).into();
+	let start_time = start_time.unwrap_or(Interval::Hour);
 
 	log::trace!("request_id: {} - Getting logs", request_id);
 	// stop the running container, if it exists
@@ -1489,7 +1490,7 @@ async fn get_build_logs(
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let start_time: Interval = start_time.unwrap_or(api_models::models::workspace::infrastructure::deployment::Interval::Hour).into();
+	let start_time = start_time.unwrap_or(Interval::Hour);
 
 	log::trace!("request_id: {} - Getting build logs", request_id);
 	// stop the running container, if it exists

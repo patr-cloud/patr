@@ -361,7 +361,7 @@ pub async fn send_alert_email(
 	deployment_id: &Uuid,
 	deployment_name: &str,
 	message: &str,
-	alert_emails: Vec<String>,
+	alert_emails: &[String],
 ) -> Result<(), Error> {
 	// send email
 	for email in alert_emails {
