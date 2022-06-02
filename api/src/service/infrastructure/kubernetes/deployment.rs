@@ -338,14 +338,13 @@ pub async fn update_kubernetes_deployment(
 		},
 		spec: Some(HorizontalPodAutoscalerSpec {
 			scale_target_ref: CrossVersionObjectReference {
-				api_version: Some("apps/v1".to_string()),	
+				api_version: Some("apps/v1".to_string()),
 				kind: "Deployment".to_string(),
 				name: format!("deployment-{}", deployment.id),
 			},
 			min_replicas: Some(running_details.min_horizontal_scale.into()),
 			max_replicas: running_details.max_horizontal_scale.into(),
-			target_cpu_utilization_percentage: Some(80),
-			..HorizontalPodAutoscalerSpec::default()
+			target_cpu_utilization_percentage: Some(90),
 		}),
 		..HorizontalPodAutoscaler::default()
 	};
