@@ -539,6 +539,36 @@ pub async fn delete_kubernetes_deployment(
 		);
 	}
 
+	if super::hpa_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - hpa exists as hpa-{}",
+			request_id,
+			deployment_id
+		);
+
+		log::trace!("request_id: {} - deleting the hpa", request_id);
+
+		Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No hpa found with name hpa-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
 	if super::ingress_exists(
 		deployment_id,
 		kubernetes_client.clone(),
