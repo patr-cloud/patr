@@ -50,7 +50,6 @@ pub struct Settings {
 	pub environment: RunningEnvironment,
 	pub s3: S3Settings,
 	pub database: DatabaseSettings,
-	pub mongodb: MongoDbSettings,
 	pub redis: RedisSettings,
 	pub email: EmailSettings,
 	pub twilio: TwilioSettings,
@@ -87,18 +86,6 @@ pub struct DatabaseSettings {
 	pub port: u16,
 	pub user: String,
 	pub password: String,
-	pub database: String,
-	#[serde(alias = "connectionlimit")]
-	pub connection_limit: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MongoDbSettings {
-	pub host: String,
-	pub port: u16,
-	pub user: Option<String>,
-	pub password: Option<String>,
 	pub database: String,
 	#[serde(alias = "connectionlimit")]
 	pub connection_limit: u32,
@@ -218,6 +205,7 @@ pub struct KubernetesSettings {
 	pub cert_issuer_dns: String,
 	#[serde(alias = "staticsiteproxyservice")]
 	pub static_site_proxy_service: String,
+	#[serde(alias = "alertwebhooksecret")]
 	pub alert_webhook_secret: String,
 }
 

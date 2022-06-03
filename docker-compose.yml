@@ -4,6 +4,22 @@ networks:
   vpc:
 
 services:
+  minio:
+    container_name: s3
+    image: minio/minio:RELEASE.2022-06-02T02-11-04Z
+    restart: always
+    hostname: ${S3_HOST}
+    command: minio server /data --console-address ":9001"
+    networks:
+      - vpc
+    ports:
+      - ${S3_PORT}:9001
+    environment:
+      - MINIO_ROOT_USER=${S3_KEY}
+      - MINIO_ROOT_PASSWORD=${S3_SECRET}
+    volumes:
+      - ./target/api-data/s3:/data
+
   postgres:
     container_name: database
     image: postgis/postgis:13-master
@@ -58,6 +74,16 @@ services:
     volumes:
       - ./target/api-data/registry:/data
       - ./assets/patr/certs:/certs
+
+  k8s:
+    container_name: kubernetes
+    image: golang:latest
+    restart: "no"
+    command: go get sigs.k8s.io/kind && kind create cluster
+    networks:
+      - vpc
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   rabbitmq:
     container_name: message-queue
@@ -115,6 +141,7 @@ services:
     env_file:
       - .env
     depends_on:
+      - minio
       - postgres
       - redis
       - docker-registry

@@ -84,8 +84,8 @@ pub fn create_sub_app(
 		],
 	);
 
-	app.get(
-		"/oauth-callback",
+	app.post(
+		"/auth-callback",
 		[
 			EveMiddleware::ResourceTokenAuthenticator(
 				permissions::workspace::ci::github::CONNECT,
@@ -398,11 +398,13 @@ async fn github_oauth_callback(
 			.unwrap();
 
 	let GithubAuthCallbackRequest { code, state, .. } = context
-		.get_query_as()
+		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
 
-	let response = reqwest::Client::new()
+	let response = reqwest::Client::builder()
+		.redirect(reqwest::redirect::Policy::none())
+		.build()?
 		.get(format!("{}/login", context.get_state().config.drone.url))
 		.header(reqwest::header::COOKIE, format!("_oauth_state_={}", state))
 		.query(&[("code", code), ("state", state)])
@@ -417,7 +419,7 @@ async fn github_oauth_callback(
 		.body(error!(SERVER_ERROR).to_string())?;
 
 	let response = reqwest::Client::new()
-		.get(format!(
+		.post(format!(
 			"{}/api/user/token",
 			context.get_state().config.drone.url
 		))

@@ -1,0 +1,40 @@
+#!/bin/bash
+
+baseDir=$(dirname $0)
+
+if [ ! -f "${baseDir}/.env" ]; then
+    echo "Missing .env file. Copy the .env.sample file to .env and edit it."
+    exit 1
+fi
+
+source $baseDir/.env
+
+case $1 in
+    down | stop)
+        docker-compose -f $baseDir/docker-compose.yml down
+    ;;
+    run)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api
+    ;;
+    populate)
+        docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo populate"
+    ;;
+    psql)
+        docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME
+    ;;
+    dbdump | dump | pg_dump | pgdump)
+        dumpFile=$baseDir/"${2:-dbdump.sql}"
+        docker-compose -f $baseDir/docker-compose.yml exec postgres pg_dump -U $DATABASE_USERNAME -d $DATABASE_NAME > $dumpFile
+    ;;
+    cleardb | clear-db | resetdb | reset-db)
+        docker-compose -f $baseDir/docker-compose.yml exec postgres psql -U $DATABASE_USERNAME -d "postgres" -c "\set AUTOCOMMIT on\nDROP DATABASE \"$DATABASE_NAME\"; CREATE DATABASE \"$DATABASE_NAME\";"
+        echo "Database cleared"
+    ;;
+    restore)
+        docker-compose -f $baseDir/docker-compose.yml exec -T postgres psql -U $DATABASE_USERNAME -d $DATABASE_NAME < $2
+    ;;
+    *)
+        echo "Unknown command '$1'"
+        exit 1
+    ;;
+esac
