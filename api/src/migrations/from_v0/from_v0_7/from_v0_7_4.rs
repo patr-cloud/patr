@@ -1,9 +1,6 @@
-use api_models::utils::Uuid;
-
 use api_models::{
-	models::workspace::infrastructure::{
-		deployment::DeploymentStatus,
-	},
+	models::workspace::infrastructure::deployment::DeploymentStatus,
+	utils::Uuid,
 };
 use k8s_openapi::api::autoscaling::v1::{
 	CrossVersionObjectReference,
