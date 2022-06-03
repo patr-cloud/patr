@@ -1,6 +1,10 @@
 use api_models::utils::Uuid;
 
-use api_macros::query_as;
+use api_models::{
+	models::workspace::infrastructure::{
+		deployment::DeploymentStatus,
+	},
+};
 use k8s_openapi::api::autoscaling::v1::{
 	CrossVersionObjectReference,
 	HorizontalPodAutoscaler,
@@ -21,6 +25,7 @@ use kube::{
 	Api,
 	Config,
 };
+use sqlx::Row;
 
 use crate::{
 	db::Deployment,
@@ -288,8 +293,7 @@ async fn add_hpa_to_existing_deployments(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	config: &Settings,
 ) -> Result<(), Error> {
-	let deployments = query_as!(
-		Deployment,
+	let deployments = query!(
 		r#"
 		SELECT
 			id as "id: _",
@@ -313,7 +317,24 @@ async fn add_hpa_to_existing_deployments(
 		"#,
 	)
 	.fetch_all(&mut *connection)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| Deployment {
+		id: row.get::<Uuid, _>("id"),
+		name: row.get::<String, _>("name"),
+		registry: row.get::<String, _>("registry"),
+		repository_id: row.get::<Option<Uuid>, _>("repository_id"),
+		image_name: row.get::<Option<String>, _>("image_name"),
+		image_tag: row.get::<String, _>("image_tag"),
+		status: row.get::<DeploymentStatus, _>("status"),
+		workspace_id: row.get::<Uuid, _>("workspace_id"),
+		region: row.get::<Uuid, _>("region"),
+		min_horizontal_scale: row.get::<i16, _>("min_horizontal_scale"),
+		max_horizontal_scale: row.get::<i16, _>("max_horizontal_scale"),
+		machine_type: row.get::<Uuid, _>("machine_type"),
+		deploy_on_push: row.get::<bool, _>("deploy_on_push"),
+	})
+	.collect::<Vec<_>>();
 
 	if deployments.is_empty() {
 		return Ok(());
