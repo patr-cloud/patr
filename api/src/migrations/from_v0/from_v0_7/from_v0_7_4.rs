@@ -1,7 +1,5 @@
 use api_models::utils::Uuid;
 
-use crate::{
-	migrate_query as query};
 use api_macros::query_as;
 use k8s_openapi::api::autoscaling::v1::{
 	CrossVersionObjectReference,
@@ -26,6 +24,7 @@ use kube::{
 
 use crate::{
 	db::Deployment,
+	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
 };
