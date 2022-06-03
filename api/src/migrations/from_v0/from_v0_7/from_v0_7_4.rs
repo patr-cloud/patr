@@ -1,7 +1,31 @@
 use api_models::utils::Uuid;
 
 use crate::{
-	migrate_query as query,
+	migrate_query as query};
+use api_macros::query_as;
+use k8s_openapi::api::autoscaling::v1::{
+	CrossVersionObjectReference,
+	HorizontalPodAutoscaler,
+	HorizontalPodAutoscalerSpec,
+};
+use kube::{
+	api::{Patch, PatchParams},
+	config::{
+		AuthInfo,
+		Cluster,
+		Context,
+		Kubeconfig,
+		NamedAuthInfo,
+		NamedCluster,
+		NamedContext,
+	},
+	core::ObjectMeta,
+	Api,
+	Config,
+};
+
+use crate::{
+	db::Deployment,
 	utils::{settings::Settings, Error},
 	Database,
 };
@@ -14,6 +38,7 @@ pub(super) async fn migrate(
 	add_alert_emails(&mut *connection, config).await?;
 	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
+	add_hpa_to_existing_deployments(connection, config).await?;
 
 	Ok(())
 }
@@ -255,6 +280,127 @@ async fn add_alert_emails(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+// HPA - Horizontal Pod Autoscaler
+async fn add_hpa_to_existing_deployments(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	config: &Settings,
+) -> Result<(), Error> {
+	let deployments = query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push
+		FROM
+			deployment
+		WHERE	
+			status != 'deleted' OR
+			status != 'stopped';
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	if deployments.is_empty() {
+		return Ok(());
+	}
+
+	let kubernetes_config = Config::from_custom_kubeconfig(
+		Kubeconfig {
+			preferences: None,
+			clusters: vec![NamedCluster {
+				name: config.kubernetes.cluster_name.clone(),
+				cluster: Cluster {
+					server: config.kubernetes.cluster_url.clone(),
+					insecure_skip_tls_verify: None,
+					certificate_authority: None,
+					certificate_authority_data: Some(
+						config.kubernetes.certificate_authority_data.clone(),
+					),
+					proxy_url: None,
+					extensions: None,
+				},
+			}],
+			auth_infos: vec![NamedAuthInfo {
+				name: config.kubernetes.auth_name.clone(),
+				auth_info: AuthInfo {
+					username: Some(config.kubernetes.auth_username.clone()),
+					token: Some(config.kubernetes.auth_token.clone().into()),
+					..Default::default()
+				},
+			}],
+			contexts: vec![NamedContext {
+				name: config.kubernetes.context_name.clone(),
+				context: Context {
+					cluster: config.kubernetes.cluster_name.clone(),
+					user: config.kubernetes.auth_username.clone(),
+					extensions: None,
+					namespace: None,
+				},
+			}],
+			current_context: Some(config.kubernetes.context_name.clone()),
+			extensions: None,
+			kind: Some("Config".to_string()),
+			api_version: Some("v1".to_string()),
+		},
+		&Default::default(),
+	)
+	.await
+	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)
+		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+
+	for deployment in deployments {
+		// HPA - horizontal pod autoscaler
+		let kubernetes_hpa = HorizontalPodAutoscaler {
+			metadata: ObjectMeta {
+				name: Some(format!("hpa-{}", deployment.id)),
+				namespace: Some(deployment.workspace_id.to_string()),
+				..ObjectMeta::default()
+			},
+			spec: Some(HorizontalPodAutoscalerSpec {
+				scale_target_ref: CrossVersionObjectReference {
+					api_version: Some("apps/v1".to_string()),
+					kind: "Deployment".to_string(),
+					name: format!("deployment-{}", deployment.id),
+				},
+				min_replicas: Some(deployment.min_horizontal_scale.into()),
+				max_replicas: deployment.max_horizontal_scale.into(),
+				target_cpu_utilization_percentage: Some(90),
+			}),
+			..HorizontalPodAutoscaler::default()
+		};
+
+		let hpa_api: Api<HorizontalPodAutoscaler> = Api::namespaced(
+			kubernetes_client.clone(),
+			deployment.workspace_id.as_str(),
+		);
+
+		hpa_api
+			.patch(
+				&format!("hpa-{}", deployment.id),
+				&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+				&Patch::Apply(kubernetes_hpa),
+			)
+			.await
+			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	}
 
 	Ok(())
 }
