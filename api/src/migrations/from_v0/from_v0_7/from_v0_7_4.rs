@@ -39,7 +39,7 @@ pub(super) async fn migrate(
 	add_alert_emails(&mut *connection, config).await?;
 	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
-	add_hpa_to_existing_deployments(connection, config).await?;
+	add_hpa_to_existing_deployments(&mut *connection, config).await?;
 
 	Ok(())
 }
