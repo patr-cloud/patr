@@ -282,10 +282,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
 			&Patch::Apply(kubernetes_deployment),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
@@ -315,8 +312,8 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the service defined above
 	log::trace!("request_id: {} - creating ClusterIp service", request_id);
-	let service_api: Api<Service> =
-		Api::namespaced(kubernetes_client.clone(), namespace);
+	let service_api =
+		Api::<Service>::namespaced(kubernetes_client.clone(), namespace);
 
 	service_api
 		.patch(
@@ -324,10 +321,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	// HPA - horizontal pod autoscaler
 	let kubernetes_hpa = HorizontalPodAutoscaler {
@@ -354,8 +348,10 @@ pub async fn update_kubernetes_deployment(
 		"request_id: {} - creating horizontal pod autoscalar",
 		request_id
 	);
-	let hpa_api: Api<HorizontalPodAutoscaler> =
-		Api::namespaced(kubernetes_client.clone(), namespace);
+	let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		namespace,
+	);
 
 	hpa_api
 		.patch(
@@ -363,10 +359,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
 			&Patch::Apply(kubernetes_hpa),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let annotations = [
 		(
@@ -436,8 +429,7 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api: Api<Ingress> =
-		Api::namespaced(kubernetes_client, namespace);
+	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
 
 	ingress_api
 		.patch(
@@ -445,10 +437,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
