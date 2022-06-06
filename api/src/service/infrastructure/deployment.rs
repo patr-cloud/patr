@@ -57,6 +57,8 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
+	health_check_port: Option<i32>,
+	health_check_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -138,6 +140,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				health_check_port,
+				health_check_path,
 			)
 			.await?;
 		}
@@ -159,6 +163,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
+				health_check_port,
+				health_check_path,
 			)
 			.await?;
 		}
@@ -265,6 +271,8 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
+	health_check_port: Option<i32>,
+	health_check_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -282,6 +290,8 @@ pub async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
+		health_check_port,
+		health_check_path,
 	)
 	.await?;
 
@@ -394,6 +404,8 @@ pub async fn get_full_deployment_config(
 					status: deployment.status,
 					region: deployment.region,
 					machine_type: deployment.machine_type,
+					health_check_port: deployment.health_check_port,
+					health_check_path: deployment.health_check_path,
 				},
 				deployment.workspace_id,
 				deployment.deploy_on_push,
