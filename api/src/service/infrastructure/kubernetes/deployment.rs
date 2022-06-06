@@ -338,7 +338,7 @@ pub async fn update_kubernetes_deployment(
 			},
 			min_replicas: Some(running_details.min_horizontal_scale.into()),
 			max_replicas: running_details.max_horizontal_scale.into(),
-			target_cpu_utilization_percentage: Some(90),
+			target_cpu_utilization_percentage: Some(80),
 		}),
 		..HorizontalPodAutoscaler::default()
 	};
