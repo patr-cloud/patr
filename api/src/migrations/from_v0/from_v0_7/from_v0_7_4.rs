@@ -1,7 +1,4 @@
-use api_models::{
-	models::workspace::infrastructure::deployment::DeploymentStatus,
-	utils::Uuid,
-};
+use api_models::utils::Uuid;
 use k8s_openapi::api::autoscaling::v1::{
 	CrossVersionObjectReference,
 	HorizontalPodAutoscaler,
@@ -25,7 +22,6 @@ use kube::{
 use sqlx::Row;
 
 use crate::{
-	db::Deployment,
 	migrate_query as query,
 	utils::{settings::Settings, Error},
 	Database,
@@ -316,20 +312,13 @@ async fn add_hpa_to_existing_deployments(
 	.fetch_all(&mut *connection)
 	.await?
 	.into_iter()
-	.map(|row| Deployment {
-		id: row.get::<Uuid, _>("id"),
-		name: row.get::<String, _>("name"),
-		registry: row.get::<String, _>("registry"),
-		repository_id: row.get::<Option<Uuid>, _>("repository_id"),
-		image_name: row.get::<Option<String>, _>("image_name"),
-		image_tag: row.get::<String, _>("image_tag"),
-		status: row.get::<DeploymentStatus, _>("status"),
-		workspace_id: row.get::<Uuid, _>("workspace_id"),
-		region: row.get::<Uuid, _>("region"),
-		min_horizontal_scale: row.get::<i16, _>("min_horizontal_scale"),
-		max_horizontal_scale: row.get::<i16, _>("max_horizontal_scale"),
-		machine_type: row.get::<Uuid, _>("machine_type"),
-		deploy_on_push: row.get::<bool, _>("deploy_on_push"),
+	.map(|row| {
+		(
+			row.get::<Uuid, _>("id"),
+			row.get::<Uuid, _>("workspace_id"),
+			row.get::<i16, _>("min_horizontal_scale"),
+			row.get::<i16, _>("max_horizontal_scale"),
+		)
 	})
 	.collect::<Vec<_>>();
 
@@ -383,36 +372,38 @@ async fn add_hpa_to_existing_deployments(
 	let kubernetes_client = kube::Client::try_from(kubernetes_config)
 		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
 
-	for deployment in deployments {
+	for (id, workspace_id, min_horizontal_scale, max_horizontal_scale) in
+		deployments
+	{
 		// HPA - horizontal pod autoscaler
 		let kubernetes_hpa = HorizontalPodAutoscaler {
 			metadata: ObjectMeta {
-				name: Some(format!("hpa-{}", deployment.id)),
-				namespace: Some(deployment.workspace_id.to_string()),
+				name: Some(format!("hpa-{}", id)),
+				namespace: Some(workspace_id.to_string()),
 				..ObjectMeta::default()
 			},
 			spec: Some(HorizontalPodAutoscalerSpec {
 				scale_target_ref: CrossVersionObjectReference {
 					api_version: Some("apps/v1".to_string()),
 					kind: "Deployment".to_string(),
-					name: format!("deployment-{}", deployment.id),
+					name: format!("deployment-{}", id),
 				},
-				min_replicas: Some(deployment.min_horizontal_scale.into()),
-				max_replicas: deployment.max_horizontal_scale.into(),
+				min_replicas: Some(min_horizontal_scale.into()),
+				max_replicas: max_horizontal_scale.into(),
 				target_cpu_utilization_percentage: Some(90),
 			}),
 			..HorizontalPodAutoscaler::default()
 		};
 
-		let hpa_api: Api<HorizontalPodAutoscaler> = Api::namespaced(
+		let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
 			kubernetes_client.clone(),
-			deployment.workspace_id.as_str(),
+			workspace_id.as_str(),
 		);
 
 		hpa_api
 			.patch(
-				&format!("hpa-{}", deployment.id),
-				&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+				&format!("hpa-{}", id),
+				&PatchParams::apply(&format!("hpa-{}", id)),
 				&Patch::Apply(kubernetes_hpa),
 			)
 			.await
