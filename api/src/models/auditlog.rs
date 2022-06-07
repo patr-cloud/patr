@@ -38,9 +38,13 @@ pub enum DeploymentMetadata {
 		environment_variables:
 			Option<BTreeMap<String, EnvironmentVariableValue>>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		health_check_port: Option<i32>,
+		startup_probe_port: Option<i32>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		health_check_path: Option<String>,
+		startup_probe_path: Option<String>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		liveness_probe_port: Option<i32>,
+		#[serde(skip_serializing_if = "Option::is_none")]
+		liveness_probe_path: Option<String>,
 	},
 	Stop {},
 	Delete {},

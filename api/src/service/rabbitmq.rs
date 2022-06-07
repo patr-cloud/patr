@@ -38,8 +38,10 @@ pub async fn queue_create_deployment(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -69,8 +71,10 @@ pub async fn queue_create_deployment(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
-				health_check_port,
-				health_check_path: health_check_path.map(|s| s.to_string()),
+				startup_probe_port,
+				startup_probe_path: startup_probe_path.map(|s| s.to_string()),
+				liveness_probe_port,
+				liveness_probe_path: liveness_probe_path.map(|s| s.to_string()),
 			},
 			image_name,
 			digest,
@@ -211,6 +215,7 @@ pub async fn queue_delete_deployment(
 	.await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn queue_update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -225,8 +230,10 @@ pub async fn queue_update_deployment(
 	login_id: &Uuid,
 	ip_address: &str,
 	metadata: &DeploymentMetadata,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -254,8 +261,10 @@ pub async fn queue_update_deployment(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
-				health_check_port,
-				health_check_path: health_check_path.map(|s| s.to_string()),
+				startup_probe_port,
+				startup_probe_path: startup_probe_path.map(|s| s.to_string()),
+				liveness_probe_port,
+				liveness_probe_path: liveness_probe_path.map(|s| s.to_string()),
 			},
 			image_name,
 			digest,
@@ -272,6 +281,7 @@ pub async fn queue_update_deployment(
 	.await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn queue_update_deployment_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -283,8 +293,10 @@ pub async fn queue_update_deployment_image(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -312,8 +324,10 @@ pub async fn queue_update_deployment_image(
 				status: DeploymentStatus::Pushed,
 				region: region.clone(),
 				machine_type: machine_type.clone(),
-				health_check_port,
-				health_check_path: health_check_path.map(|s| s.to_string()),
+				startup_probe_port,
+				startup_probe_path: startup_probe_path.map(|s| s.to_string()),
+				liveness_probe_port,
+				liveness_probe_path: liveness_probe_path.map(|s| s.to_string()),
 			},
 			image_name,
 			digest: Some(digest.to_string()),

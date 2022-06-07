@@ -44,8 +44,10 @@ pub struct Deployment {
 	pub max_horizontal_scale: i16,
 	pub machine_type: Uuid,
 	pub deploy_on_push: bool,
-	pub health_check_port: Option<i32>,
-	pub health_check_path: Option<String>,
+	pub startup_probe_port: Option<i32>,
+	pub startup_probe_path: Option<String>,
+	pub liveness_probe_port: Option<i32>,
+	pub liveness_probe_path: Option<String>,
 }
 
 pub struct DeploymentEnvironmentVariable {
@@ -157,8 +159,10 @@ pub async fn initialize_deployment_pre(
 			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
 				REFERENCES deployment_machine_type(id),
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
-			health_check_port INT,
-			health_check_path varchar(255),
+			startup_probe_port INT,
+			startup_probe_path varchar(255),
+			liveness_probe_port INT,
+			liveness_probe_path varchar(255),
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -351,8 +355,10 @@ pub async fn create_deployment_with_internal_registry(
 	deploy_on_push: bool,
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -371,8 +377,10 @@ pub async fn create_deployment_with_internal_registry(
 				max_horizontal_scale,
 				machine_type,
 				deploy_on_push,
-				health_check_port,
-				health_check_path
+				startup_probe_port,
+				startup_probe_path,
+				liveness_probe_port,
+				liveness_probe_path
 			)
 		VALUES
 			(
@@ -390,7 +398,9 @@ pub async fn create_deployment_with_internal_registry(
 				$9,
 				$10,
 				$11,
-				$12
+				$12,
+				$13,
+				$14
 			);
 		"#,
 		id as _,
@@ -403,14 +413,17 @@ pub async fn create_deployment_with_internal_registry(
 		max_horizontal_scale as i32,
 		machine_type as _,
 		deploy_on_push,
-		health_check_port,
-		health_check_path
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path
 	)
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_deployment_with_external_registry(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
@@ -424,8 +437,10 @@ pub async fn create_deployment_with_external_registry(
 	deploy_on_push: bool,
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -444,8 +459,10 @@ pub async fn create_deployment_with_external_registry(
 				max_horizontal_scale,
 				machine_type,
 				deploy_on_push,
-				health_check_port,
-				health_check_path
+				startup_probe_port,
+				startup_probe_path,
+				liveness_probe_port,
+				liveness_probe_path
 			)
 		VALUES
 			(
@@ -463,7 +480,9 @@ pub async fn create_deployment_with_external_registry(
 				$10,
 				$11,
 				$12,
-				$13
+				$13,
+				$14,
+				$15
 			);
 		"#,
 		id as _,
@@ -477,8 +496,10 @@ pub async fn create_deployment_with_external_registry(
 		max_horizontal_scale as i32,
 		machine_type as _,
 		deploy_on_push,
-		health_check_port,
-		health_check_path
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path
 	)
 	.execute(&mut *connection)
 	.await
@@ -508,8 +529,10 @@ pub async fn get_deployments_by_image_name_and_tag_for_workspace(
 			deployment.max_horizontal_scale,
 			deployment.machine_type as "machine_type: _",
 			deployment.deploy_on_push,
-			deployment.health_check_port,
-			deployment.health_check_path
+			deployment.startup_probe_port,
+			deployment.startup_probe_path,
+			deployment.liveness_probe_port,
+			deployment.liveness_probe_path
 		FROM
 			deployment
 		LEFT JOIN
@@ -560,8 +583,10 @@ pub async fn get_deployments_by_repository_id(
 			max_horizontal_scale,
 			machine_type as "machine_type: _",
 			deploy_on_push,
-			health_check_port,
-			health_check_path
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -596,8 +621,10 @@ pub async fn get_deployments_for_workspace(
 			max_horizontal_scale,
 			machine_type as "machine_type: _",
 			deploy_on_push,
-			health_check_port,
-			health_check_path
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -631,8 +658,10 @@ pub async fn get_deployment_by_id(
 			max_horizontal_scale,
 			machine_type as "machine_type: _",
 			deploy_on_push,
-			health_check_port,
-			health_check_path
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -667,8 +696,10 @@ pub async fn get_deployment_by_name_in_workspace(
 			max_horizontal_scale,
 			machine_type as "machine_type: _",
 			deploy_on_push,
-			health_check_port,
-			health_check_path
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path
 		FROM
 			deployment
 		WHERE
@@ -875,8 +906,10 @@ pub async fn update_deployment_details(
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
 	max_horizontal_scale: Option<u16>,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(name) = name {
 		query!(
@@ -980,34 +1013,68 @@ pub async fn update_deployment_details(
 		.await?;
 	}
 
-	if let Some(health_check_port) = health_check_port {
+	if let Some(startup_probe_port) = startup_probe_port {
 		query!(
 			r#"
 			UPDATE
 				deployment
 			SET
-				health_check_port = $1
+				startup_probe_port = $1
 			WHERE
 				id = $2;
 			"#,
-			health_check_port as i32,
+			startup_probe_port as i32,
 			deployment_id as _
 		)
 		.execute(&mut *connection)
 		.await?;
 	}
 
-	if let Some(health_check_path) = health_check_path {
+	if let Some(startup_probe_path) = startup_probe_path {
 		query!(
 			r#"
 			UPDATE
 				deployment
 			SET
-				health_check_path = $1
+				startup_probe_path = $1
 			WHERE
 				id = $2;
 			"#,
-			health_check_path,
+			startup_probe_path as _,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(liveness_probe_port) = liveness_probe_port {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				liveness_probe_port = $1
+			WHERE
+				id = $2;
+			"#,
+			liveness_probe_port as i32,
+			deployment_id as _
+		)
+		.execute(&mut *connection)
+		.await?;
+	}
+
+	if let Some(liveness_probe_path) = liveness_probe_path {
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				liveness_probe_path = $1
+			WHERE
+				id = $2;
+			"#,
+			liveness_probe_path as _,
 			deployment_id as _
 		)
 		.execute(&mut *connection)

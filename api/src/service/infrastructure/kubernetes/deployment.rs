@@ -23,9 +23,11 @@ use k8s_openapi::{
 			Container,
 			ContainerPort,
 			EnvVar,
+			HTTPGetAction,
 			LocalObjectReference,
 			PodSpec,
 			PodTemplateSpec,
+			Probe,
 			ResourceRequirements,
 			Service,
 			ServicePort,
@@ -203,6 +205,34 @@ pub async fn update_kubernetes_deployment(
 									..ContainerPort::default()
 								})
 								.collect::<Vec<_>>(),
+						),
+						startup_probe: deployment.startup_probe_port.map(
+							|port| Probe {
+								http_get: Some(HTTPGetAction {
+									path: deployment.startup_probe_path.clone(),
+									port: IntOrString::Int(port),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								failure_threshold: Some(30),
+								period_seconds: Some(10),
+								..Probe::default()
+							},
+						),
+						liveness_probe: deployment.liveness_probe_port.map(
+							|port| Probe {
+								http_get: Some(HTTPGetAction {
+									path: deployment
+										.liveness_probe_path
+										.clone(),
+									port: IntOrString::Int(port),
+									scheme: Some("HTTP".to_string()),
+									..HTTPGetAction::default()
+								}),
+								initial_delay_seconds: Some(30),
+								period_seconds: Some(10),
+								..Probe::default()
+							},
 						),
 						env: Some(
 							running_details

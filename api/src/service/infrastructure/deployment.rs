@@ -57,8 +57,10 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -140,8 +142,10 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				health_check_port,
-				health_check_path,
+				startup_probe_port,
+				startup_probe_path,
+				liveness_probe_port,
+				liveness_probe_path,
 			)
 			.await?;
 		}
@@ -163,8 +167,10 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				health_check_port,
-				health_check_path,
+				startup_probe_port,
+				startup_probe_path,
+				liveness_probe_port,
+				liveness_probe_path,
 			)
 			.await?;
 		}
@@ -260,6 +266,7 @@ pub async fn get_deployment_container_logs(
 	Ok(logs)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	deployment_id: &Uuid,
@@ -271,8 +278,10 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
-	health_check_port: Option<i32>,
-	health_check_path: Option<&str>,
+	startup_probe_port: Option<i32>,
+	startup_probe_path: Option<&str>,
+	liveness_probe_port: Option<i32>,
+	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -290,8 +299,10 @@ pub async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		health_check_port,
-		health_check_path,
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path,
 	)
 	.await?;
 
@@ -404,8 +415,10 @@ pub async fn get_full_deployment_config(
 					status: deployment.status,
 					region: deployment.region,
 					machine_type: deployment.machine_type,
-					health_check_port: deployment.health_check_port,
-					health_check_path: deployment.health_check_path,
+					startup_probe_port: deployment.startup_probe_port,
+					startup_probe_path: deployment.startup_probe_path,
+					liveness_probe_port: deployment.liveness_probe_port,
+					liveness_probe_path: deployment.liveness_probe_path,
 				},
 				deployment.workspace_id,
 				deployment.deploy_on_push,

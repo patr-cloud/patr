@@ -265,8 +265,10 @@ async fn notification_handler(
 				&deployment.region,
 				&deployment.machine_type,
 				&deployment_running_details,
-				deployment.health_check_port,
-				deployment.health_check_path.as_deref(),
+				deployment.startup_probe_port,
+				deployment.startup_probe_path.as_deref(),
+				deployment.liveness_probe_port,
+				deployment.liveness_probe_path.as_deref(),
 				&config,
 				&request_id,
 			)
