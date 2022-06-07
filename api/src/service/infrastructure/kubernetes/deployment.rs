@@ -214,8 +214,9 @@ pub async fn update_kubernetes_deployment(
 									scheme: Some("HTTP".to_string()),
 									..HTTPGetAction::default()
 								}),
-								failure_threshold: Some(30),
+								failure_threshold: Some(20),
 								period_seconds: Some(10),
+								timeout_seconds: Some(200),
 								..Probe::default()
 							},
 						),
