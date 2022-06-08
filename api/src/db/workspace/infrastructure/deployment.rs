@@ -296,10 +296,12 @@ pub async fn initialize_deployment_pre(
 		ALTER TABLE deployment
 		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
 			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type),
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+					DEFERRABLE INITIALLY IMMEDIATE,
 		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
 			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type);
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
@@ -397,8 +399,10 @@ pub async fn create_deployment_with_internal_registry(
 				deploy_on_push,
 				startup_probe_port,
 				startup_probe_path,
+				startup_probe_port_type,
 				liveness_probe_port,
-				liveness_probe_path
+				liveness_probe_path,
+				liveness_probe_port_type
 			)
 		VALUES
 			(
@@ -417,8 +421,10 @@ pub async fn create_deployment_with_internal_registry(
 				$10,
 				$11,
 				$12,
+				'http',
 				$13,
-				$14
+				$14,
+				'http'
 			);
 		"#,
 		id as _,
@@ -1037,7 +1043,8 @@ pub async fn update_deployment_details(
 			UPDATE
 				deployment
 			SET
-				startup_probe_port = $1
+				startup_probe_port = $1,
+				startup_probe_port_type = 'http'
 			WHERE
 				id = $2;
 			"#,
@@ -1071,7 +1078,8 @@ pub async fn update_deployment_details(
 			UPDATE
 				deployment
 			SET
-				liveness_probe_port = $1
+				liveness_probe_port = $1,
+				liveness_probe_port_type = 'http'
 			WHERE
 				id = $2;
 			"#,

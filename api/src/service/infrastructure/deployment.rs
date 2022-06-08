@@ -120,6 +120,7 @@ pub async fn create_deployment_in_workspace(
 	.await?;
 	log::trace!("request_id: {} - Created resource", request_id);
 
+	db::begin_deferred_constraints(connection).await?;
 	match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry: _,
@@ -185,6 +186,7 @@ pub async fn create_deployment_in_workspace(
 		)
 		.await?;
 	}
+	db::end_deferred_constraints(connection).await?;
 
 	for (key, value) in &deployment_running_details.environment_variables {
 		log::trace!(
@@ -286,6 +288,31 @@ pub async fn update_deployment(
 		request_id,
 		deployment_id
 	);
+
+	db::begin_deferred_constraints(connection).await?;
+	if let Some(ports) = ports {
+		if ports.is_empty() {
+			return Err(Error::empty()
+			.status(400)
+			.body(error!(WRONG_PARAMETERS).to_string()));
+		}
+		
+		log::trace!(
+			"request_id: {} - Updating deployment ports in the database",
+			request_id
+		);
+		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
+			.await?;
+		for (port, exposed_port_type) in ports {
+			db::add_exposed_port_for_deployment(
+				connection,
+				deployment_id,
+				*port,
+				exposed_port_type,
+			)
+			.await?;
+		}
+	}
 	db::update_deployment_details(
 		connection,
 		deployment_id,
@@ -301,32 +328,7 @@ pub async fn update_deployment(
 		liveness_probe_path,
 	)
 	.await?;
-
-	if let Some(ports) = ports {
-		if ports.is_empty() {
-			return Err(Error::empty()
-				.status(400)
-				.body(error!(WRONG_PARAMETERS).to_string()));
-		}
-
-		log::trace!(
-			"request_id: {} - Updating deployment ports in the database",
-			request_id
-		);
-		db::begin_deferred_constraints(connection).await?;
-		db::remove_all_exposed_ports_for_deployment(connection, deployment_id)
-			.await?;
-		for (port, exposed_port_type) in ports {
-			db::add_exposed_port_for_deployment(
-				connection,
-				deployment_id,
-				*port,
-				exposed_port_type,
-			)
-			.await?;
-		}
-		db::end_deferred_constraints(connection).await?;
-	}
+	db::end_deferred_constraints(connection).await?;
 
 	if let Some(environment_variables) = environment_variables {
 		log::trace!(

@@ -442,9 +442,11 @@ async fn update_deployment_with_probe_column(
 		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
 			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
 				REFERENCES deployment_exposed_port(deployment_id, port, port_type),
+					DEFERRABLE INITIALLY IMMEDIATE,
 		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
 			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type);
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+					DEFERRABLE INITIALLY IMMEDIATE,;
 		"#
 	)
 	.execute(&mut *connection)

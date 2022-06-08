@@ -847,6 +847,36 @@
     },
     "query": "CREATE INDEX user_phone_number_idx_user_id ON user_phone_number (user_id);"
   },
+  "188bbb519725f655424ba0503c3518051905ba10ff233ec11d25168ce103f93d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          {
+            "Custom": {
+              "kind": "Simple",
+              "name": "citext"
+            }
+          },
+          "Uuid",
+          "Varchar",
+          "Uuid",
+          "Uuid",
+          "Int2",
+          "Int2",
+          "Uuid",
+          "Bool",
+          "Int4",
+          "Varchar",
+          "Int4",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, 'http', $13, $14, 'http' );"
+  },
   "190afdb5fff0d8d2459768bf598cb4cbe8a8eac23f33919a06c5057411079a65": {
     "describe": {
       "columns": [],
@@ -2359,6 +2389,16 @@
     },
     "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);"
   },
+  "43b108e4d477b96005f366911f84ab89cfb0b7c4f9046d0fb3c00e2f751d018c": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type) DEFERRABLE INITIALLY IMMEDIATE;"
+  },
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "describe": {
       "columns": [],
@@ -2497,6 +2537,19 @@
       }
     },
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;"
+  },
+  "4d94ce31e5fadc3b09295e9a94cff0c8cfe55fb97b7c92b591e73bfda991dce1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_port_type = 'http' WHERE id = $2;"
   },
   "4e0cdb9cdbfb4d2360aa8eff5c49dfa18da9969f601ae2532cc2c13588d2011c": {
     "describe": {
@@ -3344,6 +3397,19 @@
       }
     },
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;"
+  },
+  "6ae70f8db13ff9266985df64b1e5a6e0df68955ca72b8232896733938ebbc0b8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_port_type = 'http' WHERE id = $2;"
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
@@ -4636,19 +4702,6 @@
       }
     },
     "query": "INSERT INTO secret( id, name, workspace_id, deployment_id ) VALUES ($1, $2, $3, NULL);"
-  },
-  "97b0ee9b174e52ea9e99880ce84efb84e7d7b5616868b222571f969765eecae0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = $1 WHERE id = $2;"
   },
   "97dc58af5c9c3baed320a573d34a5069c2f7919b6a3ace08bdbbf1a2e90b4789": {
     "describe": {
@@ -6445,19 +6498,6 @@
     },
     "query": "SELECT COUNT(*) as \"count!\" FROM \"user\" WHERE id NOT IN ( '543de4f5808f4a99b2ee96dbdf9afff7', 'b4560e9530904195a0999c6d26aa9c29' );"
   },
-  "c5b58392fe4212bd91ceba11adb8705c86e0e7f1c033bf3dc8c9ccf9b3d87983": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = $1 WHERE id = $2;"
-  },
   "c7266afd5fc274fcd6c5dd97631ce514cbdbcbe541c6f29c797e64cea66ddc09": {
     "describe": {
       "columns": [
@@ -6534,16 +6574,6 @@
       }
     },
     "query": "CREATE INDEX workspace_user_idx_user_id ON workspace_user (user_id);"
-  },
-  "cadb148eac3bad751535c72bad42fa601ba4d6ba7a27179b074ee9814560eefb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "ALTER TABLE deployment ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type FOREIGN KEY (id, startup_probe_port, startup_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type), ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type) REFERENCES deployment_exposed_port(deployment_id, port, port_type);"
   },
   "cc5052043d15b31259977b31b0cc857411b204b64180714e0db89cffcb68fe46": {
     "describe": {
@@ -7510,36 +7540,6 @@
       }
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" WHERE username = $1;"
-  },
-  "e2984adfb7c70d82eabe67f5625e37d1d7d842697407c1d797e8047d2d7c473a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          {
-            "Custom": {
-              "kind": "Simple",
-              "name": "citext"
-            }
-          },
-          "Uuid",
-          "Varchar",
-          "Uuid",
-          "Uuid",
-          "Int2",
-          "Int2",
-          "Uuid",
-          "Bool",
-          "Int4",
-          "Varchar",
-          "Int4",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "INSERT INTO deployment( id, name, registry, repository_id, image_name, image_tag, status, workspace_id, region, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path ) VALUES ( $1, $2, 'registry.patr.cloud', $3, NULL, $4, 'created', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14 );"
   },
   "e2e4acb7753330bf806aae68b144fa483eb41b7c18cb10b1812164daa8e3326c": {
     "describe": {
