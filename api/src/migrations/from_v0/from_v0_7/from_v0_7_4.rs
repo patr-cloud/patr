@@ -420,7 +420,7 @@ async fn update_deployment_with_probe_column(
 		ADD COLUMN
 			liveness_probe_path varchar(255),
 		ADD COLUMN
-			liveness_probe_port_type EXPOSED_PORT_TYPE,
+			liveness_probe_port_type EXPOSED_PORT_TYPE;
 		"#,
 	)
 	.execute(&mut *connection)
