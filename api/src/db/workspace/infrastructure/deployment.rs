@@ -132,6 +132,16 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
+		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
+			'http'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TABLE deployment(
 			id UUID CONSTRAINT deployment_pk PRIMARY KEY,
 			name CITEXT NOT NULL
@@ -161,8 +171,10 @@ pub async fn initialize_deployment_pre(
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
 			startup_probe_port INT,
 			startup_probe_path varchar(255),
+			startup_probe_port_type EXPOSED_PORT_TYPE,
 			liveness_probe_port INT,
 			liveness_probe_path varchar(255),
+			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -260,16 +272,6 @@ pub async fn initialize_deployment_pre(
 
 	query!(
 		r#"
-		CREATE TYPE EXPOSED_PORT_TYPE AS ENUM(
-			'http'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE deployment_exposed_port(
 			deployment_id UUID
 				CONSTRAINT deployment_exposed_port_fk_deployment_id
@@ -280,8 +282,24 @@ pub async fn initialize_deployment_pre(
 				),
 			port_type EXPOSED_PORT_TYPE NOT NULL,
 			CONSTRAINT deployment_exposed_port_pk
-				PRIMARY KEY(deployment_id, port)
+				PRIMARY KEY(deployment_id, port),
+			CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
+				UNIQUE(deployment_id, port, port_type)
 		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
+			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type),
+		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
+			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type);
 		"#
 	)
 	.execute(&mut *connection)

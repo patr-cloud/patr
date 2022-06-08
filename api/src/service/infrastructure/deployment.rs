@@ -57,10 +57,6 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	startup_probe_port: Option<i32>,
-	startup_probe_path: Option<&str>,
-	liveness_probe_port: Option<i32>,
-	liveness_probe_path: Option<&str>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -142,10 +138,10 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				startup_probe_port,
-				startup_probe_path,
-				liveness_probe_port,
-				liveness_probe_path,
+				deployment_running_details.startup_probe_port,
+				deployment_running_details.startup_probe_path.as_deref(),
+				deployment_running_details.liveness_probe_port,
+				deployment_running_details.liveness_probe_path.as_deref(),
 			)
 			.await?;
 		}
@@ -167,10 +163,10 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				startup_probe_port,
-				startup_probe_path,
-				liveness_probe_port,
-				liveness_probe_path,
+				deployment_running_details.startup_probe_port,
+				deployment_running_details.startup_probe_path.as_deref(),
+				deployment_running_details.liveness_probe_port,
+				deployment_running_details.liveness_probe_path.as_deref(),
 			)
 			.await?;
 		}
@@ -392,6 +388,10 @@ pub async fn get_full_deployment_config(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
+		startup_probe_port,
+		startup_probe_path,
+		liveness_probe_port,
+		liveness_probe_path,
 	) = db::get_deployment_by_id(connection, deployment_id)
 		.await?
 		.and_then(|deployment| {
@@ -415,15 +415,15 @@ pub async fn get_full_deployment_config(
 					status: deployment.status,
 					region: deployment.region,
 					machine_type: deployment.machine_type,
-					startup_probe_port: deployment.startup_probe_port,
-					startup_probe_path: deployment.startup_probe_path,
-					liveness_probe_port: deployment.liveness_probe_port,
-					liveness_probe_path: deployment.liveness_probe_path,
 				},
 				deployment.workspace_id,
 				deployment.deploy_on_push,
 				deployment.min_horizontal_scale as u16,
 				deployment.max_horizontal_scale as u16,
+				deployment.startup_probe_port,
+				deployment.startup_probe_path,
+				deployment.liveness_probe_port,
+				deployment.liveness_probe_path,
 			))
 		})
 		.status(404)
@@ -493,6 +493,10 @@ pub async fn get_full_deployment_config(
 			max_horizontal_scale,
 			ports,
 			environment_variables,
+			startup_probe_port,
+			startup_probe_path,
+			liveness_probe_port,
+			liveness_probe_path,
 		},
 	))
 }

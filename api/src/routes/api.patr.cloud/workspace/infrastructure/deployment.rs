@@ -597,10 +597,6 @@ async fn list_deployments(
 			status: deployment.status,
 			region: deployment.region,
 			machine_type: deployment.machine_type,
-			startup_probe_port: deployment.startup_probe_port,
-			startup_probe_path: deployment.startup_probe_path,
-			liveness_probe_port: deployment.liveness_probe_port,
-			liveness_probe_path: deployment.liveness_probe_path,
 		})
 	})
 	.collect();
@@ -674,10 +670,6 @@ async fn create_deployment(
 		machine_type,
 		running_details: deployment_running_details,
 		deploy_on_create,
-		startup_probe_port,
-		startup_probe_path,
-		liveness_probe_port,
-		liveness_probe_path,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -701,10 +693,6 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		startup_probe_port,
-		startup_probe_path.as_deref(),
-		liveness_probe_port,
-		liveness_probe_path.as_deref(),
 		&config,
 		&request_id,
 	)
@@ -724,10 +712,6 @@ async fn create_deployment(
 			status: DeploymentStatus::Created,
 			region: region.clone(),
 			machine_type: machine_type.clone(),
-			startup_probe_port,
-			startup_probe_path: startup_probe_path.clone(),
-			liveness_probe_port,
-			liveness_probe_path: liveness_probe_path.clone(),
 		},
 		running_details: deployment_running_details.clone(),
 	})?;
@@ -766,10 +750,6 @@ async fn create_deployment(
 			&region,
 			&machine_type,
 			&deployment_running_details,
-			startup_probe_port,
-			startup_probe_path.as_deref(),
-			liveness_probe_port,
-			liveness_probe_path.as_deref(),
 			&config,
 			&request_id,
 		)
@@ -1328,10 +1308,6 @@ async fn update_deployment(
 				&login_id,
 				&ip_address,
 				&metadata,
-				startup_probe_port,
-				startup_probe_path.as_deref(),
-				liveness_probe_port,
-				liveness_probe_path.as_deref(),
 				&config,
 				&request_id,
 			)

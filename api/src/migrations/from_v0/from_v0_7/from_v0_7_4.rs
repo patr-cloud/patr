@@ -36,6 +36,7 @@ pub(super) async fn migrate(
 	update_workspace_with_ci_columns(&mut *connection, config).await?;
 	reset_permission_order(&mut *connection, config).await?;
 	add_hpa_to_existing_deployments(&mut *connection, config).await?;
+	update_deployment_with_probe_column(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -397,6 +398,57 @@ async fn add_hpa_to_existing_deployments(
 			)
 			.await?;
 	}
+
+	Ok(())
+}
+
+async fn update_deployment_with_probe_column(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD COLUMN
+			startup_probe_port INT,
+		ADD COLUMN
+			startup_probe_path varchar(255),
+		ADD COLUMN
+			startup_probe_port_type EXPOSED_PORT_TYPE,
+		ADD COLUMN
+			liveness_probe_port INT,
+		ADD COLUMN
+			liveness_probe_path varchar(255),
+		ADD COLUMN
+			liveness_probe_port_type EXPOSED_PORT_TYPE,
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_exposed_port
+		ADD CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
+			UNIQUE(deployment_id, port, port_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment
+		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
+			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type),
+		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
+			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+				REFERENCES deployment_exposed_port(deployment_id, port, port_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }
