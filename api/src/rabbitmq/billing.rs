@@ -135,7 +135,6 @@ pub(super) async fn process_request(
 				}
 
 				// send the total_cost to stripe
-				service::
 
 				// send the invoice to the user
 
