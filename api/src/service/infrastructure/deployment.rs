@@ -24,6 +24,7 @@ use crate::{
 		deployment::{Logs, PrometheusResponse, Subscription},
 		rbac,
 	},
+	service::infrastructure::kubernetes,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -57,7 +58,6 @@ pub async fn create_deployment_in_workspace(
 	region: &Uuid,
 	machine_type: &Uuid,
 	deployment_running_details: &DeploymentRunningDetails,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
 	// As of now, only our custom registry is allowed
@@ -207,16 +207,6 @@ pub async fn create_deployment_in_workspace(
 		.await?;
 	}
 
-	start_subscription(
-		connection,
-		&deployment_id,
-		machine_type.as_str(),
-		deployment_running_details.min_horizontal_scale,
-		config,
-		request_id,
-	)
-	.await?;
-
 	Ok(deployment_id)
 }
 
@@ -265,7 +255,6 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
-	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
 	log::trace!(
@@ -349,8 +338,6 @@ pub async fn update_deployment(
 		"request_id: {} - Deployment updated in the database",
 		request_id
 	);
-
-	update_subscription(connection, deployment_id, config, request_id).await?;
 
 	Ok(())
 }

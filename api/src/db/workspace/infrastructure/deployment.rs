@@ -155,6 +155,7 @@ pub async fn initialize_deployment_pre(
 			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
 				REFERENCES deployment_machine_type(id),
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
+
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
 					REFERENCES docker_registry_repository(id, workspace_id),
@@ -392,7 +393,7 @@ pub async fn create_deployment_with_internal_registry(
 		min_horizontal_scale as i32,
 		max_horizontal_scale as i32,
 		machine_type as _,
-		deploy_on_push
+		deploy_on_push,
 	)
 	.execute(&mut *connection)
 	.await
@@ -458,7 +459,7 @@ pub async fn create_deployment_with_external_registry(
 		min_horizontal_scale as i32,
 		max_horizontal_scale as i32,
 		machine_type as _,
-		deploy_on_push
+		deploy_on_push,
 	)
 	.execute(&mut *connection)
 	.await

@@ -410,7 +410,7 @@ pub async fn queue_delete_static_site(
 	.await
 }
 
-async fn send_message_to_rabbit_mq(
+pub async fn send_message_to_rabbit_mq(
 	message: &RequestMessage,
 	config: &Settings,
 	request_id: &Uuid,

@@ -345,6 +345,31 @@ pub async fn get_workspace_by_name(
 	.await
 }
 
+pub async fn get_all_workspaces(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Vec<Workspace>, sqlx::Error> {
+	query_as!(
+		Workspace,
+		r#"
+		SELECT DISTINCT
+			workspace.id as "id: _",
+			workspace.name::TEXT as "name!: _",
+			workspace.super_admin_id as "super_admin_id: _",
+			workspace.active
+		FROM
+			workspace
+		WHERE
+			workspace.name NOT LIKE CONCAT(
+				'patr-deleted: ',
+				REPLACE(id::TEXT, '-', ''),
+				'@%'
+			);
+		"#,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
 pub async fn update_workspace_name(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

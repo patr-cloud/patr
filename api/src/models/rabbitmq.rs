@@ -16,6 +16,7 @@ pub enum RequestMessage {
 	Deployment(DeploymentRequestData),
 	StaticSite(StaticSiteRequestData),
 	Database {},
+	Workspace(WorkspaceRequestData),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -111,4 +112,12 @@ pub enum StaticSiteRequestData {
 		static_site_id: Uuid,
 		request_id: Uuid,
 	},
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "resource", rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
+pub enum WorkspaceRequestData {
+	GenerateInvoice { month: u32, year: u32 },
+	ChargeUser {},
 }

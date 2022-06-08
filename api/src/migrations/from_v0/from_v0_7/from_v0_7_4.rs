@@ -211,22 +211,59 @@ async fn reset_permission_order(
 	Ok(())
 }
 
-<<<<<<< HEAD
 async fn add_alert_emails(
-=======
-async fn add_billing_tables(
->>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
 	connection: &mut <Database as sqlx::Database>::Connection,
 	_config: &Settings,
 ) -> Result<(), Error> {
 	query!(
 		r#"
-<<<<<<< HEAD
 		ALTER TABLE workspace
 			ADD COLUMN alert_emails VARCHAR(320) [] NOT NULL 
 			DEFAULT ARRAY[]::VARCHAR[];
 		"#,
-=======
+	)
+	.execute(&mut *connection)
+	.await?;
+	query!(
+		r#"
+		ALTER TABLE workspace
+			ALTER COLUMN alert_emails DROP DEFAULT;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+	query!(
+		r#"
+		UPDATE workspace w1
+		SET alert_emails = (
+			SELECT 
+				ARRAY_AGG(CONCAT("user".recovery_email_local, '@', domain.name, '.', domain.tld))
+			FROM 
+				workspace w2
+			INNER JOIN
+				"user"
+			ON
+				"user".id = w2.super_admin_id
+			INNER JOIN
+				domain
+			ON
+				"user".recovery_email_domain_id = domain.id
+			WHERE
+				w2.id = w1.id
+		);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+	Ok(())
+}
+
+async fn add_billing_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
 		CREATE TYPE PLAN_TYPE AS ENUM(
 			'one_time',
 			'fixed_monthly',
@@ -236,18 +273,12 @@ async fn add_billing_tables(
 			/* 'fixed_resources', */
 		);
 		"#
->>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
 	)
 	.execute(&mut *connection)
 	.await?;
 
 	query!(
 		r#"
-<<<<<<< HEAD
-		ALTER TABLE workspace
-			ALTER COLUMN alert_emails DROP DEFAULT;
-		"#,
-=======
 		CREATE TYPE TRANSACTION_TYPE AS ENUM(
 			'credits',
 			'one_time',
@@ -294,12 +325,15 @@ async fn add_billing_tables(
 			plan_type PLAN_TYPE NOT NULL,
 			product_info_id UUID NOT NULL,
 			price DECIMAL(10, 2) NOT NULL,
-			quantity INTEGER NOT NULL,
+			quantity INTEGER,
 			workspace_id UUID NOT NULL,
 			CONSTRAINT plans_product_info_id_fk 
 			FOREIGN KEY (product_info_id) REFERENCES product_info(id),
 			CONSTRAINT plans_workspace_id_fk
-			FOREIGN KEY (workspace_id) REFERENCES workspace(id);
+			FOREIGN KEY (workspace_id) REFERENCES workspace(id),
+			deployment_machine_type_id UUID
+				CONSTRAINT plans_uq_deployment_machine_type_id
+					UNIQUE
 		);
 	"#
 	)
@@ -315,13 +349,33 @@ async fn add_billing_tables(
 			price DECIMAL(10, 2) NOT NULL,
 			quantity INTEGER NOT NULL,
 			product_info_id UUID NOT NULL,
-			total_price DECIMAL(10, 2) NOT NULL,
+			total_price DECIMAL(10, 2) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED,
+			resource_id UUID NOT NULL,
+			date TIMESTAMPTZ NOT NULL,
+			active BOOLEAN NOT NULL,
 			CONSTRAINT billable_service_plan_id_fk
 			FOREIGN KEY (plan_id) REFERENCES plans(id),
 			CONSTRAINT billable_service_workspace_id_fk
 			FOREIGN KEY (workspace_id) REFERENCES workspace(id),
 			CONSTRAINT billable_service_product_info_id_fk
-			FOREIGN KEY (product_info_id) REFERENCES product_info(id);
+			FOREIGN KEY (product_info_id) REFERENCES product_info(id),
+			CONSTRAINT billable_service_resource_id_fk
+			FOREIGN KEY (resource_id) REFERENCES resource(id)
+		);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS coupons(
+			id UUID CONSTRAINT coupons_pk PRIMARY KEY,
+			name TEXT NOT NULL,
+			description TEXT,
+			credits DECIMAL(10, 2) NOT NULL,
+			valid_from TIMESTAMPTZ NOT NULL,
+			valid_till TIMESTAMPTZ NOT NULL
 		);
 	"#
 	)
@@ -351,45 +405,9 @@ async fn add_billing_tables(
 			CONSTRAINT transactions_workspace_id_fk
 			FOREIGN KEY (workspace_id) REFERENCES workspace(id),
 			CONSTRAINT transactions_coupon_id_fk
-			FOREIGN KEY (coupon_id) REFERENCES coupon(id);
+			FOREIGN KEY (coupon_id) REFERENCES coupons(id)
 		);
 		"#
->>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-<<<<<<< HEAD
-		UPDATE workspace w1
-		SET alert_emails = (
-			SELECT 
-				ARRAY_AGG(CONCAT("user".recovery_email_local, '@', domain.name, '.', domain.tld))
-			FROM 
-				workspace w2
-			INNER JOIN
-				"user"
-			ON
-				"user".id = w2.super_admin_id
-			INNER JOIN
-				domain
-			ON
-				"user".recovery_email_domain_id = domain.id
-			WHERE
-				w2.id = w1.id
-		);
-		"#,
-=======
-		CREATE TABLE IF NOT EXISTS coupons(
-			id UUID CONSTRAINT coupons_pk PRIMARY KEY,
-			name TEXT NOT NULL,
-			description TEXT,
-			credits DECIMAL(10, 2) NOT NULL,
-			valid_from TIMESTAMPTZ NOT NULL,
-			valid_till TIMESTAMPTZ NOT NULL
-		);
-	"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -453,7 +471,32 @@ async fn add_billing_tables(
 		REFERENCES resource_limits(id)
 		DEFERRABLE INITIALLY IMMEDIATE;
 		"#
->>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE MATERIALIZED VIEW credits
+		AS
+			SELECT SUM(
+					CASE debit
+					WHEN 'true' THEN 
+						-amount
+					ELSE 
+						amount
+					END
+				) AS credits
+			FROM transactions
+			WHERE 
+				billable_service_id IS NULL AND
+				product_info_id IS NULL AND
+				plan_id IS NULL
+			GROUP BY workspace_id
+		WITH NO DATA;
+		/*This clause specifies whether or not the materialized view should be populated at creation time. 
+		If not, the materialized view will be flagged as unscannable and cannot be queried until REFRESH MATERIALIZED VIEW is used. */
+	"#
 	)
 	.execute(&mut *connection)
 	.await?;

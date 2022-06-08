@@ -137,6 +137,15 @@ pub async fn create_workspace(
 	)
 	.await?;
 
+	// creating initial resourc limits for the user
+	create_resource_and_product_limits_for_workspace(
+		connection,
+		&resource_id,
+		&super_admin_id,
+		config,
+	)
+	.await?;
+
 	Ok(resource_id)
 }
 
@@ -151,4 +160,68 @@ pub async fn create_workspace(
 /// workspace
 pub fn get_personal_workspace_name(super_admin_id: &Uuid) -> String {
 	format!("personal-workspace-{}", super_admin_id)
+}
+
+async fn create_resource_and_product_limits_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	super_admin_id: &Uuid,
+	config: &Settings,
+) -> Result<(), Error> {
+	// temporarily hardcoding the limits for the workspace
+	db::create_resource_limit(connection, &workspace_id, 20 as u32).await?;
+
+	let deployment_product_id =
+		db::get_product_info_by_name(connection, "deployment")
+			.await?
+			.status(500)?;
+
+	db::create_product_limit(
+		connection,
+		&workspace_id,
+		&deployment_product_id.id,
+		5,
+	)
+	.await?;
+
+	let static_site_product_id =
+		db::get_product_info_by_name(connection, "static-site")
+			.await?
+			.status(500)?;
+
+	db::create_product_limit(
+		connection,
+		&workspace_id,
+		&static_site_product_id.id,
+		5,
+	)
+	.await?;
+
+	let managed_database_product_id =
+		db::get_product_info_by_name(connection, "managed-database")
+			.await?
+			.status(500)?;
+
+	db::create_product_limit(
+		connection,
+		&workspace_id,
+		&managed_database_product_id.id,
+		5,
+	)
+	.await?;
+
+	let managed_url_product_id =
+		db::get_product_info_by_name(connection, "managed-url")
+			.await?
+			.status(500)?;
+
+	db::create_product_limit(
+		connection,
+		&workspace_id,
+		&managed_url_product_id.id,
+		5,
+	)
+	.await?;
+
+	Ok(())
 }

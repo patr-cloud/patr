@@ -248,6 +248,79 @@
       "nullable": []
     }
   },
+  "07376b5214a5662ebf3d180daf7108e107f3233929446e418ec06db93558858f": {
+    "query": "SELECT id as \"id!: _\", name, description, plan_type as \"plan_type!: _\", product_info_id as \"product_info_id!: _\", price as \"price!: _\", quantity, workspace_id as \"workspace_id!: _\" FROM plans WHERE deployment_machine_type_id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "plan_type!: _",
+          "type_info": {
+            "Custom": {
+              "name": "plan_type",
+              "kind": {
+                "Enum": [
+                  "one_time",
+                  "fixed_monthly",
+                  "dynamic_monthly"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "ordinal": 4,
+          "name": "product_info_id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 5,
+          "name": "price!: _",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 6,
+          "name": "quantity",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 7,
+          "name": "workspace_id!: _",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    }
+  },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "query": "SELECT CONCAT( \"user\".recovery_email_local, '@', domain.name, '.', domain.tld ) as \"email!: String\" FROM \"user\" INNER JOIN domain ON \"user\".recovery_email_domain_id = domain.id WHERE \"user\".id = $1;",
     "describe": {
@@ -383,6 +456,18 @@
           "Uuid",
           "Text",
           "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "0fb31dc7b9fb7b5237113895348c2f42934ef330a3fbb200d384d0e9e88634f6": {
+    "query": "INSERT INTO product_info( id, name, description ) VALUES( $1, 'static_site', NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
         ]
       },
       "nullable": []
@@ -684,6 +769,18 @@
         true,
         null
       ]
+    }
+  },
+  "13b4d0c822f9e255922c91183e01fb9a071c89a65ea898923dd38661a2eecc63": {
+    "query": "INSERT INTO product_info( id, name, description ) VALUES( $1, 'deployment', NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
     }
   },
   "144f726fa812daa0a68d84a79ce6dde25308df488a580e6c610fd1c3e6fab790": {
@@ -2467,6 +2564,21 @@
 =======
 >>>>>>> 7575c309... Added schema for payment
   },
+  "40c047228ffd0db5a1063a2fbc6a5337848bdd1e26cde2fef9e41368baae8387": {
+    "query": "INSERT INTO product_limits( id, product_info_id, max_limit, workspace_id ) VALUES( $1, $2, $3, $4 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Int4",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "42a3e7e04f5b80211c82b6485eb7359d5b03fd8b3378f14537f349ce5a2d5508": {
     "query": "UPDATE workspace_domain SET is_verified = $2 WHERE id = $1;",
     "describe": {
@@ -2480,20 +2592,15 @@
       "nullable": []
     }
   },
-  "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
-    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": []
-    }
-  },
+<<<<<<< HEAD
   "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
     "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
 <<<<<<< HEAD
 =======
+=======
+  "4357441a58d66b47fffabe8c10fa5ddedbe067c22d5c59d00cb492be40abc1a8": {
+    "query": "ALTER TABLE workspace_audit_log ADD CONSTRAINT workspace_audit_log_fk_action FOREIGN KEY(action) REFERENCES permission(id);",
+>>>>>>> 20e4b870... WIP Adding stripe integration
     "describe": {
       "columns": [],
       "parameters": {
@@ -2502,9 +2609,14 @@
       "nullable": []
     }
   },
+<<<<<<< HEAD
   "44ff65872c5456028cefe3c2505c32a8ce26c056ccf1e0efbb3398d4334e5e62": {
     "query": "CREATE TYPE TRANSACTION_TYPE AS ENUM( 'credits', 'one_time', 'fixed_monthly', 'dynamic_monthly' /* 'fixed_annually', */ /* 'dynamic_annually', */ /* 'fixed_resources', */ );",
 >>>>>>> 7575c309... Added schema for payment
+=======
+  "4473fad035c7e0e8c1466af8dae29925137071c56c7b8827b37fa3c6ee5505f5": {
+    "query": "CREATE TABLE user_phone_number( user_id UUID NOT NULL CONSTRAINT user_phone_number_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, country_code CHAR(2) NOT NULL CONSTRAINT user_phone_number_fk_country_code REFERENCES phone_number_country_code(country_code) CONSTRAINT user_phone_number_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), number VARCHAR(15) NOT NULL CONSTRAINT user_phone_number_chk_number_valid CHECK( LENGTH(number) >= 7 AND LENGTH(number) <= 15 AND CAST(number AS BIGINT) > 0 ), CONSTRAINT user_phone_number_pk PRIMARY KEY(country_code, number), CONSTRAINT user_phone_number_uq_user_id_country_code_number UNIQUE(user_id, country_code, number) );",
+>>>>>>> 20e4b870... WIP Adding stripe integration
     "describe": {
       "columns": [],
       "parameters": {
@@ -3558,8 +3670,23 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+<<<<<<< HEAD
 =======
 >>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
+=======
+  "6a0d1cfc76ac95e30b79b46ed790f7967b3a9551ccaff381a0101ce7b352f279": {
+    "query": "INSERT INTO product_info( id, name, description ) VALUES( $1, 'managed_url', NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
+>>>>>>> 20e4b870... WIP Adding stripe integration
   "6ad2f021500f77e5ac540f128fc071c0aead61d48db51dc32132ccba1a2120ab": {
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;",
     "describe": {
@@ -4036,6 +4163,26 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "7671c31d102e405bd463541d12803b0daf7a8fc6e39804071f22386e3c431597": {
+    "query": "SELECT id FROM plans WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false
+      ]
     }
   },
   "799f1b78ac4c1bd45251b83af9dea7179be61357e5241533c66406c1cf0b60de": {
@@ -4616,6 +4763,16 @@
       "nullable": []
     }
   },
+  "876d22fdf71fcc4bdecad17628e4cb378fe3074d55e0c3960d966fadf87f188b": {
+    "query": "CREATE TABLE IF NOT EXISTS plans( id UUID CONSTRAINT plans_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT, plan_type PLAN_TYPE NOT NULL, product_info_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER, workspace_id UUID NOT NULL, deployment_machine_type_id UUID CONSTRAINT plans_uq_deployment_machine_type_id UNIQUE );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "87bca736fca728f58dad62df4bc2c4973eaad8c008f9b456c629907210a26ce3": {
     "query": "DELETE FROM personal_email WHERE user_id = $1 AND local = $2 AND domain_id = $3;",
     "describe": {
@@ -4628,6 +4785,38 @@
         ]
       },
       "nullable": []
+    }
+  },
+  "88e4f20d981c955242b2774cc93a5028ea7b61478bad3f63d62cf6e3237eede2": {
+    "query": "SELECT * FROM resource_limits WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "workspace_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "max_resources",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "8a7f673204b386ab84508b8bd966898a6fb940501f2caa676285b90295d9a7bf": {
@@ -5655,12 +5844,14 @@
 <<<<<<< HEAD
 =======
   },
-  "a5c39b0bec94530a6bdd5d7e75e4b42a76dfb03908a6f64b2364fc189f73cfce": {
-    "query": "CREATE TABLE IF NOT EXISTS plans( id UUID CONSTRAINT plans_pk PRIMARY KEY, name TEXT NOT NULL, description TEXT, plan_type PLAN_TYPE NOT NULL, product_info_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER NOT NULL, workspace_id UUID NOT NULL );",
+  "a60068015a62e8d0b0a4dfacc331d2c73961b217f5f99baea143bcd26da64079": {
+    "query": "INSERT INTO product_info( id, name, description ) VALUES( $1, 'managed_database', NULL );",
     "describe": {
       "columns": [],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Uuid"
+        ]
       },
       "nullable": []
     }
@@ -5996,6 +6187,7 @@
 <<<<<<< HEAD
 =======
   },
+<<<<<<< HEAD
   "a9fe9511abb4cff2d9be1ddb183457a0f87bd18dca653b6e12f4d39b25f8542d": {
     "query": "CREATE TABLE IF NOT EXISTS billable_service( id UUID CONSTRAINT billable_service_pk PRIMARY KEY, plan_id UUId NOT NULL, workspace_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER NOT NULL, product_info_id UUID NOT NULL, total_price DECIMAL(10, 2) NOT NULL );",
     "describe": {
@@ -6007,6 +6199,8 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+=======
+>>>>>>> 20e4b870... WIP Adding stripe integration
   "aa02302c781df12aec94b98737d6d284570ac6032aeb4222f2a08980a6c11e19": {
     "query": "SELECT workspace_audit_log.id as \"id: _\", date as \"date: _\", ip_address, workspace_id as \"workspace_id: _\", user_id as \"user_id: _\", login_id as \"login_id: _\", resource_id as \"resource_id: _\", permission.name as \"action\", request_id as \"request_id: _\", metadata as \"metadata: _\", patr_action as \"patr_action: _\", success FROM workspace_audit_log INNER JOIN permission ON permission.id = workspace_audit_log.action WHERE resource_id = $1;",
     "describe": {
@@ -6106,6 +6300,7 @@
 =======
   },
 <<<<<<< HEAD
+<<<<<<< HEAD
   "add73441b6a3cfb4c4d3e8c34de64bff5d584e7466e5cac94c60415973ce936f": {
     "query": "ALTER TABLE transactions ADD CONSTRAINT transactions_fk_coupon_id FOREIGN KEY(coupon_id) REFERENCES coupons(id) DEFERRABLE INITIALLY IMMEDIATE;",
     "describe": {
@@ -6119,6 +6314,22 @@
   },
 =======
 >>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
+=======
+  "ae5e734931df8f580cb968e78ea108ff757eaca98000ef9c23b592b9c47cb6d7": {
+    "query": "INSERT INTO resource_limits( id, workspace_id, max_resources ) VALUES( $1, $2, $3 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+>>>>>>> 20e4b870... WIP Adding stripe integration
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", db_name, engine as \"engine: _\", version, num_nodes, database_plan as \"database_plan: _\", region, status as \"status: _\", host, port, username, password, workspace_id as \"workspace_id: _\", digitalocean_db_id FROM managed_database WHERE workspace_id = $1 AND status != 'deleted';",
     "describe": {
@@ -7430,6 +7641,68 @@
     }
 >>>>>>> 7575c309... Added schema for payment
   },
+  "d4ed2819af0081d7d85c9f76f873a58d0745c6f7715110f9189859f4301b40f4": {
+    "query": "SELECT * FROM billable_service WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "plan_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 2,
+          "name": "workspace_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 3,
+          "name": "price",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 4,
+          "name": "quantity",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 5,
+          "name": "product_info_id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 6,
+          "name": "total_price",
+          "type_info": "Numeric"
+        },
+        {
+          "ordinal": 7,
+          "name": "active",
+          "type_info": "Bool"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "d513b0c8950ab92cb26b919d4611b976d25c5a4c7ff14db6bee61cf348d58704": {
     "query": "SELECT DISTINCT ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) AS \"score\", \"user\".id as \"id!: Uuid\", \"user\".username as \"username!\", \"user\".first_name as \"first_name!\", \"user\".last_name as \"last_name!\", \"user\".bio as \"bio\", \"user\".location as \"location\" FROM \"user\" LEFT JOIN personal_email ON \"user\".id = personal_email.user_id LEFT JOIN business_email ON \"user\".id = personal_email.user_id LEFT JOIN domain ON domain.id = personal_email.domain_id OR domain.id = business_email.domain_id LEFT JOIN user_phone_number ON \"user\".id = user_phone_number.user_id LEFT JOIN phone_number_country_code ON user_phone_number.country_code = phone_number_country_code.country_code WHERE ( CASE WHEN LOWER(\"user\".username) = LOWER($1) THEN 100 /* Exact username */ WHEN COALESCE( CASE WHEN personal_email.local IS NOT NULL THEN LOWER(CONCAT( personal_email.local, '@', domain.name, domain.tld )) ELSE NULL END, CASE WHEN business_email.local IS NOT NULL THEN LOWER(CONCAT( business_email.local, '@', domain.name, domain.tld )) ELSE NULL END ) = LOWER($1) THEN 100 /* Exact email */ WHEN CONCAT( '+', phone_number_country_code.phone_code, user_phone_number.number ) = $1 THEN 100 /* Exact phone number */ WHEN user_phone_number.number = $1 THEN 90 /* Just the phone alone */ WHEN LOWER(CONCAT( \"user\".first_name, ' ', \"user\".last_name )) = LOWER($1) THEN 90 /* firstName lastName */ WHEN LOWER(CONCAT( \"user\".last_name, ' ', \"user\".first_name )) = LOWER($1) THEN 90 /* lastName firstName */ WHEN LOWER(\"user\".first_name) = LOWER($1) THEN 80 /* Only first name */ WHEN LOWER(\"user\".last_name) = LOWER($1) THEN 80 /* Only last name */ /* If you search for a part of their username */ WHEN STARTS_WITH( LOWER(\"user\".username), SUBSTR(LOWER($1), 0, LENGTH(\"user\".username)) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(\"user\".username)::REAL ) * 20 ) /* If you search for a part of their name */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".first_name, ' ', \"user\".last_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".first_name, ' ', \"user\".last_name))::REAL ) * 20 ) /* If you search for a part of their name reversed */ WHEN STARTS_WITH( LOWER(CONCAT(\"user\".last_name, ' ', \"user\".first_name)), SUBSTR( LOWER($1), 0, LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name)) ) ) THEN ( 70 + ( LENGTH($1)::REAL / LENGTH(CONCAT(\"user\".last_name, ' ', \"user\".first_name))::REAL ) * 20 ) ELSE 0 END ) > 0 ORDER BY 1 DESC LIMIT 10;",
     "describe": {
@@ -7629,6 +7902,24 @@
       "columns": [],
       "parameters": {
         "Left": []
+      },
+      "nullable": []
+    }
+  },
+  "db214bf6794cafe5ceac464a118552682496168682db0c2d6d2bf200d44b44bf": {
+    "query": "INSERT INTO billable_service( id, plan_id, workspace_id, price, quantity, product_info_id, active ) VALUES( $1, $2, $3, $4, $5, $6, $7 );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Uuid",
+          "Numeric",
+          "Int4",
+          "Uuid",
+          "Bool"
+        ]
       },
       "nullable": []
     }
@@ -8178,6 +8469,38 @@
       ]
     }
   },
+  "e4da62562248c46439c9285481284e78e954768560148316c2e3b966e823b301": {
+    "query": "SELECT id as \"id!: _\", name, description FROM product_info WHERE name = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id!: _",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true
+      ]
+    }
+  },
   "e5d15755b015b3c4f87308a59c8c625ad75a29974645d8e24875d8daa1919901": {
     "query": "DELETE FROM docker_registry_repository_tag WHERE repository_id = $1;",
     "describe": {
@@ -8186,6 +8509,16 @@
         "Left": [
           "Uuid"
         ]
+      },
+      "nullable": []
+    }
+  },
+  "e5d233b92842b5df4ca53691603249534d9ebc5cb5e42494e9233072e889d056": {
+    "query": "CREATE TYPE TRANSACTION_TYPE AS ENUM( 'one_time', 'fixed_monthly', 'dynamic_monthly' /* 'fixed_annually', */ /* 'dynamic_annually', */ /* 'fixed_resources', */ );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
       },
       "nullable": []
     }
@@ -8529,6 +8862,16 @@
       "nullable": []
     }
   },
+  "ed416146650875c78a67a62023c8c1ddbd407724cb3f1eba53dd354aa3ecf2d6": {
+    "query": "CREATE TABLE IF NOT EXISTS billable_service( id UUID CONSTRAINT billable_service_pk PRIMARY KEY, plan_id UUId NOT NULL, workspace_id UUID NOT NULL, price DECIMAL(10, 2) NOT NULL, quantity INTEGER, product_info_id UUID NOT NULL, total_price DECIMAL(10, 2) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED, active BOOLEAN NOT NULL );",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": []
+    }
+  },
   "ed964d5972036bd49e17512f2588da16a94a81f63db84cdd4a5713b9adeca9be": {
     "query": "CREATE TABLE personal_email( user_id UUID NOT NULL CONSTRAINT personal_email_fk_user_id REFERENCES \"user\"(id) DEFERRABLE INITIALLY IMMEDIATE, local VARCHAR(64) NOT NULL CONSTRAINT personal_email_chk_local_is_lower_case CHECK( local = LOWER(local) ), domain_id UUID NOT NULL CONSTRAINT personal_email_fk_domain_id REFERENCES personal_domain(id), CONSTRAINT personal_email_pk PRIMARY KEY(local, domain_id), CONSTRAINT personal_email_uq_user_id_local_domain_id UNIQUE(user_id, local, domain_id) );",
     "describe": {
@@ -8827,8 +9170,43 @@
 >>>>>>> 7575c309... Added schema for payment
     }
   },
+<<<<<<< HEAD
 =======
 >>>>>>> b573f7b4... Added migrations for payment schema and updated the workspace table
+=======
+  "f16f4330b69278083d79cf8717f76e51aac3aa7802eec3bbb1aedc4e08af6450": {
+    "query": "SELECT * FROM product_info WHERE id = $1;",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        true
+      ]
+    }
+  },
+>>>>>>> 20e4b870... WIP Adding stripe integration
   "f39f35664495c1605a1f36e9a5a7597392c9143ea0afd6c73a6267770e1b6bbd": {
     "query": "UPDATE workspace SET drone_username = $2, drone_token = $3 WHERE id = $1;",
     "describe": {

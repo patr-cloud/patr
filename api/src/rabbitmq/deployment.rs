@@ -225,7 +225,17 @@ pub(super) async fn process_request(
 				config,
 				&request_id,
 			)
-			.await
+			.await?;
+
+			let _ = service::create_billable_service_for_deployment(
+				connection,
+				&workspace_id,
+				&deployment_id,
+				true,
+			)
+			.await?;
+
+			Ok(())
 		}
 		DeploymentRequestData::Update {
 			workspace_id,
@@ -313,7 +323,17 @@ pub(super) async fn process_request(
 				config,
 				&request_id,
 			)
-			.await
+			.await?;
+
+			let _ = service::create_billable_service_for_deployment(
+				connection,
+				&workspace_id,
+				&deployment_id,
+				true,
+			)
+			.await?;
+
+			Ok(())
 		}
 	}
 }
@@ -375,6 +395,15 @@ async fn update_deployment_and_db_status(
 					&status,
 				)
 				.await?;
+
+				let _ = service::create_billable_service_for_deployment(
+					connection,
+					&workspace_id,
+					&deployment.id,
+					true,
+				)
+				.await?;
+
 				break;
 			}
 			time::sleep(Duration::from_millis(500)).await;

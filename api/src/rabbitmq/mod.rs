@@ -1,3 +1,5 @@
+use api_models::utils::Uuid;
+use chrono::{Datelike, Utc};
 use deadpool::managed::Object;
 use deadpool_lapin::{Config, Manager, Pool, Runtime};
 use futures::{
@@ -19,10 +21,12 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
-	models::rabbitmq::RequestMessage,
+	models::rabbitmq::{RequestMessage, WorkspaceRequestData},
+	service,
 	utils::{settings::Settings, Error},
 };
 
+mod billing;
 mod database;
 mod deployment;
 mod static_site;
@@ -133,6 +137,10 @@ async fn process_queue_payload(
 				.await
 		}
 		RequestMessage::Database {} => todo!(),
+		RequestMessage::Workspace(request_data) => {
+			billing::process_request(&mut connection, request_data, config)
+				.await
+		}
 	}
 	.map_err(|error| {
 		log::error!("Error processing RabbitMQ message: {}", error.get_error());
@@ -169,4 +177,23 @@ pub(super) async fn get_rabbitmq_connection_channel(
 		.await?;
 
 	Ok((channel, connection))
+}
+
+pub(super) async fn queue_process_payment(
+	config: &Settings,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
+	let current_month = Utc::now().month();
+	let current_year = Utc::now().year();
+
+	service::send_message_to_rabbit_mq(
+		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
+			month: current_month.into(),
+			year: current_year as u32,
+		}),
+		config,
+		&request_id,
+	)
+	.await
 }

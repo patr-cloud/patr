@@ -693,7 +693,6 @@ async fn create_deployment(
 		&region,
 		&machine_type,
 		&deployment_running_details,
-		&config,
 		&request_id,
 	)
 	.await?;
@@ -1143,8 +1142,6 @@ async fn delete_deployment(
 	)
 	.await;
 
-	service::cancel_subscription(&deployment_id, &config, &request_id).await?;
-
 	context.success(DeleteDeploymentResponse {});
 	Ok(context)
 }
@@ -1256,7 +1253,6 @@ async fn update_deployment(
 			})
 			.as_ref(),
 		environment_variables.as_ref(),
-		&config,
 		&request_id,
 	)
 	.await?;

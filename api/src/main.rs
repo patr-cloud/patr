@@ -68,6 +68,10 @@ async fn async_main() -> Result<(), EveError> {
 	log::debug!("Render register initialised");
 
 	let rabbitmq = rabbitmq::create_rabbitmq_pool(&config).await?;
+
+	log::debug!("Enqueuing billing tasks");
+	rabbitmq::queue_process_payment(&config).await?;
+
 	log::debug!("Rabbitmq pool initialised");
 
 	let app = App {
