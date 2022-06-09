@@ -3,17 +3,11 @@ use api_models::{
 	models::workspace::infrastructure::{
 		managed_urls::{ManagedUrl, ManagedUrlType},
 		static_site::{
-			CreateStaticSiteRequest,
-			CreateStaticSiteResponse,
-			DeleteStaticSiteResponse,
-			GetStaticSiteInfoResponse,
-			ListLinkedURLsResponse,
-			ListStaticSitesResponse,
-			StartStaticSiteResponse,
-			StaticSite,
-			StaticSiteDetails,
-			StopStaticSiteResponse,
-			UpdateStaticSiteRequest,
+			CreateStaticSiteRequest, CreateStaticSiteResponse,
+			DeleteStaticSiteResponse, GetStaticSiteInfoResponse,
+			ListLinkedURLsResponse, ListStaticSitesResponse,
+			StartStaticSiteResponse, StaticSite, StaticSiteDetails,
+			StopStaticSiteResponse, UpdateStaticSiteRequest,
 			UpdateStaticSiteResponse,
 		},
 	},
@@ -26,14 +20,9 @@ use crate::{
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
 	models::rbac::permissions,
-	pin_fn,
-	service,
+	pin_fn, service,
 	utils::{
-		constants::request_keys,
-		Error,
-		ErrorData,
-		EveContext,
-		EveMiddleware,
+		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
 	},
 };
 
@@ -85,6 +74,40 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(list_static_sites)),
+		],
+	);
+
+	// List all uploads for static site
+	app.get(
+		"/:staticSiteId/uploads",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::static_site::LIST,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				list_static_sites_deploy_history
+			)),
 		],
 	);
 
@@ -475,6 +498,44 @@ async fn list_static_sites(
 }
 
 /// # Description
+/// This function is used to list of all the static sites present with the user
+/// required inputs:
+/// WorkspaceId in url
+///
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+///    staticSites: []
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn list_static_sites_deploy_history(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	/**
+	 * TODO - Take the latest static site id and check if static site exists
+	 * TODO - If not return error resource does not exists
+	 * TODO - Else get the deploy history for the static site from new table created in db
+	 * TODO - Can also use s3 bucket to get the deploy history not sure at this point
+	*/
+
+	Ok(context)
+}
+
+/// # Description
 /// This function is used to create a new static site
 /// required inputs
 /// auth token in the header
@@ -545,6 +606,42 @@ async fn create_static_site_deployment(
 	context.success(CreateStaticSiteResponse { id });
 	Ok(context)
 }
+
+/// # Description
+/// This function is used to create a new static site
+/// required inputs
+/// auth token in the header
+/// workspace_id,static_site_id and upload commit in parameter
+/// # Arguments
+/// * `context` - an object of [`EveContext`] containing the request, response,
+///   database connection, body,
+/// state and other things
+/// * ` _` -  an object of type [`NextHandler`] which is used to call the
+///   function
+///
+/// # Returns
+/// this function returns a `Result<EveContext, Error>` containing an object of
+/// [`EveContext`] or an error output:
+/// ```
+/// {
+///    success:
+/// }
+/// ```
+///
+/// [`EveContext`]: EveContext
+/// [`NextHandler`]: NextHandler
+async fn revert_static_site_deployment(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+
+	//TODO - Check if the static site exists
+	//TODO - Check if the static site digest exists
+	//TODO - queue the static site for revert with digest
+
+	Ok(context)
+}
+
 
 /// # Description
 /// This function is used to start a static site
