@@ -174,7 +174,25 @@
     },
     "query": "SELECT id as \"id: _\", workspace_id as \"workspace_id: _\", name::TEXT as \"name!: _\" FROM docker_registry_repository WHERE name = $1 AND workspace_id = $2 AND name NOT LIKE 'patr-deleted:%';"
   },
+<<<<<<< HEAD
   "0684c840082d418febb68b7f8aaea559e6f63cf8e75239e8fb2954ae71471200": {
+=======
+  "05643420b62cb1e8aaaf76993c4b437bb43760dafc921c865fafd2d07f804e00": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "INSERT INTO deployment_deploy_history( deployment_id, image_digest, repository_id, message ) VALUES ($1, $2, $3, NULL);"
+  },
+  "0663f7f2f1db156724600e7322caf8e80f4a0879b7e28a43d9b1904cf8d63bef": {
+>>>>>>> feature: deployment revert to specific image sha
     "describe": {
       "columns": [
         {
@@ -1697,7 +1715,33 @@
     },
     "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
   },
+<<<<<<< HEAD
   "26638ca6cf7d15b8aa4e671bb29c3a0cbdd4ade10afdca92a26cc1fa756d6434": {
+=======
+  "266a1c952223fefd2a2e0fa2d9ea716b06e7f2a79829fd7bb129dc70f0bcaaa7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE workspace SET drone_username = NULL AND drone_token = NULL WHERE id = $1;"
+  },
+  "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
+  },
+  "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
+>>>>>>> feature: deployment revert to specific image sha
     "describe": {
       "columns": [
         {
@@ -2304,6 +2348,38 @@
       }
     },
     "query": "INSERT INTO user_phone_number( user_id, country_code, number ) VALUES ($1, $2, $3);"
+  },
+  "34878d83642c889ec2378a686c147ad38e09e882045f1977d4607fd184a85c14": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_digest",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: _\", image_digest, repository_id as \"repository_id: _\" FROM deployment_deploy_history WHERE image_digest = $1;"
   },
   "34a6c091329abb7322f4583844fc2bcd5a5d8a6b610da77113647a6583bff569": {
     "describe": {
@@ -4530,7 +4606,21 @@
     },
     "query": "SELECT id as \"id: _\", name::TEXT as \"name!: _\", super_admin_id as \"super_admin_id: _\", active, alert_emails as \"alert_emails: _\", drone_username, drone_token, payment_type as \"payment_type: _\", default_payment_method_id as \"default_payment_method_id: _\", deployment_limit, static_site_limit, database_limit, managed_url_limit, secret_limit, domain_limit, docker_repository_storage_limit, stripe_customer_id, address_id as \"address_id: _\", amount_due FROM workspace WHERE name = $1;"
   },
+<<<<<<< HEAD
   "71851c0dceb357cee7d00bff65ca31965f2aef6778a2f86283fa626ec6359412": {
+=======
+  "70a91b2d9bc248a4dc56482725648d7df14e6c55a3a8d3a9a5d4acf7f7b9f4d7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_deploy_history( deployment_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_deployment_id REFERENCES deployment(id), image_digest TEXT NOT NULL, repository_id UUID NOT NULL CONSTRAINT deployment_image_digest_fk_repository_id REFERENCES docker_registry_repository(id), message TEXT, CONSTRAINT deployment_image_digest_pk PRIMARY KEY(deployment_id, image_digest) );"
+  },
+  "716f9c60fafbfa79a2dd1eebd546e54e5abdde8c1cdc56c8b3f776f547f08625": {
+>>>>>>> feature: deployment revert to specific image sha
     "describe": {
       "columns": [
         {
@@ -8662,6 +8752,38 @@
       }
     },
     "query": "SELECT CONCAT(domain.name, '.', domain.tld) as \"name!\", personal_domain.id as \"id: _\", personal_domain.domain_type as \"domain_type: _\" FROM personal_domain INNER JOIN domain ON domain.id = personal_domain.id WHERE domain.id = $1;"
+  },
+  "ce402a6383f8be3bb81b14e7dda6631bd7f521be2a1bbfd878aa6713fe3c5ec3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "deployment_id: _",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "image_digest",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository_id: _",
+          "ordinal": 2,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT deployment_id as \"deployment_id: _\", image_digest, repository_id as \"repository_id: _\" FROM deployment_deploy_history WHERE deployment_id = $1;"
   },
   "ce5f94c07e5c7f5f624f8f47a1d02c75ed66c92eb9b8b32fcc05c107f9e1ad0f": {
     "describe": {

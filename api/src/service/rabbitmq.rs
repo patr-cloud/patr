@@ -330,6 +330,65 @@ pub async fn queue_process_payment(
 	.await
 }
 
+#[allow(clippy::too_many_arguments)]
+pub async fn queue_revert_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	deployment_id: &Uuid,
+	name: &str,
+	registry: &DeploymentRegistry,
+	image_tag: &str,
+	digest: &str,
+	region: &Uuid,
+	machine_type: &Uuid,
+	deployment_running_details: &DeploymentRunningDetails,
+	user_id: &Uuid,
+	login_id: &Uuid,
+	ip_address: &str,
+	metadata: &DeploymentMetadata,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
+	let (image_name, _) =
+		service::get_image_name_and_digest_for_deployment_image(
+			connection, registry, image_tag, config, request_id,
+		)
+		.await?;
+
+	db::update_deployment_status(
+		connection,
+		deployment_id,
+		&DeploymentStatus::Deploying,
+	)
+	.await?;
+	print!("queue revert deployment {}", digest);
+	send_message_to_rabbit_mq(
+		&RequestMessage::Deployment(DeploymentRequestData::Revert {
+			workspace_id: workspace_id.clone(),
+			deployment: Deployment {
+				id: deployment_id.clone(),
+				name: name.to_string(),
+				registry: registry.clone(),
+				image_tag: image_tag.to_string(),
+				status: DeploymentStatus::Pushed,
+				region: region.clone(),
+				machine_type: machine_type.clone(),
+			},
+			image_name,
+			digest: Some(digest.to_string()),
+			running_details: deployment_running_details.clone(),
+			user_id: user_id.clone(),
+			login_id: login_id.clone(),
+			ip_address: ip_address.to_string(),
+			metadata: metadata.clone(),
+			request_id: request_id.clone(),
+		}),
+		config,
+		request_id,
+	)
+	.await
+}
+
 pub async fn queue_confirm_payment_intent(
 	config: &Settings,
 	payment_intent_id: String,

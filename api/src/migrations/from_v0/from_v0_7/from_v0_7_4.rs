@@ -477,6 +477,35 @@ async fn update_deployment_with_probe_column(
 	)
 	.execute(&mut *connection)
 	.await?;
+	Ok(())
+}
+
+async fn add_table_deployment_image_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(
+		r#"
+		CREATE TABLE deployment_deploy_history(
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_deployment_id
+					REFERENCES deployment(id),
+			image_digest TEXT NOT NULL,
+			repository_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			message TEXT,
+			created BIGINT NOT NULL
+				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
+						created >= 0
+				),
+			CONSTRAINT deployment_image_digest_pk
+				PRIMARY KEY(deployment_id, image_digest)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	Ok(())
 }

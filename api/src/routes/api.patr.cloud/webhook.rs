@@ -1,9 +1,11 @@
 use api_models::{
 	models::workspace::{
-		billing::PaymentStatus,
 		infrastructure::deployment::DeploymentStatus,
 	},
 	utils::{DateTime, Uuid},
+	models::workspace::infrastructure::deployment::{
+		DeploymentRegistry,
+	},
 };
 use chrono::Utc;
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
@@ -270,6 +272,30 @@ async fn notification_handler(
 					&request_id,
 				)
 				.await?;
+
+			log::trace!(
+				"request_id: {} - Updating deployment_image_digest with deployment id: {} digest and {}",
+				request_id,
+				deployment.id,
+				target.digest
+			);
+			let repository_id = match &deployment.registry {
+				DeploymentRegistry::PatrRegistry {
+					registry: _,
+					repository_id,
+				} => repository_id,
+				_ => todo!(),
+			};
+
+			if !repository_id.is_nil() {
+				db::add_digest_to_deployment_deploy_history(
+					context.get_database_connection(),
+					&deployment.id,
+					repository_id,
+					&target.digest,
+				)
+				.await?;
+			}
 
 			log::trace!(
 				"request_id: {} - Updating the deployment with id: {}",

@@ -275,6 +275,56 @@ pub(super) async fn process_request(
 			)
 			.await
 		}
+
+		DeploymentRequestData::Revert {
+			workspace_id,
+			deployment,
+			image_name,
+			digest,
+			running_details,
+			user_id,
+			login_id,
+			ip_address,
+			metadata,
+			request_id,
+		} => {
+			let audit_log_id =
+				db::generate_new_workspace_audit_log_id(connection).await?;
+
+			db::create_workspace_audit_log(
+				connection,
+				&audit_log_id,
+				&workspace_id,
+				&ip_address,
+				Utc::now().into(),
+				Some(&user_id),
+				Some(&login_id),
+				&deployment.id,
+				rbac::PERMISSIONS
+					.get()
+					.unwrap()
+					.get(permissions::workspace::infrastructure::deployment::EDIT)
+					.unwrap(),
+				&request_id,
+				&serde_json::to_value(metadata)?,
+				false,
+				true,
+			)
+			.await?;
+
+			update_deployment_and_db_status(
+				connection,
+				&workspace_id,
+				&deployment,
+				&image_name,
+				digest.as_deref(),
+				&running_details,
+				config,
+				&request_id,
+			)
+			.await
+		}
+
 		DeploymentRequestData::Delete {
 			workspace_id,
 			deployment_id,

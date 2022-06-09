@@ -50,6 +50,11 @@ pub struct Deployment {
 	pub liveness_probe_path: Option<String>,
 }
 
+pub struct DeploymentDeployHistory {
+	pub image_digest: String,
+	pub created: i64,
+}
+
 pub struct DeploymentEnvironmentVariable {
 	pub deployment_id: Uuid,
 	pub name: String,
@@ -326,6 +331,29 @@ pub async fn initialize_deployment_pre(
 				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
 					DEFERRABLE INITIALLY IMMEDIATE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"				
+		CREATE TABLE deployment_deploy_history(
+			deployment_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_deployment_id
+					REFERENCES deployment(id),
+			image_digest TEXT NOT NULL,
+			repository_id UUID NOT NULL
+				CONSTRAINT deployment_image_digest_fk_repository_id
+					REFERENCES docker_registry_repository(id),
+			message TEXT,
+			created BIGINT NOT NULL
+				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
+						created >= 0
+				),
+			CONSTRAINT deployment_image_digest_pk
+				PRIMARY KEY(deployment_id, image_digest)
+		);
 		"#
 	)
 	.execute(&mut *connection)
@@ -1326,6 +1354,74 @@ pub async fn get_build_events_for_deployment(
 			);
 		"#,
 		deployment_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn add_digest_to_deployment_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+	repository_id: &Uuid,
+	digest: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			deployment_deploy_history(
+				deployment_id,
+				image_digest,
+				repository_id,
+				message
+			)
+		VALUES
+			($1, $2, $3, NULL);
+		"#,
+		deployment_id as _,
+		digest as _,
+		repository_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_deployment_image_digest_by_digest(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	digest: &str,
+) -> Result<Option<DeploymentDeployHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentDeployHistory,
+		r#"
+		SELECT 
+			image_digest,
+			created
+		FROM deployment_deploy_history
+		WHERE
+			image_digest = $1;
+		"#,
+		digest as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_all_digest_for_deployment(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	deployment_id: &Uuid,
+) -> Result<Vec<DeploymentDeployHistory>, sqlx::Error> {
+	query_as!(
+		DeploymentDeployHistory,
+		r#"
+		SELECT 
+			image_digest,
+			created
+		FROM
+			deployment_deploy_history
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
 	)
 	.fetch_all(&mut *connection)
 	.await
