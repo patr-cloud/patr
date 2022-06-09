@@ -218,7 +218,7 @@ pub async fn update_kubernetes_deployment(
 								}),
 								failure_threshold: Some(15),
 								period_seconds: Some(10),
-								timeout_seconds: Some(150),
+								timeout_seconds: Some(3),
 								..Probe::default()
 							},
 						),
