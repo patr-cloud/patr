@@ -247,6 +247,43 @@ pub async fn send_alert_email(
 }
 
 #[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/send-repo-storage-limit-exceed-notification/template.json"]
+pub struct RepositoryStorageLimitExceedEmail {
+	workspace_name: String,
+	repository_name: String,
+	tag: String,
+	digest: String,
+	ip_address: String,
+
+	repository_id: String,
+}
+
+pub async fn send_repository_storage_limit_exceed_email(
+	email: Mailbox,
+	workspace_name: &str,
+	repository_name: &str,
+	tag: &str,
+	digest: &str,
+	ip_address: &str,
+	repository_id: &str,
+) -> Result<(), Error> {
+	send_email(
+		RepositoryStorageLimitExceedEmail {
+			workspace_name: workspace_name.to_owned(),
+			repository_name: repository_name.to_owned(),
+			tag: tag.to_owned(),
+			digest: digest.to_owned(),
+			ip_address: ip_address.to_owned(),
+			repository_id: repository_id.to_owned(),
+		},
+		email,
+		None,
+		"Patr Repository Storage Limit Exceeded",
+	)
+	.await
+}
+
+#[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/send-kubernetes-patr-alert-notification/template.json"]
 pub struct KubernetesPatrAlertEmail {
 	event_data: String,

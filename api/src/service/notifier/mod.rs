@@ -378,6 +378,27 @@ pub async fn send_alert_email(
 	Ok(())
 }
 
+pub async fn send_repository_storage_limit_exceed_email(
+	email_addr: &str,
+	workspace_name: &str,
+	repository_name: &str,
+	tag: &str,
+	digest: &str,
+	ip_address: &str,
+	repository_id: &str,
+) -> Result<(), Error> {
+	email::send_repository_storage_limit_exceed_email(
+		email_addr.parse()?,
+		workspace_name,
+		repository_name,
+		tag,
+		digest,
+		ip_address,
+		repository_id,
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send alert to the patr's support email
 ///

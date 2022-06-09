@@ -59,6 +59,21 @@ pub async fn delete_docker_repository_image(
 	db::delete_docker_repository_image(connection, repository_id, digest)
 		.await?;
 
+	delete_docker_repository_image_from_registry(
+		connection, &repo_name, digest, config, request_id,
+	)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn delete_docker_repository_image_from_registry(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	repo_name: &str,
+	digest: &str,
+	config: &Settings,
+	request_id: &Uuid,
+) -> Result<(), Error> {
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
 			.await?
@@ -87,7 +102,7 @@ pub async fn delete_docker_repository_image(
 				config,
 				vec![RegistryTokenAccess {
 					r#type: "repository".to_string(),
-					name: repo_name,
+					name: repo_name.to_owned(),
 					actions: vec!["delete".to_string()],
 				}],
 			)
@@ -115,8 +130,8 @@ pub async fn delete_docker_repository_image(
 	} else if !response_code.is_success() {
 		return Err(Error::empty());
 	}
-	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry was successful", request_id, digest);
 
+	log::trace!("request_id: {} - Deleted docker repository image with digest: {} from the registry successfully", request_id, digest);
 	Ok(())
 }
 

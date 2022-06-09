@@ -1,0 +1,16 @@
+
+Hello there,
+
+You pushed a docker image to Patr registry under 
+    workspace: {{workspace_name}}
+    repository: {{repository_name}}
+    tag: {{tag}}
+    digest: {{digest}}
+    ip_address: {{ip_address}}
+which is exceeding the current repository storage size limit of 10 GB. So this image has been deleted from Patr.
+    
+You can resolve this issue in two ways:
+    - Manually delete the unused docker images in the repository <a href="https://app.patr.cloud/docker-repository/{{repository_id}}"> {{repository_name}} </a> and then try pushing the required image again 
+    - Use paid version of Patr for uninterrupted service
+
+Please contact support at support@patr.cloud for further detailed response.
