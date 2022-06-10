@@ -4,7 +4,7 @@ use eve_rs::AsError;
 use crate::{
 	db,
 	error,
-	models::{rbac, RegistryToken, RegistryTokenAccess},
+	models::{rbac, RegistryToken, RegistryTokenAccess, RepoStorage},
 	utils::{get_current_time, settings::Settings, Error},
 	Database,
 };
@@ -59,21 +59,6 @@ pub async fn delete_docker_repository_image(
 	db::delete_docker_repository_image(connection, repository_id, digest)
 		.await?;
 
-	delete_docker_repository_image_from_registry(
-		connection, &repo_name, digest, config, request_id,
-	)
-	.await?;
-
-	Ok(())
-}
-
-pub async fn delete_docker_repository_image_from_registry(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	repo_name: &str,
-	digest: &str,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
 	let god_user =
 		db::get_user_by_user_id(connection, rbac::GOD_USER_ID.get().unwrap())
 			.await?
@@ -102,7 +87,7 @@ pub async fn delete_docker_repository_image_from_registry(
 				config,
 				vec![RegistryTokenAccess {
 					r#type: "repository".to_string(),
-					name: repo_name.to_owned(),
+					name: repo_name,
 					actions: vec!["delete".to_string()],
 				}],
 			)
@@ -130,8 +115,8 @@ pub async fn delete_docker_repository_image_from_registry(
 	} else if !response_code.is_success() {
 		return Err(Error::empty());
 	}
+	log::trace!("request_id: {} - Deleting docker repository image with digest: {} from the registry was successful", request_id, digest);
 
-	log::trace!("request_id: {} - Deleted docker repository image with digest: {} from the registry successfully", request_id, digest);
 	Ok(())
 }
 
@@ -258,18 +243,6 @@ pub async fn delete_docker_repository(
 
 	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
 	Ok(())
-}
-
-/// RepoStorage represents the storage limit restrictions for a Repository in
-/// Docker Registry
-pub enum RepoStorage {
-	/// Unlimited storage is used for post-paid customers where we can charge
-	/// the users based on the storage usage at the end of the month.
-	#[allow(dead_code)]
-	Unlimited,
-	/// Limited storage is used for free and pre-paid customers where we will
-	/// provide only a limited storage space option.
-	Limited(u64),
 }
 
 pub async fn get_storage_limit_for_repository(

@@ -197,3 +197,15 @@ pub struct Source {
 	)]
 	pub instance_id: String,
 }
+
+/// RepoStorage represents the storage limit restrictions for a Repository in
+/// Docker Registry
+pub enum RepoStorage {
+	/// Unlimited storage is used for post-paid customers where we can charge
+	/// the users based on the storage usage at the end of the month.
+	#[allow(dead_code)]
+	Unlimited,
+	/// Limited storage is used for free and pre-paid customers where we will
+	/// provide only a limited storage space option.
+	Limited(u64),
+}

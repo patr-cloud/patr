@@ -14,13 +14,10 @@ use crate::{
 		error::{id as ErrorId, message as ErrorMessage},
 		Action,
 		EventData,
-	},
-	pin_fn,
-	service::{
-		self,
-		delete_docker_repository_image_from_registry,
 		RepoStorage,
 	},
+	pin_fn,
+	service,
 	utils::{
 		constants::request_keys,
 		get_current_time_millis,
@@ -192,7 +189,15 @@ async fn notification_handler(
 			request_id
 		);
 
-		let pushed_image_size = target.size;
+		let pushed_image_size = target
+			.references
+			.into_iter()
+			.filter(|reference| {
+				reference.media_type ==
+					"application/vnd.docker.image.rootfs.diff.tar.gzip"
+			})
+			.map(|reference| reference.size)
+			.sum();
 		if let RepoStorage::Limited(max_repo_size) =
 			service::get_storage_limit_for_repository(&repository.id).await
 		{
@@ -203,10 +208,10 @@ async fn notification_handler(
 			.await?;
 
 			if pushed_image_size + current_repo_size > max_repo_size {
-				log::trace!("request_id: {} - Size of docker repo {} has exceeded limit, deleting latest {} from the registry", request_id, repository_name, target.digest);
-				let _ = delete_docker_repository_image_from_registry(
+				log::trace!("request_id: {} - Size of docker repo {} has exceeded limit, deleting recently pushed image {} from the registry", request_id, repository_name, target.digest);
+				let _ = service::delete_docker_repository_image(
 					context.get_database_connection(),
-					&repository_name,
+					&repository.id,
 					&target.digest,
 					&config,
 					&request_id,
@@ -215,15 +220,14 @@ async fn notification_handler(
 
 				log::trace!("request_id: {request_id} - Sending email to user");
 				if let Some(super_admin_mail_addr) =
-					db::get_personal_emails_for_user(
+					db::get_recovery_email_for_user(
 						context.get_database_connection(),
 						&workspace.super_admin_id,
 					)
 					.await?
-					.first()
 				{
 					service::send_repository_storage_limit_exceed_email(
-						super_admin_mail_addr,
+						&super_admin_mail_addr,
 						workspace_name,
 						image_name,
 						&target.tag,
