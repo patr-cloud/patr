@@ -485,7 +485,8 @@ async fn activate_repo(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
 	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
@@ -520,7 +521,8 @@ async fn deactivate_repo(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
 	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
@@ -555,7 +557,8 @@ async fn get_build_list(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 
 	let (_, drone_token) = db::get_drone_username_and_token_for_workspace(
@@ -592,7 +595,8 @@ async fn get_build_info(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
@@ -634,7 +638,8 @@ async fn get_build_logs(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
@@ -686,7 +691,8 @@ async fn restart_build(
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
 
-	let repo_owner = context.get_param(request_keys::REPO_OWNER).unwrap().clone();
+	let repo_owner =
+		context.get_param(request_keys::REPO_OWNER).unwrap().clone();
 	let repo_name = context.get_param(request_keys::REPO_NAME).unwrap().clone();
 	let build_num = context
 		.get_param(request_keys::BUILD_NUM)
