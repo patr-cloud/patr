@@ -16,9 +16,13 @@ use crate::{
 		EventData,
 	},
 	pin_fn,
-	service::{self, delete_docker_repository_image_from_registry},
+	service::{
+		self,
+		delete_docker_repository_image_from_registry,
+		RepoStorage,
+	},
 	utils::{
-		constants::{request_keys, MAX_REPO_SIZE_IN_REGISTRY},
+		constants::request_keys,
 		get_current_time_millis,
 		Error,
 		ErrorData,
@@ -189,46 +193,49 @@ async fn notification_handler(
 		);
 
 		let pushed_image_size = target.size;
-		let current_repo_size = db::get_total_size_of_docker_repository(
-			context.get_database_connection(),
-			&repository.id,
-		)
-		.await?;
-
-		// TODO: update this check based on plans
-		if pushed_image_size + current_repo_size > MAX_REPO_SIZE_IN_REGISTRY {
-			log::trace!("request_id: {} - Size of docker repo {} has exceeded limit, deleting latest {} from the registry", request_id, repository_name, target.digest);
-			let _ = delete_docker_repository_image_from_registry(
+		if let RepoStorage::Limited(max_repo_size) =
+			service::get_storage_limit_for_repository(&repository.id).await
+		{
+			let current_repo_size = db::get_total_size_of_docker_repository(
 				context.get_database_connection(),
-				&repository_name,
-				&target.digest,
-				&config,
-				&request_id,
+				&repository.id,
 			)
-			.await;
+			.await?;
 
-			log::trace!("request_id: {request_id} - Sending email to user");
-			if let Some(super_admin_mail_addr) =
-				db::get_personal_emails_for_user(
+			if pushed_image_size + current_repo_size > max_repo_size {
+				log::trace!("request_id: {} - Size of docker repo {} has exceeded limit, deleting latest {} from the registry", request_id, repository_name, target.digest);
+				let _ = delete_docker_repository_image_from_registry(
 					context.get_database_connection(),
-					&workspace.super_admin_id,
-				)
-				.await?
-				.first()
-			{
-				service::send_repository_storage_limit_exceed_email(
-					super_admin_mail_addr,
-					workspace_name,
-					image_name,
-					&target.tag,
+					&repository_name,
 					&target.digest,
-					&event.request.addr,
-					repository.id.as_str(),
+					&config,
+					&request_id,
 				)
-				.await?
-			}
+				.await;
 
-			continue;
+				log::trace!("request_id: {request_id} - Sending email to user");
+				if let Some(super_admin_mail_addr) =
+					db::get_personal_emails_for_user(
+						context.get_database_connection(),
+						&workspace.super_admin_id,
+					)
+					.await?
+					.first()
+				{
+					service::send_repository_storage_limit_exceed_email(
+						super_admin_mail_addr,
+						workspace_name,
+						image_name,
+						&target.tag,
+						&target.digest,
+						&event.request.addr,
+						repository.id.as_str(),
+					)
+					.await?
+				}
+
+				continue;
+			}
 		}
 
 		db::create_docker_repository_digest(

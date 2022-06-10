@@ -11,8 +11,6 @@ pub const APP_ABOUT: &str = crate_description!();
 
 pub const DNS_RESOLVER: &str = "1.1.1.1:53";
 
-pub const MAX_REPO_SIZE_IN_REGISTRY: u64 = 10 * 1024 * 1024 * 1024; // 10 GB
-
 pub mod request_keys {
 	pub const USERNAME: &str = "username";
 	pub const PASSWORD: &str = "password";

@@ -259,3 +259,22 @@ pub async fn delete_docker_repository(
 	log::trace!("request_id: {} - Deleting docker repository from the registry was successful", request_id);
 	Ok(())
 }
+
+/// RepoStorage represents the storage limit restrictions for a Repository in
+/// Docker Registry
+pub enum RepoStorage {
+	/// Unlimited storage is used for post-paid customers where we can charge
+	/// the users based on the storage usage at the end of the month.
+	#[allow(dead_code)]
+	Unlimited,
+	/// Limited storage is used for free and pre-paid customers where we will
+	/// provide only a limited storage space option.
+	Limited(u64),
+}
+
+pub async fn get_storage_limit_for_repository(
+	_repository_id: &Uuid,
+) -> RepoStorage {
+	// for now use 10 GB as limit for all repo
+	RepoStorage::Limited(10 * 1024 * 1024 * 1024)
+}
