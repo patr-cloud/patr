@@ -197,7 +197,38 @@ pub async fn initialize_deployment_pre(
 			),
 			CONSTRAINT deployment_chk_image_tag_is_valid CHECK(
 				image_tag != ''
-			)
+			),
+			CONSTRAINT deployment_chk_startup_probe_is_valid CHECK(
+				(
+					startup_probe_port IS NULL AND
+					startup_probe_path IS NULL
+				)
+				OR
+				(
+					startup_probe_port IS NOT NULL AND
+					startup_probe_path IS NOT NULL
+				)
+			),
+			CONSTRAINT deployment_chk_liveness_probe_is_valid
+				CHECK(
+					(
+						liveness_probe_port IS NULL AND
+						liveness_probe_path IS NULL
+					)
+					OR
+					(
+						liveness_probe_port IS NOT NULL AND
+						liveness_probe_path IS NOT NULL
+					)
+				),
+			CONSTRAINT deployment_chk_startup_probe_port_type_is_http
+				CHECK(
+					startup_probe_port_type = 'http'
+				),
+			CONSTRAINT deployment_chk_liveness_probe_port_type_is_http
+				CHECK(
+					liveness_probe_port_type = 'http'
+				)
 		);
 		"#
 	)
@@ -294,14 +325,14 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
-			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE,
-		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
-			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE;
+			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
+				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
+				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)

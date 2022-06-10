@@ -207,7 +207,6 @@ pub async fn queue_delete_deployment(
 	.await
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn queue_update_deployment(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -265,7 +264,6 @@ pub async fn queue_update_deployment(
 	.await
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn queue_update_deployment_image(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,

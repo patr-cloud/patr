@@ -409,18 +409,18 @@ async fn update_deployment_with_probe_column(
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD COLUMN
-			startup_probe_port INT,
-		ADD COLUMN
-			startup_probe_path varchar(255),
-		ADD COLUMN
-			startup_probe_port_type EXPOSED_PORT_TYPE,
-		ADD COLUMN
-			liveness_probe_port INT,
-		ADD COLUMN
-			liveness_probe_path varchar(255),
-		ADD COLUMN
-			liveness_probe_port_type EXPOSED_PORT_TYPE;
+			ADD COLUMN
+				startup_probe_port INT,
+			ADD COLUMN
+				startup_probe_path varchar(255),
+			ADD COLUMN
+				startup_probe_port_type EXPOSED_PORT_TYPE,
+			ADD COLUMN
+				liveness_probe_port INT,
+			ADD COLUMN
+				liveness_probe_path varchar(255),
+			ADD COLUMN
+				liveness_probe_port_type EXPOSED_PORT_TYPE;
 		"#,
 	)
 	.execute(&mut *connection)
@@ -430,7 +430,7 @@ async fn update_deployment_with_probe_column(
 		r#"
 		ALTER TABLE deployment_exposed_port
 		ADD CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
-			UNIQUE(deployment_id, port, port_type);
+		UNIQUE(deployment_id, port, port_type);
 		"#
 	)
 	.execute(&mut *connection)
@@ -439,14 +439,46 @@ async fn update_deployment_with_probe_column(
 	query!(
 		r#"
 		ALTER TABLE deployment
-		ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
-			FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE,
-		ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
-			FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
-				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-					DEFERRABLE INITIALLY IMMEDIATE;
+			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
+				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
+				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
+					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
+						DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_chk_startup_probe_is_valid
+				CHECK(
+					(
+						startup_probe_port IS NULL AND
+						startup_probe_path IS NULL
+					)
+					OR
+					(
+						startup_probe_port IS NOT NULL AND
+						startup_probe_path IS NOT NULL
+					)
+				),
+			ADD CONSTRAINT deployment_chk_liveness_probe_is_valid
+					CHECK(
+						(
+							liveness_probe_port IS NULL AND
+							liveness_probe_path IS NULL
+						)
+						OR
+						(
+							liveness_probe_port IS NOT NULL AND
+							liveness_probe_path IS NOT NULL
+						)
+					),
+			ADD CONSTRAINT deployment_chk_startup_probe_port_type_is_http
+					CHECK(
+						startup_probe_port_type = 'http'
+					),
+			ADD CONSTRAINT deployment_chk_liveness_probe_port_type_is_http
+					CHECK(
+						liveness_probe_port_type = 'http'
+					);
 		"#
 	)
 	.execute(&mut *connection)
