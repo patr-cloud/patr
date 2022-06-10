@@ -36,7 +36,7 @@ pub async fn remove_drone_username_and_token_from_workspace(
 		UPDATE
 			workspace
 		SET
-			drone_username = NULL AND
+			drone_username = NULL,
 			drone_token = NULL
 		WHERE
 			id = $1;

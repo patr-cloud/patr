@@ -75,16 +75,6 @@ services:
       - ./target/api-data/registry:/data
       - ./assets/patr/certs:/certs
 
-  k8s:
-    container_name: kubernetes
-    image: golang:latest
-    restart: "no"
-    command: go get sigs.k8s.io/kind && kind create cluster
-    networks:
-      - vpc
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
   rabbitmq:
     container_name: message-queue
     image: rabbitmq:3-management
@@ -125,11 +115,28 @@ services:
     environment:
       - DRONE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - DRONE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
-      - DRONE_RPC_SECRET="keyboard cat"
-      - DRONE_SERVER_HOST="drone"
-      - DRONE_SERVER_PROTO="http"
+      - DRONE_RPC_SECRET=keyboardcat
+      - DRONE_SERVER_HOST=drone.patr.cloud
+      - DRONE_SERVER_PROTO=http
     volumes:
       - ./target/api-data/drone:/data
+
+  drone-runner:
+    container_name: drone-runner
+    image: drone/drone-runner-docker:1
+    restart: always
+    hostname: drone-runner
+    networks:
+      - vpc
+    environment:
+      - DRONE_RPC_HOST=${DRONE_HOST}
+      - DRONE_RPC_PROTO=http
+      - DRONE_RUNNER_CAPACITY=1
+      - DRONE_RUNNER_NAME="drone-runner"
+      - DRONE_RPC_SECRET=keyboardcat
+      - DRONE_LOGS_DEBUG=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   api:
     container_name: api
@@ -155,4 +162,3 @@ services:
     volumes:
       - .:/app
       - ${HOME}/.cargo/:/usr/local/cargo/
-    

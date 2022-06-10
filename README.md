@@ -1,6 +1,6 @@
 ## Build instructions
 
-__Step 1:__ Copy and paste the `.env.sample` file to `.env`.  
+__Step 1:__ Copy and paste the `.env.sample` file to `.env`.
 __Step 2:__ Make any necessary changes in the variables in your `.env` file.
 
 __Running locally:__ Run `./exec run`.
