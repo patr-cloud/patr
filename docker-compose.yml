@@ -10,6 +10,7 @@ services:
     restart: always
     hostname: ${S3_HOST}
     command: minio server /data --console-address ":9001"
+    user: ${RUNNING_USER}
     networks:
       - vpc
     ports:
@@ -18,13 +19,14 @@ services:
       - MINIO_ROOT_USER=${S3_KEY}
       - MINIO_ROOT_PASSWORD=${S3_SECRET}
     volumes:
-      - ./target/api-data/s3:/data
+      - ./target-dev/s3:/data
 
   postgres:
     container_name: database
     image: postgis/postgis:13-master
     restart: always
     hostname: ${DATABASE_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
     environment:
@@ -33,13 +35,14 @@ services:
       - POSTGRES_DB=${DATABASE_NAME}
       - PGDATA=/var/lib/postgresql/data
     volumes:
-      - ./target/api-data/postgres:/var/lib/postgresql/data
+      - ./target-dev/postgres:/var/lib/postgresql/data
 
   redis:
     container_name: cache
     image: redis:7
     restart: always
     hostname: ${REDIS_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
 
@@ -48,6 +51,7 @@ services:
     image: registry:2
     restart: always
     hostname: ${REGISTRY_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
     ports:
@@ -72,7 +76,7 @@ services:
       - REGISTRY_NOTIFICATIONS_ENDPOINTS_EVENTS_INCLUDEREFERENCES=true
       - REGISTRY_NOTIFICATIONS_ENDPOINTS=${REGISTRY_APP_ENDPOINT}
     volumes:
-      - ./target/api-data/registry:/data
+      - ./target-dev/registry:/data
       - ./assets/patr/certs:/certs
 
   rabbitmq:
@@ -80,6 +84,7 @@ services:
     image: rabbitmq:3-management
     restart: always
     hostname: ${RABBITMQ_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
     ports:
@@ -88,13 +93,14 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
-      - ./target/api-data/rabbitmq:/var/lib/rabbitmq
+      - ./target-dev/rabbitmq:/var/lib/rabbitmq
 
   vault:
     container_name: vault
     image: vault:latest
     restart: always
     hostname: ${VAULT_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
     ports:
@@ -108,6 +114,7 @@ services:
     image: drone/drone:2
     restart: always
     hostname: ${DRONE_HOST}
+    user: ${RUNNING_USER}
     networks:
       - vpc
     ports:
@@ -119,13 +126,14 @@ services:
       - DRONE_SERVER_HOST=drone.patr.cloud
       - DRONE_SERVER_PROTO=http
     volumes:
-      - ./target/api-data/drone:/data
+      - ./target-dev/drone:/data
 
   drone-runner:
     container_name: drone-runner
     image: drone/drone-runner-docker:1
     restart: always
     hostname: drone-runner
+    user: ${RUNNING_USER}
     networks:
       - vpc
     environment:
@@ -140,13 +148,16 @@ services:
 
   api:
     container_name: api
-    image: rust:1
+    image: "rust:1"
     restart: "no"
     hostname: ${API_HOST}
+    user: ${RUNNING_USER}
     working_dir: /app
     command: bash -c "source .env && cargo run"
     env_file:
       - .env
+    environment:
+      - CARGO_TARGET_DIR=./target-dev/cargo
     depends_on:
       - minio
       - postgres
@@ -155,6 +166,7 @@ services:
       - rabbitmq
       - vault
       - drone
+      - drone-runner
     networks:
       - vpc
     ports:

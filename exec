@@ -93,6 +93,7 @@ fi
 
 source $baseDir/.env
 source $baseDir/.localData
+export RUNNING_USER="$UID:$UID"
 
 case $1 in
     down | stop)
