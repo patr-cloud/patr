@@ -881,6 +881,24 @@ async fn create_deployment(
 	context.commit_database_transaction().await?;
 
 	if deploy_on_create {
+		let repository_id = registry.as_patr_registry();
+		if let Some(repository_id) = repository_id {
+			let digest = db::get_latest_digest_for_docker_repository(
+				context.get_database_connection(),
+				repository_id,
+			)
+			.await?;
+
+			if let Some(digest) = digest {
+				db::add_digest_to_deployment_deploy_history(
+					context.get_database_connection(),
+					&id,
+					repository_id,
+					&digest,
+				)
+				.await?;
+			}
+		}
 		service::queue_create_deployment(
 			context.get_database_connection(),
 			&workspace_id,
@@ -1062,6 +1080,36 @@ async fn start_deployment(
 			&request_id,
 		)
 		.await?;
+
+	let repository_id = deployment.registry.as_patr_registry();
+	if let Some(repository_id) = repository_id {
+		let digest = db::get_latest_digest_for_docker_repository(
+			context.get_database_connection(),
+			repository_id,
+		)
+		.await?;
+
+		if let Some(digest) = digest {
+			// Check if digest is already in deployment_deploy_history table
+			let deployment_deploy_history =
+				db::get_deployment_image_digest_by_digest(
+					context.get_database_connection(),
+					&digest,
+				)
+				.await?;
+
+			// If not, add it to the table
+			if deployment_deploy_history.is_none() {
+				db::add_digest_to_deployment_deploy_history(
+					context.get_database_connection(),
+					&deployment_id,
+					repository_id,
+					&digest,
+				)
+				.await?;
+			}
+		}
+	}
 
 	log::trace!("request_id: {} - RabbitMQ to start deployment", request_id);
 	service::queue_start_deployment(

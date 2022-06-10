@@ -7244,6 +7244,7 @@
     },
     "query": "CREATE EXTENSION IF NOT EXISTS citext;"
   },
+<<<<<<< HEAD
   "ac597a4667137fc19b501d62de2f903bed427c7b36f963f80b3a1291c4560308": {
     "describe": {
       "columns": [
@@ -7295,10 +7296,19 @@
         {
           "name": "country",
           "ordinal": 9,
+=======
+  "ae41156d89527be463294943976764f6e16e645eb799bdbd47aa1efdb637d4f1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "manifest_digest",
+          "ordinal": 0,
+>>>>>>> added: extra checks for new table and tested revert deployment
           "type_info": "Text"
         }
       ],
       "nullable": [
+<<<<<<< HEAD
         false,
         false,
         false,
@@ -7308,6 +7318,8 @@
         false,
         false,
         false,
+=======
+>>>>>>> added: extra checks for new table and tested revert deployment
         false
       ],
       "parameters": {
@@ -7316,6 +7328,7 @@
         ]
       }
     },
+<<<<<<< HEAD
     "query": "SELECT * FROM address WHERE id = $1;"
   },
   "ae6b3ec59473060d220b035361bc19cab8ed4b9c66f7dfaca561db2f96f2adc3": {
@@ -7375,6 +7388,9 @@
       }
     },
     "query": "\n\t\tSELECT\n\t\t\tworkspace_id as \"workspace_id: _\",\n\t\t\tstorage as \"storage: _\",\n\t\t\tstart_time as \"start_time: _\",\n\t\t\tstop_time as \"stop_time: _\"\n\t\tFROM\n\t\t\tdocker_repo_payment_history\n\t\tWHERE\n\t\t\tworkspace_id = $1 AND\n\t\t\t(\n\t\t\t\tstop_time IS NULL OR\n\t\t\t\tstop_time > $2\n\t\t\t);\n\t\t"
+=======
+    "query": "SELECT manifest_digest FROM docker_registry_repository_manifest WHERE repository_id = $1 ORDER BY created DESC LIMIT 1;"
+>>>>>>> added: extra checks for new table and tested revert deployment
   },
   "aec6e34747f88716757f9bda17cfea7cef75d08125220026cbea614587c05706": {
     "describe": {

@@ -197,6 +197,7 @@ async fn notification_handler(
 			"request_id: {} - Creating docker repository digest",
 			request_id
 		);
+
 		db::create_docker_repository_digest(
 			context.get_database_connection(),
 			&repository.id,
