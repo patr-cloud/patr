@@ -1,5 +1,6 @@
 use api_models::utils::{DateTime, Uuid};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use crate::{query, query_as, Database};
 
@@ -21,12 +22,15 @@ pub use self::{
 	secret::*,
 };
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Workspace {
 	pub id: Uuid,
 	pub name: String,
 	pub super_admin_id: Uuid,
 	pub active: bool,
 	pub alert_emails: Vec<String>,
+	pub stripe_customer_id: String,
+	pub primary_payment_method: Option<String>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -72,7 +76,10 @@ pub async fn initialize_workspaces_pre(
 					)
 				),
 			address_id UUID,
-			resource_limit_id UUID NOT NULL
+			resource_limit_id UUID NOT NULL,
+			stripe_customer_id TEXT NOT NULL 
+				CONSTRAINT workspace_uq_stripe_customer_id UNIQUE,
+			primary_payment_method TEXT
 		);
 		"#
 	)
@@ -216,6 +223,16 @@ pub async fn initialize_workspaces_post(
 
 	query!(
 		r#"
+		ALTER TABLE workspace
+		ADD CONSTRAINT workspace_fk_primary_payment_method
+		FOREIGN KEY(primary_payment_method) REFERENCES payment_method(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		ALTER TABLE workspace_audit_log
 		ADD CONSTRAINT workspace_audit_log_fk_user_id
 		FOREIGN KEY(user_id) REFERENCES "user"(id);
@@ -269,6 +286,7 @@ pub async fn create_workspace(
 	name: &str,
 	super_admin_id: &Uuid,
 	alert_emails: &[String],
+	stripe_customer_id: &str,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -280,16 +298,18 @@ pub async fn create_workspace(
 				active,
 				alert_emails,
 				drone_username,
-				drone_token
+				drone_token,
+				stripe_customer_id
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NULL, NULL);
+			($1, $2, $3, $4, $5, NULL, NULL, $6);
 		"#,
 		workspace_id as _,
 		name as _,
 		super_admin_id as _,
 		true,
-		alert_emails as _
+		alert_emails as _,
+		stripe_customer_id,
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -309,7 +329,9 @@ pub async fn get_workspace_info(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails!: _",
+			stripe_customer_id,
+			primary_payment_method
 		FROM
 			workspace
 		WHERE
@@ -333,7 +355,9 @@ pub async fn get_workspace_by_name(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails!: _",
+			stripe_customer_id,
+			primary_payment_method
 		FROM
 			workspace
 		WHERE
@@ -356,7 +380,9 @@ pub async fn get_all_workspaces(
 			workspace.name::TEXT as "name!: _",
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
-			alert_emails as "alert_emails!: _"
+			alert_emails as "alert_emails!: _",
+			stripe_customer_id,
+			primary_payment_method
 		FROM
 			workspace
 		WHERE
@@ -584,4 +610,26 @@ pub async fn get_resource_audit_logs(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn set_primary_payment_method_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	primary_payment_method: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			primary_payment_method = $2
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+		primary_payment_method as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }

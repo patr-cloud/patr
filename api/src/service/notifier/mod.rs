@@ -1,5 +1,9 @@
+use std::collections::HashMap;
+
 use api_models::{models::auth::PreferredRecoveryOption, utils::Uuid};
+use chrono::Month;
 use eve_rs::AsError;
+use num_traits::FromPrimitive;
 
 use crate::{
 	db::{self, User, UserToSignUp},
@@ -399,4 +403,63 @@ pub async fn send_alert_email_to_patr(
 	// send email
 	email::send_alert_email_to_patr("postmaster@vicara.co".parse()?, event_data)
 		.await
+}
+
+pub async fn send_invoice_email(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	month: u32,
+	year: i32,
+	user_id: &Uuid,
+	price_distribution: HashMap<Uuid, (i64, f64, i32, String, &String)>,
+	total_cost: f64,
+) -> Result<(), Error> {
+	let user = db::get_user_by_user_id(connection, user_id)
+		.await?
+		.status(500)?;
+
+	let price_distribution = price_distribution
+		.iter()
+		.map(
+			|(
+				resource_id,
+				(hours, price, quantity, machine_type, resource_type),
+			)| {
+				format!(
+					"{}-{}-{}-{}-{}-{}-{}",
+					resource_id,
+					resource_type,
+					machine_type,
+					quantity,
+					hours,
+					price,
+					*hours as f64 * price
+				)
+			},
+		)
+		.collect::<Vec<String>>()
+		.join("\n");
+
+	let user_email = get_user_email(
+		connection,
+		user.recovery_email_domain_id
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+		user.recovery_email_local
+			.as_ref()
+			.status(500)
+			.body(error!(SERVER_ERROR).to_string())?,
+	)
+	.await?;
+
+	let month = Month::from_u32(month).status(500)?.name().to_string();
+
+	email::send_invoice_email(
+		user_email.parse()?,
+		month,
+		year.to_string(),
+		price_distribution,
+		total_cost.to_string(),
+	)
+	.await
 }

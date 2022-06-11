@@ -455,7 +455,9 @@ pub async fn get_all_workspace_roles_for_user(
 			name::TEXT as "name!: _",
 			super_admin_id as "super_admin_id: _",
 			active,
-			alert_emails
+			alert_emails,
+			stripe_customer_id,
+			primary_payment_method
 		FROM
 			workspace
 		WHERE

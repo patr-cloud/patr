@@ -1,3 +1,4 @@
+pub mod billing;
 pub mod ci;
 pub mod deployment;
 pub mod error;
@@ -17,6 +18,7 @@ pub use self::sample_data::*;
 pub use self::{
 	access_token_data::*,
 	auditlog::*,
+	billing::*,
 	docker_registry::*,
 	email_template::*,
 	twilio_sms::*,

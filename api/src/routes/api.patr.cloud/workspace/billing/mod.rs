@@ -3,11 +3,12 @@ use api_models::{
 		AddPaymentSourceResponse,
 		Address,
 		Card,
+		ConfirmCardDetailsRequest,
+		ConfirmCardDetailsResponse,
 		GetBillingAddressResponse,
 		GetCardDetailsResponse,
 		GetCreditBalanceResponse,
 		GetSubscriptionsResponse,
-		HostedPage,
 		PaymentSource,
 		PromotionalCredits,
 		Subscription,
@@ -239,6 +240,37 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(get_billing_address)),
+		],
+	);
+
+	sub_app.post(
+		"/confirm-card-details",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::EDIT,
+				api_macros::closure_as_pinned_box!(|mut context| {
+					let workspace_id_string =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&workspace_id,
+					)
+					.await?;
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(confirm_card_details)),
 		],
 	);
 
@@ -534,24 +566,11 @@ async fn add_card_details(
 
 	let config = context.get_state().config.clone();
 
-	let hosted_page = service::add_card_details(&workspace_id, &config)
+	let client_secret = service::add_card_details(&workspace_id, &config)
 		.await?
-		.hosted_page;
+		.client_secret;
 
-	context.success(AddPaymentSourceResponse {
-		hosted_page: HostedPage {
-			id: hosted_page.id,
-			r#type: hosted_page.r#type,
-			url: hosted_page.url,
-			state: hosted_page.state,
-			embed: hosted_page.embed,
-			created_at: hosted_page.created_at,
-			expires_at: hosted_page.expires_at,
-			object: hosted_page.object,
-			updated_at: hosted_page.updated_at,
-			resource_version: hosted_page.resource_version,
-		},
-	});
+	context.success(AddPaymentSourceResponse { client_secret });
 
 	Ok(context)
 }
@@ -685,5 +704,48 @@ async fn get_billing_address(
 		};
 
 	context.success(GetBillingAddressResponse { address });
+	Ok(context)
+}
+
+async fn confirm_card_details(
+	mut context: EveContext,
+	_: NextHandler<EveContext, ErrorData>,
+) -> Result<EveContext, Error> {
+	let workspace_id = context.get_param(request_keys::WORKSPACE_ID).unwrap();
+	let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+
+	let ConfirmCardDetailsRequest {
+		payment_method_id,
+		status,
+		..
+	} = context
+		.get_body_as()
+		.status(400)
+		.body(error!(WRONG_PARAMETERS).to_string())?;
+
+	db::add_payment_method_info(
+		context.get_database_connection(),
+		&workspace_id,
+		&payment_method_id,
+		status,
+	)
+	.await?;
+
+	if db::get_workspace_info(context.get_database_connection(), &workspace_id)
+		.await?
+		.status(500)
+		.body(error!(SERVER_ERROR).to_string())?
+		.primary_payment_method
+		.is_none()
+	{
+		db::set_primary_payment_method_for_workspace(
+			context.get_database_connection(),
+			&workspace_id,
+			&payment_method_id,
+		)
+		.await?;
+	}
+
+	context.success(ConfirmCardDetailsResponse {});
 	Ok(context)
 }

@@ -1,10 +1,11 @@
 use api_models::utils::Uuid;
 use eve_rs::AsError;
+use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::rbac,
+	models::{rbac, StripeCustomer},
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -108,12 +109,15 @@ pub async fn create_workspace(
 	)
 	.await?;
 
+	let stripe_customer = create_stripe_customer(&resource_id, config).await?;
+
 	db::create_workspace(
 		connection,
 		&resource_id,
 		workspace_name,
 		super_admin_id,
 		alert_emails,
+		&stripe_customer.id,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -169,7 +173,14 @@ async fn create_resource_and_product_limits_for_workspace(
 	config: &Settings,
 ) -> Result<(), Error> {
 	// temporarily hardcoding the limits for the workspace
-	db::create_resource_limit(connection, &workspace_id, 20 as u32).await?;
+	let resource_limit_id = db::generate_new_resource_limit_id(connection).await?;
+	db::create_resource_limit(
+		connection,
+		&resource_limit_id,
+		&workspace_id,
+		20 as u32,
+	)
+	.await?;
 
 	let deployment_product_id =
 		db::get_product_info_by_name(connection, "deployment")
@@ -224,4 +235,23 @@ async fn create_resource_and_product_limits_for_workspace(
 	.await?;
 
 	Ok(())
+}
+
+async fn create_stripe_customer(
+	workspace_id: &Uuid,
+	config: &Settings,
+) -> Result<StripeCustomer, Error> {
+	let client = Client::new();
+
+	let password: Option<String> = None;
+
+	client
+		.post("https://api.stripe.com/v1/customers")
+		.basic_auth(&config.stripe.secret_key, password)
+		.query(&[("name", workspace_id.as_str())])
+		.send()
+		.await?
+		.json::<StripeCustomer>()
+		.await
+		.map_err(|e| e.into())
 }

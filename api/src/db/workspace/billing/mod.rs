@@ -1,5 +1,8 @@
 use api_macros::{query, query_as};
-use api_models::utils::{DateTime, Uuid};
+use api_models::{
+	models::workspace::billing::PaymentStatus,
+	utils::{DateTime, Uuid},
+};
 use chrono::Utc;
 
 use crate::Database;
@@ -23,8 +26,7 @@ pub enum TransactionType {
 #[derive(sqlx::Type)]
 #[sqlx(type_name = "PAYMENT_METHOD_TYPE", rename_all = "snake_case")]
 pub enum PaymentMethodType {
-	CreditCard,
-	DebitCard,
+	Card,
 }
 
 pub struct ProductInfo {
@@ -55,6 +57,8 @@ pub struct BillableServiceUsage {
 	pub resource_id: Uuid,
 	pub date: DateTime<Utc>,
 	pub active: bool,
+	pub deployment_machine_type_id: Option<Uuid>,
+	pub resource_type: String,
 }
 
 pub async fn initialize_billing_pre(
@@ -94,10 +98,24 @@ pub async fn initialize_billing_pre(
 	query!(
 		r#"
 		CREATE TYPE PAYMENT_METHOD_TYPE AS ENUM(
-			'credit_card',
-			'debit_card'
+			'card'
 		);
 	"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TYPE PAYMENT_STATUS AS ENUM(
+			'equires_payment_method',
+			'requires_confirmation',
+			'requires_action',
+			'processing',
+			'canceled',
+			'succeeded'
+		);
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -157,15 +175,14 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS transactions(
 			id UUID CONSTRAINT transactions_pk PRIMARY KEY,
-			billable_service_id UUID,
 			product_info_id UUID NOT NULL,
 			transaction_type TRANSACTION_TYPE NOT NULL,
-			plan_id UUID,
-			amount DECIMAL(10, 2) NOT NULL,
-			quantity INTEGER NOT NULL,
 			workspace_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
+			amount DECIMAL(10, 2) NOT NULL,
+			quantity INTEGER NOT NULL,
 			coupon_id UUID,
+			plan_id UUID,
 			debit bool NOT NULL
 		);
 		"#
@@ -218,7 +235,8 @@ pub async fn initialize_billing_pre(
 		CREATE TABLE IF NOT EXISTS payment_method(
 			id TEXT CONSTRAINT payment_method_pk PRIMARY KEY,
 			method_type PAYMENT_METHOD_TYPE NOT NULL,
-			workspace_id UUID NOT NULL
+			workspace_id UUID NOT NULL,
+			status PAYMENT_STATUS NOT NULL
 		);
 		"#
 	)
@@ -387,8 +405,7 @@ pub async fn initialize_billing_post(
 					END
 				) AS credits
 			FROM transactions
-			WHERE 
-				billable_service_id IS NULL AND
+			WHERE
 				product_info_id IS NULL AND
 				plan_id IS NULL
 			GROUP BY workspace_id
@@ -497,11 +514,10 @@ async fn initialize_product_table(
 
 pub async fn create_resource_limit(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
 	workspace_id: &Uuid,
 	max_resources: u32,
 ) -> Result<(), sqlx::Error> {
-	let resource_limit_id = generate_new_resource_limit_id(connection).await?;
-
 	query!(
 		r#"
 		INSERT INTO 
@@ -516,7 +532,7 @@ pub async fn create_resource_limit(
 			$3
 		);
 		"#,
-		resource_limit_id as _,
+		id as _,
 		workspace_id as _,
 		max_resources as _
 	)
@@ -554,7 +570,7 @@ pub async fn create_product_limit(
 	product_info_id: &Uuid,
 	product_limit: u32,
 ) -> Result<(), sqlx::Error> {
-	let product_id = generate_new_billable_service_id(connection).await?;
+	let id = generate_new_product_limit_id(connection).await?;
 
 	query!(
 		r#"
@@ -572,7 +588,7 @@ pub async fn create_product_limit(
 			$4
 		);
 	"#,
-		product_id as _,
+		id as _,
 		product_info_id as _,
 		product_limit as _,
 		workspace_id as _
@@ -584,6 +600,7 @@ pub async fn create_product_limit(
 
 pub async fn create_billable_service(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
 	plan_id: &Uuid,
 	workspace_id: &Uuid,
 	price: f64,
@@ -592,10 +609,7 @@ pub async fn create_billable_service(
 	resource_id: &Uuid,
 	date: DateTime<Utc>,
 	active: bool,
-) -> Result<Uuid, sqlx::Error> {
-	let billable_service_id =
-		generate_new_billable_service_id(connection).await?;
-
+) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
 		INSERT INTO 
@@ -623,7 +637,7 @@ pub async fn create_billable_service(
 
 		);
 		"#,
-		billable_service_id as _,
+		id as _,
 		plan_id as _,
 		workspace_id as _,
 		price as _,
@@ -636,7 +650,7 @@ pub async fn create_billable_service(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(billable_service_id)
+	Ok(())
 }
 
 pub async fn get_plan_by_deployment_machine_type(
@@ -676,23 +690,35 @@ pub async fn get_billable_services(
 		BillableServiceUsage,
 		r#"
 		SELECT
-			id as "id!: _",
-			plan_id as "plan_id!: _",
-			workspace_id as "workspace_id!: _",
-			price as "price!: _",
-			total_price as "total_price!: _",
-			quantity,
-			product_info_id as "product_info_id!: _",
-			resource_id as "resource_id!: _",
-			date as "date!: _",
-			active
+			billable_service.id as "id!: _",
+			billable_service.plan_id as "plan_id!: _",
+			billable_service.workspace_id as "workspace_id!: _",
+			billable_service.price as "price!: _",
+			billable_service.quantity,
+			billable_service.product_info_id as "product_info_id!: _",
+			billable_service.total_price as "total_price!: _",
+			billable_service.resource_id as "resource_id!: _",
+			billable_service.date as "date!: _",
+			billable_service.active,
+			plans.deployment_machine_type_id as "deployment_machine_type_id: _",
+			resource_type.name as "resource_type!: _"
 		FROM
 			billable_service
+		INNER JOIN 
+			plans
+		ON
+			billable_service.plan_id = plans.id
+		INNER JOIN
+			resource
+		ON
+			billable_service.resource_id = resource.id
+		INNER JOIN
+			resource_type
+		ON
+			resource.resource_type_id = resource_type.id
 		WHERE
-			workspace_id = $1 AND
+			billable_service.workspace_id = $1 AND
 			date BETWEEN $2 AND $3
-		GROUP BY 
-			id, resource_id
 		ORDER BY
 			date ASC;
 		"#,
@@ -704,7 +730,113 @@ pub async fn get_billable_services(
 	.await
 }
 
-async fn generate_new_resource_limit_id(
+pub async fn add_payment_method_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	payment_method_id: &str,
+	status: PaymentStatus,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			payment_method(
+				id,
+				method_type,
+				workspace_id,
+				status
+			)
+		VALUES(
+			$1,
+			'card',
+			$2,
+			$3
+		);
+		"#,
+		payment_method_id as _,
+		workspace_id as _,
+		status as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/*
+
+id UUID CONSTRAINT transactions_pk PRIMARY KEY,
+			billable_service_id UUID,
+			product_info_id UUID NOT NULL,
+			transaction_type TRANSACTION_TYPE NOT NULL,
+			plan_id UUID,
+			amount DECIMAL(10, 2) NOT NULL,
+			quantity INTEGER NOT NULL,
+			workspace_id UUID NOT NULL,
+			date TIMESTAMPTZ NOT NULL,
+			coupon_id UUID,
+			debit bool NOT NULL
+
+*/
+
+pub async fn create_transaction(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	product_info_id: &Uuid,
+	transaction_type: TransactionType,
+	plan_id: Option<&Uuid>,
+	amount: f64,
+	quantity: i32,
+	workspace_id: &Uuid,
+	date: &DateTime<Utc>,
+	coupon_id: Option<&Uuid>,
+	debit: bool,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			transactions(
+				id,
+				product_info_id,
+				transaction_type,
+				date,
+				workspace_id,
+				amount,
+				quantity,
+				coupon_id,
+				plan_id,
+				debit
+			)
+		VALUES(
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		);
+		"#,
+		id as _,
+		product_info_id as _,
+		transaction_type as _,
+		date as _,
+		workspace_id as _,
+		amount as _,
+		quantity as _,
+		coupon_id as _,
+		plan_id as _,
+		debit as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+pub async fn generate_new_resource_limit_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
@@ -731,7 +863,7 @@ async fn generate_new_resource_limit_id(
 	}
 }
 
-async fn generate_new_plan_id(
+pub async fn generate_new_plan_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
@@ -758,7 +890,7 @@ async fn generate_new_plan_id(
 	}
 }
 
-async fn generate_new_product_id(
+pub async fn generate_new_product_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
@@ -785,7 +917,7 @@ async fn generate_new_product_id(
 	}
 }
 
-async fn generate_new_billable_service_id(
+pub async fn generate_new_billable_service_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
@@ -797,6 +929,60 @@ async fn generate_new_billable_service_id(
 				*
 			FROM
 				billable_service
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+pub async fn generate_new_transaction_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				id
+			FROM
+				transactions
+			WHERE
+				id = $1;
+			"#,
+			uuid as _
+		)
+		.fetch_optional(&mut *connection)
+		.await?
+		.is_some();
+
+		if !exists {
+			break Ok(uuid);
+		}
+	}
+}
+
+async fn generate_new_product_limit_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+) -> Result<Uuid, sqlx::Error> {
+	loop {
+		let uuid = Uuid::new_v4();
+
+		let exists = query!(
+			r#"
+			SELECT
+				*
+			FROM
+				product_limits
 			WHERE
 				id = $1;
 			"#,

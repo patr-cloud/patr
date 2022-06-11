@@ -2664,7 +2664,9 @@ pub async fn get_all_workspaces_for_user(
 			workspace.name::TEXT as "name!: _",
 			workspace.super_admin_id as "super_admin_id: _",
 			workspace.active,
-			workspace.alert_emails
+			workspace.alert_emails,
+			workspace.stripe_customer_id,
+			workspace.primary_payment_method
 		FROM
 			workspace
 		LEFT JOIN

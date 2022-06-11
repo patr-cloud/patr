@@ -21,8 +21,12 @@ pub async fn create_billable_service_for_deployment(
 	.await?
 	.status(500)?;
 
-	let service_id = db::create_billable_service(
+	let billable_service_id =
+		db::generate_new_billable_service_id(connection).await?;
+
+	db::create_billable_service(
 		connection,
+		&billable_service_id,
 		&plan_info.id,
 		&workspace_id,
 		plan_info.price,
@@ -34,5 +38,5 @@ pub async fn create_billable_service_for_deployment(
 	)
 	.await?;
 
-	Ok(service_id)
+	Ok(billable_service_id)
 }

@@ -501,5 +501,25 @@ async fn add_billing_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN stripe_customer_id TEXT NOT NULL
+		CONSTRAINT workspace_uq_stripe_customer_id UNIQUE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE workspace
+		ADD COLUMN primary_payment_method TEXT
+		CONSTRAINT workspace_fk_primary_payment_method REFERENCES payment_method(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

@@ -280,6 +280,36 @@ pub async fn send_alert_email_to_patr(
 	.await
 }
 
+#[derive(EmailTemplate, Serialize)]
+#[template_path = "assets/emails/invoice-email/template.json"]
+pub struct InvoiceEmail {
+	month: String,
+	year: String,
+	price_distribution: String,
+	total_cost: String,
+}
+
+pub async fn send_invoice_email(
+	email: Mailbox,
+	month: String,
+	year: String,
+	price_distribution: String,
+	total_cost: String,
+) -> Result<(), Error> {
+	send_email(
+		InvoiceEmail {
+			month,
+			year,
+			price_distribution,
+			total_cost,
+		},
+		email,
+		None,
+		"Patr invoice",
+	)
+	.await
+}
+
 /// # Description
 /// This function is used to send the email to a recipient
 ///

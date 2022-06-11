@@ -23,7 +23,7 @@ use crate::{
 	app::App,
 	models::rabbitmq::{RequestMessage, WorkspaceRequestData},
 	service,
-	utils::{settings::Settings, Error},
+	utils::{settings::Settings, Error}, db::Workspace,
 };
 
 mod billing;
@@ -188,9 +188,47 @@ pub(super) async fn queue_process_payment(
 	let current_year = Utc::now().year();
 
 	service::send_message_to_rabbit_mq(
-		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
+		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspace {
 			month: current_month.into(),
-			year: current_year as u32,
+			year: current_year,
+		}),
+		config,
+		&request_id,
+	)
+	.await
+}
+
+pub(super) async fn queue_confirm_payment_intent(
+	config: &Settings,
+	payment_intent_id: String,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
+	service::send_message_to_rabbit_mq(
+		&RequestMessage::Workspace(
+			WorkspaceRequestData::ConfirmPaymentIntent {
+				payment_intent_id,
+			},
+		),
+		config,
+		&request_id,
+	)
+	.await
+}
+
+pub(super) async fn queue_generate_invoice_for_workspace(
+	config: &Settings,
+	workspace: Workspace,
+	month: u32,
+	year: i32,
+) -> Result<(), Error> {
+	let request_id = Uuid::new_v4();
+
+	service::send_message_to_rabbit_mq(
+		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice{
+			month,
+			year,
+   			workspace,
 		}),
 		config,
 		&request_id,

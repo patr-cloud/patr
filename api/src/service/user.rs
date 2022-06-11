@@ -5,14 +5,16 @@ use reqwest::Client;
 use crate::{
 	db::{self, User},
 	error,
-	models::deployment::{
-		BillingAddress,
-		Customer,
-		CustomerInfo,
-		PaymentSourceList,
-		PromotionalCreditList,
-		SubscriptionList,
-		UpdatePaymentMethod,
+	models::{
+		deployment::{
+			BillingAddress,
+			Customer,
+			CustomerInfo,
+			PaymentSourceList,
+			PromotionalCreditList,
+			SubscriptionList,
+		},
+		PaymentIntentObject,
 	},
 	service,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
@@ -531,25 +533,23 @@ pub async fn get_card_details(
 pub async fn add_card_details(
 	workspace_id: &Uuid,
 	config: &Settings,
-) -> Result<UpdatePaymentMethod, Error> {
+) -> Result<PaymentIntentObject, Error> {
 	let client = Client::new();
 
 	let password: Option<String> = None;
 
 	client
-		.post(format!(
-			"{}/hosted_pages/manage_payment_sources",
-			config.chargebee.url
-		))
-		.basic_auth(&config.chargebee.api_key, password)
+		.post("https://api.stripe.com/v1/setup_intents")
+		.basic_auth(&config.stripe.secret_key, password)
 		.query(&[
-			("customer[id]", workspace_id.as_str()),
-			("card[gateway_account_id]", &config.chargebee.gateway_id),
-			("redirect_url", &config.chargebee.redirect_url),
+			("customer", workspace_id.as_str()),
+			// for now only accepting cards, other payment methods will be
+			// accepted at later point of time
+			("payment_method_types[]", "card"),
 		])
 		.send()
 		.await?
-		.json::<UpdatePaymentMethod>()
+		.json::<PaymentIntentObject>()
 		.await
 		.map_err(|e| e.into())
 }

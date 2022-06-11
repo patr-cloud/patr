@@ -8,6 +8,7 @@ use api_models::{
 use serde::{Deserialize, Serialize};
 
 use super::DeploymentMetadata;
+use crate::db::Workspace;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "resource", rename_all = "camelCase")]
@@ -118,6 +119,16 @@ pub enum StaticSiteRequestData {
 #[serde(tag = "resource", rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum WorkspaceRequestData {
-	GenerateInvoice { month: u32, year: u32 },
-	ChargeUser {},
+	ProcessWorkspace {
+		month: u32,
+		year: i32,
+	},
+	GenerateInvoice {
+		month: u32,
+		year: i32,
+		workspace: Workspace,
+	},
+	ConfirmPaymentIntent {
+		payment_intent_id: String,
+	},
 }
