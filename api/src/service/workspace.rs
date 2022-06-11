@@ -173,7 +173,8 @@ async fn create_resource_and_product_limits_for_workspace(
 	config: &Settings,
 ) -> Result<(), Error> {
 	// temporarily hardcoding the limits for the workspace
-	let resource_limit_id = db::generate_new_resource_limit_id(connection).await?;
+	let resource_limit_id =
+		db::generate_new_resource_limit_id(connection).await?;
 	db::create_resource_limit(
 		connection,
 		&resource_limit_id,

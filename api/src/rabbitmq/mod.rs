@@ -21,9 +21,10 @@ use tokio::{signal, task};
 
 use crate::{
 	app::App,
+	db::Workspace,
 	models::rabbitmq::{RequestMessage, WorkspaceRequestData},
 	service,
-	utils::{settings::Settings, Error}, db::Workspace,
+	utils::{settings::Settings, Error},
 };
 
 mod billing;
@@ -206,9 +207,7 @@ pub(super) async fn queue_confirm_payment_intent(
 
 	service::send_message_to_rabbit_mq(
 		&RequestMessage::Workspace(
-			WorkspaceRequestData::ConfirmPaymentIntent {
-				payment_intent_id,
-			},
+			WorkspaceRequestData::ConfirmPaymentIntent { payment_intent_id },
 		),
 		config,
 		&request_id,
@@ -225,10 +224,10 @@ pub(super) async fn queue_generate_invoice_for_workspace(
 	let request_id = Uuid::new_v4();
 
 	service::send_message_to_rabbit_mq(
-		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice{
+		&RequestMessage::Workspace(WorkspaceRequestData::GenerateInvoice {
 			month,
 			year,
-   			workspace,
+			workspace,
 		}),
 		config,
 		&request_id,

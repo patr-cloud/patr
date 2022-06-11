@@ -461,7 +461,10 @@ async fn update_workspace_info(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let UpdateWorkspaceInfoRequest {
-		name, alert_emails, ..
+		name,
+		alert_emails,
+		primary_payment_id,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -499,6 +502,7 @@ async fn update_workspace_info(
 		&workspace_id,
 		name,
 		alert_emails,
+		primary_payment_id,
 	)
 	.await?;
 

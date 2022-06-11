@@ -2357,6 +2357,19 @@
       ]
     }
   },
+  "3b56a8d953b0fa4461a20265d6308539c90f39abe492b87a5c457c586d6845b9": {
+    "query": "UPDATE workspace SET primary_payment_method = $1 WHERE id = $2;",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "3bb909b55fa2bd0c112e7496b640d8715f318c031df0f26299721ac8b8faf37a": {
     "query": "INSERT INTO payment_method( id, method_type, workspace_id, status ) VALUES( $1, 'card', $2, $3 );",
     "describe": {
