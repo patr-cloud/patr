@@ -7,6 +7,7 @@ mod workspace;
 use api_models::utils::Uuid;
 use k8s_openapi::api::{
 	apps::v1::Deployment as K8sDeployment,
+	autoscaling::v1::HorizontalPodAutoscaler,
 	core::v1::{Secret, Service},
 	networking::v1::Ingress,
 };
@@ -110,6 +111,24 @@ async fn deployment_exists(
 			.get(&format!("deployment-{}", deployment_id))
 			.await;
 	match deployment_app {
+		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
+		Err(err) => Err(err),
+		Ok(_) => Ok(true),
+	}
+}
+
+async fn hpa_exists(
+	hpa_id: &Uuid,
+	kubernetes_client: kube::Client,
+	namespace: &str,
+) -> Result<bool, KubeError> {
+	let hpa = Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client,
+		namespace,
+	)
+	.get(&format!("hpa-{}", hpa_id))
+	.await;
+	match hpa {
 		Err(KubeError::Api(ErrorResponse { code: 404, .. })) => Ok(false),
 		Err(err) => Err(err),
 		Ok(_) => Ok(true),

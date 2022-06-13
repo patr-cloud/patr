@@ -14,6 +14,11 @@ use eve_rs::AsError;
 use k8s_openapi::{
 	api::{
 		apps::v1::{Deployment as K8sDeployment, DeploymentSpec},
+		autoscaling::v1::{
+			CrossVersionObjectReference,
+			HorizontalPodAutoscaler,
+			HorizontalPodAutoscalerSpec,
+		},
 		core::v1::{
 			Container,
 			ContainerPort,
@@ -277,10 +282,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("deployment-{}", deployment.id)),
 			&Patch::Apply(kubernetes_deployment),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	let kubernetes_service = Service {
 		metadata: ObjectMeta {
@@ -310,8 +312,8 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the service defined above
 	log::trace!("request_id: {} - creating ClusterIp service", request_id);
-	let service_api: Api<Service> =
-		Api::namespaced(kubernetes_client.clone(), namespace);
+	let service_api =
+		Api::<Service>::namespaced(kubernetes_client.clone(), namespace);
 
 	service_api
 		.patch(
@@ -319,10 +321,45 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("service-{}", deployment.id)),
 			&Patch::Apply(kubernetes_service),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
+
+	// HPA - horizontal pod autoscaler
+	let kubernetes_hpa = HorizontalPodAutoscaler {
+		metadata: ObjectMeta {
+			name: Some(format!("hpa-{}", deployment.id)),
+			namespace: Some(namespace.to_string()),
+			..ObjectMeta::default()
+		},
+		spec: Some(HorizontalPodAutoscalerSpec {
+			scale_target_ref: CrossVersionObjectReference {
+				api_version: Some("apps/v1".to_string()),
+				kind: "Deployment".to_string(),
+				name: format!("deployment-{}", deployment.id),
+			},
+			min_replicas: Some(running_details.min_horizontal_scale.into()),
+			max_replicas: running_details.max_horizontal_scale.into(),
+			target_cpu_utilization_percentage: Some(80),
+		}),
+		..HorizontalPodAutoscaler::default()
+	};
+
+	// Create the HPA defined above
+	log::trace!(
+		"request_id: {} - creating horizontal pod autoscalar",
+		request_id
+	);
+	let hpa_api = Api::<HorizontalPodAutoscaler>::namespaced(
+		kubernetes_client.clone(),
+		namespace,
+	);
+
+	hpa_api
+		.patch(
+			&format!("hpa-{}", deployment.id),
+			&PatchParams::apply(&format!("hpa-{}", deployment.id)),
+			&Patch::Apply(kubernetes_hpa),
+		)
+		.await?;
 
 	let annotations = [
 		(
@@ -392,8 +429,7 @@ pub async fn update_kubernetes_deployment(
 
 	// Create the ingress defined above
 	log::trace!("request_id: {} - creating ingress", request_id);
-	let ingress_api: Api<Ingress> =
-		Api::namespaced(kubernetes_client, namespace);
+	let ingress_api = Api::<Ingress>::namespaced(kubernetes_client, namespace);
 
 	ingress_api
 		.patch(
@@ -401,10 +437,7 @@ pub async fn update_kubernetes_deployment(
 			&PatchParams::apply(&format!("ingress-{}", deployment.id)),
 			&Patch::Apply(kubernetes_ingress),
 		)
-		.await?
-		.status
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
+		.await?;
 
 	log::trace!("request_id: {} - deployment created", request_id);
 
@@ -489,6 +522,36 @@ pub async fn delete_kubernetes_deployment(
 	} else {
 		log::trace!(
 			"request_id: {} - No deployment service found with name deployment-{} in namespace: {}",
+			request_id,
+			deployment_id,
+			workspace_id,
+		);
+	}
+
+	if super::hpa_exists(
+		deployment_id,
+		kubernetes_client.clone(),
+		workspace_id.as_str(),
+	)
+	.await?
+	{
+		log::trace!(
+			"request_id: {} - hpa exists as hpa-{}",
+			request_id,
+			deployment_id
+		);
+
+		log::trace!("request_id: {} - deleting the hpa", request_id);
+
+		Api::<HorizontalPodAutoscaler>::namespaced(
+			kubernetes_client.clone(),
+			workspace_id.as_str(),
+		)
+		.delete(&format!("hpa-{}", deployment_id), &DeleteParams::default())
+		.await?;
+	} else {
+		log::trace!(
+			"request_id: {} - No hpa found with name hpa-{} in namespace: {}",
 			request_id,
 			deployment_id,
 			workspace_id,
