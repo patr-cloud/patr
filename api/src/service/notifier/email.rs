@@ -46,6 +46,7 @@ pub async fn send_user_verification_otp(
 #[template_path = "assets/emails/forgot-password/template.json"]
 struct ForgotPasswordEmail {
 	otp: String,
+	username: String,
 }
 
 /// # Description
@@ -80,7 +81,9 @@ pub async fn send_forgot_password_otp(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/password-reset-notification/template.json"]
-struct PasswordResetEmail {}
+struct PasswordResetEmail {
+	username: String
+}
 
 /// # Description
 /// This function is used to send the password reset notification
@@ -108,7 +111,9 @@ pub async fn send_user_reset_password_notification(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/password-changed-notification/template.json"]
-struct PasswordChangedEmail {}
+struct PasswordChangedEmail {
+	username: String
+}
 
 /// # Description
 /// This function is used to send the password changed notification
@@ -129,7 +134,9 @@ pub async fn send_password_changed_notification(
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/sign-up-completed/template.json"]
-struct SignUpCompletedEmail {}
+struct SignUpCompletedEmail {
+	username: String
+}
 
 /// # Description
 /// This function is used to send the sign up complete notification
@@ -147,7 +154,11 @@ pub async fn send_sign_up_completed_email(email: Mailbox) -> Result<(), Error> {
 
 #[derive(EmailTemplate, Serialize)]
 #[template_path = "assets/emails/recovery-email-notification/template.json"]
-struct RecoveryNotificationEmail {}
+struct RecoveryNotificationEmail {
+	username: String
+
+}
+
 
 /// # Description
 /// This function is used to send the registration info to back up email of the
@@ -171,6 +182,7 @@ pub async fn send_recovery_registration_mail(
 #[template_path = "assets/emails/add-new-email-notification/template.json"]
 struct AddEmailVerificationEmail {
 	otp: String,
+	username: String
 }
 
 /// # Description
@@ -209,6 +221,8 @@ pub struct DeploymentAlertEmail {
 	deployment_id: String,
 	deployment_name: String,
 	message: String,
+	username: String
+
 }
 
 /// # Description
@@ -250,6 +264,7 @@ pub async fn send_alert_email(
 #[template_path = "assets/emails/send-kubernetes-patr-alert-notification/template.json"]
 pub struct KubernetesPatrAlertEmail {
 	event_data: String,
+	username: String
 }
 
 /// # Description
