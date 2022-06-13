@@ -289,19 +289,10 @@ async fn add_hpa_to_existing_deployments(
 	let deployments = query!(
 		r#"
 		SELECT
-			id as "id: _",
-			name::TEXT as "name!: _",
-			registry,
-			repository_id as "repository_id: _",
-			image_name,
-			image_tag,
-			status as "status: _",
-			workspace_id as "workspace_id: _",
-			region as "region: _",
+			id,
+			workspace_id,
 			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type as "machine_type: _",
-			deploy_on_push
+			max_horizontal_scale
 		FROM
 			deployment
 		WHERE	
@@ -366,11 +357,9 @@ async fn add_hpa_to_existing_deployments(
 		},
 		&Default::default(),
 	)
-	.await
-	.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	.await?;
 
-	let kubernetes_client = kube::Client::try_from(kubernetes_config)
-		.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+	let kubernetes_client = kube::Client::try_from(kubernetes_config)?;
 
 	for (id, workspace_id, min_horizontal_scale, max_horizontal_scale) in
 		deployments
@@ -390,7 +379,7 @@ async fn add_hpa_to_existing_deployments(
 				},
 				min_replicas: Some(min_horizontal_scale.into()),
 				max_replicas: max_horizontal_scale.into(),
-				target_cpu_utilization_percentage: Some(90),
+				target_cpu_utilization_percentage: Some(80),
 			}),
 			..HorizontalPodAutoscaler::default()
 		};
@@ -406,8 +395,7 @@ async fn add_hpa_to_existing_deployments(
 				&PatchParams::apply(&format!("hpa-{}", id)),
 				&Patch::Apply(kubernetes_hpa),
 			)
-			.await
-			.map_err(|err| sqlx::Error::Configuration(Box::new(err)))?;
+			.await?;
 	}
 
 	Ok(())
