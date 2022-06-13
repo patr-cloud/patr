@@ -407,7 +407,6 @@ async fn add_hpa_to_existing_deployments(
 			)
 			.await?;
 	}
-
 	Ok(())
 }
 

@@ -37,6 +37,7 @@ use crate::{
 pub async fn update_kubernetes_static_site(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
+	upload_id: &Uuid,
 	_static_site_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,

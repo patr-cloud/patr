@@ -48,6 +48,7 @@ pub mod request_keys {
 	pub const DATABASE_NAME: &str = "databaseName";
 	pub const DATABASE_ID: &str = "databaseId";
 	pub const STATIC_SITE_ID: &str = "staticSiteId";
+	pub const UPLOAD_ID: &str = "uploadId";
 	pub const USER_ID: &str = "userId";
 	pub const RECORD_ID: &str = "recordId";
 	pub const DIGEST: &str = "digest";

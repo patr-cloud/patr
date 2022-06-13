@@ -23,6 +23,7 @@ pub(super) async fn process_request(
 		StaticSiteRequestData::Create {
 			workspace_id,
 			static_site_id,
+			upload_id,
 			file,
 			static_site_details,
 			request_id,
@@ -40,6 +41,7 @@ pub(super) async fn process_request(
 				connection,
 				&workspace_id,
 				&static_site_id,
+				&upload_id,
 				Some(&file),
 				&static_site_details,
 				config,
@@ -50,6 +52,7 @@ pub(super) async fn process_request(
 		StaticSiteRequestData::Start {
 			workspace_id,
 			static_site_id,
+			upload_id,
 			static_site_details,
 			request_id,
 		} => {
@@ -61,6 +64,7 @@ pub(super) async fn process_request(
 				connection,
 				&workspace_id,
 				&static_site_id,
+				&upload_id,
 				None,
 				&static_site_details,
 				config,
@@ -88,6 +92,7 @@ pub(super) async fn process_request(
 		StaticSiteRequestData::UploadSite {
 			workspace_id: _,
 			static_site_id,
+			upload_id,
 			file,
 			request_id,
 		} => {
@@ -99,6 +104,7 @@ pub(super) async fn process_request(
 				connection,
 				&file,
 				&static_site_id,
+				&upload_id,
 				config,
 				&request_id,
 			)
@@ -128,6 +134,7 @@ async fn update_static_site_and_db_status(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
+	upload_id: &Uuid,
 	file: Option<&str>,
 	_running_details: &StaticSiteDetails,
 	config: &Settings,
@@ -140,6 +147,7 @@ async fn update_static_site_and_db_status(
 	let result = service::update_kubernetes_static_site(
 		workspace_id,
 		static_site_id,
+		upload_id,
 		&StaticSiteDetails {},
 		config,
 		request_id,
@@ -155,6 +163,7 @@ async fn update_static_site_and_db_status(
 			connection,
 			file,
 			static_site_id,
+			upload_id,
 			config,
 			request_id,
 		)

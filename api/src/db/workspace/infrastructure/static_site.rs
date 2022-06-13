@@ -12,6 +12,12 @@ pub struct DeploymentStaticSite {
 	pub workspace_id: Uuid,
 }
 
+pub struct StaticSiteDeployHistory {
+	pub id: Uuid,
+	pub message: String,
+	pub created: i64,
+}
+
 pub async fn initialize_static_site_pre(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<(), sqlx::Error> {
@@ -30,6 +36,27 @@ pub async fn initialize_static_site_pre(
 				UNIQUE(name, workspace_id),
 			CONSTRAINT deployment_static_site_uq_id_workspace_id
 				UNIQUE(id, workspace_id)
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE static_site_deploy_history(
+			upload_id UUID CONSTRAINT deployment_static_site_history_pk PRIMARY KEY,
+			static_site_id UUID NOT NULL,
+			message TEXT NOT NULL,
+			created BIGINT NOT NULL
+				CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK(
+						created >= 0
+				),
+			CONSTRAINT static_site_deploy_history_fk_static_site_id
+				FOREIGN KEY(static_site_id)
+					REFERENCES deployment_static_site(id),
+			CONSTRAINT static_site_deploy_history_uq_upload_id_static_site_id
+				UNIQUE(upload_id, static_site_id)
 		);
 		"#
 	)
@@ -201,4 +228,75 @@ pub async fn get_static_sites_for_workspace(
 	)
 	.fetch_all(&mut *connection)
 	.await
+}
+
+pub async fn create_static_site_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	upload_id: &Uuid,
+	static_site_id: &Uuid,
+	message: &str,
+	created: u64,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			static_site_deploy_history(
+				upload_id,
+				static_site_id,
+				message,
+				created
+			)
+		VALUES
+			($1, $2, $3, $4);
+		"#,
+		upload_id as _,
+		static_site_id as _,
+		message as _,
+		created as i64,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_static_site_deploy_history(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+) -> Result<Vec<StaticSiteDeployHistory>, sqlx::Error> {
+	query_as!(
+		StaticSiteDeployHistory,
+		r#"
+		SELECT
+			upload_id as "id: _",
+			message,
+			created
+		FROM
+			static_site_deploy_history
+		WHERE
+			static_site_id = $1;
+		"#,
+		static_site_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_static_site_deploy_history_by_upload_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	upload_id: &Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+	query!(
+		r#"
+		SELECT
+			upload_id
+		FROM
+			static_site_deploy_history
+		WHERE
+			upload_id = $1;
+		"#,
+		upload_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
+	.map(|row| row.upload_id)
 }

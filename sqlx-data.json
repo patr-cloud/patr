@@ -46,7 +46,11 @@
     },
     "query": "INSERT INTO user_unverified_personal_email( local, domain_id, user_id, verification_token_hash, verification_token_expiry ) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(local, domain_id) DO UPDATE SET user_id = EXCLUDED.user_id, verification_token_hash = EXCLUDED.verification_token_hash, verification_token_expiry = EXCLUDED.verification_token_expiry;"
   },
+<<<<<<< HEAD
   "03984abcca588da3a9b753795bb20462c2732f7cc535813f2617ce4b3af13365": {
+=======
+  "04637f0002f8b35c66035ffc13af3098078cb56bca807610e29285eca722cc29": {
+>>>>>>> feat: reverting static site and storing the upload history
     "describe": {
       "columns": [],
       "nullable": [],
@@ -54,6 +58,7 @@
         "Left": []
       }
     },
+<<<<<<< HEAD
     "query": "CREATE TABLE IF NOT EXISTS managed_database_payment_history( workspace_id UUID NOT NULL, database_id UUID NOT NULL, db_plan MANAGED_DATABASE_PLAN NOT NULL, start_time TIMESTAMPTZ NOT NULL, deletion_time TIMESTAMPTZ );"
   },
   "0482c58c13e7b70e0a028857b17ad7278aa8071b07896785e0d2e20aafe20b58": {
@@ -65,6 +70,9 @@
       }
     },
     "query": "CREATE TABLE IF NOT EXISTS managed_url_payment_history( workspace_id UUID NOT NULL, url_count INTEGER NOT NULL, start_time TIMESTAMPTZ NOT NULL, stop_time TIMESTAMPTZ );"
+=======
+    "query": "CREATE TABLE static_site_deploy_history( upload_id UUID CONSTRAINT deployment_static_site_history_pk PRIMARY KEY, static_site_id UUID NOT NULL, message TEXT NOT NULL, created BIGINT NOT NULL CONSTRAINT static_site_deploy_history_chk_created_unsigned CHECK( created >= 0 ), CONSTRAINT static_site_deploy_history_fk_static_site_id FOREIGN KEY(static_site_id) REFERENCES deployment_static_site(id), CONSTRAINT static_site_deploy_history_uq_upload_id_static_site_id UNIQUE(upload_id, static_site_id) );"
+>>>>>>> feat: reverting static site and storing the upload history
   },
   "05452f7e8ed0ec4322863866b4604e496c5004b7dce28dd96928cc8b7e8ca699": {
     "describe": {
@@ -1722,7 +1730,33 @@
     },
     "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
   },
+<<<<<<< HEAD
   "26638ca6cf7d15b8aa4e671bb29c3a0cbdd4ade10afdca92a26cc1fa756d6434": {
+=======
+  "266a1c952223fefd2a2e0fa2d9ea716b06e7f2a79829fd7bb129dc70f0bcaaa7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT user_id as \"user_id: _\", workspace_id as \"workspace_id: _\", role_id as \"role_id: _\" FROM workspace_user WHERE workspace_id = $1;"
+  },
+  "28c3a8d03871bb820d4ea57bc7ded4e77e4aa8c0fd19556827bc401e16648cac": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE docker_registry_repository( id UUID CONSTRAINT docker_registry_repository_pk PRIMARY KEY, workspace_id UUID NOT NULL CONSTRAINT docker_registry_repository_fk_workspace_id REFERENCES workspace(id), name CITEXT NOT NULL, CONSTRAINT docker_registry_repository_uq_workspace_id_name UNIQUE(workspace_id, name), CONSTRAINT docker_registry_repository_uq_id_workspace_id UNIQUE( id, workspace_id ) );"
+  },
+  "292b36a0ab84f6022c19fafc224ce4d2a090fa4a4df94a861480c5835ff6f864": {
+>>>>>>> feat: reverting static site and storing the upload history
     "describe": {
       "columns": [
         {

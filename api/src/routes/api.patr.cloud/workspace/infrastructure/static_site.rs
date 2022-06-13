@@ -3,11 +3,19 @@ use api_models::{
 	models::workspace::infrastructure::{
 		managed_urls::{ManagedUrl, ManagedUrlType},
 		static_site::{
-			CreateStaticSiteRequest, CreateStaticSiteResponse,
-			DeleteStaticSiteResponse, GetStaticSiteInfoResponse,
-			ListLinkedURLsResponse, ListStaticSitesResponse,
-			StartStaticSiteResponse, StaticSite, StaticSiteDetails,
-			StopStaticSiteResponse, UpdateStaticSiteRequest,
+			CreateStaticSiteRequest,
+			CreateStaticSiteResponse,
+			DeleteStaticSiteResponse,
+			GetStaticSiteInfoResponse,
+			ListLinkedURLsResponse,
+			ListStaticSitesDeployHistoryResponse,
+			ListStaticSitesResponse,
+			StartStaticSiteResponse,
+			StaticSite,
+			StaticSiteDeployHistory,
+			StaticSiteDetails,
+			StopStaticSiteResponse,
+			UpdateStaticSiteRequest,
 			UpdateStaticSiteResponse,
 		},
 	},
@@ -19,10 +27,16 @@ use crate::{
 	app::{create_eve_app, App},
 	db::{self, ManagedUrlType as DbManagedUrlType},
 	error,
-	models::rbac::permissions,
-	pin_fn, service,
+	models::rbac::{self, permissions},
+	pin_fn,
+	service,
 	utils::{
-		constants::request_keys, Error, ErrorData, EveContext, EveMiddleware,
+		constants::request_keys,
+		get_current_time_millis,
+		Error,
+		ErrorData,
+		EveContext,
+		EveMiddleware,
 	},
 };
 
@@ -525,12 +539,34 @@ async fn list_static_sites_deploy_history(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
-	/**
-	 * TODO - Take the latest static site id and check if static site exists
-	 * TODO - If not return error resource does not exists
-	 * TODO - Else get the deploy history for the static site from new table created in db
-	 * TODO - Can also use s3 bucket to get the deploy history not sure at this point
-	*/
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
+
+	db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	let deploy_history = db::get_static_site_deploy_history(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.into_iter()
+	.map(|deploy_history| StaticSiteDeployHistory {
+		upload_id: deploy_history.id,
+		message: deploy_history.message,
+		created: deploy_history.created as u64,
+	})
+	.collect();
+	context.success(ListStaticSitesDeployHistoryResponse {
+		deploys: deploy_history,
+	});
 
 	Ok(context)
 }
@@ -570,21 +606,24 @@ async fn create_static_site_deployment(
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
 	let request_id = Uuid::new_v4();
+
 	log::trace!("request_id: {} - Creating a static site", request_id);
 	let workspace_id =
 		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
 			.unwrap();
+
 	let CreateStaticSiteRequest {
 		workspace_id: _,
 		name,
+		message,
 		file,
 		static_site_details: _,
 	} = context
 		.get_body_as()
 		.status(400)
 		.body(error!(WRONG_PARAMETERS).to_string())?;
-	let name = name.trim();
 
+	let name = name.trim();
 	let config = context.get_state().config.clone();
 
 	let id = service::create_static_site_in_workspace(
@@ -592,17 +631,19 @@ async fn create_static_site_deployment(
 		&workspace_id,
 		name,
 		file,
+		&message,
 		&config,
 		&request_id,
 	)
 	.await?;
+
+	log::trace!("request_id: {} - Static-site created", request_id);
 
 	let _ = service::get_internal_metrics(
 		context.get_database_connection(),
 		"A static site has been created",
 	)
 	.await;
-
 	context.success(CreateStaticSiteResponse { id });
 	Ok(context)
 }
@@ -634,14 +675,27 @@ async fn revert_static_site_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let static_site_id = Uuid::parse_str(
+		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
+	)
+	.unwrap();
+	let upload_id =
+		Uuid::parse_str(context.get_param(request_keys::UPLOAD_ID).unwrap())
+			.unwrap();
 
-	//TODO - Check if the static site exists
-	//TODO - Check if the static site digest exists
-	//TODO - queue the static site for revert with digest
+	// check if upload_id is present in the deploy history
+	db::get_static_site_deploy_history_by_upload_id(
+		context.get_database_connection(),
+		&upload_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// queue revert static site
 
 	Ok(context)
 }
-
 
 /// # Description
 /// This function is used to start a static site
@@ -689,11 +743,36 @@ async fn start_static_site(
 	);
 	// start the container running the image, if doesn't exist
 	let config = context.get_state().config.clone();
+
+	let static_site = db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+
+	// Get the latest upload_id
+	let upload = db::get_latest_upload_for_static_site(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?;
+	// Get the latest upload_id from deploy history
+	let upload_id = if let Some(upload) = upload {
+		upload.id
+	} else {
+		return Error::as_result()
+			.status(404)
+			.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
+	};
+
 	service::update_static_site_and_db_status(
 		context.get_database_connection(),
 		&workspace_id,
 		&static_site_id,
 		None,
+		&upload_id,
 		&StaticSiteDetails {},
 		&config,
 		&request_id,
@@ -736,6 +815,9 @@ async fn update_static_site(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let workspace_id =
+		Uuid::parse_str(context.get_param(request_keys::WORKSPACE_ID).unwrap())
+			.unwrap();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -747,10 +829,10 @@ async fn update_static_site(
 		request_id
 	);
 	let UpdateStaticSiteRequest {
-		workspace_id: _,
-		static_site_id: _,
 		name,
 		file,
+		message,
+		..
 	} = context
 		.get_body_as()
 		.status(400)
@@ -761,9 +843,11 @@ async fn update_static_site(
 
 	service::update_static_site(
 		context.get_database_connection(),
+		&workspace_id,
 		&static_site_id,
 		name,
 		file,
+		&message,
 		&config,
 		&request_id,
 	)

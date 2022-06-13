@@ -88,6 +88,7 @@ pub enum StaticSiteRequestData {
 	Create {
 		workspace_id: Uuid,
 		static_site_id: Uuid,
+		upload_id: Uuid,
 		file: String,
 		static_site_details: StaticSiteDetails,
 		request_id: Uuid,
@@ -95,6 +96,7 @@ pub enum StaticSiteRequestData {
 	Start {
 		workspace_id: Uuid,
 		static_site_id: Uuid,
+		upload_id: Uuid,
 		static_site_details: StaticSiteDetails,
 		request_id: Uuid,
 	},
@@ -106,6 +108,7 @@ pub enum StaticSiteRequestData {
 	UploadSite {
 		workspace_id: Uuid,
 		static_site_id: Uuid,
+		upload_id: Uuid,
 		file: String,
 		request_id: Uuid,
 	},

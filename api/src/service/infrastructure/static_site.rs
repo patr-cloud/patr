@@ -17,7 +17,7 @@ use crate::{
 	error,
 	models::rbac,
 	service::{self, infrastructure::kubernetes},
-	utils::{settings::Settings, validator, Error},
+	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
 
@@ -26,6 +26,7 @@ pub async fn create_static_site_in_workspace(
 	workspace_id: &Uuid,
 	name: &str,
 	file: Option<String>,
+	message: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<Uuid, Error> {
@@ -117,6 +118,36 @@ pub async fn create_static_site_in_workspace(
 	);
 
 	if let Some(file) = file {
+		log::trace!(
+			"request_id: {} - Creating Static-site upload resource",
+			request_id
+		);
+		let upload_id = db::generate_new_resource_id(connection).await?;
+
+		db::create_resource(
+			connection,
+			&upload_id,
+			&format!("Static_site_upload: {}", upload_id),
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
+				.unwrap(),
+			&workspace_id,
+			get_current_time_millis(),
+		)
+		.await?;
+		log::trace!("request_id: {} - Creating upload history", request_id);
+
+		db::create_static_site_deploy_history(
+			connection,
+			&upload_id,
+			&static_site_id,
+			message,
+			get_current_time_millis(),
+		)
+		.await?;
+
 		log::trace!("request_id: {} - Starting static site", request_id);
 
 		db::update_static_site_status(
@@ -131,6 +162,7 @@ pub async fn create_static_site_in_workspace(
 			workspace_id,
 			&static_site_id,
 			Some(&file),
+			&upload_id,
 			&StaticSiteDetails {},
 			config,
 			request_id,
@@ -143,9 +175,11 @@ pub async fn create_static_site_in_workspace(
 
 pub async fn update_static_site(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	name: Option<&str>,
 	file: Option<String>,
+	message: &str,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -156,15 +190,47 @@ pub async fn update_static_site(
 	}
 
 	if let Some(file) = file {
+		let upload_id = db::generate_new_resource_id(connection).await?;
+
+		db::create_resource(
+			connection,
+			&upload_id,
+			&format!("Static_site_upload: {}", upload_id),
+			rbac::RESOURCE_TYPES
+				.get()
+				.unwrap()
+				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
+				.unwrap(),
+			&workspace_id,
+			get_current_time_millis(),
+		)
+		.await?;
+
+		log::trace!("request_id: {} - Creating upload history", request_id);
+		db::create_static_site_deploy_history(
+			connection,
+			&upload_id,
+			static_site_id,
+			message,
+			get_current_time_millis(),
+		)
+		.await?;
+
 		log::trace!("request_id: {} - Uploading the static site", request_id);
 		service::upload_static_site_files_to_s3(
 			connection,
 			&file,
 			static_site_id,
+			&upload_id,
 			config,
 			request_id,
 		)
 		.await?;
+
+		log::trace!(
+			"request_id: {} - Creating Static-site upload resource",
+			request_id
+		);
 	}
 
 	Ok(())
@@ -264,6 +330,7 @@ pub async fn upload_static_site_files_to_s3(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	file: &str,
 	static_site_id: &Uuid,
+	upload_id: &Uuid,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -358,9 +425,10 @@ pub async fn upload_static_site_files_to_s3(
 		})?;
 
 		log::trace!(
-			"request_id: {} - file_name: {}/{}",
+			"request_id: {} - file_name: {}/{}/{}",
 			request_id,
 			static_site_id,
+			upload_id,
 			file_name
 		);
 
@@ -378,7 +446,7 @@ pub async fn upload_static_site_files_to_s3(
 	for (file_name, file_content, mime_string) in files_vec {
 		let (_, code) = bucket
 			.put_object_with_content_type(
-				format!("{}/{}", static_site_id, file_name),
+				format!("{}/{}/{}", static_site_id, upload_id, file_name),
 				&file_content,
 				&mime_string,
 			)
@@ -411,6 +479,7 @@ pub async fn update_static_site_and_db_status(
 	workspace_id: &Uuid,
 	static_site_id: &Uuid,
 	file: Option<&str>,
+	upload_id: &Uuid,
 	_running_details: &StaticSiteDetails,
 	config: &Settings,
 	request_id: &Uuid,
@@ -422,6 +491,7 @@ pub async fn update_static_site_and_db_status(
 	let result = service::update_kubernetes_static_site(
 		workspace_id,
 		static_site_id,
+		upload_id,
 		&StaticSiteDetails {},
 		config,
 		request_id,
@@ -437,6 +507,7 @@ pub async fn update_static_site_and_db_status(
 			connection,
 			file,
 			static_site_id,
+			upload_id,
 			config,
 			request_id,
 		)
