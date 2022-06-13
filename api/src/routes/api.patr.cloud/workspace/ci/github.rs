@@ -18,12 +18,13 @@ use api_models::{
 	utils::Uuid,
 };
 use eve_rs::{App as EveApp, AsError, Context, NextHandler};
+use serde_json::json;
 
 use crate::{
 	app::{create_eve_app, App},
 	db,
 	error,
-	models::{ci::DroneUserInfoResponse, rbac::permissions},
+	models::{ci::DroneUserInfoResponse, error, rbac::permissions},
 	pin_fn,
 	utils::{
 		constants::request_keys,
@@ -662,7 +663,7 @@ async fn get_build_logs(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
-	let logs = reqwest::Client::new()
+	let response = reqwest::Client::new()
 		.get(format!(
 			"{}/api/repos/{}/{}/builds/{}/logs/{}/{}",
 			context.get_state().config.drone.url,
@@ -674,10 +675,18 @@ async fn get_build_logs(
 		))
 		.bearer_auth(drone_token)
 		.send()
-		.await?
-		.error_for_status()?
-		.json()
 		.await?;
+
+	if response.status().as_u16() == 404 {
+		context.status(404).json(json!({
+			request_keys::SUCCESS: false,
+			request_keys::ERROR: error::id::NOT_FOUND,
+			request_keys::MESSAGE: error::message::NOT_FOUND,
+		}));
+		return Ok(context);
+	}
+
+	let logs = response.error_for_status()?.json().await?;
 
 	context.success(GetBuildLogResponse { logs });
 	Ok(context)
@@ -743,6 +752,12 @@ async fn sign_out(
 	.status(404)
 	.body(error!(USER_NOT_FOUND).to_string())?;
 
+	db::remove_drone_username_and_token_from_workspace(
+		context.get_database_connection(),
+		&workspace_id,
+	)
+	.await?;
+
 	let client = reqwest::Client::new();
 	let repos = client
 		.get(format!(
@@ -772,12 +787,6 @@ async fn sign_out(
 			.await?
 			.error_for_status()?;
 	}
-
-	db::remove_drone_username_and_token_from_workspace(
-		context.get_database_connection(),
-		&workspace_id,
-	)
-	.await?;
 
 	context.success(GithubSignOutResponse {});
 	Ok(context)

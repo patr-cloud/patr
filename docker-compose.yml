@@ -133,7 +133,6 @@ services:
     image: drone/drone-runner-docker:1
     restart: always
     hostname: drone-runner
-    user: ${RUNNING_USER}
     networks:
       - vpc
     environment:

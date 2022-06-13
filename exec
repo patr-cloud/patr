@@ -41,7 +41,7 @@ function initialize-repo() {
             clusterName="${clusterName}${chars:RANDOM%${#chars}:1}"
         done
         echo "Your cluster has been assigned a random name: $clusterName"
-        kind create cluster --name $clusterName
+        kind create cluster --name $clusterName --config $baseDir/assets/patr/kind-config.yml
         echo "KIND_CLUSTER_NAME=$clusterName" > $baseDir/.localData
         echo "Cluster 'kind-$clusterName' created"
 
@@ -50,13 +50,13 @@ function initialize-repo() {
         echo "nginx ingress controller setup"
 
         echo "Waiting for ingress controller to start"
-        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --context kind-$clusterName
+        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --context kind-$clusterName --timeout=-1s
         echo "nginx ingress controller ready"
 
         echo "Setting up your kubernetes variables"
         kubernetesCertificateAuthorityData=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster[\"certificate-authority-data\"]")
         kubernetesClusterName=kind-$clusterName
-        kubernetesClusterUrl=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster.server" | sed s/127.0.0.1/\${HOSTNAME}/)
+        kubernetesClusterUrl=$(kubectl config view --output json --raw | jq ".clusters | map(select(.name == \"kind-$clusterName\")) | .[0].cluster.server" | sed s/127.0.0.1/127.0.1.1/)
         kubernetesClusterAuthName=kind-$clusterName
         kubernetesClusterAuthUsername=kind-$clusterName
         kubernetesClusterContextName=kind-$clusterName
@@ -70,8 +70,6 @@ function initialize-repo() {
     else
         echo "Skipping cluster creation"
     fi
-
-    touch "$baseDir/.localData"
 }
 
 baseDir=$(dirname $0)
@@ -104,6 +102,9 @@ case $1 in
     ;;
     run)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api
+    ;;
+    bash)
+        RUNNING_USER=root docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash
     ;;
     build)
         docker-compose -f $baseDir/docker-compose.yml run --rm --service-ports api bash -c "source .env && cargo build"
