@@ -33,12 +33,18 @@ pub async fn send_sign_up_complete_notification(
 	welcome_email: Option<String>,
 	recovery_email: Option<String>,
 	recovery_phone_number: Option<String>,
+	username: &str,
 ) -> Result<(), Error> {
 	if let Some(welcome_email) = welcome_email {
-		email::send_sign_up_completed_email(welcome_email.parse()?).await?;
+		email::send_sign_up_completed_email(welcome_email.parse()?, username)
+			.await?;
 	}
 	if let Some(recovery_email) = recovery_email {
-		email::send_recovery_registration_mail(recovery_email.parse()?).await?;
+		email::send_recovery_registration_mail(
+			recovery_email.parse()?,
+			username,
+		)
+		.await?;
 	}
 	if let Some(phone_number) = recovery_phone_number {
 		sms::send_recovery_registration_sms(&phone_number).await?;
@@ -60,8 +66,9 @@ pub async fn send_sign_up_complete_notification(
 pub async fn send_email_verification_otp(
 	new_email: String,
 	otp: &str,
+	username: &str,
 ) -> Result<(), Error> {
-	email::send_email_verification_otp(new_email.parse()?, otp).await
+	email::send_email_verification_otp(new_email.parse()?, otp, username).await
 }
 
 /// # Description
@@ -168,7 +175,11 @@ pub async fn send_password_changed_notification(
 			&recovery_email_local,
 		)
 		.await?;
-		email::send_password_changed_notification(email.parse()?).await?;
+		email::send_password_changed_notification(
+			email.parse()?,
+			&user.username,
+		)
+		.await?;
 	}
 	// check if phone number is given as a recovery
 	if let Some((phone_country_code, phone_number)) = user
@@ -223,7 +234,11 @@ pub async fn send_user_reset_password_notification(
 			&recovery_email_local,
 		)
 		.await?;
-		email::send_user_reset_password_notification(email.parse()?).await?;
+		email::send_user_reset_password_notification(
+			email.parse()?,
+			&user.username,
+		)
+		.await?;
 	}
 	Ok(())
 }
@@ -265,7 +280,8 @@ pub async fn send_forgot_password_otp(
 			)
 			.await?;
 			// send email
-			email::send_forgot_password_otp(email.parse()?, otp).await
+			email::send_forgot_password_otp(email.parse()?, otp, &user.username)
+				.await
 		}
 		PreferredRecoveryOption::RecoveryPhoneNumber => {
 			let phone_number = get_user_phone_number(
