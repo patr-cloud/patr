@@ -151,10 +151,23 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					return Ok(context);
 				};
 
+				let is_permission_blocked = workspace_permission
+					.blocked_resources
+					.get(&resource.id)
+					.map_or(false, |blocked_permissions| {
+						blocked_permissions.contains(
+							rbac::PERMISSIONS
+								.get()
+								.unwrap()
+								.get(&(*permission_required).to_string())
+								.unwrap(),
+						)
+					});
+
 				let allowed = {
 					// Check if the resource type is allowed
 					if let Some(permissions) = workspace_permission
-						.resource_types
+						.allowed_resource_types
 						.get(&resource.resource_type_id)
 					{
 						permissions.contains(
@@ -170,7 +183,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 				} || {
 					// Check if that specific resource is allowed
 					if let Some(permissions) =
-						workspace_permission.resources.get(&resource.id)
+						workspace_permission.allowed_resources.get(&resource.id)
 					{
 						permissions.contains(
 							rbac::PERMISSIONS
@@ -190,7 +203,7 @@ impl Middleware<EveContext, ErrorData> for EveMiddleware {
 					}
 				};
 
-				if allowed {
+				if !is_permission_blocked && allowed {
 					context.set_token_data(access_data);
 					next(context).await
 				} else {

@@ -14,13 +14,13 @@ pub static PERMISSIONS: OnceCell<HashMap<String, Uuid>> = OnceCell::new();
 #[serde(rename_all = "camelCase")]
 pub struct WorkspacePermissions {
 	pub is_super_admin: bool,
-	pub resources: HashMap<Uuid, Vec<Uuid>>, /* Given a resource, what
-	                                          * and all permissions do
-	                                          * you have on it */
-	pub resource_types: HashMap<Uuid, Vec<Uuid>>, /* Given a resource
-	                                               * type, what and all
-	                                               * permissions do you
-	                                               * have on it */
+	/// Given a resource, what and all permissions restricted on it
+	pub blocked_resources: HashMap<Uuid, Vec<Uuid>>,
+	/// Given a resource, what and all allowed permissions do you have on it
+	pub allowed_resources: HashMap<Uuid, Vec<Uuid>>,
+	/// Given a resource type, what and all allowed permissions do you have on
+	/// it
+	pub allowed_resource_types: HashMap<Uuid, Vec<Uuid>>,
 }
 
 #[api_macros::iterable_module(consts, recursive = true)]

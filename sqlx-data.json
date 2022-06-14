@@ -3340,6 +3340,32 @@
     },
     "query": "UPDATE patr_domain_dns_record SET record_identifier = $1 WHERE id = $2;"
   },
+  "60a429890a2bd8c8ac40e7f6d09bba8f2c417b8eab16bbbc69c68f9374e2a59d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "permission_id: Uuid",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "resource_id: Uuid",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT permission_id as \"permission_id: Uuid\", resource_id as \"resource_id: Uuid\" FROM role_block_permissions_resource WHERE role_id = $1;"
+  },
   "60af027f2e663763fc387f893cb4fb3d82ad2cc31340f27df96cdffee8198f88": {
     "describe": {
       "columns": [],

@@ -1348,48 +1348,49 @@ async fn docker_registry_authenticate(
 	let mut approved_permissions = vec![];
 
 	for permission in required_permissions {
-		let allowed =
-			if let Some(required_role_for_user) = required_role_for_user {
-				let resource_type_allowed = {
-					if let Some(permissions) = required_role_for_user
-						.resource_types
-						.get(&resource.resource_type_id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let resource_allowed = {
-					if let Some(permissions) =
-						required_role_for_user.resources.get(&resource.id)
-					{
-						permissions.contains(
-							rbac::PERMISSIONS
-								.get()
-								.unwrap()
-								.get(&(*permission).to_string())
-								.unwrap(),
-						)
-					} else {
-						false
-					}
-				};
-				let is_super_admin = {
-					required_role_for_user.is_super_admin || {
-						user_id == god_user_id
-					}
-				};
-				resource_type_allowed || resource_allowed || is_super_admin
-			} else {
-				user_id == god_user_id
+		let allowed = if let Some(required_role_for_user) =
+			required_role_for_user
+		{
+			let resource_type_allowed = {
+				if let Some(permissions) = required_role_for_user
+					.allowed_resource_types
+					.get(&resource.resource_type_id)
+				{
+					permissions.contains(
+						rbac::PERMISSIONS
+							.get()
+							.unwrap()
+							.get(&(*permission).to_string())
+							.unwrap(),
+					)
+				} else {
+					false
+				}
 			};
+			let resource_allowed = {
+				if let Some(permissions) =
+					required_role_for_user.allowed_resources.get(&resource.id)
+				{
+					permissions.contains(
+						rbac::PERMISSIONS
+							.get()
+							.unwrap()
+							.get(&(*permission).to_string())
+							.unwrap(),
+					)
+				} else {
+					false
+				}
+			};
+			let is_super_admin = {
+				required_role_for_user.is_super_admin || {
+					user_id == god_user_id
+				}
+			};
+			resource_type_allowed || resource_allowed || is_super_admin
+		} else {
+			user_id == god_user_id
+		};
 		if !allowed {
 			continue;
 		}
