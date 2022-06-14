@@ -206,13 +206,13 @@ pub async fn update_kubernetes_deployment(
 								})
 								.collect::<Vec<_>>(),
 						),
-						startup_probe: running_details.startup_probe_port.map(
-							|port| Probe {
+						startup_probe: running_details
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
 								http_get: Some(HTTPGetAction {
-									path: running_details
-										.startup_probe_path
-										.clone(),
-									port: IntOrString::Int(port),
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
 									scheme: Some("HTTP".to_string()),
 									..HTTPGetAction::default()
 								}),
@@ -220,21 +220,20 @@ pub async fn update_kubernetes_deployment(
 								period_seconds: Some(10),
 								timeout_seconds: Some(3),
 								..Probe::default()
-							},
-						),
+							}),
 						liveness_probe: running_details
-							.liveness_probe_port
-							.map(|port| Probe {
+							.startup_probe
+							.as_ref()
+							.map(|probe| Probe {
 								http_get: Some(HTTPGetAction {
-									path: running_details
-										.liveness_probe_path
-										.clone(),
-									port: IntOrString::Int(port),
+									path: Some(probe.path.clone()),
+									port: IntOrString::Int(probe.port as i32),
 									scheme: Some("HTTP".to_string()),
 									..HTTPGetAction::default()
 								}),
-								initial_delay_seconds: Some(30),
+								failure_threshold: Some(15),
 								period_seconds: Some(10),
+								timeout_seconds: Some(3),
 								..Probe::default()
 							}),
 						env: Some(

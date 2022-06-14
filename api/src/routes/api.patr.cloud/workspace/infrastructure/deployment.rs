@@ -1198,10 +1198,8 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports,
 		environment_variables,
-		startup_probe_port,
-		startup_probe_path,
-		liveness_probe_port,
-		liveness_probe_path,
+		startup_probe,
+		liveness_probe,
 	} = context
 		.get_body_as()
 		.status(400)
@@ -1223,10 +1221,8 @@ async fn update_deployment(
 		max_horizontal_scale.is_none() &&
 		ports.is_none() &&
 		environment_variables.is_none() &&
-		startup_probe_port.is_none() &&
-		startup_probe_path.is_none() &&
-		liveness_probe_port.is_none() &&
-		liveness_probe_path.is_none()
+		startup_probe.is_none() &&
+		liveness_probe.is_none()
 	{
 		return Err(Error::empty()
 			.status(400)
@@ -1244,10 +1240,8 @@ async fn update_deployment(
 		max_horizontal_scale,
 		ports: ports.clone(),
 		environment_variables: environment_variables.clone(),
-		startup_probe_port,
-		startup_probe_path: startup_probe_path.clone(),
-		liveness_probe_port,
-		liveness_probe_path: liveness_probe_path.clone(),
+		startup_probe: startup_probe.clone(),
+		liveness_probe: liveness_probe.clone(),
 	};
 
 	service::update_deployment(
@@ -1268,10 +1262,8 @@ async fn update_deployment(
 			})
 			.as_ref(),
 		environment_variables.as_ref(),
-		startup_probe_port,
-		startup_probe_path.as_deref(),
-		liveness_probe_port,
-		liveness_probe_path.as_deref(),
+		startup_probe.as_ref(),
+		liveness_probe.as_ref(),
 		&config,
 		&request_id,
 	)

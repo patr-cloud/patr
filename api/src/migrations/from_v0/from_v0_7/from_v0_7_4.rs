@@ -249,7 +249,7 @@ async fn add_alert_emails(
 	query!(
 		r#"
 		ALTER TABLE workspace
-			ALTER COLUMN alert_emails DROP DEFAULT;
+		ALTER COLUMN alert_emails DROP DEFAULT;
 		"#,
 	)
 	.execute(&mut *connection)
@@ -257,23 +257,31 @@ async fn add_alert_emails(
 
 	query!(
 		r#"
-		UPDATE workspace w1
-		SET alert_emails = (
-			SELECT 
-				ARRAY_AGG(CONCAT("user".recovery_email_local, '@', domain.name, '.', domain.tld))
-			FROM 
-				workspace w2
-			INNER JOIN
-				"user"
-			ON
-				"user".id = w2.super_admin_id
-			INNER JOIN
-				domain
-			ON
-				"user".recovery_email_domain_id = domain.id
-			WHERE
-				w2.id = w1.id
-		);
+		UPDATE
+			workspace w1
+		SET
+			alert_emails = (
+				SELECT 
+					ARRAY_AGG(CONCAT(
+						"user".recovery_email_local,
+						'@',
+						domain.name,
+						'.',
+						domain.tld
+					))
+				FROM 
+					workspace w2
+				INNER JOIN
+					"user"
+				ON
+					"user".id = w2.super_admin_id
+				INNER JOIN
+					domain
+				ON
+					"user".recovery_email_domain_id = domain.id
+				WHERE
+					w2.id = w1.id
+			);
 		"#,
 	)
 	.execute(&mut *connection)
@@ -408,29 +416,10 @@ async fn update_deployment_with_probe_column(
 ) -> Result<(), Error> {
 	query!(
 		r#"
-		ALTER TABLE deployment
-			ADD COLUMN
-				startup_probe_port INT,
-			ADD COLUMN
-				startup_probe_path varchar(255),
-			ADD COLUMN
-				startup_probe_port_type EXPOSED_PORT_TYPE,
-			ADD COLUMN
-				liveness_probe_port INT,
-			ADD COLUMN
-				liveness_probe_path varchar(255),
-			ADD COLUMN
-				liveness_probe_port_type EXPOSED_PORT_TYPE;
-		"#,
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		ALTER TABLE deployment_exposed_port
-		ADD CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
-		UNIQUE(deployment_id, port, port_type);
+			ADD CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type
+				UNIQUE(deployment_id, port, port_type),
+			ALTER COLUMN deployment_id SET NOT NULL;
 		"#
 	)
 	.execute(&mut *connection)
@@ -439,46 +428,50 @@ async fn update_deployment_with_probe_column(
 	query!(
 		r#"
 		ALTER TABLE deployment
+			ADD COLUMN startup_probe_port INTEGER,
+			ADD COLUMN startup_probe_path VARCHAR(255),
+			ADD COLUMN startup_probe_port_type EXPOSED_PORT_TYPE,
+			ADD COLUMN liveness_probe_port INTEGER,
+			ADD COLUMN liveness_probe_path VARCHAR(255),
+			ADD COLUMN liveness_probe_port_type EXPOSED_PORT_TYPE,
 			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
 				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-						DEFERRABLE INITIALLY IMMEDIATE,
+					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
 				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-						DEFERRABLE INITIALLY IMMEDIATE,
-			ADD CONSTRAINT deployment_chk_startup_probe_is_valid
-				CHECK(
+					DEFERRABLE INITIALLY IMMEDIATE,
+			ADD CONSTRAINT deployment_chk_startup_probe_is_valid CHECK(
 					(
 						startup_probe_port IS NULL AND
-						startup_probe_path IS NULL
-					)
-					OR
-					(
+						startup_probe_path IS NULL AND
+						startup_probe_port_type IS NULL
+					) OR (
 						startup_probe_port IS NOT NULL AND
-						startup_probe_path IS NOT NULL
+						startup_probe_path IS NOT NULL AND
+						startup_probe_port_type IS NOT NULL
 					)
 				),
-			ADD CONSTRAINT deployment_chk_liveness_probe_is_valid
-					CHECK(
-						(
-							liveness_probe_port IS NULL AND
-							liveness_probe_path IS NULL
-						)
-						OR
-						(
-							liveness_probe_port IS NOT NULL AND
-							liveness_probe_path IS NOT NULL
-						)
-					),
+			ADD CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK(
+					(
+						liveness_probe_port IS NULL AND
+						liveness_probe_path IS NULL AND
+						liveness_probe_port_type IS NULL
+					) OR (
+						liveness_probe_port IS NOT NULL AND
+						liveness_probe_path IS NOT NULL AND
+						liveness_probe_port_type IS NOT NULL
+					)
+				),
 			ADD CONSTRAINT deployment_chk_startup_probe_port_type_is_http
-					CHECK(
-						startup_probe_port_type = 'http'
-					),
+				CHECK(
+					startup_probe_port_type = 'http'
+				),
 			ADD CONSTRAINT deployment_chk_liveness_probe_port_type_is_http
-					CHECK(
-						liveness_probe_port_type = 'http'
-					);
+				CHECK(
+					liveness_probe_port_type = 'http'
+				);
 		"#
 	)
 	.execute(&mut *connection)

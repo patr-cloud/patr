@@ -202,6 +202,20 @@
     },
     "query": "CREATE TABLE secret( id UUID CONSTRAINT secret_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)), workspace_id UUID NOT NULL, deployment_id UUID, /* For deployment specific secrets */ CONSTRAINT secret_uq_workspace_id_name UNIQUE(workspace_id, name) );"
   },
+  "07985dc63f7b6fbeea31026f2e45b0ad8b12e69e2c61e1a4db898812106977e1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_path = $2 WHERE id = $3;"
+  },
   "07aac19835c6180a151a944003e5e014a8ba26aac47a3122cc32bf5c9be6af26": {
     "describe": {
       "columns": [
@@ -827,6 +841,18 @@
     },
     "query": "SELECT id as \"id: _\", name, description FROM permission;"
   },
+  "1786316b9e200a6e83d31f3d9a70576a40cc0accf7a658a72e7a6d51a2f3fa64": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET startup_probe_port = NULL, startup_probe_path = NULL WHERE id = $1;"
+  },
   "1815e0c66b5645f7e4994f135c7d0622d3219c98297eab447d4cadf9bed4a1f4": {
     "describe": {
       "columns": [],
@@ -1339,6 +1365,18 @@
       }
     },
     "query": "UPDATE deployment SET machine_type = $1 WHERE id = $2;"
+  },
+  "23a3a70943c68db89b1b01c4b5eb0797df04a77c3bf25dfe643145ddf8ca9c53": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET liveness_probe_port = NULL, liveness_probe_path = NULL WHERE id = $1;"
   },
   "241d2d5275d061fa9f24043adb72590b240a691cf68bf703dc63546fa7705ec8": {
     "describe": {
@@ -2095,16 +2133,6 @@
     },
     "query": "CREATE TABLE phone_number_country_code( country_code CHAR(2) CONSTRAINT phone_number_country_code_pk PRIMARY KEY CONSTRAINT phone_number_country_code_chk_country_code_is_upper_case CHECK( country_code = UPPER(country_code) ), phone_code VARCHAR(5) NOT NULL, country_name VARCHAR(80) NOT NULL );"
   },
-  "37494bae9ad572e5e79af44be134a327bb96717dac49e6da549c72106248549b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
-  },
   "37fda78be3fc16338fc75ea255eae29b98d91a1d3a1ca38e09eec11c7948bbee": {
     "describe": {
       "columns": [],
@@ -2243,6 +2271,16 @@
       }
     },
     "query": "UPDATE deployment SET status = $1 WHERE id = $2;"
+  },
+  "3f63f9a6b222e551531bb498008d3bf8f0480314169237fc545b158e065bb432": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment_exposed_port( deployment_id UUID NOT NULL CONSTRAINT deployment_exposed_port_fk_deployment_id REFERENCES deployment(id), port INTEGER NOT NULL CONSTRAINT deployment_exposed_port_chk_port_u16 CHECK( port > 0 AND port <= 65535 ), port_type EXPOSED_PORT_TYPE NOT NULL, CONSTRAINT deployment_exposed_port_pk PRIMARY KEY(deployment_id, port), CONSTRAINT deployment_exposed_port_uq_deployment_id_port_port_type UNIQUE(deployment_id, port, port_type) );"
   },
   "3f67392b96b39a7df360ad4b54de8a56a5f12c1f6f17534917236072eb283680": {
     "describe": {
@@ -2528,19 +2566,6 @@
     },
     "query": "UPDATE managed_database SET digitalocean_db_id = $1 WHERE id = $2;"
   },
-  "4d94ce31e5fadc3b09295e9a94cff0c8cfe55fb97b7c92b591e73bfda991dce1": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_port = $1, liveness_probe_port_type = 'http' WHERE id = $2;"
-  },
   "4e0cdb9cdbfb4d2360aa8eff5c49dfa18da9969f601ae2532cc2c13588d2011c": {
     "describe": {
       "columns": [],
@@ -2595,19 +2620,6 @@
       }
     },
     "query": "DELETE FROM workspace_domain WHERE id = $1;"
-  },
-  "50ba582e7df847194bbb83842043a745a6ea5194019f719e11dc75deb4a7be42": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_path = $1 WHERE id = $2;"
   },
   "5198716586d0f372c693b04629cc2b35cde145293878884d3ab56f0991d7df17": {
     "describe": {
@@ -3387,19 +3399,6 @@
       }
     },
     "query": "UPDATE \"user\" SET last_name = $1 WHERE id = $2;"
-  },
-  "6ae70f8db13ff9266985df64b1e5a6e0df68955ca72b8232896733938ebbc0b8": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_port_type = 'http' WHERE id = $2;"
   },
   "6b678ec64a61d5c20d7ea207efa6fce83058481b7af34fb81a36022b0a52dbc6": {
     "describe": {
@@ -4859,6 +4858,16 @@
       }
     },
     "query": "SELECT * FROM user_login WHERE login_id = $1;"
+  },
+  "9a80a38e2f423be112c1bc29c8aa36dc989d200121f2ae65e8fcf0ca732df9b8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INTEGER, startup_probe_path VARCHAR(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INTEGER, liveness_probe_path VARCHAR(255), liveness_probe_port_type EXPOSED_PORT_TYPE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL AND startup_probe_port_type IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL AND startup_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL AND liveness_probe_port_type IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL AND liveness_probe_port_type IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "9b88d7c5fc101c3ee54f19f893dcd561664e63b7206aa46df6a7868ae52d5157": {
     "describe": {
@@ -6526,19 +6535,6 @@
     },
     "query": "SELECT id as \"id: _\", name, description, owner_id as \"owner_id: _\" FROM role WHERE id = $1;"
   },
-  "c76b3ed2b8e4776ac677acab31abf0fa979d5b0c4d529f1cf76854df2142e19f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Uuid"
-        ]
-      }
-    },
-    "query": "UPDATE deployment SET liveness_probe_path = $1 WHERE id = $2;"
-  },
   "c7726ad0cf307f6f0f8e321f914f7caeafbed517d7c3968ed3f17ee82803a720": {
     "describe": {
       "columns": [],
@@ -7531,6 +7527,20 @@
     },
     "query": "SELECT \"user\".id as \"id: Uuid\", \"user\".username, \"user\".password, \"user\".first_name, \"user\".last_name, \"user\".dob, \"user\".bio, \"user\".location, \"user\".created, \"user\".recovery_email_local, \"user\".recovery_email_domain_id as \"recovery_email_domain_id: Uuid\", \"user\".recovery_phone_country_code, \"user\".recovery_phone_number FROM \"user\" WHERE username = $1;"
   },
+  "e151d6ff3fcf2aeb7aead9fb1f6f2a40fb4a6151a6f9c49e8c28991dddd81389": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "UPDATE deployment SET startup_probe_port = $1, startup_probe_path = $2 WHERE id = $3;"
+  },
   "e2e4acb7753330bf806aae68b144fa483eb41b7c18cb10b1812164daa8e3326c": {
     "describe": {
       "columns": [],
@@ -8008,16 +8018,6 @@
       }
     },
     "query": "SELECT id as \"id: _\", CONCAT(domain.name, '.', domain.tld) as \"name!\", type as \"type: _\" FROM domain WHERE CONCAT(domain.name, '.', domain.tld) = $1 AND domain.name NOT LIKE CONCAT( 'patr-deleted: ', REPLACE(domain.id::TEXT, '-', ''), '@%' );"
-  },
-  "eb6f8e78634528d159d00dffda7a8c73e96d38296df7afd1f8976a97bc8da020": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "CREATE TABLE deployment( id UUID CONSTRAINT deployment_pk PRIMARY KEY, name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed CHECK( name = TRIM(name) ), registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud', repository_id UUID, image_name VARCHAR(512), image_tag VARCHAR(255) NOT NULL, status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created', workspace_id UUID NOT NULL, region UUID NOT NULL CONSTRAINT deployment_fk_region REFERENCES deployment_region(id), min_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK( min_horizontal_scale >= 0 AND min_horizontal_scale <= 256 ) DEFAULT 1, max_horizontal_scale SMALLINT NOT NULL CONSTRAINT deployment_chk_max_horizontal_scale_u8 CHECK( max_horizontal_scale >= 0 AND max_horizontal_scale <= 256 ) DEFAULT 1, machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type REFERENCES deployment_machine_type(id), deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE, startup_probe_port INT, startup_probe_path varchar(255), startup_probe_port_type EXPOSED_PORT_TYPE, liveness_probe_port INT, liveness_probe_path varchar(255), liveness_probe_port_type EXPOSED_PORT_TYPE, CONSTRAINT deployment_fk_repository_id_workspace_id FOREIGN KEY(repository_id, workspace_id) REFERENCES docker_registry_repository(id, workspace_id), CONSTRAINT deployment_uq_name_workspace_id UNIQUE(name, workspace_id), CONSTRAINT deployment_uq_id_workspace_id UNIQUE(id, workspace_id), CONSTRAINT deployment_chk_repository_id_is_valid CHECK( ( registry = 'registry.patr.cloud' AND image_name IS NULL AND repository_id IS NOT NULL ) OR ( registry != 'registry.patr.cloud' AND image_name IS NOT NULL AND repository_id IS NULL ) ), CONSTRAINT deployment_chk_image_tag_is_valid CHECK( image_tag != '' ), CONSTRAINT deployment_chk_startup_probe_is_valid CHECK( ( startup_probe_port IS NULL AND startup_probe_path IS NULL ) OR ( startup_probe_port IS NOT NULL AND startup_probe_path IS NOT NULL ) ), CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK( ( liveness_probe_port IS NULL AND liveness_probe_path IS NULL ) OR ( liveness_probe_port IS NOT NULL AND liveness_probe_path IS NOT NULL ) ), CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK( startup_probe_port_type = 'http' ), CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK( liveness_probe_port_type = 'http' ) );"
   },
   "ebb1a9513d2bef779e47519e10c59c05b65606a81fd6714dabf63495bfd2899d": {
     "describe": {

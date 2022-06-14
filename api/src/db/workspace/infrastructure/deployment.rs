@@ -1,6 +1,6 @@
 use api_models::{
 	models::workspace::infrastructure::{
-		deployment::{DeploymentStatus, ExposedPortType},
+		deployment::{DeploymentProbe, DeploymentStatus, ExposedPortType},
 		DeploymentCloudProvider,
 	},
 	utils::Uuid,
@@ -105,8 +105,7 @@ pub async fn initialize_deployment_pre(
 						(
 							location IS NULL AND
 							provider IS NULL
-						) OR
-						(
+						) OR (
 							provider IS NOT NULL AND
 							location IS NOT NULL AND
 							parent_region_id IS NOT NULL
@@ -144,8 +143,8 @@ pub async fn initialize_deployment_pre(
 		r#"
 		CREATE TABLE deployment(
 			id UUID CONSTRAINT deployment_pk PRIMARY KEY,
-			name CITEXT NOT NULL
-				CONSTRAINT deployment_chk_name_is_trimmed CHECK(
+			name CITEXT NOT NULL CONSTRAINT deployment_chk_name_is_trimmed
+				CHECK(
 					name = TRIM(name)
 				),
 			registry VARCHAR(255) NOT NULL DEFAULT 'registry.patr.cloud',
@@ -169,11 +168,11 @@ pub async fn initialize_deployment_pre(
 			machine_type UUID NOT NULL CONSTRAINT deployment_fk_machine_type
 				REFERENCES deployment_machine_type(id),
 			deploy_on_push BOOLEAN NOT NULL DEFAULT TRUE,
-			startup_probe_port INT,
-			startup_probe_path varchar(255),
+			startup_probe_port INTEGER,
+			startup_probe_path VARCHAR(255),
 			startup_probe_port_type EXPOSED_PORT_TYPE,
-			liveness_probe_port INT,
-			liveness_probe_path varchar(255),
+			liveness_probe_port INTEGER,
+			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			CONSTRAINT deployment_fk_repository_id_workspace_id
 				FOREIGN KEY(repository_id, workspace_id)
@@ -187,9 +186,7 @@ pub async fn initialize_deployment_pre(
 					registry = 'registry.patr.cloud' AND
 					image_name IS NULL AND
 					repository_id IS NOT NULL
-				)
-				OR
-				(
+				) OR (
 					registry != 'registry.patr.cloud' AND
 					image_name IS NOT NULL AND
 					repository_id IS NULL
@@ -199,34 +196,31 @@ pub async fn initialize_deployment_pre(
 				image_tag != ''
 			),
 			CONSTRAINT deployment_chk_startup_probe_is_valid CHECK(
-				(
-					startup_probe_port IS NULL AND
-					startup_probe_path IS NULL
-				)
-				OR
-				(
-					startup_probe_port IS NOT NULL AND
-					startup_probe_path IS NOT NULL
-				)
-			),
-			CONSTRAINT deployment_chk_liveness_probe_is_valid
-				CHECK(
+					(
+						startup_probe_port IS NULL AND
+						startup_probe_path IS NULL AND
+						startup_probe_port_type IS NULL
+					) OR (
+						startup_probe_port IS NOT NULL AND
+						startup_probe_path IS NOT NULL AND
+						startup_probe_port_type IS NOT NULL
+					)
+				),
+			CONSTRAINT deployment_chk_liveness_probe_is_valid CHECK(
 					(
 						liveness_probe_port IS NULL AND
-						liveness_probe_path IS NULL
-					)
-					OR
-					(
+						liveness_probe_path IS NULL AND
+						liveness_probe_port_type IS NULL
+					) OR (
 						liveness_probe_port IS NOT NULL AND
-						liveness_probe_path IS NOT NULL
+						liveness_probe_path IS NOT NULL AND
+						liveness_probe_port_type IS NOT NULL
 					)
 				),
-			CONSTRAINT deployment_chk_startup_probe_port_type_is_http
-				CHECK(
+			CONSTRAINT deployment_chk_startup_probe_port_type_is_http CHECK(
 					startup_probe_port_type = 'http'
 				),
-			CONSTRAINT deployment_chk_liveness_probe_port_type_is_http
-				CHECK(
+			CONSTRAINT deployment_chk_liveness_probe_port_type_is_http CHECK(
 					liveness_probe_port_type = 'http'
 				)
 		);
@@ -289,8 +283,7 @@ pub async fn initialize_deployment_pre(
 					(
 						value IS NOT NULL AND
 						secret_id IS NULL
-					) OR
-					(
+					) OR (
 						value IS NULL AND
 						secret_id IS NOT NULL
 					)
@@ -304,7 +297,7 @@ pub async fn initialize_deployment_pre(
 	query!(
 		r#"
 		CREATE TABLE deployment_exposed_port(
-			deployment_id UUID
+			deployment_id UUID NOT NULL
 				CONSTRAINT deployment_exposed_port_fk_deployment_id
 					REFERENCES deployment(id),
 			port INTEGER NOT NULL CONSTRAINT
@@ -328,11 +321,11 @@ pub async fn initialize_deployment_pre(
 			ADD CONSTRAINT deployment_fk_deployment_id_startup_port_startup_port_type
 				FOREIGN KEY (id, startup_probe_port, startup_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-						DEFERRABLE INITIALLY IMMEDIATE,
+					DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT deployment_fk_deployment_id_liveness_port_liveness_port_type
 				FOREIGN KEY (id, liveness_probe_port, liveness_probe_port_type)
 					REFERENCES deployment_exposed_port(deployment_id, port, port_type)
-						DEFERRABLE INITIALLY IMMEDIATE;
+					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
 	.execute(&mut *connection)
@@ -406,10 +399,8 @@ pub async fn create_deployment_with_internal_registry(
 	deploy_on_push: bool,
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
-	startup_probe_port: Option<i32>,
-	startup_probe_path: Option<&str>,
-	liveness_probe_port: Option<i32>,
-	liveness_probe_path: Option<&str>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -468,10 +459,10 @@ pub async fn create_deployment_with_internal_registry(
 		max_horizontal_scale as i32,
 		machine_type as _,
 		deploy_on_push,
-		startup_probe_port,
-		startup_probe_path,
-		liveness_probe_port,
-		liveness_probe_path
+		startup_probe.map(|probe| probe.port as i32),
+		startup_probe.map(|probe| probe.path.as_str()),
+		liveness_probe.map(|probe| probe.port as i32),
+		liveness_probe.map(|probe| probe.path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -492,10 +483,8 @@ pub async fn create_deployment_with_external_registry(
 	deploy_on_push: bool,
 	min_horizontal_scale: u16,
 	max_horizontal_scale: u16,
-	startup_probe_port: Option<i32>,
-	startup_probe_path: Option<&str>,
-	liveness_probe_port: Option<i32>,
-	liveness_probe_path: Option<&str>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 ) -> Result<(), sqlx::Error> {
 	query!(
 		r#"
@@ -551,10 +540,10 @@ pub async fn create_deployment_with_external_registry(
 		max_horizontal_scale as i32,
 		machine_type as _,
 		deploy_on_push,
-		startup_probe_port,
-		startup_probe_path,
-		liveness_probe_port,
-		liveness_probe_path
+		startup_probe.map(|probe| probe.port as i32),
+		startup_probe.map(|probe| probe.path.as_str()),
+		liveness_probe.map(|probe| probe.port as i32),
+		liveness_probe.map(|probe| probe.path.as_str()),
 	)
 	.execute(&mut *connection)
 	.await
@@ -621,7 +610,7 @@ pub async fn get_deployments_by_repository_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	repository_id: &Uuid,
 ) -> Result<Vec<Deployment>, sqlx::Error> {
-	let rows = query_as!(
+	query_as!(
 		Deployment,
 		r#"
 		SELECT
@@ -651,8 +640,7 @@ pub async fn get_deployments_by_repository_id(
 		repository_id as _
 	)
 	.fetch_all(&mut *connection)
-	.await?;
-	Ok(rows)
+	.await
 }
 
 pub async fn get_deployments_for_workspace(
@@ -961,10 +949,8 @@ pub async fn update_deployment_details(
 	deploy_on_push: Option<bool>,
 	min_horizontal_scale: Option<u16>,
 	max_horizontal_scale: Option<u16>,
-	startup_probe_port: Option<i32>,
-	startup_probe_path: Option<&str>,
-	liveness_probe_port: Option<i32>,
-	liveness_probe_path: Option<&str>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 ) -> Result<(), sqlx::Error> {
 	if let Some(name) = name {
 		query!(
@@ -1068,74 +1054,76 @@ pub async fn update_deployment_details(
 		.await?;
 	}
 
-	if let Some(startup_probe_port) = startup_probe_port {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				startup_probe_port = $1,
-				startup_probe_port_type = 'http'
-			WHERE
-				id = $2;
-			"#,
-			startup_probe_port as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
+	if let Some(startup_probe) = startup_probe {
+		if startup_probe.port == 0 {
+			query!(
+				r#"
+				UPDATE
+					deployment
+				SET
+					startup_probe_port = NULL,
+					startup_probe_path = NULL
+				WHERE
+					id = $1;
+				"#,
+				deployment_id as _
+			)
+			.execute(&mut *connection)
+			.await?;
+		} else {
+			query!(
+				r#"
+				UPDATE
+					deployment
+				SET
+					startup_probe_port = $1,
+					startup_probe_path = $2
+				WHERE
+					id = $3;
+				"#,
+				startup_probe.port as i32,
+				startup_probe.path,
+				deployment_id as _
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
 	}
 
-	if let Some(startup_probe_path) = startup_probe_path {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				startup_probe_path = $1
-			WHERE
-				id = $2;
-			"#,
-			startup_probe_path as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(liveness_probe_port) = liveness_probe_port {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				liveness_probe_port = $1,
-				liveness_probe_port_type = 'http'
-			WHERE
-				id = $2;
-			"#,
-			liveness_probe_port as i32,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
-	}
-
-	if let Some(liveness_probe_path) = liveness_probe_path {
-		query!(
-			r#"
-			UPDATE
-				deployment
-			SET
-				liveness_probe_path = $1
-			WHERE
-				id = $2;
-			"#,
-			liveness_probe_path as _,
-			deployment_id as _
-		)
-		.execute(&mut *connection)
-		.await?;
+	if let Some(liveness_probe) = liveness_probe {
+		if liveness_probe.port == 0 {
+			query!(
+				r#"
+				UPDATE
+					deployment
+				SET
+					liveness_probe_port = NULL,
+					liveness_probe_path = NULL
+				WHERE
+					id = $1;
+				"#,
+				deployment_id as _
+			)
+			.execute(&mut *connection)
+			.await?;
+		} else {
+			query!(
+				r#"
+				UPDATE
+					deployment
+				SET
+					liveness_probe_port = $1,
+					liveness_probe_path = $2
+				WHERE
+					id = $3;
+				"#,
+				liveness_probe.port as i32,
+				liveness_probe.path,
+				deployment_id as _
+			)
+			.execute(&mut *connection)
+			.await?;
+		}
 	}
 
 	Ok(())

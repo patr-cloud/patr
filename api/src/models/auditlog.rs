@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
+		DeploymentProbe,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
 		ExposedPortType,
@@ -38,13 +39,9 @@ pub enum DeploymentMetadata {
 		environment_variables:
 			Option<BTreeMap<String, EnvironmentVariableValue>>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		startup_probe_port: Option<i32>,
+		startup_probe: Option<DeploymentProbe>,
 		#[serde(skip_serializing_if = "Option::is_none")]
-		startup_probe_path: Option<String>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		liveness_probe_port: Option<i32>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		liveness_probe_path: Option<String>,
+		liveness_probe: Option<DeploymentProbe>,
 	},
 	Stop {},
 	Delete {},

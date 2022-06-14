@@ -4,6 +4,7 @@ use api_models::{
 	models::workspace::infrastructure::deployment::{
 		Deployment,
 		DeploymentMetrics,
+		DeploymentProbe,
 		DeploymentRegistry,
 		DeploymentRunningDetails,
 		EnvironmentVariableValue,
@@ -139,10 +140,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				deployment_running_details.startup_probe_port,
-				deployment_running_details.startup_probe_path.as_deref(),
-				deployment_running_details.liveness_probe_port,
-				deployment_running_details.liveness_probe_path.as_deref(),
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -164,10 +163,8 @@ pub async fn create_deployment_in_workspace(
 				deployment_running_details.deploy_on_push,
 				deployment_running_details.min_horizontal_scale,
 				deployment_running_details.max_horizontal_scale,
-				deployment_running_details.startup_probe_port,
-				deployment_running_details.startup_probe_path.as_deref(),
-				deployment_running_details.liveness_probe_port,
-				deployment_running_details.liveness_probe_path.as_deref(),
+				deployment_running_details.startup_probe.as_ref(),
+				deployment_running_details.liveness_probe.as_ref(),
 			)
 			.await?;
 		}
@@ -276,10 +273,8 @@ pub async fn update_deployment(
 	max_horizontal_scale: Option<u16>,
 	ports: Option<&BTreeMap<u16, ExposedPortType>>,
 	environment_variables: Option<&BTreeMap<String, EnvironmentVariableValue>>,
-	startup_probe_port: Option<i32>,
-	startup_probe_path: Option<&str>,
-	liveness_probe_port: Option<i32>,
-	liveness_probe_path: Option<&str>,
+	startup_probe: Option<&DeploymentProbe>,
+	liveness_probe: Option<&DeploymentProbe>,
 	config: &Settings,
 	request_id: &Uuid,
 ) -> Result<(), Error> {
@@ -322,10 +317,8 @@ pub async fn update_deployment(
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
-		startup_probe_port,
-		startup_probe_path,
-		liveness_probe_port,
-		liveness_probe_path,
+		startup_probe,
+		liveness_probe,
 	)
 	.await?;
 	db::end_deferred_constraints(connection).await?;
@@ -495,10 +488,14 @@ pub async fn get_full_deployment_config(
 			max_horizontal_scale,
 			ports,
 			environment_variables,
-			startup_probe_port,
-			startup_probe_path,
-			liveness_probe_port,
-			liveness_probe_path,
+			startup_probe: startup_probe_port
+				.map(|port| port as u16)
+				.zip(startup_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
+			liveness_probe: liveness_probe_port
+				.map(|port| port as u16)
+				.zip(liveness_probe_path)
+				.map(|(port, path)| DeploymentProbe { path, port }),
 		},
 	))
 }
