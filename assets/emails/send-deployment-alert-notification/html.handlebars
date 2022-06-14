@@ -9,7 +9,7 @@
     <center style="width:100%;table-layout:fixed;background-color:#0d0526;">
       <span style="max-width:600px;color:#ffffff">
         <table
-          style="margin:0 auto;width:100%;max-width:600px;border-spacing:0;font-family:sans-serif;"
+          style="margin:0 auto;width:100%;max-width:600px;border-spacing:0;font-family:sans-serif;background-color:#0d0526"
           align="center"
         >
           <tr>
@@ -34,56 +34,41 @@
             </td>
           </tr>
           <tr>
-            <td style="padding:0 20px;">
+            <td style="padding:10px 20px;color:#ffffff">
               An Event has taken place in your deployment:
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 20px;">
               <ul>
-                <li>workspace:
-                  {{workspace_name}}
-                </li>
-                <li>deployment:
-                  {{deployment_name}}
-                </li>
-                <li>message:
-                  {{message}}
-                </li>
+                <li>Workspace : {{workspace_name}}</li>
+                <li>Deployment : {{deployment_name}}</li>
+                <li>Message : {{message}}</li>
               </ul>
             </td>
           </tr>
           <tr>
-            <td style="padding:0 20px 20px 20px;">
-              to check out the logs for the deployment
-              <a
-                title="Mail to Patr support"
-                href="https://app.patr.cloud/deployment/{{deployment_id}}"
-                target="_blank"
-                style="color:#ffffff"
-              >click here</a>
+            <td style="padding:0 20px 10px 20px;color:#ffffff">
+              To check out the logs for the deployment
+              <a href="https://app.patr.cloud/deployment/{{deployment_id}}">
+                click here
+              </a>
             </td>
           </tr>
           <tr>
-            <td style="padding:0 20px;">
-              If you did not initiate email verification at Patr on this email
-              address, kindly delete this email and contact support at
+            <td style="padding:0 20px;color:#ffffff">
+              If you did not initiate this process, please contact support at
               <a
                 title="Mail to Patr support"
                 href="mailto:support@patr.cloud"
                 target="_blank"
-                style="color:#ffffff"
-              >support@patr.cloud</a> immediately.
+              >support@patr.cloud</a>
+              immediately.
             </td>
           </tr>
           <tr>
-            <td style="padding:10px 20px;">
+            <td style="padding:10px 20px;color:#ffffff">
               Join our
               <a
                 title="Join Patr Discord"
                 href="https://discord.com/invite/ZZqDTdGDZ3"
                 target="_blank"
-                style="color:#ffffff"
               >Discord Community</a>
               for the latest updates and chat with us here for instant technical
               support.
@@ -91,51 +76,53 @@
           </tr>
           <tr>
             <td align="center" style="padding: 10px 20px;">
-              <a
-                style="margin: 0 5px;"
-                href="https://www.linkedin.com/showcase/patr/"
-                target="_blank"
-              ><img
-                  width="26"
-                  src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/linkedin.png"
-                  alt="linked in"
-                /></a>
-              <a
-                style="margin: 0 5px;"
-                href="https://twitter.com/patrcloud"
-                target="_blank"
-              ><img
-                  width="26"
-                  src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/twitter.png"
-                  alt="twitter"
-                /></a>
-              <a
-                style="margin: 0 5px;"
-                href="https://www.instagram.com/patrcloud/"
-                target="_blank"
-              ><img
-                  width="26"
-                  src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/instagram.png"
-                  alt="instagram"
-                /></a>
-              <a
-                style="margin: 0 5px;"
-                href="mailto:hello@patr.cloud"
-                target="_blank"
-              ><img
-                  width="26"
-                  src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/mail.png"
-                  alt="mail"
-                /></a>
-              <a
-                style="margin: 0 5px;"
-                href="https://medium.com/patr-deployment-community"
-                target="_blank"
-              ><img
-                  width="26"
-                  src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/medium.png"
-                  alt="medium"
-                /></a>
+              <table>
+                <tr>
+                  <td style="padding: 0 5px;">
+                    <a
+                      href="https://www.linkedin.com/showcase/patr/"
+                      target="_blank"
+                    ><img
+                        width="26"
+                        src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/linkedin.png"
+                        alt="linked in"
+                      /></a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="https://twitter.com/patrcloud" target="_blank"><img
+                        width="26"
+                        src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/twitter.png"
+                        alt="twitter"
+                      /></a></td>
+                  <td style="padding: 0 5px;">
+                    <a
+                      href="https://www.instagram.com/patrcloud/"
+                      target="_blank"
+                    ><img
+                        width="26"
+                        src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/instagram.png"
+                        alt="instagram"
+                      /></a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a href="mailto:hello@patr.cloud" target="_blank"><img
+                        width="26"
+                        src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/mail.png"
+                        alt="mail"
+                      /></a>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <a
+                      href="https://medium.com/patr-deployment-community"
+                      target="_blank"
+                    ><img
+                        width="26"
+                        src="https://262a454d609849758bd4dd7dd7a24fcc.patr.cloud/medium.png"
+                        alt="medium"
+                      /></a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
