@@ -19,11 +19,12 @@ use kube::{
 	Api,
 	Config,
 };
+use s3::{creds::Credentials, Bucket, Region};
 use sqlx::Row;
 
 use crate::{
 	migrate_query as query,
-	utils::{settings::Settings, Error},
+	utils::{get_current_time_millis, settings::Settings, Error},
 	Database,
 };
 

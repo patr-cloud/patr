@@ -284,11 +284,14 @@ pub async fn get_static_site_deploy_history(
 pub async fn get_static_site_deploy_history_by_upload_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	upload_id: &Uuid,
-) -> Result<Option<Uuid>, sqlx::Error> {
-	query!(
+) -> Result<Option<StaticSiteDeployHistory>, sqlx::Error> {
+	query_as!(
+		StaticSiteDeployHistory,
 		r#"
 		SELECT
-			upload_id
+			upload_id as "id: _",
+			message,
+			created
 		FROM
 			static_site_deploy_history
 		WHERE
@@ -296,7 +299,31 @@ pub async fn get_static_site_deploy_history_by_upload_id(
 		"#,
 		upload_id as _,
 	)
-	.fetch_one(&mut *connection)
+	.fetch_optional(&mut *connection)
 	.await
-	.map(|row| row.upload_id)
+}
+
+pub async fn get_latest_upload_for_static_site(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	static_site_id: &Uuid,
+) -> Result<Option<StaticSiteDeployHistory>, sqlx::Error> {
+	query_as!(
+		StaticSiteDeployHistory,
+		r#"
+		SELECT
+			upload_id as "id: _",
+			message,
+			created
+		FROM
+			static_site_deploy_history
+		WHERE
+			static_site_id = $1
+		ORDER BY
+			created DESC
+		LIMIT 1;
+		"#,
+		static_site_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
 }

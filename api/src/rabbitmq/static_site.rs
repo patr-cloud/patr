@@ -127,6 +127,29 @@ pub(super) async fn process_request(
 			)
 			.await
 		}
+		StaticSiteRequestData::Revert {
+			workspace_id,
+			static_site_id,
+			upload_id,
+			static_site_details,
+			request_id,
+		} => {
+			log::trace!(
+				"request_id: {} - Received a revert request",
+				request_id
+			);
+			update_static_site_and_db_status(
+				connection,
+				&workspace_id,
+				&static_site_id,
+				&upload_id,
+				None,
+				&static_site_details,
+				config,
+				&request_id,
+			)
+			.await
+		}
 	}
 }
 

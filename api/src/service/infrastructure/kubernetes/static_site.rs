@@ -115,7 +115,7 @@ pub async fn update_kubernetes_static_site(
 		config.kubernetes.cert_issuer_dns.clone(),
 	);
 	let ingress_rule = vec![IngressRule {
-		host: Some(format!("{}.patr.cloud", static_site_id)),
+		host: Some(format!("{}-{}.patr.cloud", upload_id, static_site_id)),
 		http: Some(HTTPIngressRuleValue {
 			paths: vec![HTTPIngressPath {
 				backend: IngressBackend {

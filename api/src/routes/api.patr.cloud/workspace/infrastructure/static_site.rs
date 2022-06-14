@@ -10,6 +10,7 @@ use api_models::{
 			ListLinkedURLsResponse,
 			ListStaticSitesDeployHistoryResponse,
 			ListStaticSitesResponse,
+			RevertStaticSiteResponse,
 			StartStaticSiteResponse,
 			StaticSite,
 			StaticSiteDeployHistory,
@@ -242,6 +243,48 @@ pub fn create_sub_app(
 				}),
 			),
 			EveMiddleware::CustomFunction(pin_fn!(update_static_site)),
+		],
+	);
+
+	// Revert static site
+	app.post(
+		"/:staticSiteId/revert/:uploadId",
+		[
+			EveMiddleware::ResourceTokenAuthenticator(
+				permissions::workspace::infrastructure::static_site::EDIT,
+				closure_as_pinned_box!(|mut context| {
+					let workspace_id =
+						context.get_param(request_keys::WORKSPACE_ID).unwrap();
+					let workspace_id = Uuid::parse_str(workspace_id)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let static_site_id_string = context
+						.get_param(request_keys::STATIC_SITE_ID)
+						.unwrap();
+					let static_site_id = Uuid::parse_str(static_site_id_string)
+						.status(400)
+						.body(error!(WRONG_PARAMETERS).to_string())?;
+
+					let resource = db::get_resource_by_id(
+						context.get_database_connection(),
+						&static_site_id,
+					)
+					.await?
+					.filter(|value| value.owner_id == workspace_id);
+
+					if resource.is_none() {
+						context
+							.status(404)
+							.json(error!(RESOURCE_DOES_NOT_EXIST));
+					}
+
+					Ok((context, resource))
+				}),
+			),
+			EveMiddleware::CustomFunction(pin_fn!(
+				revert_static_site_deployment
+			)),
 		],
 	);
 
@@ -652,7 +695,7 @@ async fn create_static_site_deployment(
 /// This function is used to create a new static site
 /// required inputs
 /// auth token in the header
-/// workspace_id,static_site_id and upload commit in parameter
+/// workspace_id,static_site_id and upload_id in parameter
 /// # Arguments
 /// * `context` - an object of [`EveContext`] containing the request, response,
 ///   database connection, body,
@@ -675,6 +718,7 @@ async fn revert_static_site_deployment(
 	mut context: EveContext,
 	_: NextHandler<EveContext, ErrorData>,
 ) -> Result<EveContext, Error> {
+	let request_id = Uuid::new_v4();
 	let static_site_id = Uuid::parse_str(
 		context.get_param(request_keys::STATIC_SITE_ID).unwrap(),
 	)
@@ -682,6 +726,15 @@ async fn revert_static_site_deployment(
 	let upload_id =
 		Uuid::parse_str(context.get_param(request_keys::UPLOAD_ID).unwrap())
 			.unwrap();
+
+	// Check if static site exists
+	let static_site = db::get_static_site_by_id(
+		context.get_database_connection(),
+		&static_site_id,
+	)
+	.await?
+	.status(404)
+	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
 	// check if upload_id is present in the deploy history
 	db::get_static_site_deploy_history_by_upload_id(
@@ -692,8 +745,20 @@ async fn revert_static_site_deployment(
 	.status(404)
 	.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	// queue revert static site
+	log::trace!("request_id: {} - Reverting static site", request_id);
 
+	// queue revert static site
+	let config = context.get_state().config.clone();
+	service::queue_revert_static_site(
+		&static_site.workspace_id,
+		&static_site_id,
+		&upload_id,
+		&config,
+		&request_id,
+	)
+	.await?;
+
+	context.success(RevertStaticSiteResponse {});
 	Ok(context)
 }
 

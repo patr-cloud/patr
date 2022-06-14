@@ -117,6 +117,13 @@ pub enum StaticSiteRequestData {
 		static_site_id: Uuid,
 		request_id: Uuid,
 	},
+	Revert {
+		workspace_id: Uuid,
+		static_site_id: Uuid,
+		upload_id: Uuid,
+		static_site_details: StaticSiteDetails,
+		request_id: Uuid,
+	},
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

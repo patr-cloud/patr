@@ -312,7 +312,6 @@ pub async fn queue_update_deployment_image(
 	.await
 }
 
-
 pub async fn queue_process_payment(
 	month: u32,
 	year: i32,
@@ -323,29 +322,6 @@ pub async fn queue_process_payment(
 		&RequestMessage::Workspace(WorkspaceRequestData::ProcessWorkspaces {
 			month,
 			year,
-			request_id: request_id.clone(),
-		}),
-		config,
-		&request_id,
-	)
-	.await
-}
-
-pub async fn queue_create_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	upload_id: &Uuid,
-	file: String,
-	config: &Settings,
-) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::Create {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			upload_id: upload_id.clone(),
-			file,
-			static_site_details: StaticSiteDetails {},
 			request_id: request_id.clone(),
 		}),
 		config,
@@ -368,30 +344,6 @@ pub async fn queue_confirm_payment_intent(
 				request_id: request_id.clone(),
 			},
 		),
-		config,
-		&request_id,
-	)
-	.await
-}
-
-pub async fn queue_upload_static_site(
-	workspace_id: &Uuid,
-	static_site_id: &Uuid,
-	upload_id: &Uuid,
-	file: String,
-	config: &Settings,
-	payment_intent_id: String,
-	workspace_id: &Uuid,
-) -> Result<(), Error> {
-	let request_id = Uuid::new_v4();
-	send_message_to_rabbit_mq(
-		&RequestMessage::StaticSite(StaticSiteRequestData::UploadSite {
-			workspace_id: workspace_id.clone(),
-			static_site_id: static_site_id.clone(),
-			upload_id: upload_id.clone(),
-			file,
-			request_id: request_id.clone(),
-		}),
 		config,
 		&request_id,
 	)

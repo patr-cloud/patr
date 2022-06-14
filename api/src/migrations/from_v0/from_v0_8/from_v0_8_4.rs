@@ -1,3 +1,5 @@
+use api_models::utils::Uuid;
+
 use crate::{
 	migrate_query as query,
 	utils::{settings::Settings, Error},

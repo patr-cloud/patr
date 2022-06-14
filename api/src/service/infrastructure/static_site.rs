@@ -201,7 +201,7 @@ pub async fn update_static_site(
 				.unwrap()
 				.get(rbac::resource_types::STATIC_SITE_UPLOAD)
 				.unwrap(),
-			&workspace_id,
+			workspace_id,
 			get_current_time_millis(),
 		)
 		.await?;
