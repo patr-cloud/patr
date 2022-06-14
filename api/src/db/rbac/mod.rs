@@ -379,6 +379,21 @@ pub async fn get_all_workspace_role_permissions_for_user(
 	for workspace_role in workspace_roles {
 		let workspace_id = workspace_role.workspace_id;
 
+		let blocked_resources = query!(
+			r#"
+			SELECT
+				permission_id as "permission_id: Uuid",
+				resource_id as "resource_id: Uuid"
+			FROM
+				role_block_permissions_resource
+			WHERE
+				role_id = $1;
+			"#,
+			workspace_role.role_id as _
+		)
+		.fetch_all(&mut *connection)
+		.await?;
+
 		let resources = query!(
 			r#"
 			SELECT
@@ -409,34 +424,48 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		.fetch_all(&mut *connection)
 		.await?;
 
-		if let Some(permission) = workspaces.get_mut(&workspace_id) {
+		if let Some(workspace_permissions) = workspaces.get_mut(&workspace_id) {
+			for blocked_resource in blocked_resources {
+				let permission_id = blocked_resource.permission_id;
+				if let Some(permissions) = workspace_permissions
+					.blocked_resources
+					.get_mut(&blocked_resource.resource_id)
+				{
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
+					}
+				} else {
+					workspace_permissions.blocked_resources.insert(
+						blocked_resource.resource_id,
+						vec![permission_id],
+					);
+				}
+			}
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) = permission
-					.resource_permissions
-					.get_mut(&resource.resource_id)
+				if let Some(permissions) =
+					workspace_permission.allowed_resource_permissions.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_permissions.insert(
-						resource.resource_id,
-						BTreeSet::from([permission_id]),
-					);
+					workspace_permission
+						.allowed_resource_permissions
+						.insert(resource.resource_id, vec![permission_id]);
 				}
 			}
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
-				if let Some(permissions) = permission
-					.resource_type_permissions
+				if let Some(permissions) = workspace_permissions
+					.allowed_resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_type_permissions.insert(
+					workspace_permissions.allowed_resource_type_permissions.insert(
 						resource_type.resource_type_id,
 						BTreeSet::from([permission_id]),
 					);
@@ -445,20 +474,36 @@ pub async fn get_all_workspace_role_permissions_for_user(
 		} else {
 			let mut permission = WorkspacePermission {
 				is_super_admin: false,
-				resource_permissions: BTreeMap::new(),
-				resource_type_permissions: BTreeMap::new(),
+				blocked_resources: HashMap::new(),
+				allowed_resource_permissions: BTreeMap::new(),
+				allowed_resource_type_permissions: BTreeMap::new(),
 			};
+			for blocked_resource in blocked_resources {
+				let permission_id = blocked_resource.permission_id;
+				if let Some(permissions) = permission
+					.blocked_resources
+					.get_mut(&blocked_resource.resource_id)
+				{
+					if !permissions.contains(&permission_id) {
+						permissions.push(permission_id);
+					}
+				} else {
+					permission.blocked_resources.insert(
+						blocked_resource.resource_id,
+						vec![permission_id],
+					);
+				}
+			}
 			for resource in resources {
 				let permission_id = resource.permission_id;
-				if let Some(permissions) = permission
-					.resource_permissions
-					.get_mut(&resource.resource_id)
+				if let Some(permissions) =
+					permission.allowed_resource_permissions.get_mut(&resource.resource_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_permissions.insert(
+					permission.allowed_resource_permissions.insert(
 						resource.resource_id,
 						BTreeSet::from([permission_id]),
 					);
@@ -467,14 +512,14 @@ pub async fn get_all_workspace_role_permissions_for_user(
 			for resource_type in resource_types {
 				let permission_id = resource_type.permission_id;
 				if let Some(permissions) = permission
-					.resource_type_permissions
+					.allowed_resource_type_permissions
 					.get_mut(&resource_type.resource_type_id)
 				{
 					if !permissions.contains(&permission_id) {
 						permissions.insert(permission_id);
 					}
 				} else {
-					permission.resource_type_permissions.insert(
+					permission.allowed_resource_type_permissions.insert(
 						resource_type.resource_type_id,
 						BTreeSet::from([permission_id]),
 					);
@@ -551,8 +596,9 @@ pub async fn get_all_workspace_role_permissions_for_user(
 				workspace_id,
 				WorkspacePermission {
 					is_super_admin: true,
-					resource_permissions: BTreeMap::new(),
-					resource_type_permissions: BTreeMap::new(),
+					blocked_resources: HashMap::new(),
+					allowed_resource_permissions: BTreeMap::new(),
+					allowed_resource_type_permissions: BTreeMap::new(),
 				},
 			);
 		}

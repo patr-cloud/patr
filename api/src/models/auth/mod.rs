@@ -95,25 +95,44 @@ impl UserAuthenticationData {
 		resource_type_id: &Uuid,
 		permission_required: &str,
 	) -> bool {
-		let workspace_permissions = self.workspace_permissions();
+		let god_user_id = GOD_USER_ID.get().unwrap();
+		if god_user_id == self.user_id() {
+			// For god user allow all operations on all workspace
+			return true;
+		}
 
 		let workspace_permission =
-			if let Some(permission) = workspace_permissions.get(workspace_id) {
+			if let Some(permission) = self.workspace_permissions().get(workspace_id) {
 				permission
 			} else {
 				return false;
 			};
 
+		if workspace_permission.is_super_admin {
+			// For super admin allow all operations on given workspace
+			return true;
+		}
+
+		let is_permission_blocked = workspace_permission
+			.blocked_resources
+			.get(&resource.id)
+			.map_or(false, |blocked_permissions| {
+				blocked_permissions.contains(
+					rbac::PERMISSIONS
+						.get()
+						.unwrap()
+						.get(&(*permission_required).to_string())
+						.unwrap(),
+				)
+			});
+		if is_permission_blocked {
+			return false;
+		}
+
 		let allowed = {
-			// Check if super admin or god is permitted
-			workspace_permission.is_super_admin || {
-				let god_user_id = GOD_USER_ID.get().unwrap();
-				god_user_id == self.user_id()
-			}
-		} || {
 			// Check if the resource type is allowed
 			if let Some(permissions) = workspace_permission
-				.resource_type_permissions
+				.allowed_resource_type_permissions
 				.get(resource_type_id)
 			{
 				permissions.contains(
@@ -129,7 +148,7 @@ impl UserAuthenticationData {
 		} || {
 			// Check if that specific resource is allowed
 			if let Some(permissions) =
-				workspace_permission.resource_permissions.get(resource_id)
+				workspace_permission.allowed_resource_permissions.get(resource_id)
 			{
 				permissions.contains(
 					rbac::PERMISSIONS
