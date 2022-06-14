@@ -57,8 +57,47 @@ pub struct BillableServiceUsage {
 	pub resource_id: Uuid,
 	pub date: DateTime<Utc>,
 	pub active: bool,
-	pub deployment_machine_type_id: Option<Uuid>,
+	pub deployment_machine_type: Option<Uuid>,
 	pub resource_type: String,
+}
+
+pub struct PaymentMethod {
+	pub id: String,
+	pub method_type: PaymentMethodType,
+	pub workspace_id: Uuid,
+	pub status: PaymentStatus,
+}
+
+pub struct ActiveCoupon {
+	pub coupon_id: Uuid,
+	pub workspace_id: Uuid,
+	pub remaining_usage: i32,
+}
+pub struct Coupon {
+	pub id: Uuid,
+	pub name: String,
+	pub description: Option<String>,
+	pub credits: f64,
+	pub valid_from: DateTime<Utc>,
+	pub valid_till: DateTime<Utc>,
+	pub num_usage: i32,
+}
+
+pub struct ProductLimit {
+	pub id: Uuid,
+	pub product_info_id: Uuid,
+	pub max_limit: i32,
+	pub workspace_id: Uuid,
+}
+
+pub struct ResourceLimit {
+	pub id: Uuid,
+	pub max_resources: i32,
+	pub workspace_id: Uuid,
+}
+
+pub struct Credits {
+	pub credits: f64,
 }
 
 pub async fn initialize_billing_pre(
@@ -140,12 +179,9 @@ pub async fn initialize_billing_pre(
 			description TEXT,
 			plan_type PLAN_TYPE NOT NULL,
 			product_info_id UUID NOT NULL,
-			price DECIMAL(10, 2) NOT NULL,
+			price DECIMAL(15, 6) NOT NULL,
 			quantity INTEGER,
-			workspace_id UUID NOT NULL,
-			deployment_machine_type_id UUID
-				CONSTRAINT plans_uq_deployment_machine_type_id
-					UNIQUE
+			workspace_id UUID NOT NULL
 		);
 	"#
 	)
@@ -158,10 +194,10 @@ pub async fn initialize_billing_pre(
 			id UUID CONSTRAINT billable_service_pk PRIMARY KEY,
 			plan_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			price DECIMAL(10, 2) NOT NULL,
+			price DECIMAL(15, 6) NOT NULL,
 			quantity INTEGER,
 			product_info_id UUID NOT NULL,
-			total_price DECIMAL(10, 2) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED,
+			total_price DECIMAL(15, 6) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED,
 			resource_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
 			active BOOLEAN NOT NULL
@@ -179,8 +215,8 @@ pub async fn initialize_billing_pre(
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			workspace_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
-			amount DECIMAL(10, 2) NOT NULL,
-			quantity INTEGER NOT NULL,
+			amount DECIMAL(15, 6) NOT NULL,
+			quantity INTEGER,
 			coupon_id UUID,
 			plan_id UUID,
 			debit bool NOT NULL
@@ -194,11 +230,12 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS coupons(
 			id UUID CONSTRAINT coupons_pk PRIMARY KEY,
-			name TEXT NOT NULL,
+			name TEXT NOT NULL UNIQUE,
 			description TEXT,
-			credits DECIMAL(10, 2) NOT NULL,
+			credits DECIMAL(15, 6) NOT NULL,
 			valid_from TIMESTAMPTZ NOT NULL,
-			valid_till TIMESTAMPTZ NOT NULL
+			valid_till TIMESTAMPTZ NOT NULL,
+			num_usage INTEGER NOT NULL	
 		);
 	"#
 	)
@@ -209,7 +246,8 @@ pub async fn initialize_billing_pre(
 		r#"
 		CREATE TABLE IF NOT EXISTS resource_limits(
 			id UUID CONSTRAINT resource_limits_pk PRIMARY KEY,
-			workspace_id UUID NOT NULL,
+			workspace_id UUID NOT NULL
+				CONSTRAINT resource_limits_uq_workspace_id UNIQUE,
 			max_resources INTEGER NOT NULL
 		);
 	"#
@@ -224,6 +262,7 @@ pub async fn initialize_billing_pre(
 			product_info_id UUID NOT NULL,
 			max_limit INTEGER NOT NULL,
 			workspace_id UUID NOT NULL
+				CONSTRAINT product_limits_uq_workspace_id UNIQUE
 		);
 	"#
 	)
@@ -237,6 +276,19 @@ pub async fn initialize_billing_pre(
 			method_type PAYMENT_METHOD_TYPE NOT NULL,
 			workspace_id UUID NOT NULL,
 			status PAYMENT_STATUS NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE IF NOT EXISTS active_coupons(
+			coupon_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			remaining_usage INTEGER NOT NULL,
+			CONSTRAINT active_coupons_pk PRIMARY KEY (coupon_id, workspace_id)
 		);
 		"#
 	)
@@ -334,16 +386,6 @@ pub async fn initialize_billing_post(
 	query!(
 		r#"
 		ALTER TABLE transactions
-		ADD CONSTRAINT transactions_fk_billable_service_id
-		FOREIGN KEY(billable_service_id) REFERENCES billable_service(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE transactions
 		ADD CONSTRAINT transactions_fk_coupon_id
 		FOREIGN KEY(coupon_id) REFERENCES coupons(id);
 		"#
@@ -394,16 +436,39 @@ pub async fn initialize_billing_post(
 
 	query!(
 		r#"
+		ALTER TABLE active_coupons
+		ADD CONSTRAINT active_coupons_fk_id
+		FOREIGN KEY(coupon_id) REFERENCES coupons(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE active_coupons
+		ADD CONSTRAINT active_coupons_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE MATERIALIZED VIEW credits
 		AS
-			SELECT SUM(
-					CASE debit
-					WHEN 'true' THEN 
-						-amount
-					ELSE 
-						amount
-					END
-				) AS credits
+			SELECT COALESCE(
+					SUM(
+						CASE debit
+						WHEN 'true' THEN 
+							-amount
+						ELSE 
+							amount
+						END
+					)
+				) AS credits,
+				workspace_id
 			FROM transactions
 			WHERE
 				product_info_id IS NULL AND
@@ -417,16 +482,53 @@ pub async fn initialize_billing_post(
 	.execute(&mut *connection)
 	.await?;
 
-	initialize_product_table(connection).await?;
+	let deployment_product_id = generate_new_product_id(connection).await?;
+	create_new_product(connection, &deployment_product_id, "deployment", None)
+		.await?;
+
+	let static_site_product_id = generate_new_product_id(connection).await?;
+	create_new_product(
+		connection,
+		&static_site_product_id,
+		"static-site",
+		None,
+	)
+	.await?;
+
+	let managed_database_product_id =
+		generate_new_product_id(connection).await?;
+	create_new_product(
+		connection,
+		&managed_database_product_id,
+		"managed-database",
+		None,
+	)
+	.await?;
+
+	let managed_url_product_id = generate_new_product_id(connection).await?;
+	create_new_product(
+		connection,
+		&managed_url_product_id,
+		"managed-url",
+		None,
+	)
+	.await?;
+
+	let secret_product_id = generate_new_product_id(connection).await?;
+	create_new_product(connection, &secret_product_id, "secret", None).await?;
+
+	let secret_product_id = generate_new_product_id(connection).await?;
+	create_new_product(connection, &secret_product_id, "domain", None).await?;
 
 	Ok(())
 }
 
-async fn initialize_product_table(
+pub async fn create_new_product(
 	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	name: &str,
+	description: Option<&str>,
 ) -> Result<(), sqlx::Error> {
-	let product_id = generate_new_product_id(connection).await?;
-
 	query!(
 		r#"
 		INSERT INTO 
@@ -437,74 +539,13 @@ async fn initialize_product_table(
 			)
 		VALUES(
 			$1,
-			'deployment',
-			NULL
+			$2,
+			$3
 		);
 		"#,
-		product_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	let product_id = generate_new_product_id(connection).await?;
-
-	query!(
-		r#"
-		INSERT INTO 
-			product_info(
-				id, 
-				name, 
-				description
-			)
-		VALUES(
-			$1,
-			'static_site',
-			NULL
-		);
-		"#,
-		product_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	let product_id = generate_new_product_id(connection).await?;
-
-	query!(
-		r#"
-		INSERT INTO 
-			product_info(
-				id, 
-				name, 
-				description
-			)
-		VALUES(
-			$1,
-			'managed_database',
-			NULL
-		);
-		"#,
-		product_id as _
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	let product_id = generate_new_product_id(connection).await?;
-
-	query!(
-		r#"
-		INSERT INTO 
-			product_info(
-				id, 
-				name, 
-				description
-			)
-		VALUES(
-			$1,
-			'managed_url',
-			NULL
-		);
-		"#,
-		product_id as _
+		id as _,
+		name,
+		description
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -540,6 +581,55 @@ pub async fn create_resource_limit(
 	.await?;
 
 	Ok(())
+}
+
+pub async fn create_new_plan(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	name: &str,
+	description: Option<&str>,
+	plan_type: &PlanType,
+	product_info_id: &Uuid,
+	price: f64,
+	quantity: Option<i32>,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO 
+			plans(
+				id, 
+				name, 
+				description,
+				plan_type,
+				product_info_id,
+				price,
+				quantity,
+				workspace_id
+			)
+		VALUES(
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8
+		);
+		"#,
+		id as _,
+		name,
+		description as _,
+		plan_type as _,
+		product_info_id as _,
+		price as _,
+		quantity as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
 }
 
 pub async fn get_product_info_by_name(
@@ -653,33 +743,6 @@ pub async fn create_billable_service(
 	Ok(())
 }
 
-pub async fn get_plan_by_deployment_machine_type(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	machine_type_id: &Uuid,
-) -> Result<Option<Plans>, sqlx::Error> {
-	query_as!(
-		Plans,
-		r#"
-		SELECT
-			id as "id!: _",
-			name,
-			description,
-			plan_type as "plan_type!: _",
-			product_info_id as "product_info_id!: _",
-			price as "price!: _",
-			quantity,
-			workspace_id as "workspace_id!: _"
-		FROM
-			plans
-		WHERE
-			deployment_machine_type_id = $1;
-		"#,
-		machine_type_id as _
-	)
-	.fetch_optional(&mut *connection)
-	.await
-}
-
 pub async fn get_billable_services(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
@@ -700,14 +763,14 @@ pub async fn get_billable_services(
 			billable_service.resource_id as "resource_id!: _",
 			billable_service.date as "date!: _",
 			billable_service.active,
-			plans.deployment_machine_type_id as "deployment_machine_type_id: _",
+			deployment.machine_type as "deployment_machine_type: _",
 			resource_type.name as "resource_type!: _"
 		FROM
 			billable_service
-		INNER JOIN 
-			plans
+		INNER JOIN
+			deployment
 		ON
-			billable_service.plan_id = plans.id
+			billable_service.resource_id = deployment.id
 		INNER JOIN
 			resource
 		ON
@@ -762,30 +825,37 @@ pub async fn add_payment_method_info(
 	Ok(())
 }
 
-/*
-
-id UUID CONSTRAINT transactions_pk PRIMARY KEY,
-			billable_service_id UUID,
-			product_info_id UUID NOT NULL,
-			transaction_type TRANSACTION_TYPE NOT NULL,
-			plan_id UUID,
-			amount DECIMAL(10, 2) NOT NULL,
-			quantity INTEGER NOT NULL,
-			workspace_id UUID NOT NULL,
-			date TIMESTAMPTZ NOT NULL,
-			coupon_id UUID,
-			debit bool NOT NULL
-
-*/
+pub async fn get_payment_methods_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<PaymentMethod>, sqlx::Error> {
+	query_as!(
+		PaymentMethod,
+		r#"
+		SELECT
+			id as "id!: _",
+			method_type as "method_type!: _",
+			workspace_id as "workspace_id!: _",
+			status as "status!: _"
+		FROM
+			payment_method
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
 
 pub async fn create_transaction(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	id: &Uuid,
 	product_info_id: &Uuid,
-	transaction_type: TransactionType,
+	transaction_type: &TransactionType,
 	plan_id: Option<&Uuid>,
 	amount: f64,
-	quantity: i32,
+	quantity: Option<i32>,
 	workspace_id: &Uuid,
 	date: &DateTime<Utc>,
 	coupon_id: Option<&Uuid>,
@@ -971,7 +1041,7 @@ pub async fn generate_new_transaction_id(
 	}
 }
 
-async fn generate_new_product_limit_id(
+pub async fn generate_new_product_limit_id(
 	connection: &mut <Database as sqlx::Database>::Connection,
 ) -> Result<Uuid, sqlx::Error> {
 	loop {
@@ -996,4 +1066,237 @@ async fn generate_new_product_limit_id(
 			break Ok(uuid);
 		}
 	}
+}
+
+pub async fn update_product_limits(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	product_info_id: &Uuid,
+	limit: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			product_limits
+		SET
+			max_limit = $1
+		WHERE
+			product_info_id = $2 AND
+			workspace_id = $3;
+		"#,
+		limit,
+		product_info_id as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_payment_method_info(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	payment_method_id: &str,
+) -> Result<Option<PaymentMethod>, sqlx::Error> {
+	query_as!(
+		PaymentMethod,
+		r#"
+		SELECT
+			id as "id!: _",
+			method_type as "method_type!: _",
+			workspace_id as "workspace_id!: _",
+			status as "status!: _"
+		FROM
+			payment_method
+		WHERE
+			id = $1;
+		"#,
+		payment_method_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn delete_payment_method(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	payment_method_id: &str,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			payment_method
+		WHERE
+			id = $1;
+		"#,
+		payment_method_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn add_coupon_to_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+	coupon_id: &Uuid,
+	remaining_usage: &i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		INSERT INTO
+			active_coupons(
+				workspace_id, 
+				coupon_id, 
+				remaining_usage
+			)
+		VALUES
+			($1, $2, $3);
+			"#,
+		workspace_id as _,
+		coupon_id as _,
+		remaining_usage as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_active_coupon_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	coupon_id: &Uuid,
+	workspace_id: &Uuid,
+) -> Result<Option<ActiveCoupon>, sqlx::Error> {
+	query_as!(
+		ActiveCoupon,
+		r#"
+		SELECT
+			coupon_id as "coupon_id!: _",
+			workspace_id as "workspace_id!: _",
+			remaining_usage as "remaining_usage!: _"
+		FROM
+			active_coupons
+		WHERE
+			coupon_id = $1 AND
+			workspace_id = $2;
+			"#,
+		coupon_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn update_active_coupon_usage(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+	workspace_id: &Uuid,
+	num_usage: i32,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			active_coupons
+		SET
+			remaining_usage = $1
+		WHERE
+			coupon_id = $2 AND
+			workspace_id = $3;
+		"#,
+		num_usage as _,
+		id as _,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_coupon_by_name(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	name: &str,
+) -> Result<Option<Coupon>, sqlx::Error> {
+	query_as!(
+		Coupon,
+		r#"
+		SELECT
+			id as "id!: _",
+			name,
+			description,
+			credits as "credits!: _",
+			valid_from as "valid_from!: _",
+			valid_till as "valid_till!: _",
+			num_usage as "num_usage!: _"
+		FROM
+			coupons
+		WHERE
+			name = $1;
+		"#,
+		name as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_resource_limit(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Option<ResourceLimit>, sqlx::Error> {
+	query_as!(
+		ResourceLimit,
+		r#"
+		SELECT
+			id as "id!: _",
+			workspace_id as "workspace_id!: _",
+			max_resources as "max_resources!: _"
+		FROM
+			resource_limits
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_product_limit(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Option<ProductLimit>, sqlx::Error> {
+	query_as!(
+		ProductLimit,
+		r#"
+		SELECT
+			id as "id!: _",
+			product_info_id as "product_info_id!: _",
+			workspace_id as "workspace_id!: _",
+			max_limit as "max_limit!: _"
+		FROM
+			product_limits
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_credit_balance(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Credits, sqlx::Error> {
+	query_as!(
+		Credits,
+		r#"
+		SELECT
+			credits as "credits!: _"
+		FROM
+			credits
+		WHERE
+			workspace_id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut *connection)
+	.await
 }

@@ -1,11 +1,11 @@
-use api_models::utils::Uuid;
+use api_models::{models::workspace::billing::StripeCustomer, utils::Uuid};
 use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
 	db,
 	error,
-	models::{rbac, StripeCustomer},
+	models::rbac,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -129,26 +129,11 @@ pub async fn create_workspace(
 	)
 	.await?;
 
-	let user = db::get_user_by_user_id(connection, super_admin_id)
-		.await?
-		.status(500)?;
-
-	super::create_chargebee_user(
-		&resource_id,
-		&user.first_name,
-		&user.last_name,
-		config,
-	)
-	.await?;
-
 	// creating initial resourc limits for the user
-	create_resource_and_product_limits_for_workspace(
-		connection,
-		&resource_id,
-		&super_admin_id,
-		config,
-	)
-	.await?;
+	create_resource_and_product_limits_for_workspace(connection, &resource_id)
+		.await?;
+
+	super::initialize_plans_for_workspace(connection, &resource_id).await?;
 
 	Ok(resource_id)
 }
@@ -169,9 +154,8 @@ pub fn get_personal_workspace_name(super_admin_id: &Uuid) -> String {
 async fn create_resource_and_product_limits_for_workspace(
 	connection: &mut <Database as sqlx::Database>::Connection,
 	workspace_id: &Uuid,
-	super_admin_id: &Uuid,
-	config: &Settings,
 ) -> Result<(), Error> {
+	log::trace!("Creating initial resource and product limits for workspace");
 	// temporarily hardcoding the limits for the workspace
 	let resource_limit_id =
 		db::generate_new_resource_limit_id(connection).await?;
@@ -183,7 +167,7 @@ async fn create_resource_and_product_limits_for_workspace(
 	)
 	.await?;
 
-	let deployment_product_id =
+	let deployment_product =
 		db::get_product_info_by_name(connection, "deployment")
 			.await?
 			.status(500)?;
@@ -191,12 +175,12 @@ async fn create_resource_and_product_limits_for_workspace(
 	db::create_product_limit(
 		connection,
 		&workspace_id,
-		&deployment_product_id.id,
-		5,
+		&deployment_product.id,
+		1,
 	)
 	.await?;
 
-	let static_site_product_id =
+	let static_site_product =
 		db::get_product_info_by_name(connection, "static-site")
 			.await?
 			.status(500)?;
@@ -204,12 +188,12 @@ async fn create_resource_and_product_limits_for_workspace(
 	db::create_product_limit(
 		connection,
 		&workspace_id,
-		&static_site_product_id.id,
+		&static_site_product.id,
 		5,
 	)
 	.await?;
 
-	let managed_database_product_id =
+	let managed_database_product =
 		db::get_product_info_by_name(connection, "managed-database")
 			.await?
 			.status(500)?;
@@ -217,12 +201,12 @@ async fn create_resource_and_product_limits_for_workspace(
 	db::create_product_limit(
 		connection,
 		&workspace_id,
-		&managed_database_product_id.id,
-		5,
+		&managed_database_product.id,
+		0,
 	)
 	.await?;
 
-	let managed_url_product_id =
+	let managed_url_product =
 		db::get_product_info_by_name(connection, "managed-url")
 			.await?
 			.status(500)?;
@@ -230,10 +214,24 @@ async fn create_resource_and_product_limits_for_workspace(
 	db::create_product_limit(
 		connection,
 		&workspace_id,
-		&managed_url_product_id.id,
-		5,
+		&managed_url_product.id,
+		10,
 	)
 	.await?;
+
+	let secret_product = db::get_product_info_by_name(connection, "secret")
+		.await?
+		.status(500)?;
+
+	db::create_product_limit(connection, &workspace_id, &secret_product.id, 5)
+		.await?;
+
+	let domain_product = db::get_product_info_by_name(connection, "domain")
+		.await?
+		.status(500)?;
+
+	db::create_product_limit(connection, &workspace_id, &domain_product.id, 1)
+		.await?;
 
 	Ok(())
 }

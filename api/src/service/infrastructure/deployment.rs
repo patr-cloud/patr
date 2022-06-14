@@ -21,10 +21,10 @@ use crate::{
 	db,
 	error,
 	models::{
-		deployment::{Logs, PrometheusResponse, Subscription},
+		deployment::{Logs, PrometheusResponse},
 		rbac,
 	},
-	service::infrastructure::kubernetes,
+	service::billing,
 	utils::{get_current_time_millis, settings::Settings, validator, Error},
 	Database,
 };
@@ -94,6 +94,24 @@ pub async fn create_deployment_in_workspace(
 		Error::as_result()
 			.status(200)
 			.body(error!(RESOURCE_EXISTS).to_string())?;
+	}
+
+	// check if the resource limit is reached
+	log::trace!(
+		"request_id: {} - Checking if the resource limit is reached",
+		request_id
+	);
+
+	if billing::resource_limit_crossed(connection, workspace_id).await? {
+		return Err(Error::empty()
+			.status(200)
+			.body(error!(RESOURCE_LIMIT_REACHED).to_string()));
+	}
+
+	if billing::deployment_limit_crossed(connection, workspace_id).await? {
+		return Err(Error::empty()
+			.status(200)
+			.body(error!(PRODUCT_LIMIT_CROSSED).to_string()));
 	}
 
 	log::trace!("request_id: {} - Generating new resource id", request_id);
@@ -746,150 +764,6 @@ pub async fn get_deployment_metrics(
 		});
 
 	Ok(metric_response)
-}
-
-pub async fn cancel_subscription(
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Stopping subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	let status = client
-		.post(format!(
-			"{}/subscriptions/{}/cancel_for_items",
-			config.chargebee.url, deployment_id
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			("end_of_term", "false"),
-			("credit_option_for_current_term_charges", "prorate"),
-		])
-		.send()
-		.await?
-		.status();
-
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-
-	Ok(())
-}
-
-async fn start_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	item_price_id: &str,
-	quantity: u16,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Starting subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-	let client = Client::new();
-	let password: Option<String> = None;
-	let status = client
-		.post(format!(
-			"{}/customers/{}/subscription_for_items",
-			config.chargebee.url, deployment.workspace_id
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&Subscription {
-			id: deployment_id.to_string(),
-			item_price_id: format!("{}-USD-Monthly", item_price_id),
-			quantity,
-		})
-		.send()
-		.await?
-		.status();
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-	Ok(())
-}
-
-async fn update_subscription(
-	connection: &mut <Database as sqlx::Database>::Connection,
-	deployment_id: &Uuid,
-	config: &Settings,
-	request_id: &Uuid,
-) -> Result<(), Error> {
-	log::trace!(
-		"request_id: {} - Updating subscription for deployment with id: {}",
-		request_id,
-		deployment_id
-	);
-
-	let deployment = db::get_deployment_by_id(connection, deployment_id)
-		.await?
-		.status(500)
-		.body(error!(SERVER_ERROR).to_string())?;
-
-	let client = Client::new();
-
-	let password: Option<String> = None;
-
-	let status = client
-		.post(format!(
-			"{}/subscriptions/{}/update_for_items",
-			config.chargebee.url, deployment.id,
-		))
-		.basic_auth(&config.chargebee.api_key, password)
-		.query(&[
-			(
-				"subscription_items[item_price_id][0]",
-				&format!("{}-USD-Monthly", deployment.machine_type),
-			),
-			(
-				"subscription_items[quantity][0]",
-				&format!("{}", deployment.min_horizontal_scale),
-			),
-		])
-		.send()
-		.await?
-		.status();
-
-	if status.is_client_error() || status.is_server_error() {
-		log::error!(
-			"request_id: {} - Error with the deployment: {}",
-			request_id,
-			status,
-		);
-		return Error::as_result()
-			.status(500)
-			.body(error!(SERVER_ERROR).to_string());
-	}
-
-	Ok(())
 }
 
 async fn get_container_logs(

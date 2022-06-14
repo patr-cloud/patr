@@ -61,4 +61,5 @@ pub mod request_keys {
 	pub const BUILD_NUM: &str = "buildNum";
 	pub const STAGE: &str = "stage";
 	pub const STEP: &str = "step";
+	pub const PAYMENT_METHOD_ID: &str = "paymentMethodId";
 }

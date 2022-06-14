@@ -2666,7 +2666,8 @@ pub async fn get_all_workspaces_for_user(
 			workspace.active,
 			workspace.alert_emails,
 			workspace.stripe_customer_id,
-			workspace.primary_payment_method
+			workspace.primary_payment_method,
+			workspace.addresS_id as "address_id: _"
 		FROM
 			workspace
 		LEFT JOIN

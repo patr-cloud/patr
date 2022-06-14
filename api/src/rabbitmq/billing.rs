@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use api_models::utils::DateTime;
 use chrono::{Datelike, Duration, TimeZone, Utc};
 use eve_rs::AsError;
 use reqwest::Client;
 
 use crate::{
-	db::{self, get_all_workspaces},
+	db::{self, get_all_workspaces, TransactionType},
 	error,
 	models::{
 		deployment,
@@ -55,8 +56,10 @@ pub(super) async fn process_request(
 			let current_month = Utc::now().month();
 			let current_year = Utc::now().year();
 
-			if (current_month < month.into() && current_year < year) ||
-				(current_month > month.into() && current_year < year)
+			if (current_month < month && current_year < year) ||
+				(current_month > month && current_year < year) ||
+				(current_month == month && current_year == year) |
+					(current_month < month && current_year == year)
 			{
 				// send nack
 				// change the error
@@ -101,21 +104,23 @@ pub(super) async fn process_request(
 						resource.price,
 						resource.quantity,
 						resource.active,
-						resource.deployment_machine_type_id,
+						resource.deployment_machine_type,
 						resource.resource_type,
 					));
 			});
 
-			let deployments =
-				db::get_deployments_for_workspace(connection, &workspace.id)
-					.await?;
+			let deployments = db::get_running_deployments_for_workspace(
+				connection,
+				&workspace.id,
+			)
+			.await?;
 
-			let mut total_cost = 0f64;
+			let mut deployment_cost = 0f64;
 
 			let mut price_distribution = HashMap::new();
 
 			// only deployments at this point of time
-			for d in deployments {
+			for d in deployments.clone() {
 				if resource_map.contains_key(&d.id) {
 					let resource_vec = resource_map.get(&d.id).status(500)?;
 
@@ -164,7 +169,7 @@ pub(super) async fn process_request(
 									),
 								);
 
-								total_cost = total_cost +
+								deployment_cost = deployment_cost +
 									(hours as f64 * price * *quantity as f64);
 							} else {
 								let (date2, ..) = resource_vec[pos + 1];
@@ -182,7 +187,7 @@ pub(super) async fn process_request(
 									),
 								);
 
-								total_cost = total_cost +
+								deployment_cost = deployment_cost +
 									(hours as f64 * price * *quantity as f64);
 							}
 						}
@@ -201,7 +206,7 @@ pub(super) async fn process_request(
 				.post("https://api.stripe.com/v1/payment_intents")
 				.basic_auth(&config.stripe.secret_key, password)
 				.form(&PaymentIntent {
-					amount: total_cost,
+					amount: deployment_cost,
 					currency: "usd".to_string(),
 					payment_method,
 					payment_method_types: "card".to_string(),
@@ -221,18 +226,50 @@ pub(super) async fn process_request(
 				year,
 				&workspace.super_admin_id,
 				price_distribution,
-				total_cost,
+				deployment_cost,
 			)
 			.await?;
 			// charge the user using the stripe api
-			super::queue_confirm_payment_intent(config, payment_intent.id).await
+			super::queue_confirm_payment_intent(config, payment_intent.id)
+				.await?;
 
 			// update transaction with payment id and status of transaction
 			// maybe?
-			// let transaction_id =
-			// db::generate_new_transaction_id(connection).await?;
-			// db::create_transaction(connection, &transaction_id, ).await?;
+			let transaction_id =
+				db::generate_new_transaction_id(connection).await?;
+
+			let deployment_product_id =
+				db::get_product_info_by_name(connection, "deployment")
+					.await?
+					.status(500)?
+					.id;
+
+			db::create_transaction(
+				connection,
+				&transaction_id,
+				&deployment_product_id,
+				&TransactionType::DynamicMonthly,
+				None,
+				deployment_cost,
+				None,
+				&workspace.id,
+				&DateTime::from(Utc::now()),
+				None,
+				true,
+			)
+			.await?;
 			// create a transaction for the invoice with payment id
+
+			for deployment in deployments {
+				service::create_billable_service_for_deployment(
+					connection,
+					&workspace.id,
+					&deployment.id,
+					true,
+				)
+				.await?;
+			}
+			Ok(())
 		}
 		WorkspaceRequestData::ConfirmPaymentIntent { payment_intent_id } => {
 			// confirming payment intent and charging the user

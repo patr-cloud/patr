@@ -324,16 +324,13 @@ async fn add_billing_tables(
 			description TEXT,
 			plan_type PLAN_TYPE NOT NULL,
 			product_info_id UUID NOT NULL,
-			price DECIMAL(10, 2) NOT NULL,
+			price DECIMAL(15, 6) NOT NULL,
 			quantity INTEGER,
 			workspace_id UUID NOT NULL,
 			CONSTRAINT plans_product_info_id_fk 
 			FOREIGN KEY (product_info_id) REFERENCES product_info(id),
 			CONSTRAINT plans_workspace_id_fk
-			FOREIGN KEY (workspace_id) REFERENCES workspace(id),
-			deployment_machine_type_id UUID
-				CONSTRAINT plans_uq_deployment_machine_type_id
-					UNIQUE
+			FOREIGN KEY (workspace_id) REFERENCES workspace(id)
 		);
 	"#
 	)
@@ -346,10 +343,10 @@ async fn add_billing_tables(
 			id UUID CONSTRAINT billable_service_pk PRIMARY KEY,
 			plan_id UUId NOT NULL,
 			workspace_id UUID NOT NULL,
-			price DECIMAL(10, 2) NOT NULL,
+			price DECIMAL(15, 6) NOT NULL,
 			quantity INTEGER NOT NULL,
 			product_info_id UUID NOT NULL,
-			total_price DECIMAL(10, 2) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED,
+			total_price DECIMAL(15, 6) NOT NULL GENERATED ALWAYS AS (price * quantity) STORED,
 			resource_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
 			active BOOLEAN NOT NULL,
@@ -371,11 +368,12 @@ async fn add_billing_tables(
 		r#"
 		CREATE TABLE IF NOT EXISTS coupons(
 			id UUID CONSTRAINT coupons_pk PRIMARY KEY,
-			name TEXT NOT NULL,
+			name TEXT NOT NULL UNIQUE,
 			description TEXT,
 			credits DECIMAL(10, 2) NOT NULL,
 			valid_from TIMESTAMPTZ NOT NULL,
-			valid_till TIMESTAMPTZ NOT NULL
+			valid_till TIMESTAMPTZ NOT NULL,
+			num_usage INTEGER NOT NULL	
 		);
 	"#
 	)
@@ -390,8 +388,8 @@ async fn add_billing_tables(
 			product_info_id UUID NOT NULL,
 			transaction_type TRANSACTION_TYPE NOT NULL,
 			plan_id UUID,
-			amount DECIMAL(10, 2) NOT NULL,
-			quantity INTEGER NOT NULL,
+			amount DECIMAL(15, 6) NOT NULL,
+			quantity INTEGER,
 			workspace_id UUID NOT NULL,
 			date TIMESTAMPTZ NOT NULL,
 			coupon_id UUID,
@@ -515,8 +513,23 @@ async fn add_billing_tables(
 		r#"
 		ALTER TABLE workspace
 		ADD COLUMN primary_payment_method TEXT
-		CONSTRAINT workspace_fk_primary_payment_method REFERENCES payment_method(id);
+		CONSTRAINT workspace_fk_primary_payment_method FOREIGN KEY REFERENCES payment_method(id);
 		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE deployment_machine_type
+		ADD column plan_id UUID
+		CONSTRAINT
+			deployment_machine_type_uq_plan_id UNIQUE
+		CONSTRAINT
+			deployment_machine_type_fk_plan_id
+		REFERENCES
+			plans(id);
+	"#
 	)
 	.execute(&mut *connection)
 	.await?;

@@ -1,27 +1,11 @@
+use api_models::models::workspace::billing::{
+	CardFundingType,
+	CardNetworks,
+	PaymentMethod,
+	StripeCustomer,
+	ThreeDSecureUsage,
+};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StripePaymentMethodType {
-	AcssDebit,
-	Affirm,
-	AfterpayClearpay,
-	Alipay,
-	// Add more payment methods types layers
-	// refer this: https://stripe.com/docs/api/payment_methods/object#payment_method_object-type
-	Card,
-	CardPresent,
-	UsBankAccount,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CardFundingType {
-	Debit,
-	Credit,
-	Prepaid,
-	Unknown,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -42,20 +26,7 @@ pub enum PaymentMethodUsage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CardNetworks {
-	pub available: Vec<String>,
-	pub preferred: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreeDSecureUsage {
-	pub supported: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct Card {
 	pub brand: String,
 	pub country: String,
@@ -66,24 +37,6 @@ pub struct Card {
 	pub last4: String,
 	pub networks: CardNetworks,
 	pub three_d_secure_usage: ThreeDSecureUsage,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StripeCustomer {
-	pub id: String,
-	pub name: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentMethod {
-	pub id: String,
-	pub customer: StripeCustomer,
-	pub r#type: StripePaymentMethodType,
-	pub card: Option<Card>,
-	//TODO: Add other payment methods
-	pub created: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,4 +77,13 @@ pub struct PaymentIntent {
 	pub payment_method_types: String,
 	pub customer: String,
 	// TODO: add field for payment method
+}
+
+pub struct ProductLimits {
+	pub deployment: i32,
+	pub static_site: i32,
+	pub managed_database: i32,
+	pub managed_url: i32,
+	pub domain: i32,
+	pub secret: i32,
 }

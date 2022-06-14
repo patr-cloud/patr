@@ -7,7 +7,7 @@ use api_models::{
 };
 
 use crate::{
-	db::{self, WorkspaceAuditLog},
+	db::{self, Plans, WorkspaceAuditLog},
 	models::deployment::{
 		DefaultDeploymentRegion,
 		DEFAULT_DEPLOYMENT_REGIONS,
@@ -28,8 +28,10 @@ pub struct DeploymentMachineType {
 	pub id: Uuid,
 	pub cpu_count: i16,
 	pub memory_count: i32,
+	pub plan_id: Option<Uuid>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Deployment {
 	pub id: Uuid,
 	pub name: String,
@@ -119,7 +121,9 @@ pub async fn initialize_deployment_pre(
 		CREATE TABLE deployment_machine_type(
 			id UUID CONSTRAINT deployment_machint_type_pk PRIMARY KEY,
 			cpu_count SMALLINT NOT NULL,
-			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */
+			memory_count INTEGER NOT NULL /* Multiples of 0.25 GB */,
+			plan_id UUID 
+				CONSTRAINT deployment_machine_type_uq_plan_id UNIQUE
 		);
 		"#
 	)
@@ -318,6 +322,17 @@ pub async fn initialize_deployment_post(
 		.execute(&mut *connection)
 		.await?;
 	}
+
+	query!(
+		r#"
+		ALTER TABLE
+			deployment_machine_type
+		ADD CONSTRAINT deployment_machine_type_fk_plan_id
+		FOREIGN KEY(plan_id) REFERENCES plans(id);
+	"#
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	for continent in DEFAULT_DEPLOYMENT_REGIONS.iter() {
 		let region_id =
@@ -578,6 +593,39 @@ pub async fn get_deployments_for_workspace(
 		WHERE
 			workspace_id = $1 AND
 			status != 'deleted';
+		"#,
+		workspace_id as _
+	)
+	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_running_deployments_for_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<Vec<Deployment>, sqlx::Error> {
+	query_as!(
+		Deployment,
+		r#"
+		SELECT
+			id as "id: _",
+			name::TEXT as "name!: _",
+			registry,
+			repository_id as "repository_id: _",
+			image_name,
+			image_tag,
+			status as "status: _",
+			workspace_id as "workspace_id: _",
+			region as "region: _",
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type as "machine_type: _",
+			deploy_on_push
+		FROM
+			deployment
+		WHERE
+			workspace_id = $1 AND
+			status = 'running';
 		"#,
 		workspace_id as _
 	)
@@ -961,7 +1009,8 @@ pub async fn get_all_deployment_machine_types(
 		SELECT
 			id as "id: _",
 			cpu_count,
-			memory_count
+			memory_count,
+			plan_id as "plan_id: _"
 		FROM
 			deployment_machine_type;
 		"#
@@ -1103,5 +1152,55 @@ pub async fn get_build_events_for_deployment(
 		deployment_id as _
 	)
 	.fetch_all(&mut *connection)
+	.await
+}
+
+pub async fn get_deployment_machine_type_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<DeploymentMachineType>, sqlx::Error> {
+	query_as!(
+		DeploymentMachineType,
+		r#"
+		SELECT
+			id as "id!: _",
+			cpu_count,
+			memory_count,
+			plan_id as "plan_id: _"
+		FROM
+			deployment_machine_type
+		WHERE
+			id = $1;
+		"#,
+		id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn get_plan_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<Plans>, sqlx::Error> {
+	query_as!(
+		Plans,
+		r#"
+		SELECT
+			id as "id!: _",
+			name,
+			description,
+			plan_type as "plan_type!: _",
+			product_info_id as "product_info_id!: _",
+			price as "price!: _",
+			quantity,
+			workspace_id as "workspace_id!: _"
+		FROM
+			plans
+		WHERE
+			id = $1;
+	"#,
+		id as _,
+	)
+	.fetch_optional(&mut *connection)
 	.await
 }

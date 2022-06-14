@@ -457,7 +457,8 @@ pub async fn get_all_workspace_roles_for_user(
 			active,
 			alert_emails,
 			stripe_customer_id,
-			primary_payment_method
+			primary_payment_method,
+			address_id as "address_id: _"
 		FROM
 			workspace
 		WHERE

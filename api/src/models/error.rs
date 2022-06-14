@@ -56,6 +56,14 @@ pub mod id {
 	pub const MAX_LIMIT_REACHED: &str = "maxLimitReached";
 	pub const CANNOT_DELETE_WORKSPACE: &str = "cannotDeleteWorkspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str = "addressLine3NotAllowed";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str =
+		"changePrimaryPaymentMethod";
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str = "cannotDeletePaymentMethod";
+	pub const INVALID_COUPON: &str = "couponDoesNotExist";
+	pub const COUPON_USED: &str = "couponUsed";
+	pub const PRODUCT_LIMIT_CROSSED: &str = "productLimitCrossed";
+	pub const RESOURCE_LIMIT_REACHED: &str = "resourceLimitReached";
+	pub const ADDRESS_NOT_FOUND: &str = "addressNotFound";
 }
 
 #[allow(dead_code)]
@@ -170,4 +178,17 @@ pub mod message {
 		"You have some resources present in the workspace. Please delete them before proceeding to delete your workspace";
 	pub const ADDRESS_LINE_3_NOT_ALLOWED: &str =
 		"Address line 3 is not allowed if address line 2 is not provided";
+	pub const CHANGE_PRIMARY_PAYMENT_METHOD: &str =
+		"The current payment method cannot be deleted since it is your primary payment method";
+
+	pub const CANNOT_DELETE_PAYMENT_METHOD: &str =
+		"The payment method cannot be deleted since it is in use, please delete all the resources and try again in the next billing cycle";
+	pub const INVALID_COUPON: &str = "The coupon you entered is invalid, please try again with a valid coupon";
+	pub const COUPON_USED: &str =
+		"The coupon you entered has already been used";
+	pub const PRODUCT_LIMIT_CROSSED: &str =
+		"You have reached the limit of the maximum number of product allowed for your workspace";
+	pub const RESOURCE_LIMIT_REACHED: &str =
+		"You have reached the limit of the maximum number resources allowed for your workspace";
+	pub const ADDRESS_NOT_FOUND: &str = "The address does not exist";
 }

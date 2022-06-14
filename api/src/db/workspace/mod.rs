@@ -31,6 +31,7 @@ pub struct Workspace {
 	pub alert_emails: Vec<String>,
 	pub stripe_customer_id: String,
 	pub primary_payment_method: Option<String>,
+	pub address_id: Option<Uuid>,
 }
 
 pub struct WorkspaceAuditLog {
@@ -46,6 +47,19 @@ pub struct WorkspaceAuditLog {
 	pub metadata: serde_json::Value,
 	pub patr_action: bool,
 	pub success: bool,
+}
+
+pub struct Address {
+	pub id: Uuid,
+	pub first_name: String,
+	pub last_name: String,
+	pub address_line_1: String,
+	pub address_line_2: Option<String>,
+	pub address_line_3: Option<String>,
+	pub city: String,
+	pub state: String,
+	pub zip: String,
+	pub country: String,
 }
 
 pub async fn initialize_workspaces_pre(
@@ -331,7 +345,8 @@ pub async fn get_workspace_info(
 			active,
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
-			primary_payment_method
+			primary_payment_method,
+			address_id as "address_id: _"
 		FROM
 			workspace
 		WHERE
@@ -357,7 +372,8 @@ pub async fn get_workspace_by_name(
 			active,
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
-			primary_payment_method
+			primary_payment_method,
+			address_id as "address_id: _"
 		FROM
 			workspace
 		WHERE
@@ -382,7 +398,8 @@ pub async fn get_all_workspaces(
 			workspace.active,
 			alert_emails as "alert_emails!: _",
 			stripe_customer_id,
-			primary_payment_method
+			primary_payment_method,
+			address_id as "address_id: _"
 		FROM
 			workspace
 		WHERE
@@ -650,4 +667,115 @@ pub async fn set_primary_payment_method_for_workspace(
 	.execute(&mut *connection)
 	.await
 	.map(|_| ())
+}
+
+pub async fn get_address_by_id(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<Option<Address>, sqlx::Error> {
+	query_as!(
+		Address,
+		r#"
+		SELECT
+			id as "id: _",
+			first_name as "first_name!: _",
+			last_name as "last_name!: _",
+			address_line_1 as "address_line_1!: _",
+			address_line_2 as "address_line_2: _",
+			address_line_3 as "address_line_3: _",
+			city as "city!: _",
+			state as "state!: _",
+			zip as "zip!: _",
+			country as "country!: _"
+		FROM
+			address
+		WHERE
+			id = $1;
+		"#,
+		id as _
+	)
+	.fetch_optional(&mut *connection)
+	.await
+}
+
+pub async fn update_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	address: &Address,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			address
+		SET
+			first_name = $1,
+			last_name = $2,
+			address_line_1 = $3,
+			address_line_2 = $4,
+			address_line_3 = $5,
+			city = $6,
+			state = $7,
+			zip = $8,
+			country = $9
+		WHERE
+			id = $10;
+	"#,
+		address.first_name as _,
+		address.last_name as _,
+		address.address_line_1,
+		address.address_line_2 as _,
+		address.address_line_3 as _,
+		address.city,
+		address.state,
+		address.zip,
+		address.country,
+		address.id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_billing_address_from_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		UPDATE
+			workspace
+		SET
+			address_id = NULL
+		WHERE
+			id = $1;
+		"#,
+		workspace_id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn delete_billing_address(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	id: &Uuid,
+) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		DELETE FROM
+			address
+		WHERE
+			id = $1;
+		"#,
+		id as _,
+	)
+	.execute(&mut *connection)
+	.await
+	.map(|_| ())
+}
+
+pub async fn get_total_billable_resource_in_workspace(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	workspace_id: &Uuid,
+) -> Result<i32, sqlx::Error> {
+	Ok(5 as i32)
 }
