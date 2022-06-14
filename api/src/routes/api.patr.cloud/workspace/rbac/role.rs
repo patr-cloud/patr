@@ -397,21 +397,38 @@ async fn get_role_details(
 		.status(404)
 		.body(error!(RESOURCE_DOES_NOT_EXIST).to_string())?;
 
-	let resource_permissions = db::get_permissions_on_resources_for_role(
-		context.get_database_connection(),
-		&role_id,
-	)
-	.await?
-	.into_iter()
-	.map(|(key, value)| {
-		(
-			key,
-			value.into_iter().map(|permission| permission.id).collect(),
+	let block_resource_permissions =
+		db::get_blocked_permissions_on_resources_for_role(
+			context.get_database_connection(),
+			&role_id,
 		)
-	})
-	.collect();
-	let resource_type_permissions =
-		db::get_permissions_on_resource_types_for_role(
+		.await?
+		.into_iter()
+		.map(|(key, value)| {
+			(
+				key,
+				value.into_iter().map(|permission| permission.id).collect(),
+			)
+		})
+		.collect();
+
+	let allow_resource_permissions =
+		db::get_allowed_permissions_on_resources_for_role(
+			context.get_database_connection(),
+			&role_id,
+		)
+		.await?
+		.into_iter()
+		.map(|(key, value)| {
+			(
+				key,
+				value.into_iter().map(|permission| permission.id).collect(),
+			)
+		})
+		.collect();
+
+	let allow_resource_type_permissions =
+		db::get_allowed_permissions_on_resource_types_for_role(
 			context.get_database_connection(),
 			&role_id,
 		)
@@ -431,8 +448,9 @@ async fn get_role_details(
 			name: role.name,
 			description: role.description,
 		},
-		resource_permissions,
-		resource_type_permissions,
+		block_resource_permissions,
+		allow_resource_permissions,
+		allow_resource_type_permissions,
 	});
 	Ok(context)
 }
@@ -480,8 +498,9 @@ async fn create_role(
 	let CreateNewRoleRequest {
 		name,
 		description,
-		resource_permissions,
-		resource_type_permissions,
+		block_resource_permissions,
+		allow_resource_permissions,
+		allow_resource_type_permissions,
 		..
 	} = context
 		.get_body_as()
@@ -501,16 +520,22 @@ async fn create_role(
 		&workspace_id,
 	)
 	.await?;
-	db::insert_resource_permissions_for_role(
+	db::insert_blocked_resource_permissions_for_role(
 		context.get_database_connection(),
 		&role_id,
-		&resource_permissions,
+		&block_resource_permissions,
 	)
 	.await?;
-	db::insert_resource_type_permissions_for_role(
+	db::insert_allowed_resource_permissions_for_role(
 		context.get_database_connection(),
 		&role_id,
-		&resource_type_permissions,
+		&allow_resource_permissions,
+	)
+	.await?;
+	db::insert_allowed_resource_type_permissions_for_role(
+		context.get_database_connection(),
+		&role_id,
+		&allow_resource_type_permissions,
 	)
 	.await?;
 
@@ -588,8 +613,9 @@ async fn update_role(
 	let UpdateRoleRequest {
 		name,
 		description,
-		resource_permissions,
-		resource_type_permissions,
+		block_resource_permissions,
+		allow_resource_permissions,
+		allow_resource_type_permissions,
 		..
 	} = context
 		.get_body_as()
@@ -612,24 +638,36 @@ async fn update_role(
 	)
 	.await?;
 
-	if let Some((resource_permissions, resource_type_permissions)) =
-		resource_permissions.zip(resource_type_permissions)
-	{
+	if let (
+		Some(block_resource_permissions),
+		Some(allow_resource_permissions),
+		Some(allow_resource_type_permissions),
+	) = (
+		block_resource_permissions,
+		allow_resource_permissions,
+		allow_resource_type_permissions,
+	) {
 		db::remove_all_permissions_for_role(
 			context.get_database_connection(),
 			&role_id,
 		)
 		.await?;
-		db::insert_resource_permissions_for_role(
+		db::insert_blocked_resource_permissions_for_role(
 			context.get_database_connection(),
 			&role_id,
-			&resource_permissions,
+			&block_resource_permissions,
 		)
 		.await?;
-		db::insert_resource_type_permissions_for_role(
+		db::insert_allowed_resource_permissions_for_role(
 			context.get_database_connection(),
 			&role_id,
-			&resource_type_permissions,
+			&allow_resource_permissions,
+		)
+		.await?;
+		db::insert_allowed_resource_type_permissions_for_role(
+			context.get_database_connection(),
+			&role_id,
+			&allow_resource_type_permissions,
 		)
 		.await?;
 	}
