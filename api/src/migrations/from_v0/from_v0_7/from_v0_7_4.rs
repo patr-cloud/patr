@@ -38,6 +38,7 @@ pub(super) async fn migrate(
 	add_hpa_to_existing_deployments(&mut *connection, config).await?;
 	update_deployment_with_probe_column(&mut *connection, config).await?;
 	add_workspace_credit_column(&mut *connection, config).await?;
+	rename_role_permissions_resource_tables(&mut *connection, config).await?;
 
 	Ok(())
 }
@@ -499,6 +500,32 @@ pub async fn add_workspace_credit_column(
 	)
 	.execute(&mut *connection)
 	.await?;
+
+	Ok(())
+}
+
+async fn rename_role_permissions_resource_tables(
+	connection: &mut <Database as sqlx::Database>::Connection,
+	_config: &Settings,
+) -> Result<(), Error> {
+	query!(r#"ALTER TABLE role_permissions_resource RENAME TO role_allow_permissions_resource;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_permissions_resource_type RENAME TO role_allow_permissions_resource_type;"#).execute(&mut *connection).await?;
+
+	query!(r#"ALTER TABLE role_allow_permissions_resource_type RENAME CONSTRAINT role_permissions_resource_type_fk_role_id TO role_allow_permissions_resource_type_fk_role_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource_type RENAME CONSTRAINT role_permissions_resource_type_fk_permission_id TO role_allow_permissions_resource_type_fk_permission_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource_type RENAME CONSTRAINT role_permissions_resource_type_fk_resource_type_id TO role_allow_permissions_resource_type_fk_resource_type_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource_type RENAME CONSTRAINT role_permissions_resource_type_pk TO role_allow_permissions_resource_type_pk;"#).execute(&mut *connection).await?;
+
+	query!(r#"ALTER TABLE role_allow_permissions_resource RENAME CONSTRAINT role_permissions_resource_fk_role_id TO role_allow_permissions_resource_fk_role_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource RENAME CONSTRAINT role_permissions_resource_fk_permission_id TO role_allow_permissions_resource_fk_permission_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource RENAME CONSTRAINT role_permissions_resource_fk_resource_id TO role_allow_permissions_resource_fk_resource_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER TABLE role_allow_permissions_resource RENAME CONSTRAINT role_permissions_resource_pk TO role_allow_permissions_resource_pk;"#).execute(&mut *connection).await?;
+
+	query!(r#"ALTER INDEX role_permissions_resource_type_idx_role_id RENAME TO role_allow_permissions_resource_type_idx_role_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER INDEX role_permissions_resource_type_idx_role_id_resource_type_id RENAME TO role_allow_permissions_resource_type_idx_roleid_resourcetypeid;"#).execute(&mut *connection).await?;
+
+	query!(r#"ALTER INDEX role_permissions_resource_idx_role_id RENAME TO role_allow_permissions_resource_idx_role_id;"#).execute(&mut *connection).await?;
+	query!(r#"ALTER INDEX role_permissions_resource_idx_role_id_resource_id RENAME TO role_allow_permissions_resource_idx_role_id_resource_id;"#).execute(&mut *connection).await?;
 
 	Ok(())
 }
